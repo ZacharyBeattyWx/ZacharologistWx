@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Maps & Models | Zacharologist Wx</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #e5e5e5;
+      color: #111;
+    }
+
+    header {
+      background: #d9d9d9;
+      padding: 12px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: bold;
+    }
+
+    nav a {
+      margin-left: 20px;
+      text-decoration: none;
+      color: black;
+      font-size: 18px;
+    }
+
+    .page-hero {
+      background: #1b2735;
+      color: white;
+      text-align: center;
+      padding: 50px 20px;
+    }
+
+    .page-hero h2 {
+      margin: 0 0 10px 0;
+      font-size: 36px;
+    }
+
+    .page-hero p {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .section-title {
+      text-align: center;
+      font-size: 28px;
+      margin: 40px 0 10px;
+    }
+
+    .section-subtitle {
+      text-align: center;
+      font-size: 16px;
+      color: #444;
+      margin-bottom: 30px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      padding: 0 40px 40px;
+    }
+
+    .card {
+      background: #1b2735;
+      padding: 20px;
+      border-radius: 12px;
+      text-decoration: none;
+      color: white;
+      transition: 0.3s;
+      display: block;
+    }
+
+    .card:hover {
+      background: #22324d;
+    }
+
+    .card h3 {
+      margin-top: 0;
+      margin-bottom: 10px;
+      font-size: 22px;
+    }
+
+    .card p {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 768px) {
+      header {
+        padding: 10px 14px;
+      }
+
+      header h1 {
+        font-size: 16px;
+      }
+
+      nav a {
+        margin-left: 12px;
+        font-size: 12px;
+      }
+
+      .page-hero {
+        padding: 35px 16px;
+      }
+
+      .page-hero h2 {
+        font-size: 28px;
+      }
+
+      .page-hero p {
+        font-size: 14px;
+      }
+
+      .section-title {
+        font-size: 22px;
+      }
+
+      .section-subtitle {
+        font-size: 14px;
+        padding: 0 16px;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+        padding: 0 20px 30px;
+        gap: 16px;
+      }
+
+      .card {
+        padding: 18px;
+      }
+
+      .card h3 {
+        font-size: 20px;
+      }
+
+      .card p {
+        font-size: 14px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <h1>Zacharologist Wx Page</h1>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="#">Wx Updates</a>
+      <a href="maps.html">Maps &amp; Models</a>
+    </nav>
+  </header>
+
+  <div class="page-hero">
+    <h2>Maps &amp; Models</h2>
+    <p>Forecast guidance, live tools, and weather resources in one place.</p>
+  </div>
+
+  <h2 class="section-title">Core Weather Tools</h2>
+  <p class="section-subtitle">Start with the most useful operational tools first.</p>
+
+  <div class="grid">
+    <a class="card" href="https://www.weather.gov/" target="_blank">
+      <h3>NWS Hazard Map</h3>
+      <p>Official watches, warnings, and weather hazard information.</p>
+    </a>
+
+    <a class="card" href="https://www.spc.noaa.gov/" target="_blank">
+      <h3>SPC Outlook</h3>
+      <p>Storm Prediction Center outlooks and severe weather guidance.</p>
+    </a>
+
+    <a class="card" href="https://radar.weather.gov/" target="_blank">
+      <h3>Radar</h3>
+      <p>Live radar products and current storm structure monitoring.</p>
+    </a>
+  </div>
+
+  <h2 class="section-title">Analysis &amp; Forecast</h2>
+  <p class="section-subtitle">Dig deeper into the environment and forecast setup.</p>
+
+  <div class="grid">
+    <a class="card" href="https://www.spc.noaa.gov/exper/mesoanalysis/" target="_blank">
+      <h3>Mesoanalysis</h3>
+      <p>Surface, instability, shear, and boundary analysis for severe weather.</p>
+    </a>
+
+    <a class="card" href="https://www.star.nesdis.noaa.gov/goes/" target="_blank">
+      <h3>Satellite</h3>
+      <p>Visible, infrared, and water vapor imagery for cloud and pattern analysis.</p>
+    </a>
+
+    <a class="card" href="#" target="_blank">
+      <h3>Model Guidance</h3>
+      <p>Forecast models and future guidance for storm setup planning.</p>
+    </a>
+  </div>
+
+</body>
+</html>
