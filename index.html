@@ -80,13 +80,22 @@ nav a {
   margin: 0 auto;
   padding: 40px 20px;
 }
-.grid {
+.grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+.section-title {
+  text-align: center;
+  font-size: 28px;
+  margin: 0 0 25px 0;
+}
+ .section-alt {
+  background: #d4d7db;
+  padding: 50px 0;
+}
+  .grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 20px;
-}
-.grid-3 {
-  grid-template-columns: repeat(3, 1fr);
 }
 .card {
   background: #1b2735;
@@ -96,17 +105,8 @@ nav a {
   color: white;
   transition: 0.3s;
 }
-.section-title {
-  text-align: center;
-  font-size: 28px;
-  margin: 0 0 25px 0;
-}
 .card:hover {
   background: #22324d;
-}
- .section-alt {
-  background: #d4d7db;
-  padding: 50px 0;
 }
   @media (max-width: 768px) {
   header {
