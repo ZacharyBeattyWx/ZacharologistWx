@@ -114,17 +114,24 @@ nav a {
 }
   @media (max-width: 768px) {
   header {
-    padding: 10px 14px;
-    flex-direction: row;
-    align-items: center;
+    padding: 10px 12px;
+    flex-wrap: wrap;
+    gap: 8px;
   }
 
   header h1 {
-    font-size: 16px;
+    font-size: 15px;
+    margin: 0;
+  }
+
+  nav {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
   }
 
   nav a {
-    margin-left: 12px;
+    margin-left: 0;
     font-size: 12px;
   }
 
@@ -142,12 +149,14 @@ nav a {
 
   .overlay {
     width: 90%;
-    top: 58%;
+    top: 52%;
+    left: 50%;
+    transform: translate(-50%, -50%);
   }
 
   .overlay h2 {
-    font-size: 28px;
-    line-height: 1.1;
+    font-size: 24px;
+    line-height: 1.15;
   }
 
   .overlay p {
@@ -156,19 +165,43 @@ nav a {
   }
 
   .button {
-    padding: 12px 28px;
-    font-size: 14px;
+    padding: 10px 24px;
+    font-size: 13px;
   }
-.section-block {
-  padding: 30px 20px;
-}
 
-.grid,
-.grid-3 {
-  grid-template-columns: 1fr;
-}
+  .section-block {
+    padding: 20px 14px;
+  }
+
+  .section-alt {
+    padding: 20px 0;
+  }
+
+  .section-title {
+    font-size: 20px;
+    margin: 0 0 14px 0;
+  }
+
+  .grid,
+  .grid-3 {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
   .card {
     padding: 18px;
+  }
+
+  .card h2 {
+    font-size: 18px;
+    margin: 0 0 10px 0;
+  }
+
+  .card p {
+    font-size: 14px;
+    line-height: 1.4;
+    margin: 0;
   }
 }
 </style>
