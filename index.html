@@ -113,19 +113,21 @@ nav a {
  .section-block {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 20px 20px;
+  padding: 20px 
 }
 .grid-3 {
+  display: grid;
   grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
 }
 .section-title {
   text-align: center;
   font-size: 28px;
-  margin: 0 0 12px 0;
+  margin: 0 0 20px 0;
 }
  .section-alt {
   background: #adb5bd;
-  padding: 50px 0;
+  padding: 32px 0;
 }
   .grid {
   display: grid;
@@ -134,11 +136,22 @@ nav a {
 }
 .card {
   background: #1b2735;
-  padding: 20px;
-  border-radius: 12px;
+  padding: 22px 18px;
+  border-radius: 18px;
+  min-height: 130px;
   text-decoration: none;
   color: white;
   transition: 0.3s;
+}
+.card h2 {
+  font-size: 22px;
+  margin: 0 0 10px 0;
+}
+
+.card p {
+  font-size: 16px;
+  line-height: 1.4;
+  margin: 0;
 }
 .card:hover {
   background: #22324d;
