@@ -213,26 +213,26 @@ nav a {
   }
 
   .grid,
-.grid-3 {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-}
+ .grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px; /* tighter spacing */
+  }
 
   .card {
-    padding: 18px;
+    padding: 12px 10px; /* shrink inside space */
+    border-radius: 12px;
   }
 
   .card h2 {
-    font-size: 18px;
-    margin: 0 0 10px 0;
+    font-size: 14px;
+    margin-bottom: 4px;
   }
 
-  .card p {
-    font-size: 14px;
-    line-height: 1.4;
-    margin: 0;
+ .card p {
+    font-size: 11px;
+    line-height: 1.2;
   }
+
 }
 </style>
 </head>
