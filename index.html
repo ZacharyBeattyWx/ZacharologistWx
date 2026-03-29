@@ -1,17 +1,95 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zacharologist Wx Page</title>
 
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #e5e5e5;
+    }
 
-<title>Zacharologist Wx Page</title>
+    header {
+      background: #d9d9d9;
+      padding: 20px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
 
-<style>
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background: #e5e5e5;
-}
+    header h1 {
+      margin: 0;
+      font-size: 26px;
+      font-weight: bold;
+    }
+
+    nav a {
+      margin-left: 20px;
+      text-decoration: none;
+      color: black;
+      font-size: 20px;
+    }
+
+    .hero {
+      position: relative;
+      height: 60vh;
+      background: url('your-image.jpg') center/cover no-repeat;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      z-index: 1;
+    }
+
+    .overlay {
+      position: relative;
+      z-index: 2;
+      color: white;
+      width: 80%;
+      background: rgba(0, 0, 0, 0.25);
+      padding: 20px;
+      border-radius: 12px;
+    }
+
+    .overlay h2 {
+      font-size: 42px;
+      margin: 0;
+    }
+
+    .overlay p {
+      font-size: 18px;
+      margin-top: 14px;
+    }
+
+    .button {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 15px 40px;
+      background: #111;
+      color: white;
+      text-decoration: none;
+      font-weight: bold;
+      border-radius: 12px;
+      transition: all 0.3s ease;
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
+    }
+
+    .button:hover {
+      transform: translateY(-2px);
+      background: #1c1c1c;
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.32);
+    }
+  </style>
+</head>
 
 <body>
   <header>
@@ -19,7 +97,7 @@ body {
     <nav>
       <a href="#">Home</a>
       <a href="#">Wx Updates</a>
-      <a href="#">Maps & Models</a>
+      <a href="#">Maps &amp; Models</a>
     </nav>
   </header>
 
@@ -31,104 +109,7 @@ body {
     </div>
   </section>
 </body>
-
-header {
-  background: #d9d9d9;
-  padding: 20px 24px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-header h1 {
-  margin: 0;
-  font-size: 26px;
-  font-weight: bold;
-}
-
-nav a {
-  margin-left: 20px;
-  text-decoration: none;
-  color: black;
-  font-size: 20px;
-}
-
-.hero {
-  position: relative;
-  height: 60vh;
-  background: url('your-image.jpg') center/cover no-repeat;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-}
-
-.hero::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-}
-
-.hero-content {
-  position: relative;
-  color: white;
-  padding: 20px;
-}
-
-.hero h1 {
-  font-size: 2rem;
-  font-weight: 700;
-}
-
-.hero p {
-  margin-top: 10px;
-  font-size: 1.1rem;
-  opacity: 0.9;
-}
-
-.overlay {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  text-align: center;
-  color: white;
-  width: 80%;
-  z-index: 2;
-
-  background: rgba(0, 0, 0, 0.25); 
-  padding: 20px;
-  border-radius: 12px;
-}
-.overlay h2 {
-  font-size: 42px;
-  max-width: 800px;
-  margin: auto;
-}
-
-.overlay p {
-  font-size: 18px;
-  margin-top: 14px;
-}
-
-.button {
-  display: inline-block;
-  margin-top: 20px;
-  padding: 15px 40px;
-  background: linear-gradient(135deg, #00c6ff, #0072ff);
-  color: white;
-  text-decoration: none;
-  font-weight: bold;
-  border-radius: 30px;
-  transition: all 0.3s ease;
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
-}
-
-.button:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.35);
-}
+</html>
  .section-block {
   max-width: 1200px;
   margin: 0 auto;
