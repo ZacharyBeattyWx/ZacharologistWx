@@ -35,11 +35,13 @@
     .hero {
       position: relative;
       height: 60vh;
-      background: url('your-image.jpg') center/cover no-repeat;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
+      overflow: hidden;
+    }
+
+    .hero img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
     .hero::before {
@@ -51,13 +53,17 @@
     }
 
     .overlay {
-      position: relative;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
       z-index: 2;
       color: white;
       width: 80%;
-      background: rgba(0, 0, 0, 0.25);
+      background: rgba(0, 0, 0, 0.3);
       padding: 20px;
       border-radius: 12px;
+      text-align: center;
     }
 
     .overlay h2 {
@@ -79,240 +85,112 @@
       text-decoration: none;
       font-weight: bold;
       border-radius: 12px;
-      transition: all 0.3s ease;
-      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
     }
 
-    .button:hover {
-      transform: translateY(-2px);
-      background: #1c1c1c;
-      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.32);
+    .section-alt {
+      background: #adb5bd;
+      padding: 30px 0;
+    }
+
+    .section-block {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .section-title {
+      text-align: center;
+      font-size: 28px;
+      margin: 0 0 20px 0;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    .card {
+      background: #1b2735;
+      padding: 22px 18px;
+      border-radius: 18px;
+      text-decoration: none;
+      color: white;
+    }
+
+    .card:hover {
+      background: #22324d;
     }
   </style>
-</head>
-
-<body>
-  <header>
-    <h1>Zacharologist Wx Page</h1>
-    <nav>
-      <a href="#">Home</a>
-      <a href="#">Wx Updates</a>
-      <a href="#">Maps &amp; Models</a>
-    </nav>
-  </header>
-
-  <section class="hero">
-    <div class="overlay">
-      <h2>Access To My Weather World!</h2>
-      <p>Storms, forecasts, sky, and live weather tools.</p>
-      <a href="#" class="button">GET STARTED</a>
-    </div>
-  </section>
-</body>
-</html>
- .section-block {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px 
-}
-.grid-3 {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-}
-.section-title {
-  text-align: center;
-  font-size: 28px;
-  margin: 0 0 20px 0;
-}
-  .grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 30px;
-}
-.card {
-  background: #1b2735;
-  padding: 22px 18px;
-  border-radius: 18px;
-  min-height: 130px;
-  text-decoration: none;
-  color: white;
-  transition: 0.3s;
-}
-.card:hover {
-  background: #22324d;
-}
-  @media (max-width: 768px) {
-  header {
-  padding: 10px 12px;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-}
-
-  header h1 {
-    font-size: 15px;
-    margin: 0;
-  }
-
-  nav {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-
-  nav a {
-    margin-left: 0;
-    font-size: 12px;
-  }
-
-  .hero {
-  height: auto;
-}
-
-.hero img {
-  width: 100%;
-  height: auto;
-  object-fit: contain;
-}
-
-  .overlay {
-    width: 90%;
-    top: 52%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-  }
-
-  .overlay h2 {
-    font-size: 24px;
-    line-height: 1.15;
-  }
-
-  .overlay p {
-    font-size: 14px;
-    margin-top: 8px;
-  }
-
-  .button {
-    padding: 7px 15px;
-    font-size: 10px;
-  }
-
-  .section-block {
-    padding: 15px 10px;
-  }
-
-  .section-alt {
-    padding: 20px 0;
-  }
-
-  .section-title {
-    font-size: 20px;
-    margin: 0 0 14px 0;
-  }
-
-  .grid,
- .grid-3 {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px; /* tighter spacing */
-  }
-
-  .card {
-    padding: 12px 10px; /* shrink inside space */
-    border-radius: 12px;
-  }
-
-  .card h2 {
-    font-size: 14px;
-    margin-bottom: 4px;
-  }
-
- .card p {
-    font-size: 11px;
-    line-height: 1.2;
-  }
-
-}
-</style>
 </head>
 
 <body>
 
 <header>
   <h1>Zacharologist Wx Page</h1>
- <nav>
-  <a href="index.html">Home</a>
-  <a href="#">Wx Updates</a>
-  <a href="maps.html">Maps &amp; Models</a>
-</nav>
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="#">Wx Updates</a>
+    <a href="maps.html">Maps &amp; Models</a>
+  </nav>
 </header>
 
 <div class="hero">
-  <img src="hero.jpg" alt="Weather collage">
-
+  <img src="hero.jpg" alt="">
   <div class="overlay">
     <h2>Access To My Weather World!</h2>
     <p>Storms, forecasts, sky, and live weather tools.</p>
     <a class="button" href="#">GET STARTED</a>
   </div>
 </div>
+
 <div class="section-alt">
-<div class="section-block">
-  <h2 class="section-title">Live Weather</h2>
-  <div class="grid">
-    <a class="card" href="https://www.weather.gov/" target="_blank">
-      <h2>NWS Hazard Map</h2>
-      <p>Live Watches and Warnings</p>
-    </a>
+  <div class="section-block">
+    <h2 class="section-title">Live Weather</h2>
+    <div class="grid">
 
-    <a class="card" href="https://www.spc.noaa.gov/" target="_blank">
-      <h2>SPC Outlook</h2>
-      <p>Storm Prediction Center Forecasts</p>
-    </a>
+      <a class="card" href="#">
+        <h2>NWS Hazard Map</h2>
+        <p>Live Watches and Warnings</p>
+      </a>
 
-    <a class="card" href="https://radar.weather.gov/?settings=v1_eyJhZ2VuZGEiOnsiaWQiOiJsb2NhbCIsImNlbnRlciI6Wy05My45MjYsMzkuNzE1XSwibG9jYXRpb24iOm51bGwsInpvb20iOjQuNzY4Mzg4MDc1NzQ5Njg1NSwiZmlsdGVyIjpudWxsfSwiYW5pbWF0aW5nIjpmYWxzZSwiYmFzZSI6InN0YW5kYXJkIiwiYXJ0Y2MiOmZhbHNlLCJjb3VudHkiOmZhbHNlLCJjd2EiOmZhbHNlLCJyZmMiOmZhbHNlLCJzdGF0ZSI6ZmFsc2UsIm1lbnUiOnRydWUsInNob3J0RnVzZWRPbmx5Ijp0cnVlLCJvcGFjaXR5Ijp7ImFsZXJ0cyI6MC44LCJsb2NhbCI6MC42LCJsb2NhbFN0YXRpb25zIjowLjgsIm5hdGlvbmFsIjowLjZ9fQ%3D%3D" target="_blank">
-      <h2>Radar</h2>
-      <p>Live Radar Viewer</p>
-    </a>
+      <a class="card" href="#">
+        <h2>SPC Outlook</h2>
+        <p>Storm Prediction Center Forecasts</p>
+      </a>
 
-    <a class="card" href="https://www.spc.noaa.gov/exper/mesoanalysis/" target="_blank">
-      <h2>Mesoanalysis</h2>
-      <p>Surface, Instability, and Storm Environment</p>
-    </a>
+      <a class="card" href="#">
+        <h2>Radar</h2>
+        <p>Live Radar Viewer</p>
+      </a>
 
-    <a class="card" href="https://weather.cod.edu/satrad/?parms=continental-conus-truecolor-24-1-100-1&checked=map&colorbar=undefined" target="_blank">
-      <h2>Satellite</h2>
-      <p>NEXLAB Satellite and Radar</p>
-    </a>
-
-    <a class="card" href="maps.html">
-      <h2>Maps &amp; Models</h2>
-      <p>Forecast Guidance and Model Products</p>
-    </a>
-   </div>
+    </div>
   </div>
-</div>  
-</body>
+</div>
+
 <div class="section-alt">
   <div class="section-block">
     <h2 class="section-title">Storm Chasing</h2>
-    <div class="grid grid-3">
-    <a class="card" href="#">
-      <h2>Wx Updates</h2>
-      <p>Forecast Thoughts and Weather Updates!</p>
-    </a>
+    <div class="grid">
 
-    <a class="card" href="#">
-      <h2>Chase Logs</h2>
-      <p>Storm Chasing Reports and Highlights!</p>
-    </a>
+      <a class="card" href="#">
+        <h2>Wx Updates</h2>
+        <p>Forecast Thoughts and Weather Updates!</p>
+      </a>
 
-    <a class="card" href="#">
-      <h2>Media</h2>
-      <p>Storm Chases, Astrophotography, and More!</p>
-    </a>
-      </div>
+      <a class="card" href="#">
+        <h2>Chase Logs</h2>
+        <p>Storm Chasing Reports and Highlights!</p>
+      </a>
+
+      <a class="card" href="#">
+        <h2>Media</h2>
+        <p>Storm Chases, Astrophotography, and More!</p>
+      </a>
+
+    </div>
   </div>
-</div>  
+</div>
+
 </body>
 </html>
