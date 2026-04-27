@@ -5,6 +5,14 @@
   <title>Zacharologist Wx Page</title>
 
   <style>
+    * {
+    box-sizing: border-box;
+    }
+
+    html, body {
+    width: 100%;
+    overflow-x: hidden;
+    }
     body {
       margin: 0;
       font-family: Arial, sans-serif;
@@ -121,6 +129,28 @@
     .card:hover {
       background: #22324d;
     }
+    @media (max-width: 768px) {
+  .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    width: 100%;
+  }
+
+  .card {
+    min-width: 0;
+    padding: 18px 10px;
+  }
+
+  .card h2 {
+    font-size: 1.25rem;
+    line-height: 1.1;
+  }
+
+  .card p {
+    font-size: 0.9rem;
+    line-height: 1.2;
+  }
+}
   </style>
 </head>
 
