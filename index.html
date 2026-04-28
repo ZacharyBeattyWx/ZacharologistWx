@@ -131,25 +131,33 @@
     }
     @media (max-width: 768px) {
   .tiles-grid {
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-}
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    width: 100%;
+    box-sizing: border-box;
+  }
 
-.tile {
-  min-height: 170px;
-  padding: 18px 14px;
-  border-radius: 20px;
-}
+  .tile {
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 165px;
+    padding: 16px 10px;
+    border-radius: 18px;
+  }
 
-.tile h3 {
-  font-size: 1.7rem;
-  line-height: 1.05;
-  margin-bottom: 10px;
-}
+  .tile h3 {
+    font-size: clamp(1.05rem, 4.5vw, 1.45rem);
+    line-height: 1.05;
+    margin-bottom: 10px;
+    overflow-wrap: anywhere;
+  }
 
-.tile p {
-  font-size: 0.95rem;
-  line-height: 1.2;
+  .tile p {
+    font-size: clamp(0.8rem, 3.4vw, 1rem);
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+  }
 }
   </style>
 </head>
