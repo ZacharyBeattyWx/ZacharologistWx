@@ -160,18 +160,6 @@
   .spc-link-button {
     display: inline-block;
   }
-}
-    .spc-img {
-  width: 100%;
-  max-width: 900px;
-  display: block;
-  margin-top: 15px;
-  border-radius: 12px;
-    }
-    .spc-wrapper {
-  margin-top: 15px;
-  overflow: hidden;
-  border-radius: 12px;
     }
 
   </style>
@@ -201,16 +189,11 @@
 
     <section class="section">
   <h2>SPC Day 1 Outlook</h2>
-  <p class="forecast-note">
-    
-  </p>
-
-  <section class="section">
-  <h2>SPC Day 1 Outlook</h2>
 
   <div class="spc-wrapper">
     <a href="https://www.spc.noaa.gov/products/outlook/day1otlk.html" target="_blank">
       <img
+        id="spc-day1-img"
         src="https://www.spc.noaa.gov/products/outlook/day1otlk.gif"
         alt="SPC Day 1 Convective Outlook"
         class="spc-image"
@@ -227,7 +210,11 @@
   </div>
 </section>
   </main>
+const spcImg = document.getElementById("spc-day1-img");
 
+if (spcImg) {
+  spcImg.src = "https://www.spc.noaa.gov/products/outlook/day1otlk.gif?t=" + Date.now();
+}
   <script>
     const alertsContainer = document.getElementById("alerts");
     const alertStatus = document.getElementById("alert-status");
