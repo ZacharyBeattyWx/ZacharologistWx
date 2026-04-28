@@ -237,10 +237,10 @@
           importantEvents.includes(item.properties.event)
         );
 
-        if (alerts.length === 0) {
-          alertStatus.textContent = "No active severe alerts for this region right now.";
-          return;
-        }
+        if (!data.features || data.features.length === 0) {
+  alertStatus.textContent = "No active severe alerts for NC, SC, or VA right now.";
+  return;
+}
 
         alertStatus.textContent = `${alerts.length} active severe alert(s) found.`;
 
