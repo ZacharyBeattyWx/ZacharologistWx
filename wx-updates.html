@@ -114,8 +114,25 @@
     .back-link:hover {
       text-decoration: underline;
     }
-    .spc-link-button {
-  display: none;
+   .spc-wrapper {
+  margin-top: 40px;
+  text-align: center;
+}
+
+.spc-image {
+  width: 100%;
+  max-width: 850px;
+  border-radius: 16px;
+  border: 2px solid rgba(255,255,255,0.08);
+  transition: transform 0.25s ease;
+}
+
+.spc-image:hover {
+  transform: scale(1.01);
+}
+
+.spc-link-button {
+  display: inline-block;
   background: #2563eb;
   color: white;
   padding: 14px 18px;
