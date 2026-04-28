@@ -129,35 +129,37 @@
     .card:hover {
       background: #22324d;
     }
-    @media (max-width: 768px) {
+  @media (max-width: 768px) {
+
   .tiles-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
     gap: 10px;
     width: 100%;
+    padding: 0 12px;
     box-sizing: border-box;
+    overflow-x: hidden;
   }
 
   .tile {
-    min-width: 0;
     width: 100%;
-    box-sizing: border-box;
-    min-height: 165px;
+    min-width: 0;
     padding: 16px 10px;
-    border-radius: 18px;
+    min-height: 170px;
+    box-sizing: border-box;
   }
 
   .tile h3 {
-    font-size: clamp(1.05rem, 4.5vw, 1.45rem);
+    font-size: 1.05rem;
     line-height: 1.05;
-    margin-bottom: 10px;
-    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 
   .tile p {
-    font-size: clamp(0.8rem, 3.4vw, 1rem);
+    font-size: 0.82rem;
     line-height: 1.15;
-    overflow-wrap: anywhere;
   }
+
 }
   </style>
 </head>
