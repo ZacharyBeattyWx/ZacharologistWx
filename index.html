@@ -132,34 +132,25 @@
 @media (max-width: 768px) {
 
   .tiles-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 10px;
     width: 100%;
     padding: 0 12px;
     box-sizing: border-box;
-    overflow-x: hidden;
   }
 
   .tile {
-    width: 100%;
     min-width: 0;
-    padding: 16px 10px;
-    min-height: 170px;
+    width: 100%;
     box-sizing: border-box;
   }
 
-  .tile h3 {
-    font-size: 1.05rem;
-    line-height: 1.05;
-    word-break: break-word;
+  section,
+  .section,
+  .container {
+    max-width: 100%;
+    overflow-x: hidden;
   }
-
-  .tile p {
-    font-size: 0.82rem;
-    line-height: 1.15;
-  }
-
 }
   </style>
 </head>
