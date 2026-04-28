@@ -187,14 +187,13 @@
       <div id="alerts" class="alert-grid"></div>
     </section>
 
-    <section class="section">
+   <section class="section">
   <h2>SPC Day 1 Outlook</h2>
 
   <div class="spc-wrapper">
     <a href="https://www.spc.noaa.gov/products/outlook/day1otlk.html" target="_blank">
       <img
-        id="spc-day1-img"
-        src="https://www.spc.noaa.gov/products/outlook/day1otlk.gif"
+        src="https://www.spc.noaa.gov/products/outlook/day1otlk_2000.png"
         alt="SPC Day 1 Convective Outlook"
         class="spc-image"
       >
@@ -210,12 +209,8 @@
   </div>
 </section>
   </main>
-const spcImg = document.getElementById("spc-day1-img");
-
-if (spcImg) {
-  spcImg.src = "https://www.spc.noaa.gov/products/outlook/day1otlk.gif?t=" + Date.now();
-}
   <script>
+  
     const alertsContainer = document.getElementById("alerts");
     const alertStatus = document.getElementById("alert-status");
 
