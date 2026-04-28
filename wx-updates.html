@@ -224,7 +224,7 @@
       alertsContainer.innerHTML = "";
 
       try {
-        const response = await fetch("https://api.weather.gov/alerts/active?area=NC&area=SC&area=VA");
+        const alertsUrl = "https://api.weather.gov/alerts/active?area=NC&area=SC&area=VA";
 
         if (!response.ok) {
           throw new Error("NWS API error");
