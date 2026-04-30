@@ -233,20 +233,34 @@
       alertsContainer.innerHTML = "";
 
       try {
-        const alertsUrl = "https://api.weather.gov/alerts/active?area=NC&area=SC&area=VA";
-        const response = await fetch(alertsUrl);
+        const alertUrls = [
+  "https://api.weather.gov/alerts/active?area=NC",
+  "https://api.weather.gov/alerts/active?area=SC",
+  "https://api.weather.gov/alerts/active?area=VA",
+  "https://api.weather.gov/alerts/active?zone=NCC157",
+  "https://api.weather.gov/alerts/active?zone=NCZ005"
+];
+        const responses = await Promise.all(
+  alertUrls.map(url => fetch(url))
+);
 
-        if (!response.ok) {
-          throw new Error("NWS API error");
-        }
+responses.forEach(response => {
+  if (!response.ok) {
+    throw new Error("NWS API error");
+  }
+});
 
-        const data = await response.json();
+const dataSets = await Promise.all(
+  responses.map(response => response.json())
+);
 
-        const alerts = data.features.filter(item =>
-          importantEvents.includes(item.properties.event)
-        );
+const allFeatures = dataSets.flatMap(data => data.features || []);
 
-        if (!data.features || data.features.length === 0) {
+        const alerts = allFeatures.filter(item =>
+  importantEvents.includes(item.properties.event)
+);
+
+        if (allFeatures.length === 0) {
   alertStatus.textContent = "No active severe alerts for NC, SC, or VA right now.";
   return;
 }
