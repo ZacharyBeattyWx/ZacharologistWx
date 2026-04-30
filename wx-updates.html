@@ -268,7 +268,11 @@ const uniqueFeatures = Array.from(
   return;
 }
 
-        alertStatus.textContent = `${alerts.length} active severe alert(s) found.`;
+       alertStatus.textContent =
+  `${alerts.length} active severe alert(s) found • Updated ${new Date().toLocaleTimeString([], {
+    hour: 'numeric',
+    minute: '2-digit'
+  })}`;
 
         alerts.forEach(item => {
           const props = item.properties;
@@ -316,7 +320,7 @@ const uniqueFeatures = Array.from(
 
     loadAlerts();
 
-    setInterval(loadAlerts, 300000);
+    setInterval(loadAlerts, 60000);
   </script>
 </body>
 </html>
