@@ -255,12 +255,15 @@ const dataSets = await Promise.all(
 );
 
 const allFeatures = dataSets.flatMap(data => data.features || []);
+const uniqueFeatures = Array.from(
+  new Map(allFeatures.map(item => [item.id, item])).values()
+);
 
-        const alerts = allFeatures.filter(item =>
+        const alerts = uniqueFeatures.filter(item =>
   importantEvents.includes(item.properties.event)
 );
 
-        if (allFeatures.length === 0) {
+        if (uniqueFeatures.length === 0) {
   alertStatus.textContent = "No active severe alerts for NC, SC, or VA right now.";
   return;
 }
