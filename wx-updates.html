@@ -182,7 +182,7 @@
     <section class="section">
       <h2>Latest Forecast Briefing</h2>
       <p class="forecast-note">
-        A more active period is expected to return to the South. Keeping an eye on the SPC outlooks and local NWS forecasts for the latest details in regards to the longterm forecasts. 
+        A more active period is expected to return to the South. Keeping an eye on the SPC outlooks and local NWS forecasts for the latest details in regards to potential severe weather on 4/29/26. Currently there is a low end tornado risk for NC & VA. Damaging winds are likely going to be the main threat.
       </p>
     </section>
 
@@ -233,37 +233,20 @@
       alertsContainer.innerHTML = "";
 
       try {
-        const alertUrls = [
-  "https://api.weather.gov/alerts/active?area=NC",
-  "https://api.weather.gov/alerts/active?area=SC",
-  "https://api.weather.gov/alerts/active?area=VA",
-  "https://api.weather.gov/alerts/active?zone=NCC157",
-  "https://api.weather.gov/alerts/active?zone=NCZ005"
-];
-        const responses = await Promise.all(
-  alertUrls.map(url => fetch(url))
-);
+        const alertsUrl = "https://api.weather.gov/alerts/active?area=NC&area=SC&area=VA";
+        const response = await fetch(alertsUrl);
 
-responses.forEach(response => {
-  if (!response.ok) {
-    throw new Error("NWS API error");
-  }
-});
+        if (!response.ok) {
+          throw new Error("NWS API error");
+        }
 
-const dataSets = await Promise.all(
-  responses.map(response => response.json())
-);
+        const data = await response.json();
 
-const allFeatures = dataSets.flatMap(data => data.features || []);
-const uniqueFeatures = Array.from(
-  new Map(allFeatures.map(item => [item.id, item])).values()
-);
+        const alerts = data.features.filter(item =>
+          importantEvents.includes(item.properties.event)
+        );
 
-        const alerts = uniqueFeatures.filter(item =>
-  importantEvents.includes(item.properties.event)
-);
-
-        if (uniqueFeatures.length === 0) {
+        if (!data.features || data.features.length === 0) {
   alertStatus.textContent = "No active severe alerts for NC, SC, or VA right now.";
   return;
 }
