@@ -264,9 +264,14 @@ const uniqueFeatures = Array.from(
   importantEvents.includes(item.properties.event)
 );
 
-        if (uniqueFeatures.length === 0) {
-  alertStatus.textContent = "No active severe alerts for NC, SC, or VA right now.";
+        if (alerts.length === 0) {
+  alertStatus.textContent =
+    `No active severe alerts for NC, SC, or VA right now • Updated ${new Date().toLocaleTimeString([], {
+      hour: 'numeric',
+      minute: '2-digit'
+    })}`;
   return;
+}
 }
 
        alertStatus.textContent =
