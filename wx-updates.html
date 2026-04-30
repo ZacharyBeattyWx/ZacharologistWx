@@ -198,10 +198,10 @@
   <div class="spc-wrapper">
     <a href="https://www.spc.noaa.gov/products/outlook/day1otlk.html" target="_blank">
       <img
-  id="spc-day1-img"
-  src="https://www.spc.noaa.gov/products/outlook/day1otlk_2000.png"
-  alt="SPC Day 1 Convective Outlook"
-  class="spc-image"
+      id="spc-day1-img"
+      src="https://www.spc.noaa.gov/products/outlook/day1otlk.png"
+      alt="SPC Day 1 Convective Outlook"
+      class="spc-image"
 >
     </a>
 
@@ -328,11 +328,11 @@ function updateSpcImage() {
 
   if (spcImg) {
     spcImg.src =
-      "https://www.spc.noaa.gov/products/outlook/day1otlk_2000.png?t=" +
-      Date.now();
+  "https://www.spc.noaa.gov/products/outlook/day1otlk.png?refresh=" +
+  new Date().getTime();
   }
 }
-    updateSpcImage();
+updateSpcImage();
 setInterval(updateSpcImage, 900000);
 
 loadAlerts();
