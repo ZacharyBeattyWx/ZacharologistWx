@@ -342,8 +342,8 @@
   transform: translateX(4px);
 }
 .radar-card {
-  grid-row: span 2;
-  min-height: 485px;
+  min-height: 860px;
+  padding-bottom: 18px;
 }
 
 .radar-preview {
@@ -357,12 +357,18 @@
 }
 .radar-frame {
   width: 100%;
-  height: 420px;
+  height: 700px;
   border: none;
-  border-radius: 14px;
-  margin: 16px 0;
+  border-radius: 18px;
+  margin: 18px 0 10px;
   overflow: hidden;
   background: #0b1322;
+  display: block;
+}
+.radar-card iframe {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 .dashboard-card:nth-child(3),
 .dashboard-card:nth-child(4) {
