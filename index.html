@@ -405,6 +405,12 @@
   overflow: hidden;
   border: 1px solid rgba(255,255,255,0.08);
   background: rgba(255,255,255,0.03);
+  transition: 0.25s ease;
+}
+
+.alert-item:hover {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,178,28,0.18);
 }
 
 .alert-row {
@@ -421,7 +427,21 @@
   font-weight: 800;
   text-align: left;
 }
+.alert-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
 
+.expand-icon {
+  color: rgba(255,255,255,0.45);
+  font-size: 18px;
+  transition: 0.3s ease;
+}
+
+.alert-item.open .expand-icon {
+  transform: rotate(180deg);
+}
 .alert-row span {
   display: flex;
   align-items: center;
@@ -440,8 +460,18 @@
 .alert-details {
   max-height: 0;
   overflow: hidden;
-  transition: max-height 0.3s ease;
+  opacity: 0;
   padding: 0 16px;
+  transition:
+    max-height 0.35s ease,
+    opacity 0.25s ease,
+    padding 0.25s ease;
+}
+
+.alert-item.open .alert-details {
+  max-height: 160px;
+  opacity: 1;
+  padding: 0 16px 18px;
 }
 
 .alert-details p {
@@ -665,13 +695,14 @@
 
       <div class="alert-item yellow">
         <button class="alert-row">
-          <span>⚠️ Severe Thunderstorm Warning</span>
-          <strong>1</strong>
-        </button>
+          <span class="alert-left">
+  ⚠️ Severe Thunderstorm Warning
+</span>
 
-        <div class="alert-details">
-          <p>Warning details here.</p>
-        </div>
+<div class="alert-right">
+  <strong>1</strong>
+  <span class="expand-icon">⌄</span>
+</div>
       </div>
 
       <div class="alert-item magenta">
