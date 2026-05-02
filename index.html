@@ -306,6 +306,37 @@
   text-transform: uppercase;
   margin-bottom: 8px;
 }
+.spc-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.spc-day {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255,255,255,0.05);
+  padding: 12px 14px;
+  border-radius: 12px;
+  text-decoration: none;
+  color: white;
+  transition: 0.2s ease;
+}
+
+.spc-day:hover {
+  background: rgba(93,115,255,0.18);
+  transform: translateX(4px);
+}
+
+.spc-day span {
+  font-weight: bold;
+}
+
+.spc-day small {
+  color: #8fb3ff;
+}
 .radar-card {
   grid-row: span 2;
   min-height: 485px;
@@ -470,11 +501,35 @@
   <p>Track storms and radar trends.</p>
 </article>
 
-    <article class="dashboard-card mini-card">
-      <span class="mini-label">Outlook</span>
-      <h3>SPC Forecast</h3>
-      <p>Current severe weather outlooks.</p>
-    </article>
+    <article class="dashboard-card mini-card spc-card">
+  <span class="mini-label">Outlook</span>
+  <h3>SPC Forecast</h3>
+
+  <div class="spc-stack">
+
+    <a href="https://www.spc.noaa.gov/products/outlook/day1otlk.html" target="_blank" class="spc-day">
+      <span>Day 1</span>
+      <small>Today</small>
+    </a>
+
+    <a href="https://www.spc.noaa.gov/products/outlook/day2otlk.html" target="_blank" class="spc-day">
+      <span>Day 2</span>
+      <small>Tomorrow</small>
+    </a>
+
+    <a href="https://www.spc.noaa.gov/products/exper/day4-8/" target="_blank" class="spc-day">
+      <span>Day 3</span>
+      <small>Extended</small>
+    </a>
+
+    <a href="https://www.spc.noaa.gov/products/exper/day4-8/" target="_blank" class="spc-day">
+      <span>Days 4–8</span>
+      <small>Long Range</small>
+    </a>
+
+  </div>
+
+</article>
 
     <article class="dashboard-card mini-card">
       <span class="mini-label">Alerts</span>
