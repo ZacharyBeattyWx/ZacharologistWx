@@ -482,7 +482,7 @@
   color: #ffe100;
 }
 
-.yellow strong {
+.yellow > .alert-row strong {
   background: #ffe100;
 }
 
@@ -490,7 +490,7 @@
   color: #ff00ea;
 }
 
-.magenta strong {
+.magenta > .alert-row strong {
   background: #ff00ea;
 }
 .warning-detail-card {
@@ -501,7 +501,10 @@
   color: white;
   border: 1px solid rgba(255,255,255,0.08);
 }
-
+.warning-detail-card strong {
+  background: transparent !important;
+  color: white;
+}
 .warning-detail-card h4 {
   margin: 0;
   padding: 14px 16px 6px;
