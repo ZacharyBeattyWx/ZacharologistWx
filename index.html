@@ -465,6 +465,7 @@
 
 .alert-item.open .alert-details {
   display: block;
+  padding: 0 16px 16px;
 }
 
 .alert-item.open .expand-icon {
@@ -503,6 +504,75 @@
 .warning-card p {
   margin: 4px 0;
   font-size: 0.9rem;
+}
+.warning-detail-card {
+  background: rgba(255,255,255,0.09);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-top: 8px;
+}
+
+.warning-hazards {
+  display: flex;
+  gap: 24px;
+  background: rgba(0,0,0,0.18);
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: #cfd6e4;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.warning-hazards strong {
+  color: #ffe100;
+}
+
+.warning-expire-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.warning-color-dot {
+  width: 18px;
+  height: 18px;
+  background: #ffe100;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.expire-badge {
+  background: rgba(255,178,28,0.28);
+  color: #d8d8d8;
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.warning-location-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.state-chip {
+  background: rgba(255,255,255,0.12);
+  color: #d7deec;
+  padding: 7px 12px;
+  border-radius: 9px;
+  font-weight: 800;
+}
+
+.county-chip {
+  background: #168cff;
+  color: black;
+  padding: 7px 12px;
+  border-radius: 9px;
+  font-weight: 800;
 }
 @media (max-width: 768px) {
   .alerts-panel {
@@ -709,18 +779,26 @@
   </button>
 
   <div class="alert-details">
-  <div class="warning-card">
-    <p><strong>Area:</strong> Guilford County, NC</p>
-    <p><strong>Expires:</strong> 8:45 PM EDT</p>
-    <p><strong>Hazards:</strong> 60 mph wind gusts and quarter-size hail.</p>
-  </div>
+  <div class="warning-detail-card">
 
-  <div class="warning-card">
-    <p><strong>Area:</strong> Alamance County, NC</p>
-    <p><strong>Expires:</strong> 9:15 PM EDT</p>
-    <p><strong>Hazards:</strong> Damaging winds possible.</p>
-  </div>
+    <div class="warning-hazards">
+      <span><strong>Hail:</strong> 1.00IN</span>
+      <span><strong>Wind:</strong> 60MPH</span>
+    </div>
 
+    <div class="warning-expire-row">
+      <span class="warning-color-dot"></span>
+      <span class="expire-badge">Expires in ... 21 mins.</span>
+    </div>
+
+    <div class="warning-location-row">
+      <span class="state-chip">NC</span>
+      <span class="county-chip">Guilford</span>
+      <span class="county-chip">Alamance</span>
+      <span class="county-chip">Rockingham</span>
+    </div>
+
+  </div>
 </div>
 
       <div class="alert-item magenta">
