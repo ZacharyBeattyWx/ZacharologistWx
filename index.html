@@ -467,15 +467,14 @@
   display: block;
 }
 
+.alert-item.open .expand-icon {
+  transform: rotate(180deg);
+}
+
 .alert-details p {
   margin: 0;
   color: #c2ccdd;
   line-height: 1.5;
-}
-
-.alert-item.open .alert-details {
-  max-height: 180px;
-  padding-bottom: 16px;
 }
 
 .yellow span {
@@ -703,17 +702,21 @@
 </div>
 
       <div class="alert-item magenta">
-        <button class="alert-row">
-          <span>⚠️ Tornado Watch</span>
-          <strong>6</strong>
-        </button>
+  <button class="alert-row">
+    <span class="alert-left">
+      ⚠️ Tornado Watch
+    </span>
 
-        <div class="alert-details">
-          <p>Tornado watch details.</p>
-        </div>
-      </div>
-
+    <div class="alert-right">
+      <strong>6</strong>
+     <span class="expand-icon">⌄</span>
     </div>
+  </button>
+
+  <div class="alert-details">
+    <p>Tornado watch details.</p>
+  </div>
+</div>
   </section>
 
 </article>
