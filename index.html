@@ -493,88 +493,99 @@
 .magenta strong {
   background: #ff00ea;
 }
-.warning-card {
-  background: rgba(255,255,255,0.045);
-  border-left: 3px solid currentColor;
-  border-radius: 10px;
-  padding: 10px 12px;
-  margin-top: 10px;
-}
-
-.warning-card p {
-  margin: 4px 0;
-  font-size: 0.9rem;
-}
 .warning-detail-card {
-  background: rgba(255,255,255,0.09);
+  background: #2b2d2f;
   border-radius: 14px;
-  padding: 14px 16px;
-  margin-top: 8px;
-}
-
-.warning-hazards {
-  display: flex;
-  gap: 24px;
-  background: rgba(0,0,0,0.18);
-  padding: 10px 12px;
-  border-radius: 10px;
-  color: #cfd6e4;
-  font-size: 0.9rem;
-  font-weight: 700;
-}
-
-.warning-hazards strong {
-  color: #ffe100;
-}
-
-.warning-expire-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
   margin-top: 14px;
+  overflow: hidden;
+  color: white;
+  border: 1px solid rgba(255,255,255,0.08);
 }
 
-.warning-color-dot {
-  width: 18px;
-  height: 18px;
-  background: #ffe100;
-  border-radius: 4px;
-  display: inline-block;
+.warning-detail-card h4 {
+  margin: 0;
+  padding: 14px 16px 6px;
+  color: #58b7ff;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 0.82rem;
 }
 
-.expire-badge {
-  background: rgba(255,178,28,0.28);
-  color: #d8d8d8;
-  padding: 7px 10px;
-  border-radius: 8px;
+.warning-summary {
+  padding: 0 16px;
+  margin: 10px 0 16px;
+  color: white;
+  line-height: 1.5;
+}
+
+.warning-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  padding: 0 16px 16px;
+}
+
+.warning-metrics div {
+  background: rgba(255,255,255,0.06);
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+}
+
+.warning-metrics span {
+  display: block;
+  color: #b8c2d8;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.warning-metrics strong {
+  color: white;
+  font-size: 1rem;
+}
+
+.warning-info {
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding: 12px 16px;
+}
+
+.warning-info p {
+  margin: 8px 0;
+}
+
+.warning-info span {
+  color: #aab5c7;
+  margin-right: 6px;
+}
+
+.warning-impacts {
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding: 14px 16px;
+}
+
+.warning-impacts strong {
+  color: #ffb21c;
+  text-transform: uppercase;
+}
+
+.warning-impacts p {
+  margin-top: 10px;
+  line-height: 1.6;
+}
+
+.warning-bottom {
+  background: rgba(255,255,255,0.05);
+  padding: 10px 16px;
+  text-align: center;
+  color: #ffe100;
   font-weight: 700;
-  font-size: 0.85rem;
 }
 
-.warning-location-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 16px;
-  flex-wrap: wrap;
-}
-
-.state-chip {
-  background: rgba(255,255,255,0.12);
-  color: #d7deec;
-  padding: 7px 12px;
-  border-radius: 9px;
-  font-weight: 800;
-}
-
-.county-chip {
-  background: #168cff;
-  color: black;
-  padding: 7px 12px;
-  border-radius: 9px;
-  font-weight: 800;
-}
 @media (max-width: 768px) {
+  .warning-metrics {
+    grid-template-columns: 1fr;
+  }
   .alerts-panel {
     padding: 14px;
   }
@@ -778,24 +789,44 @@
     </div>
   </button>
 
-  <div class="alert-details">
+ <div class="alert-details">
   <div class="warning-detail-card">
 
-    <div class="warning-hazards">
-      <span><strong>Hail:</strong> 1.00IN</span>
-      <span><strong>Wind:</strong> 60MPH</span>
+    <h4>What to Expect</h4>
+
+    <p class="warning-summary">
+      60 mph wind gusts and quarter size hail.
+    </p>
+
+    <div class="warning-metrics">
+      <div>
+        <span>🌬️ Max Wind</span>
+        <strong>60 MPH</strong>
+      </div>
+
+      <div>
+        <span>🧊 Max Hail</span>
+        <strong>1.00 IN</strong>
+      </div>
+
+      <div>
+        <span>📡 Source</span>
+        <strong>Radar indicated.</strong>
+      </div>
     </div>
 
-    <div class="warning-expire-row">
-      <span class="warning-color-dot"></span>
-      <span class="expire-badge">Expires in ... 21 mins.</span>
+    <div class="warning-info">
+      <p><span>📍 Where</span> Guilford, Alamance, Rockingham</p>
+      <p><span>🕘 When</span> Until 2:30 PM EDT</p>
     </div>
 
-    <div class="warning-location-row">
-      <span class="state-chip">NC</span>
-      <span class="county-chip">Guilford</span>
-      <span class="county-chip">Alamance</span>
-      <span class="county-chip">Rockingham</span>
+    <div class="warning-impacts">
+      <strong>⚠️ Expected Impacts</strong>
+      <p>Hail damage to vehicles is expected. Expect wind damage to roofs, siding, and trees.</p>
+    </div>
+
+    <div class="warning-bottom">
+      Hail: <strong>1.00"</strong> Wind: <strong>60MPH</strong>
     </div>
 
   </div>
