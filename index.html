@@ -523,6 +523,31 @@
   letter-spacing: 1px;
   font-size: 0.82rem;
 }
+.warning-hazards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 8px 0 14px;
+}
+
+.hazard-box {
+  padding: 10px 12px;
+  border-radius: 10px;
+  min-height: 58px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.hazard-box .hazard-label {
+  font-size: 0.72rem;
+  margin-bottom: 4px;
+}
+
+.hazard-box .hazard-value {
+  font-size: 0.95rem;
+  font-weight: 800;
+}
 
 .warning-summary {
   padding: 0 16px;
@@ -606,6 +631,14 @@ body {
 }
 
 @media (max-width: 768px) {
+ .warning-hazards {
+    grid-template-columns: 1fr;
+  }
+
+  .hazard-box {
+    min-height: auto;
+    padding: 9px 10px;
+  } 
   header {
   flex-direction: row;
   align-items: center;
@@ -903,22 +936,22 @@ nav a {
       THIS IS A TEST! THERE ARE NO ACTIVE WARNINGS.
     </p>
 
-    <div class="warning-metrics">
-      <div>
-        <span>🌬️ Max Wind</span>
-        <strong>60 MPH</strong>
-      </div>
+    <div class="warning-hazards">
+  <div class="hazard-box">
+    <span class="hazard-label">🌬️ Max Wind</span>
+    <span class="hazard-value">60 MPH</span>
+  </div>
 
-      <div>
-        <span>🧊 Max Hail</span>
-        <strong>1.00 IN</strong>
-      </div>
+  <div class="hazard-box">
+    <span class="hazard-label">🧊 Max Hail</span>
+    <span class="hazard-value">1.00 IN</span>
+  </div>
 
-      <div>
-        <span>📡 Source</span>
-        <strong>Radar indicated.</strong>
-      </div>
-    </div>
+  <div class="hazard-box">
+    <span class="hazard-label">📡 Source</span>
+    <span class="hazard-value">Radar Indicated</span>
+  </div>
+</div>
 
     <div class="warning-info">
       <p><span>📍 Where</span> Guilford, Alamance, Rockingham</p>
