@@ -492,6 +492,18 @@
 .magenta strong {
   background: #ff00ea;
 }
+.warning-card {
+  background: rgba(255,255,255,0.045);
+  border-left: 3px solid currentColor;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-top: 10px;
+}
+
+.warning-card p {
+  margin: 4px 0;
+  font-size: 0.9rem;
+}
 @media (max-width: 768px) {
   .alerts-panel {
     padding: 14px;
@@ -697,8 +709,18 @@
   </button>
 
   <div class="alert-details">
-    <p>Warning details here.</p>
+  <div class="warning-card">
+    <p><strong>Area:</strong> Guilford County, NC</p>
+    <p><strong>Expires:</strong> 8:45 PM EDT</p>
+    <p><strong>Hazards:</strong> 60 mph wind gusts and quarter-size hail.</p>
   </div>
+
+  <div class="warning-card">
+    <p><strong>Area:</strong> Alamance County, NC</p>
+    <p><strong>Expires:</strong> 9:15 PM EDT</p>
+    <p><strong>Hazards:</strong> Damaging winds possible.</p>
+  </div>
+
 </div>
 
       <div class="alert-item magenta">
