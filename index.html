@@ -20,7 +20,7 @@
     radial-gradient(circle at top left, rgba(80,120,255,0.14), transparent 30%),
     linear-gradient(180deg, #09101d 0%, #101827 100%);
   color: white;
-}
+   }
 
     header {
     background: rgba(10, 15, 25, 0.92);
@@ -29,7 +29,7 @@
     display: flex;
    justify-content: space-between;
    align-items: center;
-}
+    }
 
     header h1 {
       margin: 0;
@@ -104,7 +104,7 @@
   background: linear-gradient(180deg, #101827 0%, #141d2d 100%);
   padding: 50px 0;
   margin-top: -20px;
-}
+    }
 
     .section-block {
       max-width: 1200px;
@@ -117,7 +117,7 @@
   font-size: 42px;
   margin-bottom: 20px;
   color: white;
-}
+    }
 
     .grid {
       display: grid;
@@ -135,13 +135,13 @@
   backdrop-filter: blur(14px);
   box-shadow: 0 18px 35px rgba(0,0,0,0.28);
   transition: all 0.25s ease;
-}
+  }
 
   .card:hover {
   transform: translateY(-5px);
   background: rgba(28, 38, 62, 0.95);
   box-shadow: 0 22px 45px rgba(50,90,255,0.18);
-}
+  }
 .card {
   transition: all 0.25s ease;
 }
@@ -306,18 +306,17 @@
   text-transform: uppercase;
   margin-bottom: 8px;
 }
+
 .spc-card {
   min-height: 520px;
 }
 
-.spc-graphics-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-top: 16px;
-  max-height: 430px;
-  overflow-y: auto;
-  padding-right: 6px;
+.spc-graphics-stack img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 12px;
+  object-fit: contain;
 }
 
 .spc-graphics-stack a {
@@ -492,9 +491,9 @@
     src="https://embed.windy.com/embed2.html?lat=35.78&lon=-79.80&zoom=5&level=surface&overlay=radar&product=radar"
     class="radar-frame">
    </iframe>
-
-  <p>Track storms and radar trends.</p>
-</article>
+   
+   <p>Track storms and radar trends.</p>
+  </article>
 
     <article class="dashboard-card mini-card spc-card">
   <span class="mini-label">Outlook</span>
