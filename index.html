@@ -317,13 +317,9 @@
   margin: 16px 0;
   border: 1px solid rgba(255,255,255,0.08);
 }
-.radar-frame {
-  width: 100%;
-  height: 420px;
-  border: none;
-  border-radius: 14px;
-  margin: 16px 0;
-  overflow: hidden;
+.radar-link {
+  display: block;
+  text-decoration: none;
 }
 .dashboard-card:nth-child(3),
 .dashboard-card:nth-child(4) {
@@ -461,10 +457,15 @@
   <span class="mini-label">Radar</span>
   <h3>Live Radar</h3>
 
-  <iframe
-  src="https://weather.cod.edu/satrad/?parms=continental-conus-comp_radar-24-1-100-1&checked=map&colorbar=undefined"
-  class="radar-frame">
-</iframe>>
+  <a href="https://weather.cod.edu/satrad/?parms=continental-conus-comp_radar-24-1-100-1&checked=map&colorbar=undefined"
+   target="_blank"
+   class="radar-link">
+
+  <img src="https://radar.weather.gov/Conus/RadarImg/latest_radaronly.gif"
+       alt="Radar Preview"
+       class="radar-preview">
+
+</a>
 
   <p>Track storms and radar trends.</p>
 
