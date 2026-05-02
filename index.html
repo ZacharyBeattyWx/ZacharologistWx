@@ -131,11 +131,23 @@
       background: #22324d;
     }
     .forecast-dashboard {
-  padding: 70px 6%;
+  padding: 90px 6% 70px;
   background:
     radial-gradient(circle at top left, rgba(80, 120, 255, 0.18), transparent 35%),
-    linear-gradient(180deg, #0d1220 0%, #101827 100%);
+    linear-gradient(180deg, #09101d 0%, #101827 100%);
   color: white;
+  position: relative;
+  overflow: hidden;
+}
+.forecast-dashboard::before {
+  content: "";
+  position: absolute;
+  width: 700px;
+  height: 700px;
+  background: radial-gradient(circle, rgba(90,120,255,0.12), transparent 70%);
+  top: -250px;
+  left: -150px;
+  pointer-events: none;
 }
 
 .dashboard-header {
