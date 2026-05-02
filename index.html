@@ -222,6 +222,12 @@
   backdrop-filter: blur(14px);
   box-shadow: 0 20px 40px rgba(0,0,0,0.35);
 }
+.alerts-card {
+  grid-column: 1 / -1;
+  max-width: 760px;
+  width: 100%;
+  margin: 0 auto;
+}
 .dashboard-card:has(.alerts-panel) {
   max-width: 760px;
   width: 100%;
@@ -1102,18 +1108,19 @@ document.addEventListener("click", function (event) {
   const detailsBtn = event.target.closest(".alert-details-btn");
 
   if (detailsBtn) {
-    const alertItem = detailsBtn.closest(".alert-item");
-    const modal = alertItem.nextElementSibling;
+    const modal = detailsBtn
+      .closest(".alert-item")
+      .nextElementSibling;
 
-    if (modal && modal.classList.contains("alert-modal")) {
+    if (modal) {
       modal.classList.add("is-open");
     }
   }
 
-  if (
-    event.target.classList.contains("alert-modal-close") ||
-    event.target.classList.contains("alert-modal-backdrop")
-  ) {
+  const closeBtn = event.target.closest(".alert-modal-close");
+  const backdrop = event.target.closest(".alert-modal-backdrop");
+
+  if (closeBtn || backdrop) {
     event.target.closest(".alert-modal").classList.remove("is-open");
   }
 });
