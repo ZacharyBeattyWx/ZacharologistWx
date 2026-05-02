@@ -973,8 +973,7 @@ nav a {
   </div>
 </article>
 
-    <article class="dashboard-card mini-card">
-
+    <article class="dashboard-card alerts-card">
   <section class="alerts-panel">
     <h2>Active Weather Alerts</h2>
 
@@ -986,17 +985,17 @@ nav a {
     </div>
 
     <div class="alert-list">
-<div class="alert-item yellow">
-  <div class="alert-row">
-  <span class="alert-left">
+    <div class="alert-item yellow">
+    <div class="alert-row">
+     <span class="alert-left">
     ⚠️ Severe Thunderstorm Warning
-  </span>
+      </span>
 
-  <div class="alert-right">
+   <div class="alert-right">
     <strong>1</strong>
     <button class="alert-details-btn" type="button">Details</button>
-  </div>
-</div>
+     </div>
+    </div>
 
  <div class="alert-modal">
   <div class="alert-modal-backdrop"></div>
@@ -1046,27 +1045,32 @@ nav a {
 </div>
 
       <div class="alert-item magenta">
-  <button class="alert-row">
+  <div class="alert-row">
     <span class="alert-left">
       ⚠️ Tornado Watch
     </span>
 
     <div class="alert-right">
       <strong>6</strong>
-     <span class="expand-icon">⌄</span>
+      <button class="alert-details-btn" type="button">Details</button>
     </div>
-  </button>
-
-  <div class="alert-details">
-    <p>Tornado watch details.</p>
   </div>
 </div>
-  </section>
 
-</article>
+<div class="alert-modal">
+  <div class="alert-modal-backdrop"></div>
 
+  <div class="alert-modal-box">
+    <button class="alert-modal-close" type="button">×</button>
+
+    <div class="warning-detail-card">
+      <p>Tornado watch details.</p>
+    </div>
   </div>
-
+</div>
+</section>
+</article>
+</div>
 </section>
 
 <div class="section-alt">
