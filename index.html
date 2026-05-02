@@ -130,6 +130,139 @@
     .card:hover {
       background: #22324d;
     }
+    .forecast-dashboard {
+  padding: 70px 6%;
+  background:
+    radial-gradient(circle at top left, rgba(80, 120, 255, 0.18), transparent 35%),
+    linear-gradient(180deg, #0d1220 0%, #101827 100%);
+  color: white;
+}
+
+.dashboard-header {
+  max-width: 850px;
+  margin: 0 auto 35px;
+  text-align: center;
+}
+
+.eyebrow {
+  color: #8fb3ff;
+  font-size: 0.8rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-weight: bold;
+  margin-bottom: 12px;
+}
+
+.dashboard-header h2 {
+  font-size: 48px;
+  margin-bottom: 15px;
+}
+
+.dashboard-subtitle {
+  color: #b8c2d8;
+  font-size: 18px;
+  line-height: 1.6;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: 20px;
+  max-width: 1250px;
+  margin: 0 auto;
+}
+
+.dashboard-card {
+  background: rgba(18, 25, 42, 0.85);
+  border-radius: 22px;
+  padding: 24px;
+  border: 1px solid rgba(143, 179, 255, 0.15);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.35);
+}
+
+.briefing-card {
+  grid-row: span 2;
+}
+
+.card-topline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #aeb9d1;
+  font-size: 14px;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  background: #41ff8c;
+  border-radius: 50%;
+  box-shadow: 0 0 12px #41ff8c;
+}
+
+.briefing-card h3 {
+  font-size: 32px;
+  margin: 18px 0 14px;
+}
+
+.briefing-text {
+  color: #d5ddef;
+  line-height: 1.7;
+}
+
+.briefing-meta {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin: 28px 0;
+}
+
+.briefing-meta div {
+  background: rgba(255,255,255,0.05);
+  padding: 14px;
+  border-radius: 14px;
+}
+
+.meta-label {
+  display: block;
+  color: #8fb3ff;
+  font-size: 12px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.dashboard-button {
+  display: inline-block;
+  margin-top: 15px;
+  padding: 14px 22px;
+  border-radius: 999px;
+  background: #5d73ff;
+  color: white;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.mini-card {
+  min-height: 210px;
+}
+
+.mini-card h3 {
+  margin: 14px 0;
+}
+
+.mini-card p {
+  color: #b8c2d8;
+  line-height: 1.5;
+}
+
+.mini-label {
+  display: block;
+  color: #8fb3ff;
+  font-size: 12px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
 @media (max-width: 768px) {
   .grid {
     display: grid;
@@ -139,6 +272,25 @@
     padding: 0;
     box-sizing: border-box;
  }
+ .forecast-dashboard {
+  padding: 45px 18px;
+}
+
+.dashboard-header {
+  text-align: left;
+}
+
+.dashboard-grid {
+  grid-template-columns: 1fr;
+}
+
+.briefing-card {
+  grid-row: auto;
+}
+
+.briefing-meta {
+  grid-template-columns: 1fr;
+}
 
     .card {
    width: 100%;
