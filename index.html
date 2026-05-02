@@ -45,6 +45,7 @@
       height: 60vh;
       overflow: hidden;
     }
+    
 
     .hero img {
       width: 100%;
@@ -181,53 +182,74 @@
   </nav>
 </header>
 
-<div class="hero">
-  <img src="hero.jpg" alt="">
-  <div class="overlay">
-    <h2>Access To My Weather World!</h2>
-    <p>Storms, forecasts, and live weather tools.</p>
-    <a class="button" href="#">GET STARTED</a>
-  </div>
 </div>
 
-<div class="section-alt">
-  <div class="section-block">
-    <h2 class="section-title">Live Weather</h2>
-    <div class="grid">
+<section class="forecast-dashboard">
 
-      <a class="card" href="https://www.weather.gov" target="_blank">
-        <h2>NWS Hazard Map</h2>
-        <p>Live Watches and Warnings</p>
-      </a>
-
-      <a class="card" href="https://www.spc.noaa.gov/" target="_blank">
-        <h2>SPC Outlook</h2>
-        <p>Storm Prediction Center Forecasts</p>
-      </a>
-
-      <a class="card" href="https://radar.weather.gov/?settings=v1_eyJhZ2VuZGEiOnsiaWQiOiJsb2NhbCIsImNlbnRlciI6Wy05My4xMTQsNDAuMTI1XSwibG9jYXRpb24iOm51bGwsInpvb20iOjUuMTEwODQzMTU0NDQxMzM1LCJmaWx0ZXIiOm51bGx9LCJhbmltYXRpbmciOmZhbHNlLCJiYXNlIjoic3RhbmRhcmQiLCJhcnRjYyI6ZmFsc2UsImNvdW50eSI6ZmFsc2UsImN3YSI6ZmFsc2UsInJmYyI6ZmFsc2UsInN0YXRlIjpmYWxzZSwibWVudSI6dHJ1ZSwic2hvcnRGdXNlZE9ubHkiOnRydWUsIm9wYWNpdHkiOnsiYWxlcnRzIjowLjUxLCJsb2NhbCI6MC42LCJsb2NhbFN0YXRpb25zIjowLjgsIm5hdGlvbmFsIjoxfX0%3D" target="_blank">
-        <h2>Radar</h2>
-        <p>Live Radar Viewer</p>
-      </a>
-
-      <a class="card" href="https://www.spc.noaa.gov/exper/mesoanalysis/" target="_blank">
-  <h2>Mesoanalysis</h2>
-  <p>Surface, Instability, and Storm Environment</p>
-</a>
-
-<a class="card" href="https://weather.cod.edu/satrad/?parms=continental-conus-truecolor-24-1-100-1&checked=map&colorbar=undefined" target="_blank">
-  <h2>Satellite</h2>
-  <p>NEXLAB Satellite and Radar</p>
-</a>
-
-<a class="card" href="maps.html">
-  <h2>Maps &<br>Models</h2>
-  <p>Forecast Guidance and Model Products</p>
-</a>
-
-    </div>
+  <div class="dashboard-header">
+    <p class="eyebrow">Forecast Operations Dashboard</p>
+    <h2>Latest Forecast Briefing</h2>
+    <p class="dashboard-subtitle">
+      My current read on weather patterns, severe risk, and where to look next.
+    </p>
   </div>
-</div>
+
+  <div class="dashboard-grid">
+
+    <article class="dashboard-card briefing-card">
+      <div class="card-topline">
+        <span class="status-dot"></span>
+        <span>Updated Today</span>
+      </div>
+
+      <h3>Current Weather Focus</h3>
+
+      <p class="briefing-text">
+        Quiet pattern for now, but monitoring long-range signals for increased
+        storm potential across the Southeast.
+      </p>
+
+      <div class="briefing-meta">
+        <div>
+          <span class="meta-label">Primary Concern</span>
+          <strong>Monitoring</strong>
+        </div>
+
+        <div>
+          <span class="meta-label">Confidence</span>
+          <strong>Medium</strong>
+        </div>
+
+        <div>
+          <span class="meta-label">Region</span>
+          <strong>Southeast</strong>
+        </div>
+      </div>
+
+      <a href="#" class="dashboard-button">Read Full Briefing</a>
+    </article>
+
+    <article class="dashboard-card mini-card">
+      <span class="mini-label">Radar</span>
+      <h3>Live Radar</h3>
+      <p>Track storms and radar trends.</p>
+    </article>
+
+    <article class="dashboard-card mini-card">
+      <span class="mini-label">Outlook</span>
+      <h3>SPC Forecast</h3>
+      <p>Current severe weather outlooks.</p>
+    </article>
+
+    <article class="dashboard-card mini-card">
+      <span class="mini-label">Alerts</span>
+      <h3>Weather Alerts</h3>
+      <p>Active watches and warnings.</p>
+    </article>
+
+  </div>
+
+</section>
 
 <div class="section-alt">
   <div class="section-block">
