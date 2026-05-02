@@ -14,10 +14,13 @@
     overflow-x: hidden;
     }
     body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #e5e5e5;
-    }
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background:
+    radial-gradient(circle at top left, rgba(80,120,255,0.14), transparent 30%),
+    linear-gradient(180deg, #09101d 0%, #101827 100%);
+  color: white;
+}
 
     header {
       background: #d9d9d9;
@@ -110,10 +113,9 @@
 
     .section-title {
   text-align: center;
-  font-size: 34px;
-  margin: 0 0 35px 0;
+  font-size: 42px;
+  margin-bottom: 20px;
   color: white;
-  letter-spacing: 1px;
 }
 
     .grid {
@@ -124,20 +126,20 @@
 
     .card {
   background: rgba(18, 25, 42, 0.85);
-  padding: 22px 18px;
-  border-radius: 18px;
+  padding: 28px 22px;
+  border-radius: 22px;
   text-decoration: none;
   color: white;
   border: 1px solid rgba(143, 179, 255, 0.15);
   backdrop-filter: blur(14px);
-  box-shadow: 0 12px 28px rgba(0,0,0,0.25);
+  box-shadow: 0 18px 35px rgba(0,0,0,0.28);
   transition: all 0.25s ease;
 }
 
-   .card:hover {
+  .card:hover {
+  transform: translateY(-5px);
   background: rgba(28, 38, 62, 0.95);
-  transform: translateY(-4px);
-  box-shadow: 0 18px 35px rgba(50, 90, 255, 0.18);
+  box-shadow: 0 22px 45px rgba(50,90,255,0.18);
 }
 .card {
   transition: all 0.25s ease;
@@ -391,10 +393,10 @@
 }
 
   .section-block,
-  .section-alt {
-    max-width: 100%;
-    overflow-x: hidden;
-  }
+ .section-alt {
+  background: transparent;
+  padding: 50px 0;
+}
 }
   </style>
 </head>
