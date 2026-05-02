@@ -206,7 +206,7 @@
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: 1fr 1.75fr 1fr;
+  grid-template-columns: 1.2fr 1.7fr 1.2fr;
   gap: 28px;
   width: 98%;
   max-width: 1850px;
@@ -355,7 +355,139 @@
 .dashboard-card:nth-child(4) {
   min-height: 250px;
 }
+.alerts-panel {
+  background: rgba(8,12,18,0.96);
+  border-radius: 18px;
+  padding: 18px;
+  height: 100%;
+}
+
+.alerts-panel h2 {
+  font-size: 22px;
+  margin-bottom: 18px;
+  color: #ffb21c;
+}
+
+.alert-tabs {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 14px;
+  margin-bottom: 16px;
+}
+
+.alert-tabs button {
+  background: rgba(255,255,255,0.05);
+  border: none;
+  color: #c8d2e5;
+  padding: 10px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: 0.2s ease;
+}
+
+.alert-tabs button.active {
+  background: #ffb21c;
+  color: black;
+  box-shadow: 0 0 14px rgba(255,178,28,0.45);
+}
+
+.alert-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.alert-item {
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03);
+}
+
+.alert-row {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 800;
+  text-align: left;
+}
+
+.alert-row span {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.alert-row strong {
+  min-width: 34px;
+  height: 30px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: black;
+}
+
+.alert-details {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+  padding: 0 16px;
+}
+
+.alert-details p {
+  color: #c2ccdd;
+  line-height: 1.5;
+  margin-top: 0;
+}
+
+.alert-item.open .alert-details {
+  max-height: 180px;
+  padding-bottom: 16px;
+}
+
+.yellow span {
+  color: #ffe100;
+}
+
+.yellow strong {
+  background: #ffe100;
+}
+
+.magenta span {
+  color: #ff00ea;
+}
+
+.magenta strong {
+  background: #ff00ea;
+}
 @media (max-width: 768px) {
+  .alerts-panel {
+    padding: 14px;
+  }
+
+  .alert-row {
+    font-size: 13px;
+    padding: 14px;
+  }
+
+  .alert-tabs {
+    gap: 8px;
+  }
+
+  .alert-tabs button {
+    font-size: 12px;
+    padding: 8px 10px;
+  }
   .grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -518,10 +650,45 @@
 </article>
 
     <article class="dashboard-card mini-card">
-      <span class="mini-label">Alerts</span>
-      <h3>Weather Alerts</h3>
-      <p>Active watches and warnings.</p>
-    </article>
+
+  <section class="alerts-panel">
+    <h2>Active Weather Alerts</h2>
+
+    <div class="alert-tabs">
+      <button class="active">Storm Based (19)</button>
+      <button>Tropical (0)</button>
+      <button>Winter (38)</button>
+      <button>Marine (0)</button>
+    </div>
+
+    <div class="alert-list">
+
+      <div class="alert-item yellow">
+        <button class="alert-row">
+          <span>⚠️ Severe Thunderstorm Warning</span>
+          <strong>1</strong>
+        </button>
+
+        <div class="alert-details">
+          <p>Warning details here.</p>
+        </div>
+      </div>
+
+      <div class="alert-item magenta">
+        <button class="alert-row">
+          <span>⚠️ Tornado Watch</span>
+          <strong>6</strong>
+        </button>
+
+        <div class="alert-details">
+          <p>Tornado watch details.</p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</article>
 
   </div>
 
@@ -550,6 +717,12 @@
     </div>
   </div>
 </div>
-
+<script>
+document.querySelectorAll(".alert-row").forEach(row => {
+  row.addEventListener("click", () => {
+    row.parentElement.classList.toggle("open");
+  });
+});
+</script>
 </body>
 </html>
