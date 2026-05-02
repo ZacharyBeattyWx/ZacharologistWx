@@ -647,10 +647,13 @@
   position: fixed;
   inset: 0;
   z-index: 9999;
+
+  justify-content: center;
+  align-items: center;
 }
 
 .alert-modal.is-open {
-  display: block;
+  display: flex;
 }
 
 .alert-modal-backdrop {
@@ -661,14 +664,20 @@
 
 .alert-modal-box {
   position: relative;
-  width: min(760px, calc(100vw - 28px));
-  max-height: 86vh;
+  width: min(760px, 92vw);
+  max-height: 85vh;
   overflow-y: auto;
-  margin: 7vh auto;
+
   background: #101820;
   border: 1px solid rgba(255,255,255,0.12);
   border-radius: 18px;
   padding: 18px;
+
+  margin: auto;
+  top: 50%;
+  transform: translateY(-50%);
+
+  box-shadow: 0 30px 80px rgba(0,0,0,0.65);
 }
 
 .alert-modal-close {
