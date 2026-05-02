@@ -581,8 +581,89 @@
   color: #ffe100;
   font-weight: 700;
 }
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+* {
+  box-sizing: border-box;
+}
 
 @media (max-width: 768px) {
+   header {
+    padding: 28px 24px;
+    gap: 24px;
+  }
+
+  header h1 {
+    font-size: 2.2rem;
+    line-height: 1.1;
+  }
+
+  nav {
+    gap: 26px;
+  }
+
+  nav a {
+    font-size: 1.65rem;
+  }
+  .forecast-dashboard,
+  .dashboard-grid,
+  .dashboard-card,
+  .briefing-card,
+  .warning-detail-card,
+  .alerts-section,
+  .alerts-card,
+  .radar-section,
+  .radar-card,
+  .map-card,
+  iframe,
+  img {
+    max-width: 100%;
+  }
+
+  .forecast-dashboard {
+    padding-left: 18px;
+    padding-right: 18px;
+    overflow: hidden;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-card,
+  .alerts-card,
+  .radar-card,
+  .map-card {
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .alert-tabs,
+  .warning-hazards {
+    overflow-x: auto;
+    max-width: 100%;
+    flex-wrap: nowrap;
+  }
+
+  .alert-item,
+  .warning-card,
+  .warning-detail-card {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  iframe {
+    width: 100%;
+    min-width: 0;
+  }
+}
   .warning-metrics {
     grid-template-columns: 1fr;
   }
@@ -666,7 +747,6 @@
  .section-alt {
   background: transparent;
   padding: 50px 0;
-}
 }
   </style>
 </head>
