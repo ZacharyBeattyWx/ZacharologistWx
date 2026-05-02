@@ -488,6 +488,7 @@
   line-height: 1.5;
 }
 
+
 .yellow span {
   color: #ffe100;
 }
@@ -547,6 +548,18 @@
 .hazard-box .hazard-value {
   font-size: 0.95rem;
   font-weight: 800;
+}
+.hazard-box .hazard-label {
+  color: #b8c4d6;
+}
+
+.hazard-box .hazard-value {
+  color: #ffffff;
+}
+
+.warning-detail-card .hazard-box strong,
+.warning-detail-card .hazard-value strong {
+  color: #ffffff;
 }
 
 .warning-summary {
@@ -619,6 +632,58 @@
   color: #ffe100;
   font-weight: 700;
 }
+.alert-details-btn {
+  border: none;
+  border-radius: 10px;
+  padding: 9px 14px;
+  background: #fbbf24;
+  color: #06111f;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.alert-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+}
+
+.alert-modal.is-open {
+  display: block;
+}
+
+.alert-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+}
+
+.alert-modal-box {
+  position: relative;
+  width: min(760px, calc(100vw - 28px));
+  max-height: 86vh;
+  overflow-y: auto;
+  margin: 7vh auto;
+  background: #101820;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 18px;
+  padding: 18px;
+}
+
+.alert-modal-close {
+  position: sticky;
+  top: 0;
+  margin-left: auto;
+  display: block;
+  border: none;
+  background: #1f2933;
+  color: white;
+  border-radius: 10px;
+  padding: 6px 11px;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
 html,
 body {
   width: 100%;
@@ -664,7 +729,7 @@ nav a {
   margin-left: 0;
   line-height: 1.1;
 }
-  }
+  
   .forecast-dashboard,
   .dashboard-grid,
   .dashboard-card,
@@ -739,6 +804,7 @@ nav a {
     font-size: 12px;
     padding: 8px 10px;
   }
+  
   .grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -805,6 +871,7 @@ nav a {
  .section-alt {
   background: transparent;
   padding: 50px 0;
+}
 }
   </style>
 </head>
@@ -923,12 +990,17 @@ nav a {
 
     <div class="alert-right">
       <strong>1</strong>
-      <span class="expand-icon">⌄</span>
+<button class="alert-details-btn" type="button">Details</button>
     </div>
   </button>
 
- <div class="alert-details">
-  <div class="warning-detail-card">
+ <div class="alert-modal">
+  <div class="alert-modal-backdrop"></div>
+
+  <div class="alert-modal-box">
+    <button class="alert-modal-close" type="button">×</button>
+
+    <div class="warning-detail-card">
 
     <h4>What to Expect</h4>
 
@@ -1018,10 +1090,24 @@ nav a {
   </div>
 </div>
 <script>
-document.querySelectorAll(".alert-row").forEach(row => {
-  row.addEventListener("click", () => {
-    row.parentElement.classList.toggle("open");
-  });
+document.addEventListener("click", function (event) {
+  const detailsBtn = event.target.closest(".alert-details-btn");
+
+  if (detailsBtn) {
+    const alertItem = detailsBtn.closest(".alert-item");
+    const modal = alertItem.nextElementSibling;
+
+    if (modal && modal.classList.contains("alert-modal")) {
+      modal.classList.add("is-open");
+    }
+  }
+
+  if (
+    event.target.classList.contains("alert-modal-close") ||
+    event.target.classList.contains("alert-modal-backdrop")
+  ) {
+    event.target.closest(".alert-modal").classList.remove("is-open");
+  }
 });
 </script>
 </body>
