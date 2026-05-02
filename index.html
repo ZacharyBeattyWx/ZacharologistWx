@@ -99,6 +99,7 @@
     .section-alt {
   background: linear-gradient(180deg, #101827 0%, #141d2d 100%);
   padding: 50px 0;
+  margin-top: -20px;
 }
 
     .section-block {
@@ -108,10 +109,12 @@
     }
 
     .section-title {
-      text-align: center;
-      font-size: 28px;
-      margin: 0 0 20px 0;
-    }
+  text-align: center;
+  font-size: 34px;
+  margin: 0 0 35px 0;
+  color: white;
+  letter-spacing: 1px;
+}
 
     .grid {
       display: grid;
@@ -159,6 +162,18 @@
   max-width: 850px;
   margin: 0 auto 35px;
   text-align: center;
+  position: relative;
+}
+.dashboard-header::after {
+  content: "";
+  position: absolute;
+  width: 350px;
+  height: 120px;
+  background: radial-gradient(circle, rgba(90,120,255,0.15), transparent 70%);
+  left: 50%;
+  transform: translateX(-50%);
+  top: 20px;
+  z-index: -1;
 }
 
 .eyebrow {
@@ -291,6 +306,7 @@
  }
  .forecast-dashboard {
   padding: 45px 18px;
+  backdrop-filter: blur(20px);
 }
 
 .dashboard-header {
