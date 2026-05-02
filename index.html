@@ -306,25 +306,31 @@
   text-transform: uppercase;
   margin-bottom: 8px;
 }
+.spc-card {
+  min-height: 520px;
+}
+
 .spc-graphics-stack {
   display: flex;
   flex-direction: column;
   gap: 12px;
   margin-top: 16px;
-  max-height: 520px;
+  max-height: 430px;
   overflow-y: auto;
   padding-right: 6px;
+}
+
+.spc-graphics-stack a {
+  display: block;
+  background: rgba(255,255,255,0.06);
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 .spc-graphics-stack img {
   width: 100%;
   display: block;
   border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.1);
-}
-
-.spc-graphics-stack a {
-  display: block;
 }
 .radar-card {
   grid-row: span 2;
@@ -485,7 +491,7 @@
   <iframe
     src="https://embed.windy.com/embed2.html?lat=35.78&lon=-79.80&zoom=5&level=surface&overlay=radar&product=radar"
     class="radar-frame">
-  </iframe>
+   </iframe>
 
   <p>Track storms and radar trends.</p>
 </article>
@@ -497,15 +503,15 @@
   <div class="spc-graphics-stack">
 
     <a href="https://www.spc.noaa.gov/products/outlook/day1otlk.html" target="_blank">
-      <img src="https://www.spc.noaa.gov/products/outlook/day1otlk.gif" alt="SPC Day 1 Outlook">
+      <img src="https://www.spc.noaa.gov/products/outlook/day1otlk_1300.gif" alt="SPC Day 1 Outlook">
     </a>
 
     <a href="https://www.spc.noaa.gov/products/outlook/day2otlk.html" target="_blank">
-      <img src="https://www.spc.noaa.gov/products/outlook/day2otlk.gif" alt="SPC Day 2 Outlook">
+      <img src="https://www.spc.noaa.gov/products/outlook/day2otlk_0600.gif" alt="SPC Day 2 Outlook">
     </a>
 
     <a href="https://www.spc.noaa.gov/products/outlook/day3otlk.html" target="_blank">
-      <img src="https://www.spc.noaa.gov/products/outlook/day3otlk.gif" alt="SPC Day 3 Outlook">
+      <img src="https://www.spc.noaa.gov/products/outlook/day3otlk_0730.gif" alt="SPC Day 3 Outlook">
     </a>
 
     <a href="https://www.spc.noaa.gov/products/exper/day4-8/" target="_blank">
@@ -529,7 +535,7 @@
     </a>
 
   </div>
-</article>>
+</article>
 
     <article class="dashboard-card mini-card">
       <span class="mini-label">Alerts</span>
