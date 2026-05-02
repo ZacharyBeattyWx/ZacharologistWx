@@ -646,10 +646,11 @@
   display: none;
   position: fixed;
   inset: 0;
-  z-index: 9999;
-
-  justify-content: center;
+  z-index: 99999;
+  background: rgba(0, 0, 0, 0.72);
   align-items: center;
+  justify-content: center;
+  padding: 20px;
 }
 
 .alert-modal.is-open {
@@ -659,25 +660,19 @@
 .alert-modal-backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.72);
 }
 
 .alert-modal-box {
   position: relative;
-  width: min(760px, 92vw);
-  max-height: 85vh;
+  z-index: 1;
+  width: min(760px, 94vw);
+  max-height: 86vh;
   overflow-y: auto;
-
   background: #101820;
-  border: 1px solid rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.14);
   border-radius: 18px;
   padding: 18px;
-
-  margin: auto;
-  top: 50%;
-  transform: translateY(-50%);
-
-  box-shadow: 0 30px 80px rgba(0,0,0,0.65);
+  box-shadow: 0 30px 80px rgba(0,0,0,0.7);
 }
 
 .alert-modal-close {
@@ -782,8 +777,8 @@ nav a {
 
   .alert-item,
   .warning-card,
-  .warning-detail-card {
-    width: 100%;
+  .alert-modal .warning-detail-card {
+  max-width: 100%;
     max-width: 100%;
     min-width: 0;
   }
@@ -992,16 +987,16 @@ nav a {
 
     <div class="alert-list">
 <div class="alert-item yellow">
-  <button class="alert-row">
-    <span class="alert-left">
-      ⚠️ Severe Thunderstorm Warning
-    </span>
+  <div class="alert-row">
+  <span class="alert-left">
+    ⚠️ Severe Thunderstorm Warning
+  </span>
 
-    <div class="alert-right">
-      <strong>1</strong>
-<button class="alert-details-btn" type="button">Details</button>
-    </div>
-  </button>
+  <div class="alert-right">
+    <strong>1</strong>
+    <button class="alert-details-btn" type="button">Details</button>
+  </div>
+</div>
 
  <div class="alert-modal">
   <div class="alert-modal-backdrop"></div>
@@ -1047,7 +1042,6 @@ nav a {
     <div class="warning-bottom">
       Hail: <strong>1.00"</strong> Wind: <strong>60MPH</strong>
     </div>
-
   </div>
 </div>
 
