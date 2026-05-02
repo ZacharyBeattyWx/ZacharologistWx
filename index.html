@@ -458,26 +458,19 @@
 }
 
 .alert-details {
-  max-height: 0;
-  overflow: hidden;
-  opacity: 0;
-  padding: 0 16px;
-  transition:
-    max-height 0.35s ease,
-    opacity 0.25s ease,
-    padding 0.25s ease;
+  display: none;
+  padding: 0 16px 16px;
+  color: #c2ccdd;
 }
 
 .alert-item.open .alert-details {
-  max-height: 160px;
-  opacity: 1;
-  padding: 0 16px 18px;
+  display: block;
 }
 
 .alert-details p {
+  margin: 0;
   color: #c2ccdd;
   line-height: 1.5;
-  margin-top: 0;
 }
 
 .alert-item.open .alert-details {
@@ -692,18 +685,22 @@
     </div>
 
     <div class="alert-list">
+<div class="alert-item yellow">
+  <button class="alert-row">
+    <span class="alert-left">
+      ⚠️ Severe Thunderstorm Warning
+    </span>
 
-      <div class="alert-item yellow">
-        <button class="alert-row">
-          <span class="alert-left">
-  ⚠️ Severe Thunderstorm Warning
-</span>
+    <div class="alert-right">
+      <strong>1</strong>
+      <span class="expand-icon">⌄</span>
+    </div>
+  </button>
 
-<div class="alert-right">
-  <strong>1</strong>
-  <span class="expand-icon">⌄</span>
+  <div class="alert-details">
+    <p>Warning details here.</p>
+  </div>
 </div>
-      </div>
 
       <div class="alert-item magenta">
         <button class="alert-row">
