@@ -299,6 +299,12 @@
   text-transform: uppercase;
   margin-bottom: 8px;
 }
+.radar-preview {
+  width: 100%;
+  border-radius: 14px;
+  margin: 12px 0;
+  border: 1px solid rgba(255,255,255,0.08);
+}
 @media (max-width: 768px) {
   .grid {
     display: grid;
@@ -418,12 +424,18 @@
       <a href="#" class="dashboard-button">Read Full Briefing</a>
     </article>
 
-    <article class="dashboard-card mini-card">
-      <span class="mini-label">Radar</span>
-      <h3>Live Radar</h3>
-      <p>Track storms and radar trends.</p>
-    </article>
+    <article class="dashboard-card mini-card radar-card">
 
+  <span class="mini-label">Radar</span>
+  <h3>Live Radar</h3>
+
+  <img src="https://radar.weather.gov/ridge/standard/CONUS_loop.gif"
+       alt="Radar Preview"
+       class="radar-preview">
+
+  <p>Track storms and radar trends.</p>
+
+</article>
     <article class="dashboard-card mini-card">
       <span class="mini-label">Outlook</span>
       <h3>SPC Forecast</h3>
