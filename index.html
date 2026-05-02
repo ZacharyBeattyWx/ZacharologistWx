@@ -306,36 +306,25 @@
   text-transform: uppercase;
   margin-bottom: 8px;
 }
-.spc-stack {
+.spc-graphics-stack {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-top: 18px;
+  gap: 12px;
+  margin-top: 16px;
+  max-height: 520px;
+  overflow-y: auto;
+  padding-right: 6px;
 }
 
-.spc-day {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: rgba(255,255,255,0.05);
-  padding: 12px 14px;
+.spc-graphics-stack img {
+  width: 100%;
+  display: block;
   border-radius: 12px;
-  text-decoration: none;
-  color: white;
-  transition: 0.2s ease;
+  border: 1px solid rgba(255,255,255,0.1);
 }
 
-.spc-day:hover {
-  background: rgba(93,115,255,0.18);
-  transform: translateX(4px);
-}
-
-.spc-day span {
-  font-weight: bold;
-}
-
-.spc-day small {
-  color: #8fb3ff;
+.spc-graphics-stack a {
+  display: block;
 }
 .radar-card {
   grid-row: span 2;
@@ -505,31 +494,42 @@
   <span class="mini-label">Outlook</span>
   <h3>SPC Forecast</h3>
 
-  <div class="spc-stack">
+  <div class="spc-graphics-stack">
 
-    <a href="https://www.spc.noaa.gov/products/outlook/day1otlk.html" target="_blank" class="spc-day">
-      <span>Day 1</span>
-      <small>Today</small>
+    <a href="https://www.spc.noaa.gov/products/outlook/day1otlk.html" target="_blank">
+      <img src="https://www.spc.noaa.gov/products/outlook/day1otlk.gif" alt="SPC Day 1 Outlook">
     </a>
 
-    <a href="https://www.spc.noaa.gov/products/outlook/day2otlk.html" target="_blank" class="spc-day">
-      <span>Day 2</span>
-      <small>Tomorrow</small>
+    <a href="https://www.spc.noaa.gov/products/outlook/day2otlk.html" target="_blank">
+      <img src="https://www.spc.noaa.gov/products/outlook/day2otlk.gif" alt="SPC Day 2 Outlook">
     </a>
 
-    <a href="https://www.spc.noaa.gov/products/exper/day4-8/" target="_blank" class="spc-day">
-      <span>Day 3</span>
-      <small>Extended</small>
+    <a href="https://www.spc.noaa.gov/products/outlook/day3otlk.html" target="_blank">
+      <img src="https://www.spc.noaa.gov/products/outlook/day3otlk.gif" alt="SPC Day 3 Outlook">
     </a>
 
-    <a href="https://www.spc.noaa.gov/products/exper/day4-8/" target="_blank" class="spc-day">
-      <span>Days 4–8</span>
-      <small>Long Range</small>
+    <a href="https://www.spc.noaa.gov/products/exper/day4-8/" target="_blank">
+      <img src="https://www.spc.noaa.gov/products/exper/day4prob.gif" alt="SPC Day 4 Outlook">
+    </a>
+
+    <a href="https://www.spc.noaa.gov/products/exper/day4-8/" target="_blank">
+      <img src="https://www.spc.noaa.gov/products/exper/day5prob.gif" alt="SPC Day 5 Outlook">
+    </a>
+
+    <a href="https://www.spc.noaa.gov/products/exper/day4-8/" target="_blank">
+      <img src="https://www.spc.noaa.gov/products/exper/day6prob.gif" alt="SPC Day 6 Outlook">
+    </a>
+
+    <a href="https://www.spc.noaa.gov/products/exper/day4-8/" target="_blank">
+      <img src="https://www.spc.noaa.gov/products/exper/day7prob.gif" alt="SPC Day 7 Outlook">
+    </a>
+
+    <a href="https://www.spc.noaa.gov/products/exper/day4-8/" target="_blank">
+      <img src="https://www.spc.noaa.gov/products/exper/day8prob.gif" alt="SPC Day 8 Outlook">
     </a>
 
   </div>
-
-</article>
+</article>>
 
     <article class="dashboard-card mini-card">
       <span class="mini-label">Alerts</span>
