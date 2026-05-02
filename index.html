@@ -317,9 +317,14 @@
   margin: 16px 0;
   border: 1px solid rgba(255,255,255,0.08);
 }
-.radar-link {
-  display: block;
-  text-decoration: none;
+.radar-frame {
+  width: 100%;
+  height: 420px;
+  border: none;
+  border-radius: 14px;
+  margin: 16px 0;
+  overflow: hidden;
+  background: #0b1322;
 }
 .dashboard-card:nth-child(3),
 .dashboard-card:nth-child(4) {
@@ -452,24 +457,18 @@
       <a href="#" class="dashboard-button">Read Full Briefing</a>
     </article>
 
-    <article class="dashboard-card mini-card radar-card">
-
+   <article class="dashboard-card mini-card radar-card">
   <span class="mini-label">Radar</span>
   <h3>Live Radar</h3>
 
-  <a href="https://weather.cod.edu/satrad/?parms=continental-conus-comp_radar-24-1-100-1&checked=map&colorbar=undefined"
-   target="_blank"
-   class="radar-link">
-
-  <img src="https://radar.weather.gov/Conus/RadarImg/latest_radaronly.gif"
-       alt="Radar Preview"
-       class="radar-preview">
-
-</a>
+  <iframe
+    src="https://embed.windy.com/embed2.html?lat=35.78&lon=-79.80&zoom=5&level=surface&overlay=radar&product=radar"
+    class="radar-frame">
+  </iframe>
 
   <p>Track storms and radar trends.</p>
-
 </article>
+
     <article class="dashboard-card mini-card">
       <span class="mini-label">Outlook</span>
       <h3>SPC Forecast</h3>
