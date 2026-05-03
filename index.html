@@ -1500,21 +1500,32 @@ async function loadNwsAlerts() {
       })}`;
 
     filteredAlerts.forEach(alert => {
-      const props = alert.properties;
+  const props = alert.properties;
 
-      const card = document.createElement("article");
-      card.className = `alert-card ${getAlertClass(props.event)}`;
+  const card = document.createElement("div");
+  card.className = "compact-alert-item";
 
-      card.innerHTML = `
-        <h3>${props.event}</h3>
-        <p><strong>Area:</strong> ${props.areaDesc}</p>
-        <p><strong>Severity:</strong> ${props.severity}</p>
-        <p><strong>Expires:</strong> ${formatTime(props.expires)}</p>
-        <p>${props.headline || "No headline available."}</p>
-      `;
+  card.innerHTML = `
+    <div class="compact-alert-title">${props.event}</div>
 
-      alertsContainer.appendChild(card);
-    });
+    <div class="compact-alert-meta">
+      <span class="alert-pill">${props.severity}</span>
+      <span class="alert-pill">${formatTime(props.expires)}</span>
+    </div>
+
+    <div class="alert-location">
+      ${props.areaDesc.split(";").slice(0, 3).join("; ")}
+    </div>
+
+    <div class="compact-alert-actions">
+      <button class="compact-details-btn" type="button">
+        Details
+      </button>
+    </div>
+  `;
+
+  alertsContainer.appendChild(card);
+});
 
   } catch (error) {
     console.error(error);
