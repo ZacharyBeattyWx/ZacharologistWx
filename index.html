@@ -1179,23 +1179,23 @@ document.addEventListener("click", function (event) {
   const detailsBtn = event.target.closest(".alert-details-btn");
 
   if (detailsBtn) {
-    const modalId = detailsBtn.dataset.modalTarget;
+    alert("Details button clicked");
+
+    const modalId = detailsBtn.getAttribute("data-modal-target");
     const modal = document.getElementById(modalId);
 
     if (modal) {
       modal.classList.add("is-open");
+    } else {
+      alert("Modal not found: " + modalId);
     }
   }
 
-  const closeBtn = event.target.closest(".alert-modal-close");
-  const backdrop = event.target.closest(".alert-modal-backdrop");
-
-  if (closeBtn || backdrop) {
-    const modal = event.target.closest(".alert-modal");
-
-    if (modal) {
-      modal.classList.remove("is-open");
-    }
+  if (
+    event.target.closest(".alert-modal-close") ||
+    event.target.closest(".alert-modal-backdrop")
+  ) {
+    event.target.closest(".alert-modal").classList.remove("is-open");
   }
 });
 </script>
