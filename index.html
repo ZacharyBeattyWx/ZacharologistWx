@@ -667,7 +667,7 @@
   position: fixed;
   inset: 0;
   z-index: 99999;
-  background: rgba(0, 0, 0, 0.72);
+  background: rgba(0, 0, 0, 0);
   align-items: center;
   justify-content: center;
   padding: 20px;
@@ -680,6 +680,9 @@
 .alert-modal-backdrop {
   position: absolute;
   inset: 0;
+  .alert-modal-backdrop {
+  background: transparent;
+}
 }
 
 .alert-modal-box {
