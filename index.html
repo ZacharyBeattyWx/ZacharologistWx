@@ -482,7 +482,11 @@
   font-weight: 700;
   white-space: nowrap;
   transition: 0.2s ease;
+  position: relative;
+  overflow: visible;
+  z-index: 1;
 }
+
 .alert-tabs button {
   flex-shrink: 0;
 }
@@ -525,6 +529,16 @@
   box-shadow:
     0 0 18px rgba(184,61,24,0.30),
     0 0 42px rgba(184,61,24,0.10);
+}
+.alert-tabs button::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 18px;
+  opacity: 0;
+  z-index: -1;
+  filter: blur(16px);
+  transition: opacity 0.25s ease;
 }
 
 .alert-list {
