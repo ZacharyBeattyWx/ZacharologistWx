@@ -1273,8 +1273,8 @@ function renderCompactAlerts(alerts) {
   if (!alerts.length) {
     alertsList.innerHTML = `
       <div class="compact-alert-item">
-        <div class="compact-alert-title">No Severe Thunderstorm Alerts</div>
-        <div class="alert-location">No active severe thunderstorm warnings or watches right now.</div>
+        <div class="compact-alert-title">No Storm-Based Alerts</div>
+<div class="alert-location">No active tornado, severe thunderstorm, flash flood, marine, or special weather alerts right now.</div>
       </div>
     `;
     return;
@@ -1336,12 +1336,20 @@ function fetchHomepageAlerts() {
         new Map(allFeatures.map(item => [item.id, item])).values()
       );
 
-      const severeAlerts = uniqueFeatures.filter(item =>
-        item.properties.event === "Severe Thunderstorm Warning" ||
-        item.properties.event === "Severe Thunderstorm Watch"
-      );
+      const stormBasedAlerts = uniqueFeatures.filter(item =>
+  [
+    "Tornado Warning",
+    "Severe Thunderstorm Warning",
+    "Flash Flood Warning",
+    "Special Marine Warning",
+    "Special Weather Statement",
+    "Tornado Watch",
+    "Severe Thunderstorm Watch",
+    "Flash Flood Watch"
+  ].includes(item.properties.event)
+);
 
-      renderCompactAlerts(severeAlerts);
+renderCompactAlerts(stormBasedAlerts);
     })
     .catch(error => {
       console.error(error);
