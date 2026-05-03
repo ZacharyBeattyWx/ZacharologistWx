@@ -709,6 +709,13 @@
   font-size: 1.2rem;
   cursor: pointer;
 }
+.alert-modal {
+  display: none !important;
+}
+
+.alert-modal.is-open {
+  display: flex !important;
+}
 html,
 body {
   width: 100%;
@@ -916,6 +923,27 @@ nav a {
 .radar-frame {
   width: 100%;
   height: 420px !important;
+}
+.alert-modal {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw;
+  height: 100dvh;
+  z-index: 99999;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+}
+
+.alert-modal-box {
+  width: min(94vw, 760px);
+  max-height: 82dvh;
+  overflow-y: auto;
+}
+
+.alert-modal .warning-detail-card {
+  width: 100%;
+  max-width: 100%;
 }
 }
   </style>
