@@ -247,8 +247,14 @@
 .state-alert-group > summary {
   transition: all 0.22s ease;
 }
-
+.state-alert-dropdown > summary,
+.state-alert-group > summary {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.13);
+  box-shadow: none;
+}
 /* Storm */
+.alerts-card.storm-active .state-alert-dropdown > summary:hover,
 .alerts-card.storm-active .state-alert-group > summary:hover {
   background: linear-gradient(135deg, #ffb21f, #ff9d00);
   color: #000;
@@ -257,7 +263,8 @@
 }
 
 /* Tropical */
-.alerts-card.tropical-active .state-alert-group > summary:hover {
+.alerts-card.storm-active .state-alert-dropdown > summary:hover,
+.alerts-card.storm-active .state-alert-group > summary:hover {
   background: linear-gradient(135deg, #49d6ff, #169eff);
   color: #001522;
   box-shadow: 0 0 22px rgba(73,214,255,0.5);
@@ -265,7 +272,8 @@
 }
 
 /* Winter */
-.alerts-card.winter-active .state-alert-group > summary:hover {
+..alerts-card.storm-active .state-alert-dropdown > summary:hover,
+.alerts-card.storm-active .state-alert-group > summary:hover {
   background: linear-gradient(135deg, #7ecbff, #4da9ff);
   color: #00111f;
   box-shadow: 0 0 22px rgba(59,157,255,0.45);
@@ -273,7 +281,8 @@
 }
 
 /* Hydro */
-.alerts-card.hydro-active .state-alert-group > summary:hover {
+.alerts-card.storm-active .state-alert-dropdown > summary:hover,
+.alerts-card.storm-active .state-alert-group > summary:hover {
   background: linear-gradient(135deg, #00d26a, #00a84f);
   color: #001a0b;
   box-shadow: 0 0 22px rgba(0,210,106,0.45);
@@ -281,7 +290,8 @@
 }
 
 /* Fire */
-.alerts-card.fire-active .state-alert-group > summary:hover {
+.alerts-card.storm-active .state-alert-dropdown > summary:hover,
+.alerts-card.storm-active .state-alert-group > summary:hover {
   background: linear-gradient(135deg, #ff8318, #ff5d00);
   color: #1a0900;
   box-shadow: 0 0 22px rgba(255,131,24,0.45);
