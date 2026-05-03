@@ -243,6 +243,36 @@
   width: 100%;
   min-width: 0;
 }
+/* Active Category Glow */
+.alerts-card.storm-active .state-alert-dropdown > summary,
+.alerts-card.storm-active .state-alert-group > summary {
+  border-color: rgba(255,178,31,0.35);
+  box-shadow: 0 0 18px rgba(255,178,31,0.18);
+}
+
+.alerts-card.tropical-active .state-alert-dropdown > summary,
+.alerts-card.tropical-active .state-alert-group > summary {
+  border-color: rgba(73,214,255,0.35);
+  box-shadow: 0 0 18px rgba(73,214,255,0.18);
+}
+
+.alerts-card.winter-active .state-alert-dropdown > summary,
+.alerts-card.winter-active .state-alert-group > summary {
+  border-color: rgba(59,157,255,0.35);
+  box-shadow: 0 0 18px rgba(59,157,255,0.18);
+}
+
+.alerts-card.hydro-active .state-alert-dropdown > summary,
+.alerts-card.hydro-active .state-alert-group > summary {
+  border-color: rgba(0,210,106,0.35);
+  box-shadow: 0 0 18px rgba(0,210,106,0.18);
+}
+
+.alerts-card.fire-active .state-alert-dropdown > summary,
+.alerts-card.fire-active .state-alert-group > summary {
+  border-color: rgba(255,131,24,0.35);
+  box-shadow: 0 0 18px rgba(255,131,24,0.18);
+}
 .dashboard-card:has(.alerts-panel) {
   max-width: 760px;
   width: 100%;
@@ -1759,7 +1789,17 @@ document.querySelectorAll(".alert-tabs button").forEach(button => {
     );
 
     button.classList.add("active");
+const alertsCard = document.querySelector(".alerts-card");
 
+alertsCard.classList.remove(
+  "storm-active",
+  "tropical-active",
+  "winter-active",
+  "hydro-active",
+  "fire-active"
+);
+
+alertsCard.classList.add(`${button.dataset.category}-active`);
     renderCategory(button.dataset.category);
   });
 });
