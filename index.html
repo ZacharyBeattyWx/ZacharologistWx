@@ -925,25 +925,21 @@ nav a {
   height: 420px !important;
 }
 .alert-modal {
-  position: fixed !important;
-  inset: 0 !important;
-  width: 100vw;
-  height: 100dvh;
-  z-index: 99999;
-  align-items: center;
-  justify-content: center;
-  padding: 14px;
-}
-
-.alert-modal-box {
-  width: min(94vw, 760px);
-  max-height: 82dvh;
+  align-items: flex-start !important;
+  padding-top: 80px;
   overflow-y: auto;
 }
 
+.alert-modal-box {
+  width: 92vw;
+  max-width: 92vw;
+  max-height: 78vh;
+  margin: 0 auto;
+  border-radius: 22px;
+}
+
 .alert-modal .warning-detail-card {
-  width: 100%;
-  max-width: 100%;
+  max-height: none;
 }
 }
   </style>
