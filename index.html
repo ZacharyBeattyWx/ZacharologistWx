@@ -1314,7 +1314,30 @@ const alertUrls = [
   "https://api.weather.gov/alerts/active?area=SC",
   "https://api.weather.gov/alerts/active?area=VA"
 ];
+let allHomepageAlerts = [];
+let currentCategory = "storm";
 
+const alertCategories = {
+  storm: [
+    "Tornado Warning",
+    "Severe Thunderstorm Warning",
+    "Flash Flood Warning",
+    "Special Marine Warning",
+    "Special Weather Statement",
+    "Tornado Watch",
+    "Severe Thunderstorm Watch",
+    "Flash Flood Watch"
+  ],
+
+  tropical: [
+    "Hurricane Warning",
+    "Tropical Storm Warning",
+    "Storm Surge Warning",
+    "Hurricane Watch",
+    "Tropical Storm Watch",
+    "Storm Surge Watch"
+  ]
+};
 function getExpiresText(expires) {
   if (!expires) return "Unknown";
 
@@ -1351,18 +1374,51 @@ function getStateFromAlert(alert) {
   return "NC";
 }
 
-function renderCompactAlerts(alerts) {
+function renderCompactAlerts(alerts, category = "storm") {
   alertsList.innerHTML = "";
 
   if (!alerts.length) {
-    alertsList.innerHTML = `
-      <div class="compact-alert-item">
-        <div class="compact-alert-title">No Storm-Based Alerts</div>
-<div class="alert-location">No Active Tornado, Severe Thunderstorm, Flash Flood, Marine, or Special Weather Alerts Right Now.</div>
-      </div>
-    `;
-    return;
-  }
+  const emptyText = {
+    storm: {
+      title: "No Storm-Based Alerts",
+      body: "No active tornado, severe thunderstorm, flash flood, marine, or special weather alerts right now."
+    },
+    tropical: {
+      title: "No Tropical Alerts",
+      body: "No active hurricane, tropical storm, or storm surge alerts right now."
+    },
+    winter: {
+      title: "No Winter Alerts",
+      body: "No active winter weather alerts right now."
+    },
+    hydro: {
+      title: "No Hydro Alerts",
+      body: "No active flood or hydrologic alerts right now."
+    },
+    nonprecip: {
+      title: "No Non-Precip Alerts",
+      body: "No active wind, heat, fog, freeze, or air quality alerts right now."
+    },
+    fire: {
+      title: "No Fire Weather Alerts",
+      body: "No active fire weather alerts right now."
+    },
+    marine: {
+      title: "No Marine Alerts",
+      body: "No active marine alerts right now."
+    }
+  };
+
+  const message = emptyText[category] || emptyText.storm;
+
+  alertsList.innerHTML = `
+    <div class="compact-alert-item">
+      <div class="compact-alert-title">${message.title}</div>
+      <div class="alert-location">${message.body}</div>
+    </div>
+  `;
+  return;
+}
 
   alerts.forEach(alert => {
     const props = alert.properties;
