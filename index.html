@@ -802,12 +802,32 @@
 }
 
 .compact-alert-title {
-  color: #ffb21f;
+  color: #ffb21c;
   font-size: 0.95rem;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   margin-bottom: 7px;
+}
+
+.storm-title {
+  color: #ffb21c;
+}
+
+.tropical-title {
+  color: rgb(161, 54, 113);
+}
+
+.winter-title {
+  color: #7bbcff;
+}
+
+.hydro-title {
+  color: #4ea8ff;
+}
+
+.fire-title {
+  color: #ff6a3d;
 }
 
 .compact-alert-meta {
@@ -1466,7 +1486,7 @@ function renderCompactAlerts(alerts, category = "storm") {
 
   alertsList.innerHTML = `
     <div class="compact-alert-item">
-      <div class="compact-alert-title">${message.title}</div>
+      <div class="compact-alert-title ${category}-title">${message.title}</div>
       <div class="alert-location">${message.body}</div>
     </div>
   `;
