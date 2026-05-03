@@ -1482,8 +1482,8 @@ function renderCompactAlerts(alerts, category) {
   if (!alerts.length) {
     alertsList.innerHTML = `
       <div class="compact-alert-item">
-        <div class="compact-alert-title">
-          No ${category} alerts right now
+       <div class="compact-alert-title ${category}-title">
+          No ${category.toUpperCase()} Alerts Right Now
         </div>
         <div class="alert-location">
           No active alerts currently issued by NWS.
