@@ -1204,14 +1204,12 @@ nav a {
 
     <div class="alert-tabs-wrapper">
   <div class="alert-tabs">
-  <button class="active" data-category="storm">Storm Based</button>
-  <button data-category="tropical">Tropical</button>
-  <button data-category="winter">Winter</button>
-  <button data-category="hydro">Hydro</button>
-  <button data-category="nonprecip">Non-Precip</button>
-  <button data-category="fire">Fire</button>
-  <button data-category="marine">Marine</button>
-</div>
+    <button class="active" data-category="storm">Storm Based</button>
+    <button data-category="tropical">Tropical</button>
+    <button data-category="winter">Winter</button>
+    <button data-category="hydro">Hydro</button>
+    <button data-category="fire">Fire</button>
+  </div>
 </div>
     <div id="alertsList" class="compact-alert-list"></div>
 
@@ -1336,6 +1334,45 @@ const alertCategories = {
     "Hurricane Watch",
     "Tropical Storm Watch",
     "Storm Surge Watch"
+  ],
+
+  winter: [
+    "Blizzard Warning",
+    "Winter Storm Warning",
+    "Ice Storm Warning",
+    "Snow Squall Warning",
+    "Winter Weather Advisory",
+    "Freezing Fog Advisory",
+    "Blizzard Watch",
+    "Winter Storm Watch",
+    "Extreme Cold Watch",
+    "Extreme Cold Warning",
+    "Cold Weather Advisory",
+    "Wind Chill Warning",
+    "Wind Chill Watch",
+    "Wind Chill Advisory",
+    "Freeze Warning",
+    "Freeze Watch",
+    "Hard Freeze Warning",
+    "Hard Freeze Watch",
+    "Lake Effect Snow Warning",
+    "Frost Advisory"
+  ],
+
+  hydro: [
+    "Flood Warning",
+    "Flood Watch",
+    "Flood Advisory",
+    "Coastal Flood Warning",
+    "Coastal Flood Watch",
+    "Coastal Flood Advisory"
+  ],
+
+  fire: [
+    "Fire Warning",
+    "Red Flag Warning",
+    "Extreme Fire Danger",
+    "Fire Weather Watch"
   ]
 };
 function getExpiresText(expires) {
@@ -1379,35 +1416,27 @@ function renderCompactAlerts(alerts, category = "storm") {
 
   if (!alerts.length) {
   const emptyText = {
-    storm: {
-      title: "No Storm-Based Alerts",
-      body: "No active tornado, severe thunderstorm, flash flood, marine, or special weather alerts right now."
-    },
-    tropical: {
-      title: "No Tropical Alerts",
-      body: "No active hurricane, tropical storm, or storm surge alerts right now."
-    },
-    winter: {
-      title: "No Winter Alerts",
-      body: "No active winter weather alerts right now."
-    },
-    hydro: {
-      title: "No Hydro Alerts",
-      body: "No active flood or hydrologic alerts right now."
-    },
-    nonprecip: {
-      title: "No Non-Precip Alerts",
-      body: "No active wind, heat, fog, freeze, or air quality alerts right now."
-    },
-    fire: {
-      title: "No Fire Weather Alerts",
-      body: "No active fire weather alerts right now."
-    },
-    marine: {
-      title: "No Marine Alerts",
-      body: "No active marine alerts right now."
-    }
-  };
+  storm: {
+    title: "No Storm-Based Alerts",
+    body: "No active tornado, severe thunderstorm, flash flood, marine, or special weather alerts right now."
+  },
+  tropical: {
+    title: "No Tropical Alerts",
+    body: "No active hurricane, tropical storm, or storm surge alerts right now."
+  },
+  winter: {
+    title: "No Winter Alerts",
+    body: "No active winter weather alerts right now."
+  },
+  hydro: {
+    title: "No Hydro Alerts",
+    body: "No active flood or hydrologic alerts right now."
+  },
+  fire: {
+    title: "No Fire Weather Alerts",
+    body: "No active fire weather alerts right now."
+  }
+};
 
   const message = emptyText[category] || emptyText.storm;
 
