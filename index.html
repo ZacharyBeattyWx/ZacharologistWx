@@ -1743,7 +1743,11 @@ function renderCategory(category) {
   currentCategory = category;
 
   const filteredAlerts = allHomepageAlerts.filter(alert => {
-    const event = alert.properties.event;
+    if (!alert.properties) return false;
+
+const event = alert.properties.event;
+
+if (!event) return false;
 
     if (category === "storm") {
       return (
