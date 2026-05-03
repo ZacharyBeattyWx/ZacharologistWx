@@ -407,6 +407,23 @@
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
+.alert-tabs::-webkit-scrollbar {
+  height: 6px;
+}
+
+.alert-tabs::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.04);
+  border-radius: 999px;
+}
+
+.alert-tabs::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.18);
+  border-radius: 999px;
+}
+
+.alert-tabs::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.3);
+}
 .alert-tabs-wrapper {
   position: relative;
 }
@@ -822,19 +839,14 @@ body {
 
 @media (min-width: 769px) {
   .alert-tabs {
-    flex-wrap: wrap;
-    overflow-x: visible;
-    align-content: flex-start;
-    row-gap: 10px;
-    margin-top: 6px;
-  }
-
-  .alert-tabs-wrapper {
-    margin-top: -6px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    padding-bottom: 8px;
   }
 
   .alert-tabs-wrapper::after {
-    display: none;
+    display: block;
   }
 }
 
