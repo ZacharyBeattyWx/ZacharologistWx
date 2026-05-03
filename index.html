@@ -494,41 +494,51 @@
 .alert-tabs button.active {
   background: #ffb21c;
   color: black;
-  box-shadow:
-    0 0 18px rgba(255,178,28,0.32),
-    0 0 42px rgba(255,178,28,0.10);
+}
+
+.alert-tabs button.active::before {
+  opacity: 1;
+  background: rgba(255,178,28,0.42);
 }
 
 .alert-tabs button[data-category="tropical"].active {
   background: rgb(161, 54, 113);
   color: white;
-  box-shadow:
-    0 0 18px rgba(161,54,113,0.32),
-    0 0 42px rgba(161,54,113,0.10);
+}
+
+.alert-tabs button[data-category="tropical"].active::before {
+  opacity: 1;
+  background: rgba(161,54,113,0.42);
 }
 
 .alert-tabs button[data-category="winter"].active {
   background: #3b9dff;
   color: black;
-  box-shadow:
-    0 0 18px rgba(59,157,255,0.32),
-    0 0 42px rgba(59,157,255,0.10);
+}
+
+.alert-tabs button[data-category="winter"].active::before {
+  opacity: 1;
+  background: rgba(59,157,255,0.42);
 }
 
 .alert-tabs button[data-category="hydro"].active {
   background: #00a008;
   color: white;
-  box-shadow:
-    0 0 18px rgba(0,160,8,0.30),
-    0 0 42px rgba(0,160,8,0.10);
+}
+
+.alert-tabs button[data-category="hydro"].active::before {
+  opacity: 1;
+  background: rgba(0,160,8,0.38);
 }
 
 .alert-tabs button[data-category="fire"].active {
   background: #b83d18;
   color: white;
-  box-shadow:
-    0 0 18px rgba(184,61,24,0.30),
-    0 0 42px rgba(184,61,24,0.10);
+}
+
+.alert-tabs button[data-category="fire"].active::before {
+  opacity: 1;
+  background: rgba(184,61,24,0.40);
 }
 .alert-tabs button::before {
   content: "";
