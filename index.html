@@ -1721,10 +1721,136 @@ document.addEventListener("click", function (event) {
 const alertStatus = document.getElementById("alert-status");
 const alertsContainer = document.getElementById("alerts-container");
 
-/* all remaining NWS code here */
+const alertUrls = [
+  "https://api.weather.gov/alerts/active?area=NC",
+  "https://api.weather.gov/alerts/active?area=SC",
+  "https://api.weather.gov/alerts/active?area=VA"
+];
+
+const importantEvents = [
+  "Tornado Warning",
+  "Severe Thunderstorm Warning",
+  "Flash Flood Warning",
+  "Tornado Watch",
+  "Severe Thunderstorm Watch",
+  "Hurricane Warning",
+  "Tropical Storm Warning",
+  "Winter Storm Warning",
+  "Ice Storm Warning",
+  "Blizzard Warning"
+];
+
+function getAlertClass(eventName) {
+  const event = eventName.toLowerCase();
+
+  if (event.includes("tornado warning")) return "tornado-warning";
+  if (event.includes("severe thunderstorm warning")) return "severe-warning";
+  if (event.includes("tornado watch")) return "tornado-watch";
+  if (event.includes("flood")) return "flood-warning";
+  if (event.includes("winter")) return "winter-alert";
+  if (event.includes("hurricane") || event.includes("tropical")) return "tropical-alert";
+
+  return "default-alert";
+}
+
+function formatTime(timeString) {
+  if (!timeString) return "Unknown";
+
+  return new Date(timeString).toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
+}
+
+async function loadNwsAlerts() {
+  try {
+    alertStatus.textContent = "Checking live NWS alerts...";
+
+    const responses = await Promise.all(
+      alertUrls.map(url => fetch(url))
+    );
+
+    responses.forEach(response => {
+      if (!response.ok) {
+        throw new Error("NWS API request failed");
+      }
+    });
+
+    const dataSets = await Promise.all(
+      responses.map(response => response.json())
+    );
+
+    const allAlerts = dataSets.flatMap(data => data.features || []);
+
+    const uniqueAlerts = Array.from(
+      new Map(allAlerts.map(alert => [alert.id, alert])).values()
+    );
+
+    const filteredAlerts = uniqueAlerts.filter(alert =>
+      importantEvents.includes(alert.properties.event)
+    );
+
+    filteredAlerts.sort((a, b) => {
+      const severityRank = {
+        Extreme: 4,
+        Severe: 3,
+        Moderate: 2,
+        Minor: 1
+      };
+
+      return (
+        (severityRank[b.properties.severity] || 0) -
+        (severityRank[a.properties.severity] || 0)
+      );
+    });
+
+    alertsContainer.innerHTML = "";
+
+    if (filteredAlerts.length === 0) {
+      alertStatus.textContent =
+        `No major active NWS alerts for NC, SC, or VA right now • Updated ${new Date().toLocaleTimeString([], {
+          hour: "numeric",
+          minute: "2-digit"
+        })}`;
+      return;
+    }
+
+    alertStatus.textContent =
+      `${filteredAlerts.length} active NWS alert(s) • Updated ${new Date().toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit"
+      })}`;
+
+    filteredAlerts.forEach(alert => {
+      const props = alert.properties;
+
+      const card = document.createElement("article");
+      card.className = `alert-card ${getAlertClass(props.event)}`;
+
+      card.innerHTML = `
+        <h3>${props.event}</h3>
+        <p><strong>Area:</strong> ${props.areaDesc}</p>
+        <p><strong>Severity:</strong> ${props.severity}</p>
+        <p><strong>Expires:</strong> ${formatTime(props.expires)}</p>
+        <p>${props.headline || "No headline available."}</p>
+      `;
+
+      alertsContainer.appendChild(card);
+    });
+
+  } catch (error) {
+    console.error(error);
+    alertStatus.textContent =
+      "Unable to load NWS alerts right now. Try refreshing the page.";
+  }
+}
+
+loadNwsAlerts();
+
+setInterval(loadNwsAlerts, 30000);
 </script>
 
-</body>
-</html>
 </body>
 </html>
