@@ -243,35 +243,49 @@
   width: 100%;
   min-width: 0;
 }
-/* Active Category Glow */
-.alerts-card.storm-active .state-alert-dropdown > summary,
-.alerts-card.storm-active .state-alert-group > summary {
-  border-color: rgba(255,178,31,0.35);
-  box-shadow: 0 0 18px rgba(255,178,31,0.18);
+.state-alert-dropdown > summary,
+.state-alert-group > summary {
+  transition: all 0.22s ease;
 }
 
-.alerts-card.tropical-active .state-alert-dropdown > summary,
-.alerts-card.tropical-active .state-alert-group > summary {
-  border-color: rgba(73,214,255,0.35);
-  box-shadow: 0 0 18px rgba(73,214,255,0.18);
+/* Storm */
+.alerts-card.storm-active .state-alert-group > summary:hover {
+  background: linear-gradient(135deg, #ffb21f, #ff9d00);
+  color: #000;
+  box-shadow: 0 0 22px rgba(255,178,31,0.55);
+  border-color: transparent;
 }
 
-.alerts-card.winter-active .state-alert-dropdown > summary,
-.alerts-card.winter-active .state-alert-group > summary {
-  border-color: rgba(59,157,255,0.35);
-  box-shadow: 0 0 18px rgba(59,157,255,0.18);
+/* Tropical */
+.alerts-card.tropical-active .state-alert-group > summary:hover {
+  background: linear-gradient(135deg, #49d6ff, #169eff);
+  color: #001522;
+  box-shadow: 0 0 22px rgba(73,214,255,0.5);
+  border-color: transparent;
 }
 
-.alerts-card.hydro-active .state-alert-dropdown > summary,
-.alerts-card.hydro-active .state-alert-group > summary {
-  border-color: rgba(0,210,106,0.35);
-  box-shadow: 0 0 18px rgba(0,210,106,0.18);
+/* Winter */
+.alerts-card.winter-active .state-alert-group > summary:hover {
+  background: linear-gradient(135deg, #7ecbff, #4da9ff);
+  color: #00111f;
+  box-shadow: 0 0 22px rgba(59,157,255,0.45);
+  border-color: transparent;
 }
 
-.alerts-card.fire-active .state-alert-dropdown > summary,
-.alerts-card.fire-active .state-alert-group > summary {
-  border-color: rgba(255,131,24,0.35);
-  box-shadow: 0 0 18px rgba(255,131,24,0.18);
+/* Hydro */
+.alerts-card.hydro-active .state-alert-group > summary:hover {
+  background: linear-gradient(135deg, #00d26a, #00a84f);
+  color: #001a0b;
+  box-shadow: 0 0 22px rgba(0,210,106,0.45);
+  border-color: transparent;
+}
+
+/* Fire */
+.alerts-card.fire-active .state-alert-group > summary:hover {
+  background: linear-gradient(135deg, #ff8318, #ff5d00);
+  color: #1a0900;
+  box-shadow: 0 0 22px rgba(255,131,24,0.45);
+  border-color: transparent;
 }
 .dashboard-card:has(.alerts-panel) {
   max-width: 760px;
