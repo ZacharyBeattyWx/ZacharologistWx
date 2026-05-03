@@ -1174,15 +1174,11 @@ document.addEventListener("click", function (event) {
   const detailsBtn = event.target.closest(".alert-details-btn");
 
   if (detailsBtn) {
-    alert("Details button clicked");
-
     const modalId = detailsBtn.getAttribute("data-modal-target");
     const modal = document.getElementById(modalId);
 
     if (modal) {
       modal.classList.add("is-open");
-    } else {
-      alert("Modal not found: " + modalId);
     }
   }
 
