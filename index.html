@@ -204,14 +204,30 @@
   line-height: 1.6;
 }
 
-.dashboard-grid {
+ .dashboard-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: 1.15fr 1.85fr;
   gap: 28px;
   width: 98%;
-  max-width: 1100px;
+  max-width: 1500px;
   margin: 0 auto;
   align-items: start;
+}
+.briefing-card {
+  grid-column: 1;
+}
+
+.radar-card {
+  grid-column: 2;
+}
+
+.spc-card {
+  grid-column: 1;
+}
+
+.alerts-card {
+  grid-column: 2;
+  width: 100%;
 }
 
 .dashboard-card {
