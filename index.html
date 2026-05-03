@@ -964,24 +964,85 @@ nav a {
 </header>
 
 <section class="forecast-dashboard">
+
+  <div class="dashboard-header">
+    <p class="eyebrow">Forecast Operations Dashboard</p>
+    <h2>Latest Forecast Briefing</h2>
+    <p class="dashboard-subtitle">
+      My current read on weather patterns, severe risk, and where to look next.
+    </p>
+  </div>
+
   <div class="dashboard-grid">
 
-    <!-- WEATHER FOCUS -->
     <article class="dashboard-card briefing-card">
-      <!-- your weather focus content stays here -->
+      <div class="card-topline">
+        <span class="status-dot"></span>
+        <span>Updated Today</span>
+      </div>
+
+      <h3>Current Weather Focus</h3>
+
+      <p class="briefing-text">
+        Quiet pattern for now, but monitoring long-range signals for increased
+        storm potential across the Southeast.
+      </p>
+
+      <div class="briefing-meta">
+        <div>
+          <span class="meta-label">Primary Concern</span>
+          <strong>Monitoring</strong>
+        </div>
+
+        <div>
+          <span class="meta-label">Confidence</span>
+          <strong>Medium</strong>
+        </div>
+
+        <div>
+          <span class="meta-label">Region</span>
+          <strong>Southeast</strong>
+        </div>
+      </div>
+
+      <a href="wx-updates.html" class="dashboard-button">Read Full Briefing</a>
     </article>
 
-    <!-- RADAR -->
     <article class="dashboard-card mini-card radar-card">
-      <!-- radar content -->
+      <span class="mini-label">Radar</span>
+      <h3>Live Radar</h3>
+
+      <iframe
+        src="https://embed.windy.com/embed2.html?lat=35.78&lon=-79.80&zoom=5&level=surface&overlay=radar&product=radar"
+        class="radar-frame">
+      </iframe>
+
+      <p>Track storms and radar trends.</p>
     </article>
 
-    <!-- SPC -->
     <article class="dashboard-card mini-card spc-card">
-      <!-- spc outlook content -->
+      <span class="mini-label">Outlook</span>
+      <h3>SPC Forecast</h3>
+
+      <div class="spc-graphics-stack">
+        <a href="https://www.spc.noaa.gov/products/outlook/day1otlk.html" target="_blank" class="spc-item">
+          <span>Day 1 Outlook</span>
+        </a>
+
+        <a href="https://www.spc.noaa.gov/products/outlook/day2otlk.html" target="_blank" class="spc-item">
+          <span>Day 2 Outlook</span>
+        </a>
+
+        <a href="https://www.spc.noaa.gov/products/outlook/day3otlk.html" target="_blank" class="spc-item">
+          <span>Day 3 Outlook</span>
+        </a>
+
+        <a href="https://www.spc.noaa.gov/products/exper/day4-8/" target="_blank" class="spc-item">
+          <span>Days 4–8 Outlook</span>
+        </a>
+      </div>
     </article>
 
-    <!-- ALERTS -->
     <article class="dashboard-card alerts-card">
       <section class="alerts-panel">
         <h2>Active Weather Alerts</h2>
@@ -995,40 +1056,26 @@ nav a {
 
         <div class="alert-list">
 
-          <!-- STORM WARNING -->
           <div class="alert-item yellow">
             <div class="alert-row">
-              <span class="alert-left">
-                ⚠️ Severe Thunderstorm Warning
-              </span>
+              <span class="alert-left">⚠️ Severe Thunderstorm Warning</span>
 
               <div class="alert-right">
                 <strong>1</strong>
-
-                <button
-                  class="alert-details-btn"
-                  type="button"
-                  data-modal-target="stormModal">
+                <button class="alert-details-btn" type="button" data-modal-target="stormModal">
                   Details
                 </button>
               </div>
             </div>
           </div>
 
-          <!-- TORNADO WATCH -->
           <div class="alert-item magenta">
             <div class="alert-row">
-              <span class="alert-left">
-                ⚠️ Tornado Watch
-              </span>
+              <span class="alert-left">⚠️ Tornado Watch</span>
 
               <div class="alert-right">
                 <strong>6</strong>
-
-                <button
-                  class="alert-details-btn"
-                  type="button"
-                  data-modal-target="tornadoModal">
+                <button class="alert-details-btn" type="button" data-modal-target="tornadoModal">
                   Details
                 </button>
               </div>
@@ -1042,7 +1089,6 @@ nav a {
   </div>
 </section>
 
-<!-- STORM CHASING SECTION -->
 <div class="section-alt">
   <div class="section-block">
     <h2 class="section-title">Storm Chasing</h2>
@@ -1068,7 +1114,6 @@ nav a {
   </div>
 </div>
 
-<!-- STORM MODAL -->
 <div class="alert-modal" id="stormModal">
   <div class="alert-modal-backdrop"></div>
 
@@ -1076,7 +1121,6 @@ nav a {
     <button class="alert-modal-close" type="button">×</button>
 
     <div class="warning-detail-card">
-
       <h4>What to Expect</h4>
 
       <p class="warning-summary">
@@ -1084,7 +1128,6 @@ nav a {
       </p>
 
       <div class="warning-hazards">
-
         <div class="hazard-box">
           <span class="hazard-label">🌬️ Max Wind</span>
           <span class="hazard-value">60 MPH</span>
@@ -1099,7 +1142,6 @@ nav a {
           <span class="hazard-label">📡 Source</span>
           <span class="hazard-value">Radar Indicated</span>
         </div>
-
       </div>
 
       <div class="warning-info">
@@ -1113,15 +1155,12 @@ nav a {
       </div>
 
       <div class="warning-bottom">
-        Hail: <strong>1.00"</strong>
-        Wind: <strong>60 MPH</strong>
+        Hail: <strong>1.00"</strong> Wind: <strong>60 MPH</strong>
       </div>
-
     </div>
   </div>
 </div>
 
-<!-- TORNADO MODAL -->
 <div class="alert-modal" id="tornadoModal">
   <div class="alert-modal-backdrop"></div>
 
@@ -1130,7 +1169,7 @@ nav a {
 
     <div class="warning-detail-card">
       <h4>Tornado Watch</h4>
-      <p>Tornado watch details go here.</p>
+      <p class="warning-summary">Tornado watch details go here.</p>
     </div>
   </div>
 </div>
