@@ -417,11 +417,12 @@
 
 .alert-tabs {
   display: flex;
-  gap: 10px;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
   overflow-x: auto;
-  padding-bottom: 10px;
-  padding-right: 25px;
-  margin-bottom: 16px;
+  padding: 8px 30px 12px;
+  margin-bottom: 18px;
   scrollbar-width: thin;
   scroll-padding-right: 25px;
 }
@@ -485,6 +486,8 @@
   position: relative;
   overflow: visible;
   z-index: 1;
+  min-width: 108px;
+  text-align: center;
 }
 
 .alert-tabs button {
