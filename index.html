@@ -1731,7 +1731,14 @@ function triggerNewAlertGlow() {
     alertsTitle.classList.remove("new-alert-glow");
   }, 30000);
 }
-
+function hasValidPolygon(alert) {
+  return (
+    alert.geometry &&
+    alert.geometry.type &&
+    alert.geometry.coordinates &&
+    alert.geometry.coordinates.length > 0
+  );
+}
 function renderCategory(category) {
   currentCategory = category;
 
@@ -1848,17 +1855,12 @@ async function fetchHomepageAlerts() {
   new Map(allFeatures.map(item => [item.id, item])).values()
 );
 
-function hasValidPolygon(alert) {
-  return (
-    alert.geometry &&
-    alert.geometry.type &&
-    alert.geometry.coordinates &&
-    alert.geometry.coordinates.length > 0
-  );
-}
-
 const uniqueAlerts = uniqueFeatures.filter(alert => {
+  if (!alert.properties) return false;
+
   const event = alert.properties.event;
+
+  if (!event) return false;
 
   return (
     [
