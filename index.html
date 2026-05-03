@@ -387,8 +387,6 @@
   border-radius: 18px;
   padding: 18px;
   height: 100%;
-}
-.alerts-panel {
   max-width: 760px;
 }
 
@@ -1313,25 +1311,14 @@ nav a {
       </div>
     </article>
 
-    <article class="dashboard-card alerts-card">
-  <section class="alerts-panel">
+ <article class="dashboard-card alerts-card">
 
-    <h2 id="alertsTitle">Active Weather Alerts</h2>
+  <h2 id="alertsTitle">Active Weather Alerts</h2>
 
-    <div class="alert-tabs-wrapper">
-  <div class="alert-tabs">
-    <button class="active" data-category="storm">Storm Based</button>
-    <button data-category="tropical">Tropical</button>
-    <button data-category="winter">Winter</button>
-    <button data-category="hydro">Hydro</button>
-    <button data-category="fire">Fire</button>
-  </div>
-</div>
-    <div id="alertsList" class="compact-alert-list"></div>
+  <p id="alert-status">Loading live NWS alerts...</p>
 
-  </section>
-</article>
-
+  <div id="alerts-container" class="alerts-container"></div>
+    </article>
   </div>
 </section>
 
@@ -1728,5 +1715,16 @@ document.addEventListener("click", function (event) {
 });
 
 </script>
+<div id="alerts-container"></div>
+
+<script>
+const alertStatus = document.getElementById("alert-status");
+const alertsContainer = document.getElementById("alerts-container");
+
+/* all remaining NWS code here */
+</script>
+
+</body>
+</html>
 </body>
 </html>
