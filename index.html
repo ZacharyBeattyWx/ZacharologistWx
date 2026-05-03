@@ -1315,10 +1315,19 @@ nav a {
 
   <h2 id="alertsTitle">Active Weather Alerts</h2>
 
-  <p id="alert-status">Loading live NWS alerts...</p>
+  <div class="alert-tabs-wrapper">
+    <div class="alert-tabs">
+      <button class="active" data-category="storm">Storm Based</button>
+      <button data-category="tropical">Tropical</button>
+      <button data-category="winter">Winter</button>
+      <button data-category="hydro">Hydro</button>
+      <button data-category="fire">Fire</button>
+    </div>
+  </div>
 
-  <div id="alerts-container" class="alerts-container"></div>
-    </article>
+  <div id="alertsList" class="compact-alert-list"></div>
+
+</article>
   </div>
 </section>
 
@@ -1408,8 +1417,8 @@ nav a {
 </div>
 </div>
 <script>
-const alertStatus = document.getElementById("alert-status");
-const alertsContainer = document.getElementById("alerts-container");
+const alertsList = document.getElementById("alertsList");
+const alertsTitle = document.getElementById("alertsTitle");
 
 const alertUrls = [
   "https://api.weather.gov/alerts/active?area=NC",
@@ -1417,125 +1426,185 @@ const alertUrls = [
   "https://api.weather.gov/alerts/active?area=VA"
 ];
 
-const importantEvents = [
-  "Tornado Warning",
-  "Severe Thunderstorm Warning",
-  "Flash Flood Warning",
-  "Tornado Watch",
-  "Severe Thunderstorm Watch",
-  "Hurricane Warning",
-  "Tropical Storm Warning",
-  "Winter Storm Warning",
-  "Ice Storm Warning",
-  "Blizzard Warning"
-];
+let allHomepageAlerts = [];
+let currentCategory = "storm";
+let knownAlertIds = new Set();
+let hasLoadedAlertsOnce = false;
+let alertGlowTimer = null;
 
-function getAlertClass(eventName) {
-  const event = eventName.toLowerCase();
+const alertCategories = {
+  storm: [
+    "Tornado Warning",
+    "Severe Thunderstorm Warning",
+    "Flash Flood Warning",
+    "Tornado Watch",
+    "Severe Thunderstorm Watch"
+  ],
+  tropical: [
+    "Hurricane Warning",
+    "Tropical Storm Warning",
+    "Storm Surge Warning"
+  ],
+  winter: [
+    "Winter Storm Warning",
+    "Blizzard Warning",
+    "Ice Storm Warning"
+  ],
+  hydro: [
+    "Flood Warning",
+    "Flood Watch",
+    "Coastal Flood Warning"
+  ],
+  fire: [
+    "Red Flag Warning",
+    "Fire Weather Watch"
+  ]
+};
 
-  if (event.includes("tornado warning")) return "tornado-warning";
-  if (event.includes("severe thunderstorm warning")) return "severe-warning";
-  if (event.includes("tornado watch")) return "tornado-watch";
-  if (event.includes("flood")) return "flood-warning";
-  if (event.includes("winter")) return "winter-alert";
-  if (event.includes("hurricane") || event.includes("tropical")) return "tropical-alert";
+function getExpiresText(expires) {
+  if (!expires) return "Unknown";
 
-  return "default-alert";
+  const now = new Date();
+  const expire = new Date(expires);
+  const diff = expire - now;
+
+  if (diff <= 0) return "Expired";
+
+  const mins = Math.floor(diff / 60000);
+  const hrs = Math.floor(mins / 60);
+
+  return hrs > 0 ? `${hrs}h left` : `${mins}m left`;
 }
 
-function formatTime(timeString) {
-  if (!timeString) return "Unknown";
+function renderCompactAlerts(alerts, category) {
+  alertsList.innerHTML = "";
 
-  return new Date(timeString).toLocaleString([], {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit"
+  if (!alerts.length) {
+    alertsList.innerHTML = `
+      <div class="compact-alert-item">
+        <div class="compact-alert-title">
+          No ${category} alerts right now
+        </div>
+        <div class="alert-location">
+          No active alerts currently issued by NWS.
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  alerts.forEach(alert => {
+    const props = alert.properties;
+
+    const card = document.createElement("div");
+    card.className = "compact-alert-item";
+
+    card.innerHTML = `
+      <div class="compact-alert-title">${props.event}</div>
+
+      <div class="compact-alert-meta">
+        <span class="alert-pill">${props.severity}</span>
+        <span class="alert-pill">${getExpiresText(props.expires)}</span>
+      </div>
+
+      <div class="alert-location">
+        ${props.areaDesc.split(";").slice(0,3).join("; ")}
+      </div>
+
+      <div class="compact-alert-actions">
+        <button class="compact-details-btn">
+          Details
+        </button>
+      </div>
+    `;
+
+    alertsList.appendChild(card);
   });
 }
 
-async function loadNwsAlerts() {
-  try {
-    alertStatus.textContent = "Checking live NWS alerts...";
+function triggerNewAlertGlow() {
+  alertsTitle.classList.add("new-alert-glow");
 
+  clearTimeout(alertGlowTimer);
+
+  alertGlowTimer = setTimeout(() => {
+    alertsTitle.classList.remove("new-alert-glow");
+  }, 30000);
+}
+
+function renderCategory(category) {
+  currentCategory = category;
+
+  const allowedEvents = alertCategories[category] || [];
+
+  const filteredAlerts = allHomepageAlerts.filter(alert =>
+    allowedEvents.includes(alert.properties.event)
+  );
+
+  renderCompactAlerts(filteredAlerts, category);
+}
+
+async function fetchHomepageAlerts() {
+  try {
     const responses = await Promise.all(
       alertUrls.map(url => fetch(url))
     );
-
-    responses.forEach(response => {
-      if (!response.ok) {
-        throw new Error("NWS API request failed");
-      }
-    });
 
     const dataSets = await Promise.all(
       responses.map(response => response.json())
     );
 
-    const allAlerts = dataSets.flatMap(data => data.features || []);
+    const allFeatures = dataSets.flatMap(data => data.features || []);
 
     const uniqueAlerts = Array.from(
-      new Map(allAlerts.map(alert => [alert.id, alert])).values()
+      new Map(allFeatures.map(alert => [alert.id, alert])).values()
     );
 
-    const filteredAlerts = uniqueAlerts.filter(alert =>
-      importantEvents.includes(alert.properties.event)
-    );
+    const currentIds = new Set(uniqueAlerts.map(alert => alert.id));
 
-    alertsContainer.innerHTML = "";
+    const hasNewAlert =
+      hasLoadedAlertsOnce &&
+      uniqueAlerts.some(alert => !knownAlertIds.has(alert.id));
 
-    if (filteredAlerts.length === 0) {
-      alertStatus.textContent =
-        `No major active NWS alerts for NC, SC, or VA right now • Updated ${new Date().toLocaleTimeString([], {
-          hour: "numeric",
-          minute: "2-digit"
-        })}`;
-      return;
+    knownAlertIds = currentIds;
+    hasLoadedAlertsOnce = true;
+
+    if (hasNewAlert) {
+      triggerNewAlertGlow();
     }
 
-    alertStatus.textContent =
-      `${filteredAlerts.length} active NWS alert(s) • Updated ${new Date().toLocaleTimeString([], {
-        hour: "numeric",
-        minute: "2-digit"
-      })}`;
+    allHomepageAlerts = uniqueAlerts;
 
-    filteredAlerts.forEach(alert => {
-  const props = alert.properties;
-
-  const card = document.createElement("div");
-  card.className = "compact-alert-item";
-
-  card.innerHTML = `
-    <div class="compact-alert-title">${props.event}</div>
-
-    <div class="compact-alert-meta">
-      <span class="alert-pill">${props.severity}</span>
-      <span class="alert-pill">${formatTime(props.expires)}</span>
-    </div>
-
-    <div class="alert-location">
-      ${props.areaDesc.split(";").slice(0, 3).join("; ")}
-    </div>
-
-    <div class="compact-alert-actions">
-      <button class="compact-details-btn" type="button">
-        Details
-      </button>
-    </div>
-  `;
-
-  alertsContainer.appendChild(card);
-});
+    renderCategory(currentCategory);
 
   } catch (error) {
     console.error(error);
-    alertStatus.textContent =
-      "Unable to load NWS alerts right now. Try refreshing the page.";
+
+    alertsList.innerHTML = `
+      <div class="compact-alert-item">
+        <div class="compact-alert-title">Alerts Unavailable</div>
+        <div class="alert-location">
+          Unable to load NWS alerts right now.
+        </div>
+      </div>
+    `;
   }
 }
 
-loadNwsAlerts();
-setInterval(loadNwsAlerts, 30000);
+document.querySelectorAll(".alert-tabs button").forEach(button => {
+  button.addEventListener("click", () => {
+    document.querySelectorAll(".alert-tabs button").forEach(btn =>
+      btn.classList.remove("active")
+    );
+
+    button.classList.add("active");
+
+    renderCategory(button.dataset.category);
+  });
+});
+
+fetchHomepageAlerts();
+setInterval(fetchHomepageAlerts, 30000);
 </script>
 
 </body>
