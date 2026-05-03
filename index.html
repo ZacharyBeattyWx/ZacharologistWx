@@ -1553,13 +1553,23 @@ function getExpiresText(expires) {
   return hrs > 0 ? `${hrs}h left` : `${mins}m left`;
 }
 
+function getStateFromAlert(alert) {
+  const geocode = alert.properties.geocode;
+
+  if (geocode && geocode.UGC && geocode.UGC.length) {
+    return geocode.UGC[0].slice(0, 2);
+  }
+
+  return "??";
+}
+
 function renderCompactAlerts(alerts, category) {
   alertsList.innerHTML = "";
 
   if (!alerts.length) {
     alertsList.innerHTML = `
       <div class="compact-alert-item">
-       <div class="compact-alert-title ${category}-title">
+        <div class="compact-alert-title ${category}-title">
           No ${category.toUpperCase()} Alerts Right Now
         </div>
         <div class="alert-location">
@@ -1570,33 +1580,72 @@ function renderCompactAlerts(alerts, category) {
     return;
   }
 
-  alerts.slice(0, 25).forEach(alert => {
-    const props = alert.properties;
+  const groupedByState = {};
 
-    const card = document.createElement("div");
-    card.className = "compact-alert-item";
+  alerts.forEach(alert => {
+    const state = getStateFromAlert(alert);
 
-    card.innerHTML = `
-      <div class="compact-alert-title">${props.event}</div>
+    if (!groupedByState[state]) {
+      groupedByState[state] = [];
+    }
 
-      <div class="compact-alert-meta">
-        <span class="alert-pill">${props.severity}</span>
-        <span class="alert-pill">${getExpiresText(props.expires)}</span>
-      </div>
+    groupedByState[state].push(alert);
+  });
 
-      <div class="alert-location">
-        ${props.areaDesc.split(";").slice(0,3).join("; ")}
-      </div>
+  const wrapper = document.createElement("details");
+  wrapper.className = "state-alert-dropdown";
+  wrapper.open = true;
 
-      <div class="compact-alert-actions">
-        <button class="compact-details-btn">
-          Details
-        </button>
-      </div>
+  wrapper.innerHTML = `
+    <summary>
+      Alert Count: ${alerts.length}
+    </summary>
+  `;
+
+  Object.keys(groupedByState).sort().forEach(state => {
+    const stateAlerts = groupedByState[state];
+
+    const stateDetails = document.createElement("details");
+    stateDetails.className = "state-alert-group";
+
+    stateDetails.innerHTML = `
+      <summary>
+        ${state} — ${stateAlerts.length} alert${stateAlerts.length === 1 ? "" : "s"}
+      </summary>
     `;
 
-    alertsList.appendChild(card);
+    stateAlerts.slice(0, 25).forEach(alert => {
+      const props = alert.properties;
+
+      const card = document.createElement("div");
+      card.className = "compact-alert-item";
+
+      card.innerHTML = `
+        <div class="compact-alert-title ${category}-title">${props.event}</div>
+
+        <div class="compact-alert-meta">
+          <span class="alert-pill">${props.severity}</span>
+          <span class="alert-pill">${getExpiresText(props.expires)}</span>
+        </div>
+
+        <div class="alert-location">
+          ${props.areaDesc.split(";").slice(0,3).join("; ")}
+        </div>
+
+        <div class="compact-alert-actions">
+          <button class="compact-details-btn" type="button">
+            Details
+          </button>
+        </div>
+      `;
+
+      stateDetails.appendChild(card);
+    });
+
+    wrapper.appendChild(stateDetails);
   });
+
+  alertsList.appendChild(wrapper);
 }
 
 function triggerNewAlertGlow() {
@@ -1617,6 +1666,15 @@ function renderCategory(category) {
   const filteredAlerts = allHomepageAlerts.filter(alert =>
     allowedEvents.includes(alert.properties.event)
   );
+  function getStateFromAlert(alert) {
+  const geocode = alert.properties.geocode;
+
+  if (geocode && geocode.UGC && geocode.UGC.length) {
+    return geocode.UGC[0].slice(0, 2);
+  }
+
+  return "??";
+}
 
   renderCompactAlerts(filteredAlerts, category);
 }
