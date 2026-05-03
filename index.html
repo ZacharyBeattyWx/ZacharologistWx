@@ -1421,9 +1421,48 @@ const alertsList = document.getElementById("alertsList");
 const alertsTitle = document.getElementById("alertsTitle");
 
 const alertUrls = [
-  "https://api.weather.gov/alerts/active?area=NC",
+  "https://api.weather.gov/alerts/active?area=TX",
+  "https://api.weather.gov/alerts/active?area=OK",
+  "https://api.weather.gov/alerts/active?area=KS",
+  "https://api.weather.gov/alerts/active?area=NE",
+  "https://api.weather.gov/alerts/active?area=SD",
+  "https://api.weather.gov/alerts/active?area=ND",
+
+  "https://api.weather.gov/alerts/active?area=MN",
+  "https://api.weather.gov/alerts/active?area=IA",
+  "https://api.weather.gov/alerts/active?area=MO",
+  "https://api.weather.gov/alerts/active?area=AR",
+  "https://api.weather.gov/alerts/active?area=LA",
+
+  "https://api.weather.gov/alerts/active?area=WI",
+  "https://api.weather.gov/alerts/active?area=IL",
+  "https://api.weather.gov/alerts/active?area=IN",
+  "https://api.weather.gov/alerts/active?area=MI",
+  "https://api.weather.gov/alerts/active?area=OH",
+
+  "https://api.weather.gov/alerts/active?area=KY",
+  "https://api.weather.gov/alerts/active?area=TN",
+  "https://api.weather.gov/alerts/active?area=MS",
+  "https://api.weather.gov/alerts/active?area=AL",
+  "https://api.weather.gov/alerts/active?area=GA",
+  "https://api.weather.gov/alerts/active?area=FL",
+
   "https://api.weather.gov/alerts/active?area=SC",
-  "https://api.weather.gov/alerts/active?area=VA"
+  "https://api.weather.gov/alerts/active?area=NC",
+  "https://api.weather.gov/alerts/active?area=VA",
+  "https://api.weather.gov/alerts/active?area=WV",
+  "https://api.weather.gov/alerts/active?area=PA",
+  "https://api.weather.gov/alerts/active?area=NY",
+  "https://api.weather.gov/alerts/active?area=VT",
+  "https://api.weather.gov/alerts/active?area=NH",
+  "https://api.weather.gov/alerts/active?area=ME",
+
+  "https://api.weather.gov/alerts/active?area=MD",
+  "https://api.weather.gov/alerts/active?area=DE",
+  "https://api.weather.gov/alerts/active?area=NJ",
+  "https://api.weather.gov/alerts/active?area=CT",
+  "https://api.weather.gov/alerts/active?area=RI",
+  "https://api.weather.gov/alerts/active?area=MA"
 ];
 
 let allHomepageAlerts = [];
@@ -1493,7 +1532,7 @@ function renderCompactAlerts(alerts, category) {
     return;
   }
 
-  alerts.forEach(alert => {
+  alerts.slice(0, 25).forEach(alert => {
     const props = alert.properties;
 
     const card = document.createElement("div");
@@ -1556,9 +1595,7 @@ async function fetchHomepageAlerts() {
 
     const allFeatures = dataSets.flatMap(data => data.features || []);
 
-    const uniqueAlerts = Array.from(
-      new Map(allFeatures.map(alert => [alert.id, alert])).values()
-    );
+   const limitedAlerts = uniqueAlerts.slice(0, 25);
 
     const currentIds = new Set(uniqueAlerts.map(alert => alert.id));
 
