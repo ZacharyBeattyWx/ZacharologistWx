@@ -1584,26 +1584,46 @@ function renderCategory(category) {
 }
 
 async function fetchHomepageAlerts() {
+  if (!alertsList) return;
+
+  alertsList.innerHTML = `
+    <div class="compact-alert-item">
+      <div class="compact-alert-title storm-title">Checking NWS Alerts...</div>
+      <div class="alert-location">Loading active alerts east of the Rockies.</div>
+    </div>
+  `;
+
   try {
-   const results = await Promise.allSettled(
-  alertUrls.map(url => fetch(url))
-);
+    const results = await Promise.allSettled(
+      alertUrls.map(url =>
+        fetch(url, {
+          headers: {
+            "Accept": "application/geo+json"
+          }
+        })
+      )
+    );
 
-const goodResponses = results
-  .filter(result => result.status === "fulfilled" && result.value.ok)
-  .map(result => result.value);
+    const goodResponses = results
+      .filter(result => result.status === "fulfilled" && result.value.ok)
+      .map(result => result.value);
 
-if (!goodResponses.length) {
-  throw new Error("All NWS alert requests failed");
-}
+    console.log("NWS successful responses:", goodResponses.length);
+    console.log("NWS failed responses:", results.length - goodResponses.length);
 
-const dataSets = await Promise.all(
-  goodResponses.map(response => response.json())
-);
+    if (!goodResponses.length) {
+      throw new Error("All NWS alert requests failed");
+    }
+
+    const dataSets = await Promise.all(
+      goodResponses.map(response => response.json())
+    );
 
     const allFeatures = dataSets.flatMap(data => data.features || []);
 
-   const limitedAlerts = uniqueAlerts.slice(0, 25);
+    const uniqueAlerts = Array.from(
+      new Map(allFeatures.map(alert => [alert.id, alert])).values()
+    );
 
     const currentIds = new Set(uniqueAlerts.map(alert => alert.id));
 
@@ -1623,13 +1643,13 @@ const dataSets = await Promise.all(
     renderCategory(currentCategory);
 
   } catch (error) {
-    console.error(error);
+    console.error("NWS alert loading error:", error);
 
     alertsList.innerHTML = `
       <div class="compact-alert-item">
-        <div class="compact-alert-title">Alerts Unavailable</div>
+        <div class="compact-alert-title storm-title">Alerts Unavailable</div>
         <div class="alert-location">
-          Unable to load NWS alerts right now.
+          Unable to load NWS alerts right now. This usually means the browser blocked one or more NWS requests, or the NWS API temporarily failed.
         </div>
       </div>
     `;
