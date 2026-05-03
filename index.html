@@ -403,10 +403,12 @@
   gap: 10px;
   overflow-x: auto;
   padding-bottom: 10px;
+  padding-right: 46px;
   margin-bottom: 16px;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  scrollbar-width: thin;
+  scroll-padding-right: 46px;
 }
+
 .alert-tabs::-webkit-scrollbar {
   height: 6px;
 }
@@ -425,6 +427,11 @@
 .alert-tabs::-webkit-scrollbar-thumb:hover {
   background: rgba(255,255,255,0.28);
 }
+.alert-tabs::after {
+  content: "";
+  flex: 0 0 36px;
+}
+
 .alert-tabs {
   scrollbar-color: rgba(255,255,255,0.18) rgba(255,255,255,0.04);
 }
