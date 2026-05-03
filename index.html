@@ -821,20 +821,36 @@ body {
 }
 
 @media (min-width: 769px) {
-  .alert-tabs {
-    flex-wrap: wrap;
-    overflow-x: visible;
-    align-content: flex-start;
-    row-gap: 10px;
-    margin-top: 6px;
+  .alerts-panel {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: 22px;
+    align-items: start;
+  }
+
+  .alerts-panel h2 {
+    margin: 6px 0 0;
+    white-space: nowrap;
   }
 
   .alert-tabs-wrapper {
-    margin-top: -6px;
+    margin-top: 0;
+  }
+
+  .alert-tabs {
+    flex-wrap: wrap;
+    overflow-x: visible;
+    justify-content: flex-end;
+    row-gap: 10px;
+    margin-bottom: 22px;
   }
 
   .alert-tabs-wrapper::after {
     display: none;
+  }
+
+  #alertsList {
+    grid-column: 1 / -1;
   }
 }
 
