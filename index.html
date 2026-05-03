@@ -1866,23 +1866,44 @@ const uniqueAlerts = uniqueFeatures.filter(alert => {
 
   if (!event) return false;
 
-  return (
-    [
-      "Tornado Warning",
-      "Severe Thunderstorm Warning",
-      "Flash Flood Warning",
-      "Tornado Watch",
-      "Severe Thunderstorm Watch",
-      "Flood Watch",
-      "Wind Advisory",
-      "Winter Weather Advisory",
-      "Freeze Warning",
-      "Dense Fog Advisory",
-      "Heat Advisory",
-      "Red Flag Warning"
-    ].includes(event) ||
-    event === "Special Weather Statement"
-  );
+  return [
+    "Tornado Warning",
+    "Severe Thunderstorm Warning",
+    "Flash Flood Warning",
+    "Flash Flood Watch",
+
+    "Tornado Watch",
+    "Severe Thunderstorm Watch",
+
+    "Special Weather Statement",
+    "Flash Flood Statement",
+
+    "Flood Warning",
+    "Flood Watch",
+    "Flood Advisory",
+    "Areal Flood Warning",
+    "Areal Flood Watch",
+    "Coastal Flood Warning",
+
+    "Marine Weather Statement",
+    "Special Marine Warning",
+
+    "Red Flag Warning",
+    "Fire Weather Watch",
+
+    "Winter Storm Warning",
+    "Winter Weather Advisory",
+    "Blizzard Warning",
+    "Ice Storm Warning",
+    "Freeze Warning",
+    "Frost Advisory",
+
+    "Wind Advisory",
+    "High Wind Warning",
+    "Dense Fog Advisory",
+    "Heat Advisory",
+    "Excessive Heat Warning"
+  ].includes(event);
 });
 
 const currentIds = new Set(uniqueAlerts.map(alert => alert.id));
