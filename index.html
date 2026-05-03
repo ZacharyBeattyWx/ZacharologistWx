@@ -926,32 +926,25 @@ nav a {
   position: fixed !important;
   inset: 0;
   z-index: 999999;
+  display: flex;
   align-items: center !important;
+  justify-content: center !important;
   overflow: hidden;
-  padding: 18px;
+  padding: 12px;
 }
 
 .alert-modal-box {
   width: 92vw;
   max-width: 92vw;
-  max-height: 85vh;
-  overflow-y: auto;
-  margin: 0 auto;
+  max-height: none;
+  overflow: visible;
+  margin: auto;
   border-radius: 22px;
 }
 
 .alert-modal .warning-detail-card {
   max-height: none;
-}
-.alert-modal {
-  padding: 10px;
-}
-
-.alert-modal-box {
-  width: 94vw;
-  max-width: 94vw;
-  max-height: 82vh;
-  overflow-y: auto;
+  overflow: visible;
 }
 
 .warning-detail-card {
