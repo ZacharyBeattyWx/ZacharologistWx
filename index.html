@@ -393,7 +393,10 @@
 }
 
 .alerts-panel h2 {
-  color: white;
+  font-size: 22px;
+  margin-bottom: 18px;
+  color: #fff;
+  text-align: center;
 }
 
 .alerts-panel h2.new-alert-glow {
@@ -945,14 +948,24 @@ body {
 
 @media (min-width: 769px) {
   .alert-tabs {
+    justify-content: center;
     flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: thin;
-    padding-bottom: 8px;
+    overflow-x: visible;
+    gap: 14px;
+    padding: 8px 0 14px;
   }
 
-  .alert-tabs-wrapper::after {
-    display: block;
+  .alert-tabs button {
+    min-width: 96px;
+  }
+
+  .alert-tabs-wrapper::after,
+  .alert-tabs::after {
+    display: none;
+  }
+
+  .alert-tabs::-webkit-scrollbar {
+    display: none;
   }
 }
 
