@@ -797,13 +797,12 @@ nav a {
   }
 
   .alert-item,
-  .warning-card,
-  .alert-modal .warning-detail-card {
+.warning-card,
+.alert-modal .warning-detail-card {
+  width: 100%;
   max-width: 100%;
-    max-width: 100%;
-    min-width: 0;
-  }
-
+  min-width: 0;
+}
   iframe {
     width: 100%;
     min-width: 0;
@@ -896,6 +895,27 @@ nav a {
  .section-alt {
   background: transparent;
   padding: 50px 0;
+}
+.dashboard-grid {
+  grid-template-columns: 1fr !important;
+  width: 100%;
+  max-width: 100%;
+}
+
+.briefing-card,
+.radar-card,
+.spc-card,
+.alerts-card {
+  grid-column: 1 / -1 !important;
+  grid-row: auto !important;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.radar-frame {
+  width: 100%;
+  height: 420px !important;
 }
 }
   </style>
