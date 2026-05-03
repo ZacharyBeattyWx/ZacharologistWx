@@ -820,7 +820,22 @@ body {
   box-sizing: border-box;
 }
 
+@media (min-width: 769px) {
+  .alert-tabs {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+
+  .alert-tabs-wrapper::after {
+    display: none;
+  }
+}
+
 @media (max-width: 768px) {
+  .alert-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
  .warning-hazards {
     grid-template-columns: 1fr;
   }
