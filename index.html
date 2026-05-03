@@ -975,74 +975,45 @@ nav a {
 
   <div class="dashboard-grid">
 
-    <article class="dashboard-card briefing-card">
-      <div class="card-topline">
-        <span class="status-dot"></span>
-        <span>Updated Today</span>
-      </div>
+   <article class="dashboard-card alerts-card">
+  <section class="alerts-panel">
+    <h2>Active Weather Alerts</h2>
 
-      <h3>Current Weather Focus</h3>
+    <div class="alert-tabs">
+      <button class="active">Storm Based (19)</button>
+      <button>Tropical (0)</button>
+      <button>Winter (38)</button>
+      <button>Marine (0)</button>
+    </div>
 
-      <p class="briefing-text">
-        Quiet pattern for now, but monitoring long-range signals for increased
-        storm potential across the Southeast.
-      </p>
+    <div class="alert-list">
+      <div class="alert-item yellow">
+        <div class="alert-row">
+          <span class="alert-left">⚠️ Severe Thunderstorm Warning</span>
 
-      <div class="briefing-meta">
-        <div>
-          <span class="meta-label">Primary Concern</span>
-          <strong>Monitoring</strong>
-        </div>
-
-        <div>
-          <span class="meta-label">Confidence</span>
-          <strong>Medium</strong>
-        </div>
-
-        <div>
-          <span class="meta-label">Region</span>
-          <strong>Southeast</strong>
+          <div class="alert-right">
+            <strong>1</strong>
+            <button class="alert-details-btn" type="button" data-modal-target="stormModal">
+              Details
+            </button>
+          </div>
         </div>
       </div>
 
-      <a href="wx-updates.html" class="dashboard-button">Read Full Briefing</a>
-    </article>
+      <div class="alert-item magenta">
+        <div class="alert-row">
+          <span class="alert-left">⚠️ Tornado Watch</span>
 
-   <article class="dashboard-card mini-card radar-card">
-  <span class="mini-label">Radar</span>
-  <h3>Live Radar</h3>
-
-  <iframe
-    src="https://embed.windy.com/embed2.html?lat=35.78&lon=-79.80&zoom=5&level=surface&overlay=radar&product=radar"
-    class="radar-frame">
-   </iframe>
-   
-   <p>Track storms and radar trends.</p>
-  </article>
-
-    <article class="dashboard-card mini-card spc-card">
-  <span class="mini-label">Outlook</span>
-  <h3>SPC Forecast</h3>
-
-  <div class="spc-graphics-stack">
-
-    <a href="https://www.spc.noaa.gov/products/outlook/day1otlk.html" target="_blank" class="spc-item">
-      <span>Day 1 Outlook</span>
-    </a>
-
-    <a href="https://www.spc.noaa.gov/products/outlook/day2otlk.html" target="_blank" class="spc-item">
-      <span>Day 2 Outlook</span>
-    </a>
-
-    <a href="https://www.spc.noaa.gov/products/outlook/day3otlk.html" target="_blank" class="spc-item">
-      <span>Day 3 Outlook</span>
-    </a>
-
-    <a href="https://www.spc.noaa.gov/products/exper/day4-8/" target="_blank" class="spc-item">
-      <span>Days 4–8 Outlook</span>
-    </a>
-
-  </div>
+          <div class="alert-right">
+            <strong>6</strong>
+            <button class="alert-details-btn" type="button">
+              Details
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 </article>
 
     <article class="dashboard-card alerts-card">
@@ -1072,54 +1043,6 @@ nav a {
     </div>
   </div>
   
- <div class="alert-modal">
-  <div class="alert-modal-backdrop"></div>
-
-  <div class="alert-modal-box">
-    <button class="alert-modal-close" type="button">×</button>
-
-    <div class="warning-detail-card">
-
-    <h4>What to Expect</h4>
-
-    <p class="warning-summary">
-      THIS IS A TEST! THERE ARE NO ACTIVE WARNINGS.
-    </p>
-
-    <div class="warning-hazards">
-  <div class="hazard-box">
-    <span class="hazard-label">🌬️ Max Wind</span>
-    <span class="hazard-value">60 MPH</span>
-  </div>
-
-  <div class="hazard-box">
-    <span class="hazard-label">🧊 Max Hail</span>
-    <span class="hazard-value">1.00 IN</span>
-  </div>
-
-  <div class="hazard-box">
-    <span class="hazard-label">📡 Source</span>
-    <span class="hazard-value">Radar Indicated</span>
-  </div>
-</div>
-
-    <div class="warning-info">
-      <p><span>📍 Where</span> Guilford, Alamance, Rockingham</p>
-      <p><span>🕘 When</span> Until 2:30 PM EDT</p>
-    </div>
-
-    <div class="warning-impacts">
-      <strong>⚠️ Expected Impacts</strong>
-      <p>THIS IS A TEST! THERE ARE NO ACTIVE WARNINGS.</p>
-    </div>
-
-    <div class="warning-bottom">
-      Hail: <strong>1.00"</strong> Wind: <strong>60MPH</strong>
-    </div>
-  </div>
-</div>
-</div>
-
       <div class="alert-item magenta">
   <div class="alert-row">
     <span class="alert-left">
