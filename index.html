@@ -256,45 +256,45 @@
 /* Storm */
 .alerts-card.storm-active .state-alert-dropdown > summary:hover,
 .alerts-card.storm-active .state-alert-group > summary:hover {
-  background: linear-gradient(135deg, #ffb21f, #ff9d00);
+  background: linear-gradient(135deg, #ffb21c, #e49700);
   color: #000;
-  box-shadow: 0 0 22px rgba(255,178,31,0.55);
+  box-shadow: 0 0 26px rgba(255,178,28,0.55);
   border-color: transparent;
 }
 
 /* Tropical */
-.alerts-card.storm-active .state-alert-dropdown > summary:hover,
-.alerts-card.storm-active .state-alert-group > summary:hover {
-  background: linear-gradient(135deg, #49d6ff, #169eff);
-  color: #001522;
-  box-shadow: 0 0 22px rgba(73,214,255,0.5);
+.alerts-card.tropical-active .state-alert-dropdown > summary:hover,
+.alerts-card.tropical-active .state-alert-group > summary:hover {
+  background: linear-gradient(135deg, rgb(161,54,113), rgb(133,38,91));
+  color: #fff;
+  box-shadow: 0 0 26px rgba(161,54,113,0.50);
   border-color: transparent;
 }
 
 /* Winter */
-.alerts-card.storm-active .state-alert-dropdown > summary:hover,
-.alerts-card.storm-active .state-alert-group > summary:hover {
-  background: linear-gradient(135deg, #7ecbff, #4da9ff);
-  color: #00111f;
-  box-shadow: 0 0 22px rgba(59,157,255,0.45);
+.alerts-card.winter-active .state-alert-dropdown > summary:hover,
+.alerts-card.winter-active .state-alert-group > summary:hover {
+  background: linear-gradient(135deg, #3b9dff, #2679d8);
+  color: #fff;
+  box-shadow: 0 0 26px rgba(59,157,255,0.50);
   border-color: transparent;
 }
 
 /* Hydro */
-.alerts-card.storm-active .state-alert-dropdown > summary:hover,
-.alerts-card.storm-active .state-alert-group > summary:hover {
-  background: linear-gradient(135deg, #00d26a, #00a84f);
-  color: #001a0b;
-  box-shadow: 0 0 22px rgba(0,210,106,0.45);
+.alerts-card.hydro-active .state-alert-dropdown > summary:hover,
+.alerts-card.hydro-active .state-alert-group > summary:hover {
+  background: linear-gradient(135deg, #00a008, #007a05);
+  color: #fff;
+  box-shadow: 0 0 26px rgba(0,160,8,0.50);
   border-color: transparent;
 }
 
 /* Fire */
-.alerts-card.storm-active .state-alert-dropdown > summary:hover,
-.alerts-card.storm-active .state-alert-group > summary:hover {
-  background: linear-gradient(135deg, #ff8318, #ff5d00);
-  color: #1a0900;
-  box-shadow: 0 0 22px rgba(255,131,24,0.45);
+.alerts-card.fire-active .state-alert-dropdown > summary:hover,
+.alerts-card.fire-active .state-alert-group > summary:hover {
+  background: linear-gradient(135deg, #d83d18, #a9280c);
+  color: #fff;
+  box-shadow: 0 0 26px rgba(216,61,24,0.50);
   border-color: transparent;
 }
 /* ALERT COUNT MATCHES ACTIVE CATEGORY */
@@ -1865,6 +1865,11 @@ alertsCard.classList.add(`${button.dataset.category}-active`);
 });
 
 fetchHomepageAlerts();
+const defaultAlertsCard = document.querySelector(".alerts-card");
+
+if (defaultAlertsCard) {
+  defaultAlertsCard.classList.add("storm-active");
+}
 setInterval(fetchHomepageAlerts, 60000);
 </script>
 
