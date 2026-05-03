@@ -1531,8 +1531,33 @@ renderCompactAlerts(stormBasedAlerts);
       `;
     });
 }
+function renderCategory(category) {
+  currentCategory = category;
+
+  const allowedEvents = alertCategories[category] || [];
+
+  const filteredAlerts = allHomepageAlerts.filter(item =>
+    allowedEvents.includes(item.properties.event)
+  );
+
+  allHomepageAlerts = uniqueFeatures;
+renderCategory(currentCategory);
+
+}
 
 fetchHomepageAlerts();
+document.querySelectorAll(".alert-tabs button").forEach(button => {
+  button.addEventListener("click", () => {
+    document.querySelectorAll(".alert-tabs button").forEach(btn => {
+      btn.classList.remove("active");
+    });
+
+    button.classList.add("active");
+
+    const category = button.dataset.category;
+    renderCategory(category);
+  });
+});
 document.addEventListener("click", function (event) {
   const oldDetailsBtn = event.target.closest(".alert-details-btn");
   const compactDetailsBtn = event.target.closest(".compact-details-btn");
@@ -1564,6 +1589,18 @@ document.addEventListener("click", function (event) {
       modal.classList.remove("is-open");
     }
   }
+});
+document.querySelectorAll(".alert-tabs button").forEach(button => {
+  button.addEventListener("click", () => {
+    document.querySelectorAll(".alert-tabs button").forEach(btn => {
+      btn.classList.remove("active");
+    });
+
+    button.classList.add("active");
+
+    const category = button.dataset.category;
+    renderCategory(category);
+  });
 });
 </script>
 </body>
