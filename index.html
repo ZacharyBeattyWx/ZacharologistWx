@@ -1065,7 +1065,9 @@ nav a {
 
    <div class="alert-right">
     <strong>1</strong>
-    <button class="alert-details-btn" type="button">Details</button>
+   <button class="alert-details-btn" type="button" data-modal-target="stormModal">
+  Details
+</button>
      </div>
     </div>
   </div>
@@ -1131,41 +1133,57 @@ nav a {
   </div>
 </div>
 
-<div class="alert-modal">
+    </div> <!-- alert-list -->
+  </section>
+</article>
+
+  </div> <!-- dashboard-grid -->
+</section> <!-- forecast-dashboard -->
+
+<div class="alert-modal" id="stormModal">
   <div class="alert-modal-backdrop"></div>
 
   <div class="alert-modal-box">
     <button class="alert-modal-close" type="button">×</button>
 
     <div class="warning-detail-card">
-      <p>Tornado watch details.</p>
-    </div>
-  </div>
-</div>
-</section>
-</article>
-</div>
-</section>
 
-<div class="section-alt">
-  <div class="section-block">
-    <h2 class="section-title">Storm Chasing</h2>
-    <div class="grid">
+      <h4>What to Expect</h4>
 
-      <a class="card" href="wx-updates.html">
-  <h2>Wx Updates</h2>
-  <p>Forecast Thoughts and Weather Updates!</p>
-</a>
+      <p class="warning-summary">
+        THIS IS A TEST! THERE ARE NO ACTIVE WARNINGS.
+      </p>
 
-      <a class="card" href="#">
-        <h2>Chase Logs</h2>
-        <p>Storm Chasing Reports and Highlights!</p>
-      </a>
+      <div class="warning-hazards">
+        <div class="hazard-box">
+          <span class="hazard-label">🌬️ Max Wind</span>
+          <span class="hazard-value">60 MPH</span>
+        </div>
 
-      <a class="card" href="#">
-        <h2>Media</h2>
-        <p>Storm Chases, Astrophotography, and More!</p>
-      </a>
+        <div class="hazard-box">
+          <span class="hazard-label">🧊 Max Hail</span>
+          <span class="hazard-value">1.00 IN</span>
+        </div>
+
+        <div class="hazard-box">
+          <span class="hazard-label">📡 Source</span>
+          <span class="hazard-value">Radar Indicated</span>
+        </div>
+      </div>
+
+      <div class="warning-info">
+        <p><span>📍 Where</span> Guilford, Alamance, Rockingham</p>
+        <p><span>🕘 When</span> Until 2:30 PM EDT</p>
+      </div>
+
+      <div class="warning-impacts">
+        <strong>⚠️ Expected Impacts</strong>
+        <p>THIS IS A TEST! THERE ARE NO ACTIVE WARNINGS.</p>
+      </div>
+
+      <div class="warning-bottom">
+        Hail: <strong>1.00"</strong> Wind: <strong>60MPH</strong>
+      </div>
 
     </div>
   </div>
