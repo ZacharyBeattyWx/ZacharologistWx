@@ -204,21 +204,18 @@
   line-height: 1.6;
 }
 
- .dashboard-grid {
+.dashboard-grid {
   display: grid;
-  grid-template-columns: 1.15fr 1.85fr;
+  grid-template-columns: 1fr 1.45fr;
   gap: 28px;
   width: 98%;
   max-width: 1500px;
   margin: 0 auto;
   align-items: start;
 }
-.briefing-card {
-  grid-column: 1;
-}
 
-.radar-card {
-  grid-column: 2;
+.briefing-card {
+  grid-column: 1 / -1;
 }
 
 .spc-card {
@@ -226,8 +223,12 @@
 }
 
 .alerts-card {
+  grid-column: 1;
+}
+
+.radar-card {
   grid-column: 2;
-  width: 100%;
+  grid-row: 2 / span 2;
 }
 
 .dashboard-card {
