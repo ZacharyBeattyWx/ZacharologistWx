@@ -1505,20 +1505,8 @@ function fetchHomepageAlerts() {
         new Map(allFeatures.map(item => [item.id, item])).values()
       );
 
-      const stormBasedAlerts = uniqueFeatures.filter(item =>
-  [
-    "Tornado Warning",
-    "Severe Thunderstorm Warning",
-    "Flash Flood Warning",
-    "Special Marine Warning",
-    "Special Weather Statement",
-    "Tornado Watch",
-    "Severe Thunderstorm Watch",
-    "Flash Flood Watch"
-  ].includes(item.properties.event)
-);
-
-renderCompactAlerts(stormBasedAlerts);
+     allHomepageAlerts = uniqueFeatures;
+renderCategory(currentCategory);
     })
     .catch(error => {
       console.error(error);
@@ -1540,9 +1528,7 @@ function renderCategory(category) {
     allowedEvents.includes(item.properties.event)
   );
 
-  allHomepageAlerts = uniqueFeatures;
-renderCategory(currentCategory);
-
+  renderCompactAlerts(filteredAlerts, category);
 }
 
 fetchHomepageAlerts();
@@ -1590,18 +1576,7 @@ document.addEventListener("click", function (event) {
     }
   }
 });
-document.querySelectorAll(".alert-tabs button").forEach(button => {
-  button.addEventListener("click", () => {
-    document.querySelectorAll(".alert-tabs button").forEach(btn => {
-      btn.classList.remove("active");
-    });
 
-    button.classList.add("active");
-
-    const category = button.dataset.category;
-    renderCategory(category);
-  });
-});
 </script>
 </body>
 </html>
