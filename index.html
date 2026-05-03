@@ -947,20 +947,28 @@ body {
 }
 
 @media (min-width: 769px) {
+  .alerts-panel h2 {
+    text-align: center;
+  }
+
   .alert-tabs {
-    justify-content: center;
-    flex-wrap: nowrap;
-    overflow-x: visible;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 14px;
-    padding: 8px 0 14px;
+    overflow: visible;
+    padding: 8px 0 16px;
+    margin-bottom: 18px;
+    scroll-padding-right: 0;
   }
 
   .alert-tabs button {
-    min-width: 96px;
+    width: 100%;
+    min-width: 0;
+    text-align: center;
   }
 
-  .alert-tabs-wrapper::after,
-  .alert-tabs::after {
+  .alert-tabs::after,
+  .alert-tabs-wrapper::after {
     display: none;
   }
 
