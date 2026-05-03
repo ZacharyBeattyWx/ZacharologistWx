@@ -775,6 +775,12 @@
 .compact-details-btn:hover {
   background: rgba(255,255,255,0.22);
 }
+.compact-alert-item:only-child {
+  min-height: 90px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
 html,
 body {
   width: 100%;
@@ -1299,7 +1305,7 @@ function renderCompactAlerts(alerts) {
     alertsList.appendChild(card);
   });
 
-  
+
 }
 
 
