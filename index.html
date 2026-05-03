@@ -1179,9 +1179,8 @@ document.addEventListener("click", function (event) {
   const detailsBtn = event.target.closest(".alert-details-btn");
 
   if (detailsBtn) {
-    const modal = detailsBtn
-      .closest(".alert-item")
-      .nextElementSibling;
+    const modalId = detailsBtn.dataset.modalTarget;
+    const modal = document.getElementById(modalId);
 
     if (modal) {
       modal.classList.add("is-open");
@@ -1192,7 +1191,11 @@ document.addEventListener("click", function (event) {
   const backdrop = event.target.closest(".alert-modal-backdrop");
 
   if (closeBtn || backdrop) {
-    event.target.closest(".alert-modal").classList.remove("is-open");
+    const modal = event.target.closest(".alert-modal");
+
+    if (modal) {
+      modal.classList.remove("is-open");
+    }
   }
 });
 </script>
