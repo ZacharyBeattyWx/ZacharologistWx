@@ -402,8 +402,14 @@
   display: flex;
   gap: 10px;
   overflow-x: auto;
-  padding-bottom: 14px;
+  padding-bottom: 10px;
   margin-bottom: 16px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.alert-tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .alert-tabs button {
@@ -416,6 +422,9 @@
   font-weight: 700;
   white-space: nowrap;
   transition: 0.2s ease;
+}
+.alert-tabs button {
+  flex-shrink: 0;
 }
 
 .alert-tabs button.active {
@@ -1123,11 +1132,14 @@ nav a {
     <h2>Active Weather Alerts</h2>
 
     <div class="alert-tabs">
-      <button class="active">Storm Based</button>
-      <button>Tropical</button>
-      <button>Winter</button>
-      <button>Marine</button>
-    </div>
+  <button class="active" data-category="storm">Storm Based</button>
+  <button data-category="tropical">Tropical</button>
+  <button data-category="winter">Winter</button>
+  <button data-category="nonprecip">Non-Precip</button>
+  <button data-category="hydro">Hydro</button>
+  <button data-category="fire">Fire</button>
+  <button data-category="marine">Marine</button>
+</div>
 
     <div id="alertsList" class="compact-alert-list"></div>
 
