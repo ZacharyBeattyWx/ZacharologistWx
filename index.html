@@ -393,9 +393,26 @@
 }
 
 .alerts-panel h2 {
-  font-size: 22px;
-  margin-bottom: 18px;
-  color: #ffb21c;
+  color: white;
+}
+
+.alerts-panel h2.new-alert-glow {
+  animation: alertTitleGlow 2.4s ease-in-out infinite;
+  cursor: pointer;
+}
+
+@keyframes alertTitleGlow {
+  0%, 100% {
+    text-shadow:
+      0 0 4px rgba(255,255,255,0.25),
+      0 0 10px rgba(255,178,28,0.18);
+  }
+
+  50% {
+    text-shadow:
+      0 0 8px rgba(255,255,255,0.65),
+      0 0 22px rgba(255,178,28,0.45);
+  }
 }
 
 .alert-tabs {
@@ -1204,7 +1221,7 @@ nav a {
     <article class="dashboard-card alerts-card">
   <section class="alerts-panel">
 
-    <h2>Active Weather Alerts</h2>
+    <h2 id="alertsTitle">Active Weather Alerts</h2>
 
     <div class="alert-tabs-wrapper">
   <div class="alert-tabs">
@@ -1318,7 +1335,10 @@ const alertUrls = [
 ];
 let allHomepageAlerts = [];
 let currentCategory = "storm";
-
+const alertsTitle = document.getElementById("alertsTitle");
+let knownAlertIds = new Set();
+let hasLoadedAlertsOnce = false;
+let alertGlowTimer = null;
 const alertCategories = {
   storm: [
     "Tornado Warning",
@@ -1479,9 +1499,20 @@ function renderCompactAlerts(alerts, category = "storm") {
     alertsList.appendChild(card);
   });
 
-
 }
 
+function triggerNewAlertGlow() {
+  if (!alertsTitle) return;
+
+  alertsTitle.classList.add("new-alert-glow");
+
+  clearTimeout(alertGlowTimer);
+
+  alertGlowTimer = setTimeout(() => {
+    alertsTitle.classList.remove("new-alert-glow");
+  }, 30000);
+
+}
 
 function fetchHomepageAlerts() {
   if (!alertsList) return;
@@ -1509,7 +1540,20 @@ function fetchHomepageAlerts() {
         new Map(allFeatures.map(item => [item.id, item])).values()
       );
 
-     allHomepageAlerts = uniqueFeatures;
+    const currentIds = new Set(uniqueFeatures.map(alert => alert.id));
+
+const hasNewAlert =
+  hasLoadedAlertsOnce &&
+  uniqueFeatures.some(alert => !knownAlertIds.has(alert.id));
+
+knownAlertIds = currentIds;
+hasLoadedAlertsOnce = true;
+
+if (hasNewAlert) {
+  triggerNewAlertGlow();
+}
+
+allHomepageAlerts = uniqueFeatures;
 renderCategory(currentCategory);
     })
     .catch(error => {
@@ -1536,6 +1580,13 @@ function renderCategory(category) {
 }
 
 fetchHomepageAlerts();
+setInterval(fetchHomepageAlerts, 300000);
+if (alertsTitle) {
+  alertsTitle.addEventListener("click", () => {
+    alertsTitle.classList.remove("new-alert-glow");
+    clearTimeout(alertGlowTimer);
+  });
+}
 document.querySelectorAll(".alert-tabs button").forEach(button => {
   button.addEventListener("click", () => {
     document.querySelectorAll(".alert-tabs button").forEach(btn => {
