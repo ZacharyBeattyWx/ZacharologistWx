@@ -819,6 +819,8 @@ nav a {
     grid-template-columns: 1fr;
   }
   .alerts-panel {
+    overflow: visible !important;
+  position: relative;
     padding: 14px;
   }
 
@@ -913,6 +915,7 @@ nav a {
 .radar-card,
 .spc-card,
 .alerts-card {
+  overflow: visible !important;
   grid-column: 1 / -1 !important;
   grid-row: auto !important;
   width: 100%;
@@ -925,6 +928,9 @@ nav a {
   height: 420px !important;
 }
 .alert-modal {
+  position: fixed !important;
+  inset: 0;
+  z-index: 999999;
   align-items: center !important;
   overflow: hidden;
   padding: 18px;
