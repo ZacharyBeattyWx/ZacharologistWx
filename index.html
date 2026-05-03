@@ -913,6 +913,42 @@
   justify-content: flex-end;
   margin-top: 8px;
 }
+.state-alert-dropdown,
+.state-alert-group {
+  margin-top: 14px;
+}
+
+.state-alert-dropdown > summary,
+.state-alert-group > summary {
+  list-style: none;
+  cursor: pointer;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.13);
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-weight: 800;
+}
+
+.state-alert-dropdown > summary::-webkit-details-marker,
+.state-alert-group > summary::-webkit-details-marker {
+  display: none;
+}
+
+.state-alert-dropdown > summary::after,
+.state-alert-group > summary::after {
+  content: "▾";
+  float: right;
+  opacity: 0.8;
+}
+
+.state-alert-dropdown:not([open]) > summary::after,
+.state-alert-group:not([open]) > summary::after {
+  content: "▸";
+}
+
+.state-alert-group .compact-alert-item {
+  margin-top: 12px;
+}
 
 .compact-details-btn {
   border: 0;
