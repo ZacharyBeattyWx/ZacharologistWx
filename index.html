@@ -1735,20 +1735,73 @@ function triggerNewAlertGlow() {
 function renderCategory(category) {
   currentCategory = category;
 
-  const allowedEvents = alertCategories[category] || [];
+  const filteredAlerts = allHomepageAlerts.filter(alert => {
+    const event = alert.properties.event;
 
-  const filteredAlerts = allHomepageAlerts.filter(alert =>
-    allowedEvents.includes(alert.properties.event)
-  );
-  function getStateFromAlert(alert) {
-  const geocode = alert.properties.geocode;
+    if (category === "storm") {
+      return (
+        [
+          "Tornado Warning",
+          "Severe Thunderstorm Warning",
+          "Flash Flood Warning",
+          "Flash Flood Watch",
+          "Tornado Watch",
+          "Severe Thunderstorm Watch"
+        ].includes(event)
 
-  if (geocode && geocode.UGC && geocode.UGC.length) {
-    return geocode.UGC[0].slice(0, 2);
-  }
+        ||
 
-  return "??";
-}
+        (
+          event === "Special Weather Statement" &&
+          hasValidPolygon(alert)
+        )
+      );
+    }
+
+    if (category === "tropical") {
+      return [
+        "Hurricane Warning",
+        "Tropical Storm Warning",
+        "Storm Surge Warning"
+      ].includes(event);
+    }
+
+    if (category === "winter") {
+      return [
+        "Winter Storm Warning",
+        "Blizzard Warning",
+        "Ice Storm Warning",
+        "Winter Weather Advisory",
+        "Freeze Warning"
+      ].includes(event);
+    }
+
+    if (category === "hydro") {
+      return (
+        [
+          "Flood Warning",
+          "Flood Watch",
+          "Coastal Flood Warning"
+        ].includes(event)
+
+        ||
+
+        (
+          event === "Special Weather Statement" &&
+          !hasValidPolygon(alert)
+        )
+      );
+    }
+
+    if (category === "fire") {
+      return [
+        "Red Flag Warning",
+        "Fire Weather Watch"
+      ].includes(event);
+    }
+
+    return false;
+  });
 
   renderCompactAlerts(filteredAlerts, category);
 }
@@ -1791,26 +1844,57 @@ async function fetchHomepageAlerts() {
 
     const allFeatures = dataSets.flatMap(data => data.features || []);
 
-    const uniqueAlerts = Array.from(
-      new Map(allFeatures.map(alert => [alert.id, alert])).values()
-    );
+   const uniqueFeatures = Array.from(
+  new Map(allFeatures.map(item => [item.id, item])).values()
+);
 
-    const currentIds = new Set(uniqueAlerts.map(alert => alert.id));
+function hasValidPolygon(alert) {
+  return (
+    alert.geometry &&
+    alert.geometry.type &&
+    alert.geometry.coordinates &&
+    alert.geometry.coordinates.length > 0
+  );
+}
 
-    const hasNewAlert =
-      hasLoadedAlertsOnce &&
-      uniqueAlerts.some(alert => !knownAlertIds.has(alert.id));
+const uniqueAlerts = uniqueFeatures.filter(alert => {
+  const event = alert.properties.event;
 
-    knownAlertIds = currentIds;
-    hasLoadedAlertsOnce = true;
+  return (
+    [
+      "Tornado Warning",
+      "Severe Thunderstorm Warning",
+      "Flash Flood Warning",
+      "Tornado Watch",
+      "Severe Thunderstorm Watch",
+      "Flood Watch",
+      "Wind Advisory",
+      "Winter Weather Advisory",
+      "Freeze Warning",
+      "Dense Fog Advisory",
+      "Heat Advisory",
+      "Red Flag Warning"
+    ].includes(event) ||
+    event === "Special Weather Statement"
+  );
+});
 
-    if (hasNewAlert) {
-      triggerNewAlertGlow();
-    }
+const currentIds = new Set(uniqueAlerts.map(alert => alert.id));
 
-    allHomepageAlerts = uniqueAlerts;
+const hasNewAlert =
+  hasLoadedAlertsOnce &&
+  uniqueAlerts.some(alert => !knownAlertIds.has(alert.id));
 
-    renderCategory(currentCategory);
+knownAlertIds = currentIds;
+hasLoadedAlertsOnce = true;
+
+if (hasNewAlert) {
+  triggerNewAlertGlow();
+}
+
+allHomepageAlerts = uniqueAlerts;
+
+renderCategory(currentCategory);
 
   } catch (error) {
     console.error("NWS alert loading error:", error);
