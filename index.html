@@ -1682,9 +1682,8 @@ function renderCompactAlerts(alerts, category) {
     groupedByState[state].push(alert);
   });
 
-  const wrapper = document.createElement("details");
-  wrapper.className = "state-alert-dropdown";
-  wrapper.open = true;
+ const wrapper = document.createElement("details");
+wrapper.className = "state-alert-dropdown";
 
   wrapper.innerHTML = `
     <summary>
