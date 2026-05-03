@@ -407,6 +407,24 @@
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
+.alert-tabs-wrapper {
+  position: relative;
+}
+
+.alert-tabs-wrapper::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 40px;
+  height: 100%;
+  pointer-events: none;
+  background: linear-gradient(
+    to right,
+    rgba(5,10,18,0),
+    rgba(5,10,18,0.95)
+  );
+}
 
 .alert-tabs::-webkit-scrollbar {
   display: none;
@@ -1131,7 +1149,8 @@ nav a {
 
     <h2>Active Weather Alerts</h2>
 
-    <div class="alert-tabs">
+    <div class="alert-tabs-wrapper">
+  <div class="alert-tabs">
   <button class="active" data-category="storm">Storm Based</button>
   <button data-category="tropical">Tropical</button>
   <button data-category="winter">Winter</button>
@@ -1140,7 +1159,7 @@ nav a {
   <button data-category="fire">Fire</button>
   <button data-category="marine">Marine</button>
 </div>
-
+</div>
     <div id="alertsList" class="compact-alert-list"></div>
 
   </section>
