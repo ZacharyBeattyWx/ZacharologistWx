@@ -666,8 +666,7 @@
   display: none;
   position: fixed;
   inset: 0;
-  z-index: 99999;
-  background: rgba(0, 0, 0, 0);
+  z-index: 999999;
   align-items: center;
   justify-content: center;
   padding: 20px;
@@ -680,20 +679,16 @@
 .alert-modal-backdrop {
   position: absolute;
   inset: 0;
-  background: transparent;
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(6px);
 }
 
 .alert-modal-box {
   position: relative;
-  z-index: 1;
-  width: min(760px, 94vw);
-  max-height: 86vh;
+  z-index: 2;
+  width: min(760px, 95vw);
+  max-height: 88vh;
   overflow-y: auto;
-  background: #101820;
-  border: 1px solid rgba(255,255,255,0.14);
-  border-radius: 18px;
-  padding: 18px;
-  box-shadow: none;
 }
 
 .alert-modal-close {
