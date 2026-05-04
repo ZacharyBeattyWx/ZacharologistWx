@@ -1214,17 +1214,19 @@ body {
     overflow: visible;
   }
 
+  @media (min-width: 769px) {
   .alert-tabs-wrapper {
     width: 100%;
-    overflow: hidden;
+    overflow: visible;
   }
 
   .alert-tabs {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
     width: 100%;
-    padding: 0;
+    padding: 0 0 18px;
+    overflow: visible;
   }
 
   .alert-tabs button {
