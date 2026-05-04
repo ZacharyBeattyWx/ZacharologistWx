@@ -649,9 +649,7 @@
   }
 }
 
-.alert-tabs button.has-alerts::before {
-  animation: tabGlowPulse .45s linear infinite;
-}
+
 
 .alert-tabs button.no-alerts {
   background: rgba(255,255,255,0.05);
@@ -710,17 +708,6 @@
   background: rgba(184,61,24,0.40);
 }
 
-.alert-tabs button.has-alerts::before {
-  animation: tabGlowPulse 3.2s ease-in-out infinite;
-}
-
-.alert-tabs button.has-alerts {
-  animation: alertGlowPulse 4s ease-in-out infinite;
-}
-
-.alert-tabs button.has-alerts {
-  animation: alertPulse 3.8s ease-in-out infinite;
-}
 .alert-list {
   display: flex;
   flex-direction: column;
@@ -1135,6 +1122,38 @@
   flex-direction: column;
   justify-content: center;
 }
+@keyframes tabGlowPulse {
+  0% {
+    opacity: 0.55;
+    transform: scale(0.98);
+    filter: blur(16px);
+  }
+
+  50% {
+    opacity: 1.75;
+    transform: scale(1.18);
+    filter: blur(34px);
+  }
+
+  100% {
+    opacity: 0.55;
+    transform: scale(0.98);
+    filter: blur(16px);
+  }
+}
+
+.alert-tabs button::before {
+  transition: none !important;
+  will-change: transform, opacity, filter;
+}
+
+.alert-tabs button.has-alerts::before {
+  animation: tabGlowPulse 0.7s linear infinite !important;
+}
+
+.alert-tabs button.has-alerts::before {
+  animation: tabGlowPulse 0.9s linear infinite !important;
+}
 html,
 body {
   width: 100%;
@@ -1418,6 +1437,13 @@ nav a {
   max-height: none;
   overflow: visible;
 }
+}
+.alert-tabs button::before {
+  transition: none !important;
+}
+
+.alert-tabs button.has-alerts::before {
+  animation: tabGlowPulse 0.9s linear infinite !important;
 }
   </style>
 </head>
