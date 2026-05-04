@@ -629,6 +629,26 @@
   filter: blur(16px);
   transition: opacity 0.25s ease;
 }
+@keyframes tabGlowPulse {
+  0% {
+    opacity: 0.35;
+    transform: scale(0.96);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+
+  100% {
+    opacity: 0.35;
+    transform: scale(0.96);
+  }
+}
+
+.alert-tabs button.has-alerts::before {
+  animation: tabGlowPulse 3.2s ease-in-out infinite;
+}
 .alert-tabs button.no-alerts {
   background: rgba(255,255,255,0.05);
   color: #c8d2e5;
@@ -685,18 +705,9 @@
   opacity: 1;
   background: rgba(184,61,24,0.40);
 }
-@keyframes alertGlowPulse {
-  0% {
-    box-shadow: 0 0 10px rgba(255,255,255,0.12);
-  }
 
-  50% {
-    box-shadow: 0 0 24px rgba(255,255,255,0.28);
-  }
-
-  100% {
-    box-shadow: 0 0 10px rgba(255,255,255,0.12);
-  }
+.alert-tabs button.has-alerts::before {
+  animation: tabGlowPulse 3.2s ease-in-out infinite;
 }
 
 .alert-tabs button.has-alerts {
