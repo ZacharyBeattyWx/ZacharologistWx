@@ -156,9 +156,18 @@
   }
 }
 
-.card[href="#"] {
+@keyframes mediaFade {
+  0%, 100% {
+    background: rgba(18, 25, 42, 0.85);
+  }
+
+  50% {
+    background: rgba(70, 95, 155, 0.92);
+  }
+}
+
+.media-card {
   animation: mediaFade 1.8s linear infinite;
-  box-shadow: 0 18px 35px rgba(0,0,0,0.28);
 }  
 .card {
   transition: all 0.25s ease;
@@ -1570,28 +1579,24 @@ nav a {
   </div>
 </section>
 
-<div class="section-alt">
-  <div class="section-block">
-    <h2 class="section-title">Storm Chasing</h2>
+<div class="grid">
 
-    <div class="grid">
+  <a class="card" href="wx-updates.html">
+    <h2>Wx Updates</h2>
+    <p>Forecast Thoughts and Weather Updates!</p>
+  </a>
 
-      <a class="card" href="wx-updates.html">
-        <h2>Wx Updates</h2>
-        <p>Forecast Thoughts and Weather Updates!</p>
-      </a>
+  <a class="card" href="#">
+    <h2>Chase Logs</h2>
+    <p>Storm Chasing Reports and Highlights!</p>
+  </a>
 
-      <a class="card" href="#">
-        <h2>Chase Logs</h2>
-        <p>Storm Chasing Reports and Highlights!</p>
-      </a>
+  <a class="card media-card" href="#">
+    <h2>Media</h2>
+    <p>Storm Chases, Astrophotography, and More!</p>
+  </a>
 
-      <a class="card" href="#">
-        <h2>Media</h2>
-        <p>Storm Chases, Astrophotography, and More!</p>
-      </a>
-
-    </div>
+</div>
   </div>
 </div>
 
