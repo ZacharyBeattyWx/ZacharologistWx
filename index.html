@@ -1278,34 +1278,36 @@ body {
     scroll-padding-right: 46px;
   }
 .alert-tabs-wrapper {
-  width: 100%;
-  overflow-x: auto;
-  overflow-y: visible;
-  -webkit-overflow-scrolling: touch;
-  padding: 0 4px;
-}
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    padding: 0;
+    scrollbar-width: none;
+  }
 
-.alert-tabs {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 10px;
-  width: max-content;
-  min-width: 100%;
-  overflow: visible;
-  padding: 6px 46px 14px 0;
-  margin: 0;
-  scrollbar-width: none;
-}
+  .alert-tabs-wrapper::-webkit-scrollbar {
+    display: none;
+  }
 
-.alert-tabs::-webkit-scrollbar {
-  display: none;
-}
+  .alert-tabs {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 10px;
+    width: max-content;
+    min-width: max-content;
+    overflow: visible;
+    padding: 6px 26px 14px 26px;
+    margin: 0;
+  }
 
-.alert-tabs button {
-  flex: 0 0 auto;
-  min-width: 135px;
-  white-space: nowrap;
-}
+  .alert-tabs button {
+    flex: 0 0 135px;
+    min-width: 135px;
+    max-width: 135px;
+    white-space: nowrap;
+  }
 
 
   .alert-tabs-wrapper::after {
