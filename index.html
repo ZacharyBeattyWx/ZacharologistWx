@@ -1242,7 +1242,7 @@ body {
     margin: 0 auto;
   }
   .alerts-card {
-    overflow: hidden;
+    overflow: visible;
   }
 
   .alert-tabs-wrapper {
@@ -1277,12 +1277,22 @@ body {
     padding-right: 46px;
     scroll-padding-right: 46px;
   }
-  .alert-tabs {
-  display: flex;
-  gap: 10px;
+.alert-tabs-wrapper {
+  width: 100%;
   overflow-x: auto;
   overflow-y: visible;
-  padding: 6px 0 14px;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 4px;
+}
+
+.alert-tabs {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 10px;
+  width: max-content;
+  min-width: 100%;
+  overflow: visible;
+  padding: 6px 46px 14px 0;
   margin: 0;
   scrollbar-width: none;
 }
@@ -1296,12 +1306,7 @@ body {
   min-width: 135px;
   white-space: nowrap;
 }
-.alert-tabs-wrapper {
-  width: 100%;
-  overflow-x: auto;
-  overflow-y: visible;
-  padding-left: 0;
-}
+
 
   .alert-tabs-wrapper::after {
     width: 32px;
@@ -1366,20 +1371,21 @@ nav a {
   }
 
   .dashboard-card,
-  .alerts-card,
-  .radar-card,
-  .map-card {
-    width: 100%;
-    min-width: 0;
-    overflow: hidden;
-  }
+.radar-card,
+.map-card {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
 
-  .alert-tabs,
-  .warning-hazards {
-    overflow-x: auto;
-    max-width: 100%;
-    flex-wrap: nowrap;
-  }
+.alerts-card {
+  width: 100%;
+  min-width: 0;
+  overflow: visible;
+}
+.warning-hazards {
+  max-width: 100%;
+}
 .alert-item {
     background: rgba(255,255,255,0.06);
     border: 1px solid rgba(255,255,255,0.12);
