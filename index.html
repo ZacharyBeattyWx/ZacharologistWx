@@ -142,6 +142,23 @@
   background: rgba(28, 38, 62, 0.95);
   box-shadow: 0 22px 45px rgba(50,90,255,0.18);
   }
+  @keyframes mediaPulse {
+  0% {
+    box-shadow: 0 18px 35px rgba(0,0,0,0.28);
+  }
+
+  50% {
+    box-shadow: 0 0 34px rgba(90,120,255,0.42);
+  }
+
+  100% {
+    box-shadow: 0 18px 35px rgba(0,0,0,0.28);
+  }
+}
+
+.card[href="#"] {
+  animation: mediaPulse 1.4s linear infinite;
+}
 .card {
   transition: all 0.25s ease;
 }
