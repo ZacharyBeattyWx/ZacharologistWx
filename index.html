@@ -1203,13 +1203,16 @@ body {
 @media (min-width: 769px) {
 
   .dashboard-grid {
-    display: grid;
-    grid-template-columns: 0.9fr 1.4fr;
-    grid-template-rows: auto auto auto;
-    gap: 28px;
-    max-width: 1800px;
-    margin: 0 auto;
-    align-items: stretch;
+    align-items: start !important;
+  }
+
+  .radar-card {
+    height: fit-content !important;
+    min-height: auto !important;
+  }
+
+  .radar-frame {
+    height: 560px !important;
   }
 
   .briefing-card {
@@ -1248,18 +1251,7 @@ body {
   align-self: start;
 }
 @media (max-width: 768px) {
-  .dashboard-grid {
-    align-items: start !important;
-  }
-
-  .radar-card {
-    height: fit-content !important;
-    min-height: auto !important;
-  }
-
-  .radar-frame {
-    height: 560px !important;
-  }
+  
   .alert-tabs {
     flex-wrap: nowrap;
     overflow-x: auto;
