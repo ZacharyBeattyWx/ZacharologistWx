@@ -155,20 +155,7 @@
     background: rgba(18, 25, 42, 0.85);
   }
 }
-
-@keyframes mediaFade {
-  0%, 100% {
-    background: rgba(18, 25, 42, 0.85);
-  }
-
-  50% {
-    background: rgba(70, 95, 155, 0.92);
-  }
-}
-
-.media-card {
-  animation: mediaFade 1.8s linear infinite;
-}  
+ 
 .card {
   transition: all 0.25s ease;
 }
@@ -1176,6 +1163,10 @@
 
 .alert-tabs button.has-alerts::before {
   animation: tabGlowPulse 1.5s linear infinite !important;
+}
+.media-card {
+  animation: none !important;
+  background: rgba(70, 95, 155, 0.92);
 }
 
 html,
