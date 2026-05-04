@@ -1209,14 +1209,14 @@ body {
 @media (min-width: 769px) {
   .dashboard-grid {
     display: grid !important;
-    grid-template-columns: 0.8fr 1.35fr !important;
+    grid-template-columns: 1fr 1.35fr !important;
     grid-template-areas:
       "briefing briefing"
-      "alerts radar"
-      "spc radar" !important;
+      "spc radar"
+      "alerts alerts" !important;
     gap: 28px !important;
     width: 96% !important;
-    max-width: 1800px !important;
+    max-width: 1300px !important;
     margin: 0 auto !important;
     align-items: start !important;
   }
@@ -1231,19 +1231,17 @@ body {
     min-height: auto !important;
   }
 
-  .alerts-card {
-    grid-area: alerts !important;
-    height: fit-content !important;
-    min-height: auto !important;
-  }
-
   .radar-card {
     grid-area: radar !important;
-    height: 100% !important;
-    min-height: 720px !important;
-    display: flex !important;
-    flex-direction: column !important;
   }
+
+  .alerts-card {
+    grid-area: alerts !important;
+    max-width: 1050px;
+    width: 100%;
+    margin: 0 auto;
+  }
+}
 
   .briefing-meta {
     grid-template-columns: repeat(3, 1fr) !important;
