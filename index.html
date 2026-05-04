@@ -727,9 +727,15 @@
 .alert-item {
   border-radius: 14px;
   overflow: hidden;
-  border: 1px solid rgba(255,255,255,0.08);
-  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.05);
+  background: rgba(255,255,255,0.018);
+  opacity: 0.72;
   transition: 0.25s ease;
+}
+.alert-item.open {
+  opacity: 1;
+  background: rgba(255,255,255,0.07);
+  border-color: rgba(255,178,28,0.22);
 }
 
 .alert-item:hover {
