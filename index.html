@@ -1201,55 +1201,47 @@ body {
 }
 
 @media (min-width: 769px) {
-
   .dashboard-grid {
+    display: grid !important;
+    grid-template-columns: 0.8fr 1.35fr !important;
+    grid-template-areas:
+      "briefing briefing"
+      "spc radar"
+      "alerts radar" !important;
+    gap: 28px !important;
+    width: 96% !important;
+    max-width: 1800px !important;
+    margin: 0 auto !important;
     align-items: start !important;
   }
 
-  .radar-card {
+  .briefing-card {
+    grid-area: briefing !important;
+  }
+
+  .spc-card {
+    grid-area: spc !important;
     height: fit-content !important;
     min-height: auto !important;
   }
 
-  .radar-frame {
-  height: 640px !important;
-  }
-
-  .briefing-card {
-    grid-column: 1 / span 2;
-    grid-row: 1;
-  }
-
-  .spc-card {
-    grid-column: 1;
-    grid-row: 2;
-  }
-
   .alerts-card {
-    grid-column: 1;
-    grid-row: 3;
+    grid-area: alerts !important;
+    height: fit-content !important;
+    min-height: auto !important;
   }
 
- .radar-card {
-  grid-column: 2;
-  grid-row: 2 / span 2;
-  min-height: auto !important;
-  height: fit-content !important;
-}
+  .radar-card {
+    grid-area: radar !important;
+    height: 100% !important;
+    min-height: 720px !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
 
-.spc-card {
-  grid-column: 1;
-  grid-row: 2;
-  align-self: start;
-  min-height: auto !important;
-  height: fit-content;
-}
-
-.alerts-card {
-  grid-column: 1;
-  grid-row: 3;
-  align-self: start;
-}
+  .briefing-meta {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
 }
 @media (max-width: 768px) {
   
@@ -1373,17 +1365,6 @@ nav a {
   border-radius: 14px;
   display: block;
 }
-.radar-frame {
-  width: 100%;
-  height: 640px;
-  border: none;
-  border-radius: 14px;
-  margin: 16px 0;
-  overflow: hidden;
-  background: #0b1322;
-  display: block;
-}
-
   .warning-metrics {
     grid-template-columns: 1fr;
   }
@@ -1439,9 +1420,7 @@ nav a {
   grid-row: auto;
   min-height: auto;
 }
-.radar-frame {
-  height: 420px !important;
-}
+
 
 .radar-preview {
   height: auto;
@@ -1492,10 +1471,7 @@ nav a {
   min-width: 0;
 }
 
-.radar-frame {
-  width: 100%;
-  height: 420px !important;
-}
+
 .alert-modal {
   position: fixed !important;
   inset: 0;
