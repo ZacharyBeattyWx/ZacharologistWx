@@ -636,7 +636,7 @@
 
 .alert-tabs button.has-alerts[data-category="storm"]::before {
   opacity: 1;
-  background: rgba(255,178,28,0.42);
+  background: rgba(255,178,28,0.65);
   animation: tabGlowPulse 2s ease-in-out infinite;
 }
 
@@ -647,7 +647,7 @@
 
 .alert-tabs button.has-alerts[data-category="tropical"]::before {
   opacity: 1;
-  background: rgba(161,54,113,0.42);
+  background: rgba(161,54,113,0.65);
   animation: tabGlowPulse 2s ease-in-out infinite;
 }
 
@@ -658,7 +658,7 @@
 
 .alert-tabs button.has-alerts[data-category="winter"]::before {
   opacity: 1;
-  background: rgba(59,157,255,0.42);
+  background: rgba(59,157,255,0.65);
   animation: tabGlowPulse 2s ease-in-out infinite;
 }
 
@@ -669,7 +669,7 @@
 
 .alert-tabs button.has-alerts[data-category="hydro"]::before {
   opacity: 1;
-  background: rgba(0,160,8,0.38);
+  background: rgba(0,160,8,0.65);
   animation: tabGlowPulse 2s ease-in-out infinite;
 }
 
@@ -680,7 +680,7 @@
 
 .alert-tabs button.has-alerts[data-category="fire"]::before {
   opacity: 1;
-  background: rgba(184,61,24,0.40);
+  background: rgba(184,61,24,0.65);
   animation: tabGlowPulse 2s ease-in-out infinite;
 }
 /* BASE GLOW LAYER */
@@ -709,16 +709,16 @@
 /* CLEAN PULSE ANIMATION */
 @keyframes tabGlowPulse {
   0%, 100% {
-    opacity: 0.35;
-    transform: scale(0.96);
-    filter: blur(14px);
-  }
+  opacity: 0.45;
+  transform: scale(0.96);
+  filter: blur(16px);
+}
 
-  50% {
-    opacity: 1;
-    transform: scale(1.08);
-    filter: blur(26px);
-  }
+50% {
+  opacity: 1.25;
+  transform: scale(1.1);
+  filter: blur(30px);
+}
 }
 
 .alert-list {
