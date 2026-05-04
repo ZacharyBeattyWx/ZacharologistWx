@@ -572,14 +572,14 @@
 }
 
 .alert-tabs button.active {
-  background: #ffb21c;
-  color: black;
+  background: #ffb21c !important;
+  color: #000 !important;
+  box-shadow: none !important;
 }
 
-.alert-tabs button.active {
-  background: #ffb21c;
-  color: black;
-  box-shadow: none;
+.alert-tabs button.active::before {
+  opacity: 0 !important;
+  background: transparent !important;
 }
 
 .alert-tabs button[data-category="tropical"].active {
