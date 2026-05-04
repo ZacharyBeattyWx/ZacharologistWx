@@ -1502,6 +1502,43 @@ nav a {
 .alert-tabs button::before {
   transition: none !important;
 }
+@media (min-width: 769px) {
+  .dashboard-grid {
+    display: grid !important;
+    grid-template-columns: 0.9fr 1.4fr !important;
+    grid-template-rows: auto auto auto !important;
+    gap: 28px !important;
+    width: 96% !important;
+    max-width: 1800px !important;
+    margin: 0 auto !important;
+    align-items: stretch !important;
+  }
+
+  .briefing-card {
+    grid-column: 1 / 3 !important;
+    grid-row: 1 !important;
+  }
+
+  .spc-card {
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+  }
+
+  .alerts-card {
+    grid-column: 1 !important;
+    grid-row: 3 !important;
+  }
+
+  .radar-card {
+    grid-column: 2 !important;
+    grid-row: 2 / 4 !important;
+    min-height: 760px !important;
+  }
+
+  .briefing-meta {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+}
   </style>
 </head>
 
