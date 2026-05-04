@@ -685,7 +685,27 @@
   opacity: 1;
   background: rgba(184,61,24,0.40);
 }
+@keyframes alertGlowPulse {
+  0% {
+    box-shadow: 0 0 10px rgba(255,255,255,0.12);
+  }
 
+  50% {
+    box-shadow: 0 0 24px rgba(255,255,255,0.28);
+  }
+
+  100% {
+    box-shadow: 0 0 10px rgba(255,255,255,0.12);
+  }
+}
+
+.alert-tabs button.has-alerts {
+  animation: alertGlowPulse 4s ease-in-out infinite;
+}
+
+.alert-tabs button.has-alerts {
+  animation: alertPulse 3.8s ease-in-out infinite;
+}
 .alert-list {
   display: flex;
   flex-direction: column;
