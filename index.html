@@ -583,19 +583,10 @@
   box-shadow: none !important;
 }
 
-.alert-tabs button.active:not(.has-alerts)::before {
-  opacity: 0 !important;
-  background: transparent !important;
-}
 
 .alert-tabs button[data-category="tropical"].active {
   background: rgb(161, 54, 113);
   color: white;
-}
-
-.alert-tabs button[data-category="tropical"].active::before {
-  opacity: 1;
-  background: rgba(161,54,113,0.42);
 }
 
 .alert-tabs button[data-category="winter"].active {
@@ -603,29 +594,14 @@
   color: black;
 }
 
-.alert-tabs button[data-category="winter"].active::before {
-  opacity: 1;
-  background: rgba(59,157,255,0.42);
-}
-
 .alert-tabs button[data-category="hydro"].active {
   background: #00a008;
   color: white;
 }
 
-.alert-tabs button[data-category="hydro"].active::before {
-  opacity: 1;
-  background: rgba(0,160,8,0.38);
-}
-
 .alert-tabs button[data-category="fire"].active {
   background: #b83d18;
   color: white;
-}
-
-.alert-tabs button[data-category="fire"].active::before {
-  opacity: 1;
-  background: rgba(184,61,24,0.40);
 }
 
 .alert-tabs button::before {
@@ -642,18 +618,6 @@
 .alert-tabs button.no-alerts::before {
   animation: none !important;
   opacity: 0 !important;
-}
-
-@keyframes tabGlowPulse {
-  0%, 100% {
-    transform: scale(1);
-    filter: blur(10px);
-  }
-
-  50% {
-    transform: scale(1.25);
-    filter: blur(18px);
-  }
 }
 
 
@@ -718,6 +682,43 @@
   opacity: 1;
   background: rgba(184,61,24,0.40);
   animation: tabGlowPulse 2s ease-in-out infinite;
+}
+/* BASE GLOW LAYER */
+.alert-tabs button::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 18px;
+  opacity: 0;
+  z-index: -1;
+  filter: blur(18px);
+  pointer-events: none;
+}
+
+/* ONLY PULSE WHEN ALERTS EXIST */
+.alert-tabs button.has-alerts::before {
+  animation: tabGlowPulse 2.6s ease-in-out infinite;
+}
+
+/* NO ALERTS = NO GLOW */
+.alert-tabs button.no-alerts::before {
+  animation: none;
+  opacity: 0;
+}
+
+/* CLEAN PULSE ANIMATION */
+@keyframes tabGlowPulse {
+  0%, 100% {
+    opacity: 0.35;
+    transform: scale(0.96);
+    filter: blur(14px);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+    filter: blur(26px);
+  }
 }
 
 .alert-list {
@@ -1520,10 +1521,6 @@ nav a {
   max-height: none;
   overflow: visible;
 }
-.alert-tabs button.has-alerts::before {
-    display: none;
-  }
-
 
 .alert-tabs button::before {
   transition: none !important;
