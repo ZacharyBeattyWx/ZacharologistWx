@@ -1794,13 +1794,6 @@ if (!event) return false;
           "Flood Watch",
           "Coastal Flood Warning"
         ].includes(event)
-
-        ||
-
-        (
-          event === "Special Weather Statement" &&
-          !hasValidPolygon(alert)
-        )
       );
     }
 
