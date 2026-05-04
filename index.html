@@ -571,7 +571,7 @@
   flex-shrink: 0;
 }
 
-.alert-tabs button.active {
+.alert-tabs button[data-category="storm"].active {
   background: #ffb21c !important;
   color: #000 !important;
   box-shadow: none !important;
@@ -620,6 +620,14 @@
 .alert-tabs button[data-category="fire"].active::before {
   opacity: 1;
   background: rgba(184,61,24,0.40);
+}
+.alert-tabs button.has-alerts[data-category="storm"]::before,
+.alert-tabs button.has-alerts[data-category="tropical"]::before,
+.alert-tabs button.has-alerts[data-category="winter"]::before,
+.alert-tabs button.has-alerts[data-category="hydro"]::before,
+.alert-tabs button.has-alerts[data-category="fire"]::before {
+  opacity: 0;
+  background: transparent;
 }
 .alert-tabs button::before {
   content: "";
