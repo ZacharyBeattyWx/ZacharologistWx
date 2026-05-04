@@ -1268,51 +1268,42 @@ body {
     grid-template-columns: repeat(3, 1fr) !important;
   }
 @media (max-width: 768px) {
-  
-  .alert-tabs {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-  }
-  .alert-tabs {
-    padding-right: 46px;
-    scroll-padding-right: 46px;
-  }
 .alert-tabs-wrapper {
-    width: 100%;
-    max-width: 100%;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    padding: 0;
-    scrollbar-width: none;
-  }
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding: 0;
+  scrollbar-width: none;
+}
 
-  .alert-tabs-wrapper::-webkit-scrollbar {
-    display: none;
-  }
+.alert-tabs-wrapper::-webkit-scrollbar {
+  display: none;
+}
 
-  .alert-tabs {
-    display: flex;
-    flex-wrap: nowrap;
-    gap: 10px;
-    width: max-content;
-    min-width: max-content;
-    overflow: visible;
-    padding: 6px 26px 14px 26px;
-    margin: 0;
-  }
+.alert-tabs {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 10px;
+  width: max-content;
+  min-width: max-content;
+  overflow: visible;
+  padding: 6px 26px 14px 26px;
+  margin: 0;
+}
 
-  .alert-tabs button {
-    flex: 0 0 135px;
-    min-width: 135px;
-    max-width: 135px;
-    white-space: nowrap;
-  }
-
+.alert-tabs button {
+  flex: 0 0 135px;
+  min-width: 135px;
+  max-width: 135px;
+  white-space: nowrap;
+}
 
   .alert-tabs-wrapper::after {
-    width: 32px;
-  }
+  display: none;
+}
+
  .warning-hazards {
     grid-template-columns: 1fr;
   }
@@ -1404,6 +1395,9 @@ nav a {
   }
 
   .alert-details {
+    color: #d9e3f5;
+  }
+    .alert-details {
     color: #d9e3f5;
   }
 
