@@ -11,7 +11,7 @@
 
     html, body {
     width: 100%;
-    overflow-x: hidden;
+    overflow-x: visible;
     }
     body {
   margin: 0;
@@ -512,7 +512,7 @@
   justify-content: center;
   align-items: center;
   gap: 16px;
-  overflow-x: auto;
+  overflow-x: visible;
   padding: 8px 30px 12px;
   margin-bottom: 18px;
   scrollbar-width: thin;
@@ -1177,7 +1177,7 @@ body {
   min-height: 100%;
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
+  overflow-x:visible;
 }
 
 body {
@@ -1193,7 +1193,7 @@ html,
 body {
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
+  overflow-x: visible;
 }
 
 * {
@@ -1501,6 +1501,14 @@ nav a {
 
 .alert-tabs button::before {
   transition: none !important;
+}
+.alert-tabs {
+  overflow-x: visible !important;
+  scrollbar-width: none;
+}
+
+.alert-tabs::-webkit-scrollbar {
+  display: none;
 }
 @media (min-width: 769px) {
   .dashboard-grid {
