@@ -638,10 +638,6 @@
   filter: blur(16px);
   transition: opacity 0.25s ease;
 }
-.alert-tabs button.has-alerts::before {
-  display: block;
-  animation: tabGlowPulse 2.8s ease-in-out infinite !important;
-}
 
 .alert-tabs button.no-alerts::before {
   animation: none !important;
@@ -650,15 +646,13 @@
 
 @keyframes tabGlowPulse {
   0%, 100% {
-    opacity: 0.35;
-    transform: scale(0.96);
-    filter: blur(14px);
+    transform: scale(1);
+    filter: blur(10px);
   }
 
   50% {
-    opacity: 0.95;
-    transform: scale(1.08);
-    filter: blur(24px);
+    transform: scale(1.25);
+    filter: blur(18px);
   }
 }
 
@@ -679,6 +673,7 @@
 .alert-tabs button.has-alerts[data-category="storm"]::before {
   opacity: 1;
   background: rgba(255,178,28,0.42);
+  animation: tabGlowPulse 2s ease-in-out infinite;
 }
 
 .alert-tabs button.has-alerts[data-category="tropical"] {
@@ -689,6 +684,7 @@
 .alert-tabs button.has-alerts[data-category="tropical"]::before {
   opacity: 1;
   background: rgba(161,54,113,0.42);
+  animation: tabGlowPulse 2s ease-in-out infinite;
 }
 
 .alert-tabs button.has-alerts[data-category="winter"] {
@@ -699,6 +695,7 @@
 .alert-tabs button.has-alerts[data-category="winter"]::before {
   opacity: 1;
   background: rgba(59,157,255,0.42);
+  animation: tabGlowPulse 2s ease-in-out infinite;
 }
 
 .alert-tabs button.has-alerts[data-category="hydro"] {
@@ -709,6 +706,7 @@
 .alert-tabs button.has-alerts[data-category="hydro"]::before {
   opacity: 1;
   background: rgba(0,160,8,0.38);
+  animation: tabGlowPulse 2s ease-in-out infinite;
 }
 
 .alert-tabs button.has-alerts[data-category="fire"] {
@@ -719,6 +717,7 @@
 .alert-tabs button.has-alerts[data-category="fire"]::before {
   opacity: 1;
   background: rgba(184,61,24,0.40);
+  animation: tabGlowPulse 2s ease-in-out infinite;
 }
 
 .alert-list {
@@ -1140,34 +1139,6 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-}
-@keyframes tabGlowPulse {
-  0% {
-    opacity: 0.55;
-    transform: scale(0.98);
-    filter: blur(16px);
-  }
-
-  50% {
-    opacity: 1.75;
-    transform: scale(1.18);
-    filter: blur(34px);
-  }
-
-  100% {
-    opacity: 0.55;
-    transform: scale(0.98);
-    filter: blur(16px);
-  }
-}
-
-.alert-tabs button::before {
-  transition: none !important;
-  will-change: transform, opacity, filter;
-}
-
-.alert-tabs button.has-alerts::before {
-  animation: tabGlowPulse 1.5s linear infinite !important;
 }
 .media-card {
   animation: none !important;
