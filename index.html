@@ -629,6 +629,62 @@
   filter: blur(16px);
   transition: opacity 0.25s ease;
 }
+.alert-tabs button.no-alerts {
+  background: rgba(255,255,255,0.05);
+  color: #c8d2e5;
+  box-shadow: none;
+  opacity: 0.72;
+}
+
+.alert-tabs button.has-alerts[data-category="storm"] {
+  background: #ffb21c;
+  color: black;
+}
+
+.alert-tabs button.has-alerts[data-category="storm"]::before {
+  opacity: 1;
+  background: rgba(255,178,28,0.42);
+}
+
+.alert-tabs button.has-alerts[data-category="tropical"] {
+  background: rgb(161, 54, 113);
+  color: white;
+}
+
+.alert-tabs button.has-alerts[data-category="tropical"]::before {
+  opacity: 1;
+  background: rgba(161,54,113,0.42);
+}
+
+.alert-tabs button.has-alerts[data-category="winter"] {
+  background: #3b9dff;
+  color: black;
+}
+
+.alert-tabs button.has-alerts[data-category="winter"]::before {
+  opacity: 1;
+  background: rgba(59,157,255,0.42);
+}
+
+.alert-tabs button.has-alerts[data-category="hydro"] {
+  background: #00a008;
+  color: white;
+}
+
+.alert-tabs button.has-alerts[data-category="hydro"]::before {
+  opacity: 1;
+  background: rgba(0,160,8,0.38);
+}
+
+.alert-tabs button.has-alerts[data-category="fire"] {
+  background: #b83d18;
+  color: white;
+}
+
+.alert-tabs button.has-alerts[data-category="fire"]::before {
+  opacity: 1;
+  background: rgba(184,61,24,0.40);
+}
 
 .alert-list {
   display: flex;
@@ -1527,6 +1583,7 @@ nav a {
   </div>
 </div>
 </div>
+
 <script>
 const alertsList = document.getElementById("alertsList");
 const alertsTitle = document.getElementById("alertsTitle");
@@ -1538,26 +1595,22 @@ const alertUrls = [
   "https://api.weather.gov/alerts/active?area=NE",
   "https://api.weather.gov/alerts/active?area=SD",
   "https://api.weather.gov/alerts/active?area=ND",
-
   "https://api.weather.gov/alerts/active?area=MN",
   "https://api.weather.gov/alerts/active?area=IA",
   "https://api.weather.gov/alerts/active?area=MO",
   "https://api.weather.gov/alerts/active?area=AR",
   "https://api.weather.gov/alerts/active?area=LA",
-
   "https://api.weather.gov/alerts/active?area=WI",
   "https://api.weather.gov/alerts/active?area=IL",
   "https://api.weather.gov/alerts/active?area=IN",
   "https://api.weather.gov/alerts/active?area=MI",
   "https://api.weather.gov/alerts/active?area=OH",
-
   "https://api.weather.gov/alerts/active?area=KY",
   "https://api.weather.gov/alerts/active?area=TN",
   "https://api.weather.gov/alerts/active?area=MS",
   "https://api.weather.gov/alerts/active?area=AL",
   "https://api.weather.gov/alerts/active?area=GA",
   "https://api.weather.gov/alerts/active?area=FL",
-
   "https://api.weather.gov/alerts/active?area=SC",
   "https://api.weather.gov/alerts/active?area=NC",
   "https://api.weather.gov/alerts/active?area=VA",
@@ -1567,7 +1620,6 @@ const alertUrls = [
   "https://api.weather.gov/alerts/active?area=VT",
   "https://api.weather.gov/alerts/active?area=NH",
   "https://api.weather.gov/alerts/active?area=ME",
-
   "https://api.weather.gov/alerts/active?area=MD",
   "https://api.weather.gov/alerts/active?area=DE",
   "https://api.weather.gov/alerts/active?area=NJ",
@@ -1581,37 +1633,6 @@ let currentCategory = "storm";
 let knownAlertIds = new Set();
 let hasLoadedAlertsOnce = false;
 let alertGlowTimer = null;
-
-const alertCategories = {
-  storm: [
-    "Tornado Warning",
-    "Severe Thunderstorm Warning",
-    "Special Weather Statement",
-    "Flash Flood Warning",
-    "Flash Flood Watch",
-    "Tornado Watch",
-    "Severe Thunderstorm Watch"
-  ],
-  tropical: [
-    "Hurricane Warning",
-    "Tropical Storm Warning",
-    "Storm Surge Warning"
-  ],
-  winter: [
-    "Winter Storm Warning",
-    "Blizzard Warning",
-    "Ice Storm Warning"
-  ],
-  hydro: [
-    "Flood Warning",
-    "Flood Watch",
-    "Coastal Flood Warning"
-  ],
-  fire: [
-    "Red Flag Warning",
-    "Fire Weather Watch"
-  ]
-};
 
 function getExpiresText(expires) {
   if (!expires) return "Unknown";
@@ -1629,13 +1650,96 @@ function getExpiresText(expires) {
 }
 
 function getStateFromAlert(alert) {
-  const geocode = alert.properties.geocode;
+  const geocode = alert.properties?.geocode;
 
   if (geocode && geocode.UGC && geocode.UGC.length) {
     return geocode.UGC[0].slice(0, 2);
   }
 
   return "??";
+}
+
+function hasValidPolygon(alert) {
+  return (
+    alert.geometry &&
+    alert.geometry.type &&
+    alert.geometry.coordinates &&
+    alert.geometry.coordinates.length > 0
+  );
+}
+
+function getFilteredAlertsForCategory(category) {
+  return allHomepageAlerts.filter(alert => {
+    if (!alert.properties) return false;
+
+    const event = alert.properties.event;
+    if (!event) return false;
+
+    if (category === "storm") {
+      return (
+        [
+          "Tornado Warning",
+          "Severe Thunderstorm Warning",
+          "Flash Flood Warning",
+          "Flash Flood Watch",
+          "Tornado Watch",
+          "Severe Thunderstorm Watch",
+          "Special Marine Warning",
+          "Marine Weather Statement",
+          "Flash Flood Statement",
+          "Flood Advisory",
+          "Areal Flood Warning",
+          "Areal Flood Watch"
+        ].includes(event) ||
+        (
+          event === "Special Weather Statement" &&
+          hasValidPolygon(alert)
+        )
+      );
+    }
+
+    if (category === "tropical") {
+      return [
+        "Hurricane Warning",
+        "Tropical Storm Warning",
+        "Storm Surge Warning"
+      ].includes(event);
+    }
+
+    if (category === "winter") {
+      return [
+        "Winter Storm Warning",
+        "Blizzard Warning",
+        "Ice Storm Warning",
+        "Winter Weather Advisory",
+        "Freeze Warning",
+        "Frost Advisory"
+      ].includes(event);
+    }
+
+    if (category === "hydro") {
+      return [
+        "Flood Warning",
+        "Flood Watch",
+        "Coastal Flood Warning",
+        "Flood Advisory",
+        "Areal Flood Warning",
+        "Areal Flood Watch",
+        "Flash Flood Warning",
+        "Flash Flood Watch",
+        "Flash Flood Statement"
+      ].includes(event);
+    }
+
+    if (category === "fire") {
+      return [
+        "Red Flag Warning",
+        "Fire Weather Watch"
+      ].includes(event);
+    }
+
+    return false;
+  });
 }
 
 function renderCompactAlerts(alerts, category) {
@@ -1667,8 +1771,8 @@ function renderCompactAlerts(alerts, category) {
     groupedByState[state].push(alert);
   });
 
- const wrapper = document.createElement("details");
-wrapper.className = "state-alert-dropdown";
+  const wrapper = document.createElement("details");
+  wrapper.className = "state-alert-dropdown";
 
   wrapper.innerHTML = `
     <summary>
@@ -1698,12 +1802,12 @@ wrapper.className = "state-alert-dropdown";
         <div class="compact-alert-title ${category}-title">${props.event}</div>
 
         <div class="compact-alert-meta">
-          <span class="alert-pill">${props.severity}</span>
+          <span class="alert-pill">${props.severity || "Unknown"}</span>
           <span class="alert-pill">${getExpiresText(props.expires)}</span>
         </div>
 
         <div class="alert-location">
-          ${props.areaDesc.split(";").slice(0,3).join("; ")}
+          ${(props.areaDesc || "Area unavailable").split(";").slice(0,3).join("; ")}
         </div>
 
         <div class="compact-alert-actions">
@@ -1722,7 +1826,27 @@ wrapper.className = "state-alert-dropdown";
   alertsList.appendChild(wrapper);
 }
 
+function renderCategory(category) {
+  currentCategory = category;
+
+  const filteredAlerts = getFilteredAlertsForCategory(category);
+
+  renderCompactAlerts(filteredAlerts, category);
+}
+
+function updateTabAlertStates() {
+  document.querySelectorAll(".alert-tabs button").forEach(button => {
+    const category = button.dataset.category;
+    const count = getFilteredAlertsForCategory(category).length;
+
+    button.classList.toggle("has-alerts", count > 0);
+    button.classList.toggle("no-alerts", count === 0);
+  });
+}
+
 function triggerNewAlertGlow() {
+  if (!alertsTitle) return;
+
   alertsTitle.classList.add("new-alert-glow");
 
   clearTimeout(alertGlowTimer);
@@ -1730,84 +1854,6 @@ function triggerNewAlertGlow() {
   alertGlowTimer = setTimeout(() => {
     alertsTitle.classList.remove("new-alert-glow");
   }, 30000);
-}
-function hasValidPolygon(alert) {
-  return (
-    alert.geometry &&
-    alert.geometry.type &&
-    alert.geometry.coordinates &&
-    alert.geometry.coordinates.length > 0
-  );
-}
-function renderCategory(category) {
-  currentCategory = category;
-
-  const filteredAlerts = allHomepageAlerts.filter(alert => {
-    if (!alert.properties) return false;
-
-const event = alert.properties.event;
-
-if (!event) return false;
-
-    if (category === "storm") {
-      return (
-[
-  "Tornado Warning",
-  "Severe Thunderstorm Warning",
-  "Flash Flood Warning",
-  "Flash Flood Watch",
-  "Tornado Watch",
-  "Severe Thunderstorm Watch",
-].includes(event)
-
-        ||
-
-        (
-          event === "Special Weather Statement" &&
-          hasValidPolygon(alert)
-        )
-      );
-    }
-
-    if (category === "tropical") {
-      return [
-        "Hurricane Warning",
-        "Tropical Storm Warning",
-        "Storm Surge Warning"
-      ].includes(event);
-    }
-
-    if (category === "winter") {
-      return [
-        "Winter Storm Warning",
-        "Blizzard Warning",
-        "Ice Storm Warning",
-        "Winter Weather Advisory",
-        "Freeze Warning"
-      ].includes(event);
-    }
-
-    if (category === "hydro") {
-      return (
-        [
-          "Flood Warning",
-          "Flood Watch",
-          "Coastal Flood Warning"
-        ].includes(event)
-      );
-    }
-
-    if (category === "fire") {
-      return [
-        "Red Flag Warning",
-        "Fire Weather Watch"
-      ].includes(event);
-    }
-
-    return false;
-  });
-
-  renderCompactAlerts(filteredAlerts, category);
 }
 
 async function fetchHomepageAlerts() {
@@ -1848,73 +1894,66 @@ async function fetchHomepageAlerts() {
 
     const allFeatures = dataSets.flatMap(data => data.features || []);
 
-   const uniqueFeatures = Array.from(
-  new Map(allFeatures.map(item => [item.id, item])).values()
-);
+    const uniqueFeatures = Array.from(
+      new Map(allFeatures.map(item => [item.id, item])).values()
+    );
 
-const uniqueAlerts = uniqueFeatures.filter(alert => {
-  if (!alert.properties) return false;
+    const uniqueAlerts = uniqueFeatures.filter(alert => {
+      if (!alert.properties) return false;
 
-  const event = alert.properties.event;
+      const event = alert.properties.event;
+      if (!event) return false;
 
-  if (!event) return false;
+      return [
+        "Tornado Warning",
+        "Severe Thunderstorm Warning",
+        "Flash Flood Warning",
+        "Flash Flood Watch",
+        "Tornado Watch",
+        "Severe Thunderstorm Watch",
+        "Special Weather Statement",
+        "Flash Flood Statement",
+        "Flood Warning",
+        "Flood Watch",
+        "Flood Advisory",
+        "Areal Flood Warning",
+        "Areal Flood Watch",
+        "Coastal Flood Warning",
+        "Marine Weather Statement",
+        "Special Marine Warning",
+        "Red Flag Warning",
+        "Fire Weather Watch",
+        "Winter Storm Warning",
+        "Winter Weather Advisory",
+        "Blizzard Warning",
+        "Ice Storm Warning",
+        "Freeze Warning",
+        "Frost Advisory",
+        "Wind Advisory",
+        "High Wind Warning",
+        "Dense Fog Advisory",
+        "Heat Advisory",
+        "Excessive Heat Warning"
+      ].includes(event);
+    });
 
-  return [
-    "Tornado Warning",
-    "Severe Thunderstorm Warning",
-    "Flash Flood Warning",
-    "Flash Flood Watch",
+    const currentIds = new Set(uniqueAlerts.map(alert => alert.id));
 
-    "Tornado Watch",
-    "Severe Thunderstorm Watch",
+    const hasNewAlert =
+      hasLoadedAlertsOnce &&
+      uniqueAlerts.some(alert => !knownAlertIds.has(alert.id));
 
-    "Special Weather Statement",
-    "Flash Flood Statement",
+    knownAlertIds = currentIds;
+    hasLoadedAlertsOnce = true;
 
-    "Flood Warning",
-    "Flood Watch",
-    "Flood Advisory",
-    "Areal Flood Warning",
-    "Areal Flood Watch",
-    "Coastal Flood Warning",
+    if (hasNewAlert) {
+      triggerNewAlertGlow();
+    }
 
-    "Marine Weather Statement",
-    "Special Marine Warning",
+    allHomepageAlerts = uniqueAlerts;
 
-    "Red Flag Warning",
-    "Fire Weather Watch",
-
-    "Winter Storm Warning",
-    "Winter Weather Advisory",
-    "Blizzard Warning",
-    "Ice Storm Warning",
-    "Freeze Warning",
-    "Frost Advisory",
-
-    "Wind Advisory",
-    "High Wind Warning",
-    "Dense Fog Advisory",
-    "Heat Advisory",
-    "Excessive Heat Warning"
-  ].includes(event);
-});
-
-const currentIds = new Set(uniqueAlerts.map(alert => alert.id));
-
-const hasNewAlert =
-  hasLoadedAlertsOnce &&
-  uniqueAlerts.some(alert => !knownAlertIds.has(alert.id));
-
-knownAlertIds = currentIds;
-hasLoadedAlertsOnce = true;
-
-if (hasNewAlert) {
-  triggerNewAlertGlow();
-}
-
-allHomepageAlerts = uniqueAlerts;
-
-renderCategory(currentCategory);
+    updateTabAlertStates();
+    renderCategory(currentCategory);
 
   } catch (error) {
     console.error("NWS alert loading error:", error);
@@ -1937,27 +1976,33 @@ document.querySelectorAll(".alert-tabs button").forEach(button => {
     );
 
     button.classList.add("active");
-const alertsCard = document.querySelector(".alerts-card");
 
-alertsCard.classList.remove(
-  "storm-active",
-  "tropical-active",
-  "winter-active",
-  "hydro-active",
-  "fire-active"
-);
+    const alertsCard = document.querySelector(".alerts-card");
 
-alertsCard.classList.add(`${button.dataset.category}-active`);
+    if (alertsCard) {
+      alertsCard.classList.remove(
+        "storm-active",
+        "tropical-active",
+        "winter-active",
+        "hydro-active",
+        "fire-active"
+      );
+
+      alertsCard.classList.add(`${button.dataset.category}-active`);
+    }
+
     renderCategory(button.dataset.category);
   });
 });
 
 fetchHomepageAlerts();
+
 const defaultAlertsCard = document.querySelector(".alerts-card");
 
 if (defaultAlertsCard) {
   defaultAlertsCard.classList.add("storm-active");
 }
+
 setInterval(fetchHomepageAlerts, 60000);
 </script>
 
