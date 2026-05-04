@@ -583,7 +583,7 @@
   box-shadow: none !important;
 }
 
-.alert-tabs button.active::before {
+.alert-tabs button.active:not(.has-alerts)::before {
   opacity: 0 !important;
   background: transparent !important;
 }
@@ -627,14 +627,7 @@
   opacity: 1;
   background: rgba(184,61,24,0.40);
 }
-.alert-tabs button.has-alerts[data-category="storm"]::before,
-.alert-tabs button.has-alerts[data-category="tropical"]::before,
-.alert-tabs button.has-alerts[data-category="winter"]::before,
-.alert-tabs button.has-alerts[data-category="hydro"]::before,
-.alert-tabs button.has-alerts[data-category="fire"]::before {
-  opacity: 0;
-  background: transparent;
-}
+
 .alert-tabs button::before {
   content: "";
   position: absolute;
@@ -646,25 +639,26 @@
   transition: opacity 0.25s ease;
 }
 .alert-tabs button.has-alerts::before {
-  animation: tabGlowPulse 2.4s ease-in-out infinite;
+  display: block;
+  animation: tabGlowPulse 2.8s ease-in-out infinite !important;
 }
+
+.alert-tabs button.no-alerts::before {
+  animation: none !important;
+  opacity: 0 !important;
+}
+
 @keyframes tabGlowPulse {
-  0% {
-    opacity: 0.45;
-    transform: scale(0.98);
-    filter: blur(16px);
+  0%, 100% {
+    opacity: 0.35;
+    transform: scale(0.96);
+    filter: blur(14px);
   }
 
   50% {
-    opacity: 1.55;
-    transform: scale(1.12);
+    opacity: 0.95;
+    transform: scale(1.08);
     filter: blur(24px);
-  }
-
-  100% {
-    opacity: 0.45;
-    transform: scale(0.98);
-    filter: blur(16px);
   }
 }
 
