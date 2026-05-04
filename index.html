@@ -1201,33 +1201,35 @@ body {
 }
 
 @media (min-width: 769px) {
-  .alerts-panel h2 {
-    text-align: center;
-  }
-
-  .alert-tabs {
+  .dashboard-grid {
     display: grid;
-    grid-template-columns: 1.25fr 1fr 1fr 1fr 1fr;
-    gap: 12px;
-    overflow: visible;
-    padding: 8px 0 16px;
-    margin-bottom: 18px;
-    scroll-padding-right: 0;
+    grid-template-columns: 1fr 1.75fr 1fr;
+    gap: 28px;
+    width: 98%;
+    max-width: 1850px;
+    margin: 0 auto;
+    align-items: stretch;
   }
 
-  .alert-tabs button {
-    width: 100%;
-    min-width: 0;
-    text-align: center;
+  .briefing-card {
+    grid-column: 1;
+    grid-row: 1;
   }
 
-  .alert-tabs::after,
-  .alert-tabs-wrapper::after {
-    display: none;
+  .radar-card {
+    grid-column: 2;
+    grid-row: 1 / span 2;
   }
 
-  .alert-tabs::-webkit-scrollbar {
-    display: none;
+  .spc-card {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .alerts-panel,
+  .dashboard-card.alerts-card {
+    grid-column: 1;
+    grid-row: 2;
   }
 }
 
@@ -1594,7 +1596,7 @@ nav a {
       </div>
     </article>
 
- <article class="dashboard-card alerts-card">
+ <article class="dashboard-card mini-card alerts-card">
 
   <h2 id="alertsTitle">Active Weather Alerts</h2>
 
