@@ -1201,38 +1201,38 @@ body {
 }
 
 @media (min-width: 769px) {
+
   .dashboard-grid {
     display: grid;
-    grid-template-columns: 1fr 1.75fr 1fr;
+    grid-template-columns: 0.9fr 1.4fr;
+    grid-template-rows: auto auto auto;
     gap: 28px;
-    width: 98%;
-    max-width: 1850px;
+    max-width: 1800px;
     margin: 0 auto;
     align-items: stretch;
   }
 
   .briefing-card {
-    grid-column: 1;
+    grid-column: 1 / span 2;
     grid-row: 1;
+  }
+
+  .spc-card {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .alerts-card {
+    grid-column: 1;
+    grid-row: 3;
   }
 
   .radar-card {
     grid-column: 2;
-    grid-row: 1 / span 2;
-  }
-
-  .spc-card {
-    grid-column: 3;
-    grid-row: 1;
-  }
-
-  .alerts-panel,
-  .dashboard-card.alerts-card {
-    grid-column: 1;
-    grid-row: 2;
+    grid-row: 2 / span 2;
+    min-height: 820px;
   }
 }
-
 @media (max-width: 768px) {
   .alert-tabs {
     flex-wrap: nowrap;
