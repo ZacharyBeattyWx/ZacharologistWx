@@ -645,6 +645,9 @@
   filter: blur(16px);
   transition: opacity 0.25s ease;
 }
+.alert-tabs button.has-alerts::before {
+  animation: tabGlowPulse 2.4s ease-in-out infinite;
+}
 @keyframes tabGlowPulse {
   0% {
     opacity: 0.45;
