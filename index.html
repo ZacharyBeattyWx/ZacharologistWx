@@ -1253,6 +1253,31 @@ body {
     padding-right: 46px;
     scroll-padding-right: 46px;
   }
+  .alert-tabs {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding: 6px 0 14px;
+  margin: 0;
+  scrollbar-width: none;
+}
+
+.alert-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.alert-tabs button {
+  flex: 0 0 auto;
+  min-width: 135px;
+  white-space: nowrap;
+}
+.alert-tabs-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding-left: 0;
+}
 
   .alert-tabs-wrapper::after {
     width: 32px;
