@@ -2218,9 +2218,20 @@ document.addEventListener("click", function (e) {
 });
 function openAlertModal(alert) {
   const props = alert.properties;
+  const event = props.event || "";
+
+let headerColor = "#58b7ff"; // default
+
+if (event.includes("Tornado")) {
+  headerColor = "#ff3b3b"; // red
+} else if (event.includes("Severe Thunderstorm")) {
+  headerColor = "#ffb21c"; // yellow/orange
+} else if (event.includes("Flash Flood")) {
+  headerColor = "#00c4a7"; // teal
+}
 
   const description = props.description || "";
-  const headline = props.headline || "";
+summaryEl.textContent = props.headline || props.event;
   const areas = props.areaDesc || "Not listed";
 
   const expires = props.expires
@@ -2240,7 +2251,12 @@ document.querySelector(".bottom-hail-value").textContent = hail;
 document.querySelector(".bottom-wind-value").textContent = wind;
 
   // Fill modal
-  document.querySelector(".warning-summary").textContent =
+const summaryEl = document.querySelector(".warning-summary");
+
+summaryEl.textContent =
+  headline || description.split("\n")[0];
+
+summaryEl.style.color = headerColor;
     headline || description.split("\n")[0];
 
   document.querySelector(".hazard-wind-value").textContent = wind;
