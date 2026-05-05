@@ -2205,6 +2205,17 @@ document.addEventListener("click", function (e) {
 
   openAlertModal(alert);
 });
+
+document.addEventListener("click", function (e) {
+  if (
+    e.target.closest(".alert-modal-close") ||
+    e.target.classList.contains("alert-modal-backdrop")
+  ) {
+    document.querySelectorAll(".alert-modal").forEach(modal => {
+      modal.classList.remove("is-open");
+    });
+  }
+});
 function openAlertModal(alert) {
   const props = alert.properties;
 
