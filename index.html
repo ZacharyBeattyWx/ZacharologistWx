@@ -1724,12 +1724,12 @@ nav a {
       <div class="warning-hazards">
         <div class="hazard-box">
           <span class="hazard-label">🌬️ Max Wind</span>
-          <span class="hazard-value">60 MPH</span>
+          <span class="hazard-value hazard-wind-value"></span>
         </div>
 
         <div class="hazard-box">
           <span class="hazard-label">🧊 Max Hail</span>
-          <span class="hazard-value">1.00 IN</span>
+          <span class="hazard-value hazard-source-value"></span>
         </div>
 
         <div class="hazard-box">
@@ -1739,8 +1739,8 @@ nav a {
       </div>
 
       <div class="warning-info">
-        <p><span>📍 Where</span> Guilford, Alamance, Rockingham</p>
-        <p><span>🕘 When</span> Until 2:30 PM EDT</p>
+        <p><span>📍 Where</span> <span class="alert-where"></span></p>
+        <p><span>🕘 When</span> <span class="alert-when"></span></p>
       </div>
 
       <div class="warning-impacts">
@@ -1814,6 +1814,7 @@ const alertUrls = [
 ];
 
 let allHomepageAlerts = [];
+let currentAlerts = [];
 let currentCategory = "storm";
 let knownAlertIds = new Set();
 let hasLoadedAlertsOnce = false;
@@ -1992,11 +1993,11 @@ function renderCompactAlerts(alerts, category) {
           ${(props.areaDesc || "Area unavailable").split(";").slice(0,3).join("; ")}
         </div>
 
-        <div class="compact-alert-actions">
-          <button class="compact-details-btn" type="button">
-            Details
-          </button>
-        </div>
+       <div class="compact-alert-actions">
+  <button class="compact-details-btn" type="button" data-alert-id="${alert.id}">
+    Details
+  </button>
+</div>
       `;
 
       stateDetails.appendChild(card);
@@ -2012,6 +2013,8 @@ function renderCategory(category) {
   currentCategory = category;
 
   const filteredAlerts = getFilteredAlertsForCategory(category);
+
+  currentAlerts = filteredAlerts; // 🔥 THIS LINE ADDED
 
   renderCompactAlerts(filteredAlerts, category);
 }
@@ -2186,6 +2189,62 @@ if (defaultAlertsCard) {
 }
 
 setInterval(fetchHomepageAlerts, 60000);
+document.addEventListener("click", function (e) {
+  const btn = e.target.closest(".compact-details-btn");
+  if (!btn) return;
+
+  const alertId = btn.dataset.alertId;
+
+  const alert = currentAlerts.find(a => a.id === alertId);
+
+  if (!alert) return;
+
+  openAlertModal(alert);
+});
+function openAlertModal(alert) {
+  const props = alert.properties;
+
+  const description = props.description || "";
+  const headline = props.headline || "";
+  const areas = props.areaDesc || "Not listed";
+
+  const expires = props.expires
+    ? new Date(props.expires).toLocaleString()
+    : "Unknown";
+
+  // Extract wind / hail (RadarOmega style)
+  const windMatch = description.match(/(\d+)\s*mph/i);
+  const hailMatch = description.match(/(\d+(\.\d+)?)\s*inch|quarter/i);
+
+  const wind = windMatch ? `${windMatch[1]} MPH` : "N/A";
+  const hail = hailMatch
+    ? hailMatch[0].includes("quarter") ? "1.00 IN" : `${hailMatch[1]} IN`
+    : "N/A";
+
+  // Fill modal
+  document.querySelector(".warning-summary").textContent =
+    headline || description.split("\n")[0];
+
+  document.querySelector(".hazard-wind-value").textContent = wind;
+  document.querySelector(".hazard-hail-value").textContent = hail;
+  document.querySelector(".hazard-source-value").textContent =
+    description.toLowerCase().includes("radar indicated")
+      ? "Radar indicated"
+      : "NWS Issued";
+
+  document.querySelector(".alert-where").textContent = areas;
+  document.querySelector(".alert-when").textContent = expires;
+
+  document.querySelector(".warning-impacts p").textContent =
+    extractSection(description, "IMPACT") || "No impacts listed.";
+
+  document.getElementById("stormModal").classList.add("is-open");
+}
+function extractSection(text, label) {
+  const regex = new RegExp(`${label}\\.\\.\\.(.*?)(?=\\n[A-Z ]+\\.\\.\\.|$)`, "is");
+  const match = text.match(regex);
+  return match ? match[1].trim() : "";
+}
 </script>
 
 </body>
