@@ -2189,13 +2189,15 @@ if (defaultAlertsCard) {
 }
 
 setInterval(fetchHomepageAlerts, 60000);
+
 document.addEventListener("click", function (e) {
   const btn = e.target.closest(".compact-details-btn");
   if (!btn) return;
 
   const alertId = btn.dataset.alertId;
+  const alert = allHomepageAlerts.find(a => a.id === alertId);
 
-  const alert = currentAlerts.find(a => a.id === alertId);
+  console.log("Clicked alert:", alert);
 
   if (!alert) return;
 
