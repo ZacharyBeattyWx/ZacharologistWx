@@ -853,6 +853,35 @@
   gap: 10px;
   margin: 8px 0 14px;
 }
+.storm-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 18px 0 14px;
+}
+.storm-tag {
+  background:rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size:0.85rem;
+  font-weight:700;
+  letter-spacing: 0.03em;
+  color: #f5f5f5;
+  backdrop-filter: blur(6px)
+}
+.storm-tag.tornado{
+  color: #ff73ff;
+}
+.storm-tag.hail{
+  color: #ffd24d;
+}
+.storm-tag.wind{
+  color: #ffb347;
+}
+.storm-tag.source{
+  color: #7fd2dd;
+}
 
 .hazard-box {
   Background: rgba (255, 255, 255, 0.04);
@@ -1854,7 +1883,7 @@ nav a {
       <p class="warning-summary">
         THIS IS A TEST! THERE ARE NO ACTIVE WARNINGS.
       </p>
-
+      <div class="storm-tags"></div>
       <div class="warning-hazards">
   <div class="hazard-box">
     <span class="hazard-label">🌬️ Max Wind</span>
