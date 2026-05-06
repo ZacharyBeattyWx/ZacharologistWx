@@ -2385,6 +2385,7 @@ function openAlertModal(alert) {
     event.includes("Severe Thunderstorm");
 
   const headerColor = getAlertColor(event);
+  console.log(event, headColor);
 
   const windMatch = description.match(/(?:wind gusts?|winds).*?(\d+)\s*mph/i);
   const hailMatch = description.match(/(?:hail).*?(\d+(\.\d+)?)\s*inch|quarter/i);
