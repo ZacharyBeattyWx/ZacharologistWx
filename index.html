@@ -1943,7 +1943,6 @@ const alertUrls = [
 ];
 
 let allHomepageAlerts = [];
-let currentAlerts = [];
 let currentCategory = "storm";
 let knownAlertIds = new Set();
 let hasLoadedAlertsOnce = false;
@@ -1967,7 +1966,7 @@ function getExpiresText(expires) {
 function getStateFromAlert(alert) {
   const geocode = alert.properties?.geocode;
 
-  if (geocode && geocode.UGC && geocode.UGC.length) {
+  if (geocode?.UGC?.length) {
     return geocode.UGC[0].slice(0, 2);
   }
 
@@ -1983,11 +1982,30 @@ function hasValidPolygon(alert) {
   );
 }
 
+function getAlertColor(event) {
+  if (!event) return "#58b7ff";
+
+  if (event.includes("Tornado Watch")) return "#58aaf5";
+  if (event.includes("Tornado")) return "#ff4b4b";
+
+  if (event.includes("Severe Thunderstorm")) return "#ffb21c";
+  if (event.includes("Flash Flood")) return "#00c4a7";
+  if (event.includes("Flood")) return "#00a008";
+
+  if (event.includes("Winter Storm")) return "#df74d7";
+  if (event.includes("Winter Weather")) return "#ab7cff";
+  if (event.includes("Freeze")) return "#6edce4";
+  if (event.includes("Frost")) return "#4e8de6";
+  if (event.includes("Blizzard")) return "#748cff";
+
+  if (event.includes("Red Flag") || event.includes("Fire Weather")) return "#ff5d00";
+
+  return "#58b7ff";
+}
+
 function getFilteredAlertsForCategory(category) {
   return allHomepageAlerts.filter(alert => {
-    if (!alert.properties) return false;
-
-    const event = alert.properties.event;
+    const event = alert.properties?.event;
     if (!event) return false;
 
     if (category === "storm") {
@@ -2001,12 +2019,9 @@ function getFilteredAlertsForCategory(category) {
           "Severe Thunderstorm Watch",
           "Special Marine Warning",
           "Marine Weather Statement",
-          "Flash Flood Statement",          
+          "Flash Flood Statement"
         ].includes(event) ||
-        (
-          event === "Special Weather Statement" &&
-          hasValidPolygon(alert)
-        )
+        (event === "Special Weather Statement" && hasValidPolygon(alert))
       );
     }
 
@@ -2052,22 +2067,6 @@ function getFilteredAlertsForCategory(category) {
 
     return false;
   });
-}
-
-function getAlertColor(event) {
-  if (!event) return "#58b7ff";
-
-  if (event.includes("Tornado")) return "#ff4b4b";
-  if (event.includes("Severe Thunderstorm")) return "#ffb21c";
-  if (event.includes("Flash Flood")) return "#00c4a7";
-
-  if (event.includes("Winter Storm")) return "#df74d7";
-  if (event.includes("Winter Weather")) return "#b07cff";
-  if (event.includes("Freeze")) return "#67dfe8";
-  if (event.includes("Frost")) return "#5ea0ff";
-  if (event.includes("Blizzard")) return "#748cff";
-
-  return "#58b7ff";
 }
 
 function renderCompactAlerts(alerts, category) {
@@ -2122,13 +2121,13 @@ function renderCompactAlerts(alerts, category) {
 
     stateAlerts.slice(0, 25).forEach(alert => {
       const props = alert.properties;
-
       const card = document.createElement("div");
+
       card.className = "compact-alert-item";
 
       card.innerHTML = `
         <div class="compact-alert-title ${category}-title"
-           style="color:${getAlertColor(props.event)};">
+             style="color:${getAlertColor(props.event)};">
           ${props.event}
         </div>
 
@@ -2138,14 +2137,14 @@ function renderCompactAlerts(alerts, category) {
         </div>
 
         <div class="alert-location">
-          ${(props.areaDesc || "Area unavailable").split(";").slice(0,3).join("; ")}
+          ${(props.areaDesc || "Area unavailable").split(";").slice(0, 3).join("; ")}
         </div>
 
-       <div class="compact-alert-actions">
-  <button class="compact-details-btn" type="button" data-alert-id="${alert.id}">
-    Details
-  </button>
-</div>
+        <div class="compact-alert-actions">
+          <button class="compact-details-btn" type="button" data-alert-id="${alert.id}">
+            Details
+          </button>
+        </div>
       `;
 
       stateDetails.appendChild(card);
@@ -2159,13 +2158,7 @@ function renderCompactAlerts(alerts, category) {
 
 function renderCategory(category) {
   currentCategory = category;
-
-  const filteredAlerts = getFilteredAlertsForCategory(category);
-
-  currentAlerts = filteredAlerts; // 🔥 THIS LINE ADDED
-  
-
-  renderCompactAlerts(filteredAlerts, category);
+  renderCompactAlerts(getFilteredAlertsForCategory(category), category);
 }
 
 function updateTabAlertStates() {
@@ -2215,9 +2208,6 @@ async function fetchHomepageAlerts() {
       .filter(result => result.status === "fulfilled" && result.value.ok)
       .map(result => result.value);
 
-    console.log("NWS successful responses:", goodResponses.length);
-    console.log("NWS failed responses:", results.length - goodResponses.length);
-
     if (!goodResponses.length) {
       throw new Error("All NWS alert requests failed");
     }
@@ -2233,9 +2223,7 @@ async function fetchHomepageAlerts() {
     );
 
     const uniqueAlerts = uniqueFeatures.filter(alert => {
-      if (!alert.properties) return false;
-
-      const event = alert.properties.event;
+      const event = alert.properties?.event;
       if (!event) return false;
 
       return [
@@ -2296,7 +2284,7 @@ async function fetchHomepageAlerts() {
       <div class="compact-alert-item">
         <div class="compact-alert-title storm-title">Alerts Unavailable</div>
         <div class="alert-location">
-          Unable to load NWS alerts right now. This usually means the browser blocked one or more NWS requests, or the NWS API temporarily failed.
+          Unable to load NWS alerts right now.
         </div>
       </div>
     `;
@@ -2329,16 +2317,6 @@ document.querySelectorAll(".alert-tabs button").forEach(button => {
   });
 });
 
-fetchHomepageAlerts();
-
-const defaultAlertsCard = document.querySelector(".alerts-card");
-
-if (defaultAlertsCard) {
-  defaultAlertsCard.classList.add("storm-active");
-}
-
-setInterval(fetchHomepageAlerts, 60000);
-
 document.addEventListener("click", function (e) {
   const btn = e.target.closest(".compact-details-btn");
   if (!btn) return;
@@ -2346,20 +2324,29 @@ document.addEventListener("click", function (e) {
   const alertId = btn.dataset.alertId;
   const alert = allHomepageAlerts.find(a => a.id === alertId);
 
-  if (!alert) {
-    console.log("Alert not found for ID:", alertId);
-    return;
-  }
+  if (!alert) return;
 
   openAlertModal(alert);
 });
 
- function openAlertModal(alert) {
+document.addEventListener("click", function (e) {
+  if (
+    e.target.closest(".alert-modal-close") ||
+    e.target.classList.contains("alert-modal-backdrop")
+  ) {
+    document.querySelectorAll(".alert-modal").forEach(modal => {
+      modal.classList.remove("is-open");
+    });
+  }
+});
+
+function openAlertModal(alert) {
   const props = alert.properties || {};
 
-  const event = props.event || "";
+  const event = props.event || "Weather Alert";
   const description = props.description || "";
   const headline = props.headline || "";
+  const instruction = props.instruction || "";
   const areas = props.areaDesc || "Not listed";
 
   const expires = props.expires
@@ -2378,11 +2365,7 @@ document.addEventListener("click", function (e) {
     event.includes("Tornado Watch") ||
     event.includes("Severe Thunderstorm Watch");
 
-  let headerColor = getAlertColor(event);
-
-  if (event.includes("Tornado Watch")) {
-    headerColor = "#58aaf5";
-  }
+  const headerColor = getAlertColor(event);
 
   const windMatch = description.match(/(?:wind gusts?|winds).*?(\d+)\s*mph/i);
   const hailMatch = description.match(/(?:hail).*?(\d+(\.\d+)?)\s*inch|quarter/i);
@@ -2399,27 +2382,28 @@ document.addEventListener("click", function (e) {
   const snow = snowMatch ? snowMatch[1] : null;
 
   const modal = document.getElementById("stormModal");
+  const modalBox = modal.querySelector(".alert-modal-box");
+  const header = modal.querySelector(".alert-modal-header");
   const detailCard = modal.querySelector(".warning-detail-card");
   const hazardSection = modal.querySelector(".warning-hazards");
   const warningInfo = modal.querySelector(".warning-info");
   const warningImpacts = modal.querySelector(".warning-impacts");
   const warningBottom = modal.querySelector(".warning-bottom");
+  const summary = modal.querySelector(".warning-summary");
+  const titleEl = modal.querySelector(".warning-detail-card h4");
 
   modal.querySelector(".alert-modal-title").textContent = event;
 
   modal.querySelector(".alert-modal-office").textContent =
     props.senderName || "National Weather Service";
 
-  const header = modal.querySelector(".alert-modal-header");
-
   if (header) {
     header.style.background = headerColor;
   }
 
-  modal.querySelector(".alert-modal-box").style.borderTop =
-    `6px solid ${headerColor}`;
-
-  const titleEl = modal.querySelector(".warning-detail-card h4");
+  if (modalBox) {
+    modalBox.style.borderTop = `6px solid ${headerColor}`;
+  }
 
   if (titleEl) {
     titleEl.textContent = isWatch ? "WATCH DETAILS" : "WHAT TO EXPECT";
@@ -2427,21 +2411,22 @@ document.addEventListener("click", function (e) {
 
   detailCard.classList.toggle("winter-mode", isWinterAlert);
 
+  summary.style.color = "#eaeaea";
   warningInfo.style.display = "block";
   warningImpacts.style.display = "block";
   warningBottom.style.display = "flex";
   hazardSection.style.display = "grid";
 
   if (isWatch) {
-    modal.querySelector(".warning-summary").innerHTML = `
+    summary.innerHTML = `
       <div class="watch-section">
         <h5>SUMMARY</h5>
-        <p>${extractWatchSummary(description)}</p>
+        <p>${extractWatchSummary(description, headline)}</p>
       </div>
 
       <div class="watch-section">
         <h5>REMEMBER</h5>
-        <p>${extractWatchRemember(description)}</p>
+        <p>${extractWatchRemember(description, instruction)}</p>
       </div>
     `;
 
@@ -2454,13 +2439,11 @@ document.addEventListener("click", function (e) {
     return;
   }
 
-  modal.querySelector(".warning-summary").textContent =
+  summary.textContent =
     extractSection(description, "WHAT") ||
     headline ||
     description.split("\n")[0] ||
     event;
-
-  modal.querySelector(".warning-summary").style.color = "#eaeaea";
 
   modal.querySelector(".alert-where").textContent = areas;
 
@@ -2468,7 +2451,9 @@ document.addEventListener("click", function (e) {
     extractSection(description, "WHEN") || expires;
 
   modal.querySelector(".warning-impacts p").textContent =
-    extractSection(description, "IMPACTS") || "No impacts listed.";
+    extractSection(description, "IMPACTS") ||
+    instruction ||
+    "No impacts listed.";
 
   if (isWinterAlert) {
     hazardSection.innerHTML = "";
@@ -2526,20 +2511,24 @@ document.addEventListener("click", function (e) {
   modal.classList.add("is-open");
 }
 
-function extractWatchSummary(text) {
+function extractWatchSummary(text, headline) {
   const match = text.match(/SUMMARY\.*\s*([\s\S]*?)(?=REMEMBER|AVIATION|PRECAUTIONARY|$)/i);
 
-  return match
-    ? match[1].replace(/\n/g, " ").replace(/\s+/g, " ").trim()
-    : "Thunderstorms may become capable of tornadoes, damaging winds, and hail within the watch area.";
+  if (match) {
+    return match[1].replace(/\n/g, " ").replace(/\s+/g, " ").trim();
+  }
+
+  return headline || "Thunderstorms may become capable of tornadoes, damaging winds, and hail within the watch area.";
 }
 
-function extractWatchRemember(text) {
+function extractWatchRemember(text, instruction) {
   const match = text.match(/REMEMBER\.*\s*([\s\S]*?)(?=AVIATION|PRECAUTIONARY|$)/i);
 
-  return match
-    ? match[1].replace(/\n/g, " ").replace(/\s+/g, " ").trim()
-    : "Stay alert for future warnings and statements.";
+  if (match) {
+    return match[1].replace(/\n/g, " ").replace(/\s+/g, " ").trim();
+  }
+
+  return instruction || "Stay alert for future warnings and statements.";
 }
 
 function extractSection(text, label) {
@@ -2562,21 +2551,12 @@ function extractSection(text, label) {
     : "";
 }
 
-document.querySelectorAll(".alert-modal-close").forEach(btn => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".alert-modal").forEach(modal => {
-      modal.classList.remove("is-open");
-    });
-  });
-});
+if (defaultAlertsCard) {
+  defaultAlertsCard.classList.add("storm-active");
+}
 
-document.querySelectorAll(".alert-modal-backdrop").forEach(backdrop => {
-  backdrop.addEventListener("click", () => {
-    document.querySelectorAll(".alert-modal").forEach(modal => {
-      modal.classList.remove("is-open");
-    });
-  });
-});
+fetchHomepageAlerts();
+setInterval(fetchHomepageAlerts, 60000);
 </script>
 
 </body>
