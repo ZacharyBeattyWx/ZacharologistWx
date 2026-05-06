@@ -2383,7 +2383,7 @@ if (titleEl) {
     extractSection(description, "WHEN") || expires;
 
   modal.querySelector(".warning-impacts p").textContent =
-    extractSection(description, "IMPACT") || "No impacts listed.";
+    extractSection(description, "IMPACTS") || "No impacts listed.";
 
   const hazardSection = modal.querySelector(".warning-hazards");
 
@@ -2446,12 +2446,16 @@ modal.querySelector(".warning-bottom").style.display = "flex";
   modal.classList.add("is-open");
 }
 function extractSection(text, label) {
-  const regex = new RegExp(
-    `\\*\\s*${label}\\.\\.\\.(.*?)(?=\\n\\*\\s*[A-Z ]+\\.\\.\\.|$)`,
-    "is"
+  if (!text) return "";
+
+  const cleanLabel = label.toUpperCase();
+
+  const pattern = new RegExp(
+    `\\*\\s*${cleanLabel}S?\\.\\.\\.([\\s\\S]*?)(?=\\s*\\*\\s*[A-Z ]+\\.\\.\\.|$)`,
+    "i"
   );
 
-  const match = text.match(regex);
+  const match = text.match(pattern);
 
   return match
     ? match[1]
