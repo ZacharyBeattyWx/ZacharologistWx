@@ -2419,6 +2419,7 @@ document.addEventListener("click", function (e) {
   const modal = document.getElementById("stormModal");
   const detailCard = modal.querySelector(".warning-detail-card");
   const hazardSection = modal.querySelector(".warning-hazards");
+  
 
   modal.querySelector(".alert-modal-title").textContent = event;
 
@@ -2441,21 +2442,21 @@ document.addEventListener("click", function (e) {
   }
 
   if (isWatch) {
-    modal.querySelector(".warning-summary").innerHTML = `
-      <div class="watch-bullets">
-        ${extractWatchHazards(description)}
-      </div>
+    modal.querySelector(".warning-summary").style.color = "#eaeaea";
 
-      <div class="watch-section">
-        <h5>SUMMARY</h5>
-        <p>${extractWatchSummary(description)}</p>
-      </div>
+if (isWatch) {
+  hazardSection.style.display = "none";
+  modal.querySelector(".warning-info").style.display = "none";
+  modal.querySelector(".warning-impacts").style.display = "none";
+  modal.querySelector(".warning-bottom").style.display = "none";
 
-      <div class="watch-section">
-        <h5>REMEMBER</h5>
-        <p>${extractWatchRemember(description)}</p>
-      </div>
-    `;
+  detailCard.classList.remove("winter-mode");
+  modal.classList.add("is-open");
+  return;
+}
+
+modal.querySelector(".warning-info").style.display = "block";
+modal.querySelector(".warning-impacts").style.display = "block";
   } else {
     modal.querySelector(".warning-summary").textContent =
       extractSection(description, "WHAT") ||
