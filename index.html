@@ -2340,21 +2340,18 @@ if (defaultAlertsCard) {
 setInterval(fetchHomepageAlerts, 60000);
 
 document.addEventListener("click", function (e) {
-
   const btn = e.target.closest(".compact-details-btn");
-
   if (!btn) return;
 
   const alertId = btn.dataset.alertId;
+  const alert = allHomepageAlerts.find(a => a.id === alertId);
 
-  const alert = allHomepageAlerts.find(
-    a => a.id === alertId
-  );
-
-  if (!alert) return;
+  if (!alert) {
+    console.log("Alert not found for ID:", alertId);
+    return;
+  }
 
   openAlertModal(alert);
-
 });
 
  function openAlertModal(alert) {
@@ -2588,22 +2585,6 @@ function extractSection(text, label) {
         .trim()
     : "";
 }
-
-  const cleanLabel = label.toUpperCase();
-
-  const pattern = new RegExp(
-    `\\*\\s*${cleanLabel}S?\\.\\.\\.([\\s\\S]*?)(?=\\s*\\*\\s*[A-Z ]+\\.\\.\\.|$)`,
-    "i"
-  );
-
-  const match = text.match(pattern);
-
-  return match
-    ? match[1]
-        .replace(/\n/g, " ")
-        .replace(/\s+/g, " ")
-        .trim()
-    : "";
 
 document.querySelectorAll(".alert-modal-close").forEach(btn => {
   btn.addEventListener("click", () => {
