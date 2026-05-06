@@ -1984,8 +1984,9 @@ function hasValidPolygon(alert) {
 function getAlertColor(event) {
   if (!event) return "#58b7ff";
 
-  if (event.includes("Tornado Watch")) return "#58aaf5";
-  if (event.includes("Tornado")) return "#ff4b4b";
+  if (event.includes("Tornado Watch")) return "f000ff";
+  if (event.includes("Severe Thunderstorm Watch")) return "#bd8bff"
+  if (event.includes("Tornado Warning")) return "#ff4b4b";
 
   if (event.includes("Severe Thunderstorm")) return "#ffb21c";
   if (event.includes("Flash Flood")) return "#00c4a7";
