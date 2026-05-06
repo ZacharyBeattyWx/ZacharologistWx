@@ -2368,6 +2368,10 @@ function openAlertModal(alert) {
     event.includes("Tornado Watch") ||
     event.includes("Severe Thunderstorm Watch");
 
+  const isStormAlert=
+    event.includes("Tornado") ||
+    event.includes("Severe Thunderstorm");
+
   const headerColor = getAlertColor(event);
 
   const windMatch = description.match(/(?:wind gusts?|winds).*?(\d+)\s*mph/i);
@@ -2506,9 +2510,20 @@ function openAlertModal(alert) {
       </div>
     `;
 
-    warningBottom.style.display = "flex";
-    modal.querySelector(".bottom-hail-value").textContent = hail || "N/A";
-    modal.querySelector(".bottom-wind-value").textContent = wind || "N/A";
+    if (isStormAlert) {
+      warningBottom.style.display = "flex";
+
+      modal.querySelector(".bottom-hail-value").textContent = 
+        hail || "N/A";
+
+      modal.querySelector(".bottom-wind-value").textContent = 
+        wind || "N/A";
+
+    } else {
+      warningBottom.style.display = "none";
+    
+    }
+
   }
 
   modal.classList.add("is-open");
