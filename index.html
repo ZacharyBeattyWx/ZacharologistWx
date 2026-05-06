@@ -2378,32 +2378,14 @@ document.addEventListener("click", function (e) {
     event.includes("Tornado Watch") ||
     event.includes("Severe Thunderstorm Watch");
 
-  let headerColor = "#58b7ff";
+  let headerColor = getAlertColor(event);
 
   if (event.includes("Tornado Watch")) {
     headerColor = "#58aaf5";
-  } else if (event.includes("Severe Thunderstorm Watch")) {
-    headerColor = "#ffb21c";
-  } else if (event.includes("Tornado")) {
-    headerColor = "#ff3b3b";
-  } else if (event.includes("Severe Thunderstorm")) {
-    headerColor = "#ffb21c";
-  } else if (event.includes("Flash Flood")) {
-    headerColor = "#00c4a7";
-  } else if (event.includes("Winter Storm")) {
-    headerColor = "#df74d7";
-  } else if (event.includes("Winter Weather")) {
-    headerColor = "#ab7cff";
-  } else if (event.includes("Freeze")) {
-    headerColor = "#6edce4";
-  } else if (event.includes("Frost")) {
-    headerColor = "#4e8de6";
-  } else if (event.includes("Blizzard")) {
-    headerColor = "#748cff";
   }
 
-  const windMatch = description.match(/(\d+)\s*mph/i);
-  const hailMatch = description.match(/(\d+(\.\d+)?)\s*inch|quarter/i);
+  const windMatch = description.match(/(?:wind gusts?|winds).*?(\d+)\s*mph/i);
+  const hailMatch = description.match(/(?:hail).*?(\d+(\.\d+)?)\s*inch|quarter/i);
   const snowMatch = description.match(/snow accumulations?.*?(\d+.*?)\./i);
 
   const wind = windMatch ? `${windMatch[1]} mph` : null;
@@ -2419,7 +2401,9 @@ document.addEventListener("click", function (e) {
   const modal = document.getElementById("stormModal");
   const detailCard = modal.querySelector(".warning-detail-card");
   const hazardSection = modal.querySelector(".warning-hazards");
-  
+  const warningInfo = modal.querySelector(".warning-info");
+  const warningImpacts = modal.querySelector(".warning-impacts");
+  const warningBottom = modal.querySelector(".warning-bottom");
 
   modal.querySelector(".alert-modal-title").textContent = event;
 
@@ -2438,32 +2422,43 @@ document.addEventListener("click", function (e) {
   const titleEl = modal.querySelector(".warning-detail-card h4");
 
   if (titleEl) {
-    titleEl.textContent = "WHAT TO EXPECT";
+    titleEl.textContent = isWatch ? "WATCH DETAILS" : "WHAT TO EXPECT";
   }
+
+  detailCard.classList.toggle("winter-mode", isWinterAlert);
+
+  warningInfo.style.display = "block";
+  warningImpacts.style.display = "block";
+  warningBottom.style.display = "flex";
+  hazardSection.style.display = "grid";
 
   if (isWatch) {
-    modal.querySelector(".warning-summary").style.color = "#eaeaea";
+    modal.querySelector(".warning-summary").innerHTML = `
+      <div class="watch-section">
+        <h5>SUMMARY</h5>
+        <p>${extractWatchSummary(description)}</p>
+      </div>
 
-if (isWatch) {
-  hazardSection.style.display = "none";
-  modal.querySelector(".warning-info").style.display = "none";
-  modal.querySelector(".warning-impacts").style.display = "none";
-  modal.querySelector(".warning-bottom").style.display = "none";
+      <div class="watch-section">
+        <h5>REMEMBER</h5>
+        <p>${extractWatchRemember(description)}</p>
+      </div>
+    `;
 
-  detailCard.classList.remove("winter-mode");
-  modal.classList.add("is-open");
-  return;
-}
+    hazardSection.style.display = "none";
+    warningInfo.style.display = "none";
+    warningImpacts.style.display = "none";
+    warningBottom.style.display = "none";
 
-modal.querySelector(".warning-info").style.display = "block";
-modal.querySelector(".warning-impacts").style.display = "block";
-  } else {
-    modal.querySelector(".warning-summary").textContent =
-      extractSection(description, "WHAT") ||
-      headline ||
-      description.split("\n")[0] ||
-      event;
+    modal.classList.add("is-open");
+    return;
   }
+
+  modal.querySelector(".warning-summary").textContent =
+    extractSection(description, "WHAT") ||
+    headline ||
+    description.split("\n")[0] ||
+    event;
 
   modal.querySelector(".warning-summary").style.color = "#eaeaea";
 
@@ -2476,10 +2471,9 @@ modal.querySelector(".warning-impacts").style.display = "block";
     extractSection(description, "IMPACTS") || "No impacts listed.";
 
   if (isWinterAlert) {
-    detailCard.classList.add("winter-mode");
     hazardSection.innerHTML = "";
 
-    modal.querySelector(".warning-bottom").style.display = "none";
+    warningBottom.style.display = "none";
 
     if (snow) {
       hazardSection.innerHTML += `
@@ -2501,9 +2495,6 @@ modal.querySelector(".warning-impacts").style.display = "block";
 
     hazardSection.style.display = snow || wind ? "grid" : "none";
   } else {
-    detailCard.classList.remove("winter-mode");
-    hazardSection.style.display = "grid";
-
     hazardSection.innerHTML = `
       <div class="hazard-box">
         <span class="hazard-label">🌬️ Max Wind</span>
@@ -2527,7 +2518,7 @@ modal.querySelector(".warning-impacts").style.display = "block";
       </div>
     `;
 
-    modal.querySelector(".warning-bottom").style.display = "flex";
+    warningBottom.style.display = "flex";
     modal.querySelector(".bottom-hail-value").textContent = hail || "N/A";
     modal.querySelector(".bottom-wind-value").textContent = wind || "N/A";
   }
@@ -2535,32 +2526,16 @@ modal.querySelector(".warning-impacts").style.display = "block";
   modal.classList.add("is-open");
 }
 
-function extractWatchHazards(text) {
-  const hazards = [];
-
-  const tornadoMatch = text.match(/tornadoes?.*?possible/i);
-  const hailMatch = text.match(/hail.*?\d+.*?inch/i);
-  const windMatch = text.match(/wind gusts?.*?\d+.*?mph/i);
-
-  if (tornadoMatch) hazards.push("🌪️ Tornadoes possible");
-  if (hailMatch) hazards.push("🧊 Large hail possible");
-  if (windMatch) hazards.push("💨 Damaging winds possible");
-
-  return hazards.length
-    ? hazards.map(h => `<div>${h}</div>`).join("")
-    : "<div>Severe weather conditions are possible.</div>";
-}
-
 function extractWatchSummary(text) {
-  const match = text.match(/SUMMARY(.*?)(?=REMEMBER|AVIATION|$)/is);
+  const match = text.match(/SUMMARY\.*\s*([\s\S]*?)(?=REMEMBER|AVIATION|PRECAUTIONARY|$)/i);
 
   return match
     ? match[1].replace(/\n/g, " ").replace(/\s+/g, " ").trim()
-    : "Watch conditions are favorable for severe weather.";
+    : "Thunderstorms may become capable of tornadoes, damaging winds, and hail within the watch area.";
 }
 
 function extractWatchRemember(text) {
-  const match = text.match(/REMEMBER(.*?)(?=AVIATION|$)/is);
+  const match = text.match(/REMEMBER\.*\s*([\s\S]*?)(?=AVIATION|PRECAUTIONARY|$)/i);
 
   return match
     ? match[1].replace(/\n/g, " ").replace(/\s+/g, " ").trim()
