@@ -1532,6 +1532,88 @@ nav a {
 .alert-tabs::-webkit-scrollbar {
   display: none;
 }
+.warning-detail-card.winter-mode {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(48,48,52,0.98),
+      rgba(30,30,34,0.98)
+    );
+
+  border: 1px solid rgba(255,255,255,0.08);
+
+  box-shadow:
+    0 12px 42px rgba(0,0,0,0.45),
+    0 0 0 1px rgba(255,255,255,0.03);
+
+  backdrop-filter: blur(18px);
+}
+
+.warning-detail-card.winter-mode h4 {
+  color: #69bbff;
+  letter-spacing: 1px;
+  font-size: 0.95rem;
+}
+
+.warning-detail-card.winter-mode .warning-summary {
+  color: #eeeeee !important;
+  line-height: 1.5;
+  font-size: 1.08rem;
+}
+
+.warning-detail-card.winter-mode .warning-hazards {
+  margin-top: 20px;
+}
+
+.warning-detail-card.winter-mode .hazard-box {
+  background: rgba(255,255,255,0.035);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 14px;
+  min-height: 72px;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.warning-detail-card.winter-mode .hazard-label {
+  color: #8ad4ff;
+  font-size: 0.88rem;
+}
+
+.warning-detail-card.winter-mode .hazard-box strong,
+.warning-detail-card.winter-mode .hazard-value {
+  font-size: 1.4rem;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.warning-detail-card.winter-mode .warning-info {
+  border-top: 1px solid rgba(255,255,255,0.08);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+
+  margin: 18px 0;
+  padding: 16px 0;
+}
+
+.warning-detail-card.winter-mode .warning-info p {
+  color: #d9d9d9;
+}
+
+.warning-detail-card.winter-mode .warning-info span:first-child {
+  color: #9fa7b5;
+}
+
+.warning-detail-card.winter-mode .warning-impacts strong {
+  color: #ffb32c;
+  font-size: 1.05rem;
+}
+
+.warning-detail-card.winter-mode .warning-impacts p {
+  color: #ececec;
+  line-height: 1.55;
+}
+
 @media (min-width: 769px) {
   .dashboard-grid {
     display: grid !important;
@@ -2228,74 +2310,141 @@ function openAlertModal(alert) {
     ? new Date(props.expires).toLocaleString()
     : "Unknown";
 
-  let headerColor = "#58b7ff";
+  const isWinterAlert =
+    event.includes("Winter") ||
+    event.includes("Freeze") ||
+    event.includes("Frost") ||
+    event.includes("Snow") ||
+    event.includes("Ice") ||
+    event.includes("Blizzard");
 
-  if (event.includes("Tornado")) {
-    headerColor = "#ff3b3b";
-  } else if (event.includes("Severe Thunderstorm")) {
-    headerColor = "#ffb21c";
-  } else if (event.includes("Flash Flood")) {
-    headerColor = "#00c4a7";
-  }
+ let headerColor = "#58b7ff";
+
+if (event.includes("Tornado")) {
+  headerColor = "#ff3b3b";
+
+} else if (event.includes("Severe Thunderstorm")) {
+  headerColor = "#ffb21c";
+
+} else if (event.includes("Flash Flood")) {
+  headerColor = "#00c4a7";
+
+} else if (event.includes("Winter Storm")) {
+  headerColor = "#df74d7";
+
+} else if (event.includes("Winter Weather")) {
+  headerColor = "#ab7cff";
+
+} else if (event.includes("Freeze")) {
+  headerColor = "#6edce4";
+
+} else if (event.includes("Frost")) {
+  headerColor = "#4e8de6";
+
+} else if (event.includes("Blizzard")) {
+  headerColor = "#748cff";
+}
 
   const windMatch = description.match(/(\d+)\s*mph/i);
   const hailMatch = description.match(/(\d+(\.\d+)?)\s*inch|quarter/i);
+  const snowMatch = description.match(/snow accumulations?.*?(\d+.*?)\./i);
 
-  const wind = windMatch ? `${windMatch[1]} MPH` : "N/A";
+  const wind = windMatch ? `${windMatch[1]} mph` : null;
+
   const hail = hailMatch
-    ? hailMatch[0].toLowerCase().includes("quarter") ? "1.00 IN" : `${hailMatch[1]} IN`
-    : "N/A";
+    ? hailMatch[0].toLowerCase().includes("quarter")
+      ? "1.00 IN"
+      : `${hailMatch[1]} IN`
+    : null;
 
-  const summaryEl = document.querySelector("#stormModal .warning-summary");
+  const snow = snowMatch ? snowMatch[1] : null;
 
-  summaryEl.textContent =
-    headline || description.split("\n")[0] || event || "Weather Alert";
+  const modal = document.getElementById("stormModal");
+  const detailCard = modal.querySelector(".warning-detail-card");
+modal.querySelector(".alert-modal-box").style.borderTop =
+  `6px solid ${headerColor}`;
+const titleEl = modal.querySelector(".warning-detail-card h4");
 
-  summaryEl.style.color = headerColor;
-
-  document.querySelector("#stormModal .hazard-wind-value").textContent = wind;
-  document.querySelector("#stormModal .hazard-hail-value").textContent = hail;
-  document.querySelector("#stormModal .hazard-source-value").textContent =
-    description.toLowerCase().includes("radar indicated")
-      ? "Radar indicated"
-      : "NWS Issued";
-
-  document.querySelector("#stormModal .alert-where").textContent = areas;
-  document.querySelector("#stormModal .alert-when").textContent = expires;
-
-  document.querySelector("#stormModal .warning-impacts p").textContent =
-    extractSection(description, "IMPACT") || "No impacts listed.";
-
-  document.querySelector("#stormModal .bottom-hail-value").textContent = hail;
-  document.querySelector("#stormModal .bottom-wind-value").textContent = wind;
-
-  document.getElementById("stormModal").classList.add("is-open");
+if (titleEl) {
+  titleEl.textContent = "WHAT TO EXPECT";
 }
-  // Fill modal
-const summaryEl = document.querySelector(".warning-summary");
+  
+  modal.querySelector(".warning-summary").textContent =
+    extractSection(description, "WHAT") ||
+    headline ||
+    description.split("\n")[0] ||
+    event;
 
-summaryEl.textContent =
-  headline || description.split("\n")[0];
+  modal.querySelector(".warning-summary").style.color = "#eaeaea";
 
-summaryEl.style.color = headerColor;
-    headline || description.split("\n")[0];
+  modal.querySelector(".alert-where").textContent = areas;
 
-  document.querySelector(".hazard-wind-value").textContent = wind;
-  document.querySelector(".hazard-hail-value").textContent = hail;
-  document.querySelector(".hazard-source-value").textContent =
-    description.toLowerCase().includes("radar indicated")
-      ? "Radar indicated"
-      : "NWS Issued";
+  modal.querySelector(".alert-when").textContent =
+    extractSection(description, "WHEN") || expires;
 
-  document.querySelector(".alert-where").textContent = areas;
-  document.querySelector(".alert-when").textContent = expires;
-
-  document.querySelector(".warning-impacts p").textContent =
+  modal.querySelector(".warning-impacts p").textContent =
     extractSection(description, "IMPACT") || "No impacts listed.";
 
-  document.getElementById("stormModal").classList.add("is-open");
+  const hazardSection = modal.querySelector(".warning-hazards");
 
+  if (isWinterAlert) {
+    detailCard.classList.add("winter-mode");
+    hazardSection.innerHTML = "";
+    modal.querySelector(".hazard-source-value")
+  ?.closest(".hazard-box")
+  ?.style.setProperty("display", "none");
 
+modal.querySelector(".warning-bottom").style.display = "none";
+
+    if (snow) {
+      hazardSection.innerHTML += `
+        <div class="hazard-box">
+          <span class="hazard-label">❄️ SNOW</span>
+          <strong>${snow}</strong>
+        </div>
+      `;
+    }
+
+    if (wind) {
+      hazardSection.innerHTML += `
+        <div class="hazard-box">
+          <span class="hazard-label">💨 WIND</span>
+          <strong>${wind}</strong>
+        </div>
+      `;
+    }
+
+    if (!snow && !wind) {
+      hazardSection.style.display = "none";
+    } else {
+      hazardSection.style.display = "grid";
+    }
+
+  } else {
+    
+
+    hazardSection.style.display = "grid";
+
+    modal.querySelector(".hazard-wind-value").textContent =
+      wind || "N/A";
+
+    modal.querySelector(".hazard-hail-value").textContent =
+      hail || "N/A";
+
+    modal.querySelector(".hazard-source-value").textContent =
+      description.toLowerCase().includes("radar indicated")
+        ? "Radar indicated"
+        : "NWS Issued";
+        detailCard.classList.remove("winter-mode");
+        modal.querySelector(".hazard-source-value")
+  ?.closest(".hazard-box")
+  ?.style.setProperty("display", "flex");
+
+modal.querySelector(".warning-bottom").style.display = "flex";
+  }
+
+  modal.classList.add("is-open");
+}
 function extractSection(text, label) {
   const regex = new RegExp(`${label}\\.\\.\\.(.*?)(?=\\n[A-Z ]+\\.\\.\\.|$)`, "is");
   const match = text.match(regex);
