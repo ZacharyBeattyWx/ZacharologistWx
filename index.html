@@ -1990,7 +1990,14 @@ function getAlertColor(event) {
 
   if (event.includes("Tornado Watch")) return "f000ff";
   if (event.includes("Severe Thunderstorm Watch")) return "#bd8bff"
-  if (event.includes("Tornado Warning")) return "#ff4b4b";
+
+  if (
+    event.includes("Tornado Warning") ||
+    event.includes("Particularly Dangerous Situation")
+)   {
+    return "#ff3b3b";
+}
+}
 
   if (event.includes("Severe Thunderstorm")) return "#ffb21c";
   if (event.includes("Flash Flood")) return "#00c4a7";
