@@ -2184,6 +2184,10 @@ function triggerNewAlertGlow() {
 }
 
 async function fetchHomepageAlerts() {
+  const modalOpen =
+  document.getElementById("stormModal")
+  ?.classList.contains("is-open");
+  
   if (!alertsList) return;
 
   alertsList.innerHTML = `
