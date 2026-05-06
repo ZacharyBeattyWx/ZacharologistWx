@@ -974,6 +974,50 @@
   justify-content: center;
   padding: 20px;
 }
+.alert-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+
+  padding: 22px 24px 18px;
+
+  color: white;
+
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.alert-modal-header-text h2 {
+  margin: 0;
+
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.05;
+
+  text-shadow:
+    0 2px 10px rgba(0,0,0,0.35);
+}
+
+.alert-modal-header-text p {
+  margin: 6px 0 0;
+
+  font-size: 1.05rem;
+  opacity: 0.95;
+}
+
+.alert-modal-close {
+  background: transparent;
+  border: none;
+  color: white;
+
+  font-size: 2rem;
+  line-height: 1;
+
+  cursor: pointer;
+}
+
+.alert-modal-close:hover {
+  opacity: 0.75;
+}
 
 .alert-modal.is-open {
   display: flex;
@@ -1396,7 +1440,7 @@ nav a {
     color: #d9e3f5;
   }
 
-  
+
   .alert-item,
 .warning-card,
 .alert-modal .warning-detail-card {
@@ -1787,9 +1831,17 @@ nav a {
   <div class="alert-modal-backdrop"></div>
 
   <div class="alert-modal-box">
-    <button class="alert-modal-close" type="button">×</button>
 
-    <div class="warning-detail-card">
+  <div class="alert-modal-header">
+    <div class="alert-modal-header-text">
+      <h2 class="alert-modal-title">Weather Alert</h2>
+      <p class="alert-modal-office">National Weather Service</p>
+    </div>
+
+    <button class="alert-modal-close" type="button">×</button>
+  </div>
+
+  <div class="warning-detail-card">
       <h4>What to Expect</h4>
 
       <p class="warning-summary">
@@ -2353,6 +2405,15 @@ if (event.includes("Tornado")) {
   const snow = snowMatch ? snowMatch[1] : null;
 
   const modal = document.getElementById("stormModal");
+  modal.querySelector(".alert-modal-title").textContent = event;
+
+modal.querySelector(".alert-modal-office").textContent =
+  props.senderName || "National Weather Service";
+  const header = modal.querySelector(".alert-modal-header");
+
+if (header) {
+  header.style.background = headerColor;
+}
   const detailCard = modal.querySelector(".warning-detail-card");
 modal.querySelector(".alert-modal-box").style.borderTop =
   `6px solid ${headerColor}`;
