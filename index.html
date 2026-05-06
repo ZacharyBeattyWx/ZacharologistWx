@@ -1246,7 +1246,22 @@ body {
   .briefing-meta {
     grid-template-columns: repeat(3, 1fr) !important;
   }
+
+    .briefing-meta {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+
+  .alert-modal-box {
+    width: min(640px, 88vw);
+    max-width: 640px;
+    margin: auto;
+  }
+
+  .alert-modal .warning-detail-card {
+    border-radius: 18px;
+  }
 }
+
 @media (max-width: 768px) {
 .alert-tabs-wrapper {
   width: 100%;
@@ -1381,8 +1396,7 @@ nav a {
     color: #d9e3f5;
   }
 
-
-
+  
   .alert-item,
 .warning-card,
 .alert-modal .warning-detail-card {
