@@ -2054,6 +2054,22 @@ function getFilteredAlertsForCategory(category) {
   });
 }
 
+function getAlertColor(event) {
+  if (!event) return "#58b7ff";
+
+  if (event.includes("Tornado")) return "#ff4b4b";
+  if (event.includes("Severe Thunderstorm")) return "#ffb21c";
+  if (event.includes("Flash Flood")) return "#00c4a7";
+
+  if (event.includes("Winter Storm")) return "#df74d7";
+  if (event.includes("Winter Weather")) return "#b07cff";
+  if (event.includes("Freeze")) return "#67dfe8";
+  if (event.includes("Frost")) return "#5ea0ff";
+  if (event.includes("Blizzard")) return "#748cff";
+
+  return "#58b7ff";
+}
+
 function renderCompactAlerts(alerts, category) {
   alertsList.innerHTML = "";
 
@@ -2111,7 +2127,10 @@ function renderCompactAlerts(alerts, category) {
       card.className = "compact-alert-item";
 
       card.innerHTML = `
-        <div class="compact-alert-title ${category}-title">${props.event}</div>
+        <div class="compact-alert-title ${category}-title"
+           style="color:${getAlertColor(props.event)};">
+          ${props.event}
+        </div>
 
         <div class="compact-alert-meta">
           <span class="alert-pill">${props.severity || "Unknown"}</span>
@@ -2144,6 +2163,7 @@ function renderCategory(category) {
   const filteredAlerts = getFilteredAlertsForCategory(category);
 
   currentAlerts = filteredAlerts; // 🔥 THIS LINE ADDED
+  
 
   renderCompactAlerts(filteredAlerts, category);
 }
@@ -2331,6 +2351,28 @@ document.addEventListener("click", function (e) {
   if (!alert) return;
 
   openAlertModal(alert);
+
+  function getAlertColor(event) {
+  if (!event) return "#58b7ff";
+
+  if (event.includes("Tornado")) return "#ff3b3b";
+
+  if (event.includes("Severe Thunderstorm")) return "#ffb21c";
+
+  if (event.includes("Flash Flood")) return "#00c4a7";
+
+  if (event.includes("Winter Storm")) return "#df74d7";
+
+  if (event.includes("Winter Weather")) return "#ab7cff";
+
+  if (event.includes("Freeze")) return "#6edce4";
+
+  if (event.includes("Frost")) return "#4e8de6";
+
+  if (event.includes("Blizzard")) return "#748cff";
+
+  return "#58b7ff";
+}
 });
 
 document.addEventListener("click", function (e) {
@@ -2365,30 +2407,6 @@ function openAlertModal(alert) {
 
  let headerColor = "#58b7ff";
 
-if (event.includes("Tornado")) {
-  headerColor = "#ff3b3b";
-
-} else if (event.includes("Severe Thunderstorm")) {
-  headerColor = "#ffb21c";
-
-} else if (event.includes("Flash Flood")) {
-  headerColor = "#00c4a7";
-
-} else if (event.includes("Winter Storm")) {
-  headerColor = "#df74d7";
-
-} else if (event.includes("Winter Weather")) {
-  headerColor = "#ab7cff";
-
-} else if (event.includes("Freeze")) {
-  headerColor = "#6edce4";
-
-} else if (event.includes("Frost")) {
-  headerColor = "#4e8de6";
-
-} else if (event.includes("Blizzard")) {
-  headerColor = "#748cff";
-}
 
   const windMatch = description.match(/(\d+)\s*mph/i);
   const hailMatch = description.match(/(\d+(\.\d+)?)\s*inch|quarter/i);
