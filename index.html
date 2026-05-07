@@ -2027,19 +2027,20 @@ function hasValidPolygon(alert) {
 function getAlertColor(event) {
   if (!event) return "#58b7ff";
 
-  if (event.includes("Tornado Watch")) return "f000ff";
-  if (event.includes("Severe Thunderstorm Watch")) return "#bd8bff"
+  if (event.includes("Tornado Emergency")) return "#ff00ff";
+  if (event.includes("Tornado Watch")) return "#f000ff";
+  if (event.includes("Severe Thunderstorm Watch")) return "#bd8bff";
 
   if (
     event.includes("Tornado Warning") ||
     event.includes("Particularly Dangerous Situation")
-)   {
+  ) {
     return "#ff3b3b";
-}
+  }
 
   if (event.includes("Severe Thunderstorm")) return "#ffb21c";
   if (event.includes("Flash Flood")) return "#00c4a7";
-  if (event.includes("Flood")) return "#00a008";
+  if (event.includes("Flood")) return "#00aa08";
 
   if (event.includes("Winter Storm")) return "#df74d7";
   if (event.includes("Winter Weather")) return "#ab7cff";
@@ -2401,6 +2402,8 @@ function openAlertModal(alert) {
 
   const event = props.event || "Weather Alert";
   const description = props.description || "";
+  const isTornadoEmergency =
+  description.toLowerCase().includes("tornado emergency");
   const headline = props.headline || "";
   const instruction = props.instruction || "";
   const areas = props.areaDesc || "Not listed";
@@ -2425,7 +2428,9 @@ function openAlertModal(alert) {
     event.includes("Tornado") ||
     event.includes("Severe Thunderstorm");
 
-  const headerColor = getAlertColor(event);
+  const headerColor = isTornadoEmergency
+  ? "#ff00ff"
+  : getAlertColor(event);
   console.log(event, headerColor);
 
   const windMatch = description.match(/(?:wind gusts?|winds).*?(\d+)\s*mph/i);
@@ -2464,7 +2469,10 @@ const windThreat =
   const summary = modal.querySelector(".warning-summary");
   const titleEl = modal.querySelector(".warning-detail-card h4");
 
-  modal.querySelector(".alert-modal-title").textContent = event;
+ modal.querySelector(".alert-modal-title").textContent =
+  description.toLowerCase().includes("tornado emergency")
+    ? "Tornado Emergency"
+    : event;
 
   modal.querySelector(".alert-modal-office").textContent =
     props.senderName || "National Weather Service";
