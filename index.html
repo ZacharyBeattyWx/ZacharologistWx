@@ -1996,6 +1996,7 @@ let knownAlertIds = new Set();
 let hasLoadedAlertsOnce = false;
 let alertGlowTimer = null;
 let openDropdownStates = [];
+let dropdownMemory = {};
 let isFetchingAlerts = false;
 
 function getExpiresText(expires) {
@@ -2157,8 +2158,15 @@ function renderCompactAlerts(alerts, category) {
   });
 
   const wrapper = document.createElement("details");
-  wrapper.className = "state-alert-dropdown";
-  wrapper.open = window.alertCountWasOpen ?? false;
+wrapper.className = "state-alert-dropdown";
+
+const parentMemoryKey = `${category}-alert-count`;
+
+wrapper.open = dropdownMemory[parentMemoryKey] ?? false;
+
+wrapper.addEventListener("toggle", () => {
+  dropdownMemory[parentMemoryKey] = wrapper.open;
+});
   
   wrapper.innerHTML = `
     <summary>
@@ -2174,9 +2182,13 @@ sortedStates.forEach((state, stateIndex) => {
   const stateDetails = document.createElement("details");
 stateDetails.className = "state-alert-group";
 
-const savedState = openDropdownStates.find(item => item.index === stateIndex);
-stateDetails.open = savedState ? savedState.open : false;
+const memoryKey = `${category}-${state}`;
 
+stateDetails.open = dropdownMemory[memoryKey] ?? false;
+
+stateDetails.addEventListener("toggle", () => {
+  dropdownMemory[memoryKey] = stateDetails.open;
+});
     stateDetails.innerHTML = `
       <summary>
         ${state} — ${stateAlerts.length} alert${stateAlerts.length === 1 ? "" : "s"}
@@ -2350,16 +2362,6 @@ if (!hasLoadedAlertsOnce) {
     }
 
     allHomepageAlerts = uniqueAlerts;
-
-   const existingDropdowns = document.querySelectorAll(".state-alert-group");
-
-openDropdownStates = Array.from(existingDropdowns).map((el, index) => ({
-  index,
-  open: el.open
-}));
-
-const mainDropdown = document.querySelector(".state-alert-dropdown");
-window.alertCountWasOpen = mainDropdown ? mainDropdown.open : false;
 
 updateTabAlertStates();
 
