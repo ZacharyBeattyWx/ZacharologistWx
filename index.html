@@ -2547,7 +2547,13 @@ if (wind) {
   `;
 }
 
-if (alertSource && !tornado) {
+if (
+  alertSource &&
+  !tornado &&
+  !hail &&
+  !wind
+) {
+  
   stormTags.innerHTML += `
     <div class="storm-tag source">
       📡 ${alertSource}
