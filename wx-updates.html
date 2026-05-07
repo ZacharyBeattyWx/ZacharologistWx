@@ -498,9 +498,13 @@ function setSummaryColor(id, alerts) {
   const el = document.getElementById(id);
 
   if (!alerts.length) {
-    el.style.borderColor = "rgba(255,255,255,0.12)";
-    return;
-  }
+  el.style.borderColor = "rgba(255,255,255,0.12)";
+  el.style.boxShadow = "none";
+  el.style.opacity = "0.65";
+  return;
+}
+
+el.style.opacity = "1";
 
   const hasTornado = alerts.some(a =>
     a.properties.event.includes("Tornado")
@@ -526,6 +530,10 @@ function setSummaryColor(id, alerts) {
     el.style.borderColor = "#22c55e";
     el.style.boxShadow = "0 0 18px rgba(34,197,94,0.25)";
   }
+  else {
+  el.style.borderColor = "#94a3b8";
+  el.style.boxShadow = "0 0 18px rgba(148,163,184,0.25)";
+}
 }
 
     function formatTime(timeString) {
