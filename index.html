@@ -853,10 +853,41 @@
   gap: 10px;
   margin: 8px 0 14px;
 }
+.storm-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 18px 0 14px;
+}
+.storm-tag {
+  background:rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size:0.85rem;
+  font-weight:700;
+  letter-spacing: 0.03em;
+  color: #f5f5f5;
+  backdrop-filter: blur(6px)
+}
+.storm-tag.tornado{
+  color: #ff73ff;
+}
+.storm-tag.hail{
+  color: #ffd24d;
+}
+.storm-tag.wind{
+  color: #ffb347;
+}
+.storm-tag.source{
+  color: #7fd2dd;
+}
 
 .hazard-box {
-  padding: 10px 12px;
-  border-radius: 10px;
+  Background: rgba (255, 255, 255, 0.04);
+  Border: 1px solid rgba (255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 14px 12px;
   min-height: 58px;
   display: flex;
   flex-direction: column;
@@ -954,6 +985,10 @@
   text-align: center;
   color: #ffe100;
   font-weight: 700;
+  Display: flex;
+  justify-content: center;
+  gap: 24px
+
 }
 .alert-details-btn {
   border: none;
@@ -997,6 +1032,10 @@
     0 2px 10px rgba(0,0,0,0.35);
 }
 
+.alert-modal-title {
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0, 0.35);
+}
+
 .alert-modal-header-text p {
   margin: 6px 0 0;
 
@@ -1026,8 +1065,10 @@
 .alert-modal-box {
   position: relative;
   z-index: 2;
-  width: min(640px, 94vw);
+
+  width: min(92vw, 780px);
   max-height: 88vh;
+
   overflow-y: auto;
 
   background: #2b2d2f;
@@ -1036,17 +1077,8 @@
   box-shadow:
     0 18px 50px rgba(0,0,0,0.55);
 
-  overflow: hidden;
 }
 
-.alert-modal-box {
-  position: relative;
-  z-index: 2;
-  width: min(640px, 94vw);
-  max-height: 88vh;
-  overflow-y: auto;
-  border-radius: 18px;
-}
 .alert-modal .warning-detail-card {
   margin-top: 0;
 }
@@ -1447,6 +1479,8 @@ nav a {
   width: 100%;
   max-width: 100%;
   min-width: 0;
+
+  padding: 20px;
 }
  iframe {
   width: 100%;
@@ -1575,8 +1609,10 @@ nav a {
 .alert-modal-box {
   width: 92vw;
   max-width: 92vw;
-  max-height: none;
-  overflow: visible;
+  
+  max-height: 90vh;
+
+  overflow-y: auto;
   margin: auto;
   border-radius: 22px;
 }
@@ -1847,7 +1883,7 @@ nav a {
       <p class="warning-summary">
         THIS IS A TEST! THERE ARE NO ACTIVE WARNINGS.
       </p>
-
+      <div class="storm-tags"></div>
       <div class="warning-hazards">
   <div class="hazard-box">
     <span class="hazard-label">🌬️ Max Wind</span>
@@ -1876,8 +1912,8 @@ nav a {
       </div>
 
       <div class="warning-bottom">
-  Hail: <strong class="bottom-hail-value"></strong>
-  Wind: <strong class="bottom-wind-value"></strong>
+        <span>Hail: <strong class="bottom-hail-value"></strong></span>
+         <span>Wind: <strong class="bottom-wind-value"></strong></span>
   
 </div>
     </div>
@@ -1985,8 +2021,15 @@ function hasValidPolygon(alert) {
 function getAlertColor(event) {
   if (!event) return "#58b7ff";
 
-  if (event.includes("Tornado Watch")) return "#58aaf5";
-  if (event.includes("Tornado")) return "#ff4b4b";
+  if (event.includes("Tornado Watch")) return "f000ff";
+  if (event.includes("Severe Thunderstorm Watch")) return "#bd8bff"
+
+  if (
+    event.includes("Tornado Warning") ||
+    event.includes("Particularly Dangerous Situation")
+)   {
+    return "#ff3b3b";
+}
 
   if (event.includes("Severe Thunderstorm")) return "#ffb21c";
   if (event.includes("Flash Flood")) return "#00c4a7";
@@ -2372,7 +2415,12 @@ function openAlertModal(alert) {
     event.includes("Tornado Watch") ||
     event.includes("Severe Thunderstorm Watch");
 
+  const isStormAlert=
+    event.includes("Tornado") ||
+    event.includes("Severe Thunderstorm");
+
   const headerColor = getAlertColor(event);
+  console.log(event, headerColor);
 
   const windMatch = description.match(/(?:wind gusts?|winds).*?(\d+)\s*mph/i);
   const hailMatch = description.match(/(?:hail).*?(\d+(\.\d+)?)\s*inch|quarter/i);
@@ -2485,35 +2533,41 @@ function openAlertModal(alert) {
       `;
     }
 
-    hazardSection.style.display = snow || wind ? "grid" : "none";
-  } else {
-    hazardSection.innerHTML = `
-      <div class="hazard-box">
-        <span class="hazard-label">🌬️ Max Wind</span>
-        <span class="hazard-value hazard-wind-value">${wind || "N/A"}</span>
-      </div>
+ } else if (isStormAlert) {
+hazardSection.innerHTML = `
+<div class="hazard-box">
+<span class="hazard-label">🌬️ Max Wind</span>
+<span class="hazard-value hazard-wind-value">${wind || "N/A"}</span>
+</div>
 
-      <div class="hazard-box">
-        <span class="hazard-label">🧊 Max Hail</span>
-        <span class="hazard-value hazard-hail-value">${hail || "N/A"}</span>
-      </div>
+<div class="hazard-box">
+<span class="hazard-label">🧊 Max Hail</span>
+<span class="hazard-value hazard-hail-value">${hail || "N/A"}</span>
+</div>
 
-      <div class="hazard-box">
-        <span class="hazard-label">📡 Source</span>
-        <span class="hazard-value hazard-source-value">
-          ${
-            description.toLowerCase().includes("radar indicated")
-              ? "Radar indicated"
-              : "NWS Issued"
-          }
-        </span>
-      </div>
-    `;
+<div class="hazard-box">
+<span class="hazard-label">📡 Source</span>
+<span class="hazard-value hazard-source-value">
+${
+description.toLowerCase().includes("radar indicated")
+? "Radar indicated"
+: "NWS Issued"
+}
+</span>
+</div>
+`;
 
-    warningBottom.style.display = "flex";
-    modal.querySelector(".bottom-hail-value").textContent = hail || "N/A";
-    modal.querySelector(".bottom-wind-value").textContent = wind || "N/A";
-  }
+hazardSection.style.display = "grid";
+warningBottom.style.display = "flex";
+
+modal.querySelector(".bottom-hail-value").textContent = hail || "N/A";
+modal.querySelector(".bottom-wind-value").textContent = wind || "N/A";
+
+} else {
+hazardSection.style.display = "none";
+warningBottom.style.display = "none";
+
+}
 
   modal.classList.add("is-open");
 }
