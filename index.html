@@ -1996,6 +1996,7 @@ let knownAlertIds = new Set();
 let hasLoadedAlertsOnce = false;
 let alertGlowTimer = null;
 let openDropdownStates = [];
+let isFetchingAlerts = false;
 
 function getExpiresText(expires) {
   if (!expires) return "Unknown";
@@ -2247,11 +2248,18 @@ function triggerNewAlertGlow() {
 }
 
 async function fetchHomepageAlerts() {
+
+  if (isFetchingAlerts) return;
+isFetchingAlerts = true;
+
   const modalOpen =
   document.getElementById("stormModal")
   ?.classList.contains("is-open");
   
-  if (!alertsList) return;
+  if (!alertsList) {
+  isFetchingAlerts = false;
+ return;
+}
 
   alertsList.innerHTML = `
     <div class="compact-alert-item">
@@ -2370,6 +2378,8 @@ requestAnimationFrame(() => {
         </div>
       </div>
     `;
+  } finally {
+    isFetchingAlerts = false;
   }
 }
 
