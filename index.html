@@ -2402,7 +2402,8 @@ function openAlertModal(alert) {
 
   const event = props.event || "Weather Alert";
   const description = props.description || "";
-  const isTornadoEmergency = true;
+  const isTornadoEmergency =
+  description.toLowerCase().includes("tornado emergency");
   const headline = props.headline || "";
   const instruction = props.instruction || "";
   const areas = props.areaDesc || "Not listed";
@@ -2436,10 +2437,11 @@ function openAlertModal(alert) {
   const hailMatch = description.match(/(?:hail).*?(\d+(\.\d+)?)\s*inch|quarter/i);
   const snowMatch = description.match(/snow accumulations?.*?(\d+.*?)\./i);
 
-  const wind =
+  const windFromText = description.match(/(\d+)\s*MPH/i);
+
+const wind =
   params.maxWindGust?.[0] ||
-  description.match(/(\d+)\s*MPH/i)?.[1] + " MPH" ||
-  null;
+  (windFromText ? `${windFromText[1]} MPH` : null);
 
 const hail =
   params.maxHailSize?.[0]
@@ -2452,9 +2454,14 @@ const tornado =
 const hailThreat =
   params.hailThreat?.[0] || null;
 
-const windThreat =
-  params.windThreat?.[0] || null;
-  const snow = snowMatch ? snowMatch[1] : null;
+const alertSource =
+  tornado ||
+  params.hailThreat?.[0] ||
+  params.windThreat?.[0] ||
+  params.thunderstormDamageThreat?.[0] ||
+  (description.toLowerCase().includes("radar indicated")
+    ? "RADAR INDICATED"
+    : "NWS ISSUED");
 
   const modal = document.getElementById("stormModal");
   const modalBox = modal.querySelector(".alert-modal-box");
@@ -2591,40 +2598,50 @@ if (windThreat) {
       `;
     }
 
- } else if (isStormAlert) {
-hazardSection.innerHTML = `
-<div class="hazard-box">
-<span class="hazard-label">🌬️ Max Wind</span>
-<span class="hazard-value hazard-wind-value">${wind || "N/A"}</span>
-</div>
+} else if (isStormAlert) {
+  let hazardHTML = "";
 
-<div class="hazard-box">
-<span class="hazard-label">🧊 Max Hail</span>
-<span class="hazard-value hazard-hail-value">${hail || "N/A"}</span>
-</div>
+  if (wind) {
+    hazardHTML += `
+      <div class="hazard-box">
+        <span class="hazard-label">🌬️ Max Wind</span>
+        <span class="hazard-value hazard-wind-value">${wind}</span>
+      </div>
+    `;
+  }
 
-<div class="hazard-box">
-<span class="hazard-label">📡 Source</span>
-<span class="hazard-value hazard-source-value">
-${
-description.toLowerCase().includes("radar indicated")
-? "Radar indicated"
-: "NWS Issued"
-}
-</span>
-</div>
-`;
+  if (hail) {
+    hazardHTML += `
+      <div class="hazard-box">
+        <span class="hazard-label">🧊 Max Hail</span>
+        <span class="hazard-value hazard-hail-value">${hail}</span>
+      </div>
+    `;
+  }
 
-hazardSection.style.display = "grid";
-warningBottom.style.display = "flex";
+  if (alertSource) {
+    hazardHTML += `
+      <div class="hazard-box">
+        <span class="hazard-label">📡 Source</span>
+        <span class="hazard-value hazard-source-value">${alertSource}</span>
+      </div>
+    `;
+  }
 
-modal.querySelector(".bottom-hail-value").textContent = hail || "N/A";
-modal.querySelector(".bottom-wind-value").textContent = wind || "N/A";
+  hazardSection.innerHTML = hazardHTML;
+  hazardSection.style.display = hazardHTML ? "grid" : "none";
+
+  if (hail || wind || tornado) {
+    warningBottom.style.display = "flex";
+    modal.querySelector(".bottom-hail-value").textContent = hail || "N/A";
+    modal.querySelector(".bottom-wind-value").textContent = wind || "N/A";
+  } else {
+    warningBottom.style.display = "none";
+  }
 
 } else {
-hazardSection.style.display = "none";
-warningBottom.style.display = "none";
-
+  hazardSection.style.display = "none";
+  warningBottom.style.display = "none";
 }
 
   modal.classList.add("is-open");
