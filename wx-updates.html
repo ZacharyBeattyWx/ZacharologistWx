@@ -143,15 +143,18 @@
     }
 .county-list {
   position: relative;
-  max-height: 96px;
+  max-height: 115px;
   overflow: hidden;
-  mask-image: linear-gradient(to bottom,
-    rgba(0,0,0,1) 82%,
+
+  mask-image: linear-gradient(
+    to bottom,
+    rgba(0,0,0,1) 88%,
     rgba(0,0,0,0)
   );
 
-  -webkit-mask-image: linear-gradient(to bottom,
-    rgba(0,0,0,1) 72%,
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    rgba(0,0,0,1) 88%,
     rgba(0,0,0,0)
   );
 }
@@ -209,14 +212,10 @@
 }
 
 .state-summary-grid {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 14px;
   margin: 18px 0 22px;
-  flex-wrap: wrap;
-}
-
-.state-summary-card {
-  width: 300px;
 }
 
 .state-summary-card {
@@ -583,12 +582,14 @@ function setSummaryColor(id, alerts) {
   const el = document.getElementById(id);
 
 if (!alerts.length) {
-  el.style.display = "none";
+  el.style.display = "block";
+  el.style.borderColor = "rgba(255,255,255,0.12)";
+  el.style.boxShadow = "none";
+  el.style.opacity = "0.65";
   return;
 }
 
-el.style.display = "flex";
-
+el.style.display = "block";
 el.style.opacity = "1";
 
   const hasTornado = alerts.some(a =>
