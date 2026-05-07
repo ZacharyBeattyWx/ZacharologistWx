@@ -2448,8 +2448,8 @@ const expires = props.expires
   const hailMatch = description.match(/(?:hail).*?(\d+(\.\d+)?)\s*inch|quarter/i);
   const snowMatch = description.match(/snow accumulations?.*?(\d+.*?)\./i);
 
- const windFromText = description.match(
-  /wind gusts?\s*(up to)?\s*(\d+)\s*MPH/i
+const windFromText = description.match(
+  /(wind gusts?|winds?|straight line winds?).*?(\d+)\s*MPH/i
 );
 
 const wind =
