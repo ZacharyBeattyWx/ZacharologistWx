@@ -2258,7 +2258,7 @@ function triggerNewAlertGlow() {
     alertsTitle.classList.remove("new-alert-glow");
   }, 30000);
 }
-function fetchWithTimeout(url, timeout = 3000) {
+function fetchWithTimeout(url, timeout = 6000) {
   const controller = new AbortController();
 
   const timer = setTimeout(() => {
