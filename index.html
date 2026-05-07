@@ -2426,14 +2426,22 @@ function openAlertModal(alert) {
   const hailMatch = description.match(/(?:hail).*?(\d+(\.\d+)?)\s*inch|quarter/i);
   const snowMatch = description.match(/snow accumulations?.*?(\d+.*?)\./i);
 
-  const wind = windMatch ? `${windMatch[1]} mph` : null;
+  const wind =
+  params.maxWindGust?.[0] || null;
 
-  const hail = hailMatch
-    ? hailMatch[0].toLowerCase().includes("quarter")
-      ? "1.00 IN"
-      : `${hailMatch[1]} IN`
+const hail =
+  params.maxHailSize?.[0]
+    ? `${params.maxHailSize[0]} IN`
     : null;
 
+const tornado =
+  params.tornadoDetection?.[0] || null;
+
+const hailThreat =
+  params.hailThreat?.[0] || null;
+
+const windThreat =
+  params.windThreat?.[0] || null;
   const snow = snowMatch ? snowMatch[1] : null;
 
   const modal = document.getElementById("stormModal");
