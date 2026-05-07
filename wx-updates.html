@@ -141,6 +141,80 @@
   font-weight: 700;
   margin-top: 14px;
 }
+.alert-center h2 {
+  text-align: center;
+}
+
+.state-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin: 18px 0 22px;
+}
+
+.state-summary-card {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 14px;
+  padding: 14px;
+  text-align: center;
+  font-weight: 800;
+}
+
+.state-alert-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.state-alert-group {
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.state-alert-group summary {
+  cursor: pointer;
+  padding: 16px 18px;
+  font-weight: 900;
+  font-size: 1.05rem;
+  background: rgba(255,255,255,0.06);
+}
+
+.state-alert-inner {
+  padding: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.alert-card.statement {
+  border-left-color: #94a3b8;
+  background: rgba(51, 65, 85, 0.72);
+}
+
+.alert-card.watch {
+  border-left-color: #f97316;
+  background: rgba(124, 45, 18, 0.45);
+}
+
+.alert-card.warning {
+  border-left-color: #facc15;
+  background: rgba(113, 63, 18, 0.45);
+}
+
+.alert-card.tornado-warning {
+  border-left-color: #dc2626;
+  background: rgba(127, 29, 29, 0.55);
+  animation: pulseAlert 2s infinite;
+}
+
+.alert-card.flood-warning {
+  border-left-color: #22c55e;
+  background: rgba(20, 83, 45, 0.45);
+}
+
 @keyframes pulseAlert {
   0% {
     box-shadow: 0 0 0 rgba(220, 38, 38, 0.25);
@@ -152,7 +226,9 @@
     box-shadow: 0 0 0 rgba(220, 38, 38, 0.25);
   }
 }
+
 @media (max-width: 768px) {
+
   .spc-wrapper {
     display: block;
   }
@@ -165,6 +241,15 @@
   .spc-link-button {
     display: inline-block;
   }
+
+  .state-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .state-alert-inner {
+    grid-template-columns: 1fr;
+  }
+
 }
 
   </style>
@@ -190,11 +275,18 @@
       </p>
     </section>
 
-    <section class="section">
-      <h2>Live Severe Weather Alerts</h2>
-      <p id="alert-status">Loading active alerts...</p>
-      <div id="alerts" class="alert-grid"></div>
-    </section>
+    <section class="section alert-center">
+  <h2>Regional Alert Center</h2>
+  <p id="alert-status">Loading active alerts...</p>
+
+  <div class="state-summary-grid">
+    <div class="state-summary-card" id="summary-nc">NC: Loading...</div>
+    <div class="state-summary-card" id="summary-sc">SC: Loading...</div>
+    <div class="state-summary-card" id="summary-va">VA: Loading...</div>
+  </div>
+
+  <div id="alerts" class="state-alert-list"></div>
+</section>
 
    <section class="section">
   <h2>Storm Prediction Center: Day 1 Outlook</h2>
@@ -234,57 +326,93 @@
     ];
 
     async function loadAlerts() {
-      alertStatus.textContent = "Loading active alerts...";
-      alertsContainer.innerHTML = "";
+  alertStatus.textContent = "Loading active alerts...";
+  alertsContainer.innerHTML = "";
 
-      try {
-        const alertUrls = [
-  "https://api.weather.gov/alerts/active?area=NC",
-  "https://api.weather.gov/alerts/active?area=SC",
-  "https://api.weather.gov/alerts/active?area=VA",
-  "https://api.weather.gov/alerts/active?zone=NCC157",
-  "https://api.weather.gov/alerts/active?zone=NCZ005"
-];
-        const responses = await Promise.all(
-  alertUrls.map(url => fetch(url))
-);
+  try {
+    const states = ["NC", "SC", "VA"];
 
-responses.forEach(response => {
-  if (!response.ok) {
-    throw new Error("NWS API error");
-  }
-});
+    const responses = await Promise.all(
+      states.map(state =>
+        fetch(`https://api.weather.gov/alerts/active?area=${state}`)
+      )
+    );
 
-const dataSets = await Promise.all(
-  responses.map(response => response.json())
-);
+    responses.forEach(response => {
+      if (!response.ok) {
+        throw new Error("NWS API error");
+      }
+    });
 
-const allFeatures = dataSets.flatMap(data => data.features || []);
-const uniqueFeatures = Array.from(
-  new Map(allFeatures.map(item => [item.id, item])).values()
-);
+    const dataSets = await Promise.all(
+      responses.map(response => response.json())
+    );
 
-        const alerts = uniqueFeatures.filter(item =>
-  importantEvents.includes(item.properties.event)
-);
+    const stateAlerts = {
+      NC: [],
+      SC: [],
+      VA: []
+    };
 
-        if (alerts.length === 0) {
-  alertStatus.textContent =
-    `NO ACTIVE SEVERE ALERTS FOR NC, SC, or VA RIGHT NOW • UPDATED ${new Date().toLocaleTimeString([], {
-      hour: 'numeric',
-      minute: '2-digit'
-    })}`;
-  return;
-}
+    dataSets.forEach((data, index) => {
+      const state = states[index];
 
+      const filtered = (data.features || []).filter(item =>
+        importantEvents.includes(item.properties.event)
+      );
 
-       alertStatus.textContent =
-  `${alerts.length} active severe alert(s) found • Updated ${new Date().toLocaleTimeString([], {
-    hour: 'numeric',
-    minute: '2-digit'
-  })}`;
+      stateAlerts[state] = filtered;
+    });
 
-        alerts.forEach(item => {
+    const totalAlerts =
+      stateAlerts.NC.length + stateAlerts.SC.length + stateAlerts.VA.length;
+
+    document.getElementById("summary-nc").textContent =
+      `NC: ${stateAlerts.NC.length} alert(s)`;
+
+    document.getElementById("summary-sc").textContent =
+      `SC: ${stateAlerts.SC.length} alert(s)`;
+
+    document.getElementById("summary-va").textContent =
+      `VA: ${stateAlerts.VA.length} alert(s)`;
+
+    alertStatus.textContent =
+      `${totalAlerts} active regional alert(s) found • Updated ${new Date().toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit"
+      })}`;
+
+    if (totalAlerts === 0) {
+      alertsContainer.innerHTML = `
+        <div class="alert-card">
+          <h3>No Active Regional Alerts</h3>
+          <p>No tracked severe, flood, watch, or statement alerts are active for NC, SC, or VA right now.</p>
+        </div>
+      `;
+      return;
+    }
+
+    states.forEach(state => {
+      const group = document.createElement("details");
+      group.className = "state-alert-group";
+      group.open = stateAlerts[state].length > 0;
+
+      group.innerHTML = `
+        <summary>${state} Alert Count: ${stateAlerts[state].length}</summary>
+        <div class="state-alert-inner"></div>
+      `;
+
+      const inner = group.querySelector(".state-alert-inner");
+
+      if (stateAlerts[state].length === 0) {
+        inner.innerHTML = `
+          <div class="alert-card">
+            <h3>No Active Alerts</h3>
+            <p>No tracked alerts currently active for ${state}.</p>
+          </div>
+        `;
+      } else {
+        stateAlerts[state].forEach(item => {
           const props = item.properties;
 
           const card = document.createElement("div");
@@ -300,22 +428,29 @@ const uniqueFeatures = Array.from(
             </div>
           `;
 
-          alertsContainer.appendChild(card);
+          inner.appendChild(card);
         });
-
-      } catch (error) {
-        alertStatus.textContent = "Could not load alerts right now. Try refreshing the page.";
-        console.error(error);
       }
-    }
 
-    function getAlertClass(eventName) {
-      if (eventName === "Tornado Warning") return "tornado-warning";
-      if (eventName === "Tornado Watch") return "tornado-watch";
-      if (eventName === "Severe Thunderstorm Warning") return "severe-warning";
-      if (eventName === "Flash Flood Warning") return "flood-warning";
-      return "";
-    }
+      alertsContainer.appendChild(group);
+    });
+
+  } catch (error) {
+    alertStatus.textContent =
+      "Could not load regional alerts right now. Try refreshing the page.";
+    console.error(error);
+  }
+}
+
+function getAlertClass(eventName) {
+  if (eventName === "Tornado Warning") return "tornado-warning";
+  if (eventName === "Tornado Watch") return "watch";
+  if (eventName === "Severe Thunderstorm Warning") return "warning";
+  if (eventName === "Severe Thunderstorm Watch") return "watch";
+  if (eventName === "Flash Flood Warning") return "flood-warning";
+  if (eventName === "Special Weather Statement") return "statement";
+  return "";
+}
 
     function formatTime(timeString) {
       if (!timeString) return "Unknown";
