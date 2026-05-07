@@ -2156,9 +2156,10 @@ function renderCompactAlerts(alerts, category) {
   });
 
   const wrapper = document.createElement("details");
-  wrapper.open = true;
   wrapper.className = "state-alert-dropdown";
-
+  const alertCountWasOpen = document.querySelector(".state-alert-dropdown")?.open;
+  wrapper.open = alertCountWasOpen ?? false;
+  
   wrapper.innerHTML = `
     <summary>
       Alert Count: ${alerts.length}
@@ -2169,8 +2170,10 @@ function renderCompactAlerts(alerts, category) {
   const stateAlerts = groupedByState[state];
 
   const stateDetails = document.createElement("details");
-  stateDetails.className = "state-alert-group";
-  stateDetails.open = true;
+stateDetails.className = "state-alert-group";
+
+const savedState = openDropdownStates.find(item => item.index === stateIndex);
+stateDetails.open = savedState ? savedState.open : false;
 
     stateDetails.innerHTML = `
       <summary>
