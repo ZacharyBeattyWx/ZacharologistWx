@@ -58,9 +58,17 @@
     .alert-card {
       transition: all 0.25s ease;
       border-radius: 14px;
-      padding: 16px;
+      padding: 14px 16px;
       background: #1f2937;
       border-left: 6px solid #64748b;
+    }
+
+    .alert-card strong {
+      display: block;
+      font-size: 0.95rem;
+      line-height: 1.45;
+      margin-bottom: 10px;
+      color: #f8fafc;
     }
 
     .alert-card.tornado-warning {
@@ -213,6 +221,33 @@
 .alert-card.flood-warning {
   border-left-color: #22c55e;
   background: rgba(20, 83, 45, 0.45);
+}
+
+.state-summary-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.state-summary-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      120deg,
+      transparent,
+      rgba(255,255,255,0.08),
+      transparent
+    );
+
+  transform: translateX(-100%);
+  animation: shimmer 5s infinite;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 @keyframes pulseAlert {
@@ -376,6 +411,10 @@
     document.getElementById("summary-va").textContent =
       `VA: ${stateAlerts.VA.length} alert(s)`;
 
+      setSummaryColor("summary-nc", stateAlerts.NC);
+      setSummaryColor("summary-sc", stateAlerts.SC);
+      setSummaryColor("summary-va", stateAlerts.VA);
+
     alertStatus.textContent =
       `${totalAlerts} active regional alert(s) found • Updated ${new Date().toLocaleTimeString([], {
         hour: "numeric",
@@ -393,6 +432,8 @@
     }
 
     states.forEach(state => {
+
+    if (stateAlerts[state].length === 0) return;
       const group = document.createElement("details");
       group.className = "state-alert-group";
       group.open = stateAlerts[state].length > 0;
@@ -450,6 +491,41 @@ function getAlertClass(eventName) {
   if (eventName === "Flash Flood Warning") return "flood-warning";
   if (eventName === "Special Weather Statement") return "statement";
   return "";
+}
+
+function setSummaryColor(id, alerts) {
+
+  const el = document.getElementById(id);
+
+  if (!alerts.length) {
+    el.style.borderColor = "rgba(255,255,255,0.12)";
+    return;
+  }
+
+  const hasTornado = alerts.some(a =>
+    a.properties.event.includes("Tornado")
+  );
+
+  const hasSevere = alerts.some(a =>
+    a.properties.event.includes("Severe")
+  );
+
+  const hasFlood = alerts.some(a =>
+    a.properties.event.includes("Flood")
+  );
+
+  if (hasTornado) {
+    el.style.borderColor = "#dc2626";
+    el.style.boxShadow = "0 0 18px rgba(220,38,38,0.35)";
+  }
+  else if (hasSevere) {
+    el.style.borderColor = "#facc15";
+    el.style.boxShadow = "0 0 18px rgba(250,204,21,0.25)";
+  }
+  else if (hasFlood) {
+    el.style.borderColor = "#22c55e";
+    el.style.boxShadow = "0 0 18px rgba(34,197,94,0.25)";
+  }
 }
 
     function formatTime(timeString) {
