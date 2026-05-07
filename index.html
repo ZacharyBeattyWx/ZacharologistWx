@@ -2346,6 +2346,9 @@ document.addEventListener("click", function (e) {
 
 function openAlertModal(alert) {
   const props = alert.properties || {};
+  const params = props.parameters || {};
+
+  console.log(params);
 
   const event = props.event || "Weather Alert";
   const description = props.description || "";
