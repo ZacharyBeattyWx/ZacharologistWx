@@ -2156,6 +2156,7 @@ function renderCompactAlerts(alerts, category) {
   });
 
   const wrapper = document.createElement("details");
+  wrapper.open = true;
   wrapper.className = "state-alert-dropdown";
 
   wrapper.innerHTML = `
@@ -2169,9 +2170,7 @@ function renderCompactAlerts(alerts, category) {
 
   const stateDetails = document.createElement("details");
   stateDetails.className = "state-alert-group";
-
-  const savedState = openDropdownStates.find(item => item.index === stateIndex);
-  stateDetails.open = savedState ? savedState.open : false;
+  stateDetails.open = true;
 
     stateDetails.innerHTML = `
       <summary>
