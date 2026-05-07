@@ -2649,13 +2649,17 @@ if (alertSource && !tornado) {
   hazardSection.innerHTML = hazardHTML;
   hazardSection.style.display = hazardHTML ? "grid" : "none";
 
-  if (hail || wind || tornado) {
-    warningBottom.style.display = "flex";
-    modal.querySelector(".bottom-hail-value").textContent = hail || "N/A";
-    modal.querySelector(".bottom-wind-value").textContent = wind || "N/A";
-  } else {
-    warningBottom.style.display = "none";
-  }
+ if (hail || wind || tornado) {
+  warningBottom.style.display = "flex";
+
+  warningBottom.innerHTML = `
+    ${tornado ? `<span>Tornado: <strong>${tornado}</strong></span>` : ""}
+    ${hail ? `<span>Hail: <strong>${hail}</strong></span>` : ""}
+    ${wind ? `<span>Wind: <strong>${wind}</strong></span>` : ""}
+  `;
+} else {
+  warningBottom.style.display = "none";
+}
 
 } else {
   hazardSection.style.display = "none";
