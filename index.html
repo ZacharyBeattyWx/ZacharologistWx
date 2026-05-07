@@ -2518,16 +2518,18 @@ const alertSource =
 
   stormTags.innerHTML = "";
 
-const tornadoClass =
-  tornado?.includes("OBSERVED")
-    ? "storm-tag tornado observed"
-    : "storm-tag tornado";
+if (tornado) {
+  const tornadoClass =
+    tornado.includes("OBSERVED")
+      ? "storm-tag tornado observed"
+      : "storm-tag tornado";
 
-stormTagsHTML += `
-  <div class="${tornadoClass}">
-    🌪 Tornado: ${tornado}
-  </div>
-`;
+  stormTags.innerHTML += `
+    <div class="${tornadoClass}">
+      🌪 Tornado: ${tornado}
+    </div>
+  `;
+}
 
 if (hail) {
   stormTags.innerHTML += `
