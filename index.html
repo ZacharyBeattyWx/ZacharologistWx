@@ -2364,10 +2364,7 @@ window.alertCountWasOpen = mainDropdown ? mainDropdown.open : false;
 updateTabAlertStates();
 
 currentCategory = currentCategory || "storm";
-
-requestAnimationFrame(() => {
-  renderCategory(currentCategory);
-});
+renderCategory(currentCategory);
 
   } catch (error) {
     console.error("NWS alert loading error:", error);
