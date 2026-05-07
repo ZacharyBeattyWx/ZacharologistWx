@@ -2261,12 +2261,14 @@ isFetchingAlerts = true;
  return;
 }
 
+if (!hasLoadedAlertsOnce) {
   alertsList.innerHTML = `
     <div class="compact-alert-item">
       <div class="compact-alert-title storm-title">Checking NWS Alerts...</div>
       <div class="alert-location">Loading active alerts east of the Rockies.</div>
     </div>
   `;
+}
 
   try {
     const results = await Promise.allSettled(
