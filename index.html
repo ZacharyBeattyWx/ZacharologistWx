@@ -2258,7 +2258,20 @@ function triggerNewAlertGlow() {
     alertsTitle.classList.remove("new-alert-glow");
   }, 30000);
 }
+function fetchWithTimeout(url, timeout = 5000) {
+  const controller = new AbortController();
 
+  const timer = setTimeout(() => {
+    controller.abort();
+  }, timeout);
+
+  return fetch(url, {
+    headers: {
+      "Accept": "application/geo+json"
+    },
+    signal: controller.signal
+  }).finally(() => clearTimeout(timer));
+}
 async function fetchHomepageAlerts() {
 
   if (isFetchingAlerts) return;
@@ -2284,14 +2297,8 @@ if (!hasLoadedAlertsOnce) {
 
   try {
     const results = await Promise.allSettled(
-      alertUrls.map(url =>
-        fetch(url, {
-          headers: {
-            "Accept": "application/geo+json"
-          }
-        })
-      )
-    );
+  alertUrls.map(url => fetchWithTimeout(url, 8000))
+);
 
     const goodResponses = results
       .filter(result => result.status === "fulfilled" && result.value.ok)
