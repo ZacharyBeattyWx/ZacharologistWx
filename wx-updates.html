@@ -96,10 +96,65 @@
       margin: 0 0 8px;
     }
 
+    .alert-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.alert-badge {
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.alert-badge.tornado-warning {
+  background: #dc2626;
+  color: white;
+}
+
+.alert-badge.warning {
+  background: #facc15;
+  color: black;
+}
+
+.alert-badge.watch {
+  background: #f97316;
+  color: white;
+}
+
+.alert-badge.flood-warning {
+  background: #22c55e;
+  color: white;
+}
+
+.alert-badge.statement {
+  background: #64748b;
+  color: white;
+}
+
     .alert-card p {
       color: #e5e7eb;
       line-height: 1.45;
     }
+.county-list {
+  max-height: 72px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.county-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.county-list::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.18);
+  border-radius: 999px;
+}
 
     .meta {
       font-size: 0.85rem;
@@ -460,8 +515,15 @@
           card.className = "alert-card " + getAlertClass(props.event);
 
           card.innerHTML = `
-            <h3>${props.event}</h3>
-            <p><strong>${props.areaDesc}</strong></p>
+         <div class="alert-header">
+          <h3>${props.event}</h3>
+            <span class="alert-badge ${getAlertClass(props.event)}">
+             ${getBadgeLabel(props.event)}
+            </span>
+        </div>
+            <p class="county-list">
+              <strong>${props.areaDesc}</strong>
+            </p>
             <p>${props.headline || "No headline available."}</p>
             <div class="meta">
               Issued: ${formatTime(props.sent)}<br>
@@ -491,6 +553,23 @@ function getAlertClass(eventName) {
   if (eventName === "Flash Flood Warning") return "flood-warning";
   if (eventName === "Special Weather Statement") return "statement";
   return "";
+}
+
+function getBadgeLabel(eventName) {
+
+  if (eventName.includes("Warning")) {
+    return "WARNING";
+  }
+
+  if (eventName.includes("Watch")) {
+    return "WATCH";
+  }
+
+  if (eventName.includes("Statement")) {
+    return "STATEMENT";
+  }
+
+  return "ALERT";
 }
 
 function setSummaryColor(id, alerts) {
