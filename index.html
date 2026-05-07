@@ -2408,10 +2408,11 @@ function openAlertModal(alert) {
   const instruction = props.instruction || "";
   const areas = props.areaDesc || "Not listed";
 
- const expires = props.expires
+const expires = props.expires
   ? `UNTIL ${new Date(props.expires).toLocaleTimeString("en-US", {
       hour: "numeric",
       minute: "2-digit",
+      timeZone: "America/Chicago",
       timeZoneName: "short"
     })}`
   : "Unknown";
