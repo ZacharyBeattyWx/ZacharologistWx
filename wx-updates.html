@@ -92,6 +92,11 @@
       background: rgba(20, 83, 45, 0.45);
     }
 
+    .alert-card.storm-statement {
+  border-left-color: #38bdf8;
+  background: rgba(14, 116, 144, 0.35);
+}
+
     .alert-card h3 {
       margin: 0 0 8px;
     }
@@ -581,7 +586,7 @@
           const props = item.properties;
 
           const card = document.createElement("div");
-          card.className = "alert-card " + getAlertClass(props.event);
+          card.className = "alert-card " + getAlertClass(props.event, props);
 
           card.innerHTML = `
   <div class="alert-header">
@@ -623,16 +628,19 @@ card.querySelector(".details-btn").addEventListener("click", () => {
   }
 }
 
-function getAlertClass(eventName) {
+function getAlertClass(eventName, props = {}) {
   if (eventName === "Tornado Warning") return "tornado-warning";
   if (eventName === "Tornado Watch") return "watch";
   if (eventName === "Severe Thunderstorm Warning") return "warning";
   if (eventName === "Severe Thunderstorm Watch") return "watch";
   if (eventName === "Flash Flood Warning") return "flood-warning";
-  if (eventName === "Special Weather Statement") return "statement";
+
+  if (eventName === "Special Weather Statement") {
+    return isStormBasedStatement(props) ? "storm-statement" : "statement";
+  }
+
   return "";
 }
-
 function getBadgeLabel(eventName) {
 
   if (eventName.includes("Warning")) {
@@ -648,6 +656,22 @@ function getBadgeLabel(eventName) {
   }
 
   return "ALERT";
+}
+
+function isStormBasedStatement(props) {
+  if (props.event !== "Special Weather Statement") return false;
+
+  const text = `${props.description || ""} ${props.headline || ""}`.toLowerCase();
+
+  return (
+    text.includes("strong thunderstorm") ||
+    text.includes("gusty winds") ||
+    text.includes("hail") ||
+    text.includes("doppler radar") ||
+    text.includes("radar indicated") ||
+    text.includes("moving") ||
+    text.includes("winds in excess")
+  );
 }
 
 function setSummaryColor(id, alerts) {
