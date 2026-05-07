@@ -1884,6 +1884,7 @@ nav a {
         THIS IS A TEST! THERE ARE NO ACTIVE WARNINGS.
       </p>
       <div class="storm-tags"></div>
+
       <div class="warning-hazards">
   <div class="hazard-box">
     <span class="hazard-label">🌬️ Max Wind</span>
@@ -2449,6 +2450,7 @@ const windThreat =
   const header = modal.querySelector(".alert-modal-header");
   const detailCard = modal.querySelector(".warning-detail-card");
   const hazardSection = modal.querySelector(".warning-hazards");
+  const stormTags = modal.querySelector(".storm-tags");
   const warningInfo = modal.querySelector(".warning-info");
   const warningImpacts = modal.querySelector(".warning-impacts");
   const warningBottom = modal.querySelector(".warning-bottom");
@@ -2479,6 +2481,40 @@ const windThreat =
   warningImpacts.style.display = "block";
   warningBottom.style.display = "flex";
   hazardSection.style.display = "grid";
+
+  stormTags.innerHTML = "";
+
+if (tornado) {
+  stormTags.innerHTML += `
+    <div class="storm-tag tornado">
+      🌪 Tornado: ${tornado}
+    </div>
+  `;
+}
+
+if (hail) {
+  stormTags.innerHTML += `
+    <div class="storm-tag hail">
+      🧊 Hail: ${hail}
+    </div>
+  `;
+}
+
+if (wind) {
+  stormTags.innerHTML += `
+    <div class="storm-tag wind">
+      💨 Wind: ${wind}
+    </div>
+  `;
+}
+
+if (windThreat) {
+  stormTags.innerHTML += `
+    <div class="storm-tag source">
+      📡 ${windThreat}
+    </div>
+  `;
+}
 
   if (isWatch) {
     summary.innerHTML = `
