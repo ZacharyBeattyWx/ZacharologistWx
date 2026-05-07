@@ -578,12 +578,12 @@ function setSummaryColor(id, alerts) {
 
   const el = document.getElementById(id);
 
-  if (!alerts.length) {
-  el.style.borderColor = "rgba(255,255,255,0.12)";
-  el.style.boxShadow = "none";
-  el.style.opacity = "0.65";
+if (!alerts.length) {
+  el.style.display = "none";
   return;
 }
+
+el.style.display = "flex";
 
 el.style.opacity = "1";
 
