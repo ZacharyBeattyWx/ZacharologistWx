@@ -1995,6 +1995,7 @@ let currentCategory = "storm";
 let knownAlertIds = new Set();
 let hasLoadedAlertsOnce = false;
 let alertGlowTimer = null;
+let openDropdownStates = [];
 
 function getExpiresText(expires) {
   if (!expires) return "Unknown";
@@ -2168,6 +2169,13 @@ function renderCompactAlerts(alerts, category) {
 
     const stateDetails = document.createElement("details");
     stateDetails.className = "state-alert-group";
+    const savedState = openDropdownStates.find(
+  item => item.index === Object.keys(groupedByState).sort().indexOf(state)
+);
+
+if (savedState?.open) {
+  stateDetails.open = true;
+}
 
     stateDetails.innerHTML = `
       <summary>
@@ -2333,6 +2341,14 @@ async function fetchHomepageAlerts() {
     }
 
     allHomepageAlerts = uniqueAlerts;
+
+    openDropdownStates = Array.from(
+  document.querySelectorAll(".state-alert-group")
+)
+.map((el, index) => ({
+  index,
+  open: el.open
+}));
 
     updateTabAlertStates();
     renderCategory(currentCategory);
@@ -2553,7 +2569,7 @@ if (
   !hail &&
   !wind
 ) {
-  
+
   stormTags.innerHTML += `
     <div class="storm-tag source">
       📡 ${alertSource}
