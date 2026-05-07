@@ -137,10 +137,74 @@
   color: white;
 }
 
-    .alert-card p {
-      color: #e5e7eb;
-      line-height: 1.45;
-    }
+.details-btn {
+  margin-top: 12px;
+  background: rgba(147, 197, 253, 0.16);
+  color: #dbeafe;
+  border: 1px solid rgba(147, 197, 253, 0.35);
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.details-btn:hover {
+  background: rgba(147, 197, 253, 0.28);
+}
+
+.alert-modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  z-index: 9999;
+}
+
+.alert-modal.is-open {
+  display: block;
+}
+
+.alert-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+}
+
+.alert-modal-box {
+  position: relative;
+  max-width: 760px;
+  max-height: 82vh;
+  overflow-y: auto;
+  margin: 7vh auto;
+  background: #162033;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 18px;
+  padding: 22px;
+  color: white;
+}
+
+.alert-modal-close {
+  float: right;
+  background: rgba(255,255,255,0.12);
+  color: white;
+  border: 0;
+  border-radius: 999px;
+  width: 34px;
+  height: 34px;
+  font-size: 1.4rem;
+  cursor: pointer;
+}
+
+.modal-alert-text {
+  white-space: pre-wrap;
+  line-height: 1.55;
+  color: #e5e7eb;
+}
+
+.alert-card p {
+  color: #e5e7eb;
+  line-height: 1.45;
+}
+
 .county-list {
   max-height: none;
   overflow: visible;
@@ -395,6 +459,17 @@
   </div>
 </section>
   </main>
+
+  <div id="alertModal" class="alert-modal">
+  <div class="alert-modal-backdrop"></div>
+
+  <div class="alert-modal-box">
+    <button class="alert-modal-close" type="button">×</button>
+    <h2 id="modalAlertTitle">Alert Details</h2>
+    <p id="modalAlertMeta" class="meta"></p>
+    <div id="modalAlertText" class="modal-alert-text"></div>
+  </div>
+</div>
   <script>
   
     const alertsContainer = document.getElementById("alerts");
@@ -509,21 +584,30 @@
           card.className = "alert-card " + getAlertClass(props.event);
 
           card.innerHTML = `
-         <div class="alert-header">
-          <h3>${props.event}</h3>
-            <span class="alert-badge ${getAlertClass(props.event)}">
-             ${getBadgeLabel(props.event)}
-            </span>
-        </div>
-            <p class="county-list">
-              <strong>${props.areaDesc}</strong>
-            </p>
-            <p>${props.headline || "No headline available."}</p>
-            <div class="meta">
-              Issued: ${formatTime(props.sent)}<br>
-              Expires: ${formatTime(props.expires)}
-            </div>
-          `;
+  <div class="alert-header">
+    <h3>${props.event}</h3>
+    <span class="alert-badge ${getAlertClass(props.event)}">
+      ${getBadgeLabel(props.event)}
+    </span>
+  </div>
+
+  <p class="county-list">
+    <strong>${props.areaDesc}</strong>
+  </p>
+
+  <p>${props.headline || "No headline available."}</p>
+
+  <div class="meta">
+    Issued: ${formatTime(props.sent)}<br>
+    Expires: ${formatTime(props.expires)}
+  </div>
+
+  <button class="details-btn" type="button">Details</button>
+`;
+
+card.querySelector(".details-btn").addEventListener("click", () => {
+  openAlertModal(props);
+});
 
           inner.appendChild(card);
         });
@@ -611,16 +695,40 @@ el.style.opacity = "1";
 }
 }
 
-    function formatTime(timeString) {
-      if (!timeString) return "Unknown";
+function formatTime(timeString) {
+  if (!timeString) return "Unknown";
 
-      return new Date(timeString).toLocaleString("en-US", {
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit"
-      });
-    }
+  return new Date(timeString).toLocaleString("en-US", {
+    month: "short",
+      day: "numeric",
+     hour: "numeric",
+     minute: "2-digit"
+   });
+}
+
+function openAlertModal(props) {
+  document.getElementById("modalAlertTitle").textContent = props.event;
+
+  document.getElementById("modalAlertMeta").innerHTML = `
+    ${props.areaDesc}<br>
+    Issued: ${formatTime(props.sent)}<br>
+    Expires: ${formatTime(props.expires)}
+  `;
+
+  document.getElementById("modalAlertText").textContent =
+    props.description || props.instruction || props.headline || "No details available.";
+
+  document.getElementById("alertModal").classList.add("is-open");
+}
+
+document.querySelector(".alert-modal-close").addEventListener("click", () => {
+  document.getElementById("alertModal").classList.remove("is-open");
+});
+
+document.querySelector(".alert-modal-backdrop").addEventListener("click", () => {
+  document.getElementById("alertModal").classList.remove("is-open");
+});
+
 function updateSpcImage() {
   const spcImg = document.getElementById("spc-day1-img");
 
