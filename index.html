@@ -2157,8 +2157,7 @@ function renderCompactAlerts(alerts, category) {
 
   const wrapper = document.createElement("details");
   wrapper.className = "state-alert-dropdown";
-  const alertCountWasOpen = document.querySelector(".state-alert-dropdown")?.open;
-  wrapper.open = alertCountWasOpen ?? false;
+  wrapper.open = window.alertCountWasOpen ?? false;
   
   wrapper.innerHTML = `
     <summary>
@@ -2166,7 +2165,9 @@ function renderCompactAlerts(alerts, category) {
     </summary>
   `;
 
- Object.keys(groupedByState).sort().forEach((state, stateIndex) => {
+const sortedStates = Object.keys(groupedByState).sort();
+
+sortedStates.forEach((state, stateIndex) => {
   const stateAlerts = groupedByState[state];
 
   const stateDetails = document.createElement("details");
@@ -2340,16 +2341,23 @@ async function fetchHomepageAlerts() {
 
     allHomepageAlerts = uniqueAlerts;
 
-    openDropdownStates = Array.from(
-  document.querySelectorAll(".state-alert-group")
-)
-.map((el, index) => ({
+   const existingDropdowns = document.querySelectorAll(".state-alert-group");
+
+openDropdownStates = Array.from(existingDropdowns).map((el, index) => ({
   index,
   open: el.open
 }));
 
-    updateTabAlertStates();
-    renderCategory(currentCategory);
+const mainDropdown = document.querySelector(".state-alert-dropdown");
+window.alertCountWasOpen = mainDropdown ? mainDropdown.open : false;
+
+updateTabAlertStates();
+
+currentCategory = currentCategory || "storm";
+
+requestAnimationFrame(() => {
+  renderCategory(currentCategory);
+});
 
   } catch (error) {
     console.error("NWS alert loading error:", error);
@@ -2387,7 +2395,8 @@ document.querySelectorAll(".alert-tabs button").forEach(button => {
       alertsCard.classList.add(`${button.dataset.category}-active`);
     }
 
-    renderCategory(button.dataset.category);
+    currentCategory = button.dataset.category;
+    renderCategory(currentCategory);
   });
 });
 
