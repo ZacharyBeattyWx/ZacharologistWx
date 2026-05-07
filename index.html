@@ -2483,6 +2483,8 @@ const tornado =
 const hailThreat =
   params.hailThreat?.[0] || null;
 
+const snow = snowMatch ? snowMatch[1] : null;
+
 const alertSource =
   tornado ||
   params.hailThreat?.[0] ||
