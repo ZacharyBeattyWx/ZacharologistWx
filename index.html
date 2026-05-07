@@ -2164,18 +2164,14 @@ function renderCompactAlerts(alerts, category) {
     </summary>
   `;
 
-  Object.keys(groupedByState).sort().forEach(state => {
-    const stateAlerts = groupedByState[state];
+ Object.keys(groupedByState).sort().forEach((state, stateIndex) => {
+  const stateAlerts = groupedByState[state];
 
-    const stateDetails = document.createElement("details");
-    stateDetails.className = "state-alert-group";
-    const savedState = openDropdownStates.find(
-  item => item.index === Object.keys(groupedByState).sort().indexOf(state)
-);
+  const stateDetails = document.createElement("details");
+  stateDetails.className = "state-alert-group";
 
-if (savedState?.open) {
-  stateDetails.open = true;
-}
+  const savedState = openDropdownStates.find(item => item.index === stateIndex);
+  stateDetails.open = savedState ? savedState.open : false;
 
     stateDetails.innerHTML = `
       <summary>
