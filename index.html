@@ -878,6 +878,12 @@
   border-color: rgba(255,115,255,0.35);
   background: rgba(255,115,255,0.08);
 }
+.storm-tag.tornado.observed {
+  color: #ff4d4d;
+  border-color: rgba(255,77,77,0.45);
+  background: rgba(255,77,77,0.12);
+  box-shadow: 0 0 14px rgba(255,77,77,0.25);
+}
 .storm-tag.hail{
   color: #ffd24d;
 }
@@ -2442,11 +2448,13 @@ const expires = props.expires
   const hailMatch = description.match(/(?:hail).*?(\d+(\.\d+)?)\s*inch|quarter/i);
   const snowMatch = description.match(/snow accumulations?.*?(\d+.*?)\./i);
 
-  const windFromText = description.match(/(\d+)\s*MPH/i);
+ const windFromText = description.match(
+  /wind gusts?\s*(up to)?\s*(\d+)\s*MPH/i
+);
 
 const wind =
   params.maxWindGust?.[0] ||
-  (windFromText ? `${windFromText[1]} MPH` : null);
+  (windFromText ? `${windFromText[2]} MPH` : null);
 
 const hail =
   params.maxHailSize?.[0]
@@ -2510,13 +2518,16 @@ const alertSource =
 
   stormTags.innerHTML = "";
 
-if (tornado) {
-  stormTags.innerHTML += `
-    <div class="storm-tag tornado">
-      🌪 Tornado: ${tornado}
-    </div>
-  `;
-}
+const tornadoClass =
+  tornado?.includes("OBSERVED")
+    ? "storm-tag tornado observed"
+    : "storm-tag tornado";
+
+stormTagsHTML += `
+  <div class="${tornadoClass}">
+    🌪 Tornado: ${tornado}
+  </div>
+`;
 
 if (hail) {
   stormTags.innerHTML += `
@@ -2534,7 +2545,7 @@ if (wind) {
   `;
 }
 
-if (alertSource) {
+if (alertSource && !tornado) {
   stormTags.innerHTML += `
     <div class="storm-tag source">
       📡 ${alertSource}
