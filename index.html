@@ -1889,6 +1889,24 @@ nav a {
   color: rgba(255,255,255,0.9) !important;
   margin-top: 12px !important;
 }
+.alert-full-text {
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding: 14px 16px 18px;
+}
+
+.alert-full-text strong {
+  display: block;
+  color: #ffb21c;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.alert-full-text p {
+  white-space: pre-line !important;
+  line-height: 1.55 !important;
+  color: rgba(255,255,255,0.9) !important;
+  margin: 0 !important;
+}
 
  </style>
 </head>
@@ -2073,11 +2091,16 @@ nav a {
   </div>
 
   <div class="warning-impacts">
-    <strong>⚠️ Expected Impacts</strong>
-    <p></p>
-  </div>
+  <strong>⚠️ Expected Impacts</strong>
+  <p></p>
+</div>
 
-  <div class="warning-bottom">
+<div class="alert-full-text">
+  <strong>📋 Alert Details</strong>
+  <p></p>
+</div>
+
+<div class="warning-bottom">
     <span>Hail: <strong class="bottom-hail-value"></strong></span>
     <span>Wind: <strong class="bottom-wind-value"></strong></span>
  </div>  
@@ -2696,6 +2719,7 @@ const alertSource =
   const warningImpacts = modal.querySelector(".warning-impacts");
   const warningBottom = modal.querySelector(".warning-bottom");
   const summary = modal.querySelector(".warning-summary");
+  const alertFullText = modal.querySelector(".alert-full-text");
   const titleEl = modal.querySelector(".warning-detail-card h4");
 
   if (!summary) {
@@ -2794,6 +2818,10 @@ if (
     warningImpacts.style.display = "none";
     warningBottom.style.display = "none";
 
+   if (alertFullText) {
+    alertFullText.style.display = "none";
+    }
+
     modal.classList.add("is-open");
     return;
   }
@@ -2819,11 +2847,19 @@ hazardSection.style.display = "none";
 warningBottom.style.display = "none";
 
 warningImpacts.style.display = "block";
-warningImpacts.querySelector("strong").textContent = "📋 Alert Details";
+warningImpacts.querySelector("strong").textContent = "⚠️ Expected Impacts";
 warningImpacts.querySelector("p").textContent =
-  description ||
+  extractSection(description, "IMPACTS") ||
   instruction ||
-  "No additional alert details listed.";
+  "No impacts listed.";
+
+if (alertFullText) {
+  alertFullText.style.display = "block";
+  alertFullText.querySelector("p").textContent =
+    description ||
+    instruction ||
+    "No additional alert details listed.";
+}
 
   if (isWinterAlert) {
     hazardSection.innerHTML = "";
