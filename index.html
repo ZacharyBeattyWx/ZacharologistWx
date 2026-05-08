@@ -1607,11 +1607,18 @@ nav a {
   position: fixed !important;
   inset: 0;
   z-index: 999999;
-  display: flex;
+
+  display: none;
+
   align-items: center !important;
   justify-content: center !important;
+
   overflow: hidden;
   padding: 12px;
+}
+
+.alert-modal.is-open {
+  display: flex;
 }
 
 .alert-modal-box {
