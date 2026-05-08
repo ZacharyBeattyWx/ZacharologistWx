@@ -2793,11 +2793,19 @@ if (
     return;
   }
 
+const issuedTime = props.sent || props.effective;
+
 summary.textContent =
-  description ||
-  headline ||
-  event ||
-  "No detailed alert text available.";
+  `${event} issued ${
+    issuedTime
+      ? new Date(issuedTime).toLocaleString("en-US", {
+          month: "short",
+          day: "numeric",
+          hour: "numeric",
+          minute: "2-digit"
+        })
+      : "recently"
+  } by ${props.senderName || "National Weather Service"}`;
 
   modal.querySelector(".alert-where").textContent = areas;
   modal.querySelector(".alert-when").textContent = expires;
