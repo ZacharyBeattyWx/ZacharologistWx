@@ -932,10 +932,13 @@
 }
 
 .warning-summary {
-  padding: 0 16px;
-  margin: 10px 0 16px;
-  color: oklch(50.527% 0.15398 349.921);
-  line-height: 1.5;
+  white-space: pre-line;
+  font-size: 1rem;
+  line-height: 1.55;
+  color: rgba(255,255,255,0.88);
+  margin: 14px 0 0;
+  max-width: 100%;
+  overflow-wrap: break-word;
 }
 
 .warning-metrics {
@@ -2649,21 +2652,15 @@ if (
     return;
   }
 
-  summary.textContent =
-    extractSection(description, "WHAT") ||
-    headline ||
-    description.split("\n")[0] ||
-    event;
+summary.textContent =
+  description ||
+  headline ||
+  event ||
+  "No detailed alert text available.";
 
-  modal.querySelector(".alert-where").textContent = areas;
-
-  modal.querySelector(".alert-when").textContent =
-    extractSection(description, "WHEN") || expires;
-
-  modal.querySelector(".warning-impacts p").textContent =
-    extractSection(description, "IMPACTS") ||
-    instruction ||
-    "No impacts listed.";
+hazardSection.style.display = "none";
+warningBottom.style.display = "none";
+warningImpacts.style.display = "none";
 
   if (isWinterAlert) {
     hazardSection.innerHTML = "";
