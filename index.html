@@ -1254,6 +1254,18 @@
   font-weight: 800;
   cursor: pointer;
 }
+.compact-alert-actions {
+  position: relative;
+  z-index: 20;
+}
+
+.compact-details-btn {
+  position: relative;
+  z-index: 25;
+  pointer-events: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
 
 .compact-details-btn:hover {
   background: rgba(255,255,255,0.22);
@@ -2029,29 +2041,39 @@ nav a {
 
   <div class="storm-tags"></div>
 
- <div class="warning-hazards">
-  <div class="hazard-box">
-    <span class="hazard-label">🌬️ Max Wind</span>
-    <span class="hazard-value hazard-wind-value"></span>
+  <div class="warning-hazards">
+    <div class="hazard-box">
+      <span class="hazard-label">🌬️ Max Wind</span>
+      <span class="hazard-value hazard-wind-value"></span>
+    </div>
+
+    <div class="hazard-box">
+      <span class="hazard-label">🧊 Max Hail</span>
+      <span class="hazard-value hazard-hail-value"></span>
+    </div>
+
+    <div class="hazard-box">
+      <span class="hazard-label">📡 Source</span>
+      <span class="hazard-value hazard-source-value"></span>
+    </div>
   </div>
 
-  <div class="hazard-box">
-    <span class="hazard-label">🧊 Max Hail</span>
-    <span class="hazard-value hazard-hail-value"></span>
+  <p class="warning-summary"></p>
+
+  <div class="warning-info">
+    <p><span>📍 Where:</span> <span class="alert-where"></span></p>
+    <p><span>🕘 When:</span> <span class="alert-when"></span></p>
   </div>
 
-  <div class="hazard-box">
-    <span class="hazard-label">📡 Source</span>
-    <span class="hazard-value hazard-source-value"></span>
+  <div class="warning-impacts">
+    <strong>⚠️ Expected Impacts</strong>
+    <p></p>
   </div>
-</div>
 
-<p class="warning-summary"></p>
-
-<div class="warning-info">
-  <p><span>📍 Where:</span> <span class="alert-where"></span></p>
-  <p><span>🕘 When:</span> <span class="alert-when"></span></p>
-</div>
+  <div class="warning-bottom">
+    <span>Hail: <strong class="bottom-hail-value"></strong></span>
+    <span>Wind: <strong class="bottom-wind-value"></strong></span>
+  </div>
 </div>
     </div>
   </div>
@@ -2550,17 +2572,26 @@ document.querySelectorAll(".alert-tabs button").forEach(button => {
   });
 });
 
-document.addEventListener("click", function (e) {
+function handleDetailsButtonTap(e) {
   const btn = e.target.closest(".compact-details-btn");
   if (!btn) return;
+
+  e.preventDefault();
+  e.stopPropagation();
 
   const alertId = btn.dataset.alertId;
   const alert = allHomepageAlerts.find(a => a.id === alertId);
 
-  if (!alert) return;
+  if (!alert) {
+    console.warn("No alert found for details button:", alertId);
+    return;
+  }
 
   openAlertModal(alert);
-});
+}
+
+document.addEventListener("click", handleDetailsButtonTap);
+document.addEventListener("touchend", handleDetailsButtonTap);
 
 document.addEventListener("click", function (e) {
   if (
@@ -2661,6 +2692,11 @@ const alertSource =
   const warningBottom = modal.querySelector(".warning-bottom");
   const summary = modal.querySelector(".warning-summary");
   const titleEl = modal.querySelector(".warning-detail-card h4");
+
+  if (!summary) {
+  console.error("Missing .warning-summary inside storm modal");
+  return;
+}
 
  modal.querySelector(".alert-modal-title").textContent =
   description.toLowerCase().includes("tornado emergency")
