@@ -92,6 +92,11 @@
       background: rgba(20, 83, 45, 0.45);
     }
 
+    .alert-card.temperature-alert {
+  border-left-color: #60a5fa;
+  background: rgba(30, 64, 175, 0.35);
+}
+
     .alert-card.storm-statement {
   border-left-color: #38bdf8;
   background: rgba(14, 116, 144, 0.35);
@@ -480,14 +485,61 @@
     const alertsContainer = document.getElementById("alerts");
     const alertStatus = document.getElementById("alert-status");
 
-    const importantEvents = [
-      "Tornado Warning",
-      "Tornado Watch",
-      "Severe Thunderstorm Warning",
-      "Severe Thunderstorm Watch",
-      "Flash Flood Warning",
-      "Special Weather Statement"
-    ];
+   const importantEvents = [
+
+  // Severe / Storm
+  "Tornado Warning",
+  "Tornado Watch",
+  "Severe Thunderstorm Warning",
+  "Severe Thunderstorm Watch",
+  "Flash Flood Warning",
+  "Flash Flood Watch",
+  "Flood Warning",
+  "Flood Watch",
+  "Special Weather Statement",
+
+  // Winter
+  "Winter Storm Warning",
+  "Winter Storm Watch",
+  "Winter Weather Advisory",
+  "Ice Storm Warning",
+  "Blizzard Warning",
+  "Snow Squall Warning",
+
+  // Temperature
+  "Frost Advisory",
+  "Freeze Warning",
+  "Freeze Watch",
+  "Hard Freeze Warning",
+  "Hard Freeze Watch",
+  "Extreme Cold Warning",
+  "Extreme Cold Watch",
+  "Cold Weather Advisory",
+  "Wind Chill Warning",
+  "Wind Chill Watch",
+  "Wind Chill Advisory",
+  "Heat Advisory",
+  "Excessive Heat Warning",
+  "Excessive Heat Watch",
+
+  // Tropical
+  "Hurricane Warning",
+  "Hurricane Watch",
+  "Tropical Storm Warning",
+  "Tropical Storm Watch",
+
+  // Fire Weather
+  "Red Flag Warning",
+  "Fire Warning",
+  "Extreme Fire Danger",
+  "Fire Weather Watch",
+
+  // Air Quality
+  "Air Quality Alert",
+
+  // Dense Fog / Visibility
+  "Dense Fog Advisory"
+];
 
     async function loadAlerts() {
   alertStatus.textContent = "Loading active alerts...";
@@ -638,6 +690,16 @@ function getAlertClass(eventName, props = {}) {
   if (eventName === "Special Weather Statement") {
     return isStormBasedStatement(props) ? "storm-statement" : "statement";
   }
+
+  if (
+  eventName.includes("Frost") ||
+  eventName.includes("Freeze") ||
+  eventName.includes("Heat") ||
+  eventName.includes("Cold") ||
+  eventName.includes("Wind Chill")
+) {
+  return "temperature-alert";
+}
 
   return "";
 }
