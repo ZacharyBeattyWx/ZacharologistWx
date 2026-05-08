@@ -1758,6 +1758,119 @@ nav a {
   line-height: 1.55;
 }
 
+/* FINAL ALERT MODAL SIZE + SCROLL FIX */
+.alert-modal {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 999999 !important;
+
+  display: none;
+  align-items: center !important;
+  justify-content: center !important;
+
+  padding: 16px !important;
+  overflow: hidden !important;
+}
+
+.alert-modal.is-open {
+  display: flex !important;
+}
+
+.alert-modal-box {
+  width: min(92vw, 640px) !important;
+  max-height: 86vh !important;
+
+  display: flex !important;
+  flex-direction: column !important;
+
+  overflow: hidden !important;
+  border-radius: 22px !important;
+  background: #2b2d2f !important;
+}
+
+.alert-modal-header {
+  flex: 0 0 auto !important;
+  border-radius: 22px 22px 0 0 !important;
+}
+
+.alert-modal .warning-detail-card {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+
+  border-radius: 0 0 22px 22px !important;
+  padding: 0 !important;
+
+  -webkit-overflow-scrolling: touch;
+}
+
+.alert-modal .warning-detail-card h4 {
+  padding: 16px 18px 8px !important;
+}
+
+.alert-modal .storm-tags,
+.alert-modal .warning-hazards,
+.alert-modal .warning-info,
+.alert-modal .warning-impacts,
+.alert-modal .warning-bottom,
+.alert-modal .warning-summary {
+  margin-left: 16px !important;
+  margin-right: 16px !important;
+}
+
+.alert-modal .warning-summary {
+  display: block !important;
+
+  white-space: pre-line !important;
+  overflow-wrap: break-word !important;
+
+  background: rgba(8, 12, 18, 0.22);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+
+  padding: 14px 16px;
+  margin-top: 16px !important;
+  margin-bottom: 18px !important;
+
+  font-size: 1rem;
+  line-height: 1.55;
+  color: rgba(255,255,255,0.9) !important;
+}
+
+@media (max-width: 768px) {
+  .alert-modal {
+    padding: 10px !important;
+  }
+
+  .alert-modal-box {
+    width: 94vw !important;
+    max-width: 94vw !important;
+    max-height: 84dvh !important;
+  }
+
+  .alert-modal-header {
+    padding: 18px 18px 14px !important;
+  }
+
+  .alert-modal-header-text h2 {
+    font-size: 1.55rem !important;
+    line-height: 1.05 !important;
+  }
+
+  .alert-modal-header-text p {
+    font-size: 0.95rem !important;
+  }
+
+  .alert-modal .warning-summary {
+    font-size: 0.94rem !important;
+    line-height: 1.5 !important;
+    padding: 12px 13px;
+  }
+}
+
  </style>
 </head>
 
@@ -1911,43 +2024,45 @@ nav a {
     <button class="alert-modal-close" type="button">×</button>
   </div>
 
-  <div class="warning-detail-card">
-      <h4>What to Expect</h4>
+<div class="warning-detail-card">
+  <h4>What to Expect</h4>
 
-      <p class="warning-summary"></p>
-      <div class="storm-tags"></div>
+  <div class="storm-tags"></div>
 
-      <div class="warning-hazards">
-  <div class="hazard-box">
-    <span class="hazard-label">🌬️ Max Wind</span>
-    <span class="hazard-value hazard-wind-value"></span>
+  <div class="warning-hazards">
+    <div class="hazard-box">
+      <span class="hazard-label">🌬️ Max Wind</span>
+      <span class="hazard-value hazard-wind-value"></span>
+    </div>
+
+    <div class="hazard-box">
+      <span class="hazard-label">🧊 Max Hail</span>
+      <span class="hazard-value hazard-hail-value"></span>
+    </div>
+
+    <div class="hazard-box">
+      <span class="hazard-label">📡 Source</span>
+      <span class="hazard-value hazard-source-value"></span>
+    </div>
   </div>
 
-  <div class="hazard-box">
-    <span class="hazard-label">🧊 Max Hail</span>
-    <span class="hazard-value hazard-hail-value"></span>
+  <div class="warning-info">
+    <p><span>📍 Where:</span> <span class="alert-where"></span></p>
+    <p><span>🕘 When:</span> <span class="alert-when"></span></p>
   </div>
 
-  <div class="hazard-box">
-    <span class="hazard-label">📡 Source</span>
-    <span class="hazard-value hazard-source-value"></span>
+  <div class="warning-impacts">
+    <strong>⚠️ Expected Impacts</strong>
+    <p></p>
   </div>
+
+  <div class="warning-bottom">
+    <span>Hail: <strong class="bottom-hail-value"></strong></span>
+    <span>Wind: <strong class="bottom-wind-value"></strong></span>
+  </div>
+
+  <p class="warning-summary"></p>
 </div>
-
-      <div class="warning-info">
-        <p><span>📍 Where:</span> <span class="alert-where"></span></p>
-        <p><span>🕘 When:</span> <span class="alert-when"></span></p>
-      </div>
-
-      <div class="warning-impacts">
-        <strong>⚠️ Expected Impacts</strong>
-        <p></p>
-      </div>
-
-      <div class="warning-bottom">
-        <span>Hail: <strong class="bottom-hail-value"></strong></span>
-         <span>Wind: <strong class="bottom-wind-value"></strong></span>
-      </div>
     </div>
   </div>
 </div>
@@ -2657,6 +2772,9 @@ summary.textContent =
   headline ||
   event ||
   "No detailed alert text available.";
+  
+  modal.querySelector(".alert-where").textContent = areas;
+  modal.querySelector(".alert-when").textContent = expires;
 
 hazardSection.style.display = "none";
 warningBottom.style.display = "none";
