@@ -1883,6 +1883,13 @@ nav a {
   }
 }
 
+.alert-modal .warning-impacts p {
+  white-space: pre-line !important;
+  line-height: 1.55 !important;
+  color: rgba(255,255,255,0.9) !important;
+  margin-top: 12px !important;
+}
+
  </style>
 </head>
 
@@ -2813,7 +2820,13 @@ modal.querySelector(".alert-when").textContent = expires;
 
 hazardSection.style.display = "none";
 warningBottom.style.display = "none";
-warningImpacts.style.display = "none";
+
+warningImpacts.style.display = "block";
+warningImpacts.querySelector("strong").textContent = "📋 Alert Details";
+warningImpacts.querySelector("p").textContent =
+  description ||
+  instruction ||
+  "No additional alert details listed.";
 
   if (isWinterAlert) {
     hazardSection.innerHTML = "";
