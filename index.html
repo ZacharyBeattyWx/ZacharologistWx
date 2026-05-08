@@ -2853,12 +2853,19 @@ warningImpacts.querySelector("p").textContent =
   instruction ||
   "No impacts listed.";
 
+const cleanedDetails =
+  cleanAlertDetailsText(description) ||
+  instruction ||
+  "";
+
 if (alertFullText && alertRawText) {
-  alertFullText.style.display = "block";
-  alertRawText.textContent =
-    description ||
-    instruction ||
-    "No additional alert details listed.";
+  if (cleanedDetails) {
+    alertFullText.style.display = "block";
+    alertRawText.textContent = cleanedDetails;
+  } else {
+    alertFullText.style.display = "none";
+    alertRawText.textContent = "";
+  }
 }
 
 warningBottom.style.display = "none";
@@ -2957,6 +2964,18 @@ function extractWatchRemember(text, instruction) {
   }
 
   return instruction || "Stay alert for future warnings and statements.";
+}
+
+function cleanAlertDetailsText(text) {
+  if (!text) return "";
+
+  return text
+    .replace(
+      /\n?\*\s*(WHAT|WHERE|WHEN|IMPACTS)\.\.\.[\s\S]*?(?=\n\s*\*\s*(WHAT|WHERE|WHEN|IMPACTS|ADDITIONAL DETAILS)\.\.\.|$)/gi,
+      ""
+    )
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 function extractSection(text, label) {
