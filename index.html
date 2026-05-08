@@ -1110,6 +1110,30 @@
   opacity: 0.75;
 }
 
+/* Remove faint modal outline / border */
+.alert-modal-box {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  overflow: hidden;
+}
+
+/* Remove divider/shadow around the blue header */
+.alert-modal-header {
+  border: none !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
+}
+
+/* Just in case a pseudo-layer is creating the faint edge */
+.alert-modal-box::before,
+.alert-modal-box::after,
+.alert-modal-header::before,
+.alert-modal-header::after {
+  border: none !important;
+  box-shadow: none !important;
+}
+
 .compact-alert-list {
   display: grid;
   gap: 10px;
@@ -1329,6 +1353,7 @@ body {
     width: min(640px, 88vw);
     max-width: 640px;
     margin: auto;
+    background: #252525;
   }
 
   .alert-modal .warning-detail-card {
