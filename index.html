@@ -2113,6 +2113,7 @@ nav a {
  </div>  
 </div>
 </div>
+</div>
 
 <script>
 const alertsList = document.getElementById("alertsList");
@@ -2853,10 +2854,7 @@ warningImpacts.querySelector("p").textContent =
   instruction ||
   "No impacts listed.";
 
-const cleanedDetails =
-  cleanAlertDetailsText(description) ||
-  instruction ||
-  "";
+const cleanedDetails = cleanAlertDetailsText(description);
 
 if (alertFullText && alertRawText) {
   if (cleanedDetails) {
@@ -2970,10 +2968,13 @@ function cleanAlertDetailsText(text) {
   if (!text) return "";
 
   return text
+    // Remove WHAT / WHERE / WHEN / IMPACTS sections only
     .replace(
       /\n?\*\s*(WHAT|WHERE|WHEN|IMPACTS)\.\.\.[\s\S]*?(?=\n\s*\*\s*(WHAT|WHERE|WHEN|IMPACTS|ADDITIONAL DETAILS)\.\.\.|$)/gi,
       ""
     )
+
+    // Clean extra blank lines
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
