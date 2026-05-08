@@ -1891,21 +1891,28 @@ nav a {
 }
 .alert-full-text {
   border-top: 1px solid rgba(255,255,255,0.08);
-  padding: 14px 16px 18px;
+  padding: 16px 20px 22px;
 }
 
 .alert-full-text strong {
   display: block;
   color: #ffb21c;
   text-transform: uppercase;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
+  letter-spacing: 0.03em;
 }
 
-.alert-full-text p {
-  white-space: pre-line !important;
-  line-height: 1.55 !important;
-  color: rgba(255,255,255,0.9) !important;
-  margin: 0 !important;
+.alert-raw-text {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+
+  font-family: Arial, sans-serif;
+  font-size: 0.98rem;
+  line-height: 1.48;
+
+  color: rgba(255,255,255,0.94);
+  background: transparent;
 }
 
  </style>
@@ -2090,14 +2097,14 @@ nav a {
     <p><span>🕘 When:</span> <span class="alert-when"></span></p>
   </div>
 
-  <div class="warning-impacts">
+ <div class="warning-impacts">
   <strong>⚠️ Expected Impacts</strong>
   <p></p>
 </div>
 
 <div class="alert-full-text">
   <strong>📋 Alert Details</strong>
-  <p></p>
+  <pre class="alert-raw-text"></pre>
 </div>
 
 <div class="warning-bottom">
@@ -2709,25 +2716,26 @@ const alertSource =
     ? "RADAR INDICATED"
     : "NWS ISSUED");
 
-  const modal = document.getElementById("stormModal");
-  const modalBox = modal.querySelector(".alert-modal-box");
-  const header = modal.querySelector(".alert-modal-header");
-  const detailCard = modal.querySelector(".warning-detail-card");
-  const hazardSection = modal.querySelector(".warning-hazards");
-  const stormTags = modal.querySelector(".storm-tags");
-  const warningInfo = modal.querySelector(".warning-info");
-  const warningImpacts = modal.querySelector(".warning-impacts");
-  const warningBottom = modal.querySelector(".warning-bottom");
-  const summary = modal.querySelector(".warning-summary");
-  const alertFullText = modal.querySelector(".alert-full-text");
-  const titleEl = modal.querySelector(".warning-detail-card h4");
+const modal = document.getElementById("stormModal");
+const modalBox = modal.querySelector(".alert-modal-box");
+const header = modal.querySelector(".alert-modal-header");
+const detailCard = modal.querySelector(".warning-detail-card");
+const hazardSection = modal.querySelector(".warning-hazards");
+const stormTags = modal.querySelector(".storm-tags");
+const warningInfo = modal.querySelector(".warning-info");
+const warningImpacts = modal.querySelector(".warning-impacts");
+const alertFullText = modal.querySelector(".alert-full-text");
+const alertRawText = modal.querySelector(".alert-raw-text");
+const warningBottom = modal.querySelector(".warning-bottom");
+const summary = modal.querySelector(".warning-summary");
+const titleEl = modal.querySelector(".warning-detail-card h4");
 
-  if (!summary) {
+if (!summary) {
   console.error("Missing .warning-summary inside storm modal");
   return;
 }
 
- modal.querySelector(".alert-modal-title").textContent =
+modal.querySelector(".alert-modal-title").textContent =
   description.toLowerCase().includes("tornado emergency")
     ? "Tornado Emergency"
     : event;
@@ -2826,25 +2834,17 @@ if (
     return;
   }
 
-const issuedTime = props.sent || props.effective;
-
 summary.textContent =
-  `${event} issued ${
-    issuedTime
-      ? new Date(issuedTime).toLocaleString("en-US", {
-          month: "short",
-          day: "numeric",
-          hour: "numeric",
-          minute: "2-digit"
-        })
-      : "recently"
-  } by ${props.senderName || "National Weather Service"}`;
+  extractSection(description, "WHAT") ||
+  headline ||
+  event ||
+  "No summary listed.";
 
-modal.querySelector(".alert-where").textContent = areas;
-modal.querySelector(".alert-when").textContent = expires;
+modal.querySelector(".alert-where").textContent =
+  extractSection(description, "WHERE") || areas;
 
-hazardSection.style.display = "none";
-warningBottom.style.display = "none";
+modal.querySelector(".alert-when").textContent =
+  extractSection(description, "WHEN") || expires;
 
 warningImpacts.style.display = "block";
 warningImpacts.querySelector("strong").textContent = "⚠️ Expected Impacts";
@@ -2853,13 +2853,15 @@ warningImpacts.querySelector("p").textContent =
   instruction ||
   "No impacts listed.";
 
-if (alertFullText) {
+if (alertFullText && alertRawText) {
   alertFullText.style.display = "block";
-  alertFullText.querySelector("p").textContent =
+  alertRawText.textContent =
     description ||
     instruction ||
     "No additional alert details listed.";
 }
+
+warningBottom.style.display = "none";
 
   if (isWinterAlert) {
     hazardSection.innerHTML = "";
