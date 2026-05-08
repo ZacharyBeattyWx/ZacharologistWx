@@ -2042,28 +2042,26 @@ nav a {
   <div class="storm-tags"></div>
 
   <div class="warning-hazards">
-  <div class="hazard-box">
-    <span class="hazard-label">🌬️ Max Wind</span>
-    <span class="hazard-value hazard-wind-value"></span>
+    <div class="hazard-box">
+      <span class="hazard-label">🌬️ Max Wind</span>
+      <span class="hazard-value hazard-wind-value"></span>
+    </div>
+
+    <div class="hazard-box">
+      <span class="hazard-label">🧊 Max Hail</span>
+      <span class="hazard-value hazard-hail-value"></span>
+    </div>
+
+    <div class="hazard-box">
+      <span class="hazard-label">📡 Source</span>
+      <span class="hazard-value hazard-source-value"></span>
+    </div>
   </div>
 
-  <div class="hazard-box">
-    <span class="hazard-label">🧊 Max Hail</span>
-    <span class="hazard-value hazard-hail-value"></span>
+  <div class="warning-info">
+    <p><span>📍 Where:</span> <span class="alert-where"></span></p>
+    <p><span>🕘 When:</span> <span class="alert-when"></span></p>
   </div>
-
-  <div class="hazard-box">
-    <span class="hazard-label">📡 Source</span>
-    <span class="hazard-value hazard-source-value"></span>
-  </div>
-</div>
-
-<p class="warning-summary"></p>
-
-<div class="warning-info">
-  <p><span>📍 Where:</span> <span class="alert-where"></span></p>
-  <p><span>🕘 When:</span> <span class="alert-when"></span></p>
-</div>
 
   <div class="warning-impacts">
     <strong>⚠️ Expected Impacts</strong>
@@ -2074,6 +2072,9 @@ nav a {
     <span>Hail: <strong class="bottom-hail-value"></strong></span>
     <span>Wind: <strong class="bottom-wind-value"></strong></span>
   </div>
+
+  <p class="warning-summary"></p>
+</div>
 </div>
     </div>
   </div>
@@ -2807,8 +2808,8 @@ summary.textContent =
       : "recently"
   } by ${props.senderName || "National Weather Service"}`;
 
-  modal.querySelector(".alert-where").textContent = areas;
-  modal.querySelector(".alert-when").textContent = expires;
+modal.querySelector(".alert-where").textContent = areas;
+modal.querySelector(".alert-when").textContent = expires;
 
 hazardSection.style.display = "none";
 warningBottom.style.display = "none";
