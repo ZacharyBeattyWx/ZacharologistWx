@@ -824,11 +824,16 @@
   overflow: hidden;
   color: white;
   border: 1px solid rgba(255,255,255,0.08);
+  .warning-detail-card {
+  max-height: 75vh;
+  overflow-y: auto;
+}
 }
 .warning-detail-card strong {
   background: transparent !important;
   color: white;
 }
+
 .warning-detail-card h4 {
   margin: 0;
   padding: 14px 16px 6px;
@@ -838,18 +843,21 @@
   letter-spacing: 1px;
   font-size: 0.82rem;
 }
+
 .warning-hazards {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
   margin: 8px 0 14px;
 }
+
 .storm-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
   margin: 18px 0 14px;
 }
+
 .storm-tag {
   background:rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -864,23 +872,28 @@
   font-size: 0.78rem;
   letter-spacing: 0.04em;
 }
+
 .storm-tag.tornado {
   color: #ff73ff;
   border-color: rgba(255,115,255,0.35);
   background: rgba(255,115,255,0.08);
 }
+
 .storm-tag.tornado.observed {
   color: #ff4d4d;
   border-color: rgba(255,77,77,0.45);
   background: rgba(255,77,77,0.12);
   box-shadow: 0 0 14px rgba(255,77,77,0.25);
 }
+
 .storm-tag.hail{
   color: #ffd24d;
 }
+
 .storm-tag.wind{
   color: #ffb347;
 }
+
 .storm-tag.source{
   color: #7fd2dd;
 }
@@ -1021,6 +1034,10 @@
   color: white;
 
   border-bottom: 1px solid rgba(255,255,255,0.08);
+
+  border-top-left-radius: 18px;
+  border-top-right-radius: 18px;
+  overflow: hidden;
 }
 
 .alert-modal-header-text h2 {
@@ -1075,7 +1092,7 @@
   width: min(92vw, 780px);
   max-height: 88vh;
 
-  overflow-y: auto;
+  overflow-y: visible;
 
   background: #2b2d2f;
   border-radius: 18px;
@@ -1324,7 +1341,7 @@ body {
   width: 100%;
   max-width: 100%;
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: visible;
   -webkit-overflow-scrolling: touch;
   padding: 0;
   scrollbar-width: none;
@@ -1713,8 +1730,7 @@ nav a {
   line-height: 1.55;
 }
 
-
-  </style>
+ </style>
 </head>
 
 <body>
