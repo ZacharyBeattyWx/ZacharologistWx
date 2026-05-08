@@ -2392,14 +2392,18 @@ renderCategory(currentCategory);
   } catch (error) {
     console.error("NWS alert loading error:", error);
 
-    alertsList.innerHTML = `
-      <div class="compact-alert-item">
-        <div class="compact-alert-title storm-title">Alerts Unavailable</div>
-        <div class="alert-location">
-          Unable to load NWS alerts right now.
-        </div>
+   if (!hasLoadedAlertsOnce) {
+  alertsList.innerHTML = `
+    <div class="compact-alert-item">
+      <div class="compact-alert-title storm-title">Alerts Unavailable</div>
+      <div class="alert-location">
+        Unable to load NWS alerts right now.
       </div>
-    `;
+    </div>
+  `;
+} else {
+  console.warn("NWS refresh failed, keeping previous alerts visible.");
+}
   } finally {
     isFetchingAlerts = false;
   }
