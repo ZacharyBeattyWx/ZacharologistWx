@@ -11,7 +11,7 @@
 
     html, body {
     width: 100%;
-    overflow-x: visible;
+    overflow-x: hidden;
     }
     body {
   margin: 0;
@@ -518,7 +518,7 @@
   justify-content: center;
   align-items: center;
   gap: 16px;
-  overflow-x: visible;
+  overflow-x: hidden;
   padding: 8px 30px 12px;
   margin-bottom: 18px;
   scrollbar-width: thin;
@@ -842,7 +842,8 @@
 .warning-detail-card h4 {
   margin: 0;
   padding: 14px 16px 6px;
-  color: #cc00ff;
+  color: #ffb000;
+  text-shadow: none;
   text-transform: uppercase;
   letter-spacing: 1px;
   font-size: 0.82rem;
@@ -1106,13 +1107,7 @@
   font-size: 1.2rem;
   cursor: pointer;
 }
-.alert-modal {
-  display: none !important;
-}
 
-.alert-modal.is-open {
-  display: flex !important;
-}
 .compact-alert-list {
   display: grid;
   gap: 10px;
@@ -1267,7 +1262,7 @@ html,
 body {
   width: 100%;
   max-width: 100%;
-  overflow-x: visible;
+  overflow-x: hidden;
 }
 
 * {
@@ -1446,25 +1441,27 @@ nav a {
   }
 
   .dashboard-card,
-.radar-card,
-.map-card {
-  width: 100%;
-  min-width: 0;
-  overflow: hidden;
+  .radar-card,
+  .map-card {
+   width: 100%;
+   min-width: 0;
+   overflow: hidden;
 }
 
 .alerts-card {
   width: 100%;
   min-width: 0;
-  overflow: visible;
+  overflow: hidden;
 }
+
 .warning-hazards {
   max-width: 100%;
 }
+
 .alert-item {
     background: rgba(255,255,255,0.06);
     border: 1px solid rgba(255,255,255,0.12);
-  }
+     }
 
   .alert-item.open {
     background: rgba(255,255,255,0.10);
@@ -2129,21 +2126,29 @@ function getFilteredAlertsForCategory(category) {
 }
 
 function renderCompactAlerts(alerts, category) {
+
+  alertsList.style.opacity = "0.99";
+
   alertsList.innerHTML = "";
 
   if (!alerts.length) {
-    alertsList.innerHTML = `
-      <div class="compact-alert-item">
-        <div class="compact-alert-title ${category}-title">
-          No ${category.toUpperCase()} Alerts Right Now
-        </div>
-        <div class="alert-location">
-          No active alerts currently issued by NWS.
-        </div>
+  alertsList.innerHTML = `
+    <div class="compact-alert-item">
+      <div class="compact-alert-title ${category}-title">
+        No ${category.toUpperCase()} Alerts Right Now
       </div>
-    `;
-    return;
-  }
+      <div class="alert-location">
+        No active alerts currently issued by NWS.
+      </div>
+    </div>
+  `;
+
+  requestAnimationFrame(() => {
+    alertsList.style.opacity = "1";
+  });
+
+  return;
+}
 
   const groupedByState = {};
 
@@ -2229,7 +2234,11 @@ stateDetails.addEventListener("toggle", () => {
     wrapper.appendChild(stateDetails);
   });
 
-  alertsList.appendChild(wrapper);
+    alertsList.appendChild(wrapper);
+
+  requestAnimationFrame(() => {
+    alertsList.style.opacity = "1";
+  });
 }
 
 function renderCategory(category) {
@@ -2277,11 +2286,16 @@ async function fetchHomepageAlerts() {
   if (isFetchingAlerts) return;
 isFetchingAlerts = true;
 
-  const modalOpen =
-  document.getElementById("stormModal")
+const modalOpen = document
+  .getElementById("stormModal")
   ?.classList.contains("is-open");
+
+if (modalOpen) {
+  isFetchingAlerts = false;
+  return;
+}
   
-  if (!alertsList) {
+if (!alertsList) {
   isFetchingAlerts = false;
  return;
 }
