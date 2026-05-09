@@ -1989,59 +1989,65 @@ padding: 24px 28px !important;
     padding: 0 !important;
   }
 
-  /* Scrollable SPC image area inside fixed SPC card */
- .spc-card .spc-image-scroll {
+/* 2 over 2 SPC image grid */
+.spc-card .spc-image-scroll {
 flex: 1 1 auto !important;
 min-height: 0 !important;
 
 height: auto !important;
 max-height: none !important;
 
+display: grid !important;
+grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+grid-auto-rows: min-content !important;
+gap: 14px !important;
+
 overflow-y: auto !important;
 overflow-x: hidden !important;
 
 padding-right: 10px !important;
-margin-top: 8px !important;
-
-display: flex !important;
-flex-direction: column !important;
-gap: 16px !important;
+margin-top: 10px !important;
 }
 
-  .spc-card .spc-outlook-img {
+.spc-card .spc-image-card {
 display: block !important;
-width: var(--spc-image-width) !important;
+width: 100% !important;
+max-width: none !important;
+margin: 0 !important;
+padding: 8px !important;
+
+background: rgba(255,255,255,0.045) !important;
+border: 1px solid rgba(148, 163, 184, 0.14) !important;
+border-radius: 14px !important;
+
+text-decoration: none !important;
+color: inherit !important;
+}
+
+.spc-card .spc-image-card:hover {
+transform: none !important;
+background: rgba(255,255,255,0.075) !important;
+border-color: rgba(96,165,250,0.35) !important;
+}
+
+.spc-card .spc-image-title {
+font-size: 0.78rem !important;
+font-weight: 800 !important;
+line-height: 1.1 !important;
+margin-bottom: 6px !important;
+text-align: center !important;
+color: #e5e7eb !important;
+}
+
+.spc-card .spc-outlook-img {
+display: block !important;
+width: 100% !important;
 max-width: none !important;
 height: auto !important;
 margin: 0 auto !important;
 border-radius: 9px !important;
 background: rgba(255,255,255,0.08) !important;
 }
-
-  .spc-card .spc-image-card:hover {
-    transform: none !important;
-    background: transparent !important;
-    border-color: transparent !important;
-  }
-
-  .spc-card .spc-image-title {
-    font-size: 0.9rem !important;
-    font-weight: 800 !important;
-    letter-spacing: 0.02em !important;
-    margin-bottom: 8px !important;
-    text-align: center !important;
-    color: #e5e7eb !important;
-  }
-
-  .spc-card .spc-outlook-img {
-    display: block !important;
-    width: 92% !important;
-    max-width: none !important;
-    height: auto !important;
-    margin: 0 auto !important;
-    border-radius: 9px !important;
-    background: rgba(255,255,255,0.08) !important;
-  }
 
   /* Cleaner SPC scrollbar */
   .spc-card .spc-image-scroll::-webkit-scrollbar {
