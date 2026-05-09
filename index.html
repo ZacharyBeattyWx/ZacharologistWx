@@ -2115,11 +2115,11 @@ nav a {
       class="spc-outlook-img"
       alt="SPC Day 1 Outlook"
       data-spc-options="
-        https://www.spc.noaa.gov/products/outlook/day1otlk_0100.gif,
-        https://www.spc.noaa.gov/products/outlook/day1otlk_0600.gif,
-        https://www.spc.noaa.gov/products/outlook/day1otlk_1300.gif,
-        https://www.spc.noaa.gov/products/outlook/day1otlk_1630.gif,
-        https://www.spc.noaa.gov/products/outlook/day1otlk_2000.gif
+        https://www.spc.noaa.gov/products/outlook/day1otlk_0100_prt.png,
+        https://www.spc.noaa.gov/products/outlook/day1otlk_0600_prt.png,
+        https://www.spc.noaa.gov/products/outlook/day1otlk_1300_prt.png,
+        https://www.spc.noaa.gov/products/outlook/day1otlk_1630_prt.png,
+        https://www.spc.noaa.gov/products/outlook/day1otlk_2000_prt.png
       "
     >
   </a>
@@ -2130,8 +2130,8 @@ nav a {
       class="spc-outlook-img"
       alt="SPC Day 2 Outlook"
       data-spc-options="
-        https://www.spc.noaa.gov/products/outlook/day2otlk_0600.gif,
-        https://www.spc.noaa.gov/products/outlook/day2otlk_1730.gif
+        https://www.spc.noaa.gov/products/outlook/day2otlk_0600_prt.png,
+        https://www.spc.noaa.gov/products/outlook/day2otlk_1730_prt.png
       "
     >
   </a>
@@ -2142,8 +2142,8 @@ nav a {
       class="spc-outlook-img"
       alt="SPC Day 3 Outlook"
       data-spc-options="
-        https://www.spc.noaa.gov/products/outlook/day3otlk_0730.gif,
-        https://www.spc.noaa.gov/products/outlook/day3otlk_1930.gif
+        https://www.spc.noaa.gov/products/outlook/day3otlk_0730_prt.png,
+        https://www.spc.noaa.gov/products/outlook/day3otlk_1930_prt.png
       "
     >
   </a>
@@ -3161,7 +3161,6 @@ setInterval(fetchHomepageAlerts, 60000);
 
 function loadSPCImages() {
   const images = document.querySelectorAll(".spc-outlook-img[data-spc-options]");
-  const cacheBust = Math.floor(Date.now() / 600000);
 
   images.forEach(img => {
     const options = img.dataset.spcOptions
@@ -3177,10 +3176,11 @@ function loadSPCImages() {
         return;
       }
 
-      const nextSrc = `${options[index]}?v=${cacheBust}`;
+      const nextSrc = options[index];
       index++;
 
       img.onerror = tryNextImage;
+
       img.onload = () => {
         img.onerror = null;
       };
