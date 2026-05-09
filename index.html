@@ -1304,44 +1304,62 @@ body {
   box-sizing: border-box;
 }
 
+/* DESKTOP ALERT TAB LAYOUT: centered 2 over 3 */
 @media (min-width: 769px) {
-  .dashboard-grid {
+  .alerts-card .alert-tabs-wrapper {
+    width: 100%;
+    max-width: 100%;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 18px auto 26px auto;
+  }
+
+  .alerts-card .alert-tabs {
     display: grid !important;
-    grid-template-columns: 0.95fr 1.45fr !important;
-    grid-template-areas:
-      "briefing spc"
-      "alerts radar" !important;
-    gap: 28px !important;
-    width: 96% !important;
-    max-width: 1300px !important;
-    margin: 0 auto !important;
-    align-items: stretch !important;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 12px;
+    width: 100%;
+    max-width: 620px;
+    margin: 0 auto;
+    padding: 0 !important;
+    overflow: visible !important;
   }
 
-  .briefing-card {
-    grid-area: briefing !important;
+  .alerts-card .alert-tabs button {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: 54px;
+    border-radius: 14px;
+    text-align: center;
+    white-space: nowrap;
   }
 
-  .spc-card {
-    grid-area: spc !important;
+  /* Top row: 2 buttons */
+  .alerts-card .alert-tabs button:nth-child(1) {
+    grid-column: 1 / span 3;
   }
 
-  .alerts-card {
-    grid-area: alerts !important;
+  .alerts-card .alert-tabs button:nth-child(2) {
+    grid-column: 4 / span 3;
   }
 
-  .radar-card {
-    grid-area: radar !important;
+  /* Bottom row: 3 buttons */
+  .alerts-card .alert-tabs button:nth-child(3) {
+    grid-column: 1 / span 2;
   }
 
-  .briefing-card,
-  .spc-card {
-    min-height: 420px !important;
+  .alerts-card .alert-tabs button:nth-child(4) {
+    grid-column: 3 / span 2;
   }
 
-  .alerts-card,
-  .radar-card {
-    min-height: 320px !important;
+  .alerts-card .alert-tabs button:nth-child(5) {
+    grid-column: 5 / span 2;
+  }
+
+  .alerts-card .alert-tabs::after,
+  .alerts-card .alert-tabs-wrapper::after {
+    display: none !important;
   }
 }
 
