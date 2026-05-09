@@ -1307,16 +1307,15 @@ body {
 @media (min-width: 769px) {
   .dashboard-grid {
     display: grid !important;
-    grid-template-columns: 1fr 1.35fr !important;
+    grid-template-columns: 0.95fr 1.45fr !important;
     grid-template-areas:
-      "briefing briefing"
-      "spc radar"
-      "alerts alerts" !important;
+      "briefing spc"
+      "alerts radar" !important;
     gap: 28px !important;
     width: 96% !important;
     max-width: 1300px !important;
     margin: 0 auto !important;
-    align-items: start !important;
+    align-items: stretch !important;
   }
 
   .briefing-card {
@@ -1325,54 +1324,24 @@ body {
 
   .spc-card {
     grid-area: spc !important;
-    height: fit-content !important;
-    min-height: auto !important;
+  }
+
+  .alerts-card {
+    grid-area: alerts !important;
   }
 
   .radar-card {
     grid-area: radar !important;
   }
 
-  .alerts-card {
-    grid-area: alerts !important;
-    max-width: 1050px;
-    width: 100%;
-    margin: 0 auto;
-    overflow: visible;
+  .briefing-card,
+  .spc-card {
+    min-height: 420px !important;
   }
 
-  .alert-tabs-wrapper {
-    width: 100%;
-    overflow: visible;
-  }
-
-  .alert-tabs {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 12px;
-    width: 100%;
-    padding: 0 0 18px;
-    overflow: visible;
-  }
-
-  .alert-tabs button {
-    width: 100%;
-    min-width: 0;
-  }
-
-  .briefing-meta {
-    grid-template-columns: repeat(3, 1fr) !important;
-  }
-
-  .alert-modal-box {
-    width: min(640px, 88vw);
-    max-width: 640px;
-    margin: auto;
-    background: #252525;
-  }
-
-  .alert-modal .warning-detail-card {
-    border-radius: 18px;
+  .alerts-card,
+  .radar-card {
+    min-height: 320px !important;
   }
 }
 
