@@ -2063,34 +2063,46 @@ nav a {
   margin-bottom: 14px !important;
 }
 
-/* Let the SPC images use more of the card */
+/* FINAL HOMEPAGE SPC CARD TWEAKS */
+.spc-card .eyebrow,
+.spc-card .card-topline,
+.spc-card > p:first-of-type {
+  display: none !important;
+}
+
+/* Tighten the SPC card header */
+.spc-card h2 {
+  font-size: 1.25rem !important;
+  margin: 0 0 14px 0 !important;
+  padding: 0 !important;
+}
+
+/* Reduce wasted space around the SPC image area */
+.spc-card {
+  padding-top: 24px !important;
+}
+
 .spc-card .spc-image-scroll {
-  margin-top: 10px !important;
-  max-height: 420px !important;
+  margin-top: 8px !important;
+  max-height: 525px !important;
   overflow-y: auto !important;
   overflow-x: hidden !important;
   padding-right: 10px !important;
 }
 
-/* Make each outlook card wider */
+/* Make the image fill the box cleanly */
 .spc-card .spc-image-card {
   width: 100% !important;
   max-width: none !important;
   margin: 0 auto 16px auto !important;
-  padding: 10px 12px 14px 12px !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
 }
 
-/* Smaller Day 1 / Day 2 / Day 3 title */
-.spc-card .spc-image-title {
-  text-align: center !important;
-  font-size: 0.95rem !important;
-  margin-bottom: 8px !important;
-}
-
-/* Image should fill most of the SPC card */
 .spc-card .spc-outlook-img {
   display: block !important;
-  width: 96% !important;
+  width: 100% !important;
   max-width: none !important;
   height: auto !important;
   margin: 0 auto !important;
