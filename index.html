@@ -2111,42 +2111,39 @@ nav a {
 
   <a class="spc-image-card" href="https://www.spc.noaa.gov/products/outlook/day1otlk.html" target="_blank">
     <div class="spc-image-title">Day 1 Outlook</div>
-    <img 
-      src="https://www.spc.noaa.gov/products/outlook/day1otlk.gif" 
+    <img
+      src="https://www.spc.noaa.gov/products/outlook/day1otlk.gif"
+      data-spc-src="https://www.spc.noaa.gov/products/outlook/day1otlk.gif"
       alt="SPC Day 1 Outlook"
       class="spc-outlook-img"
+      referrerpolicy="no-referrer"
     >
   </a>
 
   <a class="spc-image-card" href="https://www.spc.noaa.gov/products/outlook/day2otlk.html" target="_blank">
     <div class="spc-image-title">Day 2 Outlook</div>
-    <img 
-      src="https://www.spc.noaa.gov/products/outlook/day2otlk.gif" 
+    <img
+      src="https://www.spc.noaa.gov/products/outlook/day2otlk.gif"
+      data-spc-src="https://www.spc.noaa.gov/products/outlook/day2otlk.gif"
       alt="SPC Day 2 Outlook"
       class="spc-outlook-img"
+      referrerpolicy="no-referrer"
     >
   </a>
 
   <a class="spc-image-card" href="https://www.spc.noaa.gov/products/outlook/day3otlk.html" target="_blank">
     <div class="spc-image-title">Day 3 Outlook</div>
-    <img 
-      src="https://www.spc.noaa.gov/products/outlook/day3otlk.gif" 
+    <img
+      src="https://www.spc.noaa.gov/products/outlook/day3otlk.gif"
+      data-spc-src="https://www.spc.noaa.gov/products/outlook/day3otlk.gif"
       alt="SPC Day 3 Outlook"
       class="spc-outlook-img"
-    >
-  </a>
-
-  <a class="spc-image-card" href="https://www.spc.noaa.gov/products/exper/day4-8/" target="_blank">
-    <div class="spc-image-title">Days 4–8 Outlook</div>
-    <img 
-      src="https://www.spc.noaa.gov/products/exper/day4-8/day48prob.gif" 
-      alt="SPC Days 4 through 8 Outlook"
-      class="spc-outlook-img"
+      referrerpolicy="no-referrer"
     >
   </a>
 
 </div>
-    </article>
+</article>
 
  <article class="dashboard-card mini-card alerts-card">
 
@@ -3149,11 +3146,19 @@ setInterval(fetchHomepageAlerts, 60000);
 
 function refreshSPCImages() {
   const spcImages = document.querySelectorAll(".spc-outlook-img");
-  const timestamp = Date.now();
+  const timestamp = Math.floor(Date.now() / 600000); // changes every 10 minutes
 
   spcImages.forEach(img => {
-    const cleanSrc = img.src.split("?")[0];
-    img.src = `${cleanSrc}?v=${timestamp}`;
+    const baseSrc = img.dataset.spcSrc;
+
+    if (!baseSrc) return;
+
+    img.onerror = function () {
+      this.onerror = null;
+      this.src = baseSrc;
+    };
+
+    img.src = `${baseSrc}?v=${timestamp}`;
   });
 }
 
