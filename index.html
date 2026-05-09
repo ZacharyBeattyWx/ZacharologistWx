@@ -1915,7 +1915,7 @@ nav a {
   background: transparent;
 }
 
-/* DESKTOP HOMEPAGE DASHBOARD LAYOUT */
+/* MASTER DESKTOP HOMEPAGE DASHBOARD + SPC IMAGE LAYOUT */
 @media (min-width: 769px) {
   .forecast-dashboard .dashboard-grid {
     display: grid !important;
@@ -1932,12 +1932,21 @@ nav a {
 
   .forecast-dashboard .briefing-card {
     grid-area: briefing !important;
+    height: 390px !important;
     min-height: 390px !important;
+    max-height: 390px !important;
+
+    display: flex !important;
+    flex-direction: column !important;
   }
 
   .forecast-dashboard .spc-card {
     grid-area: spc !important;
+    height: 390px !important;
     min-height: 390px !important;
+    max-height: 390px !important;
+    overflow: hidden !important;
+    padding: 24px 28px !important;
   }
 
   .forecast-dashboard .alerts-card {
@@ -1952,163 +1961,97 @@ nav a {
     min-height: 360px !important;
   }
 
-  .forecast-dashboard .briefing-card .briefing-stats,
-  .forecast-dashboard .briefing-stats {
-    display: grid !important;
-    grid-template-columns: 1fr !important;
-    gap: 12px !important;
-  }
-
-  .briefing-card a[href="wx-updates.html"] {
+  /* Center Read Full Briefing button */
+  .briefing-card .dashboard-button {
     align-self: center !important;
+    margin-top: auto !important;
+  }
+
+  /* Keep Current Weather Focus meta boxes clean */
+  .briefing-card .briefing-meta {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 14px !important;
+  }
+
+  /* SPC title — your HTML uses h3, not h2 */
+  .spc-card h3 {
+    font-size: 1.25rem !important;
+    margin: 0 0 12px 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Scrollable SPC image area inside fixed SPC card */
+  .spc-card .spc-image-scroll {
+    height: 300px !important;
+    max-height: 300px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-right: 10px !important;
+    margin-top: 8px !important;
+
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16px !important;
+  }
+
+  .spc-card .spc-image-card {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 auto 14px auto !important;
+    padding: 0 !important;
+
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    text-decoration: none !important;
+    color: inherit !important;
+  }
+
+  .spc-card .spc-image-card:hover {
+    transform: none !important;
+    background: transparent !important;
+    border-color: transparent !important;
+  }
+
+  .spc-card .spc-image-title {
+    font-size: 0.9rem !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.02em !important;
+    margin-bottom: 8px !important;
+    text-align: center !important;
+    color: #e5e7eb !important;
+  }
+
+  .spc-card .spc-outlook-img {
+    display: block !important;
+    width: 92% !important;
+    max-width: none !important;
+    height: auto !important;
+    margin: 0 auto !important;
+    border-radius: 9px !important;
+    background: rgba(255,255,255,0.08) !important;
+  }
+
+  /* Cleaner SPC scrollbar */
+  .spc-card .spc-image-scroll::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .spc-card .spc-image-scroll::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.04);
+    border-radius: 999px;
+  }
+
+  .spc-card .spc-image-scroll::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.45);
+    border-radius: 999px;
+  }
+
+  .spc-card .spc-image-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.7);
   }
 }
-
-/* SPC image outlook layout inside homepage card */
-.spc-card {
-  overflow: hidden !important;
-}
-
-.spc-image-scroll {
-  margin-top: 18px;
-  max-height: 300px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding-right: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.spc-image-card {
-  display: block;
-  text-decoration: none;
-  color: inherit;
-  background: rgba(255,255,255,0.055);
-  border: 1px solid rgba(148, 163, 184, 0.16);
-  border-radius: 16px;
-  padding: 12px;
-  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
-}
-
-.spc-image-card:hover {
-  transform: translateY(-2px);
-  background: rgba(255,255,255,0.085);
-  border-color: rgba(96, 165, 250, 0.45);
-}
-
-.spc-image-title {
-  font-size: 0.95rem;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  margin-bottom: 10px;
-  color: #e5e7eb;
-}
-
-.spc-outlook-img {
-  display: block;
-  width: 100%;
-  height: auto;
-  border-radius: 12px;
-  background: rgba(255,255,255,0.08);
-}
-
-/* Cleaner scrollbar for SPC images */
-.spc-image-scroll::-webkit-scrollbar {
-  width: 8px;
-}
-
-.spc-image-scroll::-webkit-scrollbar-track {
-  background: rgba(255,255,255,0.04);
-  border-radius: 999px;
-}
-
-.spc-image-scroll::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.45);
-  border-radius: 999px;
-}
-
-.spc-image-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.7);
-}
-
-/* Make SPC outlook images smaller inside the homepage SPC card */
-.spc-card .spc-image-card {
-  max-width: 760px !important;
-  margin: 0 auto 16px auto !important;
-  padding: 12px !important;
-}
-
-.spc-card .spc-outlook-img {
-  display: block !important;
-  width: 82% !important;
-  max-width: 700px !important;
-  height: auto !important;
-  margin: 0 auto !important;
-  border-radius: 12px !important;
-}
-
-.spc-card .spc-image-title {
-  text-align: center !important;
-}
-
-/* HOMEPAGE SPC CARD CLEANUP */
-.spc-card .eyebrow {
-  display: none !important;
-}
-
-.spc-card h2,
-.spc-card h3 {
-  font-size: 1.35rem !important;
-  margin-bottom: 14px !important;
-}
-
-/* FINAL HOMEPAGE SPC CARD TWEAKS */
-.spc-card .eyebrow,
-.spc-card .card-topline,
-.spc-card > p:first-of-type {
-  display: none !important;
-}
-
-/* Tighten the SPC card header */
-.spc-card h2 {
-  font-size: 1.25rem !important;
-  margin: 0 0 14px 0 !important;
-  padding: 0 !important;
-}
-
-/* Reduce wasted space around the SPC image area */
-.spc-card {
-  padding-top: 24px !important;
-}
-
-.spc-card .spc-image-scroll {
-  margin-top: 8px !important;
-  max-height: 525px !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
-  padding-right: 10px !important;
-}
-
-/* Make the image fill the box cleanly */
-.spc-card .spc-image-card {
-  width: 100% !important;
-  max-width: none !important;
-  margin: 0 auto 16px auto !important;
-  padding: 0 !important;
-  background: transparent !important;
-  border: none !important;
-}
-
-.spc-card .spc-outlook-img {
-  display: block !important;
-  width: 100% !important;
-  max-width: none !important;
-  height: auto !important;
-  margin: 0 auto !important;
-  border-radius: 10px !important;
-}
-
  </style>
 </head>
 
