@@ -1927,7 +1927,7 @@ nav a {
     width: 96% !important;
     max-width: 1600px !important;
     margin: 0 auto !important;
-    align-items: stretch !important;
+    align-items: start !important;
   }
 
   .forecast-dashboard .briefing-card {
@@ -1942,7 +1942,9 @@ nav a {
 
   .forecast-dashboard .alerts-card {
     grid-area: alerts !important;
-    min-height: 360px !important;
+    height: auto !important;
+    min-height: unset !important;
+    align-self: start !important;
   }
 
   .forecast-dashboard .radar-card {
@@ -1950,12 +1952,15 @@ nav a {
     min-height: 360px !important;
   }
 
-  /* Since Current Weather Focus is now narrower, stack its stat boxes */
   .forecast-dashboard .briefing-card .briefing-stats,
   .forecast-dashboard .briefing-stats {
     display: grid !important;
     grid-template-columns: 1fr !important;
     gap: 12px !important;
+  }
+
+  .briefing-card a[href="wx-updates.html"] {
+    align-self: center !important;
   }
 }
 
