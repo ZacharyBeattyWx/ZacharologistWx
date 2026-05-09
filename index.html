@@ -2112,33 +2112,48 @@ nav a {
   <a class="spc-image-card" href="https://www.spc.noaa.gov/products/outlook/day1otlk.html" target="_blank">
     <div class="spc-image-title">Day 1 Outlook</div>
     <img
-      src="https://www.spc.noaa.gov/products/outlook/day1otlk.gif"
-      data-spc-src="https://www.spc.noaa.gov/products/outlook/day1otlk.gif"
-      alt="SPC Day 1 Outlook"
       class="spc-outlook-img"
-      referrerpolicy="no-referrer"
+      alt="SPC Day 1 Outlook"
+      data-spc-options="
+        https://www.spc.noaa.gov/products/outlook/day1otlk_0100.gif,
+        https://www.spc.noaa.gov/products/outlook/day1otlk_0600.gif,
+        https://www.spc.noaa.gov/products/outlook/day1otlk_1300.gif,
+        https://www.spc.noaa.gov/products/outlook/day1otlk_1630.gif,
+        https://www.spc.noaa.gov/products/outlook/day1otlk_2000.gif
+      "
     >
   </a>
 
   <a class="spc-image-card" href="https://www.spc.noaa.gov/products/outlook/day2otlk.html" target="_blank">
     <div class="spc-image-title">Day 2 Outlook</div>
     <img
-      src="https://www.spc.noaa.gov/products/outlook/day2otlk.gif"
-      data-spc-src="https://www.spc.noaa.gov/products/outlook/day2otlk.gif"
-      alt="SPC Day 2 Outlook"
       class="spc-outlook-img"
-      referrerpolicy="no-referrer"
+      alt="SPC Day 2 Outlook"
+      data-spc-options="
+        https://www.spc.noaa.gov/products/outlook/day2otlk_0600.gif,
+        https://www.spc.noaa.gov/products/outlook/day2otlk_1730.gif
+      "
     >
   </a>
 
   <a class="spc-image-card" href="https://www.spc.noaa.gov/products/outlook/day3otlk.html" target="_blank">
     <div class="spc-image-title">Day 3 Outlook</div>
     <img
-      src="https://www.spc.noaa.gov/products/outlook/day3otlk.gif"
-      data-spc-src="https://www.spc.noaa.gov/products/outlook/day3otlk.gif"
-      alt="SPC Day 3 Outlook"
       class="spc-outlook-img"
-      referrerpolicy="no-referrer"
+      alt="SPC Day 3 Outlook"
+      data-spc-options="
+        https://www.spc.noaa.gov/products/outlook/day3otlk_0730.gif,
+        https://www.spc.noaa.gov/products/outlook/day3otlk_1930.gif
+      "
+    >
+  </a>
+
+  <a class="spc-image-card" href="https://www.spc.noaa.gov/products/exper/day4-8/" target="_blank">
+    <div class="spc-image-title">Days 4–8 Outlook</div>
+    <img
+      class="spc-outlook-img"
+      alt="SPC Days 4 through 8 Outlook"
+      src="https://www.spc.noaa.gov/products/exper/day4-8/day48prob.gif"
     >
   </a>
 
@@ -3144,26 +3159,41 @@ if (defaultAlertsCard) {
 fetchHomepageAlerts();
 setInterval(fetchHomepageAlerts, 60000);
 
-function refreshSPCImages() {
-  const spcImages = document.querySelectorAll(".spc-outlook-img");
-  const timestamp = Math.floor(Date.now() / 600000); // changes every 10 minutes
+function loadSPCImages() {
+  const images = document.querySelectorAll(".spc-outlook-img[data-spc-options]");
+  const cacheBust = Math.floor(Date.now() / 600000);
 
-  spcImages.forEach(img => {
-    const baseSrc = img.dataset.spcSrc;
+  images.forEach(img => {
+    const options = img.dataset.spcOptions
+      .split(",")
+      .map(url => url.trim())
+      .filter(Boolean);
 
-    if (!baseSrc) return;
+    let index = 0;
 
-    img.onerror = function () {
-      this.onerror = null;
-      this.src = baseSrc;
-    };
+    function tryNextImage() {
+      if (index >= options.length) {
+        img.alt = "SPC outlook image unavailable";
+        return;
+      }
 
-    img.src = `${baseSrc}?v=${timestamp}`;
+      const nextSrc = `${options[index]}?v=${cacheBust}`;
+      index++;
+
+      img.onerror = tryNextImage;
+      img.onload = () => {
+        img.onerror = null;
+      };
+
+      img.src = nextSrc;
+    }
+
+    tryNextImage();
   });
 }
 
-refreshSPCImages();
-setInterval(refreshSPCImages, 10 * 60 * 1000);
+loadSPCImages();
+setInterval(loadSPCImages, 10 * 60 * 1000);
 
 </script>
 
