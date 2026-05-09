@@ -1915,6 +1915,50 @@ nav a {
   background: transparent;
 }
 
+/* DESKTOP HOMEPAGE DASHBOARD LAYOUT */
+@media (min-width: 769px) {
+  .forecast-dashboard .dashboard-grid {
+    display: grid !important;
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.35fr) !important;
+    grid-template-areas:
+      "briefing spc"
+      "alerts radar" !important;
+    gap: 28px !important;
+    width: 96% !important;
+    max-width: 1600px !important;
+    margin: 0 auto !important;
+    align-items: stretch !important;
+  }
+
+  .forecast-dashboard .briefing-card {
+    grid-area: briefing !important;
+    min-height: 390px !important;
+  }
+
+  .forecast-dashboard .spc-card {
+    grid-area: spc !important;
+    min-height: 390px !important;
+  }
+
+  .forecast-dashboard .alerts-card {
+    grid-area: alerts !important;
+    min-height: 360px !important;
+  }
+
+  .forecast-dashboard .radar-card {
+    grid-area: radar !important;
+    min-height: 360px !important;
+  }
+
+  /* Since Current Weather Focus is now narrower, stack its stat boxes */
+  .forecast-dashboard .briefing-card .briefing-stats,
+  .forecast-dashboard .briefing-stats {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+}
+
  </style>
 </head>
 
