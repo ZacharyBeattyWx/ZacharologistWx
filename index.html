@@ -1964,6 +1964,74 @@ nav a {
   }
 }
 
+/* SPC image outlook layout inside homepage card */
+.spc-card {
+  overflow: hidden !important;
+}
+
+.spc-image-scroll {
+  margin-top: 18px;
+  max-height: 300px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.spc-image-card {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  background: rgba(255,255,255,0.055);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 16px;
+  padding: 12px;
+  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.spc-image-card:hover {
+  transform: translateY(-2px);
+  background: rgba(255,255,255,0.085);
+  border-color: rgba(96, 165, 250, 0.45);
+}
+
+.spc-image-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  margin-bottom: 10px;
+  color: #e5e7eb;
+}
+
+.spc-outlook-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.08);
+}
+
+/* Cleaner scrollbar for SPC images */
+.spc-image-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.spc-image-scroll::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.04);
+  border-radius: 999px;
+}
+
+.spc-image-scroll::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.45);
+  border-radius: 999px;
+}
+
+.spc-image-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.7);
+}
+
  </style>
 </head>
 
@@ -2039,23 +2107,45 @@ nav a {
       <span class="mini-label">Outlook</span>
       <h3>SPC Forecast</h3>
 
-      <div class="spc-graphics-stack">
-        <a href="https://www.spc.noaa.gov/products/outlook/day1otlk.html" target="_blank" class="spc-item">
-          <span>Day 1 Outlook</span>
-        </a>
+      <div class="spc-image-scroll">
 
-        <a href="https://www.spc.noaa.gov/products/outlook/day2otlk.html" target="_blank" class="spc-item">
-          <span>Day 2 Outlook</span>
-        </a>
+  <a class="spc-image-card" href="https://www.spc.noaa.gov/products/outlook/day1otlk.html" target="_blank">
+    <div class="spc-image-title">Day 1 Outlook</div>
+    <img 
+      src="https://www.spc.noaa.gov/products/outlook/day1otlk.gif" 
+      alt="SPC Day 1 Outlook"
+      class="spc-outlook-img"
+    >
+  </a>
 
-        <a href="https://www.spc.noaa.gov/products/outlook/day3otlk.html" target="_blank" class="spc-item">
-          <span>Day 3 Outlook</span>
-        </a>
+  <a class="spc-image-card" href="https://www.spc.noaa.gov/products/outlook/day2otlk.html" target="_blank">
+    <div class="spc-image-title">Day 2 Outlook</div>
+    <img 
+      src="https://www.spc.noaa.gov/products/outlook/day2otlk.gif" 
+      alt="SPC Day 2 Outlook"
+      class="spc-outlook-img"
+    >
+  </a>
 
-        <a href="https://www.spc.noaa.gov/products/exper/day4-8/" target="_blank" class="spc-item">
-          <span>Days 4–8 Outlook</span>
-        </a>
-      </div>
+  <a class="spc-image-card" href="https://www.spc.noaa.gov/products/outlook/day3otlk.html" target="_blank">
+    <div class="spc-image-title">Day 3 Outlook</div>
+    <img 
+      src="https://www.spc.noaa.gov/products/outlook/day3otlk.gif" 
+      alt="SPC Day 3 Outlook"
+      class="spc-outlook-img"
+    >
+  </a>
+
+  <a class="spc-image-card" href="https://www.spc.noaa.gov/products/exper/day4-8/" target="_blank">
+    <div class="spc-image-title">Days 4–8 Outlook</div>
+    <img 
+      src="https://www.spc.noaa.gov/products/exper/day4-8/day48prob.gif" 
+      alt="SPC Days 4 through 8 Outlook"
+      class="spc-outlook-img"
+    >
+  </a>
+
+</div>
     </article>
 
  <article class="dashboard-card mini-card alerts-card">
@@ -3056,6 +3146,20 @@ if (defaultAlertsCard) {
 
 fetchHomepageAlerts();
 setInterval(fetchHomepageAlerts, 60000);
+
+function refreshSPCImages() {
+  const spcImages = document.querySelectorAll(".spc-outlook-img");
+  const timestamp = Date.now();
+
+  spcImages.forEach(img => {
+    const cleanSrc = img.src.split("?")[0];
+    img.src = `${cleanSrc}?v=${timestamp}`;
+  });
+}
+
+refreshSPCImages();
+setInterval(refreshSPCImages, 10 * 60 * 1000);
+
 </script>
 
 </body>
