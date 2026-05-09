@@ -1921,8 +1921,8 @@ nav a {
     display: grid !important;
     grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.35fr) !important;
     grid-template-areas:
-      "briefing spc"
-      "alerts radar" !important;
+      "briefing alerts"
+      "SPC radar" !important;
     gap: 28px !important;
     width: 96% !important;
     max-width: 1600px !important;
@@ -1947,7 +1947,6 @@ flex-direction: column !important;
 
 .forecast-dashboard .spc-card {
 grid-area: spc !important;
-height: var(--top-card-height) !important;
 min-height: var(--top-card-height) !important;
 max-height: var(--top-card-height) !important;
 
@@ -1958,12 +1957,22 @@ overflow: hidden !important;
 padding: 24px 28px !important;
 }
 
-  .forecast-dashboard .alerts-card {
-    grid-area: alerts !important;
-    height: auto !important;
-    min-height: unset !important;
-    align-self: start !important;
-  }
+ .forecast-dashboard .alerts-card {
+grid-area: alerts !important;
+height: var(--top-card-height) !important;
+min-height: var(--top-card-height) !important;
+max-height: var(--top-card-height) !important;
+align-self: start !important;
+overflow: hidden !important;
+}
+
+.forecast-dashboard .alerts-card #alertsList,
+.forecast-dashboard .alerts-card .compact-alert-list {
+max-height: calc(var(--top-card-height) - 190px) !important;
+overflow-y: auto !important;
+overflow-x: hidden !important;
+padding-right: 8px !important;
+}
 
   .forecast-dashboard .radar-card {
     grid-area: radar !important;
