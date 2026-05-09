@@ -1930,24 +1930,33 @@ nav a {
     align-items: start !important;
   }
 
-  .forecast-dashboard .briefing-card {
-  grid-area: briefing !important;
-  height: 650px !important;
-  min-height: 650px !important;
-  max-height: 650px !important;
+ .forecast-dashboard {
+--top-card-height: 650px;
+--spc-image-width: 72%;
+}
 
-    display: flex !important;
-    flex-direction: column !important;
-  }
+.forecast-dashboard .briefing-card {
+grid-area: briefing !important;
+height: var(--top-card-height) !important;
+min-height: var(--top-card-height) !important;
+max-height: var(--top-card-height) !important;
 
-  .forecast-dashboard .spc-card {
-  grid-area: spc !important;
-  height: 650px !important;
-  min-height: 650px !important;
-  max-height: 650px !important;
-    overflow: hidden !important;
-    padding: 24px 28px !important;
-  }
+display: flex !important;
+flex-direction: column !important;
+}
+
+.forecast-dashboard .spc-card {
+grid-area: spc !important;
+height: var(--top-card-height) !important;
+min-height: var(--top-card-height) !important;
+max-height: var(--top-card-height) !important;
+
+display: flex !important;
+flex-direction: column !important;
+
+overflow: hidden !important;
+padding: 24px 28px !important;
+}
 
   .forecast-dashboard .alerts-card {
     grid-area: alerts !important;
@@ -1981,32 +1990,33 @@ nav a {
   }
 
   /* Scrollable SPC image area inside fixed SPC card */
-  .spc-card .spc-image-scroll {
-    height: 535px !important;
-     max-height: 535px !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    padding-right: 10px !important;
-    margin-top: 8px !important;
+ spc-card .spc-image-scroll {
+flex: 1 1 auto !important;
+min-height: 0 !important;
 
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 16px !important;
-  }
+height: auto !important;
+max-height: none !important;
+
+overflow-y: auto !important;
+overflow-x: hidden !important;
+
+padding-right: 10px !important;
+margin-top: 8px !important;
+
+display: flex !important;
+flex-direction: column !important;
+gap: 16px !important;
+}
 
   .spc-card .spc-outlook-img {
-  display: block !important;
-  width: 92% !important;
-    max-width: none !important;
-    margin: 0 auto 14px auto !important;
-    padding: 0 !important;
-
-    background: transparent !important;
-    border: none !important;
-    border-radius: 0 !important;
-    text-decoration: none !important;
-    color: inherit !important;
-  }
+display: block !important;
+width: var(--spc-image-width) !important;
+max-width: none !important;
+height: auto !important;
+margin: 0 auto !important;
+border-radius: 9px !important;
+background: rgba(255,255,255,0.08) !important;
+}
 
   .spc-card .spc-image-card:hover {
     transform: none !important;
