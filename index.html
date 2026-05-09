@@ -1304,23 +1304,36 @@ body {
   box-sizing: border-box;
 }
 
-/* DESKTOP ALERT TAB LAYOUT: centered 2 over 3 */
+/* DESKTOP ALERT TAB LAYOUT: centered equal-size 2 over 3 */
 @media (min-width: 769px) {
+  .alerts-card {
+    text-align: center;
+  }
+
+  .alerts-card #alertsTitle,
+  .alerts-card h2 {
+    text-align: center !important;
+    width: 100%;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    margin-bottom: 26px !important;
+  }
+
   .alerts-card .alert-tabs-wrapper {
     width: 100%;
     max-width: 100%;
     overflow: visible !important;
     padding: 0 !important;
-    margin: 18px auto 26px auto;
+    margin: 0 auto 30px auto !important;
   }
 
   .alerts-card .alert-tabs {
     display: grid !important;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 12px;
+    grid-template-columns: repeat(6, 1fr) !important;
+    gap: 14px !important;
     width: 100%;
-    max-width: 620px;
-    margin: 0 auto;
+    max-width: 680px;
+    margin: 0 auto !important;
     padding: 0 !important;
     overflow: visible !important;
   }
@@ -1329,13 +1342,13 @@ body {
     width: 100% !important;
     min-width: 0 !important;
     max-width: none !important;
-    height: 54px;
+    height: 58px;
     border-radius: 14px;
     text-align: center;
     white-space: nowrap;
   }
 
-  /* Top row: 2 buttons */
+  /* Top row: 2 centered buttons, same size as bottom row */
   .alerts-card .alert-tabs button:nth-child(1) {
     grid-column: 2 / span 2;
   }
@@ -1344,7 +1357,7 @@ body {
     grid-column: 4 / span 2;
   }
 
-  /* Bottom row: 3 buttons */
+  /* Bottom row: 3 equal buttons */
   .alerts-card .alert-tabs button:nth-child(3) {
     grid-column: 1 / span 2;
   }
