@@ -1915,7 +1915,7 @@ nav a {
   background: transparent;
 }
 
-/* MASTER DESKTOP HOMEPAGE DASHBOARD + SPC IMAGE LAYOUT */
+/* MASTER DESKTOP HOMEPAGE DASHBOARD + SPC 2x2 LAYOUT */
 @media (min-width: 769px) {
   .forecast-dashboard .dashboard-grid {
     display: grid !important;
@@ -1931,20 +1931,24 @@ nav a {
   }
 
   .forecast-dashboard .briefing-card {
-  grid-area: briefing !important;
-  height: 580px !important;
-  min-height: 580px !important;
-  max-height: 580px !important;
+    grid-area: briefing !important;
+    height: 580px !important;
+    min-height: 580px !important;
+    max-height: 580px !important;
 
     display: flex !important;
     flex-direction: column !important;
   }
 
   .forecast-dashboard .spc-card {
-  grid-area: spc !important;
-  height: 580px !important;
-  min-height: 580px !important;
-  max-height: 580px !important;
+    grid-area: spc !important;
+    height: 580px !important;
+    min-height: 580px !important;
+    max-height: 580px !important;
+
+    display: flex !important;
+    flex-direction: column !important;
+
     overflow: hidden !important;
     padding: 24px 28px !important;
   }
@@ -1962,10 +1966,10 @@ nav a {
   }
 
   /* Center Read Full Briefing button */
-.briefing-card .dashboard-button {
-  align-self: center !important;
-  margin-top: 75px !important;
-}
+  .briefing-card .dashboard-button {
+    align-self: center !important;
+    margin-top: 75px !important;
+  }
 
   /* Keep Current Weather Focus meta boxes clean */
   .briefing-card .briefing-meta {
@@ -1973,83 +1977,83 @@ nav a {
     gap: 14px !important;
   }
 
-  /* SPC title — your HTML uses h3, not h2 */
+  /* SPC title */
   .spc-card h3 {
     font-size: 1.25rem !important;
-    margin: 0 0 12px 0 !important;
+    margin: 0 0 14px 0 !important;
     padding: 0 !important;
   }
 
-  /* Scrollable SPC image area inside fixed SPC card */
+  /* SPC 2x2 grid — no scrolling */
   .spc-card .spc-image-scroll {
-    height: 470px !important;
-     max-height: 470px !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    padding-right: 10px !important;
-    margin-top: 8px !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-rows: repeat(2, minmax(0, 1fr)) !important;
+    gap: 14px !important;
+
+    height: auto !important;
+    max-height: none !important;
+
+    overflow: hidden !important;
+    padding-right: 0 !important;
+    margin-top: 10px !important;
+  }
+
+  .spc-card .spc-image-card {
+    min-width: 0 !important;
+    min-height: 0 !important;
+    height: 100% !important;
 
     display: flex !important;
     flex-direction: column !important;
-    gap: 16px !important;
-  }
 
-  .spc-card .spc-outlook-img {
-  display: block !important;
-  width: 88% !important;
-    max-width: none !important;
-    margin: 0 auto 14px auto !important;
-    padding: 0 !important;
+    margin: 0 !important;
+    padding: 7px !important;
 
-    background: transparent !important;
-    border: none !important;
-    border-radius: 0 !important;
+    overflow: hidden !important;
+
+    background: rgba(255,255,255,0.045) !important;
+    border: 1px solid rgba(148, 163, 184, 0.14) !important;
+    border-radius: 14px !important;
+
     text-decoration: none !important;
     color: inherit !important;
   }
 
   .spc-card .spc-image-card:hover {
     transform: none !important;
-    background: transparent !important;
-    border-color: transparent !important;
+    background: rgba(255,255,255,0.075) !important;
+    border-color: rgba(96,165,250,0.35) !important;
   }
 
   .spc-card .spc-image-title {
-    font-size: 0.9rem !important;
+    flex: 0 0 auto !important;
+    font-size: 0.78rem !important;
     font-weight: 800 !important;
+    line-height: 1.1 !important;
     letter-spacing: 0.02em !important;
-    margin-bottom: 8px !important;
+    margin: 0 0 6px 0 !important;
     text-align: center !important;
     color: #e5e7eb !important;
   }
 
   .spc-card .spc-outlook-img {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+
     display: block !important;
-    width: 92% !important;
-    max-width: none !important;
-    height: auto !important;
+    width: 100% !important;
+    height: 100% !important;
+
+    object-fit: cover !important;
+    object-position: center center !important;
+
     margin: 0 auto !important;
     border-radius: 9px !important;
     background: rgba(255,255,255,0.08) !important;
-  }
-
-  /* Cleaner SPC scrollbar */
-  .spc-card .spc-image-scroll::-webkit-scrollbar {
-    width: 8px;
-  }
-
-  .spc-card .spc-image-scroll::-webkit-scrollbar-track {
-    background: rgba(255,255,255,0.04);
-    border-radius: 999px;
-  }
-
-  .spc-card .spc-image-scroll::-webkit-scrollbar-thumb {
-    background: rgba(148, 163, 184, 0.45);
-    border-radius: 999px;
-  }
-
-  .spc-card .spc-image-scroll::-webkit-scrollbar-thumb:hover {
-    background: rgba(148, 163, 184, 0.7);
   }
 }
  </style>
