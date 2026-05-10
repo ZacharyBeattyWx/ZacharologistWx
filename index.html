@@ -1143,12 +1143,73 @@
   margin-top: 12px;
 }
 
+/* CLEAN ALERT CARD ALIGNMENT */
 .compact-alert-item {
+  position: relative;
   backdrop-filter: blur(10px);
   background: rgba(255,255,255,0.08);
   border: 1px solid rgba(255,255,255,0.13);
   border-radius: 14px;
-  padding: 11px 12px;
+  padding: 16px 14px !important;
+  min-height: auto !important;
+}
+
+.compact-alert-title {
+  color: #ffca1c;
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0 0 10px 0 !important;
+  text-align: center !important;
+}
+
+.compact-alert-meta {
+  position: static !important;
+  display: flex !important;
+  justify-content: flex-start !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+  margin: 0 0 10px 0 !important;
+  max-width: none !important;
+  transform: none !important;
+}
+
+.alert-location {
+  color: #d8dde8;
+  font-size: 0.88rem;
+  line-height: 1.35;
+  text-align: center !important;
+  margin: 0 auto !important;
+}
+
+.compact-alert-actions {
+  position: relative !important;
+  z-index: 20;
+  display: flex !important;
+  justify-content: flex-end !important;
+  margin-top: 12px !important;
+  transform: none !important;
+}
+
+.compact-details-btn {
+  position: relative;
+  z-index: 25;
+  pointer-events: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+
+  border: 0;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.13);
+  color: white;
+  padding: 7px 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.compact-details-btn:hover {
+  background: rgba(255,255,255,0.22);
 }
 
 .compact-alert-title {
@@ -1203,11 +1264,6 @@
   line-height: 1.3;
 }
 
-.compact-alert-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 8px;
-}
 .state-alert-dropdown,
 .state-alert-group {
   margin-top: 14px;
@@ -1245,31 +1301,6 @@
   margin-top: 12px;
 }
 
-.compact-details-btn {
-  border: 0;
-  border-radius: 10px;
-  background: rgba(255,255,255,0.13);
-  color: white;
-  padding: 7px 11px;
-  font-weight: 800;
-  cursor: pointer;
-}
-.compact-alert-actions {
-  position: relative;
-  z-index: 20;
-}
-
-.compact-details-btn {
-  position: relative;
-  z-index: 25;
-  pointer-events: auto;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.compact-details-btn:hover {
-  background: rgba(255,255,255,0.22);
-}
 .compact-alert-item:only-child {
   min-height: 90px;
   display: flex;
