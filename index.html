@@ -1939,11 +1939,12 @@ nav a {
     align-items: start !important;
   }
 
-  .dashboard-column {
+  .forecast-dashboard .dashboard-column {
     display: flex !important;
     flex-direction: column !important;
     gap: 28px !important;
     min-width: 0 !important;
+    width: 100% !important;
   }
 
   .forecast-dashboard .briefing-card,
@@ -1955,11 +1956,12 @@ nav a {
     width: 100% !important;
     max-width: none !important;
     min-width: 0 !important;
+    margin: 0 !important;
   }
 
-  /* Current Weather Focus compact card */
+  /* LEFT TOP: Current Weather Focus */
   .forecast-dashboard .briefing-card {
-    min-height: 330px !important;
+    min-height: 300px !important;
     height: auto !important;
     display: flex !important;
     flex-direction: column !important;
@@ -1989,23 +1991,26 @@ nav a {
     margin-bottom: 0 !important;
   }
 
-  /* Alerts slide up directly under Current Weather Focus */
+  /* LEFT BOTTOM: Active Alerts */
   .forecast-dashboard .alerts-card {
     height: auto !important;
     min-height: 360px !important;
     overflow: visible !important;
   }
 
-  /* Radar top-right */
+  /* RIGHT TOP: Radar */
   .forecast-dashboard .radar-card {
     min-height: 520px !important;
+    overflow: hidden !important;
   }
 
   .forecast-dashboard .radar-frame {
+    width: 100% !important;
     height: 430px !important;
+    margin: 16px 0 0 !important;
   }
 
-  /* SPC bottom-right */
+  /* RIGHT BOTTOM: SPC */
   .forecast-dashboard .spc-card {
     min-height: 520px !important;
     display: flex !important;
@@ -2020,11 +2025,7 @@ nav a {
     padding: 0 !important;
   }
 
-  /* SPC 2x2 grid */
   .spc-card .spc-image-scroll {
-    flex: 1 1 auto !important;
-    min-height: 0 !important;
-
     display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     grid-template-rows: repeat(2, minmax(0, 1fr)) !important;
@@ -2085,6 +2086,21 @@ nav a {
   }
 }
 
+/* MOBILE: stack everything cleanly */
+@media (max-width: 768px) {
+  .forecast-dashboard .dashboard-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 18px !important;
+  }
+
+  .forecast-dashboard .dashboard-column {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 18px !important;
+    width: 100% !important;
+  }
+}
  </style>
 </head>
 
