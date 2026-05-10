@@ -1152,6 +1152,7 @@
   border-radius: 14px;
   padding: 16px 14px !important;
   min-height: auto !important;
+  text-align: left !important;
 }
 
 .compact-alert-title {
@@ -1335,12 +1336,8 @@ body {
   box-sizing: border-box;
 }
 
-/* DESKTOP ALERT TAB LAYOUT: centered equal-size 2 over 3 */
+/* DESKTOP ALERT TAB LAYOUT: centered tabs only */
 @media (min-width: 769px) {
-  .alerts-card {
-    text-align: center;
-  }
-
   .alerts-card #alertsTitle,
   .alerts-card h2 {
     text-align: center !important;
@@ -1379,7 +1376,6 @@ body {
     white-space: nowrap;
   }
 
-  /* Top row: 2 centered buttons, same size as bottom row */
   .alerts-card .alert-tabs button:nth-child(1) {
     grid-column: 2 / span 2;
   }
@@ -1388,7 +1384,6 @@ body {
     grid-column: 4 / span 2;
   }
 
-  /* Bottom row: 3 equal buttons */
   .alerts-card .alert-tabs button:nth-child(3) {
     grid-column: 1 / span 2;
   }
