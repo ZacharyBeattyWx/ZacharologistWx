@@ -1881,6 +1881,12 @@ nav a {
     line-height: 1.5 !important;
     padding: 12px 13px;
   }
+
+  .dashboard-column {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 18px !important;
+}
 }
 
 .alert-modal .warning-impacts p {
@@ -1915,18 +1921,11 @@ nav a {
   background: transparent;
 }
 
-/* MASTER DESKTOP HOMEPAGE DASHBOARD + SPC 2x2 LAYOUT */
+/* MASTER DESKTOP HOMEPAGE DASHBOARD + TWO COLUMN LAYOUT */
 @media (min-width: 769px) {
-  .forecast-dashboard {
-    --top-card-height: 580px;
-  }
-
   .forecast-dashboard .dashboard-grid {
     display: grid !important;
-    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.35fr) !important;
-    grid-template-areas:
-      "briefing spc"
-      "alerts radar" !important;
+    grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr) !important;
     gap: 28px !important;
     width: 96% !important;
     max-width: 1600px !important;
@@ -1934,49 +1933,56 @@ nav a {
     align-items: start !important;
   }
 
-  .forecast-dashboard .briefing-card {
-    grid-area: briefing !important;
-    height: var(--top-card-height) !important;
-    min-height: var(--top-card-height) !important;
-    max-height: var(--top-card-height) !important;
-
+  .dashboard-column {
     display: flex !important;
     flex-direction: column !important;
+    gap: 28px !important;
+    min-width: 0 !important;
   }
 
-  .forecast-dashboard .spc-card {
-    grid-area: spc !important;
-    height: var(--top-card-height) !important;
-    min-height: var(--top-card-height) !important;
-    max-height: var(--top-card-height) !important;
-
-    display: flex !important;
-    flex-direction: column !important;
-
-    overflow: hidden !important;
-    padding: 24px 28px !important;
-  }
-
-  .forecast-dashboard .alerts-card {
-    grid-area: alerts !important;
-    height: auto !important;
-    min-height: unset !important;
-    align-self: start !important;
-  }
-
+  .forecast-dashboard .briefing-card,
+  .forecast-dashboard .spc-card,
+  .forecast-dashboard .alerts-card,
   .forecast-dashboard .radar-card {
-    grid-area: radar !important;
-    min-height: 360px !important;
+    grid-column: auto !important;
+    grid-row: auto !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+  }
+
+  /* Current Weather Focus */
+  .forecast-dashboard .briefing-card {
+    min-height: 520px !important;
+    display: flex !important;
+    flex-direction: column !important;
   }
 
   .briefing-card .dashboard-button {
     align-self: center !important;
-    margin-top: 75px !important;
+    margin-top: auto !important;
+    margin-bottom: 34px !important;
   }
 
   .briefing-card .briefing-meta {
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
     gap: 14px !important;
+  }
+
+  /* Active Alerts under Current Weather Focus */
+  .forecast-dashboard .alerts-card {
+    height: auto !important;
+    min-height: 360px !important;
+    overflow: visible !important;
+  }
+
+  /* SPC Forecast */
+  .forecast-dashboard .spc-card {
+    min-height: 520px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    padding: 24px 28px !important;
   }
 
   .spc-card h3 {
@@ -1997,8 +2003,8 @@ nav a {
 
     height: auto !important;
     max-height: none !important;
-
     overflow: hidden !important;
+
     padding-right: 0 !important;
     margin-top: 10px !important;
   }
@@ -2013,7 +2019,6 @@ nav a {
 
     margin: 0 !important;
     padding: 7px !important;
-
     overflow: hidden !important;
 
     background: rgba(255,255,255,0.045) !important;
@@ -2024,18 +2029,11 @@ nav a {
     color: inherit !important;
   }
 
-  .spc-card .spc-image-card:hover {
-    transform: none !important;
-    background: rgba(255,255,255,0.075) !important;
-    border-color: rgba(96,165,250,0.35) !important;
-  }
-
   .spc-card .spc-image-title {
     flex: 0 0 auto !important;
     font-size: 0.78rem !important;
     font-weight: 800 !important;
     line-height: 1.1 !important;
-    letter-spacing: 0.02em !important;
     margin: 0 0 6px 0 !important;
     text-align: center !important;
     color: #e5e7eb !important;
@@ -2055,6 +2053,11 @@ nav a {
     margin: 0 auto !important;
     border-radius: 9px !important;
     background: rgba(255,255,255,0.08) !important;
+  }
+
+  /* Radar directly under SPC */
+  .forecast-dashboard .radar-card {
+    min-height: 360px !important;
   }
 }
  </style>
@@ -2082,6 +2085,8 @@ nav a {
   </div>
 
   <div class="dashboard-grid">
+
+  <div class="dashboard-column dashboard-left"></div>
 
     <article class="dashboard-card briefing-card">
       <div class="card-topline">
@@ -2116,7 +2121,27 @@ nav a {
       <a href="wx-updates.html" class="dashboard-button">Read Full Briefing</a>
     </article>
 
-    <article class="dashboard-card mini-card radar-card">
+    <article class="dashboard-card mini-card alerts-card">
+
+    <h2 id="alertsTitle">Active Weather Alerts</h2>
+
+    <div class="alert-tabs-wrapper">
+    <div class="alert-tabs">
+      <button class="active" data-category="storm">Storm Based</button>
+      <button data-category="tropical">Tropical</button>
+      <button data-category="winter">Winter</button>
+      <button data-category="hydro">Hydro</button>
+      <button data-category="fire">Fire</button>
+    </div>
+    </div>
+
+    <div id="alertsList" class="compact-alert-list"></div>
+    </article>
+  </div>
+
+<div class="dashboard-column dashboard-right">
+
+  <article class="dashboard-card mini-card radar-card">
       <span class="mini-label">Radar</span>
       <h3>Live Radar</h3>
 
@@ -2146,6 +2171,7 @@ nav a {
       "
     >
   </a>
+
 
   <a class="spc-image-card" href="https://www.spc.noaa.gov/products/outlook/day2otlk.html" target="_blank">
     <div class="spc-image-title">Day 2 Outlook</div>
@@ -2179,27 +2205,13 @@ nav a {
       src="https://www.spc.noaa.gov/products/exper/day4-8/day48prob.gif"
     >
   </a>
+  </div>
+</div>
 
 </div>
 </article>
 
- <article class="dashboard-card mini-card alerts-card">
 
-  <h2 id="alertsTitle">Active Weather Alerts</h2>
-
-  <div class="alert-tabs-wrapper">
-    <div class="alert-tabs">
-      <button class="active" data-category="storm">Storm Based</button>
-      <button data-category="tropical">Tropical</button>
-      <button data-category="winter">Winter</button>
-      <button data-category="hydro">Hydro</button>
-      <button data-category="fire">Fire</button>
-    </div>
-  </div>
-
-  <div id="alertsList" class="compact-alert-list"></div>
-
-</article>
   </div>
 </section>
 
