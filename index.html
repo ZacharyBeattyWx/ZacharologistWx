@@ -2109,9 +2109,9 @@ nav a {
     </p>
   </div>
 
-  <div class="dashboard-grid">
+ <div class="dashboard-grid">
 
-  <div class="dashboard-column dashboard-left"></div>
+  <div class="dashboard-column dashboard-left">
 
     <article class="dashboard-card briefing-card">
       <div class="card-topline">
@@ -2145,28 +2145,29 @@ nav a {
           <strong>Central-Eastern</strong>
         </div>
       </div>
+    </article>
 
     <article class="dashboard-card mini-card alerts-card">
+      <h2 id="alertsTitle">Active Weather Alerts</h2>
 
-    <h2 id="alertsTitle">Active Weather Alerts</h2>
+      <div class="alert-tabs-wrapper">
+        <div class="alert-tabs">
+          <button class="active" data-category="storm">Storm Based</button>
+          <button data-category="tropical">Tropical</button>
+          <button data-category="winter">Winter</button>
+          <button data-category="hydro">Hydro</button>
+          <button data-category="fire">Fire</button>
+        </div>
+      </div>
 
-    <div class="alert-tabs-wrapper">
-    <div class="alert-tabs">
-      <button class="active" data-category="storm">Storm Based</button>
-      <button data-category="tropical">Tropical</button>
-      <button data-category="winter">Winter</button>
-      <button data-category="hydro">Hydro</button>
-      <button data-category="fire">Fire</button>
-    </div>
-    </div>
-
-    <div id="alertsList" class="compact-alert-list"></div>
+      <div id="alertsList" class="compact-alert-list"></div>
     </article>
+
   </div>
 
-<div class="dashboard-column dashboard-right">
+  <div class="dashboard-column dashboard-right">
 
-  <article class="dashboard-card mini-card radar-card">
+    <article class="dashboard-card mini-card radar-card">
       <span class="mini-label">Radar</span>
       <h3>Live Radar</h3>
 
@@ -2174,7 +2175,6 @@ nav a {
         src="https://embed.windy.com/embed2.html?lat=35.78&lon=-79.80&zoom=5&level=surface&overlay=radar&product=radar"
         class="radar-frame">
       </iframe>
-
     </article>
 
     <article class="dashboard-card mini-card spc-card">
@@ -2182,62 +2182,60 @@ nav a {
 
       <div class="spc-image-scroll">
 
-  <a class="spc-image-card" href="https://www.spc.noaa.gov/products/outlook/day1otlk.html" target="_blank">
-    <div class="spc-image-title">Day 1 Outlook</div>
-    <img
-      class="spc-outlook-img"
-      alt="SPC Day 1 Outlook"
-      data-spc-options="
-        https://www.spc.noaa.gov/products/outlook/day1otlk_0100_prt.png,
-        https://www.spc.noaa.gov/products/outlook/day1otlk_0600_prt.png,
-        https://www.spc.noaa.gov/products/outlook/day1otlk_1300_prt.png,
-        https://www.spc.noaa.gov/products/outlook/day1otlk_1630_prt.png,
-        https://www.spc.noaa.gov/products/outlook/day1otlk_2000_prt.png
-      "
-    >
-  </a>
+        <a class="spc-image-card" href="https://www.spc.noaa.gov/products/outlook/day1otlk.html" target="_blank">
+          <div class="spc-image-title">Day 1 Outlook</div>
+          <img
+            class="spc-outlook-img"
+            alt="SPC Day 1 Outlook"
+            data-spc-options="
+              https://www.spc.noaa.gov/products/outlook/day1otlk_0100_prt.png,
+              https://www.spc.noaa.gov/products/outlook/day1otlk_0600_prt.png,
+              https://www.spc.noaa.gov/products/outlook/day1otlk_1300_prt.png,
+              https://www.spc.noaa.gov/products/outlook/day1otlk_1630_prt.png,
+              https://www.spc.noaa.gov/products/outlook/day1otlk_2000_prt.png
+            "
+          >
+        </a>
 
+        <a class="spc-image-card" href="https://www.spc.noaa.gov/products/outlook/day2otlk.html" target="_blank">
+          <div class="spc-image-title">Day 2 Outlook</div>
+          <img
+            class="spc-outlook-img"
+            alt="SPC Day 2 Outlook"
+            data-spc-options="
+              https://www.spc.noaa.gov/products/outlook/day2otlk_0600_prt.png,
+              https://www.spc.noaa.gov/products/outlook/day2otlk_1730_prt.png
+            "
+          >
+        </a>
 
-  <a class="spc-image-card" href="https://www.spc.noaa.gov/products/outlook/day2otlk.html" target="_blank">
-    <div class="spc-image-title">Day 2 Outlook</div>
-    <img
-      class="spc-outlook-img"
-      alt="SPC Day 2 Outlook"
-      data-spc-options="
-        https://www.spc.noaa.gov/products/outlook/day2otlk_0600_prt.png,
-        https://www.spc.noaa.gov/products/outlook/day2otlk_1730_prt.png
-      "
-    >
-  </a>
+        <a class="spc-image-card" href="https://www.spc.noaa.gov/products/outlook/day3otlk.html" target="_blank">
+          <div class="spc-image-title">Day 3 Outlook</div>
+          <img
+            class="spc-outlook-img"
+            alt="SPC Day 3 Outlook"
+            data-spc-options="
+              https://www.spc.noaa.gov/products/outlook/day3otlk_0730_prt.png,
+              https://www.spc.noaa.gov/products/outlook/day3otlk_1930_prt.png
+            "
+          >
+        </a>
 
-  <a class="spc-image-card" href="https://www.spc.noaa.gov/products/outlook/day3otlk.html" target="_blank">
-    <div class="spc-image-title">Day 3 Outlook</div>
-    <img
-      class="spc-outlook-img"
-      alt="SPC Day 3 Outlook"
-      data-spc-options="
-        https://www.spc.noaa.gov/products/outlook/day3otlk_0730_prt.png,
-        https://www.spc.noaa.gov/products/outlook/day3otlk_1930_prt.png
-      "
-    >
-  </a>
+        <a class="spc-image-card" href="https://www.spc.noaa.gov/products/exper/day4-8/" target="_blank">
+          <div class="spc-image-title">Days 4–8 Outlook</div>
+          <img
+            class="spc-outlook-img"
+            alt="SPC Days 4 through 8 Outlook"
+            src="https://www.spc.noaa.gov/products/exper/day4-8/day48prob.gif"
+          >
+        </a>
 
-  <a class="spc-image-card" href="https://www.spc.noaa.gov/products/exper/day4-8/" target="_blank">
-    <div class="spc-image-title">Days 4–8 Outlook</div>
-    <img
-      class="spc-outlook-img"
-      alt="SPC Days 4 through 8 Outlook"
-      src="https://www.spc.noaa.gov/products/exper/day4-8/day48prob.gif"
-    >
-  </a>
-  </div>
-</div>
-
-</div>
-</article>
-
+      </div>
+    </article>
 
   </div>
+
+</div>
 </section>
 
 <div class="section-alt">
