@@ -2178,7 +2178,7 @@ nav a {
   }
 }
 
-/* FORCE ALERT CARD LAYOUT OVERRIDE — KEEP THIS LAST */
+/* RADAR OMEGA ALERT CARD FINAL OVERRIDE — KEEP LAST */
 .forecast-dashboard .alerts-card {
   text-align: initial !important;
 }
@@ -2187,98 +2187,7 @@ nav a {
   text-align: center !important;
 }
 
-/* State dropdown headers */
-.forecast-dashboard .alerts-card .state-alert-dropdown > summary,
-.forecast-dashboard .alerts-card .state-alert-group > summary {
-  text-align: center !important;
-}
-
-/* Individual generated alert cards */
-.forecast-dashboard .alerts-card .compact-alert-item {
-  display: grid !important;
-  grid-template-columns: 120px minmax(0, 1fr) 86px !important;
-  grid-template-areas:
-    "title title title"
-    "meta location actions" !important;
-
-  align-items: center !important;
-  gap: 10px 14px !important;
-
-  padding: 16px 14px !important;
-  min-height: 112px !important;
-
-  text-align: left !important;
-}
-
-/* Alert title */
-.forecast-dashboard .alerts-card .compact-alert-title {
-  grid-area: title !important;
-
-  text-align: center !important;
-  margin: 0 !important;
-
-  font-size: 0.95rem !important;
-  line-height: 1.25 !important;
-  letter-spacing: 0.09em !important;
-}
-
-/* Severity + time pills */
-.forecast-dashboard .alerts-card .compact-alert-meta {
-  grid-area: meta !important;
-
-  position: static !important;
-  display: flex !important;
-  justify-content: flex-start !important;
-  align-items: center !important;
-  flex-wrap: wrap !important;
-
-  gap: 6px !important;
-  margin: 0 !important;
-
-  max-width: none !important;
-  transform: none !important;
-}
-
-/* Location text */
-.forecast-dashboard .alerts-card .alert-location {
-  grid-area: location !important;
-
-  text-align: center !important;
-  margin: 0 auto !important;
-
-  max-width: 100% !important;
-  font-size: 0.9rem !important;
-  line-height: 1.35 !important;
-}
-
-/* Details button */
-.forecast-dashboard .alerts-card .compact-alert-actions {
-  grid-area: actions !important;
-
-  position: static !important;
-  display: flex !important;
-  justify-content: flex-end !important;
-  align-items: center !important;
-
-  margin: 0 !important;
-  transform: none !important;
-  z-index: 20 !important;
-}
-
-.forecast-dashboard .alerts-card .compact-details-btn {
-  min-width: 74px !important;
-  text-align: center !important;
-}
-
-/* RADAR OMEGA STYLE ALERT CARDS */
-.forecast-dashboard .alerts-card {
-  text-align: initial !important;
-}
-
-.forecast-dashboard .alerts-card #alertsTitle {
-  text-align: center !important;
-}
-
+/* Dropdown headers */
 .forecast-dashboard .alerts-card .state-alert-dropdown > summary,
 .forecast-dashboard .alerts-card .state-alert-group > summary {
   text-align: center !important;
@@ -2290,167 +2199,7 @@ nav a {
   letter-spacing: 0.04em !important;
 }
 
-.forecast-dashboard .alerts-card .ro-alert-card {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 10px !important;
-
-  padding: 16px !important;
-  min-height: 150px !important;
-
-  background: rgba(38, 42, 52, 0.92) !important;
-  border: 1px solid rgba(255,255,255,0.12) !important;
-  border-radius: 14px !important;
-
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.04),
-    0 10px 22px rgba(0,0,0,0.22) !important;
-
-  text-align: left !important;
-}
-
-.ro-alert-title-row {
-  display: grid !important;
-  grid-template-columns: 28px minmax(0, 1fr) 28px !important;
-  align-items: center !important;
-  gap: 10px !important;
-}
-
-.ro-alert-icon {
-  font-size: 1.05rem !important;
-  font-weight: 900 !important;
-  text-align: center !important;
-}
-
-.ro-alert-title-row .compact-alert-title {
-  margin: 0 !important;
-  text-align: left !important;
-
-  font-size: 1rem !important;
-  font-weight: 900 !important;
-  line-height: 1.2 !important;
-  letter-spacing: 0.11em !important;
-  text-transform: uppercase !important;
-}
-
-.ro-alert-metrics {
-  display: flex !important;
-  align-items: center !important;
-  gap: 26px !important;
-
-  background: rgba(8, 12, 18, 0.44) !important;
-  border-radius: 8px !important;
-  padding: 10px 12px !important;
-
-  color: rgba(255,255,255,0.72) !important;
-  font-weight: 800 !important;
-  font-size: 0.9rem !important;
-}
-
-.ro-alert-metrics strong {
-  color: #f0e850 !important;
-  font-weight: 900 !important;
-}
-
-.ro-alert-expire-row {
-  display: flex !important;
-  align-items: center !important;
-  gap: 10px !important;
-}
-
-.ro-alert-dot {
-  width: 16px !important;
-  height: 16px !important;
-  border-radius: 4px !important;
-  flex: 0 0 auto !important;
-}
-
-.ro-alert-expire-row .alert-pill {
-  background: rgba(128, 94, 27, 0.58) !important;
-  border: 1px solid rgba(255, 202, 28, 0.16) !important;
-  color: rgba(255,255,255,0.78) !important;
-
-  border-radius: 7px !important;
-  padding: 7px 10px !important;
-  font-size: 0.86rem !important;
-  font-weight: 800 !important;
-}
-
-.ro-alert-bottom-row {
-  display: grid !important;
-  grid-template-columns: auto minmax(0, 1fr) auto auto !important;
-  align-items: center !important;
-  gap: 10px !important;
-}
-
-.ro-state-chip {
-  background: rgba(255,255,255,0.10) !important;
-  color: #fff !important;
-
-  border-radius: 7px !important;
-  padding: 8px 12px !important;
-
-  font-size: 0.82rem !important;
-  font-weight: 900 !important;
-  letter-spacing: 0.04em !important;
-}
-
-.ro-alert-bottom-row .alert-location {
-  display: inline-block !important;
-
-  width: fit-content !important;
-  max-width: 100% !important;
-
-  background: #1e96ff !important;
-  color: #00111f !important;
-
-  border-radius: 6px !important;
-  padding: 8px 11px !important;
-
-  text-align: left !important;
-  font-size: 0.88rem !important;
-  font-weight: 800 !important;
-  line-height: 1.2 !important;
-
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-}
-
-.ro-map-btn,
-.ro-alert-bottom-row .compact-details-btn {
-  border: 0 !important;
-  border-radius: 9px !important;
-
-  width: 42px !important;
-  height: 42px !important;
-
-  display: grid !important;
-  place-items: center !important;
-
-  font-size: 1.1rem !important;
-  font-weight: 900 !important;
-
-  cursor: pointer !important;
-}
-
-.ro-map-btn {
-  background: rgba(67, 211, 113, 0.24) !important;
-  color: #4cff8c !important;
-}
-
-.ro-alert-bottom-row .compact-details-btn {
-  background: rgba(255,255,255,0.12) !important;
-  color: #fff !important;
-  padding: 0 !important;
-}
-
-.ro-alert-bottom-row .compact-details-btn:hover,
-.ro-map-btn:hover {
-  filter: brightness(1.15);
-}
-
-/* RADAR OMEGA ALERT CARD FINAL OVERRIDE — KEEP LAST */
+/* Full alert card */
 .forecast-dashboard .alerts-card .ro-alert-card {
   display: flex !important;
   flex-direction: column !important;
@@ -2460,13 +2209,17 @@ nav a {
   min-height: 150px !important;
 
   background: rgba(38, 42, 52, 0.94) !important;
-  border: 1px solid rgba(255,255,255,0.12) !important;
+  border: 1px solid var(--alert-color) !important;
   border-radius: 14px !important;
+
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.04),
+    0 10px 22px rgba(0,0,0,0.22) !important;
 
   text-align: left !important;
 }
 
-/* Top row: icon + title */
+/* Top row */
 .forecast-dashboard .alerts-card .ro-alert-title-row {
   display: grid !important;
   grid-template-columns: 24px minmax(0, 1fr) !important;
@@ -2480,6 +2233,7 @@ nav a {
   text-align: center !important;
   font-size: 1rem !important;
   line-height: 1 !important;
+  color: var(--alert-color) !important;
 }
 
 .forecast-dashboard .alerts-card .ro-alert-title-row .compact-alert-title {
@@ -2487,10 +2241,12 @@ nav a {
   text-align: left !important;
   margin: 0 !important;
 
+  color: var(--alert-color) !important;
   font-size: 0.98rem !important;
   line-height: 1.2 !important;
   letter-spacing: 0.11em !important;
   font-weight: 900 !important;
+  text-transform: uppercase !important;
 }
 
 /* Metrics bar */
@@ -2527,6 +2283,8 @@ nav a {
   height: 16px !important;
   border-radius: 4px !important;
   flex: 0 0 auto !important;
+  background: var(--alert-color) !important;
+  box-shadow: 0 0 12px var(--alert-color) !important;
 }
 
 .forecast-dashboard .alerts-card .ro-alert-expire-row .alert-pill {
@@ -2539,7 +2297,7 @@ nav a {
   font-weight: 800 !important;
 }
 
-/* Bottom row: state + location + buttons */
+/* Bottom row */
 .forecast-dashboard .alerts-card .ro-alert-bottom-row {
   display: grid !important;
   grid-template-columns: auto minmax(0, 1fr) auto auto !important;
@@ -2559,7 +2317,6 @@ nav a {
   letter-spacing: 0.04em !important;
 }
 
-/* Reset old location rules */
 .forecast-dashboard .alerts-card .ro-alert-bottom-row .alert-location {
   grid-area: auto !important;
 
@@ -2617,18 +2374,9 @@ nav a {
   color: #fff !important;
 }
 
-.forecast-dashboard .alerts-card .ro-alert-card {
-  border-color: color-mix(in srgb, var(--alert-color) 35%, rgba(255,255,255,0.12)) !important;
-}
-
-.forecast-dashboard .alerts-card .ro-alert-icon,
-.forecast-dashboard .alerts-card .ro-alert-title-row .compact-alert-title {
-  color: var(--alert-color) !important;
-}
-
-.forecast-dashboard .alerts-card .ro-alert-dot {
-  background: var(--alert-color) !important;
-  box-shadow: 0 0 10px color-mix(in srgb, var(--alert-color) 65%, transparent) !important;
+.forecast-dashboard .alerts-card .ro-alert-bottom-row .compact-details-btn:hover,
+.forecast-dashboard .alerts-card .ro-map-btn:hover {
+  filter: brightness(1.15);
 }
 
  </style>
