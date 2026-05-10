@@ -2617,6 +2617,20 @@ nav a {
   color: #fff !important;
 }
 
+.forecast-dashboard .alerts-card .ro-alert-card {
+  border-color: color-mix(in srgb, var(--alert-color) 35%, rgba(255,255,255,0.12)) !important;
+}
+
+.forecast-dashboard .alerts-card .ro-alert-icon,
+.forecast-dashboard .alerts-card .ro-alert-title-row .compact-alert-title {
+  color: var(--alert-color) !important;
+}
+
+.forecast-dashboard .alerts-card .ro-alert-dot {
+  background: var(--alert-color) !important;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--alert-color) 65%, transparent) !important;
+}
+
  </style>
 </head>
 
@@ -3172,7 +3186,10 @@ const locationText = (props.areaDesc || "Area unavailable")
   .slice(0, 3)
   .join("; ");
 
+const alertColor = getAlertColor(props.event);
+
 card.className = "compact-alert-item ro-alert-card";
+card.style.setProperty("--alert-color", alertColor);
 
 card.innerHTML = `
   <div class="ro-alert-title-row">
