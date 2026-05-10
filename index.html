@@ -2177,6 +2177,99 @@ nav a {
     width: 100% !important;
   }
 }
+
+/* FORCE ALERT CARD LAYOUT OVERRIDE — KEEP THIS LAST */
+.forecast-dashboard .alerts-card {
+  text-align: initial !important;
+}
+
+.forecast-dashboard .alerts-card #alertsTitle {
+  text-align: center !important;
+}
+
+/* State dropdown headers */
+.forecast-dashboard .alerts-card .state-alert-dropdown > summary,
+.forecast-dashboard .alerts-card .state-alert-group > summary {
+  text-align: center !important;
+}
+
+/* Individual generated alert cards */
+.forecast-dashboard .alerts-card .compact-alert-item {
+  display: grid !important;
+  grid-template-columns: 120px minmax(0, 1fr) 86px !important;
+  grid-template-areas:
+    "title title title"
+    "meta location actions" !important;
+
+  align-items: center !important;
+  gap: 10px 14px !important;
+
+  padding: 16px 14px !important;
+  min-height: 112px !important;
+
+  text-align: left !important;
+}
+
+/* Alert title */
+.forecast-dashboard .alerts-card .compact-alert-title {
+  grid-area: title !important;
+
+  text-align: center !important;
+  margin: 0 !important;
+
+  font-size: 0.95rem !important;
+  line-height: 1.25 !important;
+  letter-spacing: 0.09em !important;
+}
+
+/* Severity + time pills */
+.forecast-dashboard .alerts-card .compact-alert-meta {
+  grid-area: meta !important;
+
+  position: static !important;
+  display: flex !important;
+  justify-content: flex-start !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+
+  gap: 6px !important;
+  margin: 0 !important;
+
+  max-width: none !important;
+  transform: none !important;
+}
+
+/* Location text */
+.forecast-dashboard .alerts-card .alert-location {
+  grid-area: location !important;
+
+  text-align: center !important;
+  margin: 0 auto !important;
+
+  max-width: 100% !important;
+  font-size: 0.9rem !important;
+  line-height: 1.35 !important;
+}
+
+/* Details button */
+.forecast-dashboard .alerts-card .compact-alert-actions {
+  grid-area: actions !important;
+
+  position: static !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+
+  margin: 0 !important;
+  transform: none !important;
+  z-index: 20 !important;
+}
+
+.forecast-dashboard .alerts-card .compact-details-btn {
+  min-width: 74px !important;
+  text-align: center !important;
+}
+
  </style>
 </head>
 
