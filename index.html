@@ -1917,12 +1917,16 @@ nav a {
 
 /* MASTER DESKTOP HOMEPAGE DASHBOARD + SPC 2x2 LAYOUT */
 @media (min-width: 769px) {
+  .forecast-dashboard {
+    --top-card-height: 580px;
+  }
+
   .forecast-dashboard .dashboard-grid {
     display: grid !important;
     grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.35fr) !important;
     grid-template-areas:
-      "briefing spc"
-      "alerts radar" !important;
+  "briefing alerts"
+  "spc radar" !important;
     gap: 28px !important;
     width: 96% !important;
     max-width: 1600px !important;
@@ -1932,9 +1936,9 @@ nav a {
 
   .forecast-dashboard .briefing-card {
     grid-area: briefing !important;
-    height: 580px !important;
-    min-height: 580px !important;
-    max-height: 580px !important;
+    height: var(--top-card-height) !important;
+    min-height: var(--top-card-height) !important;
+    max-height: var(--top-card-height) !important;
 
     display: flex !important;
     flex-direction: column !important;
@@ -1942,9 +1946,9 @@ nav a {
 
   .forecast-dashboard .spc-card {
     grid-area: spc !important;
-    height: 580px !important;
-    min-height: 580px !important;
-    max-height: 580px !important;
+    height: var(--top-card-height) !important;
+    min-height: var(--top-card-height) !important;
+    max-height: var(--top-card-height) !important;
 
     display: flex !important;
     flex-direction: column !important;
@@ -1965,19 +1969,16 @@ nav a {
     min-height: 360px !important;
   }
 
-  /* Center Read Full Briefing button */
   .briefing-card .dashboard-button {
     align-self: center !important;
     margin-top: 75px !important;
   }
 
-  /* Keep Current Weather Focus meta boxes clean */
   .briefing-card .briefing-meta {
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
     gap: 14px !important;
   }
 
-  /* SPC title */
   .spc-card h3 {
     font-size: 1.25rem !important;
     margin: 0 0 14px 0 !important;
