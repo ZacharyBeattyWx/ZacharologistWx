@@ -1943,8 +1943,8 @@ nav a {
     display: flex !important;
     flex-direction: column !important;
     gap: 28px !important;
-    min-width: 0 !important;
     width: 100% !important;
+    min-width: 0 !important;
   }
 
   .forecast-dashboard .briefing-card,
@@ -1959,12 +1959,11 @@ nav a {
     margin: 0 !important;
   }
 
-  /* LEFT TOP: Current Weather Focus */
+  /* Current Weather Focus */
   .forecast-dashboard .briefing-card {
     min-height: 300px !important;
     height: auto !important;
-    display: flex !important;
-    flex-direction: column !important;
+    padding: 24px 28px !important;
   }
 
   .briefing-title-row {
@@ -1972,45 +1971,59 @@ nav a {
     align-items: center !important;
     justify-content: space-between !important;
     gap: 18px !important;
-    margin: 18px 0 14px !important;
+    margin: 18px 0 18px !important;
   }
 
   .briefing-title-row h3 {
     margin: 0 !important;
+    font-size: 2rem !important;
+    line-height: 1.05 !important;
   }
 
   .briefing-title-row .dashboard-button {
     margin: 0 !important;
     flex-shrink: 0 !important;
-    padding: 12px 20px !important;
+    padding: 12px 22px !important;
+  }
+
+  .briefing-card .briefing-text {
+    margin-top: 0 !important;
   }
 
   .briefing-card .briefing-meta {
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
     gap: 14px !important;
-    margin-bottom: 0 !important;
+    margin: 28px 0 0 !important;
   }
 
-  /* LEFT BOTTOM: Active Alerts */
+  /* Active Weather Alerts */
   .forecast-dashboard .alerts-card {
     height: auto !important;
     min-height: 360px !important;
     overflow: visible !important;
+    padding: 28px 24px !important;
   }
 
-  /* RIGHT TOP: Radar */
+  .alerts-card #alertsTitle {
+    text-align: center !important;
+    margin: 0 auto 26px auto !important;
+  }
+
+  /* Radar */
   .forecast-dashboard .radar-card {
     min-height: 520px !important;
     overflow: hidden !important;
+    padding: 24px 28px 28px !important;
   }
 
   .forecast-dashboard .radar-frame {
     width: 100% !important;
     height: 430px !important;
     margin: 16px 0 0 !important;
+    border-radius: 14px !important;
   }
 
-  /* RIGHT BOTTOM: SPC */
+  /* SPC Forecast */
   .forecast-dashboard .spc-card {
     min-height: 520px !important;
     display: flex !important;
@@ -2026,6 +2039,9 @@ nav a {
   }
 
   .spc-card .spc-image-scroll {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+
     display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     grid-template-rows: repeat(2, minmax(0, 1fr)) !important;
@@ -2048,25 +2064,59 @@ nav a {
     flex-direction: column !important;
 
     margin: 0 !important;
-    padding: 7px !important;
+    padding: 0 !important;
     overflow: hidden !important;
 
-    background: rgba(255,255,255,0.045) !important;
-    border: 1px solid rgba(148, 163, 184, 0.14) !important;
-    border-radius: 14px !important;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.035)) !important;
+
+    border: 1px solid rgba(148, 163, 184, 0.20) !important;
+    border-radius: 15px !important;
 
     text-decoration: none !important;
     color: inherit !important;
+
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.05),
+      0 10px 22px rgba(0,0,0,0.22) !important;
+
+    transition:
+      transform 0.18s ease,
+      border-color 0.18s ease,
+      background 0.18s ease,
+      box-shadow 0.18s ease !important;
+  }
+
+  .spc-card .spc-image-card:hover {
+    transform: translateY(-2px) !important;
+    border-color: rgba(96,165,250,0.45) !important;
+    background:
+      linear-gradient(180deg, rgba(96,165,250,0.12), rgba(255,255,255,0.04)) !important;
+
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.08),
+      0 12px 26px rgba(37,99,235,0.18) !important;
   }
 
   .spc-card .spc-image-title {
     flex: 0 0 auto !important;
-    font-size: 0.78rem !important;
-    font-weight: 800 !important;
-    line-height: 1.1 !important;
-    margin: 0 0 6px 0 !important;
+
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    min-height: 26px !important;
+    padding: 5px 8px !important;
+
+    background: rgba(8, 12, 22, 0.72) !important;
+    border-bottom: 1px solid rgba(255,255,255,0.08) !important;
+
+    font-size: 0.76rem !important;
+    font-weight: 900 !important;
+    line-height: 1 !important;
+    letter-spacing: 0.03em !important;
     text-align: center !important;
-    color: #e5e7eb !important;
+    color: #f3f6ff !important;
   }
 
   .spc-card .spc-outlook-img {
@@ -2080,13 +2130,13 @@ nav a {
     object-fit: cover !important;
     object-position: center center !important;
 
-    margin: 0 auto !important;
-    border-radius: 9px !important;
+    margin: 0 !important;
+    border-radius: 0 0 14px 14px !important;
     background: rgba(255,255,255,0.08) !important;
   }
 }
 
-/* MOBILE: stack everything cleanly */
+/* MOBILE: stack the two dashboard columns cleanly */
 @media (max-width: 768px) {
   .forecast-dashboard .dashboard-grid {
     display: flex !important;
