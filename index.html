@@ -2270,6 +2270,186 @@ nav a {
   text-align: center !important;
 }
 
+/* RADAR OMEGA STYLE ALERT CARDS */
+.forecast-dashboard .alerts-card {
+  text-align: initial !important;
+}
+
+.forecast-dashboard .alerts-card #alertsTitle {
+  text-align: center !important;
+}
+
+.forecast-dashboard .alerts-card .state-alert-dropdown > summary,
+.forecast-dashboard .alerts-card .state-alert-group > summary {
+  text-align: center !important;
+  background: rgba(255,255,255,0.08) !important;
+  border: 1px solid rgba(255,255,255,0.13) !important;
+  border-radius: 12px !important;
+  padding: 12px 14px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.04em !important;
+}
+
+.forecast-dashboard .alerts-card .ro-alert-card {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+
+  padding: 16px !important;
+  min-height: 150px !important;
+
+  background: rgba(38, 42, 52, 0.92) !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  border-radius: 14px !important;
+
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.04),
+    0 10px 22px rgba(0,0,0,0.22) !important;
+
+  text-align: left !important;
+}
+
+.ro-alert-title-row {
+  display: grid !important;
+  grid-template-columns: 28px minmax(0, 1fr) 28px !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.ro-alert-icon {
+  font-size: 1.05rem !important;
+  font-weight: 900 !important;
+  text-align: center !important;
+}
+
+.ro-alert-title-row .compact-alert-title {
+  margin: 0 !important;
+  text-align: left !important;
+
+  font-size: 1rem !important;
+  font-weight: 900 !important;
+  line-height: 1.2 !important;
+  letter-spacing: 0.11em !important;
+  text-transform: uppercase !important;
+}
+
+.ro-alert-metrics {
+  display: flex !important;
+  align-items: center !important;
+  gap: 26px !important;
+
+  background: rgba(8, 12, 18, 0.44) !important;
+  border-radius: 8px !important;
+  padding: 10px 12px !important;
+
+  color: rgba(255,255,255,0.72) !important;
+  font-weight: 800 !important;
+  font-size: 0.9rem !important;
+}
+
+.ro-alert-metrics strong {
+  color: #f0e850 !important;
+  font-weight: 900 !important;
+}
+
+.ro-alert-expire-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.ro-alert-dot {
+  width: 16px !important;
+  height: 16px !important;
+  border-radius: 4px !important;
+  flex: 0 0 auto !important;
+}
+
+.ro-alert-expire-row .alert-pill {
+  background: rgba(128, 94, 27, 0.58) !important;
+  border: 1px solid rgba(255, 202, 28, 0.16) !important;
+  color: rgba(255,255,255,0.78) !important;
+
+  border-radius: 7px !important;
+  padding: 7px 10px !important;
+  font-size: 0.86rem !important;
+  font-weight: 800 !important;
+}
+
+.ro-alert-bottom-row {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) auto auto !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.ro-state-chip {
+  background: rgba(255,255,255,0.10) !important;
+  color: #fff !important;
+
+  border-radius: 7px !important;
+  padding: 8px 12px !important;
+
+  font-size: 0.82rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.04em !important;
+}
+
+.ro-alert-bottom-row .alert-location {
+  display: inline-block !important;
+
+  width: fit-content !important;
+  max-width: 100% !important;
+
+  background: #1e96ff !important;
+  color: #00111f !important;
+
+  border-radius: 6px !important;
+  padding: 8px 11px !important;
+
+  text-align: left !important;
+  font-size: 0.88rem !important;
+  font-weight: 800 !important;
+  line-height: 1.2 !important;
+
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.ro-map-btn,
+.ro-alert-bottom-row .compact-details-btn {
+  border: 0 !important;
+  border-radius: 9px !important;
+
+  width: 42px !important;
+  height: 42px !important;
+
+  display: grid !important;
+  place-items: center !important;
+
+  font-size: 1.1rem !important;
+  font-weight: 900 !important;
+
+  cursor: pointer !important;
+}
+
+.ro-map-btn {
+  background: rgba(67, 211, 113, 0.24) !important;
+  color: #4cff8c !important;
+}
+
+.ro-alert-bottom-row .compact-details-btn {
+  background: rgba(255,255,255,0.12) !important;
+  color: #fff !important;
+  padding: 0 !important;
+}
+
+.ro-alert-bottom-row .compact-details-btn:hover,
+.ro-map-btn:hover {
+  filter: brightness(1.15);
+}
+
  </style>
 </head>
 
@@ -2689,7 +2869,56 @@ function getFilteredAlertsForCategory(category) {
 
     return false;
   });
+  }
+
+  function getCompactAlertMetrics(alert) {
+  const props = alert.properties || {};
+  const params = props.parameters || {};
+  const description = props.description || "";
+
+  const windMatch = description.match(/(?:wind gusts?|winds?).*?(\d+)\s*(?:mph|MPH)/i);
+  const hailMatch = description.match(/(?:hail).*?(\d+(?:\.\d+)?)\s*(?:inch|in)/i);
+
+  let wind =
+    params.maxWindGust?.[0] ||
+    (windMatch ? `${windMatch[1]}MPH` : "—");
+
+  let hail =
+    params.maxHailSize?.[0]
+      ? `${params.maxHailSize[0]}IN`
+      : hailMatch
+        ? `${hailMatch[1]}IN`
+        : "—";
+
+  wind = String(wind).replace(/\s+/g, "").toUpperCase();
+  hail = String(hail).replace(/\s+/g, "").toUpperCase();
+
+  return { wind, hail };
 }
+
+function getCompactAlertIcon(event) {
+  if (!event) return "⚠";
+
+  if (event.includes("Tornado")) return "⚠";
+  if (event.includes("Severe Thunderstorm")) return "■";
+  if (event.includes("Flash Flood") || event.includes("Flood")) return "●";
+  if (event.includes("Special Weather Statement")) return "!";
+  if (event.includes("Winter") || event.includes("Freeze") || event.includes("Frost")) return "❄";
+  if (event.includes("Red Flag") || event.includes("Fire Weather")) return "🔥";
+
+  return "⚠";
+}
+
+function getCompactExpireLabel(expires) {
+  const text = getExpiresText(expires);
+
+  if (text.includes("left")) {
+    return `Expires in ... ${text.replace(" left", "")}.`;
+  }
+
+  return text;
+}
+
 
 function renderCompactAlerts(alerts, category) {
 
@@ -2770,29 +2999,52 @@ stateDetails.addEventListener("toggle", () => {
       const props = alert.properties;
       const card = document.createElement("div");
 
-      card.className = "compact-alert-item";
+      const metrics = getCompactAlertMetrics(alert);
+const locationText = (props.areaDesc || "Area unavailable")
+  .split(";")
+  .slice(0, 3)
+  .join("; ");
 
-      card.innerHTML = `
-        <div class="compact-alert-title ${category}-title"
-             style="color:${getAlertColor(props.event)};">
-          ${props.event}
-        </div>
+card.className = "compact-alert-item ro-alert-card";
 
-        <div class="compact-alert-meta">
-          <span class="alert-pill">${props.severity || "Unknown"}</span>
-          <span class="alert-pill">${getExpiresText(props.expires)}</span>
-        </div>
+card.innerHTML = `
+  <div class="ro-alert-title-row">
+    <span class="ro-alert-icon" style="color:${getAlertColor(props.event)};">
+      ${getCompactAlertIcon(props.event)}
+    </span>
 
-        <div class="alert-location">
-          ${(props.areaDesc || "Area unavailable").split(";").slice(0, 3).join("; ")}
-        </div>
+    <div class="compact-alert-title ${category}-title"
+         style="color:${getAlertColor(props.event)};">
+      ${props.event}
+    </div>
+  </div>
 
-        <div class="compact-alert-actions">
-          <button class="compact-details-btn" data-alert-id="${alert.id}">
-  Details
-</button>
-        </div>
-      `;
+  <div class="ro-alert-metrics">
+    <span>Hail: <strong>${metrics.hail}</strong></span>
+    <span>Wind: <strong>${metrics.wind}</strong></span>
+  </div>
+
+  <div class="ro-alert-expire-row">
+    <span class="ro-alert-dot" style="background:${getAlertColor(props.event)};"></span>
+    <span class="alert-pill">${getCompactExpireLabel(props.expires)}</span>
+  </div>
+
+  <div class="ro-alert-bottom-row">
+    <span class="ro-state-chip">${getStateFromAlert(alert)}</span>
+
+    <span class="alert-location">
+      ${locationText}
+    </span>
+
+    <button class="ro-map-btn" type="button" title="Map preview">
+      🌎
+    </button>
+
+    <button class="compact-details-btn" data-alert-id="${alert.id}" type="button">
+      ...
+    </button>
+  </div>
+`;
 
       stateDetails.appendChild(card);
     });
