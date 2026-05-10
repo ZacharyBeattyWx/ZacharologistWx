@@ -1921,11 +1921,17 @@ nav a {
   background: transparent;
 }
 
+.dashboard-column {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 18px !important;
+}
+
 /* MASTER DESKTOP HOMEPAGE DASHBOARD + TWO COLUMN LAYOUT */
 @media (min-width: 769px) {
   .forecast-dashboard .dashboard-grid {
     display: grid !important;
-    grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr) !important;
+    grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.35fr) !important;
     gap: 28px !important;
     width: 96% !important;
     max-width: 1600px !important;
@@ -1941,9 +1947,9 @@ nav a {
   }
 
   .forecast-dashboard .briefing-card,
-  .forecast-dashboard .spc-card,
   .forecast-dashboard .alerts-card,
-  .forecast-dashboard .radar-card {
+  .forecast-dashboard .radar-card,
+  .forecast-dashboard .spc-card {
     grid-column: auto !important;
     grid-row: auto !important;
     width: 100% !important;
@@ -1951,32 +1957,55 @@ nav a {
     min-width: 0 !important;
   }
 
-  /* Current Weather Focus */
+  /* Current Weather Focus compact card */
   .forecast-dashboard .briefing-card {
-    min-height: 520px !important;
+    min-height: 330px !important;
+    height: auto !important;
     display: flex !important;
     flex-direction: column !important;
   }
 
-  .briefing-card .dashboard-button {
-    align-self: center !important;
-    margin-top: auto !important;
-    margin-bottom: 34px !important;
+  .briefing-title-row {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 18px !important;
+    margin: 18px 0 14px !important;
+  }
+
+  .briefing-title-row h3 {
+    margin: 0 !important;
+  }
+
+  .briefing-title-row .dashboard-button {
+    margin: 0 !important;
+    flex-shrink: 0 !important;
+    padding: 12px 20px !important;
   }
 
   .briefing-card .briefing-meta {
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
     gap: 14px !important;
+    margin-bottom: 0 !important;
   }
 
-  /* Active Alerts under Current Weather Focus */
+  /* Alerts slide up directly under Current Weather Focus */
   .forecast-dashboard .alerts-card {
     height: auto !important;
     min-height: 360px !important;
     overflow: visible !important;
   }
 
-  /* SPC Forecast */
+  /* Radar top-right */
+  .forecast-dashboard .radar-card {
+    min-height: 520px !important;
+  }
+
+  .forecast-dashboard .radar-frame {
+    height: 430px !important;
+  }
+
+  /* SPC bottom-right */
   .forecast-dashboard .spc-card {
     min-height: 520px !important;
     display: flex !important;
@@ -1991,7 +2020,7 @@ nav a {
     padding: 0 !important;
   }
 
-  /* SPC 2x2 grid — no scrolling */
+  /* SPC 2x2 grid */
   .spc-card .spc-image-scroll {
     flex: 1 1 auto !important;
     min-height: 0 !important;
@@ -2001,10 +2030,10 @@ nav a {
     grid-template-rows: repeat(2, minmax(0, 1fr)) !important;
     gap: 14px !important;
 
-    height: auto !important;
-    max-height: none !important;
-    overflow: hidden !important;
+    height: 430px !important;
+    max-height: 430px !important;
 
+    overflow: hidden !important;
     padding-right: 0 !important;
     margin-top: 10px !important;
   }
@@ -2054,12 +2083,8 @@ nav a {
     border-radius: 9px !important;
     background: rgba(255,255,255,0.08) !important;
   }
-
-  /* Radar directly under SPC */
-  .forecast-dashboard .radar-card {
-    min-height: 360px !important;
-  }
 }
+
  </style>
 </head>
 
@@ -2094,7 +2119,10 @@ nav a {
         <span>Updated Today</span>
       </div>
 
-      <h3>Current Weather Focus</h3>
+      <div class="briefing-title-row">
+        <h3>Current Weather Focus</h3>
+        <a href="wx-updates.html" class="dashboard-button">Read Full Briefing</a>
+      </div>
 
       <p class="briefing-text">
         An unsettled pattern for now, but monitoring long-range signals for increased
@@ -2117,9 +2145,6 @@ nav a {
           <strong>Central-Eastern</strong>
         </div>
       </div>
-
-      <a href="wx-updates.html" class="dashboard-button">Read Full Briefing</a>
-    </article>
 
     <article class="dashboard-card mini-card alerts-card">
 
