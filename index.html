@@ -3376,20 +3376,21 @@ const expires = props.expires
     event.includes("Tornado Watch") ||
     event.includes("Severe Thunderstorm Watch");
 
-  const isStormAlert=
+  const isStormAlert =
     event.includes("Tornado") ||
-    event.includes("Severe Thunderstorm");
+    event.includes("Severe Thunderstorm") ||
+    event.includes("Special Weather Statement");
 
-  const headerColor = isTornadoEmergency
-  ? "#ff00ff"
-  : getAlertColor(event);
-  console.log(event, headerColor);
+    const headerColor = isTornadoEmergency
+    ? "#ff00ff"
+   : getAlertColor(event);
+    console.log(event, headerColor);
 
   const windMatch = description.match(/(?:wind gusts?|winds).*?(\d+)\s*mph/i);
   const hailMatch = description.match(/(?:hail).*?(\d+(\.\d+)?)\s*inch|quarter/i);
   const snowMatch = description.match(/snow accumulations?.*?(\d+.*?)\./i);
 
-const windFromText = description.match(
+  const windFromText = description.match(
   /(wind gusts?|winds?|straight line winds?).*?(\d+)\s*MPH/i
 );
 
