@@ -3465,8 +3465,10 @@ modal.querySelector(".alert-modal-title").textContent =
   warningBottom.style.display = "flex";
   hazardSection.style.display = "grid";
 
-  stormTags.innerHTML = "";
+stormTags.innerHTML = "";
 
+/* Keep tornado tag only.
+   Remove duplicate hail/wind/source pills from the top tag row. */
 if (tornado) {
   const tornadoClass =
     tornado.includes("OBSERVED")
@@ -3480,35 +3482,8 @@ if (tornado) {
   `;
 }
 
-if (hail) {
-  stormTags.innerHTML += `
-    <div class="storm-tag hail">
-      🧊 Hail: ${hail}
-    </div>
-  `;
-}
-
-if (wind) {
-  stormTags.innerHTML += `
-    <div class="storm-tag wind">
-      💨 Wind: ${wind}
-    </div>
-  `;
-}
-
-if (
-  alertSource &&
-  !tornado &&
-  !hail &&
-  !wind
-) {
-
-  stormTags.innerHTML += `
-    <div class="storm-tag source">
-      📡 ${alertSource}
-    </div>
-  `;
-}
+/* Hide the tag row unless tornado info exists */
+stormTags.style.display = stormTags.innerHTML.trim() ? "flex" : "none";
 
   if (isWatch) {
     summary.innerHTML = `
