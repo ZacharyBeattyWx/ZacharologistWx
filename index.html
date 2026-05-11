@@ -3681,6 +3681,15 @@ renderCategory(currentCategory);
   }
 }
 
+document.addEventListener("click", event => {
+if (
+event.target.closest(".radar-map-close") ||
+event.target.classList.contains("radar-map-backdrop")
+) {
+closeRadarMap();
+}
+});
+
 document.querySelectorAll(".alert-tabs button").forEach(button => {
   button.addEventListener("click", () => {
     document.querySelectorAll(".alert-tabs button").forEach(btn =>
