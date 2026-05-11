@@ -2919,29 +2919,72 @@ function getFilteredAlertsForCategory(category) {
   });
   }
 
-  function getCompactAlertMetrics(alert) {
+function getCompactAlertMetrics(alert) {
   const props = alert.properties || {};
   const params = props.parameters || {};
   const description = props.description || "";
 
-  const windMatch = description.match(/(?:wind gusts?|winds?).*?(\d+)\s*(?:mph|MPH)/i);
-  const hailMatch = description.match(/(?:hail).*?(\d+(?:\.\d+)?)\s*(?:inch|in)/i);
+  function cleanWindValue(value) {
+    if (!value) return "—";
 
-  let wind =
+    const text = String(value).toUpperCase();
+
+    const numbers = [...text.matchAll(/\d+(?:\.\d+)?/g)]
+      .map(match => Number(match[0]))
+      .filter(num => !Number.isNaN(num));
+
+    if (!numbers.length) return "—";
+
+    const maxValue = Math.max(...numbers);
+    return `${maxValue}MPH`;
+  }
+
+  function cleanHailValue(value) {
+    if (!value) return "—";
+
+    const text = String(value).toUpperCase();
+
+    const numbers = [...text.matchAll(/\d+(?:\.\d+)?/g)]
+      .map(match => Number(match[0]))
+      .filter(num => !Number.isNaN(num));
+
+    if (numbers.length) {
+      const maxValue = Math.max(...numbers).toFixed(2);
+      return `${maxValue}IN`;
+    }
+
+    if (/NICKEL SIZE HAIL/i.test(text)) return "0.88IN";
+    if (/QUARTER SIZE HAIL/i.test(text)) return "1.00IN";
+    if (/PING PONG BALL SIZE HAIL/i.test(text)) return "1.50IN";
+    if (/GOLF BALL SIZE HAIL/i.test(text)) return "1.75IN";
+
+    return "—";
+  }
+
+  const windFromText = description.match(
+    /(?:wind gusts?|winds?|straight line winds?).*?(\d+)(?:\s*to\s*(\d+))?\s*mph/i
+  );
+
+  const hailFromText = description.match(
+    /(?:hail).*?(\d+(?:\.\d+)?)\s*(?:inch|in)/i
+  );
+
+  const rawWind =
     params.maxWindGust?.[0] ||
-    (windMatch ? `${windMatch[1]}MPH` : "—");
+    (windFromText
+      ? `${windFromText[2] || windFromText[1]}MPH`
+      : null);
 
-  let hail =
-    params.maxHailSize?.[0]
-      ? `${params.maxHailSize[0]}IN`
-      : hailMatch
-        ? `${hailMatch[1]}IN`
-        : "—";
+  const rawHail =
+    params.maxHailSize?.[0] ||
+    (hailFromText
+      ? `${hailFromText[1]}IN`
+      : description);
 
-  wind = String(wind).replace(/\s+/g, "").toUpperCase();
-  hail = String(hail).replace(/\s+/g, "").toUpperCase();
-
-  return { wind, hail };
+  return {
+    wind: cleanWindValue(rawWind),
+    hail: cleanHailValue(rawHail)
+  };
 }
 
 function getCompactAlertIcon(event) {
