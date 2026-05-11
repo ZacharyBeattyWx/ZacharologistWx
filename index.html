@@ -2461,6 +2461,43 @@ filter: brightness(1.15);
   box-shadow: 0 0 26px rgba(216,61,24,0.50) !important;
   border-color: transparent !important;
 }
+
+/* MAIN ALERT CARD HAIL/WIND TAGS */
+.forecast-dashboard .alerts-card .ro-main-tags {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 10px !important;
+  align-items: center !important;
+  margin: 2px 0 0 !important;
+}
+
+.forecast-dashboard .alerts-card .ro-main-tag {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+
+  background: rgba(255,255,255,0.06) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  border-radius: 999px !important;
+
+  padding: 7px 12px !important;
+
+  font-size: 0.78rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+
+  backdrop-filter: blur(6px) !important;
+  box-shadow: 0 0 12px rgba(255,255,255,0.05) !important;
+}
+
+.forecast-dashboard .alerts-card .ro-main-tag.hail {
+  color: #ffd24d !important;
+}
+
+.forecast-dashboard .alerts-card .ro-main-tag.wind {
+  color: #ffb347 !important;
+}
  </style>
 </head>
 
@@ -3033,14 +3070,18 @@ card.innerHTML = `
     </div>
   </div>
 
-  <div class="ro-alert-metrics">
-    <span>Hail: <strong>${metrics.hail}</strong></span>
-    <span>Wind: <strong>${metrics.wind}</strong></span>
-  </div>
+  <div class="ro-main-tags">
+    ${
+      metrics.hail && metrics.hail !== "—"
+        ? `<span class="ro-main-tag hail">🧊 Hail: ${metrics.hail.replace("IN", " IN")}</span>`
+        : ""
+    }
 
-  <div class="ro-alert-expire-row">
-    <span class="ro-alert-dot" style="background:${getAlertColor(props.event)};"></span>
-    <span class="alert-pill">${getCompactExpireLabel(props.expires)}</span>
+    ${
+      metrics.wind && metrics.wind !== "—"
+        ? `<span class="ro-main-tag wind">💨 Wind: ${metrics.wind.replace("MPH", " MPH")}</span>`
+        : ""
+    }
   </div>
 
   <div class="ro-alert-bottom-row">
@@ -3584,17 +3625,8 @@ warningBottom.style.display = "none";
   hazardSection.innerHTML = hazardHTML;
   hazardSection.style.display = hazardHTML ? "grid" : "none";
 
- if (hail || wind || tornado) {
-  warningBottom.style.display = "flex";
-
-  warningBottom.innerHTML = `
-    ${tornado ? `<span>Tornado: <strong>${tornado}</strong></span>` : ""}
-    ${hail ? `<span>Hail: <strong>${hail}</strong></span>` : ""}
-    ${wind ? `<span>Wind: <strong>${wind}</strong></span>` : ""}
-  `;
-} else {
-  warningBottom.style.display = "none";
-}
+warningBottom.style.display = "none";
+warningBottom.innerHTML = "";
 
 } else {
   hazardSection.style.display = "none";
