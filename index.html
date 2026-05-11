@@ -2378,6 +2378,89 @@ color: #fff !important;
 .forecast-dashboard .alerts-card .ro-map-btn:hover {
 filter: brightness(1.15);
 }
+
+/* FINAL: restore alert count + state hover category colors */
+
+/* ALERT COUNT BAR — active category color */
+.forecast-dashboard .alerts-card.storm-active .state-alert-dropdown > summary {
+  background: linear-gradient(135deg, #ffb21f, #ff9d00) !important;
+  color: #000 !important;
+  box-shadow: 0 0 22px rgba(255,178,31,0.45) !important;
+  border-color: transparent !important;
+}
+
+.forecast-dashboard .alerts-card.tropical-active .state-alert-dropdown > summary {
+  background: linear-gradient(135deg, rgb(161,54,113), rgb(133,38,91)) !important;
+  color: #fff !important;
+  box-shadow: 0 0 22px rgba(161,54,113,0.45) !important;
+  border-color: transparent !important;
+}
+
+.forecast-dashboard .alerts-card.winter-active .state-alert-dropdown > summary {
+  background: linear-gradient(135deg, #7ecbff, #4da9ff) !important;
+  color: #00111f !important;
+  box-shadow: 0 0 22px rgba(59,157,255,0.45) !important;
+  border-color: transparent !important;
+}
+
+.forecast-dashboard .alerts-card.hydro-active .state-alert-dropdown > summary {
+  background: linear-gradient(135deg, #00c40a, #00a008) !important;
+  color: #fff !important;
+  box-shadow: 0 0 22px rgba(0,160,8,0.45) !important;
+  border-color: transparent !important;
+}
+
+.forecast-dashboard .alerts-card.fire-active .state-alert-dropdown > summary {
+  background: linear-gradient(135deg, #ff8318, #ff5d00) !important;
+  color: #1a0900 !important;
+  box-shadow: 0 0 22px rgba(255,131,24,0.45) !important;
+  border-color: transparent !important;
+}
+
+/* STATE ROWS — neutral by default */
+.forecast-dashboard .alerts-card .state-alert-group > summary {
+  background: rgba(255,255,255,0.08) !important;
+  color: #fff !important;
+  border: 1px solid rgba(255,255,255,0.13) !important;
+  box-shadow: none !important;
+  transition: all 0.22s ease !important;
+}
+
+/* STATE ROWS — fill with active category color on hover */
+.forecast-dashboard .alerts-card.storm-active .state-alert-group > summary:hover {
+  background: linear-gradient(135deg, #ffb21c, #e49700) !important;
+  color: #000 !important;
+  box-shadow: 0 0 26px rgba(255,178,28,0.55) !important;
+  border-color: transparent !important;
+}
+
+.forecast-dashboard .alerts-card.tropical-active .state-alert-group > summary:hover {
+  background: linear-gradient(135deg, rgb(161,54,113), rgb(133,38,91)) !important;
+  color: #fff !important;
+  box-shadow: 0 0 26px rgba(161,54,113,0.50) !important;
+  border-color: transparent !important;
+}
+
+.forecast-dashboard .alerts-card.winter-active .state-alert-group > summary:hover {
+  background: linear-gradient(135deg, #3b9dff, #2679d8) !important;
+  color: #fff !important;
+  box-shadow: 0 0 26px rgba(59,157,255,0.50) !important;
+  border-color: transparent !important;
+}
+
+.forecast-dashboard .alerts-card.hydro-active .state-alert-group > summary:hover {
+  background: linear-gradient(135deg, #00c40a, #00a008) !important;
+  color: #fff !important;
+  box-shadow: 0 0 26px rgba(0,160,8,0.50) !important;
+  border-color: transparent !important;
+}
+
+.forecast-dashboard .alerts-card.fire-active .state-alert-group > summary:hover {
+  background: linear-gradient(135deg, #d83d18, #a9280c) !important;
+  color: #fff !important;
+  box-shadow: 0 0 26px rgba(216,61,24,0.50) !important;
+  border-color: transparent !important;
+}
  </style>
 </head>
 
