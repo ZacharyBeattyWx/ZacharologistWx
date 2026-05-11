@@ -2228,12 +2228,29 @@ gap: 10px !important;
 }
 
 .forecast-dashboard .alerts-card .ro-alert-icon {
-display: block !important;
-width: 24px !important;
-text-align: center !important;
-font-size: 1rem !important;
-line-height: 1 !important;
-color: var(--alert-color) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  width: 30px !important;
+  height: 30px !important;
+
+  font-size: 1.18rem !important;
+  line-height: 1 !important;
+  text-align: center !important;
+
+  border-radius: 9px !important;
+
+  background:
+    radial-gradient(circle at 35% 25%, rgba(255,255,255,0.35), rgba(255,255,255,0.06) 42%, rgba(0,0,0,0.18) 100%) !important;
+
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.22),
+    0 6px 14px rgba(0,0,0,0.25) !important;
+
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif !important;
+
+  transform: translateY(-1px);
 }
 
 .forecast-dashboard .alerts-card .ro-alert-title-row .compact-alert-title {
@@ -3010,16 +3027,41 @@ function getCompactAlertMetrics(alert) {
 }
 
 function getCompactAlertIcon(event) {
-  if (!event) return "⚠";
+  if (!event) return "⚠️";
 
-  if (event.includes("Tornado")) return "⚠";
-  if (event.includes("Severe Thunderstorm")) return "■";
-  if (event.includes("Flash Flood") || event.includes("Flood")) return "●";
-  if (event.includes("Special Weather Statement")) return "!";
-  if (event.includes("Winter") || event.includes("Freeze") || event.includes("Frost")) return "❄";
-  if (event.includes("Red Flag") || event.includes("Fire Weather")) return "🔥";
+  const e = event.toLowerCase();
 
-  return "⚠";
+  if (e.includes("tornado")) return "🌪️";
+
+  if (e.includes("severe thunderstorm")) return "⛈️";
+
+  if (e.includes("flash flood")) return "🌊";
+
+  if (e.includes("flood")) return "🌊";
+
+  if (e.includes("winter storm")) return "❄️";
+
+  if (e.includes("blizzard")) return "❄️";
+
+  if (e.includes("snow")) return "❄️";
+
+  if (e.includes("ice storm")) return "🧊";
+
+  if (e.includes("freezing")) return "🧊";
+
+  if (e.includes("frost")) return "🧊";
+
+  if (e.includes("tropical")) return "🌀";
+
+  if (e.includes("hurricane")) return "🌀";
+
+  if (e.includes("marine")) return "🌊";
+
+  if (e.includes("wind")) return "💨";
+
+  if (e.includes("special weather statement")) return "⚠️";
+
+  return "⚠️";
 }
 
 function getCompactExpireLabel(expires) {
