@@ -3321,9 +3321,10 @@ card.innerHTML = `
       ${locationText}
     </span>
 
-    <button class="ro-map-btn" type="button" title="Map preview"> onclick="openRadarMap()">
+    <button class="ro-map-btn" type="button" title="Map preview" data-map-btn>
       🌎
     </button>
+
 
     <button class="compact-details-btn" data-alert-id="${alert.id}" type="button">
       ...
@@ -3342,6 +3343,13 @@ card.innerHTML = `
   requestAnimationFrame(() => {
     alertsList.style.opacity = "1";
   });
+
+  document.addEventListener("click", event => {
+const mapButton = event.target.closest("[data-map-btn]");
+if (!mapButton) return;
+
+openRadarMap();
+});
 }
 
 let radarMap;
