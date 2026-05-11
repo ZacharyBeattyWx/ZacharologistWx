@@ -3441,12 +3441,12 @@ if (!radarFrames.length) return;
 
 const latestFrame = radarFrames[radarFrames.length - 1];
 
-const radarTileUrl = `${data.host}${latestFrame.path}/256/{z}/{x}/{y}/2/1_1.png`;
+const radarTileUrl = `${data.host}${latestFrame.path}/512/{z}/{x}/{y}/6/1_1.png`;
 
 radarMap.addSource("rainviewer-radar", {
 type: "raster",
 tiles: [radarTileUrl],
-tileSize: 256
+tileSize: 512
 });
 
 radarMap.addLayer({
