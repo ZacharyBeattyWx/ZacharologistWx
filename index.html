@@ -2924,7 +2924,7 @@ function getCompactAlertMetrics(alert) {
   const params = props.parameters || {};
   const description = props.description || "";
 
-  function cleanWindValue(value) {
+  function formatWindNumber(value) {
     if (!value) return "—";
 
     const text = String(value).toUpperCase();
@@ -2935,57 +2935,74 @@ function getCompactAlertMetrics(alert) {
 
     if (!numbers.length) return "—";
 
-    const maxValue = Math.max(...numbers);
-    return `${maxValue}MPH`;
+    return `${Math.max(...numbers)}MPH`;
   }
 
-  function cleanHailValue(value) {
+  function formatHailNumber(value) {
     if (!value) return "—";
 
-    const text = String(value).toUpperCase();
+    const number = Number(String(value).match(/\d+(?:\.\d+)?/)?.[0]);
 
-    const numbers = [...text.matchAll(/\d+(?:\.\d+)?/g)]
-      .map(match => Number(match[0]))
-      .filter(num => !Number.isNaN(num));
+    if (Number.isNaN(number)) return "—";
 
-    if (numbers.length) {
-      const maxValue = Math.max(...numbers).toFixed(2);
-      return `${maxValue}IN`;
-    }
+    return `${number.toFixed(2)}IN`;
+  }
 
-    if (/NICKEL SIZE HAIL/i.test(text)) return "0.88IN";
-    if (/QUARTER SIZE HAIL/i.test(text)) return "1.00IN";
-    if (/PING PONG BALL SIZE HAIL/i.test(text)) return "1.50IN";
-    if (/GOLF BALL SIZE HAIL/i.test(text)) return "1.75IN";
+  function hailFromWordSize(text) {
+    const lower = text.toLowerCase();
+
+    if (lower.includes("pea size hail")) return "0.25IN";
+    if (lower.includes("dime size hail")) return "0.70IN";
+    if (lower.includes("penny size hail")) return "0.75IN";
+    if (lower.includes("nickel size hail")) return "0.88IN";
+    if (lower.includes("quarter size hail")) return "1.00IN";
+    if (lower.includes("half dollar size hail")) return "1.25IN";
+    if (lower.includes("ping pong ball size hail")) return "1.50IN";
+    if (lower.includes("golf ball size hail")) return "1.75IN";
+    if (lower.includes("tennis ball size hail")) return "2.50IN";
+    if (lower.includes("baseball size hail")) return "2.75IN";
 
     return "—";
   }
 
-  const windFromText = description.match(
-    /(?:wind gusts?|winds?|straight line winds?).*?(\d+)(?:\s*to\s*(\d+))?\s*mph/i
-  );
+  let wind = "—";
+  let hail = "—";
 
-  const hailFromText = description.match(
-    /(?:hail).*?(\d+(?:\.\d+)?)\s*(?:inch|in)/i
-  );
+  // Prefer NWS structured parameters first
+  if (params.maxWindGust?.[0]) {
+    wind = formatWindNumber(params.maxWindGust[0]);
+  }
 
-  const rawWind =
-    params.maxWindGust?.[0] ||
-    (windFromText
-      ? `${windFromText[2] || windFromText[1]}MPH`
-      : null);
+  if (params.maxHailSize?.[0]) {
+    hail = formatHailNumber(params.maxHailSize[0]);
+  }
 
-  const rawHail =
-    params.maxHailSize?.[0] ||
-    (hailFromText
-      ? `${hailFromText[1]}IN`
-      : description);
+  // Fallback wind parsing from text
+  if (wind === "—") {
+    const windMatch =
+      description.match(/(?:wind gusts?|winds?|wind)\s*(?:of\s*)?(?:up to\s*|around\s*|near\s*|between\s*)?(\d+)(?:\s*(?:to|-)\s*(\d+))?\s*mph/i) ||
+      description.match(/(\d+)(?:\s*(?:to|-)\s*(\d+))?\s*mph\s*(?:wind gusts?|winds?)/i);
 
-  return {
-    wind: cleanWindValue(rawWind),
-    hail: cleanHailValue(rawHail)
-  };
-}
+    if (windMatch) {
+      wind = `${windMatch[2] || windMatch[1]}MPH`;
+    }
+  }
+
+  // Fallback hail parsing from text
+  if (hail === "—") {
+    const hailMatch =
+      description.match(/(\d+(?:\.\d+)?)\s*(?:inch|in)\s*(?:diameter\s*)?hail/i) ||
+      description.match(/hail.*?(\d+(?:\.\d+)?)\s*(?:inch|in)/i);
+
+    if (hailMatch) {
+      hail = formatHailNumber(hailMatch[1]);
+    } else {
+      hail = hailFromWordSize(description);
+    }
+  }
+
+  return { wind, hail };
+}const windMatch = description.match(/(?:wind gusts?|winds).*?(\d+)\s*mph/i);
 
 function getCompactAlertIcon(event) {
   if (!event) return "⚠";
@@ -3429,21 +3446,18 @@ const expires = props.expires
    : getAlertColor(event);
     console.log(event, headerColor);
 
-  const windMatch = description.match(/(?:wind gusts?|winds).*?(\d+)\s*mph/i);
-  const hailMatch = description.match(/(?:hail).*?(\d+(\.\d+)?)\s*inch|quarter/i);
-  const snowMatch = description.match(/snow accumulations?.*?(\d+.*?)\./i);
+const snowMatch = description.match(/snow accumulations?.*?(\d+.*?)\./i);
 
-  const windFromText = description.match(
-  /(wind gusts?|winds?|straight line winds?).*?(\d+)\s*MPH/i
-);
+const modalMetrics = getCompactAlertMetrics(alert);
 
 const wind =
-  params.maxWindGust?.[0] ||
-  (windFromText ? `${windFromText[2]} MPH` : null);
+  modalMetrics.wind && modalMetrics.wind !== "—"
+    ? modalMetrics.wind.replace("MPH", " MPH")
+    : null;
 
 const hail =
-  params.maxHailSize?.[0]
-    ? `${params.maxHailSize[0]} IN`
+  modalMetrics.hail && modalMetrics.hail !== "—"
+    ? modalMetrics.hail.replace("IN", " IN")
     : null;
 
 const tornado =
@@ -3567,12 +3581,58 @@ modal.querySelector(".alert-where").textContent =
 modal.querySelector(".alert-when").textContent =
   extractSection(description, "WHEN") || expires;
 
-warningImpacts.style.display = "block";
-warningImpacts.querySelector("strong").textContent = "⚠️ Expected Impacts";
-warningImpacts.querySelector("p").textContent =
-  extractSection(description, "IMPACTS") ||
-  instruction ||
-  "No impacts listed.";
+const expectedImpacts = extractExpectedImpactsText(description, instruction);
+
+if (expectedImpacts) {
+  warningImpacts.style.display = "block";
+  warningImpacts.querySelector("strong").textContent = "⚠️ Expected Impacts";
+  warningImpacts.querySelector("p").textContent = expectedImpacts;
+} else {
+  warningImpacts.style.display = "none";
+  warningImpacts.querySelector("p").textContent = "";
+}
+
+function cleanNwsInlineText(text) {
+  if (!text) return "";
+
+  return text
+    .replace(/\*/g, "")
+    .replace(/\n/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extractExpectedImpactsText(description, instruction) {
+  if (!description) return instruction || "";
+
+  const formalImpacts = extractSection(description, "IMPACTS");
+
+  if (formalImpacts) {
+    return formalImpacts;
+  }
+
+  const rawImpactLine = description.match(
+    /IMPACT\.\.\.([\s\S]*?)(?=\n[A-Z ]+\.\.\.|$)/i
+  );
+
+  if (rawImpactLine) {
+    return cleanNwsInlineText(rawImpactLine[1]);
+  }
+
+  const weakeningMessage = description.match(
+    /(The storm which prompted[\s\S]*?)(?=\n\n|A Severe Thunderstorm Watch|Remember,|PRECAUTIONARY|$)/i
+  );
+
+  if (weakeningMessage) {
+    return cleanNwsInlineText(weakeningMessage[1]);
+  }
+
+  if (instruction) {
+    return cleanNwsInlineText(instruction);
+  }
+
+  return "";
+}
 
 const cleanedDetails = cleanAlertDetailsText(description);
 
