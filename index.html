@@ -1916,7 +1916,7 @@ box-shadow: 0 30px 90px rgba(0,0,0,0.55);
 }
 
 .radar-map-header {
-height: 74px;
+height: 64px;
 padding: 14px 18px;
 display: flex;
 justify-content: space-between;
@@ -1942,9 +1942,11 @@ height: 38px;
 border-radius: 999px;
 border: 1px solid rgba(255,255,255,0.25);
 background: rgba(255,255,255,0.08);
+backdrop-filter: blur(10px);
 color: white;
 font-size: 1.5rem;
 cursor: pointer;
+
 }
 
 #radarMap {
@@ -1955,7 +1957,7 @@ height: calc(100% - 74px);
 @media (max-width: 768px) {
 .radar-map-box {
 width: 100vw;
-height: 100vh;
+height: 100dvh;
 margin: 0;
 border-radius: 0;
 }
