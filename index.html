@@ -2601,11 +2601,11 @@ filter: brightness(1.15);
             class="spc-outlook-img"
             alt="SPC Day 1 Outlook"
             data-spc-options="
-              https://www.spc.noaa.gov/products/outlook/day1otlk_0100_prt.png,
-              https://www.spc.noaa.gov/products/outlook/day1otlk_0600_prt.png,
-              https://www.spc.noaa.gov/products/outlook/day1otlk_1300_prt.png,
-              https://www.spc.noaa.gov/products/outlook/day1otlk_1630_prt.png,
-              https://www.spc.noaa.gov/products/outlook/day1otlk_2000_prt.png
+              https://www.spc.noaa.gov/products/outlook/day1otlk_0100_prt.gif
+              https://www.spc.noaa.gov/products/outlook/day1otlk_0600_prt.gif
+              https://www.spc.noaa.gov/products/outlook/day1otlk_1300_prt.gif
+              https://www.spc.noaa.gov/products/outlook/day1otlk_1630_prt.gif
+              https://www.spc.noaa.gov/products/outlook/day1otlk_2000_prt.gif
             "
           >
         </a>
@@ -2616,8 +2616,8 @@ filter: brightness(1.15);
             class="spc-outlook-img"
             alt="SPC Day 2 Outlook"
             data-spc-options="
-              https://www.spc.noaa.gov/products/outlook/day2otlk_0600_prt.png,
-              https://www.spc.noaa.gov/products/outlook/day2otlk_1730_prt.png
+              https://www.spc.noaa.gov/products/outlook/day2otlk_0600_prt.gif
+              https://www.spc.noaa.gov/products/outlook/day2otlk_1730_prt.gif
             "
           >
         </a>
@@ -2628,8 +2628,8 @@ filter: brightness(1.15);
             class="spc-outlook-img"
             alt="SPC Day 3 Outlook"
             data-spc-options="
-              https://www.spc.noaa.gov/products/outlook/day3otlk_0730_prt.png,
-              https://www.spc.noaa.gov/products/outlook/day3otlk_1930_prt.png
+              https://www.spc.noaa.gov/products/outlook/day3otlk_0730_prt.gif
+              https://www.spc.noaa.gov/products/outlook/day3otlk_1930_prt.gif
             "
           >
         </a>
@@ -3002,7 +3002,7 @@ function getCompactAlertMetrics(alert) {
   }
 
   return { wind, hail };
-}const windMatch = description.match(/(?:wind gusts?|winds).*?(\d+)\s*mph/i);
+}
 
 function getCompactAlertIcon(event) {
   if (!event) return "⚠";
@@ -3592,48 +3592,6 @@ if (expectedImpacts) {
   warningImpacts.querySelector("p").textContent = "";
 }
 
-function cleanNwsInlineText(text) {
-  if (!text) return "";
-
-  return text
-    .replace(/\*/g, "")
-    .replace(/\n/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function extractExpectedImpactsText(description, instruction) {
-  if (!description) return instruction || "";
-
-  const formalImpacts = extractSection(description, "IMPACTS");
-
-  if (formalImpacts) {
-    return formalImpacts;
-  }
-
-  const rawImpactLine = description.match(
-    /IMPACT\.\.\.([\s\S]*?)(?=\n[A-Z ]+\.\.\.|$)/i
-  );
-
-  if (rawImpactLine) {
-    return cleanNwsInlineText(rawImpactLine[1]);
-  }
-
-  const weakeningMessage = description.match(
-    /(The storm which prompted[\s\S]*?)(?=\n\n|A Severe Thunderstorm Watch|Remember,|PRECAUTIONARY|$)/i
-  );
-
-  if (weakeningMessage) {
-    return cleanNwsInlineText(weakeningMessage[1]);
-  }
-
-  if (instruction) {
-    return cleanNwsInlineText(instruction);
-  }
-
-  return "";
-}
-
 const cleanedDetails = cleanAlertDetailsText(description);
 
 if (alertFullText && alertRawText) {
@@ -3713,6 +3671,48 @@ warningBottom.innerHTML = "";
 }
 
   modal.classList.add("is-open");
+}
+
+function cleanNwsInlineText(text) {
+  if (!text) return "";
+
+  return text
+    .replace(/\*/g, "")
+    .replace(/\n/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extractExpectedImpactsText(description, instruction) {
+  if (!description) return instruction || "";
+
+  const formalImpacts = extractSection(description, "IMPACTS");
+
+  if (formalImpacts) {
+    return formalImpacts;
+  }
+
+  const rawImpactLine = description.match(
+    /IMPACT\.\.\.([\s\S]*?)(?=\n[A-Z ]+\.\.\.|$)/i
+  );
+
+  if (rawImpactLine) {
+    return cleanNwsInlineText(rawImpactLine[1]);
+  }
+
+  const weakeningMessage = description.match(
+    /(The storm which prompted[\s\S]*?)(?=\n\n|A Severe Thunderstorm Watch|Remember,|PRECAUTIONARY|$)/i
+  );
+
+  if (weakeningMessage) {
+    return cleanNwsInlineText(weakeningMessage[1]);
+  }
+
+  if (instruction) {
+    return cleanNwsInlineText(instruction);
+  }
+
+  return "";
 }
 
 function extractWatchSummary(text, headline) {
