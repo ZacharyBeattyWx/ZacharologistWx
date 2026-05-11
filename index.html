@@ -2515,6 +2515,19 @@ filter: brightness(1.15);
 .forecast-dashboard .alerts-card .ro-main-tag.wind {
   color: #ffb347 !important;
 }
+
+.forecast-dashboard .alerts-card .alert-location {
+  background: var(--alert-color) !important;
+  color: #06111f !important;
+  border-color: color-mix(in srgb, var(--alert-color) 75%, white 25%) !important;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--alert-color) 55%, transparent) !important;
+}
+.forecast-dashboard .alerts-card .ro-state-chip {
+  background: var(--alert-color) !important;
+  color: #06111f !important;
+  border-color: color-mix(in srgb, var(--alert-color) 75%, white 25%) !important;
+}
+
  </style>
 </head>
 
@@ -3152,21 +3165,22 @@ stateDetails.addEventListener("toggle", () => {
 
     stateAlerts.slice(0, 25).forEach(alert => {
       const props = alert.properties;
-      const card = document.createElement("div");
+      const alertColor = getAlertColor(props.event);
 
+      const card = document.createElement("div");
+      card.style.setProperty("--alert-color", alertColor);
+      card.className = "compact-alert-item ro-alert-card";
+      card.style.setProperty("--alert-color", alertColor);
       const metrics = getCompactAlertMetrics(alert);
 const locationText = (props.areaDesc || "Area unavailable")
   .split(";")
   .slice(0, 3)
   .join("; ");
 
-const alertColor = getAlertColor(props.event);
 
-card.className = "compact-alert-item ro-alert-card";
-card.style.setProperty("--alert-color", alertColor);
 
 card.innerHTML = `
-  <div class="ro-alert-title-row">
+  <div class="ro-alert-title-row" style="--alert-color:${alertColor};">
     <span class="ro-alert-icon" style="color:${getAlertColor(props.event)};">
       ${getCompactAlertIcon(props.event)}
     </span>
