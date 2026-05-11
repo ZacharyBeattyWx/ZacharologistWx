@@ -3,6 +3,13 @@
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Zacharologist Wx Page</title>
+  <link
+    href="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.css"
+    rel="stylesheet"
+  />
+
+<script src="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.js"></script>
+
 
   <style>
     * {
@@ -1878,6 +1885,83 @@ nav a {
   color: rgba(255,255,255,0.9) !important;
 }
 
+.radar-map-modal {
+position: fixed;
+inset: 0;
+z-index: 9999;
+display: none;
+}
+
+.radar-map-modal.is-open {
+display: block;
+}
+
+.radar-map-backdrop {
+position: absolute;
+inset: 0;
+background: rgba(2, 6, 23, 0.82);
+backdrop-filter: blur(10px);
+}
+
+.radar-map-box {
+position: relative;
+width: min(1200px, calc(100vw - 28px));
+height: min(760px, calc(100vh - 42px));
+margin: 20px auto;
+background: #07111f;
+border: 1px solid rgba(148, 163, 184, 0.35);
+border-radius: 22px;
+overflow: hidden;
+box-shadow: 0 30px 90px rgba(0,0,0,0.55);
+}
+
+.radar-map-header {
+height: 74px;
+padding: 14px 18px;
+display: flex;
+justify-content: space-between;
+align-items: center;
+background: rgba(15, 23, 42, 0.96);
+border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.radar-map-header h2 {
+margin: 0;
+font-size: 1.15rem;
+}
+
+.radar-map-header p {
+margin: 4px 0 0;
+color: #94a3b8;
+font-size: 0.85rem;
+}
+
+.radar-map-close {
+width: 38px;
+height: 38px;
+border-radius: 999px;
+border: 1px solid rgba(255,255,255,0.25);
+background: rgba(255,255,255,0.08);
+color: white;
+font-size: 1.5rem;
+cursor: pointer;
+}
+
+#radarMap {
+width: 100%;
+height: calc(100% - 74px);
+}
+
+@media (max-width: 768px) {
+.radar-map-box {
+width: 100vw;
+height: 100vh;
+margin: 0;
+border-radius: 0;
+}
+}
+
+
 @media (max-width: 768px) {
   .alert-modal {
     padding: 10px !important;
@@ -2780,6 +2864,23 @@ filter: brightness(1.15);
 </div>
 </div>
 
+<div class="radar-map-modal" id="radarMapModal">
+<div class="radar-map-backdrop"></div>
+
+<div class="radar-map-box">
+<div class="radar-map-header">
+<div>
+<h2>Live Radar + Alerts</h2>
+<p>Radar-focused severe weather view</p>
+</div>
+
+<button class="radar-map-close" type="button">×</button>
+</div>
+
+<div id="radarMap"></div>
+</div>
+</div>
+
 <script>
 const alertsList = document.getElementById("alertsList");
 const alertsTitle = document.getElementById("alertsTitle");
@@ -3220,7 +3321,7 @@ card.innerHTML = `
       ${locationText}
     </span>
 
-    <button class="ro-map-btn" type="button" title="Map preview">
+    <button class="ro-map-btn" type="button" title="Map preview"> onclick="openRadarMap()">
       🌎
     </button>
 
@@ -3241,6 +3342,167 @@ card.innerHTML = `
   requestAnimationFrame(() => {
     alertsList.style.opacity = "1";
   });
+}
+
+let radarMap;
+let radarMapLoaded = false;
+
+async function openRadarMap() {
+const modal = document.getElementById("radarMapModal");
+if (!modal) return;
+
+modal.classList.add("is-open");
+
+if (!radarMapLoaded) {
+radarMapLoaded = true;
+initRadarMap();
+}
+
+setTimeout(() => {
+if (radarMap) radarMap.resize();
+}, 150);
+}
+
+function closeRadarMap() {
+const modal = document.getElementById("radarMapModal");
+if (!modal) return;
+
+modal.classList.remove("is-open");
+}
+
+async function initRadarMap() {
+radarMap = new maplibregl.Map({
+container: "radarMap",
+style: {
+version: 8,
+sources: {
+osm: {
+type: "raster",
+tiles: [
+"https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+],
+tileSize: 256,
+attribution: "© OpenStreetMap contributors"
+}
+},
+layers: [
+{
+id: "osm",
+type: "raster",
+source: "osm",
+paint: {
+"raster-opacity": 0.42
+}
+}
+]
+},
+center: [-79.8, 35.8],
+zoom: 5.3
+});
+
+radarMap.addControl(new maplibregl.NavigationControl(), "top-right");
+
+radarMap.on("load", async () => {
+await addRainViewerRadarLayer();
+await addNwsAlertPolygons();
+});
+}
+
+async function addRainViewerRadarLayer() {
+const response = await fetch("https://api.rainviewer.com/public/weather-maps.json");
+const data = await response.json();
+
+const radarFrames = data.radar?.past || [];
+if (!radarFrames.length) return;
+
+const latestFrame = radarFrames[radarFrames.length - 1];
+
+const radarTileUrl = `${data.host}${latestFrame.path}/256/{z}/{x}/{y}/2/1_1.png`;
+
+radarMap.addSource("rainviewer-radar", {
+type: "raster",
+tiles: [radarTileUrl],
+tileSize: 256
+});
+
+radarMap.addLayer({
+id: "rainviewer-radar-layer",
+type: "raster",
+source: "rainviewer-radar",
+paint: {
+"raster-opacity": 0.82
+}
+});
+}
+
+async function addNwsAlertPolygons() {
+const response = await fetch(
+"https://api.weather.gov/alerts/active?area=NC&area=SC&area=VA"
+);
+
+const data = await response.json();
+
+const features = (data.features || []).filter(feature => {
+return feature.geometry && feature.geometry.coordinates;
+});
+
+radarMap.addSource("nws-alerts", {
+type: "geojson",
+data: {
+type: "FeatureCollection",
+features
+}
+});
+
+radarMap.addLayer({
+id: "nws-alert-fill",
+type: "fill",
+source: "nws-alerts",
+paint: {
+"fill-color": [
+"match",
+["get", "event"],
+"Tornado Warning", "#ff1744",
+"Severe Thunderstorm Warning", "#ffb300",
+"Flash Flood Warning", "#22c55e",
+"Special Weather Statement", "#38bdf8",
+"#facc15"
+],
+"fill-opacity": 0.22
+}
+});
+
+radarMap.addLayer({
+id: "nws-alert-outline",
+type: "line",
+source: "nws-alerts",
+paint: {
+"line-color": [
+"match",
+["get", "event"],
+"Tornado Warning", "#ff1744",
+"Severe Thunderstorm Warning", "#ffb300",
+"Flash Flood Warning", "#22c55e",
+"Special Weather Statement", "#38bdf8",
+"#facc15"
+],
+"line-width": 2.5
+}
+});
+
+radarMap.on("click", "nws-alert-fill", event => {
+const props = event.features[0].properties;
+
+alert(`${props.event}\n\n${props.headline || "No headline available"}`);
+});
+
+radarMap.on("mouseenter", "nws-alert-fill", () => {
+radarMap.getCanvas().style.cursor = "pointer";
+});
+
+radarMap.on("mouseleave", "nws-alert-fill", () => {
+radarMap.getCanvas().style.cursor = "";
+});
 }
 
 function renderCategory(category) {
