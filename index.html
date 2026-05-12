@@ -3284,6 +3284,16 @@ filter: brightness(1.15);
     </select>
   </label>
 
+  <label>
+     Product
+  <select id="radarProductSelect">
+    <option value="N0B">Base Reflectivity</option>
+    <option value="N0U">Base Velocity</option>
+    <option value="N0S">Storm Relative Velocity</option>
+    <option value="N0C">Correlation Coefficient</option>
+    </select>
+  </label>
+
   <button id="radarRefreshBtn" type="button">
     ↻ Refresh
   </button>
@@ -4784,6 +4794,7 @@ const radarRefreshBtn = document.getElementById("radarRefreshBtn");
 const radarLocationSearch = document.getElementById("radarLocationSearch");
 const radarLocationInput = document.getElementById("radarLocationInput");
 const radarSearchStatus = document.getElementById("radarSearchStatus");
+const radarProductSelect = document.getElementById("radarProductSelect");
 
 let radarSearchMarker = null;
 let singleSiteMap = null;
@@ -5193,7 +5204,7 @@ function loadSingleSiteRadar(site) {
       transparent: true,
       opacity: 0.82,
       sector: site,
-      prod: "N0B",
+      prod: radarProductSelect?.value || "N0B",
       version: "1.1.1",
       attribution: "Radar: IEM / NEXRAD"
     }
@@ -5217,6 +5228,13 @@ if (radarSiteSelect) {
       singleSiteMap.setView(siteInfo.center, siteInfo.zoom);
     }
 
+    loadSingleSiteRadar(site);
+  });
+}
+
+if (radarProductSelect) {
+  radarProductSelect.addEventListener("change", () => {
+    const site = radarSiteSelect?.value || "RAX";
     loadSingleSiteRadar(site);
   });
 }
