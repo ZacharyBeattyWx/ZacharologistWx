@@ -3758,7 +3758,6 @@ card.innerHTML = `
 </button>
 
 
-
     <button class="compact-details-btn" data-alert-id="${alert.id}" type="button">
       ...
     </button>
@@ -4159,12 +4158,12 @@ document.querySelectorAll(".alert-tabs button").forEach(button => {
   });
 });
 
-function handleDetailsButtonTap(e) {
-  const btn = e.target.closest(".compact-details-btn");
+function handleDetailsButtonTap(event) {
+  const btn = event.target.closest(".compact-details-btn");
   if (!btn) return;
 
-  e.preventDefault();
-  e.stopPropagation();
+  event.preventDefault();
+  event.stopPropagation();
 
   const alertId = btn.dataset.alertId;
   const alert = allHomepageAlerts.find(a => a.id === alertId);
@@ -4177,7 +4176,25 @@ function handleDetailsButtonTap(e) {
   openAlertModal(alert);
 }
 
-document.addEventListener("click", event => {
+function handleRadarButtonTap(event) {
+  const btn = event.target.closest(".alert-radar-btn");
+  if (!btn) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+
+  const alertId = btn.dataset.alertId;
+  const mode = btn.dataset.radarMode || "raw";
+
+  console.log("Radar button tapped:", mode, alertId);
+
+  openRadarForAlert(alertId, mode);
+}
+
+/* One mobile-friendly listener for each button type */
+document.addEventListener("pointerup", handleDetailsButtonTap);
+document.addEventListener("pointerup", handleRadarButtonTap);
+function handleRadarButtonTap(event) {
   const btn = event.target.closest(".alert-radar-btn");
   if (!btn) return;
 
@@ -4188,10 +4205,10 @@ document.addEventListener("click", event => {
   const mode = btn.dataset.radarMode || "raw";
 
   openRadarForAlert(alertId, mode);
-});
+}
 
-document.addEventListener("click", handleDetailsButtonTap);
-document.addEventListener("touchend", handleDetailsButtonTap);
+document.addEventListener("click", handleRadarButtonTap);
+document.addEventListener("touchend", handleRadarButtonTap);
 
 document.addEventListener("click", function (e) {
   if (
