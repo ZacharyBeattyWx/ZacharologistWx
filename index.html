@@ -4911,6 +4911,17 @@ async function loadNwsRadarSites() {
   }
 }
 
+function closeRadarModal() {
+  if (!radarModal) return;
+
+  radarModal.classList.remove("is-open");
+  document.body.style.overflow = "";
+
+  if (radarFrame) {
+    radarFrame.src = "";
+  }
+}
+
 function setRadarMode(mode) {
   const selectedMode = mode === "raw" ? "raw" : "clean";
 
@@ -4962,67 +4973,6 @@ function setRadarMode(mode) {
     } else {
       radarFrame.src = radarUrls.clean;
     }
-  }
-}
-
-function closeRadarModal() {
-  if (!radarModal) return;
-
-  radarModal.classList.remove("is-open");
-  document.body.style.overflow = "";
-
-  if (radarFrame) {
-    radarFrame.src = "";
-  }
-}
-
-function setRadarMode(mode) {
-  const selectedMode = mode === "raw" ? "raw" : "clean";
-
-  radarModeButtons.forEach(button => {
-    button.classList.toggle(
-      "active",
-      button.dataset.radarMode === selectedMode
-    );
-  });
-
-  if (selectedMode === "raw") {
-    if (radarFrame) {
-      radarFrame.style.display = "none";
-      radarFrame.src = "";
-    }
-
-    if (singleSiteRadarViewer) {
-      singleSiteRadarViewer.style.display = "block";
-    }
-
-    initSingleSiteRadar();
-    setTimeout(() => {
-  if (pendingRadarAlert) {
-    focusSingleSiteRadarOnAlert(pendingRadarAlert);
-  }
-}, 250);
-    return;
-  }
-
-  if (singleSiteRadarViewer) {
-    singleSiteRadarViewer.style.display = "none";
-  }
-
-  if (radarFrame) {
-    radarFrame.style.display = "block";
-    const alertCenter = pendingRadarAlert
-  ? getAlertCenter(pendingRadarAlert)
-  : null;
-
-if (alertCenter) {
-  radarFrame.src =
-    `https://embed.windy.com/embed2.html?lat=${alertCenter.lat.toFixed(3)}` +
-    `&lon=${alertCenter.lon.toFixed(3)}` +
-    `&zoom=7&level=surface&overlay=radar&product=radar`;
-} else {
-  radarFrame.src = radarUrls.clean;
-}
   }
 }
 
