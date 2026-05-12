@@ -1498,6 +1498,55 @@ body {
   max-width: 52vw;
 }
 
+.radar-location-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.radar-location-search input {
+  width: 210px;
+  max-width: 46vw;
+
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.10);
+  color: #ffffff;
+
+  border-radius: 10px;
+  padding: 8px 10px;
+
+  font-weight: 800;
+  outline: none;
+}
+
+.radar-location-search input::placeholder {
+  color: rgba(255,255,255,0.58);
+}
+
+.radar-location-search button {
+  border: 1px solid rgba(250,204,21,0.45);
+  background: rgba(250,204,21,0.16);
+  color: #fde68a;
+
+  border-radius: 10px;
+  padding: 8px 10px;
+
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.radar-location-search button:hover {
+  background: rgba(250,204,21,0.25);
+}
+
+#radarSearchStatus {
+  color: #cbd5e1;
+  font-size: 0.78rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .single-radar-toolbar label {
   display: flex;
   align-items: center;
@@ -3212,17 +3261,34 @@ filter: brightness(1.15);
 
   <div id="singleSiteRadarViewer" class="single-site-radar-viewer">
     <div class="single-radar-toolbar">
-      <label>
-        Radar Site
-        <select id="radarSiteSelect">
-  <option value="">Loading NWS radar sites...</option>
-</select>
-      </label>
 
-      <button id="radarRefreshBtn" type="button">
-        ↻ Refresh
-      </button>
-    </div>
+  <form id="radarLocationSearch" class="radar-location-search">
+    <input
+      id="radarLocationInput"
+      type="search"
+      placeholder="City, state, or ZIP"
+      autocomplete="off"
+    />
+
+    <button type="submit">
+      Find Nearest
+    </button>
+
+    <span id="radarSearchStatus"></span>
+  </form>
+
+  <label>
+    Radar Site
+    <select id="radarSiteSelect">
+      <option value="">Loading radar sites...</option>
+    </select>
+  </label>
+
+  <button id="radarRefreshBtn" type="button">
+    ↻ Refresh
+  </button>
+
+</div>
 
     <div id="singleSiteRadarMap"></div>
   </div>
@@ -4550,7 +4616,11 @@ const radarModeButtons = document.querySelectorAll(".radar-mode-btn");
 const singleSiteRadarViewer = document.getElementById("singleSiteRadarViewer");
 const radarSiteSelect = document.getElementById("radarSiteSelect");
 const radarRefreshBtn = document.getElementById("radarRefreshBtn");
+const radarLocationSearch = document.getElementById("radarLocationSearch");
+const radarLocationInput = document.getElementById("radarLocationInput");
+const radarSearchStatus = document.getElementById("radarSearchStatus");
 
+let radarSearchMarker = null;
 let singleSiteMap = null;
 let singleSiteRadarLayer = null;
 
@@ -4732,6 +4802,143 @@ function setRadarMode(mode) {
   }
 }
 
+function getDistanceMiles(lat1, lon1, lat2, lon2) {
+  const earthRadiusMiles = 3958.8;
+
+  const toRadians = degrees => degrees * Math.PI / 180;
+
+  const dLat = toRadians(lat2 - lat1);
+  const dLon = toRadians(lon2 - lon1);
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRadians(lat1)) *
+    Math.cos(toRadians(lat2)) *
+    Math.sin(dLon / 2) *
+    Math.sin(dLon / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return earthRadiusMiles * c;
+}
+
+async function geocodeRadarSearch(query) {
+  const url =
+    "https://nominatim.openstreetmap.org/search" +
+    `?format=jsonv2` +
+    `&limit=1` +
+    `&countrycodes=us` +
+    `&q=${encodeURIComponent(query)}`;
+
+  const response = await fetch(url, {
+    headers: {
+      "Accept": "application/json"
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error("Location search failed.");
+  }
+
+  const results = await response.json();
+
+  if (!results.length) {
+    throw new Error("No location found.");
+  }
+
+  return {
+    lat: Number(results[0].lat),
+    lon: Number(results[0].lon),
+    label: results[0].display_name || query
+  };
+}
+
+function findNearestRadarSite(lat, lon) {
+  const sites = Object.values(radarSites || {}).filter(site => {
+    return (
+      site &&
+      site.center &&
+      Number.isFinite(site.center[0]) &&
+      Number.isFinite(site.center[1])
+    );
+  });
+
+  if (!sites.length) return null;
+
+  let nearest = null;
+
+  sites.forEach(site => {
+    const distance = getDistanceMiles(
+      lat,
+      lon,
+      site.center[0],
+      site.center[1]
+    );
+
+    if (!nearest || distance < nearest.distance) {
+      nearest = {
+        site,
+        distance
+      };
+    }
+  });
+
+  return nearest;
+}
+
+async function selectNearestRadarBySearch(query) {
+  if (!query.trim()) return;
+
+  if (radarSearchStatus) {
+    radarSearchStatus.textContent = "Searching...";
+  }
+
+  try {
+    if (!radarSitesLoaded) {
+      await loadNwsRadarSites();
+    }
+
+    const location = await geocodeRadarSearch(query);
+    const nearest = findNearestRadarSite(location.lat, location.lon);
+
+    if (!nearest) {
+      throw new Error("No radar sites loaded.");
+    }
+
+    const site = nearest.site;
+
+    if (radarSiteSelect) {
+      radarSiteSelect.value = site.sector;
+    }
+
+    if (singleSiteMap) {
+      singleSiteMap.setView(site.center, site.zoom || 7);
+
+      if (radarSearchMarker) {
+        singleSiteMap.removeLayer(radarSearchMarker);
+      }
+
+      radarSearchMarker = L.marker([location.lat, location.lon])
+        .addTo(singleSiteMap)
+        .bindPopup(`Search location<br>${location.label}`)
+        .openPopup();
+    }
+
+    loadSingleSiteRadar(site.sector);
+
+    if (radarSearchStatus) {
+      radarSearchStatus.textContent =
+        `Nearest: ${site.sector} · ${Math.round(nearest.distance)} mi`;
+    }
+  } catch (error) {
+    console.error("Radar location search error:", error);
+
+    if (radarSearchStatus) {
+      radarSearchStatus.textContent = "Location not found";
+    }
+  }
+}
+
 function initSingleSiteRadar() {
   if (!window.L) {
     console.error("Leaflet did not load.");
@@ -4824,6 +5031,15 @@ if (radarSiteSelect) {
     }
 
     loadSingleSiteRadar(site);
+  });
+}
+
+if (radarLocationSearch) {
+  radarLocationSearch.addEventListener("submit", event => {
+    event.preventDefault();
+
+    const query = radarLocationInput?.value || "";
+    selectNearestRadarBySearch(query);
   });
 }
 
