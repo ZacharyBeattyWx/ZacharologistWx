@@ -4943,26 +4943,7 @@ function setRadarMode(mode) {
     );
   });
 
-  if (selectedMode === "raw") {
-    if (radarFrame) {
-      radarFrame.style.display = "none";
-      radarFrame.src = "";
-    }
-
-    if (singleSiteRadarViewer) {
-      singleSiteRadarViewer.style.display = "flex";
-    }
-
-    initSingleSiteRadar();
-
-    setTimeout(() => {
-      if (pendingRadarAlert) {
-        focusSingleSiteRadarOnAlert(pendingRadarAlert);
-      }
-    }, 250);
-
-    return;
-  }
+ if (selectedMode === "raw") {
 
   // CLEAN RADAR / WINDY MODE
   if (singleSiteRadarViewer) {
@@ -5124,18 +5105,14 @@ async function selectNearestRadarBySearch(query) {
   }
 }
 
-function initSingleSiteRadar() {
+async function initSingleSiteRadar() {
   if (!window.L) {
     console.error("Leaflet did not load.");
-    return;
+    return false;
   }
 
   if (!radarSitesLoaded) {
-    loadNwsRadarSites().then(() => {
-      initSingleSiteRadar();
-    });
-
-    return;
+    await loadNwsRadarSites();
   }
 
   const site = radarSiteSelect?.value || "RAX";
@@ -5143,7 +5120,7 @@ function initSingleSiteRadar() {
 
   if (!siteInfo) {
     console.warn("No radar site info found.");
-    return;
+    return false;
   }
 
   if (!singleSiteMap) {
@@ -5165,6 +5142,8 @@ function initSingleSiteRadar() {
   });
 
   loadSingleSiteRadar(site);
+
+  return true;
 }
 
 function loadSingleSiteRadar(site) {
