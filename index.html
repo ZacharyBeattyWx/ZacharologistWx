@@ -3090,7 +3090,7 @@ filter: brightness(1.15);
     <div class="radar-modal-header">
       <div>
         <h2>Storm Radar</h2>
-        <p>Clean radar and raw base reflectivity views</p>
+        <p>Clean radar and CONUS reflectivity views</p>
       </div>
 
       <button class="radar-modal-close" type="button">×</button>
@@ -3102,7 +3102,7 @@ filter: brightness(1.15);
       </button>
 
       <button class="radar-mode-btn" type="button" data-radar-mode="raw">
-        CONUS Reflectivity
+         Hi-Res CONUS
       </button>
     </div>
 
@@ -3117,7 +3117,7 @@ filter: brightness(1.15);
     </div>
 
     <div class="radar-modal-note">
-      Hi Res Reflectivity uses single-site base reflectivity for storm analysis.
+      Hi-Res CONUS uses a national NEXRAD reflectivity mosaic for broad storm tracking.
     </div>
   </div>
 </div>
@@ -4450,8 +4450,9 @@ const radarModeButtons = document.querySelectorAll(".radar-mode-btn");
 */
 
 const radarUrls = {
-  clean: "https://weather.cod.edu/satrad/?parms=continental-conus-comp_radar-24-1-100-1&checked=map&colorbar=undefined",
-  raw: "https://weather.cod.edu/satrad/?parms=continental-conus-comp_radar-24-1-100-1&checked=map&colorbar=undefined"
+  clean: "https://embed.windy.com/embed2.html?lat=39.5&lon=-96&zoom=4&level=surface&overlay=radar&product=radar",
+
+  raw: "https://mesonet.agron.iastate.edu/current/mcview.phtml?prod=usrad&java=none&mode=realtime&frames=1"
 };
 
 function openRadarModal(mode = "clean") {
