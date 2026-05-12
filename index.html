@@ -57,6 +57,116 @@
       font-size: 20px;
     }
 
+    .site-header {
+  width: 100%;
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 14px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  background: rgba(5, 10, 20, 0.94);
+  border-bottom: 1px solid rgba(143, 179, 255, 0.16);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  backdrop-filter: blur(14px);
+}
+
+.site-brand {
+  color: white;
+  text-decoration: none;
+  min-width: 210px;
+}
+
+.brand-main {
+  font-size: 1.1rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1;
+}
+
+.brand-main span {
+  color: #38bdf8;
+}
+
+.brand-sub {
+  margin-top: 5px;
+  color: #8fb3ff;
+  font-size: 0.66rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+}
+
+.site-nav {
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+  gap: 7px;
+  flex: 1;
+}
+
+.site-nav a {
+  margin-left: 0;
+  padding: 10px 13px;
+  color: #e5e7eb;
+  text-decoration: none;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  transition: 0.22s ease;
+}
+
+.site-nav a span {
+  display: block;
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 0.56rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.site-nav a:hover,
+.site-nav a.active {
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.34);
+  color: white;
+}
+
+.site-nav a.active span {
+  color: #38bdf8;
+}
+
+.site-nav .chase-link {
+  color: #fb923c;
+}
+
+.site-nav .chase-link span {
+  color: #f97316;
+}
+
+.site-nav .chase-link:hover {
+  background: rgba(249, 115, 22, 0.13);
+  border-color: rgba(249, 115, 22, 0.38);
+}
+
+.mobile-nav-toggle {
+  display: none;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.88);
+  color: white;
+  padding: 9px 12px;
+  font-size: 1.15rem;
+  cursor: pointer;
+}
+
     .hero {
       position: relative;
       height: 60vh;
@@ -198,6 +308,7 @@
   z-index: -1;
 }
 
+
 .eyebrow {
   color: #8fb3ff;
   font-size: 0.8rem;
@@ -216,6 +327,68 @@
   color: #b8c2d8;
   font-size: 18px;
   line-height: 1.6;
+}
+
+.operations-intro {
+  width: 96%;
+  max-width: 1500px;
+  margin: 0 auto 34px;
+  padding: 26px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 26px;
+  background:
+    radial-gradient(circle at top left, rgba(56, 189, 248, 0.16), transparent 36%),
+    linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(8, 13, 24, 0.92));
+  border: 1px solid rgba(56, 189, 248, 0.22);
+  border-radius: 24px;
+  box-shadow: 0 22px 55px rgba(0,0,0,0.34);
+  position: relative;
+  z-index: 2;
+}
+
+.operations-intro .eyebrow {
+  margin: 0 0 10px;
+  color: #38bdf8;
+}
+
+.operations-intro h2 {
+  margin: 0;
+  max-width: 850px;
+  color: #f8fafc;
+  font-size: clamp(1.65rem, 3vw, 2.85rem);
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+}
+
+.operations-intro .dashboard-subtitle {
+  max-width: 820px;
+  margin-top: 14px;
+}
+
+.operations-status-card {
+  min-width: 270px;
+  padding: 16px 18px;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  background: rgba(2, 6, 23, 0.62);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 18px;
+}
+
+.operations-status-card strong {
+  display: block;
+  color: #f8fafc;
+  font-size: 0.95rem;
+}
+
+.operations-status-card p {
+  margin: 4px 0 0;
+  color: #94a3b8;
+  font-size: 0.78rem;
+  line-height: 1.35;
 }
 
 .dashboard-grid {
@@ -2010,6 +2183,73 @@ nav a {
   padding: 9px 12px;
 }
 
+.site-header {
+  padding: 12px 14px;
+  align-items: center;
+}
+
+.site-brand {
+  min-width: 0;
+}
+
+.brand-main {
+  font-size: 0.92rem;
+}
+
+.brand-sub {
+  font-size: 0.54rem;
+}
+
+.mobile-nav-toggle {
+  display: block;
+}
+
+.site-nav {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 12px;
+  right: 12px;
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(3, 8, 18, 0.98);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 16px;
+  padding: 10px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.55);
+}
+
+.site-nav.open {
+  display: flex;
+}
+
+.site-nav a {
+  width: 100%;
+  padding: 12px 13px;
+}
+
+.operations-intro {
+  width: 100%;
+  margin: 0 auto 22px;
+  padding: 20px 18px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.operations-intro h2 {
+  font-size: 1.65rem;
+}
+
+.operations-intro .dashboard-subtitle {
+  font-size: 0.92rem;
+}
+
+.operations-status-card {
+  width: 100%;
+  min-width: 0;
+}
+
 }
 
 .warning-detail-card.winter-mode {
@@ -2988,24 +3228,69 @@ filter: brightness(1.15);
 
 <body>
 
-<header>
-  <h1>Zacharologist Wx Page</h1>
-  <nav>
-    <a href="index.html">Home</a>
-    <a href="wx-updates.html">Wx Updates</a>
-    <a href="maps.html">Maps &amp; Models</a>
+<header class="site-header">
+  <a class="site-brand" href="index.html">
+    <div class="brand-main">ZACHAROLOGIST <span>WX</span></div>
+    <div class="brand-sub">Operations Hub</div>
+  </a>
+
+  <button class="mobile-nav-toggle" type="button" aria-label="Open navigation">
+    ☰
+  </button>
+
+  <nav class="site-nav" id="siteNav">
+    <a href="index.html" class="active">
+      Home
+      <span>Operations</span>
+    </a>
+
+    <a href="wx-updates.html">
+      Wx Updates
+      <span>Briefings</span>
+    </a>
+
+    <a href="maps.html">
+      Maps &amp; Models
+      <span>Analysis</span>
+    </a>
+
+    <a href="storm-chasing.html" class="chase-link">
+      Storm Chasing
+      <span>Field Ops</span>
+    </a>
+
+    <a href="chase-logs.html">
+      Chase Logs
+      <span>Archive</span>
+    </a>
+
+    <a href="media.html">
+      Media
+      <span>Photo / Video</span>
+    </a>
   </nav>
 </header>
 
 <section class="forecast-dashboard">
 
-  <div class="dashboard-header">
-    <p class="eyebrow">Forecast Operations Dashboard</p>
-    <h2>Latest Forecast Briefing</h2>
+<div class="operations-intro">
+  <div>
+    <p class="eyebrow">Weather Operations Hub</p>
+    <h2>Live radar, active alerts, SPC outlooks, and forecast monitoring.</h2>
     <p class="dashboard-subtitle">
-      My current read on weather patterns, severe risk, and where to look next.
+      A centralized dashboard for severe weather awareness, live radar viewing,
+      active NWS alerts, and current forecast thoughts.
     </p>
   </div>
+
+  <div class="operations-status-card">
+    <span class="status-dot"></span>
+    <div>
+      <strong>Operational</strong>
+      <p>Monitoring active weather and forecast updates</p>
+    </div>
+  </div>
+</div>
 
  <div class="dashboard-grid">
 
@@ -5276,6 +5561,15 @@ document.addEventListener("keydown", event => {
     closeRadarModal();
   }
 });
+
+const mobileNavToggle = document.querySelector(".mobile-nav-toggle");
+const siteNav = document.querySelector("#siteNav");
+
+if (mobileNavToggle && siteNav) {
+  mobileNavToggle.addEventListener("click", () => {
+    siteNav.classList.toggle("open");
+  });
+}
 
 loadSPCImages();
 setInterval(loadSPCImages, 10 * 60 * 1000);
