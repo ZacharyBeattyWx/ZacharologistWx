@@ -10,6 +10,12 @@
 
 <script src="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.js"></script>
 
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <style>
     * {
@@ -1450,6 +1456,71 @@ body {
   height: 100%;
   border: 0;
   display: block;
+}
+
+.single-site-radar-viewer {
+  display: none;
+  width: 100%;
+  height: 100%;
+  background: #050b14;
+  position: relative;
+}
+
+.single-radar-toolbar {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 900;
+
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+
+  background: rgba(8, 12, 20, 0.86);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 14px;
+  padding: 10px 12px;
+
+  color: white;
+  backdrop-filter: blur(10px);
+}
+
+.single-radar-toolbar label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #cbd5e1;
+}
+
+.single-radar-toolbar select,
+.single-radar-toolbar button {
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.10);
+  color: white;
+  border-radius: 10px;
+  padding: 7px 9px;
+  font-weight: 800;
+}
+
+.single-radar-toolbar button {
+  cursor: pointer;
+}
+
+.single-radar-toolbar button:hover {
+  background: rgba(250,204,21,0.22);
+}
+
+#singleSiteRadarMap {
+  width: 100%;
+  height: 100%;
+  background: #07111f;
+}
+
+.leaflet-container {
+  background: #07111f;
 }
 
 .radar-modal-note {
@@ -3102,22 +3173,39 @@ filter: brightness(1.15);
       </button>
 
       <button class="radar-mode-btn" type="button" data-radar-mode="raw">
-         Hi-Res CONUS
+        Single-Site Radar
       </button>
     </div>
 
     <div class="radar-frame-wrap">
-      <iframe
-        id="radarFrame"
-        title="Storm radar viewer"
-        src=""
-        loading="lazy"
-        allowfullscreen>
-      </iframe>
+  <iframe
+    id="radarFrame"
+    title="Storm radar viewer"
+    src=""
+    loading="lazy"
+    allowfullscreen>
+  </iframe>
+
+  <div id="singleSiteRadarViewer" class="single-site-radar-viewer">
+    <div class="single-radar-toolbar">
+      <label>
+        Radar Site
+        <select id="radarSiteSelect">
+  <option value="">Loading NWS radar sites...</option>
+</select>
+      </label>
+
+      <button id="radarRefreshBtn" type="button">
+        ↻ Refresh
+      </button>
     </div>
 
+    <div id="singleSiteRadarMap"></div>
+  </div>
+</div>
+
     <div class="radar-modal-note">
-      Hi-Res CONUS uses a national NEXRAD reflectivity mosaic for broad storm tracking.
+      Single-Site Radar uses IEM RIDGE NEXRAD imagery for base reflectivity.
     </div>
   </div>
 </div>
@@ -4435,28 +4523,133 @@ const radarCloseBtn = document.querySelector(".radar-modal-close");
 const radarBackdrop = document.querySelector(".radar-modal-backdrop");
 const radarModeButtons = document.querySelectorAll(".radar-mode-btn");
 
-/*
-  Clean radar:
-  COD continental composite radar.
+const singleSiteRadarViewer = document.getElementById("singleSiteRadarViewer");
+const radarSiteSelect = document.getElementById("radarSiteSelect");
+const radarRefreshBtn = document.getElementById("radarRefreshBtn");
 
-  Raw Reflectivity:
-  COD NEXRAD single-site Base Reflectivity.
-
-  RAX = Raleigh, NC radar.
-  FCX = Blacksburg, VA radar.
-  GSP = Greer, SC radar.
-
-  Since you're in central NC, RAX is a good default.
-*/
+let singleSiteMap = null;
+let singleSiteRadarLayer = null;
 
 const radarUrls = {
-  clean: "https://embed.windy.com/embed2.html?lat=39.5&lon=-96&zoom=4&level=surface&overlay=radar&product=radar",
-
-  raw: "https://mesonet.agron.iastate.edu/current/mcview.phtml?prod=usrad&java=none&mode=realtime&frames=1"
+  clean: "https://embed.windy.com/embed2.html?lat=39.5&lon=-96&zoom=4&level=surface&overlay=radar&product=radar"
 };
 
+let radarSites = {};
+let radarSitesLoaded = false;
+
+function getRadarIdFromFeature(feature) {
+  const props = feature.properties || {};
+
+  return (
+    props.id ||
+    props.stationIdentifier ||
+    props.radarStation ||
+    feature.id?.split("/").pop() ||
+    ""
+  ).toUpperCase();
+}
+
+function getIemSectorFromNwsId(id) {
+  /*
+    NWS API usually gives IDs like KRAX, KTLX, KFFC.
+    IEM single-site radar usually wants RAX, TLX, FFC.
+  */
+  if (!id) return "";
+
+  const cleanId = id.toUpperCase().trim();
+
+  if (cleanId.length === 4) {
+    return cleanId.slice(1);
+  }
+
+  return cleanId;
+}
+
+async function loadNwsRadarSites() {
+  if (radarSitesLoaded) return;
+
+  const select = document.getElementById("radarSiteSelect");
+  if (!select) return;
+
+  try {
+    const response = await fetch("https://api.weather.gov/radar/stations", {
+      headers: {
+        "Accept": "application/geo+json"
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error("Unable to load NWS radar station list");
+    }
+
+    const data = await response.json();
+
+    const sites = (data.features || [])
+      .map(feature => {
+        const id = getRadarIdFromFeature(feature);
+        const sector = getIemSectorFromNwsId(id);
+        const props = feature.properties || {};
+        const coords = feature.geometry?.coordinates || [];
+
+        const lon = Number(coords[0]);
+        const lat = Number(coords[1]);
+
+        if (!id || !sector || Number.isNaN(lat) || Number.isNaN(lon)) {
+          return null;
+        }
+
+        return {
+          id,
+          sector,
+          name: props.name || props.location || id,
+          center: [lat, lon],
+          zoom: 7
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.sector.localeCompare(b.sector));
+
+    radarSites = {};
+
+    sites.forEach(site => {
+      radarSites[site.sector] = site;
+    });
+
+    select.innerHTML = sites
+      .map(site => {
+        return `<option value="${site.sector}">${site.sector} — ${site.name}</option>`;
+      })
+      .join("");
+
+    // Default to Raleigh if available, otherwise first station in the list
+    if (radarSites.RAX) {
+      select.value = "RAX";
+    } else if (sites[0]) {
+      select.value = sites[0].sector;
+    }
+
+    radarSitesLoaded = true;
+  } catch (error) {
+    console.error("Radar site loading error:", error);
+
+    select.innerHTML = `
+      <option value="RAX">RAX — Raleigh, NC</option>
+      <option value="FCX">FCX — Blacksburg, VA</option>
+      <option value="GSP">GSP — Greer, SC</option>
+    `;
+
+    radarSites = {
+      RAX: { sector: "RAX", name: "Raleigh, NC", center: [35.7, -78.5], zoom: 7 },
+      FCX: { sector: "FCX", name: "Blacksburg, VA", center: [37.0, -80.3], zoom: 7 },
+      GSP: { sector: "GSP", name: "Greer, SC", center: [34.9, -82.2], zoom: 7 }
+    };
+
+    radarSitesLoaded = true;
+  }
+}
+
 function openRadarModal(mode = "clean") {
-  if (!radarModal || !radarFrame) return;
+  if (!radarModal) return;
 
   radarModal.classList.add("is-open");
   document.body.style.overflow = "hidden";
@@ -4465,20 +4658,18 @@ function openRadarModal(mode = "clean") {
 }
 
 function closeRadarModal() {
-  if (!radarModal || !radarFrame) return;
+  if (!radarModal) return;
 
   radarModal.classList.remove("is-open");
   document.body.style.overflow = "";
 
-  // Clears iframe so it stops running in the background
-  radarFrame.src = "";
+  if (radarFrame) {
+    radarFrame.src = "";
+  }
 }
 
 function setRadarMode(mode) {
-  if (!radarFrame) return;
-
-  const selectedMode = radarUrls[mode] ? mode : "clean";
-  radarFrame.src = radarUrls[selectedMode];
+  const selectedMode = mode === "raw" ? "raw" : "clean";
 
   radarModeButtons.forEach(button => {
     button.classList.toggle(
@@ -4486,6 +4677,105 @@ function setRadarMode(mode) {
       button.dataset.radarMode === selectedMode
     );
   });
+
+  if (selectedMode === "raw") {
+    if (radarFrame) {
+      radarFrame.style.display = "none";
+      radarFrame.src = "";
+    }
+
+    if (singleSiteRadarViewer) {
+      singleSiteRadarViewer.style.display = "block";
+    }
+
+    initSingleSiteRadar();
+    return;
+  }
+
+  if (singleSiteRadarViewer) {
+    singleSiteRadarViewer.style.display = "none";
+  }
+
+  if (radarFrame) {
+    radarFrame.style.display = "block";
+    radarFrame.src = radarUrls.clean;
+  }
+}
+
+function initSingleSiteRadar() {
+  if (!window.L) {
+    console.error("Leaflet did not load.");
+    return;
+  }
+
+  if (!radarSitesLoaded) {
+    loadNwsRadarSites().then(() => {
+      initSingleSiteRadar();
+    });
+
+    return;
+  }
+
+  const site = radarSiteSelect?.value || "RAX";
+  const siteInfo = radarSites[site] || radarSites.RAX;
+
+  if (!siteInfo) {
+    console.warn("No radar site info found.");
+    return;
+  }
+
+  if (!singleSiteMap) {
+    singleSiteMap = L.map("singleSiteRadarMap", {
+      zoomControl: true,
+      attributionControl: true
+    }).setView(siteInfo.center, siteInfo.zoom);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 11,
+      attribution: "© OpenStreetMap"
+    }).addTo(singleSiteMap);
+  }
+
+  singleSiteMap.setView(siteInfo.center, siteInfo.zoom);
+
+  requestAnimationFrame(() => {
+    singleSiteMap.invalidateSize();
+  });
+
+  loadSingleSiteRadar(site);
+}
+
+function loadSingleSiteRadar(site) {
+  if (!singleSiteMap) return;
+
+  if (singleSiteRadarLayer) {
+    singleSiteMap.removeLayer(singleSiteRadarLayer);
+  }
+
+  /*
+    IEM RIDGE single-site radar.
+    sector = radar site, example RAX
+    prod = radar product
+
+    N0B is the newer base reflectivity product.
+    If it ever fails, test N0Q as a fallback.
+  */
+
+  singleSiteRadarLayer = L.tileLayer.wms(
+    "https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/ridge.cgi",
+    {
+      layers: "single",
+      format: "image/png",
+      transparent: true,
+      opacity: 0.82,
+      sector: site,
+      prod: "N0B",
+      version: "1.1.1",
+      attribution: "Radar: IEM / NEXRAD"
+    }
+  );
+
+  singleSiteRadarLayer.addTo(singleSiteMap);
 }
 
 radarModeButtons.forEach(button => {
@@ -4493,6 +4783,26 @@ radarModeButtons.forEach(button => {
     setRadarMode(button.dataset.radarMode);
   });
 });
+
+if (radarSiteSelect) {
+  radarSiteSelect.addEventListener("change", () => {
+    const site = radarSiteSelect.value;
+    const siteInfo = radarSites[site];
+
+    if (singleSiteMap && siteInfo) {
+      singleSiteMap.setView(siteInfo.center, siteInfo.zoom);
+    }
+
+    loadSingleSiteRadar(site);
+  });
+}
+
+if (radarRefreshBtn) {
+  radarRefreshBtn.addEventListener("click", () => {
+    const site = radarSiteSelect?.value || "RAX";
+    loadSingleSiteRadar(site);
+  });
+}
 
 if (radarCloseBtn) {
   radarCloseBtn.addEventListener("click", closeRadarModal);
