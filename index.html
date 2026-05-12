@@ -5163,7 +5163,8 @@ async function initSingleSiteRadar() {
       attributionControl: true
     }).setView(siteInfo.center, siteInfo.zoom);
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    L.tileLayer(
+  "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png", {
       maxZoom: 11,
       attribution: "© OpenStreetMap"
     }).addTo(singleSiteMap);
@@ -5202,7 +5203,7 @@ function loadSingleSiteRadar(site) {
       layers: "single",
       format: "image/png",
       transparent: true,
-      opacity: 0.82,
+      opacity: 0.97,
       sector: site,
       prod: radarProductSelect?.value || "N0B",
       version: "1.1.1",
