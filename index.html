@@ -3718,6 +3718,48 @@ filter: brightness(1.15);
   }
 }
 
+/* FINAL WIDE DESKTOP OPS BOARD — USE MORE SIDE SPACE */
+
+@media (min-width: 1200px) {
+  .site-header,
+  .operations-intro,
+  .forecast-dashboard .ops-dashboard-grid,
+  .quick-tools-row {
+    width: calc(100% - 72px) !important;
+    max-width: 1720px !important;
+  }
+
+  .forecast-dashboard .ops-dashboard-grid {
+    grid-template-columns:
+      minmax(300px, 0.9fr)
+      minmax(680px, 1.75fr)
+      minmax(320px, 0.95fr) !important;
+
+    gap: 20px !important;
+  }
+
+  .forecast-dashboard .radar-frame {
+    height: 385px !important;
+  }
+
+  .forecast-dashboard .spc-card .spc-image-scroll {
+    height: 385px !important;
+    max-height: 385px !important;
+  }
+
+  .forecast-dashboard .ops-conditions-card,
+  .forecast-dashboard .alerts-card,
+  .forecast-dashboard .forecast-discussion-card {
+    min-height: 225px !important;
+  }
+
+  .forecast-dashboard .spc-card,
+  .forecast-dashboard .radar-card,
+  .forecast-dashboard .ops-live-card {
+    min-height: 455px !important;
+  }
+}
+
  </style>
 </head>
 
