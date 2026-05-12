@@ -1336,6 +1336,123 @@ body {
   box-sizing: border-box;
 }
 
+.radar-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: none;
+}
+
+.radar-modal.is-open {
+  display: block;
+}
+
+.radar-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.82);
+  backdrop-filter: blur(8px);
+}
+
+.radar-modal-box {
+  position: relative;
+  z-index: 2;
+  width: min(1180px, calc(100vw - 28px));
+  height: min(820px, calc(100vh - 28px));
+  margin: 14px auto;
+  background: #07111f;
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 22px;
+  overflow: hidden;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.55);
+  display: flex;
+  flex-direction: column;
+}
+
+.radar-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  background: linear-gradient(135deg, rgba(15,23,42,0.98), rgba(30,41,59,0.95));
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+}
+
+.radar-modal-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #fff;
+}
+
+.radar-modal-header p {
+  margin: 4px 0 0;
+  color: #cbd5e1;
+  font-size: 0.88rem;
+}
+
+.radar-modal-close {
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+  font-size: 1.8rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.radar-modal-close:hover {
+  background: rgba(255,255,255,0.22);
+}
+
+.radar-mode-buttons {
+  display: flex;
+  gap: 10px;
+  padding: 12px 14px;
+  background: rgba(15,23,42,0.92);
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.radar-mode-btn {
+  border: 1px solid rgba(255,255,255,0.16);
+  background: rgba(255,255,255,0.08);
+  color: #dbeafe;
+  padding: 10px 14px;
+  border-radius: 999px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.radar-mode-btn.active {
+  background: linear-gradient(135deg, #facc15, #f97316);
+  color: #111827;
+  border-color: rgba(250,204,21,0.9);
+  box-shadow: 0 0 18px rgba(250,204,21,0.28);
+}
+
+.radar-frame-wrap {
+  flex: 1;
+  min-height: 0;
+  background: #020617;
+}
+
+#radarFrame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+
+.radar-modal-note {
+  padding: 9px 14px;
+  color: #94a3b8;
+  font-size: 0.78rem;
+  background: rgba(2,6,23,0.94);
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+
 /* DESKTOP ALERT TAB LAYOUT: centered tabs only */
 @media (min-width: 769px) {
   .alerts-card #alertsTitle,
@@ -1710,6 +1827,36 @@ nav a {
 
 .alert-tabs::-webkit-scrollbar {
   display: none;
+}
+
+.radar-modal-box {
+  width: calc(100vw - 12px);
+  height: calc(100vh - 12px);
+  margin: 6px auto;
+  border-radius: 16px;
+}
+
+.radar-modal-header {
+  padding: 12px;
+}
+
+.radar-modal-header h2 {
+  font-size: 1rem;
+}
+
+.radar-modal-header p {
+  font-size: 0.76rem;
+}
+
+.radar-mode-buttons {
+  overflow-x: auto;
+  padding: 10px;
+}
+
+.radar-mode-btn {
+  flex: 0 0 auto;
+  font-size: 0.82rem;
+  padding: 9px 12px;
 }
 
 }
@@ -2536,6 +2683,71 @@ filter: brightness(1.15);
   box-shadow: 0 0 14px color-mix(in srgb, var(--alert-color) 45%, transparent) !important;
 }
 
+/* FINAL RADAR BUTTON FIX — KEEP NEAR BOTTOM */
+
+.forecast-dashboard .alerts-card .ro-alert-bottom-row {
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto !important;
+}
+
+/* Green Radar button */
+.forecast-dashboard .alerts-card .globe-button {
+  width: auto !important;
+  min-width: 74px !important;
+  height: 42px !important;
+
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px !important;
+
+  border: 0 !important;
+  border-radius: 9px !important;
+
+  padding: 0 11px !important;
+  margin: 0 !important;
+
+  background: rgba(67, 211, 113, 0.24) !important;
+  color: #4cff8c !important;
+
+  font-size: 0.82rem !important;
+  font-weight: 900 !important;
+  cursor: pointer !important;
+
+  white-space: nowrap !important;
+}
+
+/* Yellow Hi-Res / Reflectivity button */
+.forecast-dashboard .alerts-card .raw-radar-button {
+  width: auto !important;
+  min-width: 104px !important;
+  height: 42px !important;
+
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px !important;
+
+  border: 1px solid rgba(250, 204, 21, 0.42) !important;
+  border-radius: 9px !important;
+
+  padding: 0 11px !important;
+  margin: 0 !important;
+
+  background: rgba(250, 204, 21, 0.15) !important;
+  color: #fde68a !important;
+
+  font-size: 0.82rem !important;
+  font-weight: 900 !important;
+  cursor: pointer !important;
+
+  white-space: nowrap !important;
+}
+
+.forecast-dashboard .alerts-card .globe-button:hover,
+.forecast-dashboard .alerts-card .raw-radar-button:hover {
+  filter: brightness(1.18);
+}
+
  </style>
 </head>
 
@@ -2778,6 +2990,45 @@ filter: brightness(1.15);
  </div>  
 </div>
 </div>
+</div>
+
+<div class="radar-modal" id="radarModal">
+  <div class="radar-modal-backdrop"></div>
+
+  <div class="radar-modal-box">
+    <div class="radar-modal-header">
+      <div>
+        <h2>Storm Radar</h2>
+        <p>Clean radar and raw base reflectivity views</p>
+      </div>
+
+      <button class="radar-modal-close" type="button">×</button>
+    </div>
+
+    <div class="radar-mode-buttons">
+      <button class="radar-mode-btn active" type="button" data-radar-mode="clean">
+        Clean Radar
+      </button>
+
+      <button class="radar-mode-btn" type="button" data-radar-mode="raw">
+        CONUS Reflectivity
+      </button>
+    </div>
+
+    <div class="radar-frame-wrap">
+      <iframe
+        id="radarFrame"
+        title="Storm radar viewer"
+        src=""
+        loading="lazy"
+        allowfullscreen>
+      </iframe>
+    </div>
+
+    <div class="radar-modal-note">
+      Hi Res Reflectivity uses single-site base reflectivity for storm analysis.
+    </div>
+  </div>
 </div>
 
 <script>
@@ -3220,9 +3471,13 @@ card.innerHTML = `
       ${locationText}
     </span>
 
-    <button class="ro-map-btn" type="button" title="Map preview">
-      🌎
-    </button>
+    <button class="globe-button" type="button" onclick="openRadarModal('clean')">
+  🌎 Radar
+</button>
+
+<button class="raw-radar-button" type="button" onclick="openRadarModal('raw')">
+  ⚡ Hi-Res Radar
+</button>
 
     <button class="compact-details-btn" data-alert-id="${alert.id}" type="button">
       ...
@@ -3893,6 +4148,84 @@ function loadSPCImages() {
     tryNextImage();
   });
 }
+
+const radarModal = document.getElementById("radarModal");
+const radarFrame = document.getElementById("radarFrame");
+const radarCloseBtn = document.querySelector(".radar-modal-close");
+const radarBackdrop = document.querySelector(".radar-modal-backdrop");
+const radarModeButtons = document.querySelectorAll(".radar-mode-btn");
+
+/*
+  Clean radar:
+  COD continental composite radar.
+
+  Raw Reflectivity:
+  COD NEXRAD single-site Base Reflectivity.
+
+  RAX = Raleigh, NC radar.
+  FCX = Blacksburg, VA radar.
+  GSP = Greer, SC radar.
+
+  Since you're in central NC, RAX is a good default.
+*/
+
+const radarUrls = {
+  clean: "https://weather.cod.edu/satrad/?parms=continental-conus-comp_radar-24-1-100-1&checked=map&colorbar=undefined",
+  raw: "https://weather.cod.edu/satrad/?parms=continental-conus-comp_radar-24-1-100-1&checked=map&colorbar=undefined"
+};
+
+function openRadarModal(mode = "clean") {
+  if (!radarModal || !radarFrame) return;
+
+  radarModal.classList.add("is-open");
+  document.body.style.overflow = "hidden";
+
+  setRadarMode(mode);
+}
+
+function closeRadarModal() {
+  if (!radarModal || !radarFrame) return;
+
+  radarModal.classList.remove("is-open");
+  document.body.style.overflow = "";
+
+  // Clears iframe so it stops running in the background
+  radarFrame.src = "";
+}
+
+function setRadarMode(mode) {
+  if (!radarFrame) return;
+
+  const selectedMode = radarUrls[mode] ? mode : "clean";
+  radarFrame.src = radarUrls[selectedMode];
+
+  radarModeButtons.forEach(button => {
+    button.classList.toggle(
+      "active",
+      button.dataset.radarMode === selectedMode
+    );
+  });
+}
+
+radarModeButtons.forEach(button => {
+  button.addEventListener("click", () => {
+    setRadarMode(button.dataset.radarMode);
+  });
+});
+
+if (radarCloseBtn) {
+  radarCloseBtn.addEventListener("click", closeRadarModal);
+}
+
+if (radarBackdrop) {
+  radarBackdrop.addEventListener("click", closeRadarModal);
+}
+
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape") {
+    closeRadarModal();
+  }
+});
 
 loadSPCImages();
 setInterval(loadSPCImages, 10 * 60 * 1000);
