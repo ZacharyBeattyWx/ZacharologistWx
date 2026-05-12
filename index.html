@@ -4933,6 +4933,249 @@ body {
   }
 }
 
+/* =========================================================
+   FINAL MOCKUP VIBE PASS — COMPACT OPS CONSOLE
+   Put this at the VERY BOTTOM of the CSS.
+========================================================= */
+
+@media (min-width: 769px) {
+
+  .forecast-dashboard {
+    padding: 30px 0 26px !important;
+    background:
+      radial-gradient(circle at 8% 0%, rgba(53, 200, 255, 0.08), transparent 34%),
+      linear-gradient(180deg, #02060d 0%, #07101c 100%) !important;
+  }
+
+  .ops-board-shell {
+    width: calc(100% - 80px) !important;
+    max-width: 1580px !important;
+    padding: 14px !important;
+    border-radius: 4px !important;
+
+    background:
+      linear-gradient(180deg, rgba(5, 10, 18, 0.98), rgba(3, 7, 13, 0.98)) !important;
+
+    border: 1px solid rgba(53, 200, 255, 0.14) !important;
+    box-shadow:
+      0 22px 55px rgba(0,0,0,0.42),
+      inset 0 1px 0 rgba(255,255,255,0.035) !important;
+  }
+
+  .operations-intro {
+    min-height: 112px !important;
+    padding: 16px 18px !important;
+    margin: 0 0 12px !important;
+    border-radius: 3px !important;
+
+    background:
+      linear-gradient(135deg, rgba(5, 12, 21, 0.98), rgba(2, 6, 12, 0.96)) !important;
+
+    border: 1px solid rgba(53, 200, 255, 0.16) !important;
+  }
+
+  .operations-intro h2 {
+    max-width: 760px !important;
+    font-size: clamp(1.45rem, 1.75vw, 2.05rem) !important;
+    line-height: 1.07 !important;
+  }
+
+  .operations-intro .dashboard-subtitle {
+    max-width: 760px !important;
+    margin-top: 8px !important;
+    font-size: 0.86rem !important;
+    line-height: 1.42 !important;
+  }
+
+  .operations-status-card {
+    min-width: 240px !important;
+    padding: 12px 14px !important;
+    border-radius: 3px !important;
+  }
+
+  .forecast-dashboard .ops-dashboard-grid {
+    grid-template-columns:
+      minmax(280px, 0.82fr)
+      minmax(620px, 1.65fr)
+      minmax(300px, 0.86fr) !important;
+
+    grid-template-rows:
+      minmax(176px, auto)
+      minmax(365px, auto) !important;
+
+    gap: 12px !important;
+  }
+
+  .forecast-dashboard .dashboard-card {
+    padding: 14px 16px !important;
+    border-radius: 3px !important;
+
+    background:
+      linear-gradient(180deg, rgba(8, 15, 26, 0.98), rgba(4, 8, 15, 0.99)) !important;
+
+    border: 1px solid rgba(120, 155, 180, 0.15) !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.025),
+      0 10px 22px rgba(0,0,0,0.24) !important;
+  }
+
+  .forecast-dashboard .ops-conditions-card,
+  .forecast-dashboard .forecast-discussion-card,
+  .forecast-dashboard .alerts-card {
+    min-height: 176px !important;
+  }
+
+  .forecast-dashboard .spc-card,
+  .forecast-dashboard .radar-card,
+  .forecast-dashboard .ops-live-card {
+    min-height: 365px !important;
+  }
+
+  .mini-label,
+  .operations-intro .eyebrow,
+  .meta-label {
+    font-size: 0.56rem !important;
+    letter-spacing: 0.2em !important;
+    color: rgba(125, 211, 252, 0.86) !important;
+  }
+
+  .card-header-row {
+    margin-bottom: 8px !important;
+  }
+
+  .card-header-row h3,
+  .briefing-title-row h3,
+  .mini-card h3,
+  .alerts-card h2 {
+    font-size: 1rem !important;
+    line-height: 1.05 !important;
+    letter-spacing: -0.02em !important;
+  }
+
+  .forecast-dashboard .briefing-title-row {
+    margin: 8px 0 10px !important;
+  }
+
+  .forecast-dashboard .forecast-discussion-card .briefing-text {
+    font-size: 0.82rem !important;
+    line-height: 1.45 !important;
+  }
+
+  .forecast-dashboard .forecast-discussion-card .briefing-meta {
+    margin: 12px 0 0 !important;
+    gap: 8px !important;
+  }
+
+  .forecast-dashboard .forecast-discussion-card .briefing-meta div {
+    padding: 9px 10px !important;
+    border-radius: 3px !important;
+  }
+
+  .dashboard-button,
+  .subtle-button {
+    padding: 8px 14px !important;
+    border-radius: 3px !important;
+    font-size: 0.62rem !important;
+    letter-spacing: 0.12em !important;
+    background: rgba(255,255,255,0.055) !important;
+    border: 1px solid rgba(120, 155, 180, 0.20) !important;
+    color: #ffffff !important;
+    box-shadow: none !important;
+  }
+
+  .dashboard-button:hover,
+  .subtle-button:hover {
+    background: rgba(53, 200, 255, 0.10) !important;
+    border-color: rgba(53, 200, 255, 0.32) !important;
+  }
+
+  .conditions-main {
+    margin-top: 8px !important;
+  }
+
+  .conditions-main strong {
+    font-size: 2.7rem !important;
+  }
+
+  .conditions-grid {
+    margin-top: 16px !important;
+    gap: 8px !important;
+  }
+
+  .conditions-grid div {
+    padding: 8px 10px !important;
+    border-radius: 3px !important;
+  }
+
+  .conditions-grid span {
+    font-size: 0.56rem !important;
+    letter-spacing: 0.13em !important;
+  }
+
+  .conditions-grid strong {
+    font-size: 0.78rem !important;
+  }
+
+  .radar-frame {
+    height: 300px !important;
+    margin-top: 8px !important;
+    border-radius: 3px !important;
+    filter: brightness(0.82) contrast(1.08) saturate(0.95);
+  }
+
+  .spc-slideshow {
+    height: 300px !important;
+    margin-top: 8px !important;
+    border-radius: 3px !important;
+  }
+
+  .spc-slide .spc-image-title,
+  .spc-image-title {
+    min-height: 22px !important;
+    padding: 4px 8px !important;
+    font-size: 0.58rem !important;
+    letter-spacing: 0.11em !important;
+    background: rgba(2, 5, 9, 0.95) !important;
+  }
+
+  .spc-outlook-img {
+    filter: brightness(0.88) contrast(1.08) saturate(0.92);
+  }
+
+  .ops-media-preview {
+    height: 150px !important;
+    margin: 10px 0 12px !important;
+    border-radius: 3px !important;
+  }
+
+  .ops-live-card p {
+    font-size: 0.82rem !important;
+    line-height: 1.45 !important;
+  }
+
+  .quick-tools-row {
+    width: calc(100% - 130px) !important;
+    max-width: 1500px !important;
+    margin: -4px auto 42px !important;
+    gap: 10px !important;
+  }
+
+  .quick-tool {
+    min-height: 50px !important;
+    border-radius: 3px !important;
+    padding: 10px 12px !important;
+  }
+
+  .quick-tool span {
+    font-size: 1rem !important;
+  }
+
+  .quick-tool strong {
+    font-size: 0.58rem !important;
+    letter-spacing: 0.12em !important;
+  }
+}
+
  </style>
 </head>
 
@@ -5752,7 +5995,7 @@ wrapper.className = "state-alert-dropdown";
 
 const parentMemoryKey = `${category}-alert-count`;
 
-wrapper.open = dropdownMemory[parentMemoryKey] ?? false;
+wrapper.open = dropdownMemory[parentMemoryKey] ?? true;
 
 wrapper.addEventListener("toggle", () => {
   dropdownMemory[parentMemoryKey] = wrapper.open;
@@ -5774,7 +6017,7 @@ stateDetails.className = "state-alert-group";
 
 const memoryKey = `${category}-${state}`;
 
-stateDetails.open = dropdownMemory[memoryKey] ?? false;
+stateDetails.open = dropdownMemory[memoryKey] ?? stateIndex === 0;
 
 stateDetails.addEventListener("toggle", () => {
   dropdownMemory[memoryKey] = stateDetails.open;
