@@ -4943,7 +4943,30 @@ function setRadarMode(mode) {
     );
   });
 
- if (selectedMode === "raw") {
+  if (selectedMode === "raw") {
+    if (radarFrame) {
+      radarFrame.style.display = "none";
+      radarFrame.src = "";
+    }
+
+    if (singleSiteRadarViewer) {
+      singleSiteRadarViewer.style.display = "flex";
+    }
+
+    initSingleSiteRadar().then(() => {
+      requestAnimationFrame(() => {
+        if (singleSiteMap) {
+          singleSiteMap.invalidateSize();
+        }
+
+        if (pendingRadarAlert) {
+          focusSingleSiteRadarOnAlert(pendingRadarAlert);
+        }
+      });
+    });
+
+    return;
+  }
 
   // CLEAN RADAR / WINDY MODE
   if (singleSiteRadarViewer) {
@@ -4966,7 +4989,6 @@ function setRadarMode(mode) {
       radarFrame.src = radarUrls.clean;
     }
   }
-    }
 }
 
 function getDistanceMiles(lat1, lon1, lat2, lon2) {
