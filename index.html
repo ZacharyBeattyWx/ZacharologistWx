@@ -4303,380 +4303,633 @@ filter: brightness(1.15);
 }
 
 /* =========================================================
-   FINAL VISUAL STYLE PASS — DARK OPERATIONS CONSOLE
-   Keep this at the VERY BOTTOM of the style section.
+   MOCKUP STYLE MATCH — MATTE WEATHER OPS CONSOLE
+   Keep this as the LAST CSS block.
 ========================================================= */
 
 :root {
-  --ops-bg-0: #030711;
-  --ops-bg-1: #07111f;
-  --ops-bg-2: #0b1628;
-  --ops-panel: rgba(9, 17, 31, 0.86);
-  --ops-panel-soft: rgba(15, 23, 42, 0.72);
-  --ops-border: rgba(148, 163, 184, 0.16);
-  --ops-border-bright: rgba(56, 189, 248, 0.30);
-  --ops-text: #f8fafc;
-  --ops-muted: #94a3b8;
-  --ops-soft: #cbd5e1;
-  --ops-cyan: #38bdf8;
-  --ops-blue: #60a5fa;
-  --ops-orange: #fb923c;
-  --ops-green: #22c55e;
+  --mock-bg: #020509;
+  --mock-bg-soft: #050b12;
+  --mock-panel: rgba(6, 12, 20, 0.94);
+  --mock-panel-2: rgba(9, 17, 28, 0.94);
+  --mock-card: rgba(8, 14, 24, 0.96);
+  --mock-border: rgba(120, 155, 180, 0.22);
+  --mock-border-soft: rgba(120, 155, 180, 0.13);
+  --mock-text: #f2f6fb;
+  --mock-muted: #9aa8b8;
+  --mock-cyan: #35c8ff;
+  --mock-orange: #ff6b1a;
+  --mock-yellow: #ffb21c;
+  --mock-red: #ff3b2f;
 }
 
-/* Page background: darker and more cinematic */
+/* PAGE BACKGROUND */
+html,
 body {
   background:
-    radial-gradient(circle at 12% 0%, rgba(56, 189, 248, 0.13), transparent 34%),
-    radial-gradient(circle at 88% 8%, rgba(249, 115, 22, 0.10), transparent 28%),
-    radial-gradient(circle at 50% 100%, rgba(37, 99, 235, 0.10), transparent 34%),
-    linear-gradient(180deg, var(--ops-bg-0) 0%, var(--ops-bg-1) 46%, #050914 100%) !important;
-  color: var(--ops-text);
+    radial-gradient(circle at top left, rgba(35, 120, 170, 0.10), transparent 32%),
+    linear-gradient(180deg, #020509 0%, #07101c 58%, #050914 100%) !important;
+  color: var(--mock-text) !important;
 }
 
-/* Top nav: sleeker and less bulky */
+/* NAV BAR — flatter, thinner, closer to mockup */
 .site-header {
-  background:
-    linear-gradient(180deg, rgba(3, 7, 17, 0.92), rgba(8, 13, 24, 0.82)) !important;
-  border-bottom: 1px solid rgba(56, 189, 248, 0.16) !important;
-  box-shadow:
-    0 18px 45px rgba(0,0,0,0.32),
-    inset 0 1px 0 rgba(255,255,255,0.04) !important;
+  width: calc(100% - 72px) !important;
+  max-width: 1760px !important;
+  margin: 0 auto !important;
+  padding: 12px 18px !important;
+
+  background: rgba(2, 6, 12, 0.96) !important;
+  border: 1px solid rgba(120, 155, 180, 0.12) !important;
+  border-top: none !important;
+  border-radius: 0 !important;
+
+  box-shadow: none !important;
+  backdrop-filter: blur(10px) !important;
 }
 
 .brand-main {
-  color: #f8fafc !important;
-  text-shadow: 0 0 22px rgba(56,189,248,0.12);
+  font-size: 1.05rem !important;
+  letter-spacing: 0.13em !important;
+  color: #ffffff !important;
+  text-shadow: none !important;
 }
 
 .brand-main span {
-  color: var(--ops-cyan) !important;
+  color: var(--mock-cyan) !important;
 }
 
 .brand-sub {
   color: rgba(125, 211, 252, 0.78) !important;
+  font-size: 0.58rem !important;
+  letter-spacing: 0.22em !important;
+}
+
+.site-nav {
+  gap: 10px !important;
 }
 
 .site-nav a {
+  padding: 9px 13px !important;
+  border-radius: 3px !important;
   background: transparent !important;
-  border-color: transparent !important;
-  color: rgba(226, 232, 240, 0.82) !important;
+  border: 1px solid transparent !important;
+
+  color: rgba(245, 248, 252, 0.88) !important;
+  font-size: 0.62rem !important;
+  letter-spacing: 0.09em !important;
+
+  box-shadow: none !important;
 }
 
 .site-nav a span {
-  color: rgba(148, 163, 184, 0.62) !important;
+  margin-top: 5px !important;
+  color: rgba(120, 155, 180, 0.72) !important;
+  font-size: 0.48rem !important;
+  letter-spacing: 0.13em !important;
 }
 
 .site-nav a:hover,
 .site-nav a.active {
-  background: rgba(56, 189, 248, 0.08) !important;
-  border-color: rgba(56, 189, 248, 0.24) !important;
+  background: rgba(20, 50, 70, 0.62) !important;
+  border-color: rgba(53, 200, 255, 0.35) !important;
   color: #ffffff !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
 }
 
 .site-nav a.active span {
-  color: var(--ops-cyan) !important;
+  color: var(--mock-cyan) !important;
 }
 
 .site-nav .chase-link {
-  color: #fdba74 !important;
+  color: var(--mock-orange) !important;
 }
 
 .site-nav .chase-link span {
-  color: rgba(251, 146, 60, 0.82) !important;
+  color: rgba(255, 107, 26, 0.78) !important;
 }
 
-/* Main operations area */
+/* MAIN DASHBOARD AREA */
 .forecast-dashboard {
+  padding: 42px 0 34px !important;
   background:
-    radial-gradient(circle at 8% 0%, rgba(56, 189, 248, 0.10), transparent 32%),
-    radial-gradient(circle at 90% 10%, rgba(249, 115, 22, 0.08), transparent 26%),
-    linear-gradient(180deg, rgba(3, 7, 17, 0.98), rgba(7, 17, 31, 0.96)) !important;
+    radial-gradient(circle at 12% 8%, rgba(53, 200, 255, 0.08), transparent 34%),
+    linear-gradient(180deg, #07101c 0%, #07101c 100%) !important;
 }
 
-/* One unified shell */
+/* BIG OUTER BOARD */
 .ops-board-shell {
+  width: calc(100% - 72px) !important;
+  max-width: 1760px !important;
+  margin: 0 auto !important;
+  padding: 22px !important;
+
   background:
-    linear-gradient(180deg, rgba(15, 23, 42, 0.68), rgba(2, 6, 23, 0.86)),
-    radial-gradient(circle at 18% 0%, rgba(56, 189, 248, 0.10), transparent 32%) !important;
-  border: 1px solid rgba(148, 163, 184, 0.14) !important;
+    linear-gradient(180deg, rgba(8, 15, 26, 0.94), rgba(5, 10, 18, 0.96)) !important;
+
+  border: 1px solid rgba(53, 200, 255, 0.16) !important;
+  border-radius: 7px !important;
+
   box-shadow:
-    0 30px 90px rgba(0,0,0,0.48),
-    inset 0 1px 0 rgba(255,255,255,0.045),
-    inset 0 0 0 1px rgba(56,189,248,0.035) !important;
+    0 20px 60px rgba(0,0,0,0.36),
+    inset 0 1px 0 rgba(255,255,255,0.035) !important;
 }
 
-/* Header strip */
+/* TOP INTRO PANEL */
 .operations-intro {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 0 18px !important;
+  padding: 20px 22px !important;
+  min-height: 130px !important;
+
   background:
-    linear-gradient(135deg, rgba(8, 16, 31, 0.94), rgba(2, 6, 23, 0.72)),
-    radial-gradient(circle at 8% 0%, rgba(56, 189, 248, 0.18), transparent 38%) !important;
-  border: 1px solid rgba(56, 189, 248, 0.18) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.045),
-    0 14px 34px rgba(0,0,0,0.22) !important;
+    linear-gradient(135deg, rgba(5, 13, 22, 0.96), rgba(4, 9, 16, 0.92)) !important;
+
+  border: 1px solid rgba(53, 200, 255, 0.18) !important;
+  border-radius: 5px !important;
+  box-shadow: none !important;
 }
 
 .operations-intro .eyebrow,
 .mini-label,
 .meta-label {
-  color: rgba(125, 211, 252, 0.88) !important;
-  font-size: 0.68rem !important;
-  letter-spacing: 0.16em !important;
+  color: rgba(125, 211, 252, 0.86) !important;
+  font-size: 0.62rem !important;
   font-weight: 900 !important;
+  letter-spacing: 0.18em !important;
 }
 
 .operations-intro h2 {
-  color: #f8fafc !important;
-  text-shadow: 0 0 34px rgba(56,189,248,0.10);
+  color: var(--mock-text) !important;
+  font-size: clamp(1.65rem, 2.25vw, 2.5rem) !important;
+  line-height: 1.08 !important;
+  max-width: 870px !important;
+  text-shadow: none !important;
 }
 
-.dashboard-subtitle,
-.briefing-text,
-.mini-card p,
-.ops-live-card p {
-  color: rgba(203, 213, 225, 0.82) !important;
+.operations-intro .dashboard-subtitle {
+  color: rgba(200, 210, 224, 0.78) !important;
+  max-width: 770px !important;
+  font-size: 0.96rem !important;
+  line-height: 1.5 !important;
 }
 
-/* Status card */
+/* STATUS PILL — no big glow */
 .operations-status-card {
-  background:
-    linear-gradient(180deg, rgba(15, 23, 42, 0.74), rgba(2, 6, 23, 0.74)) !important;
-  border: 1px solid rgba(34, 197, 94, 0.20) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.04),
-    0 0 26px rgba(34,197,94,0.08) !important;
+  background: rgba(4, 9, 16, 0.92) !important;
+  border: 1px solid rgba(120, 155, 180, 0.22) !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
 }
 
 .status-dot {
-  background: var(--ops-green) !important;
-  box-shadow:
-    0 0 12px rgba(34,197,94,0.85),
-    0 0 28px rgba(34,197,94,0.30) !important;
+  background: #28e76f !important;
+  box-shadow: 0 0 8px rgba(40, 231, 111, 0.75) !important;
 }
 
-/* Dashboard cards */
+/* ALL DASHBOARD CARDS */
 .forecast-dashboard .dashboard-card {
   background:
-    linear-gradient(180deg, rgba(15, 23, 42, 0.80), rgba(8, 13, 24, 0.88)) !important;
-  border: 1px solid var(--ops-border) !important;
-  border-radius: 18px !important;
+    linear-gradient(180deg, rgba(9, 17, 29, 0.96), rgba(6, 11, 20, 0.98)) !important;
+
+  border: 1px solid var(--mock-border-soft) !important;
+  border-radius: 5px !important;
+
   box-shadow:
-    0 18px 44px rgba(0,0,0,0.30),
-    inset 0 1px 0 rgba(255,255,255,0.04) !important;
-  backdrop-filter: blur(18px) !important;
+    inset 0 1px 0 rgba(255,255,255,0.025),
+    0 12px 28px rgba(0,0,0,0.22) !important;
+
+  backdrop-filter: none !important;
 }
 
 .forecast-dashboard .dashboard-card:hover {
-  border-color: rgba(56, 189, 248, 0.26) !important;
+  border-color: rgba(53, 200, 255, 0.24) !important;
   box-shadow:
-    0 20px 52px rgba(0,0,0,0.36),
-    0 0 34px rgba(56,189,248,0.055),
-    inset 0 1px 0 rgba(255,255,255,0.05) !important;
+    inset 0 1px 0 rgba(255,255,255,0.03),
+    0 14px 32px rgba(0,0,0,0.24) !important;
 }
 
-/* Card headers */
+/* CARD TITLES */
 .card-header-row h3,
 .briefing-title-row h3,
 .briefing-card h3,
 .mini-card h3,
 .alerts-card h2 {
-  color: #f8fafc !important;
-  letter-spacing: -0.035em;
-  text-shadow: 0 0 28px rgba(56,189,248,0.07);
+  color: #ffffff !important;
+  letter-spacing: -0.02em !important;
+  text-shadow: none !important;
 }
 
 .card-time {
-  padding: 6px 9px;
-  border-radius: 999px;
-  background: rgba(56, 189, 248, 0.08);
-  border: 1px solid rgba(56, 189, 248, 0.14);
-  color: rgba(186, 230, 253, 0.78) !important;
+  color: rgba(210, 220, 235, 0.74) !important;
+  background: transparent !important;
+  border: none !important;
+  font-size: 0.58rem !important;
+  letter-spacing: 0.17em !important;
 }
 
-/* Conditions card */
+/* LIVE CONDITIONS */
 .conditions-main strong {
-  color: #f8fafc !important;
-  text-shadow: 0 0 38px rgba(56,189,248,0.14);
+  color: #ffffff !important;
+  text-shadow: none !important;
 }
 
 .conditions-main span,
 .conditions-main p {
-  color: rgba(203,213,225,0.84) !important;
+  color: rgba(210, 220, 235, 0.78) !important;
 }
 
 .conditions-grid div,
 .briefing-meta div {
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.025)) !important;
-  border: 1px solid rgba(148, 163, 184, 0.11) !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.035);
+  background: rgba(255,255,255,0.045) !important;
+  border: 1px solid rgba(120, 155, 180, 0.12) !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
 }
 
-/* Buttons */
-.dashboard-button {
-  background:
-    linear-gradient(135deg, rgba(56,189,248,0.95), rgba(37,99,235,0.88)) !important;
-  color: #03111f !important;
-  border: 1px solid rgba(125,211,252,0.35);
-  box-shadow:
-    0 10px 22px rgba(56,189,248,0.18),
-    inset 0 1px 0 rgba(255,255,255,0.24);
+.conditions-grid span,
+.briefing-meta span {
+  color: rgba(125, 211, 252, 0.78) !important;
 }
 
-.dashboard-button:hover {
-  filter: brightness(1.08);
-  transform: translateY(-1px);
+/* BUTTONS — mockup-style dark/flat buttons */
+.dashboard-button,
+.subtle-button {
+  background: rgba(255,255,255,0.06) !important;
+  color: #ffffff !important;
+
+  border: 1px solid rgba(120, 155, 180, 0.22) !important;
+  border-radius: 4px !important;
+
+  padding: 10px 18px !important;
+  font-size: 0.72rem !important;
+  font-weight: 900 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+
+  box-shadow: none !important;
 }
 
-/* Radar / media containers */
-.radar-frame,
+.dashboard-button:hover,
+.subtle-button:hover {
+  background: rgba(53, 200, 255, 0.12) !important;
+  border-color: rgba(53, 200, 255, 0.35) !important;
+  transform: none !important;
+  filter: none !important;
+}
+
+/* RADAR PANEL */
+.radar-card {
+  background: rgba(7, 13, 22, 0.98) !important;
+}
+
+.radar-frame {
+  border: 1px solid rgba(120, 155, 180, 0.16) !important;
+  border-radius: 4px !important;
+  background: #020509 !important;
+  box-shadow: none !important;
+
+  /*
+    This only affects the iframe appearance.
+    It cannot restyle Windy's internal labels/buttons.
+  */
+  filter: brightness(0.84) contrast(1.05) saturate(0.92);
+}
+
+/* SPC PANEL — works for slideshow or old 2x2 grid */
+.spc-card {
+  background: rgba(7, 13, 22, 0.98) !important;
+}
+
 .spc-slideshow,
-.ops-media-preview {
-  border: 1px solid rgba(148, 163, 184, 0.16) !important;
-  background: #020617 !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.035),
-    0 12px 30px rgba(0,0,0,0.28) !important;
+.spc-image-scroll {
+  border: 1px solid rgba(120, 155, 180, 0.16) !important;
+  border-radius: 4px !important;
+  background: #020509 !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
 }
 
-.ops-media-preview {
-  background:
-    linear-gradient(rgba(2,6,23,0.28), rgba(2,6,23,0.78)),
-    radial-gradient(circle at center, rgba(56,189,248,0.20), transparent 58%),
-    linear-gradient(135deg, rgba(15,23,42,0.96), rgba(2,6,23,0.96)) !important;
+.spc-slide,
+.spc-image-card {
+  background: #020509 !important;
+  border: 1px solid rgba(120, 155, 180, 0.12) !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
 }
 
-.ops-media-preview span {
-  background: rgba(56, 189, 248, 0.13) !important;
-  border: 1px solid rgba(56,189,248,0.24);
-  box-shadow: 0 0 24px rgba(56,189,248,0.12);
+.spc-slide .spc-image-title,
+.spc-image-title {
+  background: rgba(2, 5, 9, 0.92) !important;
+  color: #ffffff !important;
+  border-bottom: 1px solid rgba(120, 155, 180, 0.14) !important;
+
+  min-height: 24px !important;
+  padding: 4px 8px !important;
+
+  font-size: 0.62rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
 }
 
-/* SPC manual viewer */
-.spc-slide .spc-image-title {
-  background: rgba(2, 6, 23, 0.86) !important;
-  color: rgba(248,250,252,0.92) !important;
-  border-bottom: 1px solid rgba(148,163,184,0.14) !important;
+.spc-outlook-img {
+  filter: brightness(0.88) contrast(1.07) saturate(0.90);
 }
 
+/* SPC controls */
 .spc-slide-btn {
-  background: rgba(2, 6, 23, 0.74) !important;
-  border-color: rgba(148,163,184,0.22) !important;
+  background: rgba(2, 5, 9, 0.78) !important;
+  border: 1px solid rgba(120, 155, 180, 0.24) !important;
+  color: white !important;
+  box-shadow: none !important;
 }
 
 .spc-slide-btn:hover {
-  background: rgba(56, 189, 248, 0.18) !important;
-  border-color: rgba(56,189,248,0.32) !important;
+  background: rgba(53, 200, 255, 0.16) !important;
+  border-color: rgba(53, 200, 255, 0.35) !important;
 }
 
 .spc-slide-dots {
-  background: rgba(2, 6, 23, 0.70) !important;
-  border: 1px solid rgba(148,163,184,0.14);
+  background: rgba(2, 5, 9, 0.72) !important;
+  border: 1px solid rgba(120, 155, 180, 0.15) !important;
 }
 
 .spc-slide-dots button.active {
-  background: var(--ops-cyan) !important;
+  background: var(--mock-cyan) !important;
+  box-shadow: none !important;
 }
 
-/* Alert tabs: less chunky, more console-like */
+/* ACTIVE ALERTS PANEL */
+.alerts-card {
+  background:
+    linear-gradient(180deg, rgba(8, 14, 24, 0.98), rgba(5, 10, 18, 0.98)) !important;
+}
+
+.alerts-card h2 {
+  font-size: 1.08rem !important;
+}
+
+/* Remove all old fuzzy alert glows */
+.alert-tabs button::before,
+.alert-tabs button.has-alerts::before,
+.alert-tabs button.no-alerts::before {
+  display: none !important;
+  opacity: 0 !important;
+  animation: none !important;
+}
+
+/* Alert category buttons — flatter */
 .forecast-dashboard .alerts-card .alert-tabs button {
-  background: rgba(255,255,255,0.045) !important;
-  border: 1px solid rgba(148,163,184,0.11) !important;
-  color: rgba(226,232,240,0.82) !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.035);
+  height: 33px !important;
+  border-radius: 4px !important;
+  border: 1px solid rgba(120, 155, 180, 0.14) !important;
+
+  background: rgba(255,255,255,0.05) !important;
+  color: rgba(230, 238, 248, 0.72) !important;
+
+  font-size: 0.6rem !important;
+  font-weight: 900 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.035em !important;
+
+  box-shadow: none !important;
 }
 
-.forecast-dashboard .alerts-card .alert-tabs button.active,
+/* Category colors should be solid accents, not glows */
+.forecast-dashboard .alerts-card .alert-tabs button[data-category="storm"].active,
 .forecast-dashboard .alerts-card .alert-tabs button.has-alerts[data-category="storm"] {
-  background:
-    linear-gradient(135deg, rgba(251,146,60,0.92), rgba(245,158,11,0.88)) !important;
-  color: #190b00 !important;
-  border-color: rgba(251,191,36,0.42) !important;
-  box-shadow:
-    0 0 22px rgba(251,146,60,0.20),
-    inset 0 1px 0 rgba(255,255,255,0.22) !important;
+  background: #f5a71b !important;
+  color: #130900 !important;
+  border-color: #f5a71b !important;
 }
 
-/* Alert count / state dropdowns */
-.forecast-dashboard .alerts-card .state-alert-dropdown > summary,
+.forecast-dashboard .alerts-card .alert-tabs button[data-category="tropical"].active,
+.forecast-dashboard .alerts-card .alert-tabs button.has-alerts[data-category="tropical"] {
+  background: #9f3671 !important;
+  color: #ffffff !important;
+  border-color: #9f3671 !important;
+}
+
+.forecast-dashboard .alerts-card .alert-tabs button[data-category="winter"].active,
+.forecast-dashboard .alerts-card .alert-tabs button.has-alerts[data-category="winter"] {
+  background: #4d9ee8 !important;
+  color: #02101d !important;
+  border-color: #4d9ee8 !important;
+}
+
+.forecast-dashboard .alerts-card .alert-tabs button[data-category="hydro"].active,
+.forecast-dashboard .alerts-card .alert-tabs button.has-alerts[data-category="hydro"] {
+  background: #00a008 !important;
+  color: #ffffff !important;
+  border-color: #00a008 !important;
+}
+
+.forecast-dashboard .alerts-card .alert-tabs button[data-category="fire"].active,
+.forecast-dashboard .alerts-card .alert-tabs button.has-alerts[data-category="fire"] {
+  background: #b83d18 !important;
+  color: #ffffff !important;
+  border-color: #b83d18 !important;
+}
+
+/* Alert count bar */
+.forecast-dashboard .alerts-card .state-alert-dropdown > summary {
+  border-radius: 4px !important;
+  padding: 11px 13px !important;
+  font-size: 0.78rem !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  box-shadow: none !important;
+}
+
+/* Alert count should follow active category but stay flat */
+.forecast-dashboard .alerts-card.storm-active .state-alert-dropdown > summary {
+  background: #f5a71b !important;
+  color: #130900 !important;
+}
+
+.forecast-dashboard .alerts-card.tropical-active .state-alert-dropdown > summary {
+  background: #9f3671 !important;
+  color: #ffffff !important;
+}
+
+.forecast-dashboard .alerts-card.winter-active .state-alert-dropdown > summary {
+  background: #4d9ee8 !important;
+  color: #02101d !important;
+}
+
+.forecast-dashboard .alerts-card.hydro-active .state-alert-dropdown > summary {
+  background: #00a008 !important;
+  color: #ffffff !important;
+}
+
+.forecast-dashboard .alerts-card.fire-active .state-alert-dropdown > summary {
+  background: #b83d18 !important;
+  color: #ffffff !important;
+}
+
+/* State dropdowns */
 .forecast-dashboard .alerts-card .state-alert-group > summary {
-  border-radius: 11px !important;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.065), rgba(255,255,255,0.035)) !important;
-  border: 1px solid rgba(148,163,184,0.12) !important;
-  color: rgba(248,250,252,0.92) !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.035) !important;
+  background: rgba(255,255,255,0.055) !important;
+  border: 1px solid rgba(120, 155, 180, 0.14) !important;
+  color: #ffffff !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
 }
 
-/* RadarOmega-style alert card polish */
+/* RadarOmega-style alert cards, flatter like mockup */
 .forecast-dashboard .alerts-card .ro-alert-card {
   background:
-    linear-gradient(180deg, rgba(32, 38, 50, 0.94), rgba(17, 24, 39, 0.96)) !important;
-  border-color: color-mix(in srgb, var(--alert-color) 55%, rgba(148,163,184,0.3)) !important;
-  box-shadow:
-    0 14px 30px rgba(0,0,0,0.25),
-    inset 0 1px 0 rgba(255,255,255,0.05) !important;
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--alert-color) 12%, rgba(12,18,28,0.96)),
+      rgba(7, 12, 20, 0.98)
+    ) !important;
+
+  border: 1px solid color-mix(in srgb, var(--alert-color) 68%, rgba(120,155,180,0.28)) !important;
+  border-left: 4px solid var(--alert-color) !important;
+
+  border-radius: 4px !important;
+  box-shadow: none !important;
 }
 
-/* Quick tools: attached console buttons */
+.forecast-dashboard .alerts-card .ro-alert-icon {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.forecast-dashboard .alerts-card .ro-alert-title-row .compact-alert-title {
+  color: var(--alert-color) !important;
+  letter-spacing: 0.08em !important;
+}
+
+/* County/location box: toned down, not huge glowing block */
+.forecast-dashboard .alerts-card .compact-alert-item .ro-alert-bottom-row .alert-location {
+  background: rgba(255,255,255,0.07) !important;
+  color: rgba(245,248,252,0.92) !important;
+  border: 1px solid rgba(120,155,180,0.12) !important;
+  box-shadow: none !important;
+  border-radius: 4px !important;
+}
+
+.forecast-dashboard .alerts-card .ro-state-chip {
+  background: var(--alert-color) !important;
+  color: #070b10 !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
+}
+
+/* Radar buttons inside alert cards */
+.forecast-dashboard .alerts-card .globe-button,
+.forecast-dashboard .alerts-card .raw-radar-button,
+.forecast-dashboard .alerts-card .ro-alert-bottom-row .compact-details-btn {
+  height: 34px !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
+
+  font-size: 0.64rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+}
+
+.forecast-dashboard .alerts-card .globe-button {
+  background: rgba(34,197,94,0.16) !important;
+  color: #7cff9e !important;
+  border: 1px solid rgba(34,197,94,0.26) !important;
+}
+
+.forecast-dashboard .alerts-card .raw-radar-button {
+  background: rgba(245,167,27,0.15) !important;
+  color: #ffd37a !important;
+  border: 1px solid rgba(245,167,27,0.32) !important;
+}
+
+.forecast-dashboard .alerts-card .compact-details-btn {
+  background: rgba(255,255,255,0.07) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(120,155,180,0.18) !important;
+}
+
+/* LIVE MEDIA */
+.ops-media-preview {
+  background:
+    linear-gradient(rgba(2,5,9,0.35), rgba(2,5,9,0.74)),
+    radial-gradient(circle at center, rgba(53,200,255,0.12), transparent 60%),
+    #020509 !important;
+
+  border: 1px solid rgba(120,155,180,0.16) !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
+}
+
+.ops-media-preview span {
+  background: rgba(255,255,255,0.08) !important;
+  border: 1px solid rgba(120,155,180,0.20) !important;
+  color: white !important;
+  box-shadow: none !important;
+}
+
+/* QUICK TOOLS ROW */
 .quick-tools-row {
-  filter: drop-shadow(0 18px 34px rgba(0,0,0,0.28));
+  filter: none !important;
 }
 
 .quick-tool {
-  background:
-    linear-gradient(180deg, rgba(15,23,42,0.86), rgba(2,6,23,0.88)) !important;
-  border: 1px solid rgba(148,163,184,0.15) !important;
-  color: rgba(226,232,240,0.90) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.04),
-    0 14px 30px rgba(0,0,0,0.22) !important;
+  min-height: 56px !important;
+
+  background: rgba(5, 10, 18, 0.96) !important;
+  border: 1px solid rgba(120,155,180,0.16) !important;
+  border-radius: 4px !important;
+
+  color: rgba(245,248,252,0.88) !important;
+  box-shadow: none !important;
+}
+
+.quick-tool strong {
+  font-size: 0.62rem !important;
+  letter-spacing: 0.11em !important;
 }
 
 .quick-tool:hover {
-  transform: translateY(-3px);
-  border-color: rgba(56,189,248,0.32) !important;
-  background:
-    linear-gradient(180deg, rgba(17,34,56,0.94), rgba(8,13,24,0.92)) !important;
-  box-shadow:
-    0 18px 42px rgba(0,0,0,0.30),
-    0 0 28px rgba(56,189,248,0.08) !important;
-}
-
-.quick-tool span {
-  filter: drop-shadow(0 0 10px rgba(56,189,248,0.16));
+  background: rgba(10, 22, 34, 0.98) !important;
+  border-color: rgba(53,200,255,0.32) !important;
+  transform: none !important;
+  box-shadow: none !important;
 }
 
 .quick-tool.chase-tool {
-  color: #fdba74 !important;
-  border-color: rgba(251,146,60,0.22) !important;
+  color: var(--mock-orange) !important;
+  border-color: rgba(255,107,26,0.26) !important;
 }
 
 .quick-tool.chase-tool:hover {
-  border-color: rgba(251,146,60,0.42) !important;
-  background:
-    linear-gradient(180deg, rgba(61,32,15,0.62), rgba(8,13,24,0.94)) !important;
-  box-shadow:
-    0 18px 42px rgba(0,0,0,0.30),
-    0 0 30px rgba(251,146,60,0.10) !important;
+  background: rgba(35, 16, 8, 0.92) !important;
+  border-color: rgba(255,107,26,0.42) !important;
 }
 
-/* Mobile polish */
+/* MOBILE: keep the style tighter */
 @media (max-width: 768px) {
+  .site-header {
+    width: 100% !important;
+  }
+
   .ops-board-shell {
-    box-shadow:
-      0 20px 55px rgba(0,0,0,0.42),
-      inset 0 1px 0 rgba(255,255,255,0.04) !important;
+    width: 100% !important;
+    padding: 14px !important;
+    border-radius: 5px !important;
   }
 
-  .forecast-dashboard .dashboard-card {
-    border-radius: 16px !important;
+  .operations-intro,
+  .forecast-dashboard .dashboard-card,
+  .quick-tool {
+    border-radius: 5px !important;
   }
 
-  .operations-intro {
-    border-radius: 16px !important;
+  .radar-frame,
+  .spc-slideshow,
+  .spc-image-scroll,
+  .ops-media-preview {
+    border-radius: 4px !important;
   }
 }
 
