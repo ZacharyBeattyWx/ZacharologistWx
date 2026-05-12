@@ -4911,13 +4911,58 @@ async function loadNwsRadarSites() {
   }
 }
 
-function openRadarModal(mode = "clean") {
-  if (!radarModal) return;
+function setRadarMode(mode) {
+  const selectedMode = mode === "raw" ? "raw" : "clean";
 
-  radarModal.classList.add("is-open");
-  document.body.style.overflow = "hidden";
+  radarModeButtons.forEach(button => {
+    button.classList.toggle(
+      "active",
+      button.dataset.radarMode === selectedMode
+    );
+  });
 
-  setRadarMode(mode);
+  if (selectedMode === "raw") {
+    if (radarFrame) {
+      radarFrame.style.display = "none";
+      radarFrame.src = "";
+    }
+
+    if (singleSiteRadarViewer) {
+      singleSiteRadarViewer.style.display = "flex";
+    }
+
+    initSingleSiteRadar();
+
+    setTimeout(() => {
+      if (pendingRadarAlert) {
+        focusSingleSiteRadarOnAlert(pendingRadarAlert);
+      }
+    }, 250);
+
+    return;
+  }
+
+  // CLEAN RADAR / WINDY MODE
+  if (singleSiteRadarViewer) {
+    singleSiteRadarViewer.style.display = "none";
+  }
+
+  if (radarFrame) {
+    radarFrame.style.display = "block";
+
+    const alertCenter = pendingRadarAlert
+      ? getAlertCenter(pendingRadarAlert)
+      : null;
+
+    if (alertCenter) {
+      radarFrame.src =
+        `https://embed.windy.com/embed2.html?lat=${alertCenter.lat.toFixed(3)}` +
+        `&lon=${alertCenter.lon.toFixed(3)}` +
+        `&zoom=7&level=surface&overlay=radar&product=radar`;
+    } else {
+      radarFrame.src = radarUrls.clean;
+    }
+  }
 }
 
 function closeRadarModal() {
