@@ -3741,11 +3741,19 @@ card.innerHTML = `
     </span>
 
 
-    <button class="globe-button" type="button" onclick="openRadarModal('clean')">
+<button
+  class="globe-button alert-radar-btn"
+  type="button"
+  data-radar-mode="clean"
+  data-alert-id="${alert.id}">
   🌎 Radar
 </button>
 
-<button class="raw-radar-button" type="button" onclick="openRadarModal('raw')">
+<button
+  class="raw-radar-button alert-radar-btn"
+  type="button"
+  data-radar-mode="raw"
+  data-alert-id="${alert.id}">
   ⚡ Hi-Res Radar
 </button>
 
@@ -4169,6 +4177,19 @@ function handleDetailsButtonTap(e) {
   openAlertModal(alert);
 }
 
+document.addEventListener("click", event => {
+  const btn = event.target.closest(".alert-radar-btn");
+  if (!btn) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+
+  const alertId = btn.dataset.alertId;
+  const mode = btn.dataset.radarMode || "raw";
+
+  openRadarForAlert(alertId, mode);
+});
+
 document.addEventListener("click", handleDetailsButtonTap);
 document.addEventListener("touchend", handleDetailsButtonTap);
 
@@ -4182,6 +4203,148 @@ document.addEventListener("click", function (e) {
     });
   }
 });
+
+let pendingRadarAlert = null;
+let alertPolygonLayer = null;
+let alertCenterMarker = null;
+
+function getAlertCenter(alert) {
+  if (!alert || !alert.geometry) return null;
+
+  const geometry = alert.geometry;
+  const points = [];
+
+  function collectPoints(coords) {
+    if (!Array.isArray(coords)) return;
+
+    // Coordinate pair: [lon, lat]
+    if (
+      coords.length >= 2 &&
+      typeof coords[0] === "number" &&
+      typeof coords[1] === "number"
+    ) {
+      points.push({
+        lat: coords[1],
+        lon: coords[0]
+      });
+      return;
+    }
+
+    coords.forEach(collectPoints);
+  }
+
+  collectPoints(geometry.coordinates);
+
+  if (!points.length) return null;
+
+  const avgLat =
+    points.reduce((sum, point) => sum + point.lat, 0) / points.length;
+
+  const avgLon =
+    points.reduce((sum, point) => sum + point.lon, 0) / points.length;
+
+  return {
+    lat: avgLat,
+    lon: avgLon
+  };
+}
+
+function getAlertPolygonLatLngs(alert) {
+  if (!alert || !alert.geometry || !alert.geometry.coordinates) return null;
+
+  const geometry = alert.geometry;
+
+  if (geometry.type === "Polygon") {
+    return geometry.coordinates.map(ring =>
+      ring.map(coord => [coord[1], coord[0]])
+    );
+  }
+
+  if (geometry.type === "MultiPolygon") {
+    return geometry.coordinates.map(polygon =>
+      polygon.map(ring =>
+        ring.map(coord => [coord[1], coord[0]])
+      )
+    );
+  }
+
+  return null;
+}
+
+async function openRadarForAlert(alertId, mode = "raw") {
+  const alert = allHomepageAlerts.find(item => item.id === alertId);
+
+  if (!alert) {
+    console.warn("No alert found for radar button:", alertId);
+    openRadarModal(mode);
+    return;
+  }
+
+  pendingRadarAlert = alert;
+
+  openRadarModal(mode);
+}
+
+async function focusSingleSiteRadarOnAlert(alert) {
+  if (!alert || !singleSiteMap) return;
+
+  const center = getAlertCenter(alert);
+
+  if (!center) {
+    console.warn("Alert does not have polygon geometry.");
+    return;
+  }
+
+  if (!radarSitesLoaded) {
+    await loadNwsRadarSites();
+  }
+
+  const nearest = findNearestRadarSite(center.lat, center.lon);
+
+  if (nearest && nearest.site) {
+    const site = nearest.site;
+
+    if (radarSiteSelect) {
+      radarSiteSelect.value = site.sector;
+    }
+
+    loadSingleSiteRadar(site.sector);
+  }
+
+  singleSiteMap.setView([center.lat, center.lon], 8);
+
+  if (alertPolygonLayer) {
+    singleSiteMap.removeLayer(alertPolygonLayer);
+    alertPolygonLayer = null;
+  }
+
+  if (alertCenterMarker) {
+    singleSiteMap.removeLayer(alertCenterMarker);
+    alertCenterMarker = null;
+  }
+
+  const polygonLatLngs = getAlertPolygonLatLngs(alert);
+
+  if (polygonLatLngs) {
+    alertPolygonLayer = L.polygon(polygonLatLngs, {
+      color: getAlertColor(alert.properties?.event),
+      weight: 3,
+      opacity: 0.95,
+      fillColor: getAlertColor(alert.properties?.event),
+      fillOpacity: 0.16
+    }).addTo(singleSiteMap);
+
+    singleSiteMap.fitBounds(alertPolygonLayer.getBounds(), {
+      padding: [36, 36],
+      maxZoom: 9
+    });
+  } else {
+    alertCenterMarker = L.marker([center.lat, center.lon])
+      .addTo(singleSiteMap)
+      .bindPopup(alert.properties?.event || "Weather Alert")
+      .openPopup();
+  }
+}
 
 function openAlertModal(alert) {
   const props = alert.properties || {};
@@ -4789,6 +4952,11 @@ function setRadarMode(mode) {
     }
 
     initSingleSiteRadar();
+    setTimeout(() => {
+  if (pendingRadarAlert) {
+    focusSingleSiteRadarOnAlert(pendingRadarAlert);
+  }
+}, 250);
     return;
   }
 
@@ -4798,7 +4966,18 @@ function setRadarMode(mode) {
 
   if (radarFrame) {
     radarFrame.style.display = "block";
-    radarFrame.src = radarUrls.clean;
+    const alertCenter = pendingRadarAlert
+  ? getAlertCenter(pendingRadarAlert)
+  : null;
+
+if (alertCenter) {
+  radarFrame.src =
+    `https://embed.windy.com/embed2.html?lat=${alertCenter.lat.toFixed(3)}` +
+    `&lon=${alertCenter.lon.toFixed(3)}` +
+    `&zoom=7&level=surface&overlay=radar&product=radar`;
+} else {
+  radarFrame.src = radarUrls.clean;
+}
   }
 }
 
