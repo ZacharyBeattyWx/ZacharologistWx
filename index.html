@@ -5354,6 +5354,66 @@ body {
   box-shadow: 0 0 8px rgba(40,231,111,0.7) !important;
 }
 
+/* =========================================================
+   TOP ROW HEIGHT LOCK
+   Live Conditions + Forecast Discussion + Active Alerts
+   stay the same height on desktop.
+========================================================= */
+
+@media (min-width: 769px) {
+  .ops-board-shell {
+    --top-row-card-height: 235px;
+  }
+
+  .forecast-dashboard .ops-dashboard-grid {
+    align-items: start !important;
+    grid-template-rows:
+      var(--top-row-card-height)
+      minmax(365px, auto) !important;
+  }
+
+  .forecast-dashboard .ops-conditions-card,
+  .forecast-dashboard .forecast-discussion-card,
+  .forecast-dashboard .alerts-card {
+    height: var(--top-row-card-height) !important;
+    min-height: var(--top-row-card-height) !important;
+    max-height: var(--top-row-card-height) !important;
+    align-self: start !important;
+    overflow: hidden !important;
+  }
+
+  /* Let alerts stay the same card height, but scroll internally */
+  .forecast-dashboard .alerts-card {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .forecast-dashboard .alerts-card .alert-tabs-wrapper {
+    flex: 0 0 auto !important;
+  }
+
+  .forecast-dashboard .alerts-card .compact-alert-list {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-right: 4px !important;
+  }
+
+  .forecast-dashboard .alerts-card .compact-alert-list::-webkit-scrollbar {
+    width: 5px;
+  }
+
+  .forecast-dashboard .alerts-card .compact-alert-list::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.035);
+  }
+
+  .forecast-dashboard .alerts-card .compact-alert-list::-webkit-scrollbar-thumb {
+    background: rgba(120,155,180,0.28);
+    border-radius: 999px;
+  }
+}
+
  </style>
 </head>
 
