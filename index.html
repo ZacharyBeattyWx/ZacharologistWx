@@ -3982,6 +3982,326 @@ filter: brightness(1.15);
   }
 }
 
+/* =========================================================
+   FINAL HOME OPERATIONS BOARD LAYOUT
+   Keep this at the VERY BOTTOM of the style section.
+========================================================= */
+
+.forecast-dashboard {
+  padding: 42px 0 34px !important;
+  background:
+    radial-gradient(circle at top left, rgba(56, 189, 248, 0.11), transparent 34%),
+    radial-gradient(circle at 78% 16%, rgba(249, 115, 22, 0.08), transparent 28%),
+    linear-gradient(180deg, #09101d 0%, #0d1524 100%) !important;
+}
+
+.ops-board-shell {
+  width: calc(100% - 72px);
+  max-width: 1720px;
+  margin: 0 auto;
+  padding: 22px;
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.78), rgba(8, 13, 24, 0.94));
+  border: 1px solid rgba(56, 189, 248, 0.18);
+  border-radius: 26px;
+  box-shadow:
+    0 28px 80px rgba(0,0,0,0.38),
+    inset 0 1px 0 rgba(255,255,255,0.045);
+}
+
+/* Compact top intro strip */
+.operations-intro {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 0 18px !important;
+  padding: 20px 22px !important;
+  min-height: 140px;
+  border-radius: 19px !important;
+  box-shadow: none !important;
+  background:
+    radial-gradient(circle at top left, rgba(56, 189, 248, 0.16), transparent 38%),
+    linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(8, 13, 24, 0.9)) !important;
+}
+
+.operations-intro h2 {
+  font-size: clamp(1.6rem, 2.15vw, 2.45rem) !important;
+  max-width: 860px !important;
+}
+
+.operations-intro .dashboard-subtitle {
+  max-width: 760px !important;
+  font-size: 0.98rem !important;
+  margin-top: 10px !important;
+}
+
+.operations-status-card {
+  min-width: 250px !important;
+  padding: 14px 16px !important;
+}
+
+/* Shared card polish */
+.forecast-dashboard .dashboard-card {
+  border-radius: 18px !important;
+  background: rgba(15, 23, 42, 0.82) !important;
+  border-color: rgba(148, 163, 184, 0.18) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.035),
+    0 16px 34px rgba(0,0,0,0.22) !important;
+}
+
+/* Desktop board layout */
+@media (min-width: 769px) {
+  .forecast-dashboard .ops-dashboard-grid {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+
+    display: grid !important;
+    grid-template-columns:
+      minmax(300px, 0.9fr)
+      minmax(700px, 1.8fr)
+      minmax(320px, 0.95fr) !important;
+
+    grid-template-areas:
+      "conditions briefing alerts"
+      "spc radar media" !important;
+
+    grid-template-rows:
+      minmax(210px, auto)
+      minmax(440px, auto) !important;
+
+    gap: 16px !important;
+    align-items: stretch !important;
+  }
+
+  .forecast-dashboard .ops-conditions-card {
+    grid-area: conditions !important;
+    min-height: 210px !important;
+  }
+
+  .forecast-dashboard .forecast-discussion-card {
+    grid-area: briefing !important;
+    min-height: 210px !important;
+    padding: 18px !important;
+  }
+
+  .forecast-dashboard .alerts-card {
+    grid-area: alerts !important;
+    min-height: 210px !important;
+    padding: 18px !important;
+    overflow: visible !important;
+  }
+
+  .forecast-dashboard .spc-card {
+    grid-area: spc !important;
+    min-height: 440px !important;
+    padding: 18px !important;
+    overflow: hidden !important;
+  }
+
+  .forecast-dashboard .radar-card {
+    grid-area: radar !important;
+    min-height: 440px !important;
+    padding: 18px !important;
+    overflow: hidden !important;
+  }
+
+  .forecast-dashboard .ops-live-card {
+    grid-area: media !important;
+    min-height: 440px !important;
+    padding: 18px !important;
+  }
+
+  .forecast-dashboard .radar-frame {
+    height: 370px !important;
+    margin: 10px 0 0 !important;
+    border-radius: 14px !important;
+  }
+
+  .spc-slideshow {
+    height: 370px !important;
+  }
+
+  .forecast-dashboard .spc-card .spc-image-scroll {
+    height: 370px !important;
+    max-height: 370px !important;
+  }
+
+  .forecast-dashboard .briefing-title-row {
+    margin: 10px 0 12px !important;
+  }
+
+  .forecast-dashboard .briefing-title-row h3 {
+    font-size: 1.45rem !important;
+  }
+
+  .forecast-dashboard .forecast-discussion-card .briefing-text {
+    font-size: 0.92rem !important;
+    line-height: 1.45 !important;
+  }
+
+  .forecast-dashboard .forecast-discussion-card .briefing-meta {
+    margin: 14px 0 0 !important;
+    gap: 10px !important;
+  }
+
+  .forecast-dashboard .forecast-discussion-card .briefing-meta div {
+    padding: 10px !important;
+  }
+
+  .forecast-dashboard .forecast-discussion-card .dashboard-button {
+    padding: 10px 18px !important;
+    font-size: 0.82rem !important;
+  }
+
+  .forecast-dashboard .alerts-card #alertsTitle {
+    margin: 0 auto 16px !important;
+    font-size: 1.15rem !important;
+  }
+
+  .forecast-dashboard .alerts-card .alert-tabs-wrapper {
+    margin-bottom: 16px !important;
+  }
+
+  .forecast-dashboard .alerts-card .alert-tabs {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    max-width: none !important;
+    gap: 8px !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .forecast-dashboard .alerts-card .alert-tabs button {
+    height: 34px !important;
+    font-size: 0.66rem !important;
+    padding: 7px 8px !important;
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+
+  .forecast-dashboard .alerts-card .alert-tabs button:nth-child(1),
+  .forecast-dashboard .alerts-card .alert-tabs button:nth-child(2),
+  .forecast-dashboard .alerts-card .alert-tabs button:nth-child(3),
+  .forecast-dashboard .alerts-card .alert-tabs button:nth-child(4),
+  .forecast-dashboard .alerts-card .alert-tabs button:nth-child(5) {
+    grid-column: auto !important;
+  }
+
+  .ops-media-preview {
+    height: 185px !important;
+  }
+
+  .quick-tools-row {
+    width: calc(100% - 120px) !important;
+    max-width: 1640px !important;
+    margin: -10px auto 58px !important;
+    padding: 0 8px;
+    position: relative;
+    z-index: 4;
+  }
+}
+
+/* Wide monitor fill */
+@media (min-width: 1400px) {
+  .site-header,
+  .ops-board-shell {
+    width: calc(100% - 72px) !important;
+    max-width: 1760px !important;
+  }
+
+  .forecast-dashboard .ops-dashboard-grid {
+    grid-template-columns:
+      minmax(320px, 0.9fr)
+      minmax(760px, 1.85fr)
+      minmax(340px, 0.95fr) !important;
+  }
+
+  .forecast-dashboard .radar-frame {
+    height: 390px !important;
+  }
+
+  .spc-slideshow {
+    height: 390px !important;
+  }
+
+  .forecast-dashboard .spc-card .spc-image-scroll {
+    height: 390px !important;
+    max-height: 390px !important;
+  }
+
+  .forecast-dashboard .spc-card,
+  .forecast-dashboard .radar-card,
+  .forecast-dashboard .ops-live-card {
+    min-height: 460px !important;
+  }
+}
+
+/* Mobile stack */
+@media (max-width: 768px) {
+  .forecast-dashboard {
+    padding: 24px 14px 30px !important;
+  }
+
+  .ops-board-shell {
+    width: 100%;
+    max-width: 100%;
+    padding: 14px;
+    border-radius: 20px;
+  }
+
+  .operations-intro {
+    padding: 18px !important;
+    margin-bottom: 14px !important;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .operations-intro h2 {
+    font-size: 1.55rem !important;
+  }
+
+  .operations-status-card {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .forecast-dashboard .ops-dashboard-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .forecast-dashboard .ops-conditions-card,
+  .forecast-dashboard .forecast-discussion-card,
+  .forecast-dashboard .alerts-card,
+  .forecast-dashboard .spc-card,
+  .forecast-dashboard .radar-card,
+  .forecast-dashboard .ops-live-card {
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .forecast-dashboard .radar-frame {
+    height: 315px !important;
+  }
+
+  .spc-slideshow {
+    height: 265px !important;
+  }
+
+  .quick-tools-row {
+    width: calc(100% - 28px) !important;
+    margin: -8px auto 38px !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+}
+
  </style>
 </head>
 
