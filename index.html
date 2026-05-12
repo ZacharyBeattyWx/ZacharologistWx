@@ -5164,10 +5164,14 @@ async function initSingleSiteRadar() {
     }).setView(siteInfo.center, siteInfo.zoom);
 
     L.tileLayer(
-  "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png", {
-      maxZoom: 11,
-      attribution: "© OpenStreetMap"
-    }).addTo(singleSiteMap);
+  "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+  {
+    attribution:
+      '&copy; OpenStreetMap contributors &copy; CARTO',
+    subdomains: "abcd",
+    maxZoom: 19
+  }
+).addTo(singleSiteRadarMap);
   }
 
   singleSiteMap.setView(siteInfo.center, siteInfo.zoom);
@@ -5203,7 +5207,7 @@ function loadSingleSiteRadar(site) {
       layers: "single",
       format: "image/png",
       transparent: true,
-      opacity: 0.97,
+      opacity: 0.96,
       sector: site,
       prod: radarProductSelect?.value || "N0B",
       version: "1.1.1",
