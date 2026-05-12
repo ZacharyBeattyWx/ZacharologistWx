@@ -5176,6 +5176,184 @@ body {
   }
 }
 
+/* =========================================================
+   ALERT / PANEL GLOW KILL — MATCH MOCKUP FLAT STYLE
+   KEEP THIS AS THE LAST CSS BLOCK
+========================================================= */
+
+/* Kill animated glow layers behind alert tabs */
+.alert-tabs button::before,
+.alert-tabs button.has-alerts::before,
+.alert-tabs button.no-alerts::before,
+.forecast-dashboard .alerts-card .alert-tabs button::before {
+  content: none !important;
+  display: none !important;
+  opacity: 0 !important;
+  animation: none !important;
+  filter: none !important;
+  box-shadow: none !important;
+}
+
+/* Remove all bright tab glow/shadows */
+.forecast-dashboard .alerts-card .alert-tabs button,
+.forecast-dashboard .alerts-card .alert-tabs button.active,
+.forecast-dashboard .alerts-card .alert-tabs button.has-alerts,
+.forecast-dashboard .alerts-card .alert-tabs button.no-alerts {
+  box-shadow: none !important;
+  filter: none !important;
+  text-shadow: none !important;
+}
+
+/* Flat inactive alert tabs */
+.forecast-dashboard .alerts-card .alert-tabs button {
+  background: rgba(255,255,255,0.045) !important;
+  color: rgba(230,238,248,0.72) !important;
+  border: 1px solid rgba(120,155,180,0.15) !important;
+  border-radius: 4px !important;
+}
+
+/* Flat category colors only when active / has alerts */
+.forecast-dashboard .alerts-card .alert-tabs button[data-category="storm"].active,
+.forecast-dashboard .alerts-card .alert-tabs button.has-alerts[data-category="storm"] {
+  background: #f5a71b !important;
+  color: #130900 !important;
+  border-color: #f5a71b !important;
+}
+
+.forecast-dashboard .alerts-card .alert-tabs button[data-category="tropical"].active,
+.forecast-dashboard .alerts-card .alert-tabs button.has-alerts[data-category="tropical"] {
+  background: #9f3671 !important;
+  color: #ffffff !important;
+  border-color: #9f3671 !important;
+}
+
+.forecast-dashboard .alerts-card .alert-tabs button[data-category="winter"].active,
+.forecast-dashboard .alerts-card .alert-tabs button.has-alerts[data-category="winter"] {
+  background: #4d9ee8 !important;
+  color: #06111f !important;
+  border-color: #4d9ee8 !important;
+}
+
+.forecast-dashboard .alerts-card .alert-tabs button[data-category="hydro"].active,
+.forecast-dashboard .alerts-card .alert-tabs button.has-alerts[data-category="hydro"] {
+  background: #00a008 !important;
+  color: #ffffff !important;
+  border-color: #00a008 !important;
+}
+
+.forecast-dashboard .alerts-card .alert-tabs button[data-category="fire"].active,
+.forecast-dashboard .alerts-card .alert-tabs button.has-alerts[data-category="fire"] {
+  background: #b83d18 !important;
+  color: #ffffff !important;
+  border-color: #b83d18 !important;
+}
+
+/* Remove glow from alert count bar */
+.forecast-dashboard .alerts-card .state-alert-dropdown > summary,
+.forecast-dashboard .alerts-card.storm-active .state-alert-dropdown > summary,
+.forecast-dashboard .alerts-card.tropical-active .state-alert-dropdown > summary,
+.forecast-dashboard .alerts-card.winter-active .state-alert-dropdown > summary,
+.forecast-dashboard .alerts-card.hydro-active .state-alert-dropdown > summary,
+.forecast-dashboard .alerts-card.fire-active .state-alert-dropdown > summary {
+  box-shadow: none !important;
+  filter: none !important;
+  text-shadow: none !important;
+  border-radius: 4px !important;
+}
+
+/* Keep alert count flat */
+.forecast-dashboard .alerts-card.storm-active .state-alert-dropdown > summary {
+  background: #f5a71b !important;
+  color: #130900 !important;
+}
+
+.forecast-dashboard .alerts-card.tropical-active .state-alert-dropdown > summary {
+  background: #9f3671 !important;
+  color: #ffffff !important;
+}
+
+.forecast-dashboard .alerts-card.winter-active .state-alert-dropdown > summary {
+  background: #4d9ee8 !important;
+  color: #06111f !important;
+}
+
+.forecast-dashboard .alerts-card.hydro-active .state-alert-dropdown > summary {
+  background: #00a008 !important;
+  color: #ffffff !important;
+}
+
+.forecast-dashboard .alerts-card.fire-active .state-alert-dropdown > summary {
+  background: #b83d18 !important;
+  color: #ffffff !important;
+}
+
+/* Remove glow from state dropdown rows */
+.forecast-dashboard .alerts-card .state-alert-group > summary,
+.forecast-dashboard .alerts-card .state-alert-group > summary:hover {
+  box-shadow: none !important;
+  filter: none !important;
+  text-shadow: none !important;
+  background: rgba(255,255,255,0.055) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(120,155,180,0.15) !important;
+  border-radius: 4px !important;
+}
+
+/* Remove glow from RadarOmega-style alert cards */
+.forecast-dashboard .alerts-card .ro-alert-card {
+  box-shadow: none !important;
+  filter: none !important;
+  text-shadow: none !important;
+  border-radius: 4px !important;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--alert-color) 10%, rgba(10,16,26,0.96)),
+      rgba(6,10,18,0.98)
+    ) !important;
+  border: 1px solid color-mix(in srgb, var(--alert-color) 62%, rgba(120,155,180,0.26)) !important;
+  border-left: 4px solid var(--alert-color) !important;
+}
+
+/* Remove glow from county/location/state chips */
+.forecast-dashboard .alerts-card .alert-location,
+.forecast-dashboard .alerts-card .ro-state-chip,
+.forecast-dashboard .alerts-card .compact-alert-item .ro-alert-bottom-row .alert-location {
+  box-shadow: none !important;
+  filter: none !important;
+  text-shadow: none !important;
+  border-radius: 4px !important;
+}
+
+/* Make county/location box dark instead of glowing alert color */
+.forecast-dashboard .alerts-card .compact-alert-item .ro-alert-bottom-row .alert-location {
+  background: rgba(255,255,255,0.065) !important;
+  color: rgba(245,248,252,0.92) !important;
+  border: 1px solid rgba(120,155,180,0.14) !important;
+}
+
+/* Keep state chip as flat alert-color block */
+.forecast-dashboard .alerts-card .ro-state-chip {
+  background: var(--alert-color) !important;
+  color: #06111f !important;
+  border: 1px solid var(--alert-color) !important;
+}
+
+/* Remove glow from radar/detail buttons */
+.forecast-dashboard .alerts-card .globe-button,
+.forecast-dashboard .alerts-card .raw-radar-button,
+.forecast-dashboard .alerts-card .compact-details-btn {
+  box-shadow: none !important;
+  filter: none !important;
+  text-shadow: none !important;
+  border-radius: 4px !important;
+}
+
+/* Keep only the small green status dot glow */
+.status-dot {
+  box-shadow: 0 0 8px rgba(40,231,111,0.7) !important;
+}
+
  </style>
 </head>
 
