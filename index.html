@@ -1486,6 +1486,18 @@ body {
   backdrop-filter: blur(10px);
 }
 
+.single-radar-toolbar {
+  left: 56px !important;
+  top: 12px !important;
+  max-width: calc(100% - 72px) !important;
+  z-index: 1000 !important;
+}
+
+.single-radar-toolbar select {
+  width: 260px;
+  max-width: 52vw;
+}
+
 .single-radar-toolbar label {
   display: flex;
   align-items: center;
@@ -4572,36 +4584,42 @@ async function loadNwsRadarSites() {
   if (!select) return;
 
   try {
-    const response = await fetch("https://api.weather.gov/radar/stations", {
-      headers: {
-        "Accept": "application/geo+json"
-      }
-    });
+    const response = await fetch(
+      "https://mesonet.agron.iastate.edu/geojson/network.py?network=NEXRAD"
+    );
 
     if (!response.ok) {
-      throw new Error("Unable to load NWS radar station list");
+      throw new Error("Unable to load IEM NEXRAD radar site list");
     }
 
     const data = await response.json();
 
     const sites = (data.features || [])
       .map(feature => {
-        const id = getRadarIdFromFeature(feature);
-        const sector = getIemSectorFromNwsId(id);
         const props = feature.properties || {};
         const coords = feature.geometry?.coordinates || [];
+
+        const id = String(
+          props.sid ||
+          props.id ||
+          props.station ||
+          feature.id ||
+          ""
+        )
+          .toUpperCase()
+          .trim();
 
         const lon = Number(coords[0]);
         const lat = Number(coords[1]);
 
-        if (!id || !sector || Number.isNaN(lat) || Number.isNaN(lon)) {
+        if (!id || Number.isNaN(lat) || Number.isNaN(lon)) {
           return null;
         }
 
         return {
           id,
-          sector,
-          name: props.name || props.location || id,
+          sector: id,
+          name: props.sname || props.name || props.station_name || id,
           center: [lat, lon],
           zoom: 7
         };
@@ -4611,17 +4629,17 @@ async function loadNwsRadarSites() {
 
     radarSites = {};
 
+    select.innerHTML = "";
+
     sites.forEach(site => {
       radarSites[site.sector] = site;
+
+      const option = document.createElement("option");
+      option.value = site.sector;
+      option.textContent = `${site.sector} — ${site.name}`;
+      select.appendChild(option);
     });
 
-    select.innerHTML = sites
-      .map(site => {
-        return `<option value="${site.sector}">${site.sector} — ${site.name}</option>`;
-      })
-      .join("");
-
-    // Default to Raleigh if available, otherwise first station in the list
     if (radarSites.RAX) {
       select.value = "RAX";
     } else if (sites[0]) {
@@ -4633,15 +4651,15 @@ async function loadNwsRadarSites() {
     console.error("Radar site loading error:", error);
 
     select.innerHTML = `
-      <option value="RAX">RAX — Raleigh, NC</option>
-      <option value="FCX">FCX — Blacksburg, VA</option>
-      <option value="GSP">GSP — Greer, SC</option>
+      <option value="RAX">RAX — Raleigh/Durham</option>
+      <option value="FCX">FCX — Blacksburg</option>
+      <option value="GSP">GSP — Greer</option>
     `;
 
     radarSites = {
-      RAX: { sector: "RAX", name: "Raleigh, NC", center: [35.7, -78.5], zoom: 7 },
-      FCX: { sector: "FCX", name: "Blacksburg, VA", center: [37.0, -80.3], zoom: 7 },
-      GSP: { sector: "GSP", name: "Greer, SC", center: [34.9, -82.2], zoom: 7 }
+      RAX: { sector: "RAX", name: "Raleigh/Durham", center: [35.7, -78.5], zoom: 7 },
+      FCX: { sector: "FCX", name: "Blacksburg", center: [37.0, -80.3], zoom: 7 },
+      GSP: { sector: "GSP", name: "Greer", center: [34.9, -82.2], zoom: 7 }
     };
 
     radarSitesLoaded = true;
