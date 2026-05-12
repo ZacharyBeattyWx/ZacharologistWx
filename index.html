@@ -4070,14 +4070,22 @@ filter: brightness(1.15);
     >
   </a>
 
-  <a class="spc-slide" href="https://www.spc.noaa.gov/products/exper/day4-8/" target="_blank">
-    <div class="spc-image-title">Days 4–8 Outlook</div>
-    <img
-      class="spc-outlook-img"
-      alt="SPC Days 4 through 8 Outlook"
-      src="https://www.spc.noaa.gov/products/exper/day4-8/day48prob.gif"
-    >
-  </a>
+  <a
+  class="spc-slide"
+  href="https://www.spc.noaa.gov/products/exper/day4-8/"
+  target="_blank"
+  data-slide-delay="18000">
+
+  <div class="spc-image-title">Days 4–8 Outlook</div>
+
+  <img
+    class="spc-outlook-img"
+    alt="SPC Days 4 through 8 Outlook"
+    data-reset-gif="true"
+    data-base-src="https://www.spc.noaa.gov/products/exper/day4-8/day48prob.gif"
+    src="https://www.spc.noaa.gov/products/exper/day4-8/day48prob.gif"
+  >
+</a>
 
   <div class="spc-slide-controls">
     <button type="button" class="spc-slide-btn" data-spc-slide="prev">‹</button>
@@ -5785,7 +5793,7 @@ function loadSPCImages() {
       .filter(Boolean);
 
     let index = 0;
-    const cacheBuster = `refresh=${Date.now()}`;
+    const cacheBuster = `refresh=${Math.floor(Date.now() / (10 * 60 * 1000))}`;
 
     function addCacheBuster(url) {
       return url.includes("?")
@@ -6337,6 +6345,47 @@ function initSpcSlideshow() {
   if (!slides.length) return;
 
   let activeIndex = 0;
+  let slideTimer = null;
+
+  function resetDay48Gif(slide) {
+    const img = slide.querySelector("img[data-reset-gif]");
+    if (!img) return;
+
+    const baseSrc = img.dataset.baseSrc || img.src.split("?")[0];
+    img.dataset.baseSrc = baseSrc;
+
+    img.src = `${baseSrc}?refresh=${Date.now()}`;
+  }
+
+  function currentImageIsReady() {
+    const img = slides[activeIndex].querySelector("img");
+
+    if (!img) return true;
+
+    return img.complete && img.naturalWidth > 50;
+  }
+
+  function getCurrentDelay() {
+    const slide = slides[activeIndex];
+    const customDelay = Number(slide.dataset.slideDelay);
+
+    return Number.isFinite(customDelay) && customDelay > 0
+      ? customDelay
+      : 9000;
+  }
+
+  function scheduleNextSlide() {
+    clearTimeout(slideTimer);
+
+    if (!currentImageIsReady()) {
+      slideTimer = setTimeout(scheduleNextSlide, 700);
+      return;
+    }
+
+    slideTimer = setTimeout(() => {
+      showSlide(activeIndex + 1);
+    }, getCurrentDelay());
+  }
 
   function showSlide(index) {
     activeIndex = (index + slides.length) % slides.length;
@@ -6348,6 +6397,9 @@ function initSpcSlideshow() {
     dots.forEach((dot, i) => {
       dot.classList.toggle("active", i === activeIndex);
     });
+
+    resetDay48Gif(slides[activeIndex]);
+    scheduleNextSlide();
   }
 
   if (prevBtn) {
@@ -6373,10 +6425,6 @@ function initSpcSlideshow() {
       showSlide(Number(dot.dataset.spcDot));
     });
   });
-
-  setInterval(() => {
-    showSlide(activeIndex + 1);
-  }, 9000);
 
   showSlide(0);
 }
