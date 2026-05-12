@@ -4302,6 +4302,384 @@ filter: brightness(1.15);
   }
 }
 
+/* =========================================================
+   FINAL VISUAL STYLE PASS — DARK OPERATIONS CONSOLE
+   Keep this at the VERY BOTTOM of the style section.
+========================================================= */
+
+:root {
+  --ops-bg-0: #030711;
+  --ops-bg-1: #07111f;
+  --ops-bg-2: #0b1628;
+  --ops-panel: rgba(9, 17, 31, 0.86);
+  --ops-panel-soft: rgba(15, 23, 42, 0.72);
+  --ops-border: rgba(148, 163, 184, 0.16);
+  --ops-border-bright: rgba(56, 189, 248, 0.30);
+  --ops-text: #f8fafc;
+  --ops-muted: #94a3b8;
+  --ops-soft: #cbd5e1;
+  --ops-cyan: #38bdf8;
+  --ops-blue: #60a5fa;
+  --ops-orange: #fb923c;
+  --ops-green: #22c55e;
+}
+
+/* Page background: darker and more cinematic */
+body {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(56, 189, 248, 0.13), transparent 34%),
+    radial-gradient(circle at 88% 8%, rgba(249, 115, 22, 0.10), transparent 28%),
+    radial-gradient(circle at 50% 100%, rgba(37, 99, 235, 0.10), transparent 34%),
+    linear-gradient(180deg, var(--ops-bg-0) 0%, var(--ops-bg-1) 46%, #050914 100%) !important;
+  color: var(--ops-text);
+}
+
+/* Top nav: sleeker and less bulky */
+.site-header {
+  background:
+    linear-gradient(180deg, rgba(3, 7, 17, 0.92), rgba(8, 13, 24, 0.82)) !important;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.16) !important;
+  box-shadow:
+    0 18px 45px rgba(0,0,0,0.32),
+    inset 0 1px 0 rgba(255,255,255,0.04) !important;
+}
+
+.brand-main {
+  color: #f8fafc !important;
+  text-shadow: 0 0 22px rgba(56,189,248,0.12);
+}
+
+.brand-main span {
+  color: var(--ops-cyan) !important;
+}
+
+.brand-sub {
+  color: rgba(125, 211, 252, 0.78) !important;
+}
+
+.site-nav a {
+  background: transparent !important;
+  border-color: transparent !important;
+  color: rgba(226, 232, 240, 0.82) !important;
+}
+
+.site-nav a span {
+  color: rgba(148, 163, 184, 0.62) !important;
+}
+
+.site-nav a:hover,
+.site-nav a.active {
+  background: rgba(56, 189, 248, 0.08) !important;
+  border-color: rgba(56, 189, 248, 0.24) !important;
+  color: #ffffff !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+}
+
+.site-nav a.active span {
+  color: var(--ops-cyan) !important;
+}
+
+.site-nav .chase-link {
+  color: #fdba74 !important;
+}
+
+.site-nav .chase-link span {
+  color: rgba(251, 146, 60, 0.82) !important;
+}
+
+/* Main operations area */
+.forecast-dashboard {
+  background:
+    radial-gradient(circle at 8% 0%, rgba(56, 189, 248, 0.10), transparent 32%),
+    radial-gradient(circle at 90% 10%, rgba(249, 115, 22, 0.08), transparent 26%),
+    linear-gradient(180deg, rgba(3, 7, 17, 0.98), rgba(7, 17, 31, 0.96)) !important;
+}
+
+/* One unified shell */
+.ops-board-shell {
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.68), rgba(2, 6, 23, 0.86)),
+    radial-gradient(circle at 18% 0%, rgba(56, 189, 248, 0.10), transparent 32%) !important;
+  border: 1px solid rgba(148, 163, 184, 0.14) !important;
+  box-shadow:
+    0 30px 90px rgba(0,0,0,0.48),
+    inset 0 1px 0 rgba(255,255,255,0.045),
+    inset 0 0 0 1px rgba(56,189,248,0.035) !important;
+}
+
+/* Header strip */
+.operations-intro {
+  background:
+    linear-gradient(135deg, rgba(8, 16, 31, 0.94), rgba(2, 6, 23, 0.72)),
+    radial-gradient(circle at 8% 0%, rgba(56, 189, 248, 0.18), transparent 38%) !important;
+  border: 1px solid rgba(56, 189, 248, 0.18) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.045),
+    0 14px 34px rgba(0,0,0,0.22) !important;
+}
+
+.operations-intro .eyebrow,
+.mini-label,
+.meta-label {
+  color: rgba(125, 211, 252, 0.88) !important;
+  font-size: 0.68rem !important;
+  letter-spacing: 0.16em !important;
+  font-weight: 900 !important;
+}
+
+.operations-intro h2 {
+  color: #f8fafc !important;
+  text-shadow: 0 0 34px rgba(56,189,248,0.10);
+}
+
+.dashboard-subtitle,
+.briefing-text,
+.mini-card p,
+.ops-live-card p {
+  color: rgba(203, 213, 225, 0.82) !important;
+}
+
+/* Status card */
+.operations-status-card {
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.74), rgba(2, 6, 23, 0.74)) !important;
+  border: 1px solid rgba(34, 197, 94, 0.20) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.04),
+    0 0 26px rgba(34,197,94,0.08) !important;
+}
+
+.status-dot {
+  background: var(--ops-green) !important;
+  box-shadow:
+    0 0 12px rgba(34,197,94,0.85),
+    0 0 28px rgba(34,197,94,0.30) !important;
+}
+
+/* Dashboard cards */
+.forecast-dashboard .dashboard-card {
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.80), rgba(8, 13, 24, 0.88)) !important;
+  border: 1px solid var(--ops-border) !important;
+  border-radius: 18px !important;
+  box-shadow:
+    0 18px 44px rgba(0,0,0,0.30),
+    inset 0 1px 0 rgba(255,255,255,0.04) !important;
+  backdrop-filter: blur(18px) !important;
+}
+
+.forecast-dashboard .dashboard-card:hover {
+  border-color: rgba(56, 189, 248, 0.26) !important;
+  box-shadow:
+    0 20px 52px rgba(0,0,0,0.36),
+    0 0 34px rgba(56,189,248,0.055),
+    inset 0 1px 0 rgba(255,255,255,0.05) !important;
+}
+
+/* Card headers */
+.card-header-row h3,
+.briefing-title-row h3,
+.briefing-card h3,
+.mini-card h3,
+.alerts-card h2 {
+  color: #f8fafc !important;
+  letter-spacing: -0.035em;
+  text-shadow: 0 0 28px rgba(56,189,248,0.07);
+}
+
+.card-time {
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.14);
+  color: rgba(186, 230, 253, 0.78) !important;
+}
+
+/* Conditions card */
+.conditions-main strong {
+  color: #f8fafc !important;
+  text-shadow: 0 0 38px rgba(56,189,248,0.14);
+}
+
+.conditions-main span,
+.conditions-main p {
+  color: rgba(203,213,225,0.84) !important;
+}
+
+.conditions-grid div,
+.briefing-meta div {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.025)) !important;
+  border: 1px solid rgba(148, 163, 184, 0.11) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.035);
+}
+
+/* Buttons */
+.dashboard-button {
+  background:
+    linear-gradient(135deg, rgba(56,189,248,0.95), rgba(37,99,235,0.88)) !important;
+  color: #03111f !important;
+  border: 1px solid rgba(125,211,252,0.35);
+  box-shadow:
+    0 10px 22px rgba(56,189,248,0.18),
+    inset 0 1px 0 rgba(255,255,255,0.24);
+}
+
+.dashboard-button:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+/* Radar / media containers */
+.radar-frame,
+.spc-slideshow,
+.ops-media-preview {
+  border: 1px solid rgba(148, 163, 184, 0.16) !important;
+  background: #020617 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.035),
+    0 12px 30px rgba(0,0,0,0.28) !important;
+}
+
+.ops-media-preview {
+  background:
+    linear-gradient(rgba(2,6,23,0.28), rgba(2,6,23,0.78)),
+    radial-gradient(circle at center, rgba(56,189,248,0.20), transparent 58%),
+    linear-gradient(135deg, rgba(15,23,42,0.96), rgba(2,6,23,0.96)) !important;
+}
+
+.ops-media-preview span {
+  background: rgba(56, 189, 248, 0.13) !important;
+  border: 1px solid rgba(56,189,248,0.24);
+  box-shadow: 0 0 24px rgba(56,189,248,0.12);
+}
+
+/* SPC manual viewer */
+.spc-slide .spc-image-title {
+  background: rgba(2, 6, 23, 0.86) !important;
+  color: rgba(248,250,252,0.92) !important;
+  border-bottom: 1px solid rgba(148,163,184,0.14) !important;
+}
+
+.spc-slide-btn {
+  background: rgba(2, 6, 23, 0.74) !important;
+  border-color: rgba(148,163,184,0.22) !important;
+}
+
+.spc-slide-btn:hover {
+  background: rgba(56, 189, 248, 0.18) !important;
+  border-color: rgba(56,189,248,0.32) !important;
+}
+
+.spc-slide-dots {
+  background: rgba(2, 6, 23, 0.70) !important;
+  border: 1px solid rgba(148,163,184,0.14);
+}
+
+.spc-slide-dots button.active {
+  background: var(--ops-cyan) !important;
+}
+
+/* Alert tabs: less chunky, more console-like */
+.forecast-dashboard .alerts-card .alert-tabs button {
+  background: rgba(255,255,255,0.045) !important;
+  border: 1px solid rgba(148,163,184,0.11) !important;
+  color: rgba(226,232,240,0.82) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.035);
+}
+
+.forecast-dashboard .alerts-card .alert-tabs button.active,
+.forecast-dashboard .alerts-card .alert-tabs button.has-alerts[data-category="storm"] {
+  background:
+    linear-gradient(135deg, rgba(251,146,60,0.92), rgba(245,158,11,0.88)) !important;
+  color: #190b00 !important;
+  border-color: rgba(251,191,36,0.42) !important;
+  box-shadow:
+    0 0 22px rgba(251,146,60,0.20),
+    inset 0 1px 0 rgba(255,255,255,0.22) !important;
+}
+
+/* Alert count / state dropdowns */
+.forecast-dashboard .alerts-card .state-alert-dropdown > summary,
+.forecast-dashboard .alerts-card .state-alert-group > summary {
+  border-radius: 11px !important;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.065), rgba(255,255,255,0.035)) !important;
+  border: 1px solid rgba(148,163,184,0.12) !important;
+  color: rgba(248,250,252,0.92) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.035) !important;
+}
+
+/* RadarOmega-style alert card polish */
+.forecast-dashboard .alerts-card .ro-alert-card {
+  background:
+    linear-gradient(180deg, rgba(32, 38, 50, 0.94), rgba(17, 24, 39, 0.96)) !important;
+  border-color: color-mix(in srgb, var(--alert-color) 55%, rgba(148,163,184,0.3)) !important;
+  box-shadow:
+    0 14px 30px rgba(0,0,0,0.25),
+    inset 0 1px 0 rgba(255,255,255,0.05) !important;
+}
+
+/* Quick tools: attached console buttons */
+.quick-tools-row {
+  filter: drop-shadow(0 18px 34px rgba(0,0,0,0.28));
+}
+
+.quick-tool {
+  background:
+    linear-gradient(180deg, rgba(15,23,42,0.86), rgba(2,6,23,0.88)) !important;
+  border: 1px solid rgba(148,163,184,0.15) !important;
+  color: rgba(226,232,240,0.90) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.04),
+    0 14px 30px rgba(0,0,0,0.22) !important;
+}
+
+.quick-tool:hover {
+  transform: translateY(-3px);
+  border-color: rgba(56,189,248,0.32) !important;
+  background:
+    linear-gradient(180deg, rgba(17,34,56,0.94), rgba(8,13,24,0.92)) !important;
+  box-shadow:
+    0 18px 42px rgba(0,0,0,0.30),
+    0 0 28px rgba(56,189,248,0.08) !important;
+}
+
+.quick-tool span {
+  filter: drop-shadow(0 0 10px rgba(56,189,248,0.16));
+}
+
+.quick-tool.chase-tool {
+  color: #fdba74 !important;
+  border-color: rgba(251,146,60,0.22) !important;
+}
+
+.quick-tool.chase-tool:hover {
+  border-color: rgba(251,146,60,0.42) !important;
+  background:
+    linear-gradient(180deg, rgba(61,32,15,0.62), rgba(8,13,24,0.94)) !important;
+  box-shadow:
+    0 18px 42px rgba(0,0,0,0.30),
+    0 0 30px rgba(251,146,60,0.10) !important;
+}
+
+/* Mobile polish */
+@media (max-width: 768px) {
+  .ops-board-shell {
+    box-shadow:
+      0 20px 55px rgba(0,0,0,0.42),
+      inset 0 1px 0 rgba(255,255,255,0.04) !important;
+  }
+
+  .forecast-dashboard .dashboard-card {
+    border-radius: 16px !important;
+  }
+
+  .operations-intro {
+    border-radius: 16px !important;
+  }
+}
+
  </style>
 </head>
 
