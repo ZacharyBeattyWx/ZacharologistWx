@@ -3,6 +3,13 @@
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Zacharologist Wx Page</title>
+  <link
+    href="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.css"
+    rel="stylesheet"
+  />
+
+<script src="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.js"></script>
+
 
   <style>
     * {
@@ -2025,6 +2032,90 @@ nav a {
   color: rgba(255,255,255,0.9) !important;
 }
 
+.radar-map-modal {
+position: fixed;
+inset: 0;
+z-index: 9999;
+display: none;
+}
+
+.radar-map-modal.is-open {
+display: block;
+}
+
+.radar-map-backdrop {
+position: absolute;
+inset: 0;
+background: rgba(2, 6, 23, 0.82);
+backdrop-filter: blur(10px);
+}
+
+.radar-map-box {
+position: relative;
+width: min(1200px, calc(100vw - 28px));
+height: min(760px, calc(100vh - 42px));
+margin: 20px auto;
+background: #07111f;
+border: 1px solid rgba(148, 163, 184, 0.35);
+border-radius: 22px;
+overflow: hidden;
+box-shadow: 0 30px 90px rgba(0,0,0,0.55);
+}
+
+.radar-map-header {
+height: 64px;
+padding: 14px 18px;
+display: flex;
+justify-content: space-between;
+align-items: center;
+background: rgba(15, 23, 42, 0.96);
+border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.radar-map-header h2 {
+margin: 0;
+font-size: 1.15rem;
+}
+
+.radar-map-header p {
+margin: 4px 0 0;
+color: #94a3b8;
+font-size: 0.85rem;
+}
+
+.radar-map-close {
+width: 38px;
+height: 38px;
+border-radius: 999px;
+border: 1px solid rgba(255,255,255,0.25);
+background: rgba(255,255,255,0.08);
+backdrop-filter: blur(10px);
+color: white;
+font-size: 1.5rem;
+cursor: pointer;
+
+}
+
+body.radar-map-open {
+  overflow: hidden;
+  height: 100dvh;
+}
+
+#radarMap {
+width: 100%;
+height: calc(100% - 74px);
+}
+
+@media (max-width: 768px) {
+.radar-map-box {
+width: 100vw;
+height: 100dvh;
+margin: 0;
+border-radius: 0;
+}
+}
+
+
 @media (max-width: 768px) {
   .alert-modal {
     padding: 10px !important;
@@ -2992,6 +3083,7 @@ filter: brightness(1.15);
 </div>
 </div>
 
+<<<<<<< HEAD
 <div class="radar-modal" id="radarModal">
   <div class="radar-modal-backdrop"></div>
 
@@ -3471,6 +3563,7 @@ card.innerHTML = `
       ${locationText}
     </span>
 
+<<<<<<< HEAD
     <button class="globe-button" type="button" onclick="openRadarModal('clean')">
   🌎 Radar
 </button>
@@ -3478,6 +3571,12 @@ card.innerHTML = `
 <button class="raw-radar-button" type="button" onclick="openRadarModal('raw')">
   ⚡ Hi-Res Radar
 </button>
+=======
+    <button class="ro-map-btn" type="button" title="Map preview" data-map-btn>
+      🌎
+    </button>
+>>>>>>> 3c735c988781aec7021f047d0eabddc87bec196f
+
 
     <button class="compact-details-btn" data-alert-id="${alert.id}" type="button">
       ...
@@ -3496,6 +3595,183 @@ card.innerHTML = `
   requestAnimationFrame(() => {
     alertsList.style.opacity = "1";
   });
+
+  document.addEventListener("click", event => {
+const mapButton = event.target.closest("[data-map-btn]");
+if (!mapButton) return;
+
+openRadarMap();
+});
+}
+
+let radarMap;
+let radarMapLoaded = false;
+
+async function openRadarMap() {
+const modal = document.getElementById("radarMapModal");
+if (!modal) return;
+
+document.body.classList.add("radar-map-open");
+modal.classList.add("is-open");
+
+if (!radarMapLoaded) {
+radarMapLoaded = true;
+initRadarMap();
+}
+
+setTimeout(() => {
+if (radarMap) radarMap.resize();
+}, 150);
+}
+
+function closeRadarMap() {
+const modal = document.getElementById("radarMapModal");
+if (!modal) return;
+
+document.body.classList.remove("radar-map-open");
+modal.classList.remove("is-open");
+}
+
+function closeRadarMap() {
+const modal = document.getElementById("radarMapModal");
+if (!modal) return;
+
+modal.classList.remove("is-open");
+}
+
+async function initRadarMap() {
+radarMap = new maplibregl.Map({
+container: "radarMap",
+style: {
+version: 8,
+sources: {
+osm: {
+type: "raster",
+tiles: [
+"https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+],
+tileSize: 256,
+attribution: "© OpenStreetMap contributors"
+}
+},
+layers: [
+{
+id: "osm",
+type: "raster",
+source: "osm",
+paint: {
+"raster-opacity": 0.22
+}
+}
+]
+},
+center: [-79.8, 35.8],
+zoom: 5.3
+});
+
+radarMap.addControl(new maplibregl.NavigationControl(), "top-right");
+
+radarMap.on("load", async () => {
+await addRainViewerRadarLayer();
+await addNwsAlertPolygons();
+});
+}
+
+async function addRainViewerRadarLayer() {
+const response = await fetch("https://api.rainviewer.com/public/weather-maps.json");
+const data = await response.json();
+
+const radarFrames = data.radar?.past || [];
+if (!radarFrames.length) return;
+
+const latestFrame = radarFrames[radarFrames.length - 1];
+
+const radarTileUrl = `${data.host}${latestFrame.path}/512/{z}/{x}/{y}/6/1_1.png`;
+
+radarMap.addSource("rainviewer-radar", {
+type: "raster",
+tiles: [radarTileUrl],
+tileSize: 512
+});
+
+radarMap.addLayer({
+id: "rainviewer-radar-layer",
+type: "raster",
+source: "rainviewer-radar",
+paint: {
+"raster-opacity": 0.93
+}
+});
+}
+
+async function addNwsAlertPolygons() {
+const response = await fetch(
+"https://api.weather.gov/alerts/active?area=NC&area=SC&area=VA"
+);
+
+const data = await response.json();
+
+const features = (data.features || []).filter(feature => {
+return feature.geometry && feature.geometry.coordinates;
+});
+
+radarMap.addSource("nws-alerts", {
+type: "geojson",
+data: {
+type: "FeatureCollection",
+features
+}
+});
+
+radarMap.addLayer({
+id: "nws-alert-fill",
+type: "fill",
+source: "nws-alerts",
+paint: {
+"fill-color": [
+"match",
+["get", "event"],
+"Tornado Warning", "#ff1744",
+"Severe Thunderstorm Warning", "#ffb300",
+"Flash Flood Warning", "#22c55e",
+"Special Weather Statement", "#38bdf8",
+"#facc15"
+],
+"fill-opacity": 0.22
+}
+});
+
+radarMap.addLayer({
+id: "nws-alert-outline",
+type: "line",
+source: "nws-alerts",
+paint: {
+"line-color": [
+"match",
+["get", "event"],
+"Tornado Warning", "#ff1744",
+"Severe Thunderstorm Warning", "#ffb300",
+"Flash Flood Warning", "#22c55e",
+"Special Weather Statement", "#38bdf8",
+"#facc15"
+],
+"line-width": 2.5
+}
+});
+
+radarMap.on("click", "nws-alert-fill", event => {
+const props = event.features[0].properties;
+
+alert(`${props.event}\n\n${props.headline || "No headline available"}`);
+});
+
+radarMap.on("mouseenter", "nws-alert-fill", () => {
+radarMap.getCanvas().style.cursor = "pointer";
+});
+
+radarMap.on("mouseleave", "nws-alert-fill", () => {
+radarMap.getCanvas().style.cursor = "";
+});
 }
 
 function renderCategory(category) {
@@ -3665,6 +3941,15 @@ renderCategory(currentCategory);
     isFetchingAlerts = false;
   }
 }
+
+document.addEventListener("click", event => {
+if (
+event.target.closest(".radar-map-close") ||
+event.target.classList.contains("radar-map-backdrop")
+) {
+closeRadarMap();
+}
+});
 
 document.querySelectorAll(".alert-tabs button").forEach(button => {
   button.addEventListener("click", () => {
