@@ -6345,7 +6345,6 @@ function initSpcSlideshow() {
   if (!slides.length) return;
 
   let activeIndex = 0;
-  let slideTimer = null;
 
   function resetDay48Gif(slide) {
     const img = slide.querySelector("img[data-reset-gif]");
@@ -6355,36 +6354,6 @@ function initSpcSlideshow() {
     img.dataset.baseSrc = baseSrc;
 
     img.src = `${baseSrc}?refresh=${Date.now()}`;
-  }
-
-  function currentImageIsReady() {
-    const img = slides[activeIndex].querySelector("img");
-
-    if (!img) return true;
-
-    return img.complete && img.naturalWidth > 50;
-  }
-
-  function getCurrentDelay() {
-    const slide = slides[activeIndex];
-    const customDelay = Number(slide.dataset.slideDelay);
-
-    return Number.isFinite(customDelay) && customDelay > 0
-      ? customDelay
-      : 9000;
-  }
-
-  function scheduleNextSlide() {
-    clearTimeout(slideTimer);
-
-    if (!currentImageIsReady()) {
-      slideTimer = setTimeout(scheduleNextSlide, 700);
-      return;
-    }
-
-    slideTimer = setTimeout(() => {
-      showSlide(activeIndex + 1);
-    }, getCurrentDelay());
   }
 
   function showSlide(index) {
@@ -6399,7 +6368,6 @@ function initSpcSlideshow() {
     });
 
     resetDay48Gif(slides[activeIndex]);
-    scheduleNextSlide();
   }
 
   if (prevBtn) {
@@ -6422,7 +6390,9 @@ function initSpcSlideshow() {
     dot.addEventListener("click", event => {
       event.preventDefault();
       event.stopPropagation();
-      showSlide(Number(dot.dataset.spcDot));
+
+      const index = Number(dot.dataset.spcDot);
+      showSlide(index);
     });
   });
 
