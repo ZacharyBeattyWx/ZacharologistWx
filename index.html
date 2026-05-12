@@ -3760,6 +3760,122 @@ filter: brightness(1.15);
   }
 }
 
+/* SPC SINGLE IMAGE SLIDESHOW */
+
+.spc-slideshow {
+  position: relative;
+  height: 365px;
+  margin-top: 14px;
+  overflow: hidden;
+  border-radius: 16px;
+  background: rgba(8, 12, 22, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.20);
+}
+
+.spc-slide {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  text-decoration: none;
+  color: inherit;
+}
+
+.spc-slide.active {
+  display: flex;
+}
+
+.spc-slide .spc-image-title {
+  flex: 0 0 auto;
+  min-height: 28px;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 12, 22, 0.86);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  color: #f8fafc;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.spc-slide .spc-outlook-img {
+  flex: 1 1 auto;
+  width: 100%;
+  height: calc(100% - 28px);
+  object-fit: cover;
+  object-position: center center;
+  border-radius: 0;
+  background: rgba(255,255,255,0.08);
+}
+
+.spc-slide-controls {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.spc-slide-btn,
+.spc-slide-dots button {
+  pointer-events: auto;
+}
+
+.spc-slide-btn {
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 999px;
+  background: rgba(2, 6, 23, 0.72);
+  color: white;
+  font-size: 1.45rem;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+}
+
+.spc-slide-btn:hover {
+  background: rgba(56, 189, 248, 0.24);
+}
+
+.spc-slide-dots {
+  display: flex;
+  gap: 7px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: rgba(2, 6, 23, 0.62);
+  backdrop-filter: blur(10px);
+}
+
+.spc-slide-dots button {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.35);
+  cursor: pointer;
+}
+
+.spc-slide-dots button.active {
+  background: #38bdf8;
+  box-shadow: 0 0 12px rgba(56,189,248,0.85);
+}
+
+@media (max-width: 768px) {
+  .spc-slideshow {
+    height: 260px;
+  }
+}
+
  </style>
 </head>
 
@@ -3908,62 +4024,75 @@ filter: brightness(1.15);
       <span class="card-time">Auto Updating</span>
     </div>
 
-    <div class="spc-image-scroll">
+    <div class="spc-slideshow" id="spcSlideshow">
 
-      <a class="spc-image-card" href="https://www.spc.noaa.gov/products/outlook/day1otlk.html" target="_blank">
-        <div class="spc-image-title">Day 1 Outlook</div>
-        <img
-          class="spc-outlook-img"
-          alt="SPC Day 1 Outlook"
-          data-spc-options="
-            https://www.spc.noaa.gov/products/outlook/day1otlk.png,
-            https://www.spc.noaa.gov/products/outlook/day1otlk_0100_prt.png,
-            https://www.spc.noaa.gov/products/outlook/day1otlk_0600_prt.png,
-            https://www.spc.noaa.gov/products/outlook/day1otlk_1200_prt.png,
-            https://www.spc.noaa.gov/products/outlook/day1otlk_1300_prt.png,
-            https://www.spc.noaa.gov/products/outlook/day1otlk_1630_prt.png,
-            https://www.spc.noaa.gov/products/outlook/day1otlk_2000_prt.png
-          "
-        >
-      </a>
+  <a class="spc-slide active" href="https://www.spc.noaa.gov/products/outlook/day1otlk.html" target="_blank">
+    <div class="spc-image-title">Day 1 Outlook</div>
+    <img
+      class="spc-outlook-img"
+      alt="SPC Day 1 Outlook"
+      data-spc-options="
+        https://www.spc.noaa.gov/products/outlook/day1otlk.png,
+        https://www.spc.noaa.gov/products/outlook/day1otlk_0100_prt.png,
+        https://www.spc.noaa.gov/products/outlook/day1otlk_0600_prt.png,
+        https://www.spc.noaa.gov/products/outlook/day1otlk_1200_prt.png,
+        https://www.spc.noaa.gov/products/outlook/day1otlk_1300_prt.png,
+        https://www.spc.noaa.gov/products/outlook/day1otlk_1630_prt.png,
+        https://www.spc.noaa.gov/products/outlook/day1otlk_2000_prt.png
+      "
+    >
+  </a>
 
-      <a class="spc-image-card" href="https://www.spc.noaa.gov/products/outlook/day2otlk.html" target="_blank">
-        <div class="spc-image-title">Day 2 Outlook</div>
-        <img
-          class="spc-outlook-img"
-          alt="SPC Day 2 Outlook"
-          data-spc-options="
-            https://www.spc.noaa.gov/products/outlook/day2otlk.png,
-            https://www.spc.noaa.gov/products/outlook/day2otlk_0600_prt.png,
-            https://www.spc.noaa.gov/products/outlook/day2otlk_1730_prt.png
-          "
-        >
-      </a>
+  <a class="spc-slide" href="https://www.spc.noaa.gov/products/outlook/day2otlk.html" target="_blank">
+    <div class="spc-image-title">Day 2 Outlook</div>
+    <img
+      class="spc-outlook-img"
+      alt="SPC Day 2 Outlook"
+      data-spc-options="
+        https://www.spc.noaa.gov/products/outlook/day2otlk.png,
+        https://www.spc.noaa.gov/products/outlook/day2otlk_0600_prt.png,
+        https://www.spc.noaa.gov/products/outlook/day2otlk_1730_prt.png
+      "
+    >
+  </a>
 
-      <a class="spc-image-card" href="https://www.spc.noaa.gov/products/outlook/day3otlk.html" target="_blank">
-        <div class="spc-image-title">Day 3 Outlook</div>
-        <img
-          class="spc-outlook-img"
-          alt="SPC Day 3 Outlook"
-          data-spc-options="
-            https://www.spc.noaa.gov/products/outlook/day3otlk.png,
-            https://www.spc.noaa.gov/products/outlook/day3otlk_0730_prt.png,
-            https://www.spc.noaa.gov/products/outlook/day3otlk_0830_prt.png,
-            https://www.spc.noaa.gov/products/outlook/day3otlk_1930_prt.png
-          "
-        >
-      </a>
+  <a class="spc-slide" href="https://www.spc.noaa.gov/products/outlook/day3otlk.html" target="_blank">
+    <div class="spc-image-title">Day 3 Outlook</div>
+    <img
+      class="spc-outlook-img"
+      alt="SPC Day 3 Outlook"
+      data-spc-options="
+        https://www.spc.noaa.gov/products/outlook/day3otlk.png,
+        https://www.spc.noaa.gov/products/outlook/day3otlk_0730_prt.png,
+        https://www.spc.noaa.gov/products/outlook/day3otlk_0830_prt.png,
+        https://www.spc.noaa.gov/products/outlook/day3otlk_1930_prt.png
+      "
+    >
+  </a>
 
-      <a class="spc-image-card" href="https://www.spc.noaa.gov/products/exper/day4-8/" target="_blank">
-        <div class="spc-image-title">Days 4–8 Outlook</div>
-        <img
-          class="spc-outlook-img"
-          alt="SPC Days 4 through 8 Outlook"
-          src="https://www.spc.noaa.gov/products/exper/day4-8/day48prob.gif"
-        >
-      </a>
+  <a class="spc-slide" href="https://www.spc.noaa.gov/products/exper/day4-8/" target="_blank">
+    <div class="spc-image-title">Days 4–8 Outlook</div>
+    <img
+      class="spc-outlook-img"
+      alt="SPC Days 4 through 8 Outlook"
+      src="https://www.spc.noaa.gov/products/exper/day4-8/day48prob.gif"
+    >
+  </a>
 
+  <div class="spc-slide-controls">
+    <button type="button" class="spc-slide-btn" data-spc-slide="prev">‹</button>
+
+    <div class="spc-slide-dots">
+      <button type="button" class="active" data-spc-dot="0"></button>
+      <button type="button" data-spc-dot="1"></button>
+      <button type="button" data-spc-dot="2"></button>
+      <button type="button" data-spc-dot="3"></button>
     </div>
+
+    <button type="button" class="spc-slide-btn" data-spc-slide="next">›</button>
+  </div>
+
+</div>
   </article>
 
   <article class="dashboard-card briefing-card forecast-discussion-card">
@@ -6196,7 +6325,65 @@ if (mobileNavToggle && siteNav) {
   });
 }
 
+function initSpcSlideshow() {
+  const slideshow = document.getElementById("spcSlideshow");
+  if (!slideshow) return;
+
+  const slides = Array.from(slideshow.querySelectorAll(".spc-slide"));
+  const dots = Array.from(slideshow.querySelectorAll("[data-spc-dot]"));
+  const prevBtn = slideshow.querySelector('[data-spc-slide="prev"]');
+  const nextBtn = slideshow.querySelector('[data-spc-slide="next"]');
+
+  if (!slides.length) return;
+
+  let activeIndex = 0;
+
+  function showSlide(index) {
+    activeIndex = (index + slides.length) % slides.length;
+
+    slides.forEach((slide, i) => {
+      slide.classList.toggle("active", i === activeIndex);
+    });
+
+    dots.forEach((dot, i) => {
+      dot.classList.toggle("active", i === activeIndex);
+    });
+  }
+
+  if (prevBtn) {
+    prevBtn.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      showSlide(activeIndex - 1);
+    });
+  }
+
+  if (nextBtn) {
+    nextBtn.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      showSlide(activeIndex + 1);
+    });
+  }
+
+  dots.forEach(dot => {
+    dot.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      showSlide(Number(dot.dataset.spcDot));
+    });
+  });
+
+  setInterval(() => {
+    showSlide(activeIndex + 1);
+  }, 9000);
+
+  showSlide(0);
+}
+
 loadSPCImages();
+initSpcSlideshow();
+
 setInterval(loadSPCImages, 10 * 60 * 1000);
 
 </script>
