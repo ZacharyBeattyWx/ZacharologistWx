@@ -269,9 +269,9 @@
 .card {
   transition: all 0.25s ease;
 }
-  .forecast-dashboard {
+ .forecast-dashboard {
   width: 100%;
-  padding: 90px 1.5% 70px;
+  padding: 70px 1.5% 70px;
   background:
     radial-gradient(circle at top left, rgba(80, 120, 255, 0.18), transparent 35%),
     linear-gradient(180deg, #09101d 0%, #101827 100%);
@@ -389,6 +389,60 @@
   color: #94a3b8;
   font-size: 0.78rem;
   line-height: 1.35;
+}
+
+.quick-tools-row {
+  width: 96%;
+  max-width: 1500px;
+  margin: -36px auto 54px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
+  position: relative;
+  z-index: 3;
+}
+
+.quick-tool {
+  min-height: 74px;
+  padding: 15px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-decoration: none;
+  color: #e5e7eb;
+  background: rgba(10, 16, 30, 0.88);
+  border: 1px solid rgba(143, 179, 255, 0.15);
+  border-radius: 18px;
+  box-shadow: 0 14px 30px rgba(0,0,0,0.28);
+  transition: 0.22s ease;
+}
+
+.quick-tool span {
+  font-size: 1.25rem;
+}
+
+.quick-tool strong {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.quick-tool:hover {
+  transform: translateY(-3px);
+  background: rgba(20, 31, 55, 0.96);
+  border-color: rgba(56, 189, 248, 0.32);
+  box-shadow: 0 18px 38px rgba(56, 189, 248, 0.14);
+}
+
+.quick-tool.chase-tool {
+  color: #fb923c;
+  border-color: rgba(249, 115, 22, 0.24);
+}
+
+.quick-tool.chase-tool:hover {
+  background: rgba(249, 115, 22, 0.12);
+  border-color: rgba(249, 115, 22, 0.42);
 }
 
 .dashboard-grid {
@@ -2226,6 +2280,26 @@ body {
   min-width: 0;
 }
 
+.quick-tools-row {
+  width: calc(100% - 28px);
+  margin: -26px auto 38px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.quick-tool {
+  min-height: 66px;
+  padding: 12px 10px;
+}
+
+.quick-tool strong {
+  font-size: 0.68rem;
+}
+
+.quick-tool span {
+  font-size: 1.1rem;
+}
+
 }
 
 .warning-detail-card.winter-mode {
@@ -3217,7 +3291,7 @@ filter: brightness(1.15);
   <nav class="site-nav" id="siteNav">
     <a href="index.html" class="active">
       Home
-      <span>Operations</span>
+      <span>Live Monitoring</span>
     </a>
 
     <a href="wx-updates.html">
@@ -3400,6 +3474,33 @@ filter: brightness(1.15);
   </div>
 
 </div>
+</section>
+
+<section class="quick-tools-row">
+  <a href="wx-updates.html" class="quick-tool">
+    <span>📝</span>
+    <strong>Forecast Briefings</strong>
+  </a>
+
+  <a href="maps.html" class="quick-tool">
+    <span>🗺️</span>
+    <strong>Maps & Models</strong>
+  </a>
+
+  <a href="https://www.spc.noaa.gov/" target="_blank" class="quick-tool">
+    <span>⚡</span>
+    <strong>SPC Outlooks</strong>
+  </a>
+
+  <a href="https://www.wpc.ncep.noaa.gov/" target="_blank" class="quick-tool">
+    <span>🌧️</span>
+    <strong>WPC / Hydro</strong>
+  </a>
+
+  <a href="storm-chasing.html" class="quick-tool chase-tool">
+    <span>🚘</span>
+    <strong>Storm Chasing</strong>
+  </a>
 </section>
 
 <div class="section-alt">
