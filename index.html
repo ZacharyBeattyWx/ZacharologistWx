@@ -6019,6 +6019,83 @@ body {
   min-height: 44px !important;
   flex-shrink: 0 !important;
   }
+
+  .forecast-dashboard .ops-conditions-card {
+  position: relative !important;
+  height: auto !important;
+  min-height: 330px !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+.forecast-dashboard .ops-location-icon {
+  position: absolute !important;
+  top: 18px !important;
+  right: 16px !important;
+
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 999px !important;
+
+  display: grid !important;
+  place-items: center !important;
+
+  border: 1px solid rgba(125, 211, 252, 0.45) !important;
+  background: rgba(15, 23, 42, 0.95) !important;
+  color: #7dd3fc !important;
+
+  font-size: 1.35rem !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+
+  cursor: pointer !important;
+  box-shadow: 0 0 18px rgba(56, 189, 248, 0.18) !important;
+}
+
+.forecast-dashboard .ops-location-icon:hover {
+  background: rgba(14, 165, 233, 0.18) !important;
+  border-color: rgba(125, 211, 252, 0.85) !important;
+  box-shadow: 0 0 24px rgba(56, 189, 248, 0.35) !important;
+  transform: translateY(-1px);
+}
+
+.forecast-dashboard .ops-location-icon.is-active {
+  color: #22c55e !important;
+  border-color: rgba(34, 197, 94, 0.65) !important;
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.25) !important;
+}
+
+.forecast-dashboard .ops-location-icon.is-locating {
+  animation: locationPulse 1s ease-in-out infinite !important;
+  color: #facc15 !important;
+  border-color: rgba(250, 204, 21, 0.65) !important;
+  box-shadow: 0 0 20px rgba(250, 204, 21, 0.25) !important;
+}
+
+.forecast-dashboard .ops-location-icon.is-active {
+  color: #22c55e !important;
+  border-color: rgba(34, 197, 94, 0.7) !important;
+  box-shadow: 0 0 22px rgba(34, 197, 94, 0.28) !important;
+}
+
+.forecast-dashboard .ops-location-icon.is-error {
+  color: #fb7185 !important;
+  border-color: rgba(251, 113, 133, 0.7) !important;
+  box-shadow: 0 0 20px rgba(251, 113, 133, 0.25) !important;
+}
+
+@keyframes locationPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.08);
+    opacity: 0.75;
+  }
+}
+
 }
 
  </style>
@@ -6097,8 +6174,19 @@ body {
   <!-- LEFT COLUMN -->
   <div class="ops-column ops-left-column">
 
-    <article class="dashboard-card ops-conditions-card">
-  <span class="mini-label" id="conditionsLabel">Live Conditions</span>
+ <article class="dashboard-card ops-conditions-card">
+
+  <button
+    class="ops-location-icon"
+    id="useLocationBtn"
+    type="button"
+    title="Use my location"
+    aria-label="Use my location"
+  >
+    ⌖
+  </button>
+
+  <span class="mini-label" id="conditionsLabel">Live Conditions Near You</span>
 
   <div class="conditions-main">
     <div>
@@ -6131,9 +6219,6 @@ body {
     </div>
   </div>
 
-  <button class="dashboard-button subtle-button" id="useLocationBtn" type="button">
-    Use My Location
-  </button>
 </article>
 
     <article class="dashboard-card mini-card spc-card">
@@ -8588,15 +8673,46 @@ async function loadConditionsFromLocation(lat, lon) {
     currentPressure.textContent =
       pressureIn !== null ? `${pressureIn} in` : "-- in";
 
-    useLocationBtn.textContent = "Location Updated";
+    setLocationButtonState("active");
   } catch (error) {
     console.error(error);
 
     conditionsLabel.textContent = "Live Conditions";
     currentLocation.textContent = "Greensboro, NC";
     currentCondition.textContent = "Unable to load local conditions";
-    useLocationBtn.textContent = "Try Again";
+    setLocationButtonState("error");
   }
+}
+
+function setLocationButtonState(state) {
+  if (!useLocationBtn) return;
+
+  useLocationBtn.textContent = "⌖";
+  useLocationBtn.classList.remove("is-active", "is-locating", "is-error");
+
+  if (state === "locating") {
+    useLocationBtn.classList.add("is-locating");
+    useLocationBtn.title = "Locating...";
+    useLocationBtn.setAttribute("aria-label", "Locating...");
+    return;
+  }
+
+  if (state === "active") {
+    useLocationBtn.classList.add("is-active");
+    useLocationBtn.title = "Location updated";
+    useLocationBtn.setAttribute("aria-label", "Location updated");
+    return;
+  }
+
+  if (state === "error") {
+    useLocationBtn.classList.add("is-error");
+    useLocationBtn.title = "Try again";
+    useLocationBtn.setAttribute("aria-label", "Try again");
+    return;
+  }
+
+  useLocationBtn.title = "Use my location";
+  useLocationBtn.setAttribute("aria-label", "Use my location");
 }
 
 function requestUserLocation() {
@@ -8605,7 +8721,7 @@ function requestUserLocation() {
     return;
   }
 
-  useLocationBtn.textContent = "Locating...";
+  setLocationButtonState("locating");
 
   navigator.geolocation.getCurrentPosition(
     position => {
@@ -8616,7 +8732,7 @@ function requestUserLocation() {
     },
     () => {
       currentCondition.textContent = "Location permission denied";
-      useLocationBtn.textContent = "Use My Location";
+      setLocationBButtonState("error");
     },
     {
       enableHighAccuracy: false,
@@ -8625,6 +8741,8 @@ function requestUserLocation() {
     }
   );
 }
+
+setLocationButtonState("ready");
 
 if (useLocationBtn) {
   useLocationBtn.addEventListener("click", requestUserLocation);
