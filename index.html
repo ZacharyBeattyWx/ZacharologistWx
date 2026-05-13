@@ -6093,6 +6093,23 @@ body {
   video {
     max-width: 100% !important;
   }
+
+   .spc-image-wrapper,
+  .spc-slider,
+  .spc-slide {
+    aspect-ratio: auto !important;
+    height: auto !important;
+    min-height: 260px !important;
+  }
+
+  .spc-slide img,
+  .spc-slider img,
+  .spc-image-wrapper img {
+    width: 100% !important;
+    height: auto !important;
+    object-fit: contain !important;
+    display: block;
+  }
 }
 
  </style>
