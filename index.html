@@ -5987,10 +5987,12 @@ body {
   }
 
   .forecast-dashboard .ops-conditions-card {
-    height: 330px !important;
-    min-height: 330px !important;
-    max-height: 330px !important;
-  }
+  height: auto !important;
+  min-height: 390px !important;
+  max-height: none !important;
+  overflow: visible !important;
+  padding-bottom: 22px !important;
+}
 
   .forecast-dashboard .ops-conditions-card .conditions-main strong {
     font-size: 4.25rem !important;
@@ -6003,6 +6005,19 @@ body {
 
   .forecast-dashboard .ops-conditions-card .conditions-grid div {
     padding: 14px 12px !important;
+  }
+  .forecast-dashboard .ops-conditions-card {
+  height: auto !important;
+  min-height: 420px !important;
+  max-height: none !important;
+  overflow: visible !important;
+  padding-bottom: 24px !important;
+}
+
+.forecast-dashboard .ops-conditions-card button {
+  width: 100% !important;
+  min-height: 44px !important;
+  flex-shrink: 0 !important;
   }
 }
 
