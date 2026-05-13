@@ -5529,6 +5529,63 @@ body {
   }
 }
 
+/* =========================================================
+   FINAL QUICK TOOLS / BOARD FLOW FIX
+   This stops the quick tools row from floating over the dashboard.
+   KEEP THIS AS THE LAST CSS BLOCK.
+========================================================= */
+
+@media (min-width: 769px) {
+  .forecast-dashboard {
+    padding-top: 72px !important;
+    padding-bottom: 44px !important;
+    overflow: visible !important;
+  }
+
+  .ops-board-shell {
+    position: relative !important;
+    overflow: visible !important;
+    margin-bottom: 0 !important;
+  }
+
+  .forecast-dashboard .ops-dashboard-grid {
+    position: relative !important;
+    overflow: visible !important;
+    align-items: start !important;
+  }
+
+  .ops-column {
+    position: relative !important;
+    overflow: visible !important;
+  }
+
+  .quick-tools-row {
+    position: static !important;
+    z-index: auto !important;
+
+    width: calc(100% - 130px) !important;
+    max-width: 1500px !important;
+
+    margin: 28px auto 54px !important;
+    padding: 0 !important;
+
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+
+    transform: none !important;
+    top: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    right: auto !important;
+    filter: none !important;
+  }
+
+  .quick-tool {
+    min-height: 50px !important;
+  }
+}
+
  </style>
 </head>
 
