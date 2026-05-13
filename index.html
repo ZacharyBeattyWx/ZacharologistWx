@@ -5974,6 +5974,173 @@ body {
   }
 }
 
+/* =========================================================
+   TRUE FINAL HOME LAYOUT RESET
+   Fixes dashboard, radar/SPC containment, alerts, and quick tools.
+   KEEP THIS AS THE LAST CSS BLOCK.
+========================================================= */
+
+@media (min-width: 769px) {
+  .forecast-dashboard {
+    padding: 72px 0 56px !important;
+    overflow: visible !important;
+    background:
+      radial-gradient(circle at 8% 0%, rgba(53, 200, 255, 0.08), transparent 34%),
+      linear-gradient(180deg, #02060d 0%, #07101c 100%) !important;
+  }
+
+  .ops-board-shell {
+    width: calc(100% - 56px) !important;
+    max-width: 1780px !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    overflow: visible !important;
+  }
+
+  .operations-intro {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 0 16px !important;
+    padding: 20px 22px !important;
+    min-height: 130px !important;
+    border-radius: 4px !important;
+    background:
+      linear-gradient(135deg, rgba(5, 12, 21, 0.96), rgba(2, 6, 12, 0.92)) !important;
+    border: 1px solid rgba(53, 200, 255, 0.16) !important;
+    box-shadow: none !important;
+  }
+
+  .forecast-dashboard .ops-dashboard-grid {
+    display: grid !important;
+    grid-template-columns:
+      minmax(320px, 0.9fr)
+      minmax(760px, 1.8fr)
+      minmax(360px, 0.95fr) !important;
+
+    gap: 16px !important;
+    align-items: start !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+
+  .ops-column {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16px !important;
+    min-width: 0 !important;
+    overflow: visible !important;
+  }
+
+  .forecast-dashboard .dashboard-card {
+    padding: 18px 20px !important;
+    border-radius: 4px !important;
+    background:
+      linear-gradient(180deg, rgba(8, 15, 26, 0.98), rgba(4, 8, 15, 0.99)) !important;
+    border: 1px solid rgba(120, 155, 180, 0.15) !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.025),
+      0 10px 22px rgba(0,0,0,0.24) !important;
+  }
+
+  .forecast-dashboard .ops-conditions-card,
+  .forecast-dashboard .forecast-discussion-card {
+    height: 270px !important;
+    min-height: 270px !important;
+    max-height: 270px !important;
+    overflow: hidden !important;
+  }
+
+  .forecast-dashboard .alerts-card {
+    height: auto !important;
+    min-height: 270px !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .forecast-dashboard .alerts-card .compact-alert-list {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  .forecast-dashboard .spc-card,
+  .forecast-dashboard .radar-card {
+    height: auto !important;
+    min-height: 430px !important;
+    max-height: none !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .forecast-dashboard .spc-card .card-header-row,
+  .forecast-dashboard .radar-card .card-header-row {
+    flex: 0 0 auto !important;
+    margin-bottom: 10px !important;
+  }
+
+  .forecast-dashboard .radar-frame {
+    display: block !important;
+    width: 100% !important;
+    height: 350px !important;
+    max-height: 350px !important;
+    margin: 8px 0 0 !important;
+    border-radius: 4px !important;
+    overflow: hidden !important;
+  }
+
+  .forecast-dashboard .spc-slideshow {
+    width: 100% !important;
+    height: 350px !important;
+    max-height: 350px !important;
+    margin: 8px 0 0 !important;
+    border-radius: 4px !important;
+    overflow: hidden !important;
+  }
+
+  .forecast-dashboard .spc-slide {
+    overflow: hidden !important;
+  }
+
+  .forecast-dashboard .spc-outlook-img {
+    width: 100% !important;
+    height: calc(100% - 22px) !important;
+    max-height: calc(100% - 22px) !important;
+    object-fit: cover !important;
+    object-position: center center !important;
+    display: block !important;
+  }
+
+  .quick-tools-row {
+    position: static !important;
+    z-index: auto !important;
+    transform: none !important;
+    top: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    right: auto !important;
+
+    width: calc(100% - 96px) !important;
+    max-width: 1680px !important;
+    margin: 34px auto 58px !important;
+    padding: 0 !important;
+
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+  }
+
+  .quick-tool {
+    min-height: 56px !important;
+    border-radius: 4px !important;
+  }
+}
+
  </style>
 </head>
 
@@ -6265,38 +6432,34 @@ body {
   </div>
   <!-- closes dashboard-grid ops-dashboard-grid -->
 
-  <section class="quick-tools-row">
-    <a href="wx-updates.html" class="quick-tool">
-      <span>📝</span>
-      <strong>Forecast Briefings</strong>
-    </a>
-
-    <a href="maps.html" class="quick-tool">
-      <span>🗺️</span>
-      <strong>Maps & Models</strong>
-    </a>
-
-    <a href="https://www.spc.noaa.gov/" target="_blank" class="quick-tool">
-      <span>⚡</span>
-      <strong>SPC Outlooks</strong>
-    </a>
-
-    <a href="https://www.wpc.ncep.noaa.gov/" target="_blank" class="quick-tool">
-      <span>🌧️</span>
-      <strong>WPC / Hydro</strong>
-    </a>
-
-    <a href="storm-chasing.html" class="quick-tool chase-tool">
-      <span>🚘</span>
-      <strong>Storm Chasing</strong>
-    </a>
-  </section>
-
-</div>
-<!-- closes ops-board-shell -->
-
 </section>
-<!-- closes forecast-dashboard -->
+
+<section class="quick-tools-row">
+  <a href="wx-updates.html" class="quick-tool">
+    <span>📝</span>
+    <strong>Forecast Briefings</strong>
+  </a>
+
+  <a href="maps.html" class="quick-tool">
+    <span>🗺️</span>
+    <strong>Maps & Models</strong>
+  </a>
+
+  <a href="https://www.spc.noaa.gov/" target="_blank" class="quick-tool">
+    <span>⚡</span>
+    <strong>SPC Outlooks</strong>
+  </a>
+
+  <a href="https://www.wpc.ncep.noaa.gov/" target="_blank" class="quick-tool">
+    <span>🌧️</span>
+    <strong>WPC / Hydro</strong>
+  </a>
+
+  <a href="storm-chasing.html" class="quick-tool chase-tool">
+    <span>🚘</span>
+    <strong>Storm Chasing</strong>
+  </a>
+</section>
 
 <div class="alert-modal" id="stormModal">
   <div class="alert-modal-backdrop"></div>
