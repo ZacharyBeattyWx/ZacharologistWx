@@ -5586,6 +5586,27 @@ body {
   }
 }
 
+/* QUICK TOOLS INSIDE OPS BOARD */
+
+.ops-board-shell .quick-tools-row {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 14px 0 0 !important;
+  padding: 0 !important;
+
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+
+  position: relative !important;
+  z-index: 1 !important;
+  transform: none !important;
+}
+
+.ops-board-shell .quick-tool {
+  min-height: 50px !important;
+}
+
  </style>
 </head>
 
@@ -5874,32 +5895,41 @@ body {
 
 </section>
 
-<section class="quick-tools-row">
-  <a href="wx-updates.html" class="quick-tool">
-    <span>📝</span>
-    <strong>Forecast Briefings</strong>
-  </a>
+  </div>
+  <!-- closes dashboard-grid ops-dashboard-grid -->
 
-  <a href="maps.html" class="quick-tool">
-    <span>🗺️</span>
-    <strong>Maps & Models</strong>
-  </a>
+  <section class="quick-tools-row">
+    <a href="wx-updates.html" class="quick-tool">
+      <span>📝</span>
+      <strong>Forecast Briefings</strong>
+    </a>
 
-  <a href="https://www.spc.noaa.gov/" target="_blank" class="quick-tool">
-    <span>⚡</span>
-    <strong>SPC Outlooks</strong>
-  </a>
+    <a href="maps.html" class="quick-tool">
+      <span>🗺️</span>
+      <strong>Maps & Models</strong>
+    </a>
 
-  <a href="https://www.wpc.ncep.noaa.gov/" target="_blank" class="quick-tool">
-    <span>🌧️</span>
-    <strong>WPC / Hydro</strong>
-  </a>
+    <a href="https://www.spc.noaa.gov/" target="_blank" class="quick-tool">
+      <span>⚡</span>
+      <strong>SPC Outlooks</strong>
+    </a>
 
-  <a href="storm-chasing.html" class="quick-tool chase-tool">
-    <span>🚘</span>
-    <strong>Storm Chasing</strong>
-  </a>
+    <a href="https://www.wpc.ncep.noaa.gov/" target="_blank" class="quick-tool">
+      <span>🌧️</span>
+      <strong>WPC / Hydro</strong>
+    </a>
+
+    <a href="storm-chasing.html" class="quick-tool chase-tool">
+      <span>🚘</span>
+      <strong>Storm Chasing</strong>
+    </a>
+  </section>
+
+</div>
+<!-- closes ops-board-shell -->
+
 </section>
+<!-- closes forecast-dashboard -->
 
 <div class="alert-modal" id="stormModal">
   <div class="alert-modal-backdrop"></div>
