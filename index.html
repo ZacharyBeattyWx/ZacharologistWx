@@ -5897,184 +5897,24 @@ body {
   }
 }
 
-
-/* =========================
-   MOBILE
-========================= */
-
-@media (max-width: 768px) {
-
-  html,
-  body {
-    overflow-x: hidden;
-    max-width: 100%;
-  }
-
-  .forecast-dashboard {
-    width: 100%;
-    padding: 22px 0 34px;
-    overflow-x: hidden;
-  }
-
-  .ops-board-shell,
-  .ops-dashboard-grid,
-  .ops-column,
-  .dashboard-card,
-  .alerts-card,
-  .radar-card,
-  .spc-card,
-  .forecast-discussion-card,
-  .ops-conditions-card {
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-  }
-
-  iframe,
-  img,
-  video {
-    max-width: 100%;
-  }
-
-  /* =========================
-     ALERT TABS
-  ========================= */
-
-  .alert-tabs {
-    display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 8px;
-    margin-bottom: 14px;
-  }
-
-  .alert-tabs button:nth-child(1),
-  .alert-tabs button:nth-child(2),
-  .alert-tabs button:nth-child(3) {
-    grid-column: span 2;
-  }
-
-  .alert-tabs button:nth-child(4),
-  .alert-tabs button:nth-child(5) {
-    grid-column: span 3;
-  }
-
-  .alert-tabs button {
-    width: 100%;
-    min-width: 0;
-    font-size: 0.64rem;
-    padding: 10px 6px;
-  }
-
-  .alert-location {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  /* =========================
-     SPC MOBILE FIX
-  ========================= */
-
-  .spc-card {
-    padding: 18px;
-  }
-
-  .spc-slideshow {
-    height: auto;
-    background: #05070b;
-  }
-
-  .spc-slide {
-    position: relative;
-    height: auto;
-  }
-
-  .spc-slide.active {
-    display: block;
-  }
-
-  .spc-image-title {
-    height: 34px;
-    min-height: 34px;
-  }
-
-  .spc-outlook-img {
-    width: 100%;
-    height: auto;
-    object-fit: contain;
-    display: block;
-    background: #020509;
-  }
-
-  .spc-slide-controls {
-    bottom: 12px;
-  }
-
-  /* =========================
-     CONDITIONS CARD
-  ========================= */
-
-  .conditions-main strong {
-    font-size: 3rem;
-  }
-
-  .conditions-grid {
-    gap: 10px;
-  }
-}
-
 @media (max-width: 768px) {
   .forecast-dashboard {
     padding-left: 8px !important;
     padding-right: 8px !important;
+    overflow-x: hidden !important;
   }
 
-  .ops-board-shell {
-    width: 100% !important;
-    max-width: 100% !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-  }
-
+  .ops-board-shell,
+  .forecast-dashboard .ops-dashboard-grid,
+  .ops-column,
   .forecast-dashboard .dashboard-card {
     width: 100% !important;
     max-width: 100% !important;
-    padding-left: 18px !important;
-    padding-right: 18px !important;
-  }
-
-  .alert-tabs-wrapper {
-    width: 100% !important;
-    overflow: hidden !important;
-  }
-
-  .alert-tabs {
-    width: 100% !important;
-    display: grid !important;
-    gap: 8px !important;
-    padding: 0 !important;
-    margin: 0 0 18px !important;
-  }
-
-  .alert-tabs button {
-    width: 100% !important;
     min-width: 0 !important;
-    max-width: none !important;
-    height: 40px !important;
-    font-size: 0.68rem !important;
   }
 
-  .alert-tabs button:nth-child(5) {
-    grid-column: 1 / -1 !important;
-  }
-
-  .forecast-dashboard .alerts-card .compact-alert-item {
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-
-   .spc-card {
-    padding: 18px !important;
+  .forecast-dashboard .radar-frame {
+    height: 360px !important;
   }
 
   .spc-slideshow {
@@ -6088,7 +5928,6 @@ body {
     position: absolute !important;
     inset: 0 !important;
     height: 100% !important;
-    overflow: hidden !important;
   }
 
   .spc-slide.active {
@@ -6108,21 +5947,18 @@ body {
     object-position: center center !important;
     background: #05070b !important;
   }
-}
 
-@media (max-width: 768px) {
-  .forecast-dashboard .radar-frame {
-    height: 340px !important;
-  }
-
-  .spc-slideshow {
-    height: 390px !important;
+  .forecast-dashboard .alerts-card .alert-tabs-wrapper {
+    width: 100% !important;
+    overflow: visible !important;
   }
 
   .forecast-dashboard .alerts-card .alert-tabs {
     display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 10px !important;
+    width: 100% !important;
+    min-width: 0 !important;
     padding: 0 !important;
     margin: 0 0 22px !important;
   }
