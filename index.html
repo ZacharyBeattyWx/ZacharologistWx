@@ -5697,6 +5697,88 @@ body {
   }
 }
 
+/* =========================================================
+   FINAL RADAR + SPC CONTAINMENT FIX
+   Stops SPC/radar from overflowing into quick tools.
+   KEEP THIS AS THE LAST CSS BLOCK.
+========================================================= */
+
+@media (min-width: 769px) {
+
+  /* Let the board grow to fit the cards */
+  .forecast-dashboard,
+  .ops-board-shell,
+  .forecast-dashboard .ops-dashboard-grid,
+  .ops-column {
+    overflow: visible !important;
+  }
+
+  /* Force the SPC and radar cards to contain their own media */
+  .forecast-dashboard .spc-card,
+  .forecast-dashboard .radar-card {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  /* Keep headers from stealing weird space */
+  .forecast-dashboard .spc-card .card-header-row,
+  .forecast-dashboard .radar-card .card-header-row {
+    flex: 0 0 auto !important;
+    margin-bottom: 8px !important;
+  }
+
+  /* Contained media height */
+  .forecast-dashboard .radar-frame {
+    display: block !important;
+    width: 100% !important;
+    height: 285px !important;
+    max-height: 285px !important;
+    margin: 8px 0 0 !important;
+    border-radius: 3px !important;
+    overflow: hidden !important;
+  }
+
+  .forecast-dashboard .spc-slideshow {
+    width: 100% !important;
+    height: 285px !important;
+    max-height: 285px !important;
+    margin: 8px 0 0 !important;
+    border-radius: 3px !important;
+    overflow: hidden !important;
+  }
+
+  .forecast-dashboard .spc-slide {
+    overflow: hidden !important;
+  }
+
+  .forecast-dashboard .spc-outlook-img {
+    width: 100% !important;
+    height: calc(100% - 22px) !important;
+    max-height: calc(100% - 22px) !important;
+    object-fit: cover !important;
+    object-position: center center !important;
+    display: block !important;
+  }
+
+  /* Make the lower cards match cleanly */
+  .forecast-dashboard .spc-card,
+  .forecast-dashboard .radar-card {
+    padding-bottom: 14px !important;
+  }
+
+  /* Quick tools must sit below the entire board, not overlap media */
+  .quick-tools-row {
+    position: static !important;
+    transform: none !important;
+    margin: 30px auto 54px !important;
+    z-index: auto !important;
+  }
+}
+
  </style>
 </head>
 
