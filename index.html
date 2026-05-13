@@ -5974,6 +5974,39 @@ body {
   }
 }
 
+/* =========================================================
+   TEMP STABILIZER — REMOVE QUICK TOOL OVERLAP
+   Use this after deleting the quick-tools-row HTML.
+========================================================= */
+
+@media (min-width: 769px) {
+  .forecast-dashboard {
+    padding-bottom: 70px !important;
+    overflow: visible !important;
+  }
+
+  .ops-board-shell,
+  .forecast-dashboard .ops-dashboard-grid,
+  .ops-column {
+    overflow: visible !important;
+  }
+
+  .forecast-dashboard .spc-card,
+  .forecast-dashboard .radar-card {
+    overflow: hidden !important;
+  }
+
+  .forecast-dashboard .spc-slideshow,
+  .forecast-dashboard .radar-frame {
+    height: 350px !important;
+    max-height: 350px !important;
+  }
+
+  .quick-tools-row {
+    display: none !important;
+  }
+}
+
  </style>
 </head>
 
@@ -6263,35 +6296,7 @@ body {
 </section>
 
   </div>
-  <!-- closes dashboard-grid ops-dashboard-grid -->
-
-  <section class="quick-tools-row">
-    <a href="wx-updates.html" class="quick-tool">
-      <span>📝</span>
-      <strong>Forecast Briefings</strong>
-    </a>
-
-    <a href="maps.html" class="quick-tool">
-      <span>🗺️</span>
-      <strong>Maps & Models</strong>
-    </a>
-
-    <a href="https://www.spc.noaa.gov/" target="_blank" class="quick-tool">
-      <span>⚡</span>
-      <strong>SPC Outlooks</strong>
-    </a>
-
-    <a href="https://www.wpc.ncep.noaa.gov/" target="_blank" class="quick-tool">
-      <span>🌧️</span>
-      <strong>WPC / Hydro</strong>
-    </a>
-
-    <a href="storm-chasing.html" class="quick-tool chase-tool">
-      <span>🚘</span>
-      <strong>Storm Chasing</strong>
-    </a>
-  </section>
-
+  
 </div>
 <!-- closes ops-board-shell -->
 
