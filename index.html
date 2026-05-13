@@ -6094,22 +6094,23 @@ body {
     max-width: 100% !important;
   }
 
-   .spc-image-wrapper,
+  .spc-slide,
   .spc-slider,
-  .spc-slide {
-    aspect-ratio: auto !important;
+  .spc-image-wrapper {
     height: auto !important;
-    min-height: 260px !important;
+    min-height: 340px !important;
   }
 
   .spc-slide img,
   .spc-slider img,
   .spc-image-wrapper img {
     width: 100% !important;
-    height: fit-content !important;
+    height: auto !important;
+    min-height: 340px !important;
     object-fit: contain !important;
-    display: block;
+    background: #000;
   }
+
 }
 
  </style>
