@@ -6072,6 +6072,42 @@ body {
     width: 100% !important;
     max-width: 100% !important;
   }
+
+   .spc-card {
+    padding: 18px !important;
+  }
+
+  .spc-slideshow {
+    height: 390px !important;
+    min-height: 390px !important;
+    max-height: 390px !important;
+    overflow: hidden !important;
+  }
+
+  .spc-slide {
+    position: absolute !important;
+    inset: 0 !important;
+    height: 100% !important;
+    overflow: hidden !important;
+  }
+
+  .spc-slide.active {
+    display: flex !important;
+  }
+
+  .spc-slide .spc-image-title {
+    flex: 0 0 34px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+  }
+
+  .spc-slide .spc-outlook-img {
+    width: 100% !important;
+    height: calc(100% - 34px) !important;
+    object-fit: contain !important;
+    object-position: center center !important;
+    background: #05070b !important;
+  }
 }
  </style>
 </head>
