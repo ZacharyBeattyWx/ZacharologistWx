@@ -5850,176 +5850,95 @@ body {
 }
 
 /* =========================================================
-   FINAL DESKTOP BREATHING ROOM FIX
-   Less squished, wider cards, taller radar/SPC.
-   KEEP THIS AS THE LAST CSS BLOCK.
+   FORECAST DASHBOARD LAYOUT SYSTEM
 ========================================================= */
 
+/* =========================
+   DESKTOP
+========================= */
+
 @media (min-width: 769px) {
+
   .forecast-dashboard {
-    padding-top: 76px !important;
-    padding-bottom: 44px !important;
+    padding: 76px 0 70px;
+    overflow: visible;
   }
 
   .ops-board-shell {
-    width: calc(100% - 56px) !important;
-    max-width: 1780px !important;
-    margin: 0 auto !important;
-    padding: 0 !important;
+    width: calc(100% - 56px);
+    max-width: 1780px;
+    margin: 0 auto;
   }
 
   .forecast-dashboard .ops-dashboard-grid {
-    display: grid !important;
-
+    display: grid;
     grid-template-columns:
       minmax(360px, 0.95fr)
       minmax(760px, 1.85fr)
-      minmax(390px, 1fr) !important;
+      minmax(390px, 1fr);
 
-    gap: 16px !important;
-    align-items: start !important;
-
-    width: 100% !important;
-    max-width: none !important;
-    margin: 0 !important;
+    gap: 16px;
+    align-items: start;
   }
 
   .ops-column {
-    gap: 16px !important;
-    min-width: 0 !important;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
   }
 
-  /* Top cards breathe more */
+  .forecast-dashboard .dashboard-card {
+    padding: 18px 20px;
+  }
+
   .forecast-dashboard .ops-conditions-card,
   .forecast-dashboard .forecast-discussion-card {
-    height: 285px !important;
-    min-height: 285px !important;
-    max-height: 285px !important;
-    overflow: hidden !important;
+    min-height: 285px;
   }
 
-  /* Alerts can still grow independently */
   .forecast-dashboard .alerts-card {
-    min-height: 285px !important;
-    height: auto !important;
-    max-height: none !important;
-    overflow: visible !important;
+    min-height: 285px;
   }
 
-  .forecast-dashboard .alerts-card .compact-alert-list {
-    overflow: visible !important;
-    max-height: none !important;
+  .forecast-dashboard .radar-card,
+  .forecast-dashboard .spc-card {
+    min-height: 430px;
+    overflow: hidden;
   }
 
-  /* Bottom cards get more room */
-  .forecast-dashboard .spc-card,
-  .forecast-dashboard .radar-card {
-    min-height: 430px !important;
-    height: auto !important;
-    overflow: hidden !important;
-  }
-
-  .spc-slideshow {
-    height: 350px !important;
-    max-height: 350px !important;
-  }
-
-  .forecast-dashboard .radar-frame {
-    height: 350px !important;
-    max-height: 350px !important;
-  }
-
-  /* Slightly roomier content inside cards */
-  .forecast-dashboard .dashboard-card {
-    padding: 18px 20px !important;
+  .forecast-dashboard .radar-frame,
+  .forecast-dashboard .spc-slideshow {
+    height: 350px;
   }
 
   .conditions-main strong {
-    font-size: 3.15rem !important;
+    font-size: 3.15rem;
   }
 
-  .conditions-grid {
-    gap: 10px !important;
-    margin-top: 18px !important;
-  }
-
-  .conditions-grid div,
-  .briefing-meta div {
-    padding: 11px 12px !important;
-  }
-
-  .forecast-dashboard .forecast-discussion-card .briefing-text {
-    font-size: 0.92rem !important;
-    line-height: 1.5 !important;
-  }
-
+  .conditions-grid,
   .forecast-dashboard .forecast-discussion-card .briefing-meta {
-    margin-top: 18px !important;
-    gap: 12px !important;
-  }
-
-  /* Quick tools below, not crowded */
-  .quick-tools-row {
-    width: calc(100% - 96px) !important;
-    max-width: 1680px !important;
-    margin: 34px auto 58px !important;
-
-    display: grid !important;
-    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
-    gap: 12px !important;
-  }
-
-  .quick-tool {
-    min-height: 56px !important;
+    gap: 10px;
   }
 }
 
-/* =========================================================
-   TEMP STABILIZER — REMOVE QUICK TOOL OVERLAP
-   Use this after deleting the quick-tools-row HTML.
-========================================================= */
 
-@media (min-width: 769px) {
-  .forecast-dashboard {
-    padding-bottom: 70px !important;
-    overflow: visible !important;
-  }
-
-  .ops-board-shell,
-  .forecast-dashboard .ops-dashboard-grid,
-  .ops-column {
-    overflow: visible !important;
-  }
-
-  .forecast-dashboard .spc-card,
-  .forecast-dashboard .radar-card {
-    overflow: hidden !important;
-  }
-
-  .forecast-dashboard .spc-slideshow,
-  .forecast-dashboard .radar-frame {
-    height: 350px !important;
-    max-height: 350px !important;
-  }
-
-  .quick-tools-row {
-    display: none !important;
-  }
-}
+/* =========================
+   MOBILE
+========================= */
 
 @media (max-width: 768px) {
+
   html,
   body {
-    width: 100% !important;
-    max-width: 100% !important;
-    overflow-x: hidden !important;
+    overflow-x: hidden;
+    max-width: 100%;
   }
 
   .forecast-dashboard {
-    width: 100% !important;
-    max-width: 100% !important;
-    padding: 24px 10px 30px !important;
-    overflow-x: hidden !important;
+    width: 100%;
+    padding: 22px 10px 34px;
+    overflow-x: hidden;
   }
 
   .ops-board-shell,
@@ -6031,174 +5950,101 @@ body {
   .spc-card,
   .forecast-discussion-card,
   .ops-conditions-card {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    overflow-x: hidden !important;
-  }
-
-  .alert-tabs-wrapper {
-    width: 100% !important;
-    max-width: 100% !important;
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .alert-tabs {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 8px !important;
-    padding: 0 !important;
-    margin: 0 0 14px !important;
-    overflow: hidden !important;
-  }
-
-  .alert-tabs button {
-    width: 100% !important;
-    min-width: 0 !important;
-    max-width: 100% !important;
-    flex: initial !important;
-    font-size: 0.62rem !important;
-    padding: 9px 6px !important;
-  }
-
-  .ro-alert-bottom-row {
-    grid-template-columns: auto minmax(0, 1fr) !important;
-  }
-
-  .globe-button,
-  .raw-radar-button,
-  .compact-details-btn {
-    grid-column: span 1 !important;
-  }
-
-  .raw-radar-button {
-    min-width: 0 !important;
-    width: 100% !important;
-  }
-
-  .alert-location {
-    min-width: 0 !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    white-space: nowrap !important;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
   }
 
   iframe,
   img,
   video {
-    max-width: 100% !important;
+    max-width: 100%;
   }
 
-  .spc-slide,
-  .spc-slider,
-  .spc-image-wrapper {
-    height: auto !important;
-    min-height: 340px !important;
+  /* =========================
+     ALERT TABS
+  ========================= */
+
+  .alert-tabs {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 14px;
   }
 
-  .spc-slide img,
-  .spc-slider img,
-  .spc-image-wrapper img {
-    width: 100% !important;
-    height: auto !important;
-    min-height: 340px !important;
-    object-fit: contain !important;
-    background: #000;
-  }
-}
-
-/* =========================================================
-   MOBILE SPC OUTLOOK HEIGHT FIX
-   Keeps full SPC graphic visible instead of short/cropped.
-   KEEP THIS AT THE VERY BOTTOM.
-========================================================= */
-
-@media (max-width: 768px) {
-  .forecast-dashboard .spc-card {
-    overflow: visible !important;
+  .alert-tabs button:nth-child(1),
+  .alert-tabs button:nth-child(2),
+  .alert-tabs button:nth-child(3) {
+    grid-column: span 2;
   }
 
-  .forecast-dashboard .spc-slideshow {
-    height: 390px !important;
-    max-height: none !important;
-    min-height: 390px !important;
-
-    overflow: hidden !important;
+  .alert-tabs button:nth-child(4),
+  .alert-tabs button:nth-child(5) {
+    grid-column: span 3;
   }
 
-  .forecast-dashboard .spc-slide {
-    height: 100% !important;
-    max-height: none !important;
-    overflow: hidden !important;
+  .alert-tabs button {
+    width: 100%;
+    min-width: 0;
+    font-size: 0.64rem;
+    padding: 10px 6px;
   }
 
-  .forecast-dashboard .spc-slide .spc-image-title,
-  .forecast-dashboard .spc-image-title {
-    height: 28px !important;
-    min-height: 28px !important;
-    flex: 0 0 28px !important;
+  .alert-location {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
-  .forecast-dashboard .spc-outlook-img {
-    width: 100% !important;
-    height: calc(100% - 28px) !important;
-    max-height: none !important;
+  /* =========================
+     SPC MOBILE FIX
+  ========================= */
 
-    object-fit: contain !important;
-    object-position: center center !important;
-
-    background: #020509 !important;
-    display: block !important;
-  }
-}
-
-@media (max-width: 768px) {
   .spc-card {
-    padding: 18px !important;
+    padding: 18px;
   }
 
   .spc-slideshow {
-    height: auto !important;
-    max-height: none !important;
-    min-height: 0 !important;
-    overflow: visible !important;
-    background: #05070b !important;
+    height: auto;
+    background: #05070b;
   }
 
   .spc-slide {
-    position: relative !important;
-    inset: auto !important;
-    height: auto !important;
-    min-height: 0 !important;
-    overflow: visible !important;
+    position: relative;
+    height: auto;
   }
 
   .spc-slide.active {
-    display: block !important;
+    display: block;
   }
 
-  .spc-slide .spc-image-title {
-    height: 34px !important;
-    min-height: 34px !important;
+  .spc-image-title {
+    height: 34px;
+    min-height: 34px;
   }
 
-  .spc-slide .spc-outlook-img {
-    width: 100% !important;
-    height: auto !important;
-    max-height: none !important;
-    min-height: 0 !important;
-    object-fit: contain !important;
-    object-position: center center !important;
-    display: block !important;
+  .spc-outlook-img {
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+    display: block;
+    background: #020509;
   }
 
   .spc-slide-controls {
-    bottom: 12px !important;
+    bottom: 12px;
+  }
+
+  /* =========================
+     CONDITIONS CARD
+  ========================= */
+
+  .conditions-main strong {
+    font-size: 3rem;
+  }
+
+  .conditions-grid {
+    gap: 10px;
   }
 }
 
