@@ -6010,83 +6010,88 @@ body {
 @media (max-width: 768px) {
   html,
   body {
-    width: 100%;
-    max-width: 100%;
-    overflow-x: hidden;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
   }
 
-  * {
-    box-sizing: border-box;
+  .forecast-dashboard {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 24px 10px 30px !important;
+    overflow-x: hidden !important;
   }
 
-  main,
-  section,
-  .dashboard-section,
-  .weather-dashboard,
+  .ops-board-shell,
+  .ops-dashboard-grid,
+  .ops-column,
+  .dashboard-card,
   .alerts-card,
-  .active-alerts,
-  .homepage-alerts,
   .radar-card,
-  .spc-card {
-    width: 100%;
-    max-width: 100%;
-    overflow-x: hidden;
+  .spc-card,
+  .forecast-discussion-card,
+  .ops-conditions-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: hidden !important;
+  }
+
+  .alert-tabs-wrapper {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .alert-tabs {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    padding: 0 !important;
+    margin: 0 0 14px !important;
+    overflow: hidden !important;
+  }
+
+  .alert-tabs button {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    flex: initial !important;
+    font-size: 0.62rem !important;
+    padding: 9px 6px !important;
+  }
+
+  .ro-alert-bottom-row {
+    grid-template-columns: auto minmax(0, 1fr) !important;
+  }
+
+  .globe-button,
+  .raw-radar-button,
+  .compact-details-btn {
+    grid-column: span 1 !important;
+  }
+
+  .raw-radar-button {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  .alert-location {
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
   }
 
   iframe,
   img,
   video {
-    max-width: 100%;
-  }
-
-  .alert-tabs-wrapper {
-    width: 100%;
-    max-width: 100%;
-    overflow-x: auto;
-    overflow-y: hidden;
-  }
-
-  .alert-tabs {
-    display: flex;
-    flex-wrap: nowrap;
-    width: max-content;
-    max-width: none;
-  }
-
-  .alert-tabs button {
-    flex: 0 0 auto;
-    min-width: 135px;
-  }
-
-  .alert-count-bar,
-  .state-alert-group,
-  .compact-alert-item,
-  .radar-alert-card,
-  .alert-location-row,
-  .alert-location {
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-  }
-
-  .alert-location-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .alert-location {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .quick-links-grid,
-  .feature-grid,
-  .nav-card-grid {
-    width: 100%;
-    max-width: 100%;
-    grid-template-columns: 1fr 1fr;
+    max-width: 100% !important;
   }
 }
 
