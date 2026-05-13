@@ -5392,14 +5392,6 @@ body {
     flex: 0 0 auto !important;
   }
 
-  .forecast-dashboard .alerts-card .compact-alert-list {
-    flex: 1 1 auto !important;
-    min-height: 0 !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    padding-right: 4px !important;
-  }
-
   .forecast-dashboard .alerts-card .compact-alert-list::-webkit-scrollbar {
     width: 5px;
   }
@@ -5411,6 +5403,73 @@ body {
   .forecast-dashboard .alerts-card .compact-alert-list::-webkit-scrollbar-thumb {
     background: rgba(120,155,180,0.28);
     border-radius: 999px;
+  }
+}
+
+/* =========================================================
+   INDEPENDENT OPS COLUMNS
+   Conditions + Forecast stay matched.
+   Alerts grows independently.
+========================================================= */
+
+@media (min-width: 769px) {
+  .forecast-dashboard .ops-dashboard-grid {
+    display: grid !important;
+    grid-template-columns:
+      minmax(280px, 0.82fr)
+      minmax(620px, 1.65fr)
+      minmax(300px, 0.86fr) !important;
+    gap: 12px !important;
+    align-items: start !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+  }
+
+  .ops-column {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    min-width: 0 !important;
+    align-self: start !important;
+  }
+
+  .forecast-dashboard .ops-conditions-card,
+  .forecast-dashboard .forecast-discussion-card {
+    height: 255px !important;
+    min-height: 255px !important;
+    max-height: 255px !important;
+    overflow: hidden !important;
+  }
+
+  .forecast-dashboard .alerts-card {
+    height: auto !important;
+    min-height: 255px !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .forecast-dashboard .alerts-card .compact-alert-list {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  .forecast-dashboard .spc-card,
+  .forecast-dashboard .radar-card,
+  .forecast-dashboard .ops-live-card {
+    min-height: 365px !important;
+  }
+
+  .forecast-dashboard .radar-frame {
+    height: 300px !important;
+  }
+
+  .spc-slideshow {
+    height: 300px !important;
+  }
+
+  .ops-media-preview {
+    height: 150px !important;
   }
 }
 
@@ -5487,222 +5546,236 @@ body {
 
 <div class="dashboard-grid ops-dashboard-grid">
 
-  <article class="dashboard-card ops-conditions-card">
-    <span class="mini-label">Live Conditions</span>
+  <!-- LEFT COLUMN -->
+  <div class="ops-column ops-left-column">
 
-    <div class="conditions-main">
-      <div>
-        <strong>64°</strong>
-        <span>Greensboro, NC</span>
+    <article class="dashboard-card ops-conditions-card">
+      <span class="mini-label">Live Conditions</span>
+
+      <div class="conditions-main">
+        <div>
+          <strong>64°</strong>
+          <span>Greensboro, NC</span>
+        </div>
+
+        <p>Cloudy</p>
       </div>
 
-      <p>Cloudy</p>
-    </div>
+      <div class="conditions-grid">
+        <div>
+          <span>Wind</span>
+          <strong>14 mph</strong>
+        </div>
 
-    <div class="conditions-grid">
-      <div>
-        <span>Wind</span>
-        <strong>14 mph</strong>
+        <div>
+          <span>Dew Point</span>
+          <strong>49°</strong>
+        </div>
+
+        <div>
+          <span>Humidity</span>
+          <strong>56%</strong>
+        </div>
+
+        <div>
+          <span>Pressure</span>
+          <strong>29.82 in</strong>
+        </div>
+      </div>
+    </article>
+
+    <article class="dashboard-card mini-card spc-card">
+      <div class="card-header-row">
+        <div>
+          <span class="mini-label">SPC Outlook</span>
+          <h3>Convective Forecast</h3>
+        </div>
+
+        <span class="card-time">Auto Updating</span>
       </div>
 
-      <div>
-        <span>Dew Point</span>
-        <strong>49°</strong>
+      <div class="spc-slideshow" id="spcSlideshow">
+
+        <a class="spc-slide active" href="https://www.spc.noaa.gov/products/outlook/day1otlk.html" target="_blank">
+          <div class="spc-image-title">Day 1 Outlook</div>
+          <img
+            class="spc-outlook-img"
+            alt="SPC Day 1 Outlook"
+            data-spc-options="
+              https://www.spc.noaa.gov/products/outlook/day1otlk.png,
+              https://www.spc.noaa.gov/products/outlook/day1otlk_0100_prt.png,
+              https://www.spc.noaa.gov/products/outlook/day1otlk_0600_prt.png,
+              https://www.spc.noaa.gov/products/outlook/day1otlk_1200_prt.png,
+              https://www.spc.noaa.gov/products/outlook/day1otlk_1300_prt.png,
+              https://www.spc.noaa.gov/products/outlook/day1otlk_1630_prt.png,
+              https://www.spc.noaa.gov/products/outlook/day1otlk_2000_prt.png
+            "
+          >
+        </a>
+
+        <a class="spc-slide" href="https://www.spc.noaa.gov/products/outlook/day2otlk.html" target="_blank">
+          <div class="spc-image-title">Day 2 Outlook</div>
+          <img
+            class="spc-outlook-img"
+            alt="SPC Day 2 Outlook"
+            data-spc-options="
+              https://www.spc.noaa.gov/products/outlook/day2otlk.png,
+              https://www.spc.noaa.gov/products/outlook/day2otlk_0600_prt.png,
+              https://www.spc.noaa.gov/products/outlook/day2otlk_1730_prt.png
+            "
+          >
+        </a>
+
+        <a class="spc-slide" href="https://www.spc.noaa.gov/products/outlook/day3otlk.html" target="_blank">
+          <div class="spc-image-title">Day 3 Outlook</div>
+          <img
+            class="spc-outlook-img"
+            alt="SPC Day 3 Outlook"
+            data-spc-options="
+              https://www.spc.noaa.gov/products/outlook/day3otlk.png,
+              https://www.spc.noaa.gov/products/outlook/day3otlk_0730_prt.png,
+              https://www.spc.noaa.gov/products/outlook/day3otlk_0830_prt.png,
+              https://www.spc.noaa.gov/products/outlook/day3otlk_1930_prt.png
+            "
+          >
+        </a>
+
+        <a
+          class="spc-slide"
+          href="https://www.spc.noaa.gov/products/exper/day4-8/"
+          target="_blank"
+          data-slide-delay="18000">
+
+          <div class="spc-image-title">Days 4–8 Outlook</div>
+
+          <img
+            class="spc-outlook-img"
+            alt="SPC Days 4 through 8 Outlook"
+            data-reset-gif="true"
+            data-base-src="https://www.spc.noaa.gov/products/exper/day4-8/day48prob.gif"
+            src="https://www.spc.noaa.gov/products/exper/day4-8/day48prob.gif"
+          >
+        </a>
+
+        <div class="spc-slide-controls">
+          <button type="button" class="spc-slide-btn" data-spc-slide="prev">‹</button>
+
+          <div class="spc-slide-dots">
+            <button type="button" class="active" data-spc-dot="0"></button>
+            <button type="button" data-spc-dot="1"></button>
+            <button type="button" data-spc-dot="2"></button>
+            <button type="button" data-spc-dot="3"></button>
+          </div>
+
+          <button type="button" class="spc-slide-btn" data-spc-slide="next">›</button>
+        </div>
+
+      </div>
+    </article>
+
+  </div>
+
+
+  <!-- CENTER COLUMN -->
+  <div class="ops-column ops-center-column">
+
+    <article class="dashboard-card briefing-card forecast-discussion-card">
+      <div class="card-topline">
+        <span class="status-dot"></span>
+        <span>Updated Today</span>
       </div>
 
-      <div>
-        <span>Humidity</span>
-        <strong>56%</strong>
+      <div class="briefing-title-row">
+        <h3>Forecast Discussion</h3>
+        <a href="wx-updates.html" class="dashboard-button">Read Full Discussion</a>
       </div>
 
-      <div>
-        <span>Pressure</span>
-        <strong>29.82 in</strong>
+      <p class="briefing-text">
+        An unsettled pattern for now, but monitoring long-range signals for increased
+        storm potential across the Plains, Midwest, and Southeast.
+      </p>
+
+      <div class="briefing-meta">
+        <div>
+          <span class="meta-label">Primary Concern</span>
+          <strong>Monitoring</strong>
+        </div>
+
+        <div>
+          <span class="meta-label">Confidence</span>
+          <strong>Increasing</strong>
+        </div>
+
+        <div>
+          <span class="meta-label">Region</span>
+          <strong>Central-Eastern</strong>
+        </div>
       </div>
-    </div>
-  </article>
+    </article>
 
-  <article class="dashboard-card mini-card radar-card">
-    <div class="card-header-row">
-      <div>
-        <span class="mini-label">Live Radar</span>
-        <h3>Regional Radar</h3>
-      </div>
+    <article class="dashboard-card mini-card radar-card">
+      <div class="card-header-row">
+        <div>
+          <span class="mini-label">Live Radar</span>
+          <h3>Regional Radar</h3>
+        </div>
 
-      <span class="card-time">Live View</span>
-    </div>
-
-    <iframe
-      src="https://embed.windy.com/embed2.html?lat=35.78&lon=-79.80&zoom=5&level=surface&overlay=radar&product=radar"
-      class="radar-frame">
-    </iframe>
-  </article>
-
-  <article class="dashboard-card mini-card alerts-card">
-    <h2 id="alertsTitle">Active Alerts</h2>
-
-    <div class="alert-tabs-wrapper">
-      <div class="alert-tabs">
-        <button class="active" data-category="storm">Storm Based</button>
-        <button data-category="tropical">Tropical</button>
-        <button data-category="winter">Winter</button>
-        <button data-category="hydro">Hydro</button>
-        <button data-category="fire">Fire</button>
-      </div>
-    </div>
-
-    <div id="alertsList" class="compact-alert-list"></div>
-  </article>
-
-  <article class="dashboard-card mini-card spc-card">
-    <div class="card-header-row">
-      <div>
-        <span class="mini-label">SPC Outlook</span>
-        <h3>Convective Forecast</h3>
+        <span class="card-time">Live View</span>
       </div>
 
-      <span class="card-time">Auto Updating</span>
-    </div>
+      <iframe
+        src="https://embed.windy.com/embed2.html?lat=35.78&lon=-79.80&zoom=5&level=surface&overlay=radar&product=radar"
+        class="radar-frame">
+      </iframe>
+    </article>
 
-    <div class="spc-slideshow" id="spcSlideshow">
+  </div>
 
-  <a class="spc-slide active" href="https://www.spc.noaa.gov/products/outlook/day1otlk.html" target="_blank">
-    <div class="spc-image-title">Day 1 Outlook</div>
-    <img
-      class="spc-outlook-img"
-      alt="SPC Day 1 Outlook"
-      data-spc-options="
-        https://www.spc.noaa.gov/products/outlook/day1otlk.png,
-        https://www.spc.noaa.gov/products/outlook/day1otlk_0100_prt.png,
-        https://www.spc.noaa.gov/products/outlook/day1otlk_0600_prt.png,
-        https://www.spc.noaa.gov/products/outlook/day1otlk_1200_prt.png,
-        https://www.spc.noaa.gov/products/outlook/day1otlk_1300_prt.png,
-        https://www.spc.noaa.gov/products/outlook/day1otlk_1630_prt.png,
-        https://www.spc.noaa.gov/products/outlook/day1otlk_2000_prt.png
-      "
-    >
-  </a>
 
-  <a class="spc-slide" href="https://www.spc.noaa.gov/products/outlook/day2otlk.html" target="_blank">
-    <div class="spc-image-title">Day 2 Outlook</div>
-    <img
-      class="spc-outlook-img"
-      alt="SPC Day 2 Outlook"
-      data-spc-options="
-        https://www.spc.noaa.gov/products/outlook/day2otlk.png,
-        https://www.spc.noaa.gov/products/outlook/day2otlk_0600_prt.png,
-        https://www.spc.noaa.gov/products/outlook/day2otlk_1730_prt.png
-      "
-    >
-  </a>
+  <!-- RIGHT COLUMN -->
+  <div class="ops-column ops-right-column">
 
-  <a class="spc-slide" href="https://www.spc.noaa.gov/products/outlook/day3otlk.html" target="_blank">
-    <div class="spc-image-title">Day 3 Outlook</div>
-    <img
-      class="spc-outlook-img"
-      alt="SPC Day 3 Outlook"
-      data-spc-options="
-        https://www.spc.noaa.gov/products/outlook/day3otlk.png,
-        https://www.spc.noaa.gov/products/outlook/day3otlk_0730_prt.png,
-        https://www.spc.noaa.gov/products/outlook/day3otlk_0830_prt.png,
-        https://www.spc.noaa.gov/products/outlook/day3otlk_1930_prt.png
-      "
-    >
-  </a>
+    <article class="dashboard-card mini-card alerts-card">
+      <h2 id="alertsTitle">Active Alerts</h2>
 
-  <a
-  class="spc-slide"
-  href="https://www.spc.noaa.gov/products/exper/day4-8/"
-  target="_blank"
-  data-slide-delay="18000">
+      <div class="alert-tabs-wrapper">
+        <div class="alert-tabs">
+          <button class="active" data-category="storm">Storm Based</button>
+          <button data-category="tropical">Tropical</button>
+          <button data-category="winter">Winter</button>
+          <button data-category="hydro">Hydro</button>
+          <button data-category="fire">Fire</button>
+        </div>
+      </div>
 
-  <div class="spc-image-title">Days 4–8 Outlook</div>
+      <div id="alertsList" class="compact-alert-list"></div>
+    </article>
 
-  <img
-    class="spc-outlook-img"
-    alt="SPC Days 4 through 8 Outlook"
-    data-reset-gif="true"
-    data-base-src="https://www.spc.noaa.gov/products/exper/day4-8/day48prob.gif"
-    src="https://www.spc.noaa.gov/products/exper/day4-8/day48prob.gif"
-  >
-</a>
+    <article class="dashboard-card ops-live-card">
+      <div class="card-header-row">
+        <div>
+          <span class="mini-label">Live Media</span>
+          <h3>Weather Media</h3>
+        </div>
 
-  <div class="spc-slide-controls">
-    <button type="button" class="spc-slide-btn" data-spc-slide="prev">‹</button>
+        <span class="card-time">Standby</span>
+      </div>
 
-    <div class="spc-slide-dots">
-      <button type="button" class="active" data-spc-dot="0"></button>
-      <button type="button" data-spc-dot="1"></button>
-      <button type="button" data-spc-dot="2"></button>
-      <button type="button" data-spc-dot="3"></button>
-    </div>
+      <div class="ops-media-preview">
+        <span>▶</span>
+      </div>
 
-    <button type="button" class="spc-slide-btn" data-spc-slide="next">›</button>
+      <p>
+        Space for live cams, chase streams, drone clips, or weather video highlights.
+      </p>
+
+      <a href="media.html" class="dashboard-button subtle-button">View Media</a>
+    </article>
+
   </div>
 
 </div>
-  </article>
-
-  <article class="dashboard-card briefing-card forecast-discussion-card">
-    <div class="card-topline">
-      <span class="status-dot"></span>
-      <span>Updated Today</span>
-    </div>
-
-    <div class="briefing-title-row">
-      <h3>Forecast Discussion</h3>
-      <a href="wx-updates.html" class="dashboard-button">Read Full Discussion</a>
-    </div>
-
-    <p class="briefing-text">
-      An unsettled pattern for now, but monitoring long-range signals for increased
-      storm potential across the Plains, Midwest, and Southeast.
-    </p>
-
-    <div class="briefing-meta">
-      <div>
-        <span class="meta-label">Primary Concern</span>
-        <strong>Monitoring</strong>
-      </div>
-
-      <div>
-        <span class="meta-label">Confidence</span>
-        <strong>Increasing</strong>
-      </div>
-
-      <div>
-        <span class="meta-label">Region</span>
-        <strong>Central-Eastern</strong>
-      </div>
-    </div>
-  </article>
-
-  <article class="dashboard-card ops-live-card">
-    <div class="card-header-row">
-      <div>
-        <span class="mini-label">Live Media</span>
-        <h3>Weather Media</h3>
-      </div>
-
-      <span class="card-time">Standby</span>
-    </div>
-
-    <div class="ops-media-preview">
-      <span>▶</span>
-    </div>
-
-    <p>
-      Space for live cams, chase streams, drone clips, or weather video highlights.
-    </p>
-
-    <a href="media.html" class="dashboard-button subtle-button">View Media</a>
-  </article>
-
-  </div>
-
-  </div>
-
-</section>
+<section> 
 
 <section class="quick-tools-row">
   <a href="wx-updates.html" class="quick-tool">
