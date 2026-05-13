@@ -3273,186 +3273,54 @@ filter: brightness(1.15);
   filter: brightness(1.18);
 }
 
-/* =========================================================
-   CLEAN HOME OPERATIONS RESET
-   This replaces the stacked homepage layout overrides.
-========================================================= */
+/* HOME OPERATIONS BOARD OVERRIDE — KEEP AT VERY BOTTOM */
 
-.home-ops {
-  padding: 72px 0 56px !important;
-  background:
-    radial-gradient(circle at 8% 0%, rgba(53, 200, 255, 0.08), transparent 34%),
-    linear-gradient(180deg, #02060d 0%, #07101c 100%) !important;
-  overflow: visible !important;
+.forecast-dashboard {
+  padding-top: 64px !important;
 }
 
-.home-ops-wrap {
-  width: calc(100% - 56px);
-  max-width: 1780px;
-  margin: 0 auto;
-}
-
-.home-ops-intro {
-  margin: 0 0 16px;
-  padding: 20px 22px;
-  min-height: 130px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  background:
-    linear-gradient(135deg, rgba(5, 12, 21, 0.96), rgba(2, 6, 12, 0.92));
-  border: 1px solid rgba(53, 200, 255, 0.16);
-  border-radius: 4px;
-}
-
-.home-eyebrow,
-.home-label {
-  display: block;
-  margin: 0 0 8px;
-  color: rgba(125, 211, 252, 0.86);
-  font-size: 0.62rem;
-  font-weight: 900;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-}
-
-.home-ops-intro h2 {
-  margin: 0;
-  max-width: 840px;
-  color: #f8fafc;
-  font-size: clamp(1.65rem, 2.25vw, 2.5rem);
-  line-height: 1.08;
-  letter-spacing: -0.04em;
-}
-
-.home-ops-intro p {
-  max-width: 780px;
-  margin: 10px 0 0;
-  color: rgba(200, 210, 224, 0.78);
-  font-size: 0.96rem;
-  line-height: 1.5;
-}
-
-.home-status-card {
-  min-width: 250px;
-  padding: 13px 15px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: rgba(4, 9, 16, 0.92);
-  border: 1px solid rgba(120, 155, 180, 0.22);
-  border-radius: 4px;
-}
-
-.home-status-card strong {
-  display: block;
-  color: #f8fafc;
-  font-size: 0.92rem;
-}
-
-.home-status-card p {
-  margin: 4px 0 0;
-  color: #94a3b8;
-  font-size: 0.76rem;
-}
-
-.home-ops-grid {
-  display: grid;
-  grid-template-columns:
-    minmax(320px, 0.9fr)
-    minmax(760px, 1.8fr)
-    minmax(360px, 0.95fr);
-  gap: 16px;
-  align-items: start;
-}
-
-.home-ops-column {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  min-width: 0;
-}
-
-.home-card {
-  padding: 18px 20px;
-  border-radius: 4px;
-  background:
-    linear-gradient(180deg, rgba(8, 15, 26, 0.98), rgba(4, 8, 15, 0.99));
-  border: 1px solid rgba(120, 155, 180, 0.15);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.025),
-    0 10px 22px rgba(0,0,0,0.24);
-  color: #f8fafc;
-}
-
-.home-card-header {
+.card-header-row {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
-.home-card-header h3,
-.home-briefing-title-row h3,
-.home-alert-card h2 {
-  margin: 3px 0 0;
-  color: #ffffff;
-  font-size: 1rem;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
+.card-header-row h3 {
+  margin: 4px 0 0;
 }
 
-.home-card-time {
-  color: rgba(210, 220, 235, 0.74);
-  font-size: 0.58rem;
-  font-weight: 900;
+.card-time {
+  color: #cbd5e1;
+  font-size: 0.72rem;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.17em;
+  letter-spacing: 0.08em;
+  opacity: 0.76;
 }
 
-/* Heights */
-.home-conditions-card,
-.home-forecast-card {
-  height: 270px;
-  min-height: 270px;
-  max-height: 270px;
-  overflow: hidden;
+.ops-conditions-card {
+  min-height: 235px;
 }
 
-.home-alert-card {
-  min-height: 270px;
-  height: auto;
-  overflow: visible;
-}
-
-.home-spc-card,
-.home-radar-card {
-  min-height: 430px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Conditions */
-.home-conditions-main {
-  margin-top: 12px;
+.conditions-main {
+  margin-top: 14px;
   display: flex;
   justify-content: space-between;
   gap: 12px;
   align-items: flex-end;
 }
 
-.home-conditions-main strong {
+.conditions-main strong {
   display: block;
-  color: #ffffff;
-  font-size: 3.1rem;
+  color: #f8fafc;
+  font-size: 3.2rem;
   line-height: 0.95;
   letter-spacing: -0.06em;
 }
 
-.home-conditions-main span {
+.conditions-main span {
   display: block;
   margin-top: 7px;
   color: #94a3b8;
@@ -3460,152 +3328,490 @@ filter: brightness(1.15);
   font-weight: 800;
 }
 
-.home-conditions-main p {
+.conditions-main p {
   margin: 0;
   color: #e5e7eb;
   font-weight: 900;
 }
 
-.home-conditions-grid {
-  margin-top: 18px;
+.conditions-grid {
+  margin-top: 22px;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 
-.home-conditions-grid div,
-.home-briefing-meta div {
-  background: rgba(255,255,255,0.045);
-  border: 1px solid rgba(120, 155, 180, 0.12);
-  border-radius: 4px;
-  padding: 11px 12px;
+.conditions-grid div {
+  background: rgba(255,255,255,0.055);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 10px;
 }
 
-.home-conditions-grid span,
-.home-briefing-meta span {
+.conditions-grid span {
   display: block;
-  margin-bottom: 5px;
-  color: rgba(125, 211, 252, 0.78);
-  font-size: 0.58rem;
+  color: #8fb3ff;
+  font-size: 0.68rem;
   font-weight: 900;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.06em;
+  margin-bottom: 5px;
 }
 
-.home-conditions-grid strong,
-.home-briefing-meta strong {
+.conditions-grid strong {
   color: #f8fafc;
   font-size: 0.9rem;
 }
 
-/* Forecast */
-.home-briefing-title-row {
-  margin: 12px 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
+.ops-live-card {
+  min-height: 250px;
 }
 
-.home-briefing-text {
-  margin: 0;
-  color: #d5ddef;
-  font-size: 0.92rem;
-  line-height: 1.5;
-}
-
-.home-briefing-meta {
-  margin-top: 18px;
+.ops-media-preview {
+  height: 120px;
+  margin: 12px 0 14px;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  place-items: center;
+  border-radius: 15px;
+  background:
+    linear-gradient(rgba(2,6,23,0.35), rgba(2,6,23,0.65)),
+    radial-gradient(circle at center, rgba(56,189,248,0.24), transparent 55%),
+    rgba(15,23,42,0.92);
+  border: 1px solid rgba(148,163,184,0.18);
 }
 
-.home-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0;
-  padding: 10px 18px;
-  border-radius: 4px;
-  background: rgba(255,255,255,0.06);
-  color: #ffffff;
-  border: 1px solid rgba(120, 155, 180, 0.22);
-  text-decoration: none;
-  font-size: 0.72rem;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  white-space: nowrap;
+.ops-media-preview span {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.12);
+  color: white;
+  font-size: 1.1rem;
 }
 
-/* Radar */
-.home-radar-card .radar-frame {
-  display: block;
-  width: 100%;
-  height: 350px !important;
-  max-height: 350px !important;
-  margin: 8px 0 0 !important;
-  border: 0 !important;
-  border-radius: 4px !important;
-  overflow: hidden !important;
-  background: #020509 !important;
-  filter: brightness(0.84) contrast(1.05) saturate(0.92);
+.ops-live-card p {
+  color: #b8c2d8;
+  line-height: 1.5;
+  font-size: 0.92rem;
 }
 
-/* SPC */
-.home-spc-card .spc-slideshow {
+.subtle-button {
+  background: rgba(255,255,255,0.08) !important;
+  border: 1px solid rgba(255,255,255,0.12);
+  padding: 11px 18px !important;
+}
+
+/* DESKTOP: match the example operations layout */
+@media (min-width: 769px) {
+  .forecast-dashboard .ops-dashboard-grid {
+    display: grid !important;
+    grid-template-columns: minmax(250px, 0.8fr) minmax(520px, 1.55fr) minmax(260px, 0.85fr) !important;
+    grid-template-areas:
+      "conditions radar alerts"
+      "spc briefing media" !important;
+    gap: 18px !important;
+    width: 96% !important;
+    max-width: 1500px !important;
+    margin: 0 auto !important;
+    align-items: stretch !important;
+  }
+
+  .forecast-dashboard .ops-conditions-card {
+    grid-area: conditions !important;
+  }
+
+  .forecast-dashboard .radar-card {
+    grid-area: radar !important;
+    min-height: 0 !important;
+    height: auto !important;
+    padding: 18px !important;
+    overflow: hidden !important;
+  }
+
+  .forecast-dashboard .alerts-card {
+    grid-area: alerts !important;
+    min-height: 0 !important;
+    height: auto !important;
+    padding: 18px !important;
+    overflow: visible !important;
+  }
+
+  .forecast-dashboard .spc-card {
+    grid-area: spc !important;
+    min-height: 0 !important;
+    height: auto !important;
+    padding: 18px !important;
+    overflow: hidden !important;
+  }
+
+  .forecast-dashboard .forecast-discussion-card {
+    grid-area: briefing !important;
+    min-height: 0 !important;
+    height: auto !important;
+    padding: 18px !important;
+  }
+
+  .forecast-dashboard .ops-live-card {
+    grid-area: media !important;
+  }
+
+  .forecast-dashboard .radar-frame {
+    height: 355px !important;
+    margin: 10px 0 0 !important;
+    border-radius: 14px !important;
+  }
+
+  .forecast-dashboard .alerts-card #alertsTitle {
+    margin: 0 auto 16px !important;
+    font-size: 1.15rem !important;
+  }
+
+  .forecast-dashboard .alerts-card .alert-tabs-wrapper {
+    margin-bottom: 16px !important;
+  }
+
+  .forecast-dashboard .alerts-card .alert-tabs {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    max-width: none !important;
+    gap: 8px !important;
+  }
+
+  .forecast-dashboard .alerts-card .alert-tabs button {
+    height: 34px !important;
+    font-size: 0.66rem !important;
+    padding: 7px 8px !important;
+    min-width: 0 !important;
+  }
+
+  .forecast-dashboard .alerts-card .alert-tabs button:nth-child(1),
+  .forecast-dashboard .alerts-card .alert-tabs button:nth-child(2),
+  .forecast-dashboard .alerts-card .alert-tabs button:nth-child(3),
+  .forecast-dashboard .alerts-card .alert-tabs button:nth-child(4),
+  .forecast-dashboard .alerts-card .alert-tabs button:nth-child(5) {
+    grid-column: auto !important;
+  }
+
+  .forecast-dashboard .spc-card .spc-image-scroll {
+    height: 235px !important;
+    max-height: 235px !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-rows: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+    overflow: hidden !important;
+    margin-top: 8px !important;
+  }
+
+  .forecast-dashboard .spc-card .spc-image-card {
+    min-height: 0 !important;
+    height: 100% !important;
+    border-radius: 13px !important;
+  }
+
+  .forecast-dashboard .spc-card .spc-image-title {
+    min-height: 22px !important;
+    font-size: 0.66rem !important;
+    padding: 4px 7px !important;
+  }
+
+  .forecast-dashboard .spc-card .spc-outlook-img {
+    height: 100% !important;
+    object-fit: cover !important;
+  }
+
+  .forecast-dashboard .briefing-title-row {
+    margin: 12px 0 14px !important;
+  }
+
+  .forecast-dashboard .briefing-title-row h3 {
+    font-size: 1.55rem !important;
+  }
+
+  .forecast-dashboard .briefing-text {
+    font-size: 0.95rem !important;
+    line-height: 1.55 !important;
+  }
+
+  .forecast-dashboard .briefing-meta {
+    margin: 18px 0 0 !important;
+    gap: 10px !important;
+  }
+
+  .forecast-dashboard .briefing-meta div {
+    padding: 11px !important;
+  }
+}
+
+/* MOBILE: stack the operations board cleanly */
+@media (max-width: 768px) {
+  .forecast-dashboard .ops-dashboard-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .forecast-dashboard .ops-conditions-card,
+  .forecast-dashboard .radar-card,
+  .forecast-dashboard .alerts-card,
+  .forecast-dashboard .spc-card,
+  .forecast-dashboard .forecast-discussion-card,
+  .forecast-dashboard .ops-live-card {
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .forecast-dashboard .radar-frame {
+    height: 320px !important;
+  }
+
+  .forecast-dashboard .spc-card .spc-image-scroll {
+    height: auto !important;
+    max-height: none !important;
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .forecast-dashboard .spc-card .spc-image-card {
+    height: 190px !important;
+  }
+
+  .conditions-main strong {
+    font-size: 2.65rem;
+  }
+
+  .conditions-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* FINAL OPS BOARD LAYOUT TWEAK — RADAR LOWER / TOP ROW COMPACT */
+
+@media (min-width: 769px) {
+  .forecast-dashboard .ops-dashboard-grid {
+    display: grid !important;
+
+    grid-template-columns:
+      minmax(250px, 0.8fr)
+      minmax(560px, 1.55fr)
+      minmax(270px, 0.85fr) !important;
+
+    grid-template-areas:
+      "conditions briefing alerts"
+      "spc radar media" !important;
+
+    grid-template-rows: auto minmax(430px, auto) !important;
+
+    gap: 18px !important;
+    width: 96% !important;
+    max-width: 1500px !important;
+    margin: 0 auto !important;
+    align-items: stretch !important;
+  }
+
+  .forecast-dashboard .ops-conditions-card {
+    grid-area: conditions !important;
+    min-height: 205px !important;
+  }
+
+  .forecast-dashboard .forecast-discussion-card {
+    grid-area: briefing !important;
+    min-height: 205px !important;
+    padding: 18px !important;
+  }
+
+  .forecast-dashboard .alerts-card {
+    grid-area: alerts !important;
+    min-height: 205px !important;
+    padding: 18px !important;
+  }
+
+  .forecast-dashboard .spc-card {
+    grid-area: spc !important;
+    min-height: 430px !important;
+    padding: 18px !important;
+    overflow: hidden !important;
+  }
+
+  .forecast-dashboard .radar-card {
+    grid-area: radar !important;
+    min-height: 430px !important;
+    padding: 18px !important;
+    overflow: hidden !important;
+  }
+
+  .forecast-dashboard .ops-live-card {
+    grid-area: media !important;
+    min-height: 430px !important;
+    padding: 18px !important;
+  }
+
+  .forecast-dashboard .radar-frame {
+    height: 365px !important;
+    margin: 10px 0 0 !important;
+    border-radius: 14px !important;
+  }
+
+  .forecast-dashboard .spc-card .spc-image-scroll {
+    height: 365px !important;
+    max-height: 365px !important;
+
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-rows: repeat(2, minmax(0, 1fr)) !important;
+
+    gap: 10px !important;
+    overflow: hidden !important;
+    margin-top: 8px !important;
+  }
+
+  .forecast-dashboard .spc-card .spc-image-card {
+    height: 100% !important;
+    min-height: 0 !important;
+  }
+
+  .forecast-dashboard .spc-card .spc-outlook-img {
+    height: 100% !important;
+    object-fit: cover !important;
+  }
+
+  .forecast-dashboard .briefing-title-row {
+    margin: 10px 0 12px !important;
+  }
+
+  .forecast-dashboard .briefing-title-row h3 {
+    font-size: 1.45rem !important;
+  }
+
+  .forecast-dashboard .forecast-discussion-card .briefing-text {
+    font-size: 0.92rem !important;
+    line-height: 1.45 !important;
+  }
+
+  .forecast-dashboard .forecast-discussion-card .briefing-meta {
+    margin: 14px 0 0 !important;
+    gap: 10px !important;
+  }
+
+  .forecast-dashboard .forecast-discussion-card .briefing-meta div {
+    padding: 10px !important;
+  }
+
+  .forecast-dashboard .forecast-discussion-card .dashboard-button {
+    padding: 10px 18px !important;
+    font-size: 0.82rem !important;
+  }
+
+  .ops-media-preview {
+    height: 185px !important;
+  }
+
+  .quick-tools-row {
+    margin: 34px auto 54px !important;
+  }
+}
+
+/* FINAL WIDE DESKTOP OPS BOARD — USE MORE SIDE SPACE */
+
+@media (min-width: 1200px) {
+  .site-header,
+  .operations-intro,
+  .forecast-dashboard .ops-dashboard-grid,
+  .quick-tools-row {
+    width: calc(100% - 72px) !important;
+    max-width: 1720px !important;
+  }
+
+  .forecast-dashboard .ops-dashboard-grid {
+    grid-template-columns:
+      minmax(300px, 0.9fr)
+      minmax(680px, 1.75fr)
+      minmax(320px, 0.95fr) !important;
+
+    gap: 20px !important;
+  }
+
+  .forecast-dashboard .radar-frame {
+    height: 385px !important;
+  }
+
+  .forecast-dashboard .spc-card .spc-image-scroll {
+    height: 385px !important;
+    max-height: 385px !important;
+  }
+
+  .forecast-dashboard .ops-conditions-card,
+  .forecast-dashboard .alerts-card,
+  .forecast-dashboard .forecast-discussion-card {
+    min-height: 225px !important;
+  }
+
+  .forecast-dashboard .spc-card,
+  .forecast-dashboard .radar-card,
+  .forecast-dashboard .ops-live-card {
+    min-height: 455px !important;
+  }
+}
+
+/* SPC SINGLE IMAGE SLIDESHOW */
+
+.spc-slideshow {
   position: relative;
-  width: 100% !important;
-  height: 350px !important;
-  max-height: 350px !important;
-  margin: 8px 0 0 !important;
-  overflow: hidden !important;
-  border-radius: 4px !important;
-  background: #020509 !important;
-  border: 1px solid rgba(120,155,180,0.16) !important;
+  height: 365px;
+  margin-top: 14px;
+  overflow: hidden;
+  border-radius: 16px;
+  background: rgba(8, 12, 22, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.20);
 }
 
-.home-spc-card .spc-slide {
+.spc-slide {
   position: absolute;
   inset: 0;
   display: none;
   flex-direction: column;
-  color: inherit;
   text-decoration: none;
-  overflow: hidden;
+  color: inherit;
 }
 
-.home-spc-card .spc-slide.active {
+.spc-slide.active {
   display: flex;
 }
 
-.home-spc-card .spc-image-title {
-  min-height: 24px;
-  padding: 4px 8px;
+.spc-slide .spc-image-title {
+  flex: 0 0 auto;
+  min-height: 28px;
+  padding: 6px 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(2, 5, 9, 0.95);
-  border-bottom: 1px solid rgba(120,155,180,0.14);
-  color: #ffffff;
-  font-size: 0.62rem;
+  background: rgba(8, 12, 22, 0.86);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  color: #f8fafc;
+  font-size: 0.78rem;
   font-weight: 900;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
-.home-spc-card .spc-outlook-img {
-  display: block;
+.spc-slide .spc-outlook-img {
+  flex: 1 1 auto;
   width: 100%;
-  height: calc(100% - 24px) !important;
-  max-height: calc(100% - 24px) !important;
+  height: calc(100% - 28px);
   object-fit: cover;
   object-position: center center;
-  filter: brightness(0.88) contrast(1.08) saturate(0.92);
+  border-radius: 0;
+  background: rgba(255,255,255,0.08);
 }
 
-.home-spc-card .spc-slide-controls {
+.spc-slide-controls {
   position: absolute;
   left: 12px;
   right: 12px;
@@ -3617,33 +3823,39 @@ filter: brightness(1.15);
   pointer-events: none;
 }
 
-.home-spc-card .spc-slide-btn,
-.home-spc-card .spc-slide-dots button {
+.spc-slide-btn,
+.spc-slide-dots button {
   pointer-events: auto;
 }
 
-.home-spc-card .spc-slide-btn {
+.spc-slide-btn {
   width: 34px;
   height: 34px;
-  border: 1px solid rgba(120,155,180,0.24);
+  border: 1px solid rgba(255,255,255,0.18);
   border-radius: 999px;
-  background: rgba(2, 5, 9, 0.78);
+  background: rgba(2, 6, 23, 0.72);
   color: white;
-  font-size: 1.35rem;
+  font-size: 1.45rem;
   font-weight: 900;
+  line-height: 1;
   cursor: pointer;
+  backdrop-filter: blur(10px);
 }
 
-.home-spc-card .spc-slide-dots {
+.spc-slide-btn:hover {
+  background: rgba(56, 189, 248, 0.24);
+}
+
+.spc-slide-dots {
   display: flex;
   gap: 7px;
   padding: 8px 10px;
   border-radius: 999px;
-  background: rgba(2, 5, 9, 0.72);
-  border: 1px solid rgba(120,155,180,0.15);
+  background: rgba(2, 6, 23, 0.62);
+  backdrop-filter: blur(10px);
 }
 
-.home-spc-card .spc-slide-dots button {
+.spc-slide-dots button {
   width: 8px;
   height: 8px;
   padding: 0;
@@ -3653,162 +3865,2112 @@ filter: brightness(1.15);
   cursor: pointer;
 }
 
-.home-spc-card .spc-slide-dots button.active {
-  background: #35c8ff;
+.spc-slide-dots button.active {
+  background: #38bdf8;
+  box-shadow: 0 0 12px rgba(56,189,248,0.85);
 }
 
-/* Alerts */
-.home-alert-card h2 {
-  text-align: center;
-  margin: 0 0 16px;
+@media (max-width: 768px) {
+  .spc-slideshow {
+    height: 260px;
+  }
 }
 
-.home-alert-card .alert-tabs-wrapper {
-  width: 100%;
-  margin: 0 0 16px;
-  overflow: visible;
+/* FINAL HOME PAGE: UNIFIED OPERATIONS BOARD LOOK */
+
+@media (min-width: 769px) {
+  .forecast-dashboard {
+    padding: 42px 0 34px !important;
+    background:
+      radial-gradient(circle at top left, rgba(56, 189, 248, 0.11), transparent 34%),
+      linear-gradient(180deg, #09101d 0%, #0d1524 100%) !important;
+  }
+
+  .ops-board-shell {
+    width: calc(100% - 72px);
+    max-width: 1720px;
+    margin: 0 auto;
+    padding: 22px;
+    background:
+      linear-gradient(180deg, rgba(15, 23, 42, 0.78), rgba(8, 13, 24, 0.92));
+    border: 1px solid rgba(56, 189, 248, 0.18);
+    border-radius: 24px;
+    box-shadow:
+      0 28px 80px rgba(0,0,0,0.36),
+      inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+
+  .operations-intro {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 0 18px !important;
+    padding: 20px 22px !important;
+    min-height: 145px;
+    border-radius: 18px !important;
+    box-shadow: none !important;
+  }
+
+  .operations-intro h2 {
+    font-size: clamp(1.65rem, 2.2vw, 2.45rem) !important;
+    max-width: 820px !important;
+  }
+
+  .operations-intro .dashboard-subtitle {
+    max-width: 760px !important;
+    font-size: 1rem !important;
+    margin-top: 10px !important;
+  }
+
+  .operations-status-card {
+    min-width: 250px !important;
+    padding: 14px 16px !important;
+  }
+
+  .forecast-dashboard .ops-dashboard-grid {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+
+    grid-template-columns:
+      minmax(300px, 0.9fr)
+      minmax(700px, 1.8fr)
+      minmax(320px, 0.95fr) !important;
+
+    grid-template-areas:
+      "conditions briefing alerts"
+      "spc radar media" !important;
+
+    gap: 16px !important;
+  }
+
+  .forecast-dashboard .dashboard-card {
+    border-radius: 18px !important;
+    background: rgba(15, 23, 42, 0.82) !important;
+    border-color: rgba(148, 163, 184, 0.18) !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.035),
+      0 16px 34px rgba(0,0,0,0.22) !important;
+  }
+
+  .forecast-dashboard .ops-conditions-card,
+  .forecast-dashboard .forecast-discussion-card,
+  .forecast-dashboard .alerts-card {
+    min-height: 210px !important;
+  }
+
+  .forecast-dashboard .spc-card,
+  .forecast-dashboard .radar-card,
+  .forecast-dashboard .ops-live-card {
+    min-height: 440px !important;
+  }
+
+  .forecast-dashboard .radar-frame {
+    height: 370px !important;
+  }
+
+  .spc-slideshow {
+    height: 370px !important;
+  }
+
+  .quick-tools-row {
+    width: calc(100% - 120px) !important;
+    max-width: 1640px !important;
+    margin: -10px auto 58px !important;
+    padding: 0 8px;
+    position: relative;
+    z-index: 4;
+  }
 }
 
-.home-alert-card .alert-tabs {
-  display: grid !important;
-  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  gap: 8px !important;
+/* =========================================================
+   FINAL HOME OPERATIONS BOARD LAYOUT
+   Keep this at the VERY BOTTOM of the style section.
+========================================================= */
+
+.forecast-dashboard {
+  padding: 42px 0 34px !important;
+  background:
+    radial-gradient(circle at top left, rgba(56, 189, 248, 0.11), transparent 34%),
+    radial-gradient(circle at 78% 16%, rgba(249, 115, 22, 0.08), transparent 28%),
+    linear-gradient(180deg, #09101d 0%, #0d1524 100%) !important;
+}
+
+.ops-board-shell {
+  width: calc(100% - 72px);
+  max-width: 1720px;
+  margin: 0 auto;
+  padding: 22px;
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.78), rgba(8, 13, 24, 0.94));
+  border: 1px solid rgba(56, 189, 248, 0.18);
+  border-radius: 26px;
+  box-shadow:
+    0 28px 80px rgba(0,0,0,0.38),
+    inset 0 1px 0 rgba(255,255,255,0.045);
+}
+
+/* Compact top intro strip */
+.operations-intro {
   width: 100% !important;
   max-width: none !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  overflow: visible !important;
+  margin: 0 0 18px !important;
+  padding: 20px 22px !important;
+  min-height: 140px;
+  border-radius: 19px !important;
+  box-shadow: none !important;
+  background:
+    radial-gradient(circle at top left, rgba(56, 189, 248, 0.16), transparent 38%),
+    linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(8, 13, 24, 0.9)) !important;
 }
 
-.home-alert-card .alert-tabs button {
-  width: 100% !important;
-  min-width: 0 !important;
-  height: 34px !important;
-  border-radius: 4px !important;
-  border: 1px solid rgba(120,155,180,0.15) !important;
-  background: rgba(255,255,255,0.045) !important;
-  color: rgba(230,238,248,0.72) !important;
-  font-size: 0.6rem !important;
-  font-weight: 900 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.04em !important;
+.operations-intro h2 {
+  font-size: clamp(1.6rem, 2.15vw, 2.45rem) !important;
+  max-width: 860px !important;
+}
+
+.operations-intro .dashboard-subtitle {
+  max-width: 760px !important;
+  font-size: 0.98rem !important;
+  margin-top: 10px !important;
+}
+
+.operations-status-card {
+  min-width: 250px !important;
+  padding: 14px 16px !important;
+}
+
+/* Shared card polish */
+.forecast-dashboard .dashboard-card {
+  border-radius: 18px !important;
+  background: rgba(15, 23, 42, 0.82) !important;
+  border-color: rgba(148, 163, 184, 0.18) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.035),
+    0 16px 34px rgba(0,0,0,0.22) !important;
+}
+
+/* Desktop board layout */
+@media (min-width: 769px) {
+  .forecast-dashboard .ops-dashboard-grid {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+
+    display: grid !important;
+    grid-template-columns:
+      minmax(300px, 0.9fr)
+      minmax(700px, 1.8fr)
+      minmax(320px, 0.95fr) !important;
+
+    grid-template-areas:
+      "conditions briefing alerts"
+      "spc radar media" !important;
+
+    grid-template-rows:
+      minmax(210px, auto)
+      minmax(440px, auto) !important;
+
+    gap: 16px !important;
+    align-items: stretch !important;
+  }
+
+  .forecast-dashboard .ops-conditions-card {
+    grid-area: conditions !important;
+    min-height: 210px !important;
+  }
+
+  .forecast-dashboard .forecast-discussion-card {
+    grid-area: briefing !important;
+    min-height: 210px !important;
+    padding: 18px !important;
+  }
+
+  .forecast-dashboard .alerts-card {
+    grid-area: alerts !important;
+    min-height: 210px !important;
+    padding: 18px !important;
+    overflow: visible !important;
+  }
+
+  .forecast-dashboard .spc-card {
+    grid-area: spc !important;
+    min-height: 440px !important;
+    padding: 18px !important;
+    overflow: hidden !important;
+  }
+
+  .forecast-dashboard .radar-card {
+    grid-area: radar !important;
+    min-height: 440px !important;
+    padding: 18px !important;
+    overflow: hidden !important;
+  }
+
+  .forecast-dashboard .ops-live-card {
+    grid-area: media !important;
+    min-height: 440px !important;
+    padding: 18px !important;
+  }
+
+  .forecast-dashboard .radar-frame {
+    height: 370px !important;
+    margin: 10px 0 0 !important;
+    border-radius: 14px !important;
+  }
+
+  .spc-slideshow {
+    height: 370px !important;
+  }
+
+  .forecast-dashboard .spc-card .spc-image-scroll {
+    height: 370px !important;
+    max-height: 370px !important;
+  }
+
+  .forecast-dashboard .briefing-title-row {
+    margin: 10px 0 12px !important;
+  }
+
+  .forecast-dashboard .briefing-title-row h3 {
+    font-size: 1.45rem !important;
+  }
+
+  .forecast-dashboard .forecast-discussion-card .briefing-text {
+    font-size: 0.92rem !important;
+    line-height: 1.45 !important;
+  }
+
+  .forecast-dashboard .forecast-discussion-card .briefing-meta {
+    margin: 14px 0 0 !important;
+    gap: 10px !important;
+  }
+
+  .forecast-dashboard .forecast-discussion-card .briefing-meta div {
+    padding: 10px !important;
+  }
+
+  .forecast-dashboard .forecast-discussion-card .dashboard-button {
+    padding: 10px 18px !important;
+    font-size: 0.82rem !important;
+  }
+
+  .forecast-dashboard .alerts-card #alertsTitle {
+    margin: 0 auto 16px !important;
+    font-size: 1.15rem !important;
+  }
+
+  .forecast-dashboard .alerts-card .alert-tabs-wrapper {
+    margin-bottom: 16px !important;
+  }
+
+  .forecast-dashboard .alerts-card .alert-tabs {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    max-width: none !important;
+    gap: 8px !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .forecast-dashboard .alerts-card .alert-tabs button {
+    height: 34px !important;
+    font-size: 0.66rem !important;
+    padding: 7px 8px !important;
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+
+  .forecast-dashboard .alerts-card .alert-tabs button:nth-child(1),
+  .forecast-dashboard .alerts-card .alert-tabs button:nth-child(2),
+  .forecast-dashboard .alerts-card .alert-tabs button:nth-child(3),
+  .forecast-dashboard .alerts-card .alert-tabs button:nth-child(4),
+  .forecast-dashboard .alerts-card .alert-tabs button:nth-child(5) {
+    grid-column: auto !important;
+  }
+
+  .ops-media-preview {
+    height: 185px !important;
+  }
+
+  .quick-tools-row {
+    width: calc(100% - 120px) !important;
+    max-width: 1640px !important;
+    margin: -10px auto 58px !important;
+    padding: 0 8px;
+    position: relative;
+    z-index: 4;
+  }
+}
+
+/* Wide monitor fill */
+@media (min-width: 1400px) {
+  .site-header,
+  .ops-board-shell {
+    width: calc(100% - 72px) !important;
+    max-width: 1760px !important;
+  }
+
+  .forecast-dashboard .ops-dashboard-grid {
+    grid-template-columns:
+      minmax(320px, 0.9fr)
+      minmax(760px, 1.85fr)
+      minmax(340px, 0.95fr) !important;
+  }
+
+  .forecast-dashboard .radar-frame {
+    height: 390px !important;
+  }
+
+  .spc-slideshow {
+    height: 390px !important;
+  }
+
+  .forecast-dashboard .spc-card .spc-image-scroll {
+    height: 390px !important;
+    max-height: 390px !important;
+  }
+
+  .forecast-dashboard .spc-card,
+  .forecast-dashboard .radar-card,
+  .forecast-dashboard .ops-live-card {
+    min-height: 460px !important;
+  }
+}
+
+/* Mobile stack */
+@media (max-width: 768px) {
+  .forecast-dashboard {
+    padding: 24px 14px 30px !important;
+  }
+
+  .ops-board-shell {
+    width: 100%;
+    max-width: 100%;
+    padding: 14px;
+    border-radius: 20px;
+  }
+
+  .operations-intro {
+    padding: 18px !important;
+    margin-bottom: 14px !important;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .operations-intro h2 {
+    font-size: 1.55rem !important;
+  }
+
+  .operations-status-card {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .forecast-dashboard .ops-dashboard-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .forecast-dashboard .ops-conditions-card,
+  .forecast-dashboard .forecast-discussion-card,
+  .forecast-dashboard .alerts-card,
+  .forecast-dashboard .spc-card,
+  .forecast-dashboard .radar-card,
+  .forecast-dashboard .ops-live-card {
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .forecast-dashboard .radar-frame {
+    height: 315px !important;
+  }
+
+  .spc-slideshow {
+    height: 265px !important;
+  }
+
+  .quick-tools-row {
+    width: calc(100% - 28px) !important;
+    margin: -8px auto 38px !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+}
+
+/* =========================================================
+   MOCKUP STYLE MATCH — MATTE WEATHER OPS CONSOLE
+   Keep this as the LAST CSS block.
+========================================================= */
+
+:root {
+  --mock-bg: #020509;
+  --mock-bg-soft: #050b12;
+  --mock-panel: rgba(6, 12, 20, 0.94);
+  --mock-panel-2: rgba(9, 17, 28, 0.94);
+  --mock-card: rgba(8, 14, 24, 0.96);
+  --mock-border: rgba(120, 155, 180, 0.22);
+  --mock-border-soft: rgba(120, 155, 180, 0.13);
+  --mock-text: #f2f6fb;
+  --mock-muted: #9aa8b8;
+  --mock-cyan: #35c8ff;
+  --mock-orange: #ff6b1a;
+  --mock-yellow: #ffb21c;
+  --mock-red: #ff3b2f;
+}
+
+/* PAGE BACKGROUND */
+html,
+body {
+  background:
+    radial-gradient(circle at top left, rgba(35, 120, 170, 0.10), transparent 32%),
+    linear-gradient(180deg, #020509 0%, #07101c 58%, #050914 100%) !important;
+  color: var(--mock-text) !important;
+}
+
+/* NAV BAR — flatter, thinner, closer to mockup */
+.site-header {
+  width: calc(100% - 72px) !important;
+  max-width: 1760px !important;
+  margin: 0 auto !important;
+  padding: 12px 18px !important;
+
+  background: rgba(2, 6, 12, 0.96) !important;
+  border: 1px solid rgba(120, 155, 180, 0.12) !important;
+  border-top: none !important;
+  border-radius: 0 !important;
+
+  box-shadow: none !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+.brand-main {
+  font-size: 1.05rem !important;
+  letter-spacing: 0.13em !important;
+  color: #ffffff !important;
+  text-shadow: none !important;
+}
+
+.brand-main span {
+  color: var(--mock-cyan) !important;
+}
+
+.brand-sub {
+  color: rgba(125, 211, 252, 0.78) !important;
+  font-size: 0.58rem !important;
+  letter-spacing: 0.22em !important;
+}
+
+.site-nav {
+  gap: 10px !important;
+}
+
+.site-nav a {
+  padding: 9px 13px !important;
+  border-radius: 3px !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+
+  color: rgba(245, 248, 252, 0.88) !important;
+  font-size: 0.62rem !important;
+  letter-spacing: 0.09em !important;
+
   box-shadow: none !important;
 }
 
-.home-alert-card .alert-tabs button::before {
-  display: none !important;
+.site-nav a span {
+  margin-top: 5px !important;
+  color: rgba(120, 155, 180, 0.72) !important;
+  font-size: 0.48rem !important;
+  letter-spacing: 0.13em !important;
 }
 
-.home-alert-card .alert-tabs button[data-category="storm"].active,
-.home-alert-card .alert-tabs button.has-alerts[data-category="storm"] {
+.site-nav a:hover,
+.site-nav a.active {
+  background: rgba(20, 50, 70, 0.62) !important;
+  border-color: rgba(53, 200, 255, 0.35) !important;
+  color: #ffffff !important;
+}
+
+.site-nav a.active span {
+  color: var(--mock-cyan) !important;
+}
+
+.site-nav .chase-link {
+  color: var(--mock-orange) !important;
+}
+
+.site-nav .chase-link span {
+  color: rgba(255, 107, 26, 0.78) !important;
+}
+
+/* MAIN DASHBOARD AREA */
+.forecast-dashboard {
+  padding: 42px 0 34px !important;
+  background:
+    radial-gradient(circle at 12% 8%, rgba(53, 200, 255, 0.08), transparent 34%),
+    linear-gradient(180deg, #07101c 0%, #07101c 100%) !important;
+}
+
+/* BIG OUTER BOARD */
+.ops-board-shell {
+  width: calc(100% - 72px) !important;
+  max-width: 1760px !important;
+  margin: 0 auto !important;
+  padding: 22px !important;
+
+  background:
+    linear-gradient(180deg, rgba(8, 15, 26, 0.94), rgba(5, 10, 18, 0.96)) !important;
+
+  border: 1px solid rgba(53, 200, 255, 0.16) !important;
+  border-radius: 7px !important;
+
+  box-shadow:
+    0 20px 60px rgba(0,0,0,0.36),
+    inset 0 1px 0 rgba(255,255,255,0.035) !important;
+}
+
+/* TOP INTRO PANEL */
+.operations-intro {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 0 18px !important;
+  padding: 20px 22px !important;
+  min-height: 130px !important;
+
+  background:
+    linear-gradient(135deg, rgba(5, 13, 22, 0.96), rgba(4, 9, 16, 0.92)) !important;
+
+  border: 1px solid rgba(53, 200, 255, 0.18) !important;
+  border-radius: 5px !important;
+  box-shadow: none !important;
+}
+
+.operations-intro .eyebrow,
+.mini-label,
+.meta-label {
+  color: rgba(125, 211, 252, 0.86) !important;
+  font-size: 0.62rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.18em !important;
+}
+
+.operations-intro h2 {
+  color: var(--mock-text) !important;
+  font-size: clamp(1.65rem, 2.25vw, 2.5rem) !important;
+  line-height: 1.08 !important;
+  max-width: 870px !important;
+  text-shadow: none !important;
+}
+
+.operations-intro .dashboard-subtitle {
+  color: rgba(200, 210, 224, 0.78) !important;
+  max-width: 770px !important;
+  font-size: 0.96rem !important;
+  line-height: 1.5 !important;
+}
+
+/* STATUS PILL — no big glow */
+.operations-status-card {
+  background: rgba(4, 9, 16, 0.92) !important;
+  border: 1px solid rgba(120, 155, 180, 0.22) !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
+}
+
+.status-dot {
+  background: #28e76f !important;
+  box-shadow: 0 0 8px rgba(40, 231, 111, 0.75) !important;
+}
+
+/* ALL DASHBOARD CARDS */
+.forecast-dashboard .dashboard-card {
+  background:
+    linear-gradient(180deg, rgba(9, 17, 29, 0.96), rgba(6, 11, 20, 0.98)) !important;
+
+  border: 1px solid var(--mock-border-soft) !important;
+  border-radius: 5px !important;
+
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.025),
+    0 12px 28px rgba(0,0,0,0.22) !important;
+
+  backdrop-filter: none !important;
+}
+
+.forecast-dashboard .dashboard-card:hover {
+  border-color: rgba(53, 200, 255, 0.24) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.03),
+    0 14px 32px rgba(0,0,0,0.24) !important;
+}
+
+/* CARD TITLES */
+.card-header-row h3,
+.briefing-title-row h3,
+.briefing-card h3,
+.mini-card h3,
+.alerts-card h2 {
+  color: #ffffff !important;
+  letter-spacing: -0.02em !important;
+  text-shadow: none !important;
+}
+
+.card-time {
+  color: rgba(210, 220, 235, 0.74) !important;
+  background: transparent !important;
+  border: none !important;
+  font-size: 0.58rem !important;
+  letter-spacing: 0.17em !important;
+}
+
+/* LIVE CONDITIONS */
+.conditions-main strong {
+  color: #ffffff !important;
+  text-shadow: none !important;
+}
+
+.conditions-main span,
+.conditions-main p {
+  color: rgba(210, 220, 235, 0.78) !important;
+}
+
+.conditions-grid div,
+.briefing-meta div {
+  background: rgba(255,255,255,0.045) !important;
+  border: 1px solid rgba(120, 155, 180, 0.12) !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
+}
+
+.conditions-grid span,
+.briefing-meta span {
+  color: rgba(125, 211, 252, 0.78) !important;
+}
+
+/* BUTTONS — mockup-style dark/flat buttons */
+.dashboard-button,
+.subtle-button {
+  background: rgba(255,255,255,0.06) !important;
+  color: #ffffff !important;
+
+  border: 1px solid rgba(120, 155, 180, 0.22) !important;
+  border-radius: 4px !important;
+
+  padding: 10px 18px !important;
+  font-size: 0.72rem !important;
+  font-weight: 900 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+
+  box-shadow: none !important;
+}
+
+.dashboard-button:hover,
+.subtle-button:hover {
+  background: rgba(53, 200, 255, 0.12) !important;
+  border-color: rgba(53, 200, 255, 0.35) !important;
+  transform: none !important;
+  filter: none !important;
+}
+
+/* RADAR PANEL */
+.radar-card {
+  background: rgba(7, 13, 22, 0.98) !important;
+}
+
+.radar-frame {
+  border: 1px solid rgba(120, 155, 180, 0.16) !important;
+  border-radius: 4px !important;
+  background: #020509 !important;
+  box-shadow: none !important;
+
+  /*
+    This only affects the iframe appearance.
+    It cannot restyle Windy's internal labels/buttons.
+  */
+  filter: brightness(0.84) contrast(1.05) saturate(0.92);
+}
+
+/* SPC PANEL — works for slideshow or old 2x2 grid */
+.spc-card {
+  background: rgba(7, 13, 22, 0.98) !important;
+}
+
+.spc-slideshow,
+.spc-image-scroll {
+  border: 1px solid rgba(120, 155, 180, 0.16) !important;
+  border-radius: 4px !important;
+  background: #020509 !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+}
+
+.spc-slide,
+.spc-image-card {
+  background: #020509 !important;
+  border: 1px solid rgba(120, 155, 180, 0.12) !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
+}
+
+.spc-slide .spc-image-title,
+.spc-image-title {
+  background: rgba(2, 5, 9, 0.92) !important;
+  color: #ffffff !important;
+  border-bottom: 1px solid rgba(120, 155, 180, 0.14) !important;
+
+  min-height: 24px !important;
+  padding: 4px 8px !important;
+
+  font-size: 0.62rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+}
+
+.spc-outlook-img {
+  filter: brightness(0.88) contrast(1.07) saturate(0.90);
+}
+
+/* SPC controls */
+.spc-slide-btn {
+  background: rgba(2, 5, 9, 0.78) !important;
+  border: 1px solid rgba(120, 155, 180, 0.24) !important;
+  color: white !important;
+  box-shadow: none !important;
+}
+
+.spc-slide-btn:hover {
+  background: rgba(53, 200, 255, 0.16) !important;
+  border-color: rgba(53, 200, 255, 0.35) !important;
+}
+
+.spc-slide-dots {
+  background: rgba(2, 5, 9, 0.72) !important;
+  border: 1px solid rgba(120, 155, 180, 0.15) !important;
+}
+
+.spc-slide-dots button.active {
+  background: var(--mock-cyan) !important;
+  box-shadow: none !important;
+}
+
+/* ACTIVE ALERTS PANEL */
+.alerts-card {
+  background:
+    linear-gradient(180deg, rgba(8, 14, 24, 0.98), rgba(5, 10, 18, 0.98)) !important;
+}
+
+.alerts-card h2 {
+  font-size: 1.08rem !important;
+}
+
+/* Remove all old fuzzy alert glows */
+.alert-tabs button::before,
+.alert-tabs button.has-alerts::before,
+.alert-tabs button.no-alerts::before {
+  display: none !important;
+  opacity: 0 !important;
+  animation: none !important;
+}
+
+/* Alert category buttons — flatter */
+.forecast-dashboard .alerts-card .alert-tabs button {
+  height: 33px !important;
+  border-radius: 4px !important;
+  border: 1px solid rgba(120, 155, 180, 0.14) !important;
+
+  background: rgba(255,255,255,0.05) !important;
+  color: rgba(230, 238, 248, 0.72) !important;
+
+  font-size: 0.6rem !important;
+  font-weight: 900 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.035em !important;
+
+  box-shadow: none !important;
+}
+
+/* Category colors should be solid accents, not glows */
+.forecast-dashboard .alerts-card .alert-tabs button[data-category="storm"].active,
+.forecast-dashboard .alerts-card .alert-tabs button.has-alerts[data-category="storm"] {
   background: #f5a71b !important;
   color: #130900 !important;
   border-color: #f5a71b !important;
 }
 
-.home-alert-card .alert-tabs button[data-category="tropical"].active,
-.home-alert-card .alert-tabs button.has-alerts[data-category="tropical"] {
+.forecast-dashboard .alerts-card .alert-tabs button[data-category="tropical"].active,
+.forecast-dashboard .alerts-card .alert-tabs button.has-alerts[data-category="tropical"] {
   background: #9f3671 !important;
   color: #ffffff !important;
   border-color: #9f3671 !important;
 }
 
-.home-alert-card .alert-tabs button[data-category="winter"].active,
-.home-alert-card .alert-tabs button.has-alerts[data-category="winter"] {
+.forecast-dashboard .alerts-card .alert-tabs button[data-category="winter"].active,
+.forecast-dashboard .alerts-card .alert-tabs button.has-alerts[data-category="winter"] {
   background: #4d9ee8 !important;
-  color: #06111f !important;
+  color: #02101d !important;
   border-color: #4d9ee8 !important;
 }
 
-.home-alert-card .alert-tabs button[data-category="hydro"].active,
-.home-alert-card .alert-tabs button.has-alerts[data-category="hydro"] {
+.forecast-dashboard .alerts-card .alert-tabs button[data-category="hydro"].active,
+.forecast-dashboard .alerts-card .alert-tabs button.has-alerts[data-category="hydro"] {
   background: #00a008 !important;
   color: #ffffff !important;
   border-color: #00a008 !important;
 }
 
-.home-alert-card .alert-tabs button[data-category="fire"].active,
-.home-alert-card .alert-tabs button.has-alerts[data-category="fire"] {
+.forecast-dashboard .alerts-card .alert-tabs button[data-category="fire"].active,
+.forecast-dashboard .alerts-card .alert-tabs button.has-alerts[data-category="fire"] {
   background: #b83d18 !important;
   color: #ffffff !important;
   border-color: #b83d18 !important;
 }
 
-.home-alert-card .compact-alert-list {
-  display: grid;
-  gap: 10px;
-  overflow: visible !important;
-  max-height: none !important;
+/* Alert count bar */
+.forecast-dashboard .alerts-card .state-alert-dropdown > summary {
+  border-radius: 4px !important;
+  padding: 11px 13px !important;
+  font-size: 0.78rem !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  box-shadow: none !important;
 }
 
-/* Quick tools */
-.home-quick-tools {
-  position: static !important;
-  z-index: auto !important;
-  width: calc(100% - 96px) !important;
-  max-width: 1680px !important;
-  margin: 34px auto 58px !important;
-  padding: 0 !important;
-  display: grid !important;
-  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
-  gap: 12px !important;
-  transform: none !important;
+/* Alert count should follow active category but stay flat */
+.forecast-dashboard .alerts-card.storm-active .state-alert-dropdown > summary {
+  background: #f5a71b !important;
+  color: #130900 !important;
 }
 
-.home-quick-tools .quick-tool {
-  min-height: 56px !important;
+.forecast-dashboard .alerts-card.tropical-active .state-alert-dropdown > summary {
+  background: #9f3671 !important;
+  color: #ffffff !important;
+}
+
+.forecast-dashboard .alerts-card.winter-active .state-alert-dropdown > summary {
+  background: #4d9ee8 !important;
+  color: #02101d !important;
+}
+
+.forecast-dashboard .alerts-card.hydro-active .state-alert-dropdown > summary {
+  background: #00a008 !important;
+  color: #ffffff !important;
+}
+
+.forecast-dashboard .alerts-card.fire-active .state-alert-dropdown > summary {
+  background: #b83d18 !important;
+  color: #ffffff !important;
+}
+
+/* State dropdowns */
+.forecast-dashboard .alerts-card .state-alert-group > summary {
+  background: rgba(255,255,255,0.055) !important;
+  border: 1px solid rgba(120, 155, 180, 0.14) !important;
+  color: #ffffff !important;
   border-radius: 4px !important;
   box-shadow: none !important;
 }
 
-/* Mobile */
+/* RadarOmega-style alert cards, flatter like mockup */
+.forecast-dashboard .alerts-card .ro-alert-card {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--alert-color) 12%, rgba(12,18,28,0.96)),
+      rgba(7, 12, 20, 0.98)
+    ) !important;
+
+  border: 1px solid color-mix(in srgb, var(--alert-color) 68%, rgba(120,155,180,0.28)) !important;
+  border-left: 4px solid var(--alert-color) !important;
+
+  border-radius: 4px !important;
+  box-shadow: none !important;
+}
+
+.forecast-dashboard .alerts-card .ro-alert-icon {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.forecast-dashboard .alerts-card .ro-alert-title-row .compact-alert-title {
+  color: var(--alert-color) !important;
+  letter-spacing: 0.08em !important;
+}
+
+/* County/location box: toned down, not huge glowing block */
+.forecast-dashboard .alerts-card .compact-alert-item .ro-alert-bottom-row .alert-location {
+  background: rgba(255,255,255,0.07) !important;
+  color: rgba(245,248,252,0.92) !important;
+  border: 1px solid rgba(120,155,180,0.12) !important;
+  box-shadow: none !important;
+  border-radius: 4px !important;
+}
+
+.forecast-dashboard .alerts-card .ro-state-chip {
+  background: var(--alert-color) !important;
+  color: #070b10 !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
+}
+
+/* Radar buttons inside alert cards */
+.forecast-dashboard .alerts-card .globe-button,
+.forecast-dashboard .alerts-card .raw-radar-button,
+.forecast-dashboard .alerts-card .ro-alert-bottom-row .compact-details-btn {
+  height: 34px !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
+
+  font-size: 0.64rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+}
+
+.forecast-dashboard .alerts-card .globe-button {
+  background: rgba(34,197,94,0.16) !important;
+  color: #7cff9e !important;
+  border: 1px solid rgba(34,197,94,0.26) !important;
+}
+
+.forecast-dashboard .alerts-card .raw-radar-button {
+  background: rgba(245,167,27,0.15) !important;
+  color: #ffd37a !important;
+  border: 1px solid rgba(245,167,27,0.32) !important;
+}
+
+.forecast-dashboard .alerts-card .compact-details-btn {
+  background: rgba(255,255,255,0.07) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(120,155,180,0.18) !important;
+}
+
+/* LIVE MEDIA */
+.ops-media-preview {
+  background:
+    linear-gradient(rgba(2,5,9,0.35), rgba(2,5,9,0.74)),
+    radial-gradient(circle at center, rgba(53,200,255,0.12), transparent 60%),
+    #020509 !important;
+
+  border: 1px solid rgba(120,155,180,0.16) !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
+}
+
+.ops-media-preview span {
+  background: rgba(255,255,255,0.08) !important;
+  border: 1px solid rgba(120,155,180,0.20) !important;
+  color: white !important;
+  box-shadow: none !important;
+}
+
+/* QUICK TOOLS ROW */
+.quick-tools-row {
+  filter: none !important;
+}
+
+.quick-tool {
+  min-height: 56px !important;
+
+  background: rgba(5, 10, 18, 0.96) !important;
+  border: 1px solid rgba(120,155,180,0.16) !important;
+  border-radius: 4px !important;
+
+  color: rgba(245,248,252,0.88) !important;
+  box-shadow: none !important;
+}
+
+.quick-tool strong {
+  font-size: 0.62rem !important;
+  letter-spacing: 0.11em !important;
+}
+
+.quick-tool:hover {
+  background: rgba(10, 22, 34, 0.98) !important;
+  border-color: rgba(53,200,255,0.32) !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.quick-tool.chase-tool {
+  color: var(--mock-orange) !important;
+  border-color: rgba(255,107,26,0.26) !important;
+}
+
+.quick-tool.chase-tool:hover {
+  background: rgba(35, 16, 8, 0.92) !important;
+  border-color: rgba(255,107,26,0.42) !important;
+}
+
+/* MOBILE: keep the style tighter */
 @media (max-width: 768px) {
-  .home-ops {
-    padding: 28px 14px 36px !important;
+  .site-header {
+    width: 100% !important;
   }
 
-  .home-ops-wrap {
-    width: 100%;
-    max-width: 100%;
+  .ops-board-shell {
+    width: 100% !important;
+    padding: 14px !important;
+    border-radius: 5px !important;
   }
 
-  .home-ops-intro {
-    flex-direction: column;
-    align-items: flex-start;
+  .operations-intro,
+  .forecast-dashboard .dashboard-card,
+  .quick-tool {
+    border-radius: 5px !important;
   }
 
-  .home-status-card {
-    width: 100%;
-    min-width: 0;
+  .radar-frame,
+  .spc-slideshow,
+  .spc-image-scroll,
+  .ops-media-preview {
+    border-radius: 4px !important;
+  }
+}
+
+/* =========================================================
+   FINAL MOCKUP VIBE PASS — COMPACT OPS CONSOLE
+   Put this at the VERY BOTTOM of the CSS.
+========================================================= */
+
+@media (min-width: 769px) {
+
+  .forecast-dashboard {
+    padding: 30px 0 26px !important;
+    background:
+      radial-gradient(circle at 8% 0%, rgba(53, 200, 255, 0.08), transparent 34%),
+      linear-gradient(180deg, #02060d 0%, #07101c 100%) !important;
   }
 
-  .home-ops-grid {
-    grid-template-columns: 1fr;
+  .ops-board-shell {
+    width: calc(100% - 80px) !important;
+    max-width: 1580px !important;
+    padding: 14px !important;
+    border-radius: 4px !important;
+
+    background:
+      linear-gradient(180deg, rgba(5, 10, 18, 0.98), rgba(3, 7, 13, 0.98)) !important;
+
+    border: 1px solid rgba(53, 200, 255, 0.14) !important;
+    box-shadow:
+      0 22px 55px rgba(0,0,0,0.42),
+      inset 0 1px 0 rgba(255,255,255,0.035) !important;
   }
 
-  .home-conditions-card,
-  .home-forecast-card {
-    height: auto;
-    min-height: 0;
-    max-height: none;
+  .operations-intro {
+    min-height: 112px !important;
+    padding: 16px 18px !important;
+    margin: 0 0 12px !important;
+    border-radius: 3px !important;
+
+    background:
+      linear-gradient(135deg, rgba(5, 12, 21, 0.98), rgba(2, 6, 12, 0.96)) !important;
+
+    border: 1px solid rgba(53, 200, 255, 0.16) !important;
   }
 
-  .home-briefing-meta {
-    grid-template-columns: 1fr;
+  .operations-intro h2 {
+    max-width: 760px !important;
+    font-size: clamp(1.45rem, 1.75vw, 2.05rem) !important;
+    line-height: 1.07 !important;
   }
 
-  .home-radar-card .radar-frame {
-    height: 315px !important;
+  .operations-intro .dashboard-subtitle {
+    max-width: 760px !important;
+    margin-top: 8px !important;
+    font-size: 0.86rem !important;
+    line-height: 1.42 !important;
   }
 
-  .home-spc-card .spc-slideshow {
-    height: 265px !important;
+  .operations-status-card {
+    min-width: 240px !important;
+    padding: 12px 14px !important;
+    border-radius: 3px !important;
   }
 
-  .home-quick-tools {
-    width: calc(100% - 28px) !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    margin: 24px auto 44px !important;
+  .forecast-dashboard .ops-dashboard-grid {
+    grid-template-columns:
+      minmax(280px, 0.82fr)
+      minmax(620px, 1.65fr)
+      minmax(300px, 0.86fr) !important;
+
+    grid-template-rows:
+      minmax(176px, auto)
+      minmax(365px, auto) !important;
+
+    gap: 12px !important;
+  }
+
+  .forecast-dashboard .dashboard-card {
+    padding: 14px 16px !important;
+    border-radius: 3px !important;
+
+    background:
+      linear-gradient(180deg, rgba(8, 15, 26, 0.98), rgba(4, 8, 15, 0.99)) !important;
+
+    border: 1px solid rgba(120, 155, 180, 0.15) !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.025),
+      0 10px 22px rgba(0,0,0,0.24) !important;
+  }
+
+  .forecast-dashboard .ops-conditions-card,
+  .forecast-dashboard .forecast-discussion-card,
+  .forecast-dashboard .alerts-card {
+    min-height: 176px !important;
+  }
+
+  .forecast-dashboard .spc-card,
+  .forecast-dashboard .radar-card,
+  .forecast-dashboard .ops-live-card {
+    min-height: 365px !important;
+  }
+
+  .mini-label,
+  .operations-intro .eyebrow,
+  .meta-label {
+    font-size: 0.56rem !important;
+    letter-spacing: 0.2em !important;
+    color: rgba(125, 211, 252, 0.86) !important;
+  }
+
+  .card-header-row {
+    margin-bottom: 8px !important;
+  }
+
+  .card-header-row h3,
+  .briefing-title-row h3,
+  .mini-card h3,
+  .alerts-card h2 {
+    font-size: 1rem !important;
+    line-height: 1.05 !important;
+    letter-spacing: -0.02em !important;
+  }
+
+  .forecast-dashboard .briefing-title-row {
+    margin: 8px 0 10px !important;
+  }
+
+  .forecast-dashboard .forecast-discussion-card .briefing-text {
+    font-size: 0.82rem !important;
+    line-height: 1.45 !important;
+  }
+
+  .forecast-dashboard .forecast-discussion-card .briefing-meta {
+    margin: 12px 0 0 !important;
+    gap: 8px !important;
+  }
+
+  .forecast-dashboard .forecast-discussion-card .briefing-meta div {
+    padding: 9px 10px !important;
+    border-radius: 3px !important;
+  }
+
+  .dashboard-button,
+  .subtle-button {
+    padding: 8px 14px !important;
+    border-radius: 3px !important;
+    font-size: 0.62rem !important;
+    letter-spacing: 0.12em !important;
+    background: rgba(255,255,255,0.055) !important;
+    border: 1px solid rgba(120, 155, 180, 0.20) !important;
+    color: #ffffff !important;
+    box-shadow: none !important;
+  }
+
+  .dashboard-button:hover,
+  .subtle-button:hover {
+    background: rgba(53, 200, 255, 0.10) !important;
+    border-color: rgba(53, 200, 255, 0.32) !important;
+  }
+
+  .conditions-main {
+    margin-top: 8px !important;
+  }
+
+  .conditions-main strong {
+    font-size: 2.7rem !important;
+  }
+
+  .conditions-grid {
+    margin-top: 16px !important;
+    gap: 8px !important;
+  }
+
+  .conditions-grid div {
+    padding: 8px 10px !important;
+    border-radius: 3px !important;
+  }
+
+  .conditions-grid span {
+    font-size: 0.56rem !important;
+    letter-spacing: 0.13em !important;
+  }
+
+  .conditions-grid strong {
+    font-size: 0.78rem !important;
+  }
+
+  .radar-frame {
+    height: 300px !important;
+    margin-top: 8px !important;
+    border-radius: 3px !important;
+    filter: brightness(0.82) contrast(1.08) saturate(0.95);
+  }
+
+  .spc-slideshow {
+    height: 300px !important;
+    margin-top: 8px !important;
+    border-radius: 3px !important;
+  }
+
+  .spc-slide .spc-image-title,
+  .spc-image-title {
+    min-height: 22px !important;
+    padding: 4px 8px !important;
+    font-size: 0.58rem !important;
+    letter-spacing: 0.11em !important;
+    background: rgba(2, 5, 9, 0.95) !important;
+  }
+
+  .spc-outlook-img {
+    filter: brightness(0.88) contrast(1.08) saturate(0.92);
+  }
+
+  .ops-media-preview {
+    height: 150px !important;
+    margin: 10px 0 12px !important;
+    border-radius: 3px !important;
+  }
+
+  .ops-live-card p {
+    font-size: 0.82rem !important;
+    line-height: 1.45 !important;
+  }
+
+  .quick-tools-row {
+    width: calc(100% - 130px) !important;
+    max-width: 1500px !important;
+    margin: -4px auto 42px !important;
+    gap: 10px !important;
+  }
+
+  .quick-tool {
+    min-height: 50px !important;
+    border-radius: 3px !important;
+    padding: 10px 12px !important;
+  }
+
+  .quick-tool span {
+    font-size: 1rem !important;
+  }
+
+  .quick-tool strong {
+    font-size: 0.58rem !important;
+    letter-spacing: 0.12em !important;
+  }
+}
+
+/* =========================================================
+   ALERT / PANEL GLOW KILL — MATCH MOCKUP FLAT STYLE
+   KEEP THIS AS THE LAST CSS BLOCK
+========================================================= */
+
+/* Kill animated glow layers behind alert tabs */
+.alert-tabs button::before,
+.alert-tabs button.has-alerts::before,
+.alert-tabs button.no-alerts::before,
+.forecast-dashboard .alerts-card .alert-tabs button::before {
+  content: none !important;
+  display: none !important;
+  opacity: 0 !important;
+  animation: none !important;
+  filter: none !important;
+  box-shadow: none !important;
+}
+
+/* Remove all bright tab glow/shadows */
+.forecast-dashboard .alerts-card .alert-tabs button,
+.forecast-dashboard .alerts-card .alert-tabs button.active,
+.forecast-dashboard .alerts-card .alert-tabs button.has-alerts,
+.forecast-dashboard .alerts-card .alert-tabs button.no-alerts {
+  box-shadow: none !important;
+  filter: none !important;
+  text-shadow: none !important;
+}
+
+/* Flat inactive alert tabs */
+.forecast-dashboard .alerts-card .alert-tabs button {
+  background: rgba(255,255,255,0.045) !important;
+  color: rgba(230,238,248,0.72) !important;
+  border: 1px solid rgba(120,155,180,0.15) !important;
+  border-radius: 4px !important;
+}
+
+/* Flat category colors only when active / has alerts */
+.forecast-dashboard .alerts-card .alert-tabs button[data-category="storm"].active,
+.forecast-dashboard .alerts-card .alert-tabs button.has-alerts[data-category="storm"] {
+  background: #f5a71b !important;
+  color: #130900 !important;
+  border-color: #f5a71b !important;
+}
+
+.forecast-dashboard .alerts-card .alert-tabs button[data-category="tropical"].active,
+.forecast-dashboard .alerts-card .alert-tabs button.has-alerts[data-category="tropical"] {
+  background: #9f3671 !important;
+  color: #ffffff !important;
+  border-color: #9f3671 !important;
+}
+
+.forecast-dashboard .alerts-card .alert-tabs button[data-category="winter"].active,
+.forecast-dashboard .alerts-card .alert-tabs button.has-alerts[data-category="winter"] {
+  background: #4d9ee8 !important;
+  color: #06111f !important;
+  border-color: #4d9ee8 !important;
+}
+
+.forecast-dashboard .alerts-card .alert-tabs button[data-category="hydro"].active,
+.forecast-dashboard .alerts-card .alert-tabs button.has-alerts[data-category="hydro"] {
+  background: #00a008 !important;
+  color: #ffffff !important;
+  border-color: #00a008 !important;
+}
+
+.forecast-dashboard .alerts-card .alert-tabs button[data-category="fire"].active,
+.forecast-dashboard .alerts-card .alert-tabs button.has-alerts[data-category="fire"] {
+  background: #b83d18 !important;
+  color: #ffffff !important;
+  border-color: #b83d18 !important;
+}
+
+/* Remove glow from alert count bar */
+.forecast-dashboard .alerts-card .state-alert-dropdown > summary,
+.forecast-dashboard .alerts-card.storm-active .state-alert-dropdown > summary,
+.forecast-dashboard .alerts-card.tropical-active .state-alert-dropdown > summary,
+.forecast-dashboard .alerts-card.winter-active .state-alert-dropdown > summary,
+.forecast-dashboard .alerts-card.hydro-active .state-alert-dropdown > summary,
+.forecast-dashboard .alerts-card.fire-active .state-alert-dropdown > summary {
+  box-shadow: none !important;
+  filter: none !important;
+  text-shadow: none !important;
+  border-radius: 4px !important;
+}
+
+/* Keep alert count flat */
+.forecast-dashboard .alerts-card.storm-active .state-alert-dropdown > summary {
+  background: #f5a71b !important;
+  color: #130900 !important;
+}
+
+.forecast-dashboard .alerts-card.tropical-active .state-alert-dropdown > summary {
+  background: #9f3671 !important;
+  color: #ffffff !important;
+}
+
+.forecast-dashboard .alerts-card.winter-active .state-alert-dropdown > summary {
+  background: #4d9ee8 !important;
+  color: #06111f !important;
+}
+
+.forecast-dashboard .alerts-card.hydro-active .state-alert-dropdown > summary {
+  background: #00a008 !important;
+  color: #ffffff !important;
+}
+
+.forecast-dashboard .alerts-card.fire-active .state-alert-dropdown > summary {
+  background: #b83d18 !important;
+  color: #ffffff !important;
+}
+
+/* Remove glow from state dropdown rows */
+.forecast-dashboard .alerts-card .state-alert-group > summary,
+.forecast-dashboard .alerts-card .state-alert-group > summary:hover {
+  box-shadow: none !important;
+  filter: none !important;
+  text-shadow: none !important;
+  background: rgba(255,255,255,0.055) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(120,155,180,0.15) !important;
+  border-radius: 4px !important;
+}
+
+/* Remove glow from RadarOmega-style alert cards */
+.forecast-dashboard .alerts-card .ro-alert-card {
+  box-shadow: none !important;
+  filter: none !important;
+  text-shadow: none !important;
+  border-radius: 4px !important;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--alert-color) 10%, rgba(10,16,26,0.96)),
+      rgba(6,10,18,0.98)
+    ) !important;
+  border: 1px solid color-mix(in srgb, var(--alert-color) 62%, rgba(120,155,180,0.26)) !important;
+  border-left: 4px solid var(--alert-color) !important;
+}
+
+/* Remove glow from county/location/state chips */
+.forecast-dashboard .alerts-card .alert-location,
+.forecast-dashboard .alerts-card .ro-state-chip,
+.forecast-dashboard .alerts-card .compact-alert-item .ro-alert-bottom-row .alert-location {
+  box-shadow: none !important;
+  filter: none !important;
+  text-shadow: none !important;
+  border-radius: 4px !important;
+}
+
+/* Make county/location box dark instead of glowing alert color */
+.forecast-dashboard .alerts-card .compact-alert-item .ro-alert-bottom-row .alert-location {
+  background: rgba(255,255,255,0.065) !important;
+  color: rgba(245,248,252,0.92) !important;
+  border: 1px solid rgba(120,155,180,0.14) !important;
+}
+
+/* Keep state chip as flat alert-color block */
+.forecast-dashboard .alerts-card .ro-state-chip {
+  background: var(--alert-color) !important;
+  color: #06111f !important;
+  border: 1px solid var(--alert-color) !important;
+}
+
+/* Remove glow from radar/detail buttons */
+.forecast-dashboard .alerts-card .globe-button,
+.forecast-dashboard .alerts-card .raw-radar-button,
+.forecast-dashboard .alerts-card .compact-details-btn {
+  box-shadow: none !important;
+  filter: none !important;
+  text-shadow: none !important;
+  border-radius: 4px !important;
+}
+
+/* Keep only the small green status dot glow */
+.status-dot {
+  box-shadow: 0 0 8px rgba(40,231,111,0.7) !important;
+}
+
+/* =========================================================
+   TOP ROW HEIGHT LOCK
+   Live Conditions + Forecast Discussion + Active Alerts
+   stay the same height on desktop.
+========================================================= */
+
+@media (min-width: 769px) {
+  .ops-board-shell {
+    --top-row-card-height: 255px;
+  }
+
+  .forecast-dashboard .ops-dashboard-grid {
+    align-items: start !important;
+    grid-template-rows:
+      var(--top-row-card-height)
+      minmax(365px, auto) !important;
+  }
+
+  .forecast-dashboard .ops-conditions-card,
+  .forecast-dashboard .forecast-discussion-card,
+  .forecast-dashboard .alerts-card {
+    height: var(--top-row-card-height) !important;
+    min-height: var(--top-row-card-height) !important;
+    max-height: var(--top-row-card-height) !important;
+    align-self: start !important;
+    overflow: hidden !important;
+  }
+
+  /* Let alerts stay the same card height, but scroll internally */
+  .forecast-dashboard .alerts-card {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .forecast-dashboard .alerts-card .alert-tabs-wrapper {
+    flex: 0 0 auto !important;
+  }
+
+  .forecast-dashboard .alerts-card .compact-alert-list::-webkit-scrollbar {
+    width: 5px;
+  }
+
+  .forecast-dashboard .alerts-card .compact-alert-list::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.035);
+  }
+
+  .forecast-dashboard .alerts-card .compact-alert-list::-webkit-scrollbar-thumb {
+    background: rgba(120,155,180,0.28);
+    border-radius: 999px;
+  }
+}
+
+/* =========================================================
+   INDEPENDENT OPS COLUMNS
+   Conditions + Forecast stay matched.
+   Alerts grows independently.
+========================================================= */
+
+@media (min-width: 769px) {
+  .forecast-dashboard .ops-dashboard-grid {
+    display: grid !important;
+    grid-template-columns:
+      minmax(280px, 0.82fr)
+      minmax(620px, 1.65fr)
+      minmax(300px, 0.86fr) !important;
+    gap: 12px !important;
+    align-items: start !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+  }
+
+  .ops-column {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    min-width: 0 !important;
+    align-self: start !important;
+  }
+
+  .forecast-dashboard .ops-conditions-card,
+  .forecast-dashboard .forecast-discussion-card {
+    height: 255px !important;
+    min-height: 255px !important;
+    max-height: 255px !important;
+    overflow: hidden !important;
+  }
+
+  .forecast-dashboard .alerts-card {
+    height: auto !important;
+    min-height: 255px !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .forecast-dashboard .alerts-card .compact-alert-list {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  .forecast-dashboard .spc-card,
+  .forecast-dashboard .radar-card,
+  .forecast-dashboard .ops-live-card {
+    min-height: 365px !important;
+  }
+
+  .forecast-dashboard .radar-frame {
+    height: 300px !important;
+  }
+
+  .spc-slideshow {
+    height: 300px !important;
+  }
+
+  .ops-media-preview {
+    height: 150px !important;
+  }
+}
+
+/* =========================================================
+   FINAL POSITION FIX
+   Prevent nav overlap + keep quick tools below dashboard.
+   KEEP THIS LAST.
+========================================================= */
+
+@media (min-width: 769px) {
+
+  /* Give the sticky nav breathing room */
+  .forecast-dashboard {
+    padding-top: 72px !important;
+    padding-bottom: 34px !important;
+  }
+
+  /* Keep the board as the main contained console */
+  .ops-board-shell {
+    position: relative !important;
+    overflow: visible !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+  }
+
+  /* Make sure columns naturally determine dashboard height */
+  .forecast-dashboard .ops-dashboard-grid {
+    align-items: start !important;
+    overflow: visible !important;
+  }
+
+  .ops-column {
+    overflow: visible !important;
+  }
+
+  /* Stop quick tools from floating over radar/SPC/media */
+  .quick-tools-row {
+    position: relative !important;
+    z-index: 1 !important;
+
+    width: calc(100% - 130px) !important;
+    max-width: 1500px !important;
+
+    margin: 18px auto 44px !important;
+    padding: 0 !important;
+
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+
+    transform: none !important;
+    filter: none !important;
+  }
+
+  .quick-tool {
+    min-height: 50px !important;
+  }
+}
+
+/* =========================================================
+   FINAL QUICK TOOLS / BOARD FLOW FIX
+   This stops the quick tools row from floating over the dashboard.
+   KEEP THIS AS THE LAST CSS BLOCK.
+========================================================= */
+
+@media (min-width: 769px) {
+  .forecast-dashboard {
+    padding-top: 72px !important;
+    padding-bottom: 44px !important;
+    overflow: visible !important;
+  }
+
+  .ops-board-shell {
+    position: relative !important;
+    overflow: visible !important;
+    margin-bottom: 0 !important;
+  }
+
+  .forecast-dashboard .ops-dashboard-grid {
+    position: relative !important;
+    overflow: visible !important;
+    align-items: start !important;
+  }
+
+  .ops-column {
+    position: relative !important;
+    overflow: visible !important;
+  }
+
+  .quick-tools-row {
+    position: static !important;
+    z-index: auto !important;
+
+    width: calc(100% - 130px) !important;
+    max-width: 1500px !important;
+
+    margin: 28px auto 54px !important;
+    padding: 0 !important;
+
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+
+    transform: none !important;
+    top: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    right: auto !important;
+    filter: none !important;
+  }
+
+  .quick-tool {
+    min-height: 50px !important;
+  }
+}
+
+/* QUICK TOOLS INSIDE OPS BOARD */
+
+.ops-board-shell .quick-tools-row {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 14px 0 0 !important;
+  padding: 0 !important;
+
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+
+  position: relative !important;
+  z-index: 1 !important;
+  transform: none !important;
+}
+
+.ops-board-shell .quick-tool {
+  min-height: 50px !important;
+}
+
+/* =========================================================
+   FINAL HOME BOARD BALANCE
+   Alerts becomes the tall right-side panel.
+   Quick tools stay outside below the board.
+========================================================= */
+
+@media (min-width: 769px) {
+  .forecast-dashboard {
+    padding-bottom: 34px !important;
+    overflow: visible !important;
+  }
+
+  .ops-board-shell {
+    overflow: visible !important;
+  }
+
+  .forecast-dashboard .ops-dashboard-grid {
+    display: grid !important;
+    grid-template-columns:
+      minmax(280px, 0.82fr)
+      minmax(620px, 1.65fr)
+      minmax(300px, 0.86fr) !important;
+    gap: 12px !important;
+    align-items: start !important;
+  }
+
+  .ops-column {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    min-width: 0 !important;
+  }
+
+  /* Keep left + center top cards matched */
+  .forecast-dashboard .ops-conditions-card,
+  .forecast-dashboard .forecast-discussion-card {
+    height: 255px !important;
+    min-height: 255px !important;
+    max-height: 255px !important;
+    overflow: hidden !important;
+  }
+
+  /* SPC and radar match */
+  .forecast-dashboard .spc-card,
+  .forecast-dashboard .radar-card {
+    min-height: 365px !important;
+  }
+
+  .spc-slideshow,
+  .forecast-dashboard .radar-frame {
+    height: 300px !important;
+  }
+
+  /* Right column is alerts only now */
+  .ops-right-column {
+    align-self: stretch !important;
+  }
+
+  .forecast-dashboard .alerts-card {
+    height: auto !important;
+    min-height: 632px !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .forecast-dashboard .alerts-card .compact-alert-list {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  /* Quick tools stay BELOW the whole board */
+  .quick-tools-row {
+    position: static !important;
+    transform: none !important;
+    top: auto !important;
+    bottom: auto !important;
+    z-index: auto !important;
+
+    width: calc(100% - 130px) !important;
+    max-width: 1500px !important;
+
+    margin: 24px auto 54px !important;
+    padding: 0 !important;
+
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+}
+
+/* =========================================================
+   FINAL RADAR + SPC CONTAINMENT FIX
+   Stops SPC/radar from overflowing into quick tools.
+   KEEP THIS AS THE LAST CSS BLOCK.
+========================================================= */
+
+@media (min-width: 769px) {
+
+  /* Let the board grow to fit the cards */
+  .forecast-dashboard,
+  .ops-board-shell,
+  .forecast-dashboard .ops-dashboard-grid,
+  .ops-column {
+    overflow: visible !important;
+  }
+
+  /* Force the SPC and radar cards to contain their own media */
+  .forecast-dashboard .spc-card,
+  .forecast-dashboard .radar-card {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  /* Keep headers from stealing weird space */
+  .forecast-dashboard .spc-card .card-header-row,
+  .forecast-dashboard .radar-card .card-header-row {
+    flex: 0 0 auto !important;
+    margin-bottom: 8px !important;
+  }
+
+  /* Contained media height */
+  .forecast-dashboard .radar-frame {
+    display: block !important;
+    width: 100% !important;
+    height: 285px !important;
+    max-height: 285px !important;
+    margin: 8px 0 0 !important;
+    border-radius: 3px !important;
+    overflow: hidden !important;
+  }
+
+  .forecast-dashboard .spc-slideshow {
+    width: 100% !important;
+    height: 285px !important;
+    max-height: 285px !important;
+    margin: 8px 0 0 !important;
+    border-radius: 3px !important;
+    overflow: hidden !important;
+  }
+
+  .forecast-dashboard .spc-slide {
+    overflow: hidden !important;
+  }
+
+  .forecast-dashboard .spc-outlook-img {
+    width: 100% !important;
+    height: calc(100% - 22px) !important;
+    max-height: calc(100% - 22px) !important;
+    object-fit: cover !important;
+    object-position: center center !important;
+    display: block !important;
+  }
+
+  /* Make the lower cards match cleanly */
+  .forecast-dashboard .spc-card,
+  .forecast-dashboard .radar-card {
+    padding-bottom: 14px !important;
+  }
+
+  /* Quick tools must sit below the entire board, not overlap media */
+  .quick-tools-row {
+    position: static !important;
+    transform: none !important;
+    margin: 30px auto 54px !important;
+    z-index: auto !important;
+  }
+}
+
+/* =========================================================
+   REMOVE OUTER DARK OPS BOX
+   Keep only the individual tiles/cards on the page background.
+   KEEP THIS AS THE LAST CSS BLOCK.
+========================================================= */
+
+.forecast-dashboard {
+  background:
+    radial-gradient(circle at 8% 0%, rgba(53, 200, 255, 0.08), transparent 34%),
+    linear-gradient(180deg, #02060d 0%, #07101c 100%) !important;
+}
+
+/* Kill the big outer dark box */
+.ops-board-shell {
+  width: calc(100% - 72px) !important;
+  max-width: 1760px !important;
+  margin: 0 auto !important;
+
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+
+  overflow: visible !important;
+}
+
+/* Keep the intro as its own tile instead of part of a big box */
+.operations-intro {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 0 12px !important;
+
+  background:
+    linear-gradient(135deg, rgba(5, 12, 21, 0.96), rgba(2, 6, 12, 0.92)) !important;
+
+  border: 1px solid rgba(53, 200, 255, 0.16) !important;
+  box-shadow: none !important;
+}
+
+/* Make the card grid sit directly on the page background */
+.forecast-dashboard .ops-dashboard-grid {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  overflow: visible !important;
+}
+
+/* Keep individual tiles clean */
+.forecast-dashboard .dashboard-card {
+  background:
+    linear-gradient(180deg, rgba(8, 15, 26, 0.98), rgba(4, 8, 15, 0.99)) !important;
+
+  border: 1px solid rgba(120, 155, 180, 0.15) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.025),
+    0 10px 22px rgba(0,0,0,0.24) !important;
+}
+
+/* Quick tools stay below the tiles, not inside a container */
+.quick-tools-row {
+  position: static !important;
+  width: calc(100% - 130px) !important;
+  max-width: 1500px !important;
+  margin: 24px auto 54px !important;
+  padding: 0 !important;
+  transform: none !important;
+  z-index: auto !important;
+}
+
+/* =========================================================
+   FINAL DESKTOP BREATHING ROOM FIX
+   Less squished, wider cards, taller radar/SPC.
+   KEEP THIS AS THE LAST CSS BLOCK.
+========================================================= */
+
+@media (min-width: 769px) {
+  .forecast-dashboard {
+    padding-top: 76px !important;
+    padding-bottom: 44px !important;
+  }
+
+  .ops-board-shell {
+    width: calc(100% - 56px) !important;
+    max-width: 1780px !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+  }
+
+  .forecast-dashboard .ops-dashboard-grid {
+    display: grid !important;
+
+    grid-template-columns:
+      minmax(360px, 0.95fr)
+      minmax(760px, 1.85fr)
+      minmax(390px, 1fr) !important;
+
+    gap: 16px !important;
+    align-items: start !important;
+
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+  }
+
+  .ops-column {
+    gap: 16px !important;
+    min-width: 0 !important;
+  }
+
+  /* Top cards breathe more */
+  .forecast-dashboard .ops-conditions-card,
+  .forecast-dashboard .forecast-discussion-card {
+    height: 285px !important;
+    min-height: 285px !important;
+    max-height: 285px !important;
+    overflow: hidden !important;
+  }
+
+  /* Alerts can still grow independently */
+  .forecast-dashboard .alerts-card {
+    min-height: 285px !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .forecast-dashboard .alerts-card .compact-alert-list {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  /* Bottom cards get more room */
+  .forecast-dashboard .spc-card,
+  .forecast-dashboard .radar-card {
+    min-height: 430px !important;
+    height: auto !important;
+    overflow: hidden !important;
+  }
+
+  .spc-slideshow {
+    height: 350px !important;
+    max-height: 350px !important;
+  }
+
+  .forecast-dashboard .radar-frame {
+    height: 350px !important;
+    max-height: 350px !important;
+  }
+
+  /* Slightly roomier content inside cards */
+  .forecast-dashboard .dashboard-card {
+    padding: 18px 20px !important;
+  }
+
+  .conditions-main strong {
+    font-size: 3.15rem !important;
+  }
+
+  .conditions-grid {
+    gap: 10px !important;
+    margin-top: 18px !important;
+  }
+
+  .conditions-grid div,
+  .briefing-meta div {
+    padding: 11px 12px !important;
+  }
+
+  .forecast-dashboard .forecast-discussion-card .briefing-text {
+    font-size: 0.92rem !important;
+    line-height: 1.5 !important;
+  }
+
+  .forecast-dashboard .forecast-discussion-card .briefing-meta {
+    margin-top: 18px !important;
+    gap: 12px !important;
+  }
+
+  /* Quick tools below, not crowded */
+  .quick-tools-row {
+    width: calc(100% - 96px) !important;
+    max-width: 1680px !important;
+    margin: 34px auto 58px !important;
+
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+  }
+
+  .quick-tool {
+    min-height: 56px !important;
   }
 }
 
@@ -3862,6 +6024,340 @@ filter: brightness(1.15);
 
 <section class="forecast-dashboard">
 
+  <div class="ops-board-shell">
+
+  <div class="operations-intro">
+  <div>
+    <p class="eyebrow">Weather Operations Hub</p>
+    <h2>Live Radar, Active Alerts, SPC Outlooks, & Forecast Monitoring.</h2>
+    <p class="dashboard-subtitle">
+      A centralized dashboard for severe weather awareness, live radar viewing,
+      active NWS alerts, and current forecast thoughts.
+    </p>
+  </div>
+
+  <div class="operations-status-card">
+    <span class="status-dot"></span>
+    <div>
+      <strong>Operations</strong>
+      <p>Monitoring active weather and forecast updates</p>
+    </div>
+  </div>
+</div>
+
+<div class="dashboard-grid ops-dashboard-grid">
+
+  <!-- LEFT COLUMN -->
+  <div class="ops-column ops-left-column">
+
+    <article class="dashboard-card ops-conditions-card">
+      <span class="mini-label">Live Conditions</span>
+
+      <div class="conditions-main">
+        <div>
+          <strong>64°</strong>
+          <span>Greensboro, NC</span>
+        </div>
+
+        <p>Cloudy</p>
+      </div>
+
+      <div class="conditions-grid">
+        <div>
+          <span>Wind</span>
+          <strong>14 mph</strong>
+        </div>
+
+        <div>
+          <span>Dew Point</span>
+          <strong>49°</strong>
+        </div>
+
+        <div>
+          <span>Humidity</span>
+          <strong>56%</strong>
+        </div>
+
+        <div>
+          <span>Pressure</span>
+          <strong>29.82 in</strong>
+        </div>
+      </div>
+    </article>
+
+    <article class="dashboard-card mini-card spc-card">
+      <div class="card-header-row">
+        <div>
+          <span class="mini-label">SPC Outlook</span>
+          <h3>Convective Forecast</h3>
+        </div>
+
+        <span class="card-time">Auto Updating</span>
+      </div>
+
+      <div class="spc-slideshow" id="spcSlideshow">
+
+        <a class="spc-slide active" href="https://www.spc.noaa.gov/products/outlook/day1otlk.html" target="_blank">
+          <div class="spc-image-title">Day 1 Outlook</div>
+          <img
+            class="spc-outlook-img"
+            alt="SPC Day 1 Outlook"
+            data-spc-options="
+              https://www.spc.noaa.gov/products/outlook/day1otlk.png,
+              https://www.spc.noaa.gov/products/outlook/day1otlk_0100_prt.png,
+              https://www.spc.noaa.gov/products/outlook/day1otlk_0600_prt.png,
+              https://www.spc.noaa.gov/products/outlook/day1otlk_1200_prt.png,
+              https://www.spc.noaa.gov/products/outlook/day1otlk_1300_prt.png,
+              https://www.spc.noaa.gov/products/outlook/day1otlk_1630_prt.png,
+              https://www.spc.noaa.gov/products/outlook/day1otlk_2000_prt.png
+            "
+          >
+        </a>
+
+        <a class="spc-slide" href="https://www.spc.noaa.gov/products/outlook/day2otlk.html" target="_blank">
+          <div class="spc-image-title">Day 2 Outlook</div>
+          <img
+            class="spc-outlook-img"
+            alt="SPC Day 2 Outlook"
+            data-spc-options="
+              https://www.spc.noaa.gov/products/outlook/day2otlk.png,
+              https://www.spc.noaa.gov/products/outlook/day2otlk_0600_prt.png,
+              https://www.spc.noaa.gov/products/outlook/day2otlk_1730_prt.png
+            "
+          >
+        </a>
+
+        <a class="spc-slide" href="https://www.spc.noaa.gov/products/outlook/day3otlk.html" target="_blank">
+          <div class="spc-image-title">Day 3 Outlook</div>
+          <img
+            class="spc-outlook-img"
+            alt="SPC Day 3 Outlook"
+            data-spc-options="
+              https://www.spc.noaa.gov/products/outlook/day3otlk.png,
+              https://www.spc.noaa.gov/products/outlook/day3otlk_0730_prt.png,
+              https://www.spc.noaa.gov/products/outlook/day3otlk_0830_prt.png,
+              https://www.spc.noaa.gov/products/outlook/day3otlk_1930_prt.png
+            "
+          >
+        </a>
+
+        <a
+          class="spc-slide"
+          href="https://www.spc.noaa.gov/products/exper/day4-8/"
+          target="_blank"
+          data-slide-delay="18000">
+
+          <div class="spc-image-title">Days 4–8 Outlook</div>
+
+          <img
+            class="spc-outlook-img"
+            alt="SPC Days 4 through 8 Outlook"
+            data-reset-gif="true"
+            data-base-src="https://www.spc.noaa.gov/products/exper/day4-8/day48prob.gif"
+            src="https://www.spc.noaa.gov/products/exper/day4-8/day48prob.gif"
+          >
+        </a>
+
+        <div class="spc-slide-controls">
+          <button type="button" class="spc-slide-btn" data-spc-slide="prev">‹</button>
+
+          <div class="spc-slide-dots">
+            <button type="button" class="active" data-spc-dot="0"></button>
+            <button type="button" data-spc-dot="1"></button>
+            <button type="button" data-spc-dot="2"></button>
+            <button type="button" data-spc-dot="3"></button>
+          </div>
+
+          <button type="button" class="spc-slide-btn" data-spc-slide="next">›</button>
+        </div>
+
+      </div>
+    </article>
+
+  </div>
+
+
+  <!-- CENTER COLUMN -->
+  <div class="ops-column ops-center-column">
+
+    <article class="dashboard-card briefing-card forecast-discussion-card">
+      <div class="card-topline">
+        <span class="status-dot"></span>
+        <span>Updated Today</span>
+      </div>
+
+      <div class="briefing-title-row">
+        <h3>Forecast Discussion</h3>
+        <a href="wx-updates.html" class="dashboard-button">Read Full Discussion</a>
+      </div>
+
+      <p class="briefing-text">
+        An unsettled pattern for now, but monitoring long-range signals for increased
+        storm potential across the Plains, Midwest, and Southeast.
+      </p>
+
+      <div class="briefing-meta">
+        <div>
+          <span class="meta-label">Primary Concern</span>
+          <strong>Monitoring</strong>
+        </div>
+
+        <div>
+          <span class="meta-label">Confidence</span>
+          <strong>Increasing</strong>
+        </div>
+
+        <div>
+          <span class="meta-label">Region</span>
+          <strong>Central-Eastern</strong>
+        </div>
+      </div>
+    </article>
+
+    <article class="dashboard-card mini-card radar-card">
+      <div class="card-header-row">
+        <div>
+          <span class="mini-label">Live Radar</span>
+          <h3>Regional Radar</h3>
+        </div>
+
+        <span class="card-time">Live View</span>
+      </div>
+
+      <iframe
+        src="https://embed.windy.com/embed2.html?lat=35.78&lon=-79.80&zoom=5&level=surface&overlay=radar&product=radar"
+        class="radar-frame">
+      </iframe>
+    </article>
+
+  </div>
+
+
+<!-- RIGHT COLUMN -->
+<div class="ops-column ops-right-column">
+
+  <article class="dashboard-card mini-card alerts-card">
+    <h2 id="alertsTitle">Active Alerts</h2>
+
+    <div class="alert-tabs-wrapper">
+      <div class="alert-tabs">
+        <button class="active" data-category="storm">Storm Based</button>
+        <button data-category="tropical">Tropical</button>
+        <button data-category="winter">Winter</button>
+        <button data-category="hydro">Hydro</button>
+        <button data-category="fire">Fire</button>
+      </div>
+    </div>
+
+    <div id="alertsList" class="compact-alert-list"></div>
+  </article>
+
+</div>
+
+  </div>
+
+</div>
+
+</div>
+
+</section>
+
+  </div>
+  <!-- closes dashboard-grid ops-dashboard-grid -->
+
+  <section class="quick-tools-row">
+    <a href="wx-updates.html" class="quick-tool">
+      <span>📝</span>
+      <strong>Forecast Briefings</strong>
+    </a>
+
+    <a href="maps.html" class="quick-tool">
+      <span>🗺️</span>
+      <strong>Maps & Models</strong>
+    </a>
+
+    <a href="https://www.spc.noaa.gov/" target="_blank" class="quick-tool">
+      <span>⚡</span>
+      <strong>SPC Outlooks</strong>
+    </a>
+
+    <a href="https://www.wpc.ncep.noaa.gov/" target="_blank" class="quick-tool">
+      <span>🌧️</span>
+      <strong>WPC / Hydro</strong>
+    </a>
+
+    <a href="storm-chasing.html" class="quick-tool chase-tool">
+      <span>🚘</span>
+      <strong>Storm Chasing</strong>
+    </a>
+  </section>
+
+</div>
+<!-- closes ops-board-shell -->
+
+</section>
+<!-- closes forecast-dashboard -->
+
+<div class="alert-modal" id="stormModal">
+  <div class="alert-modal-backdrop"></div>
+
+  <div class="alert-modal-box">
+
+  <div class="alert-modal-header">
+    <div class="alert-modal-header-text">
+      <h2 class="alert-modal-title">Weather Alert</h2>
+      <p class="alert-modal-office">National Weather Service</p>
+    </div>
+
+    <button class="alert-modal-close" type="button">×</button>
+  </div>
+
+<div class="warning-detail-card">
+  <h4>What to Expect</h4>
+
+  <p class="warning-summary"></p>
+
+  <div class="storm-tags"></div>
+
+  <div class="warning-hazards">
+    <div class="hazard-box">
+      <span class="hazard-label">🌬️ Max Wind</span>
+      <span class="hazard-value hazard-wind-value"></span>
+    </div>
+
+    <div class="hazard-box">
+      <span class="hazard-label">🧊 Max Hail</span>
+      <span class="hazard-value hazard-hail-value"></span>
+    </div>
+
+    <div class="hazard-box">
+      <span class="hazard-label">📡 Source</span>
+      <span class="hazard-value hazard-source-value"></span>
+    </div>
+  </div>
+
+  <div class="warning-info">
+    <p><span>📍 Where:</span> <span class="alert-where"></span></p>
+    <p><span>🕘 When:</span> <span class="alert-when"></span></p>
+  </div>
+
+ <div class="warning-impacts">
+  <strong>⚠️ Expected Impacts</strong>
+  <p></p>
+</div>
+
+<div class="alert-full-text">
+  <strong>📋 Alert Details</strong>
+  <pre class="alert-raw-text"></pre>
+</div>
+
+<div class="warning-bottom">
+    <span>Hail: <strong class="bottom-hail-value"></strong></span>
+    <span>Wind: <strong class="bottom-wind-value"></strong></span>
+ </div>  
+</div>
+</div>
+</div>
 
 <div class="radar-modal" id="radarModal">
   <div class="radar-modal-backdrop"></div>
