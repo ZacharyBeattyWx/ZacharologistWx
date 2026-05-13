@@ -5607,6 +5607,96 @@ body {
   min-height: 50px !important;
 }
 
+/* =========================================================
+   FINAL HOME BOARD BALANCE
+   Alerts becomes the tall right-side panel.
+   Quick tools stay outside below the board.
+========================================================= */
+
+@media (min-width: 769px) {
+  .forecast-dashboard {
+    padding-bottom: 34px !important;
+    overflow: visible !important;
+  }
+
+  .ops-board-shell {
+    overflow: visible !important;
+  }
+
+  .forecast-dashboard .ops-dashboard-grid {
+    display: grid !important;
+    grid-template-columns:
+      minmax(280px, 0.82fr)
+      minmax(620px, 1.65fr)
+      minmax(300px, 0.86fr) !important;
+    gap: 12px !important;
+    align-items: start !important;
+  }
+
+  .ops-column {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    min-width: 0 !important;
+  }
+
+  /* Keep left + center top cards matched */
+  .forecast-dashboard .ops-conditions-card,
+  .forecast-dashboard .forecast-discussion-card {
+    height: 255px !important;
+    min-height: 255px !important;
+    max-height: 255px !important;
+    overflow: hidden !important;
+  }
+
+  /* SPC and radar match */
+  .forecast-dashboard .spc-card,
+  .forecast-dashboard .radar-card {
+    min-height: 365px !important;
+  }
+
+  .spc-slideshow,
+  .forecast-dashboard .radar-frame {
+    height: 300px !important;
+  }
+
+  /* Right column is alerts only now */
+  .ops-right-column {
+    align-self: stretch !important;
+  }
+
+  .forecast-dashboard .alerts-card {
+    height: auto !important;
+    min-height: 632px !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .forecast-dashboard .alerts-card .compact-alert-list {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  /* Quick tools stay BELOW the whole board */
+  .quick-tools-row {
+    position: static !important;
+    transform: none !important;
+    top: auto !important;
+    bottom: auto !important;
+    z-index: auto !important;
+
+    width: calc(100% - 130px) !important;
+    max-width: 1500px !important;
+
+    margin: 24px auto 54px !important;
+    padding: 0 !important;
+
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+}
+
  </style>
 </head>
 
