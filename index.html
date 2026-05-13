@@ -6110,7 +6110,51 @@ body {
     object-fit: contain !important;
     background: #000;
   }
+}
 
+/* =========================================================
+   MOBILE SPC OUTLOOK HEIGHT FIX
+   Keeps full SPC graphic visible instead of short/cropped.
+   KEEP THIS AT THE VERY BOTTOM.
+========================================================= */
+
+@media (max-width: 768px) {
+  .forecast-dashboard .spc-card {
+    overflow: visible !important;
+  }
+
+  .forecast-dashboard .spc-slideshow {
+    height: 390px !important;
+    max-height: none !important;
+    min-height: 390px !important;
+
+    overflow: hidden !important;
+  }
+
+  .forecast-dashboard .spc-slide {
+    height: 100% !important;
+    max-height: none !important;
+    overflow: hidden !important;
+  }
+
+  .forecast-dashboard .spc-slide .spc-image-title,
+  .forecast-dashboard .spc-image-title {
+    height: 28px !important;
+    min-height: 28px !important;
+    flex: 0 0 28px !important;
+  }
+
+  .forecast-dashboard .spc-outlook-img {
+    width: 100% !important;
+    height: calc(100% - 28px) !important;
+    max-height: none !important;
+
+    object-fit: contain !important;
+    object-position: center center !important;
+
+    background: #020509 !important;
+    display: block !important;
+  }
 }
 
  </style>
