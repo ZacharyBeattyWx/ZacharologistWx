@@ -6053,39 +6053,43 @@ body {
   <div class="ops-column ops-left-column">
 
     <article class="dashboard-card ops-conditions-card">
-      <span class="mini-label">Live Conditions</span>
+  <span class="mini-label" id="conditionsLabel">Live Conditions</span>
 
-      <div class="conditions-main">
-        <div>
-          <strong>64°</strong>
-          <span>Greensboro, NC</span>
-        </div>
+  <div class="conditions-main">
+    <div>
+      <strong id="currentTemp">--°</strong>
+      <span id="currentLocation">Use your location for live conditions</span>
+    </div>
 
-        <p>Cloudy</p>
-      </div>
+    <p id="currentCondition">Waiting...</p>
+  </div>
 
-      <div class="conditions-grid">
-        <div>
-          <span>Wind</span>
-          <strong>14 mph</strong>
-        </div>
+  <div class="conditions-grid">
+    <div>
+      <span>Wind</span>
+      <strong id="currentWind">-- mph</strong>
+    </div>
 
-        <div>
-          <span>Dew Point</span>
-          <strong>49°</strong>
-        </div>
+    <div>
+      <span>Dew Point</span>
+      <strong id="currentDewpoint">--°</strong>
+    </div>
 
-        <div>
-          <span>Humidity</span>
-          <strong>56%</strong>
-        </div>
+    <div>
+      <span>Humidity</span>
+      <strong id="currentHumidity">--%</strong>
+    </div>
 
-        <div>
-          <span>Pressure</span>
-          <strong>29.82 in</strong>
-        </div>
-      </div>
-    </article>
+    <div>
+      <span>Pressure</span>
+      <strong id="currentPressure">-- in</strong>
+    </div>
+  </div>
+
+  <button class="dashboard-button subtle-button" id="useLocationBtn" type="button">
+    Use My Location
+  </button>
+</article>
 
     <article class="dashboard-card mini-card spc-card">
       <div class="card-header-row">
@@ -8442,6 +8446,143 @@ function initSpcSlideshow() {
   });
 
   showSlide(0);
+}
+
+const useLocationBtn = document.getElementById("useLocationBtn");
+
+const currentTemp = document.getElementById("currentTemp");
+const currentLocation = document.getElementById("currentLocation");
+const currentCondition = document.getElementById("currentCondition");
+const currentWind = document.getElementById("currentWind");
+const currentDewpoint = document.getElementById("currentDewpoint");
+const currentHumidity = document.getElementById("currentHumidity");
+const currentPressure = document.getElementById("currentPressure");
+const conditionsLabel = document.getElementById("conditionsLabel");
+
+function cToF(value) {
+  if (value === null || value === undefined) return null;
+  return Math.round((value * 9) / 5 + 32);
+}
+
+function paToInHg(value) {
+  if (value === null || value === undefined) return null;
+  return (value * 0.0002953).toFixed(2);
+}
+
+function msToMph(value) {
+  if (value === null || value === undefined) return null;
+  return Math.round(value * 2.23694);
+}
+
+function updateConditionsStatus(message) {
+  if (currentCondition) currentCondition.textContent = message;
+}
+
+async function fetchJson(url) {
+  const response = await fetch(url, {
+    headers: {
+      "Accept": "application/geo+json"
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`NWS request failed: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+async function loadConditionsFromLocation(lat, lon) {
+  try {
+    updateConditionsStatus("Locating...");
+
+    const pointData = await fetchJson(
+      `https://api.weather.gov/points/${lat.toFixed(4)},${lon.toFixed(4)}`
+    );
+
+    const city = pointData.properties?.relativeLocation?.properties?.city;
+    const state = pointData.properties?.relativeLocation?.properties?.state;
+    const stationUrl = pointData.properties?.observationStations;
+
+    if (!stationUrl) {
+      throw new Error("No observation station URL found.");
+    }
+
+    currentLocation.textContent =
+      city && state ? `${city}, ${state}` : "Your Location";
+
+    conditionsLabel.textContent = "Live Conditions Near You";
+
+    const stationsData = await fetchJson(stationUrl);
+    const firstStation = stationsData.features?.[0];
+
+    if (!firstStation?.id) {
+      throw new Error("No nearby observation station found.");
+    }
+
+    const observationData = await fetchJson(
+      `${firstStation.id}/observations/latest`
+    );
+
+    const props = observationData.properties || {};
+
+    const tempF = cToF(props.temperature?.value);
+    const dewF = cToF(props.dewpoint?.value);
+    const windMph = msToMph(props.windSpeed?.value);
+    const pressureIn = paToInHg(props.barometricPressure?.value);
+    const humidity = props.relativeHumidity?.value;
+
+    currentTemp.textContent = tempF !== null ? `${tempF}°` : "--°";
+    currentCondition.textContent = props.textDescription || "Current conditions";
+    currentWind.textContent = windMph !== null ? `${windMph} mph` : "-- mph";
+    currentDewpoint.textContent = dewF !== null ? `${dewF}°` : "--°";
+    currentHumidity.textContent =
+      humidity !== null && humidity !== undefined
+        ? `${Math.round(humidity)}%`
+        : "--%";
+    currentPressure.textContent =
+      pressureIn !== null ? `${pressureIn} in` : "-- in";
+
+    useLocationBtn.textContent = "Location Updated";
+  } catch (error) {
+    console.error(error);
+
+    conditionsLabel.textContent = "Live Conditions";
+    currentLocation.textContent = "Greensboro, NC";
+    currentCondition.textContent = "Unable to load local conditions";
+    useLocationBtn.textContent = "Try Again";
+  }
+}
+
+function requestUserLocation() {
+  if (!navigator.geolocation) {
+    updateConditionsStatus("Geolocation unavailable");
+    return;
+  }
+
+  useLocationBtn.textContent = "Locating...";
+
+  navigator.geolocation.getCurrentPosition(
+    position => {
+      loadConditionsFromLocation(
+        position.coords.latitude,
+        position.coords.longitude
+      );
+    },
+    () => {
+      currentCondition.textContent = "Location permission denied";
+      useLocationBtn.textContent = "Use My Location";
+    },
+    {
+      enableHighAccuracy: false,
+      timeout: 10000,
+      maximumAge: 300000
+    }
+  );
+}
+
+if (useLocationBtn) {
+  useLocationBtn.addEventListener("click", requestUserLocation);
 }
 
 loadSPCImages();
