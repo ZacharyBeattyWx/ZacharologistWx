@@ -5976,6 +5976,49 @@ body {
   .forecast-dashboard .alerts-card .alert-tabs button:nth-child(5) {
     grid-column: 1 / 2 !important;
   }
+
+  .forecast-dashboard .ops-conditions-card {
+    position: relative !important;
+    height: auto !important;
+    min-height: 315px !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 18px 16px 20px !important;
+  }
+
+  .forecast-dashboard .ops-conditions-card .mini-label {
+    display: block !important;
+    padding-right: 56px !important;
+    line-height: 1.2 !important;
+  }
+
+  .forecast-dashboard .ops-conditions-card > #useLocationBtn.ops-location-icon {
+    position: absolute !important;
+    top: 16px !important;
+    right: 14px !important;
+    left: auto !important;
+    bottom: auto !important;
+
+    width: 36px !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
+
+    height: 36px !important;
+    min-height: 36px !important;
+    max-height: 36px !important;
+
+    padding: 0 !important;
+    margin: 0 !important;
+
+    display: grid !important;
+    place-items: center !important;
+
+    border-radius: 999px !important;
+    font-size: 1.1rem !important;
+    line-height: 1 !important;
+    z-index: 5 !important;
+  }
+
 }
 
 @media (min-width: 769px) {
@@ -6116,6 +6159,17 @@ body {
 
   font-size: 1.2rem !important;
   line-height: 1 !important;
+}
+
+.forecast-dashboard .ops-conditions-card .mini-label {
+  display: block !important;
+  padding-right: 56px !important;
+  line-height: 1.2 !important;
+}
+
+.forecast-dashboard .ops-conditions-card > #useLocationBtn.ops-location-icon {
+  top: 18px !important;
+  right: 16px !important;
 }
 
 }
