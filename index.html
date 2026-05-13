@@ -5849,6 +5849,131 @@ body {
   z-index: auto !important;
 }
 
+/* =========================================================
+   FINAL DESKTOP BREATHING ROOM FIX
+   Less squished, wider cards, taller radar/SPC.
+   KEEP THIS AS THE LAST CSS BLOCK.
+========================================================= */
+
+@media (min-width: 769px) {
+  .forecast-dashboard {
+    padding-top: 76px !important;
+    padding-bottom: 44px !important;
+  }
+
+  .ops-board-shell {
+    width: calc(100% - 56px) !important;
+    max-width: 1780px !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+  }
+
+  .forecast-dashboard .ops-dashboard-grid {
+    display: grid !important;
+
+    grid-template-columns:
+      minmax(360px, 0.95fr)
+      minmax(760px, 1.85fr)
+      minmax(390px, 1fr) !important;
+
+    gap: 16px !important;
+    align-items: start !important;
+
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+  }
+
+  .ops-column {
+    gap: 16px !important;
+    min-width: 0 !important;
+  }
+
+  /* Top cards breathe more */
+  .forecast-dashboard .ops-conditions-card,
+  .forecast-dashboard .forecast-discussion-card {
+    height: 285px !important;
+    min-height: 285px !important;
+    max-height: 285px !important;
+    overflow: hidden !important;
+  }
+
+  /* Alerts can still grow independently */
+  .forecast-dashboard .alerts-card {
+    min-height: 285px !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .forecast-dashboard .alerts-card .compact-alert-list {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  /* Bottom cards get more room */
+  .forecast-dashboard .spc-card,
+  .forecast-dashboard .radar-card {
+    min-height: 430px !important;
+    height: auto !important;
+    overflow: hidden !important;
+  }
+
+  .spc-slideshow {
+    height: 350px !important;
+    max-height: 350px !important;
+  }
+
+  .forecast-dashboard .radar-frame {
+    height: 350px !important;
+    max-height: 350px !important;
+  }
+
+  /* Slightly roomier content inside cards */
+  .forecast-dashboard .dashboard-card {
+    padding: 18px 20px !important;
+  }
+
+  .conditions-main strong {
+    font-size: 3.15rem !important;
+  }
+
+  .conditions-grid {
+    gap: 10px !important;
+    margin-top: 18px !important;
+  }
+
+  .conditions-grid div,
+  .briefing-meta div {
+    padding: 11px 12px !important;
+  }
+
+  .forecast-dashboard .forecast-discussion-card .briefing-text {
+    font-size: 0.92rem !important;
+    line-height: 1.5 !important;
+  }
+
+  .forecast-dashboard .forecast-discussion-card .briefing-meta {
+    margin-top: 18px !important;
+    gap: 12px !important;
+  }
+
+  /* Quick tools below, not crowded */
+  .quick-tools-row {
+    width: calc(100% - 96px) !important;
+    max-width: 1680px !important;
+    margin: 34px auto 58px !important;
+
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+  }
+
+  .quick-tool {
+    min-height: 56px !important;
+  }
+}
+
  </style>
 </head>
 
