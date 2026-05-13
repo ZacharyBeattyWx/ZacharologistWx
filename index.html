@@ -5473,6 +5473,62 @@ body {
   }
 }
 
+/* =========================================================
+   FINAL POSITION FIX
+   Prevent nav overlap + keep quick tools below dashboard.
+   KEEP THIS LAST.
+========================================================= */
+
+@media (min-width: 769px) {
+
+  /* Give the sticky nav breathing room */
+  .forecast-dashboard {
+    padding-top: 72px !important;
+    padding-bottom: 34px !important;
+  }
+
+  /* Keep the board as the main contained console */
+  .ops-board-shell {
+    position: relative !important;
+    overflow: visible !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+  }
+
+  /* Make sure columns naturally determine dashboard height */
+  .forecast-dashboard .ops-dashboard-grid {
+    align-items: start !important;
+    overflow: visible !important;
+  }
+
+  .ops-column {
+    overflow: visible !important;
+  }
+
+  /* Stop quick tools from floating over radar/SPC/media */
+  .quick-tools-row {
+    position: relative !important;
+    z-index: 1 !important;
+
+    width: calc(100% - 130px) !important;
+    max-width: 1500px !important;
+
+    margin: 18px auto 44px !important;
+    padding: 0 !important;
+
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+
+    transform: none !important;
+    filter: none !important;
+  }
+
+  .quick-tool {
+    min-height: 50px !important;
+  }
+}
+
  </style>
 </head>
 
@@ -5772,10 +5828,13 @@ body {
       <a href="media.html" class="dashboard-button subtle-button">View Media</a>
     </article>
 
-  </div>
+    </div>
 
 </div>
-<section> 
+
+</div>
+
+</section>
 
 <section class="quick-tools-row">
   <a href="wx-updates.html" class="quick-tool">
