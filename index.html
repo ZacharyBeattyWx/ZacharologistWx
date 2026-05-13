@@ -6119,88 +6119,6 @@ body {
 ========================================================= */
 
 @media (max-width: 768px) {
-
-   html,
-  body {
-    width: 100%;
-    max-width: 100%;
-    overflow-x: hidden;
-  }
-
-  * {
-    box-sizing: border-box;
-  }
-
-  main,
-  section,
-  .dashboard-section,
-  .weather-dashboard,
-  .alerts-card,
-  .active-alerts,
-  .homepage-alerts,
-  .radar-card,
-  .spc-card {
-    width: 100%;
-    max-width: 100%;
-    overflow-x: hidden;
-  }
-
-  iframe,
-  img,
-  video {
-    max-width: 100%;
-  }
-
-  .alert-tabs-wrapper {
-    width: 100%;
-    max-width: 100%;
-    overflow-x: auto;
-    overflow-y: hidden;
-  }
-
-  .alert-tabs {
-    display: flex;
-    flex-wrap: nowrap;
-    width: max-content;
-    max-width: none;
-  }
-
-  .alert-tabs button {
-    flex: 0 0 auto;
-    min-width: 135px;
-  }
-
-  .alert-count-bar,
-  .state-alert-group,
-  .compact-alert-item,
-  .radar-alert-card,
-  .alert-location-row,
-  .alert-location {
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-  }
-
-  .alert-location-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .alert-location {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .quick-links-grid,
-  .feature-grid,
-  .nav-card-grid {
-    width: 100%;
-    max-width: 100%;
-    grid-template-columns: 1fr 1fr;
-  }
-  
   .forecast-dashboard .spc-card {
     overflow: visible !important;
   }
@@ -6236,6 +6154,51 @@ body {
 
     background: #020509 !important;
     display: block !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .spc-card {
+    padding: 18px !important;
+  }
+
+  .spc-slideshow {
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    background: #05070b !important;
+  }
+
+  .spc-slide {
+    position: relative !important;
+    inset: auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  .spc-slide.active {
+    display: block !important;
+  }
+
+  .spc-slide .spc-image-title {
+    height: 34px !important;
+    min-height: 34px !important;
+  }
+
+  .spc-slide .spc-outlook-img {
+    width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    object-fit: contain !important;
+    object-position: center center !important;
+    display: block !important;
+  }
+
+  .spc-slide-controls {
+    bottom: 12px !important;
   }
 }
 
