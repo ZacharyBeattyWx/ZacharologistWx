@@ -5448,24 +5448,7 @@ body {
   }
 }
 
-@media (min-width: 769px) {
-  .forecast-dashboard .ops-conditions-card {
-    min-height: 330px !important;
-  }
 
-  .forecast-dashboard .ops-conditions-card .conditions-main strong {
-    font-size: 4.25rem !important;
-  }
-
-  .forecast-dashboard .ops-conditions-card .conditions-grid {
-    margin-top: 28px !important;
-    gap: 12px !important;
-  }
-
-  .forecast-dashboard .ops-conditions-card .conditions-grid div {
-    padding: 14px 12px !important;
-  }
-}
 
 /* =========================================================
    FINAL POSITION FIX
@@ -5992,6 +5975,34 @@ body {
 
   .forecast-dashboard .alerts-card .alert-tabs button:nth-child(5) {
     grid-column: 1 / 2 !important;
+  }
+}
+
+@media (min-width: 769px) {
+  .forecast-dashboard .ops-dashboard-grid {
+    grid-template-columns:
+      minmax(360px, 1.05fr)
+      minmax(620px, 1.55fr)
+      minmax(300px, 0.86fr) !important;
+  }
+
+  .forecast-dashboard .ops-conditions-card {
+    height: 330px !important;
+    min-height: 330px !important;
+    max-height: 330px !important;
+  }
+
+  .forecast-dashboard .ops-conditions-card .conditions-main strong {
+    font-size: 4.25rem !important;
+  }
+
+  .forecast-dashboard .ops-conditions-card .conditions-grid {
+    margin-top: 28px !important;
+    gap: 12px !important;
+  }
+
+  .forecast-dashboard .ops-conditions-card .conditions-grid div {
+    padding: 14px 12px !important;
   }
 }
 
