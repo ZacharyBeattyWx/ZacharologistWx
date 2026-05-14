@@ -4506,6 +4506,27 @@ linear-gradient(
 color: var(--mock-text) !important;
 }
 
+.forecast-dashboard {
+background: transparent !important;
+}
+
+.forecast-dashboard .dashboard-card {
+background:
+linear-gradient(
+180deg,
+rgba(12, 20, 34, 0.72),
+rgba(6, 11, 20, 0.82)
+) !important;
+
+backdrop-filter: blur(18px) !important;
+
+border: 1px solid rgba(120, 180, 255, 0.12) !important;
+
+box-shadow:
+0 0 0 1px rgba(255,255,255,0.02),
+0 18px 45px rgba(0,0,0,0.38) !important;
+}
+
 /* NAV BAR — flatter, thinner, closer to mockup */
 .site-header {
   width: calc(100% - 72px) !important;
@@ -4679,6 +4700,25 @@ color: var(--mock-text) !important;
   backdrop-filter: blur(16px) !important;
   -webkit-backdrop-filter: blur(16px) !important
 }
+
+.forecast-dashboard .dashboard-card:nth-child(odd) {
+background:
+linear-gradient(
+180deg,
+rgba(18, 30, 48, 0.74),
+rgba(8, 14, 24, 0.82)
+) !important;
+}
+
+.forecast-dashboard .dashboard-card:nth-child(even) {
+background:
+linear-gradient(
+180deg,
+rgba(10, 18, 32, 0.62),
+rgba(5, 10, 18, 0.76)
+) !important;
+}
+
 
 .forecast-dashboard .dashboard-card:hover {
   border-color: rgba(53, 200, 255, 0.24) !important;
