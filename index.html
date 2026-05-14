@@ -3439,6 +3439,59 @@ filter: brightness(1.15);
   padding: 11px 18px !important;
 }
 
+body {
+position: relative;
+background:
+radial-gradient(circle at 20% 15%, rgba(0, 190, 255, 0.16), transparent 32%),
+radial-gradient(circle at 80% 25%, rgba(0, 120, 255, 0.12), transparent 35%),
+linear-gradient(180deg, #07101d 0%, #050914 100%);
+}
+
+body::before {
+content: "";
+position: fixed;
+inset: 0;
+pointer-events: none;
+z-index: -1;
+background:
+radial-gradient(circle at 25% 20%, rgba(0, 190, 255, 0.18), transparent 34%),
+radial-gradient(circle at 75% 35%, rgba(0, 115, 255, 0.12), transparent 40%),
+radial-gradient(circle at 50% 85%, rgba(0, 220, 255, 0.08), transparent 45%);
+filter: blur(28px);
+}
+
+/* Main dashboard glow */
+.forecast-dashboard,
+.ops-board-shell {
+position: relative;
+background:
+linear-gradient(
+180deg,
+rgba(11, 20, 34, 0.96),
+rgba(5, 10, 20, 0.98)
+);
+box-shadow:
+0 0 55px rgba(0, 170, 255, 0.10),
+0 0 120px rgba(0, 100, 255, 0.07);
+}
+
+/* Card glow */
+.dashboard-card,
+.radar-panel,
+.spc-slideshow,
+.alerts-card {
+box-shadow:
+0 0 0 1px rgba(0, 190, 255, 0.10),
+0 0 32px rgba(0, 150, 255, 0.08);
+}
+
+/* Header glow */
+header,
+.site-header {
+box-shadow:
+0 0 55px rgba(0, 180, 255, 0.10);
+}
+
 /* DESKTOP: match the example operations layout */
 @media (min-width: 769px) {
   .forecast-dashboard .ops-dashboard-grid {
