@@ -6351,83 +6351,6 @@ body {
   white-space: nowrap;
 }
 
-}
-
-/* HI-RES ANIMATED RADAR MODAL */
-
-.hires-radar-shell {
-  position: relative !important;
-  width: 100% !important;
-  height: 100% !important;
-  min-height: 520px !important;
-  overflow: hidden !important;
-  border-radius: 3px !important;
-  background: #020617 !important;
-}
-
-#hiresRadarMap {
-  width: 100% !important;
-  height: 100% !important;
-  min-height: 520px !important;
-}
-
-.radar-loop-controls {
-  position: absolute !important;
-  left: 14px !important;
-  right: 14px !important;
-  bottom: 14px !important;
-  z-index: 600 !important;
-
-  display: flex !important;
-  align-items: center !important;
-  gap: 8px !important;
-
-  padding: 10px 12px !important;
-  border-radius: 4px !important;
-
-  background: rgba(2, 6, 23, 0.84) !important;
-  backdrop-filter: blur(12px) !important;
-  border: 1px solid rgba(148, 163, 184, 0.25) !important;
-}
-
-.radar-loop-controls button {
-  border: 1px solid rgba(125, 211, 252, 0.28) !important;
-  border-radius: 4px !important;
-  padding: 7px 12px !important;
-  background: rgba(14, 165, 233, 0.18) !important;
-  color: white !important;
-  font-weight: 900 !important;
-  cursor: pointer !important;
-}
-
-.radar-loop-controls button:hover {
-  background: rgba(14, 165, 233, 0.34) !important;
-}
-
-#radarLoopTime {
-  margin-left: auto !important;
-  font-size: 0.82rem !important;
-  color: #dbeafe !important;
-  white-space: nowrap !important;
-}
-
-@media (max-width: 768px) {
-  .hires-radar-shell,
-  #hiresRadarMap {
-    min-height: 430px !important;
-  }
-
-  .radar-loop-controls {
-    left: 10px !important;
-    right: 10px !important;
-    bottom: 10px !important;
-    gap: 6px !important;
-  }
-
-  #radarLoopTime {
-    font-size: 0.72rem !important;
-  }
-
   .forecast-dashboard .alerts-card #alertsList .compact-alert-item:only-child {
   min-height: 120px !important;
   display: flex !important;
@@ -6574,9 +6497,10 @@ body {
         <a class="spc-slide active" href="https://www.spc.noaa.gov/products/outlook/day1otlk.html" target="_blank">
           <div class="spc-image-title">Day 1 Outlook</div>
           <img
-            class="spc-outlook-img"
-            alt="SPC Day 1 Outlook"
-            data-spc-options="
+  class="spc-outlook-img"
+  alt="SPC Day 1 Outlook"
+  src="https://www.spc.noaa.gov/products/outlook/day1otlk.png"
+  data-spc-options="
               https://www.spc.noaa.gov/products/outlook/day1otlk.png,
               https://www.spc.noaa.gov/products/outlook/day1otlk_0100_prt.png,
               https://www.spc.noaa.gov/products/outlook/day1otlk_0600_prt.png,
@@ -6593,7 +6517,8 @@ body {
           <img
             class="spc-outlook-img"
             alt="SPC Day 2 Outlook"
-            data-spc-options="
+            src="https://www.spc.noaa.gov/products/outlook/day2otlk.png"
+             data-spc-options="
               https://www.spc.noaa.gov/products/outlook/day2otlk.png,
               https://www.spc.noaa.gov/products/outlook/day2otlk_0600_prt.png,
               https://www.spc.noaa.gov/products/outlook/day2otlk_1730_prt.png
@@ -6606,6 +6531,7 @@ body {
           <img
             class="spc-outlook-img"
             alt="SPC Day 3 Outlook"
+            src="https://www.spc.noaa.gov/products/outlook/day3otlk.png"
             data-spc-options="
               https://www.spc.noaa.gov/products/outlook/day3otlk.png,
               https://www.spc.noaa.gov/products/outlook/day3otlk_0730_prt.png,
@@ -6816,64 +6742,58 @@ body {
 
     <div class="radar-frame-wrap">
 
-  <div
+  <iframe
     id="radarFrame"
-    class="hires-radar-shell"
     title="Storm radar viewer"
-  >
-    <div id="hiresRadarMap"></div>
-
-    <div class="radar-loop-controls">
-      <button id="radarLoopToggle" type="button">Pause</button>
-      <button id="radarLoopBack" type="button">‹</button>
-      <button id="radarLoopForward" type="button">›</button>
-      <span id="radarLoopTime">Loading radar...</span>
-    </div>
-  </div>
+    src=""
+    loading="lazy"
+    allowfullscreen>
+  </iframe>
 
   <div id="singleSiteRadarViewer" class="single-site-radar-viewer">
     <div class="single-radar-toolbar">
 
-  <form id="radarLocationSearch" class="radar-location-search">
-    <input
-      id="radarLocationInput"
-      type="search"
-      placeholder="City, state, or ZIP"
-      autocomplete="off"
-    />
+      <form id="radarLocationSearch" class="radar-location-search">
+        <input
+          id="radarLocationInput"
+          type="search"
+          placeholder="City, state, or ZIP"
+          autocomplete="off"
+        />
 
-    <button type="submit">
-      Find Nearest
-    </button>
+        <button type="submit">
+          Find Nearest
+        </button>
 
-    <span id="radarSearchStatus"></span>
-  </form>
+        <span id="radarSearchStatus"></span>
+      </form>
 
-  <label>
-    Radar Site
-    <select id="radarSiteSelect">
-      <option value="">Loading radar sites...</option>
-    </select>
-  </label>
+      <label>
+        Radar Site
+        <select id="radarSiteSelect">
+          <option value="">Loading radar sites...</option>
+        </select>
+      </label>
 
-  <label>
-     Product
-  <select id="radarProductSelect">
-    <option value="N0B">Base Reflectivity</option>
-    <option value="N0U">Base Velocity</option>
-    <option value="N0S">Storm Relative Velocity</option>
-    <option value="N0C">Correlation Coefficient</option>
-    </select>
-  </label>
+      <label>
+        Product
+        <select id="radarProductSelect">
+          <option value="N0B">Base Reflectivity</option>
+          <option value="N0U">Base Velocity</option>
+          <option value="N0S">Storm Relative Velocity</option>
+          <option value="N0C">Correlation Coefficient</option>
+        </select>
+      </label>
 
-  <button id="radarRefreshBtn" type="button">
-    ↻ Refresh
-  </button>
+      <button id="radarRefreshBtn" type="button">
+        ↻ Refresh
+      </button>
 
-</div>
+    </div>
 
     <div id="singleSiteRadarMap"></div>
   </div>
+
 </div>
 
     <div class="radar-modal-note">
@@ -9244,7 +9164,7 @@ function requestUserLocation() {
     },
     () => {
       currentCondition.textContent = "Location permission denied";
-      setLocationBButtonState("error");
+      setLocationButtonState("error");
     },
     {
       enableHighAccuracy: false,
