@@ -6128,22 +6128,6 @@ body {
     z-index: 5 !important;
   }
 
-   .hires-radar-shell,
-  #hiresRadarMap {
-    min-height: 430px;
-  }
-
-  .radar-loop-controls {
-    left: 10px;
-    right: 10px;
-    bottom: 10px;
-    gap: 6px;
-  }
-
-  #radarLoopTime {
-    font-size: 0.72rem;
-  }
-
 }
 
 @media (min-width: 769px) {
@@ -6295,16 +6279,6 @@ body {
 .forecast-dashboard .ops-conditions-card > #useLocationBtn.ops-location-icon {
   top: 18px !important;
   right: 16px !important;
-}
-
-.hires-radar-shell {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  min-height: 520px;
-  overflow: hidden;
-  border-radius: 18px;
-  background: #020617;
 }
 
 #hiresRadarMap {
@@ -6742,66 +6716,65 @@ body {
 
     <div class="radar-frame-wrap">
 
-  <iframe
-    id="radarFrame"
-    title="Storm radar viewer"
-    src=""
-    loading="lazy"
-    allowfullscreen>
-  </iframe>
+      <iframe
+        id="radarFrame"
+        title="Storm radar viewer"
+        src=""
+        loading="lazy"
+        allowfullscreen>
+      </iframe>
 
-  <div id="singleSiteRadarViewer" class="single-site-radar-viewer">
-    <div class="single-radar-toolbar">
+      <div id="singleSiteRadarViewer" class="single-site-radar-viewer">
+        <div class="single-radar-toolbar">
 
-      <form id="radarLocationSearch" class="radar-location-search">
-        <input
-          id="radarLocationInput"
-          type="search"
-          placeholder="City, state, or ZIP"
-          autocomplete="off"
-        />
+          <form id="radarLocationSearch" class="radar-location-search">
+            <input
+              id="radarLocationInput"
+              type="search"
+              placeholder="City, state, or ZIP"
+              autocomplete="off"
+            />
 
-        <button type="submit">
-          Find Nearest
-        </button>
+            <button type="submit">
+              Find Nearest
+            </button>
 
-        <span id="radarSearchStatus"></span>
-      </form>
+            <span id="radarSearchStatus"></span>
+          </form>
 
-      <label>
-        Radar Site
-        <select id="radarSiteSelect">
-          <option value="">Loading radar sites...</option>
-        </select>
-      </label>
+          <label>
+            Radar Site
+            <select id="radarSiteSelect">
+              <option value="">Loading radar sites...</option>
+            </select>
+          </label>
 
-      <label>
-        Product
-        <select id="radarProductSelect">
-          <option value="N0B">Base Reflectivity</option>
-          <option value="N0U">Base Velocity</option>
-          <option value="N0S">Storm Relative Velocity</option>
-          <option value="N0C">Correlation Coefficient</option>
-        </select>
-      </label>
+          <label>
+            Product
+            <select id="radarProductSelect">
+              <option value="N0B">Base Reflectivity</option>
+              <option value="N0U">Base Velocity</option>
+              <option value="N0S">Storm Relative Velocity</option>
+              <option value="N0C">Correlation Coefficient</option>
+            </select>
+          </label>
 
-      <button id="radarRefreshBtn" type="button">
-        ↻ Refresh
-      </button>
+          <button id="radarRefreshBtn" type="button">
+            ↻ Refresh
+          </button>
+
+        </div>
+
+        <div id="singleSiteRadarMap"></div>
+      </div>
 
     </div>
-
-    <div id="singleSiteRadarMap"></div>
-  </div>
-
-</div>
 
     <div class="radar-modal-note">
       Single-Site Radar uses IEM RIDGE NEXRAD imagery for base reflectivity.
     </div>
   </div>
 </div>
-
 <script>
 const alertsList = document.getElementById("alertsList");
 const alertsTitle = document.getElementById("alertsTitle");
