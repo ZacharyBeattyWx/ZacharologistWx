@@ -3312,12 +3312,6 @@ filter: brightness(1.15);
   filter: brightness(1.18);
 }
 
-/* HOME OPERATIONS BOARD OVERRIDE — KEEP AT VERY BOTTOM */
-
-.forecast-dashboard {
-  padding-top: 64px !important;
-}
-
 .card-header-row {
   display: flex;
   align-items: flex-start;
@@ -3505,6 +3499,16 @@ header,
 .site-header {
 box-shadow:
 0 0 55px rgba(0, 180, 255, 0.10);
+}
+
+.site-header {
+  position: static !important;
+  top: auto !important;
+}
+
+.forecast-dashboard {
+  margin-top: 0 !important;
+  padding-top: 24px !important
 }
 
 /* DESKTOP: match the example operations layout */
