@@ -1857,6 +1857,32 @@ body {
   border-top: 1px solid rgba(255,255,255,0.08);
 }
 
+/* FINAL HOMEPAGE BACKGROUND GLOW */
+html,
+body {
+min-height: 100%;
+width: 100%;
+overflow-x: hidden;
+}
+
+body {
+margin: 0;
+background:
+radial-gradient(
+ellipse at top center,
+rgba(0, 210, 255, 0.42) 0%,
+rgba(0, 145, 255, 0.24) 30%,
+rgba(0, 90, 255, 0.13) 55%,
+transparent 84%
+),
+linear-gradient(
+180deg,
+#08111d 0%,
+#050b16 48%,
+#040811 100%
+) !important;
+}
+
 /* DESKTOP ALERT TAB LAYOUT: centered tabs only */
 @media (min-width: 769px) {
   .alerts-card #alertsTitle,
