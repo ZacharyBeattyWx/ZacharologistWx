@@ -6416,6 +6416,17 @@ body {
   white-space: nowrap !important;
 }
 
+/* Improve single-site radar display clarity */
+#singleSiteMap .leaflet-tile,
+#singleSiteMap .leaflet-image-layer {
+  image-rendering: auto !important;
+}
+
+#singleSiteMap .leaflet-overlay-pane img,
+#singleSiteMap .leaflet-tile-pane img {
+  image-rendering: auto !important;
+}
+
 }
 
  </style>
@@ -9141,7 +9152,7 @@ function loadSingleSiteRadar(site) {
       layers: "single",
       format: "image/png",
       transparent: true,
-      opacity: 0.87,
+      opacity: 0.96,
       sector: site,
       prod: product,
       version: "1.1.1",
