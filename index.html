@@ -5899,6 +5899,114 @@ body {
   }
 }
 
+/* =========================================================
+   DESKTOP DASHBOARD HEIGHT + SCROLL FIX
+   Place ABOVE the mobile @media block
+========================================================= */
+
+@media (min-width: 769px) {
+  .forecast-dashboard .ops-dashboard-grid {
+    align-items: stretch !important;
+  }
+
+  .forecast-dashboard .ops-column {
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 720px !important;
+  }
+
+  /* Makes the bottom cards stretch so all 3 columns end evenly */
+  .forecast-dashboard .ops-column > .dashboard-card:last-child {
+    flex: 1 1 auto !important;
+  }
+
+  /* -----------------------------
+     ACTIVE ALERTS CARD
+  ----------------------------- */
+
+  .forecast-dashboard .alerts-card {
+    height: 100% !important;
+    max-height: 720px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+  }
+
+  .forecast-dashboard .alert-tabs {
+    flex: 0 0 auto !important;
+  }
+
+  .forecast-dashboard .alert-count-bar {
+    flex: 0 0 auto !important;
+  }
+
+  .forecast-dashboard .alerts-list,
+  .forecast-dashboard #alertsList {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-right: 6px !important;
+  }
+
+  /* Optional: cleaner alert scrollbar */
+  .forecast-dashboard .alerts-list::-webkit-scrollbar,
+  .forecast-dashboard #alertsList::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .forecast-dashboard .alerts-list::-webkit-scrollbar-thumb,
+  .forecast-dashboard #alertsList::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.22);
+    border-radius: 999px;
+  }
+
+  .forecast-dashboard .alerts-list::-webkit-scrollbar-track,
+  .forecast-dashboard #alertsList::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  /* -----------------------------
+     RADAR CARD
+  ----------------------------- */
+
+  .forecast-dashboard .radar-card {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .forecast-dashboard .radar-frame {
+    flex: 1 1 auto !important;
+    height: 420px !important;
+    min-height: 420px !important;
+  }
+
+  /* -----------------------------
+     SPC OUTLOOK CARD
+  ----------------------------- */
+
+  .forecast-dashboard .spc-card {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .forecast-dashboard .spc-slideshow {
+    flex: 1 1 auto !important;
+    height: 360px !important;
+    min-height: 360px !important;
+  }
+
+  .forecast-dashboard .spc-slide {
+    height: 100% !important;
+  }
+
+  .forecast-dashboard .spc-slide img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+  }
+}
+
 @media (max-width: 768px) {
   .forecast-dashboard {
     padding-left: 8px !important;
