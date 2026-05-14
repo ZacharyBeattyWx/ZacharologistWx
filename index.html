@@ -1694,6 +1694,41 @@ body {
   position: relative;
 }
 
+.radar-loop-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.radar-loop-btn {
+  height: 36px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.9);
+  color: #f8fafc;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 0 12px;
+}
+
+.radar-loop-btn:hover {
+  background: rgba(30, 41, 59, 0.95);
+}
+
+.radar-play-btn.is-playing {
+  background: #facc15;
+  color: #111827;
+  border-color: #facc15;
+}
+
+.radar-frame-time {
+  min-width: 92px;
+  color: #cbd5e1;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
 .single-radar-toolbar {
   position: absolute;
   top: 12px;
@@ -1814,7 +1849,7 @@ body {
   background: rgba(250,204,21,0.22);
 }
 
-#singleSiteRadarMap {
+#singleSiteMap {
   width: 100%;
   height: 100%;
   background: #07111f;
@@ -6128,6 +6163,20 @@ body {
     z-index: 5 !important;
   }
 
+    .radar-loop-controls {
+    width: 100%;
+  }
+
+  .radar-loop-btn {
+    height: 34px;
+    padding: 0 10px;
+  }
+
+  .radar-frame-time {
+    width: 100%;
+    font-size: 0.78rem;
+  }
+
 }
 
 @media (min-width: 769px) {
@@ -6763,9 +6812,16 @@ body {
             ↻ Refresh
           </button>
 
+<div class="radar-loop-controls">
+<button id="radarStepBackBtn" type="button" class="radar-loop-btn">‹</button>
+<button id="radarPlayBtn" type="button" class="radar-loop-btn radar-play-btn">▶ Play</button>
+<button id="radarStepForwardBtn" type="button" class="radar-loop-btn">›</button>
+<span id="radarFrameTime" class="radar-frame-time">Latest</span>
+</div>
+
         </div>
 
-        <div id="singleSiteRadarMap"></div>
+        <div id="singleSiteMap"></div>
       </div>
 
     </div>
@@ -8748,6 +8804,216 @@ async function selectNearestRadarBySearch(query) {
   }
 }
 
+let radarLoopFrames = [];
+let radarLoopLayers = [];
+let radarLoopIndex = 0;
+let radarLoopTimer = null;
+let radarLoopReady = false;
+
+const RADAR_LOOP_MINUTES = 60;
+const RADAR_LOOP_SPEED = 650;
+
+function formatIemApiTime(date) {
+  return date.toISOString().slice(0, 16) + "Z";
+}
+
+function formatIemTileStamp(date) {
+  const yyyy = date.getUTCFullYear();
+  const mm = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(date.getUTCDate()).padStart(2, "0");
+  const hh = String(date.getUTCHours()).padStart(2, "0");
+  const mi = String(date.getUTCMinutes()).padStart(2, "0");
+
+  return `${yyyy}${mm}${dd}${hh}${mi}`;
+}
+
+function getSelectedRadarSiteCode() {
+  const value = radarSiteSelect?.value || "CYS";
+
+  return value
+    .split("—")[0]
+    .trim()
+    .slice(0, 3)
+    .toUpperCase();
+}
+
+function getSelectedRadarProductCode() {
+  const value = (radarProductSelect?.value || "N0B").toUpperCase();
+
+  if (value.includes("VEL")) return "N0U";
+  if (value.includes("STORM")) return "N0S";
+  if (value.includes("N0Q")) return "N0Q";
+  if (value.includes("N0B")) return "N0B";
+  if (value.includes("REF")) return "N0B";
+
+  return value;
+}
+
+function extractIemScanTimes(payload) {
+  const scans = payload?.scans || payload?.results || payload?.data || [];
+
+  return scans
+    .map(scan => {
+      if (typeof scan === "string") return scan;
+      return scan.ts || scan.time || scan.valid || scan.utc || scan.datetime;
+    })
+    .filter(Boolean)
+    .map(timeText => new Date(timeText))
+    .filter(date => !Number.isNaN(date.getTime()))
+    .sort((a, b) => a - b);
+}
+
+function createRadarLoopLayer(site, product, stamp) {
+  return L.tileLayer(
+    `https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/ridge::${site}-${product}-${stamp}/{z}/{x}/{y}.png`,
+    {
+      opacity: 0,
+      pane: "radarPane",
+      attribution: "Radar: IEM / NEXRAD"
+    }
+  );
+}
+
+function showRadarLoopFrame(index) {
+  if (!radarLoopLayers.length) return;
+
+  radarLoopLayers.forEach(layer => layer.setOpacity(0));
+
+  radarLoopIndex =
+    (index + radarLoopLayers.length) % radarLoopLayers.length;
+
+  radarLoopLayers[radarLoopIndex].setOpacity(0.78);
+
+  const frameTime = document.getElementById("radarFrameTime");
+  const frameDate = radarLoopFrames[radarLoopIndex];
+
+  if (frameTime && frameDate) {
+    frameTime.textContent = frameDate.toLocaleTimeString([], {
+      hour: "numeric",
+      minute: "2-digit"
+    });
+  }
+}
+
+function stopRadarLoop() {
+  if (radarLoopTimer) {
+    clearInterval(radarLoopTimer);
+    radarLoopTimer = null;
+  }
+
+  const playBtn = document.getElementById("radarPlayBtn");
+
+  if (playBtn) {
+    playBtn.textContent = "▶ Play";
+    playBtn.classList.remove("is-playing");
+  }
+}
+
+function toggleRadarLoop() {
+  const playBtn = document.getElementById("radarPlayBtn");
+
+  if (!radarLoopLayers.length) return;
+
+  if (radarLoopTimer) {
+    stopRadarLoop();
+    return;
+  }
+
+  if (playBtn) {
+    playBtn.textContent = "❚❚ Pause";
+    playBtn.classList.add("is-playing");
+  }
+
+  radarLoopTimer = setInterval(() => {
+    showRadarLoopFrame(radarLoopIndex + 1);
+  }, RADAR_LOOP_SPEED);
+}
+
+async function loadRadarLoopFrames() {
+  if (!singleSiteMap) return;
+
+  stopRadarLoop();
+
+radarLoopLayers.forEach(layer => {
+  if (singleSiteMap.hasLayer(layer)) {
+    singleSiteMap.removeLayer(layer);
+  }
+});
+
+radarLoopFrames = [];
+radarLoopFrames = [];
+radarLoopIndex = 0;
+
+if (singleSiteRadarLayer) {
+  singleSiteMap.removeLayer(singleSiteRadarLayer);
+  singleSiteRadarLayer = null;
+}
+
+  if (!singleSiteMap.getPane("radarPane")) {
+    singleSiteMap.createPane("radarPane");
+    singleSiteMap.getPane("radarPane").style.zIndex = 450;
+    singleSiteMap.getPane("radarPane").style.pointerEvents = "none";
+  }
+
+  const site = getSelectedRadarSiteCode();
+  const product = getSelectedRadarProductCode();
+
+  const end = new Date();
+  const start = new Date(end.getTime() - RADAR_LOOP_MINUTES * 60 * 1000);
+
+  const url =
+    `https://mesonet.agron.iastate.edu/json/radar.py?operation=list` +
+    `&radar=${site}` +
+    `&product=${product}` +
+    `&start=${formatIemApiTime(start)}` +
+    `&end=${formatIemApiTime(end)}`;
+
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+
+    radarLoopFrames = extractIemScanTimes(data).slice(-12);
+
+    if (!radarLoopFrames.length) {
+      document.getElementById("radarFrameTime").textContent = "No frames";
+      return;
+    }
+
+radarLoopLayers = radarLoopFrames.map(frameDate => {
+  const stamp = formatTileStamp(frameDate);
+  const layer = createRadarLoopLayer(site, product, stamp);
+  layer.addTo(singleSiteMap);
+  return layer;
+});
+
+    showRadarLoopFrame(radarLoopFrames.length - 1);
+  } catch (error) {
+    console.error("Radar loop failed:", error);
+    document.getElementById("radarFrameTime").textContent = "Loop failed";
+  }
+}
+
+function setupRadarLoopControls() {
+  if (radarLoopReady) return;
+  radarLoopReady = true;
+
+  const playBtn = document.getElementById("radarPlayBtn");
+  const backBtn = document.getElementById("radarStepBackBtn");
+  const forwardBtn = document.getElementById("radarStepForwardBtn");
+
+  playBtn?.addEventListener("click", toggleRadarLoop);
+
+  backBtn?.addEventListener("click", () => {
+    stopRadarLoop();
+    showRadarLoopFrame(radarLoopIndex - 1);
+  });
+
+  forwardBtn?.addEventListener("click", () => {
+    stopRadarLoop();
+    showRadarLoopFrame(radarLoopIndex + 1);
+  });
+}
+
 async function initSingleSiteRadar() {
   if (!window.L) {
     console.error("Leaflet did not load.");
@@ -8767,7 +9033,7 @@ async function initSingleSiteRadar() {
   }
 
   if (!singleSiteMap) {
-    singleSiteMap = L.map("singleSiteRadarMap", {
+    singleSiteMap = L.map("singleSiteMap", {
       zoomControl: true,
       attributionControl: true
     }).setView(siteInfo.center, siteInfo.zoom);
@@ -8785,30 +9051,28 @@ async function initSingleSiteRadar() {
 
   singleSiteMap.setView(siteInfo.center, siteInfo.zoom);
 
-  requestAnimationFrame(() => {
-    singleSiteMap.invalidateSize();
-  });
+requestAnimationFrame(() => {
+  singleSiteMap.invalidateSize();
+});
 
-  loadSingleSiteRadar(site);
+loadSingleSiteRadar(site);
 
-  return true;
-}
+setupRadarLoopControls();
+loadRadarLoopFrames();
+
+return true;
+} 
+
 
 function loadSingleSiteRadar(site) {
   if (!singleSiteMap) return;
 
   if (singleSiteRadarLayer) {
     singleSiteMap.removeLayer(singleSiteRadarLayer);
+    singleSiteRadarLayer = null;
   }
 
-  /*
-    IEM RIDGE single-site radar.
-    sector = radar site, example RAX
-    prod = radar product
-
-    N0B is the newer base reflectivity product.
-    If it ever fails, test N0Q as a fallback.
-  */
+  const product = radarProductSelect?.value || "N0B";
 
   singleSiteRadarLayer = L.tileLayer.wms(
     "https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/ridge.cgi",
@@ -8816,16 +9080,21 @@ function loadSingleSiteRadar(site) {
       layers: "single",
       format: "image/png",
       transparent: true,
-      opacity: 0.97,
+      opacity: 0.87,
       sector: site,
-      prod: radarProductSelect?.value || "N0B",
+      prod: product,
       version: "1.1.1",
       attribution: "Radar: IEM / NEXRAD"
     }
   );
 
   singleSiteRadarLayer.addTo(singleSiteMap);
-  singleSiteRadarLayer.getContainer().style.imageRendering = "pixelated";
+
+  const tileContainer = singleSiteRadarLayer.getContainer();
+
+  if (tileContainer) {
+    tileContainer.style.imageRendering = "pixelated";
+  }
 }
 
 
@@ -8845,14 +9114,19 @@ if (radarSiteSelect) {
       singleSiteMap.setView(siteInfo.center, siteInfo.zoom);
     }
 
+    stopRadarLoop();
     loadSingleSiteRadar(site);
+    loadRadarLoopFrames();
   });
 }
 
 if (radarProductSelect) {
   radarProductSelect.addEventListener("change", () => {
-    const site = radarSiteSelect?.value || "RAX";
+    const site = radarSiteSelect?.value || "PRAX";
+
+    stopRadarLoop();
     loadSingleSiteRadar(site);
+    loadRadarLoopFrames();
   });
 }
 
