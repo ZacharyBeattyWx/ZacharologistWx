@@ -8803,10 +8803,216 @@ async function selectNearestRadarBySearch(query) {
   }
 }
 
-let radarLoopFrames = [];
-let radarLoopLayers = [];
-let radarLoopIndex = 0;
-let radarLoopReady = false;
+let singleSiteRadarLoopFrames = [];
+let singleSiteRadarLoopLayers = [];
+let singleSiteRadarLoopIndex = 0;
+let singleSiteRadarLoopTimer = null;
+let singleSiteRadarLoopReady = false;
+
+const SINGLE_SITE_RADAR_LOOP_MINUTES = 60;
+const SINGLE_SITE_RADAR_LOOP_SPEED = 650;
+
+function formatSingleSiteRadarApiTime(date) {
+  return date.toISOString().slice(0, 16) + "Z";
+}
+
+function formatSingleSiteRadarTileStamp(date) {
+  const yyyy = date.getUTCFullYear();
+  const mm = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(date.getUTCDate()).padStart(2, "0");
+  const hh = String(date.getUTCHours()).padStart(2, "0");
+  const mi = String(date.getUTCMinutes()).padStart(2, "0");
+
+  return `${yyyy}${mm}${dd}${hh}${mi}`;
+}
+
+function getSelectedRadarSiteCode() {
+  const value = radarSiteSelect?.value || "RAX";
+  return value.trim().slice(0, 3).toUpperCase();
+}
+
+function getSelectedRadarProductCode() {
+  return (radarProductSelect?.value || "N0B").toUpperCase();
+}
+
+function extractSingleSiteRadarScanTimes(payload) {
+  const scans = payload?.scans || payload?.results || payload?.data || [];
+
+  return scans
+    .map(scan => {
+      if (typeof scan === "string") return scan;
+      return scan.ts || scan.time || scan.valid || scan.utc || scan.datetime;
+    })
+    .filter(Boolean)
+    .map(timeText => new Date(timeText))
+    .filter(date => !Number.isNaN(date.getTime()))
+    .sort((a, b) => a - b);
+}
+
+function createSingleSiteRadarLoopLayer(site, product, stamp) {
+  return L.tileLayer(
+    `https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/ridge::${site}-${product}-${stamp}/{z}/{x}/{y}.png`,
+    {
+      opacity: 0,
+      pane: "radarPane",
+      attribution: "Radar: IEM / NEXRAD"
+    }
+  );
+}
+
+function showSingleSiteRadarLoopFrame(index) {
+  if (!singleSiteRadarLoopLayers.length) return;
+
+  singleSiteRadarLoopLayers.forEach(layer => {
+    layer.setOpacity(0);
+  });
+
+  singleSiteRadarLoopIndex =
+    (index + singleSiteRadarLoopLayers.length) %
+    singleSiteRadarLoopLayers.length;
+
+  singleSiteRadarLoopLayers[singleSiteRadarLoopIndex].setOpacity(0.78);
+
+  const frameTime = document.getElementById("radarFrameTime");
+  const frameDate = singleSiteRadarLoopFrames[singleSiteRadarLoopIndex];
+
+  if (frameTime && frameDate) {
+    frameTime.textContent = frameDate.toLocaleTimeString([], {
+      hour: "numeric",
+      minute: "2-digit"
+    });
+  }
+}
+
+function stopSingleSiteRadarLoop() {
+  if (singleSiteRadarLoopTimer) {
+    clearInterval(singleSiteRadarLoopTimer);
+    singleSiteRadarLoopTimer = null;
+  }
+
+  const playBtn = document.getElementById("radarPlayBtn");
+
+  if (playBtn) {
+    playBtn.textContent = "▶ Play";
+    playBtn.classList.remove("is-playing");
+  }
+}
+
+function toggleSingleSiteRadarLoop() {
+  if (!singleSiteRadarLoopLayers.length) return;
+
+  if (singleSiteRadarLoopTimer) {
+    stopSingleSiteRadarLoop();
+    return;
+  }
+
+  const playBtn = document.getElementById("radarPlayBtn");
+
+  if (playBtn) {
+    playBtn.textContent = "❚❚ Pause";
+    playBtn.classList.add("is-playing");
+  }
+
+  singleSiteRadarLoopTimer = setInterval(() => {
+    showSingleSiteRadarLoopFrame(singleSiteRadarLoopIndex + 1);
+  }, SINGLE_SITE_RADAR_LOOP_SPEED);
+}
+
+async function loadSingleSiteRadarLoopFrames() {
+  if (!singleSiteMap) return;
+
+  stopSingleSiteRadarLoop();
+
+  singleSiteRadarLoopLayers.forEach(layer => {
+    if (singleSiteMap.hasLayer(layer)) {
+      singleSiteMap.removeLayer(layer);
+    }
+  });
+
+  singleSiteRadarLoopFrames = [];
+  singleSiteRadarLoopLayers = [];
+  singleSiteRadarLoopIndex = 0;
+
+  if (singleSiteRadarLayer) {
+    singleSiteMap.removeLayer(singleSiteRadarLayer);
+    singleSiteRadarLayer = null;
+  }
+
+  if (!singleSiteMap.getPane("radarPane")) {
+    singleSiteMap.createPane("radarPane");
+    singleSiteMap.getPane("radarPane").style.zIndex = 450;
+    singleSiteMap.getPane("radarPane").style.pointerEvents = "none";
+  }
+
+  const site = getSelectedRadarSiteCode();
+  const product = getSelectedRadarProductCode();
+
+  const end = new Date();
+  const start = new Date(
+    end.getTime() - SINGLE_SITE_RADAR_LOOP_MINUTES * 60 * 1000
+  );
+
+  const url =
+    `https://mesonet.agron.iastate.edu/json/radar.py?operation=list` +
+    `&radar=${site}` +
+    `&product=${product}` +
+    `&start=${formatSingleSiteRadarApiTime(start)}` +
+    `&end=${formatSingleSiteRadarApiTime(end)}`;
+
+  const frameTime = document.getElementById("radarFrameTime");
+
+  try {
+    if (frameTime) frameTime.textContent = "Loading...";
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    singleSiteRadarLoopFrames =
+      extractSingleSiteRadarScanTimes(data).slice(-12);
+
+    if (!singleSiteRadarLoopFrames.length) {
+      if (frameTime) frameTime.textContent = "No frames";
+      loadSingleSiteRadar(site);
+      return;
+    }
+
+    singleSiteRadarLoopLayers = singleSiteRadarLoopFrames.map(frameDate => {
+      const stamp = formatSingleSiteRadarTileStamp(frameDate);
+      const layer = createSingleSiteRadarLoopLayer(site, product, stamp);
+      layer.addTo(singleSiteMap);
+      return layer;
+    });
+
+    showSingleSiteRadarLoopFrame(singleSiteRadarLoopFrames.length - 1);
+  } catch (error) {
+    console.error("Single-site radar loop failed:", error);
+
+    if (frameTime) frameTime.textContent = "Loop failed";
+
+    loadSingleSiteRadar(site);
+  }
+}
+
+function setupSingleSiteRadarLoopControls() {
+  if (singleSiteRadarLoopReady) return;
+  singleSiteRadarLoopReady = true;
+
+  const playBtn = document.getElementById("radarPlayBtn");
+  const backBtn = document.getElementById("radarStepBackBtn");
+  const forwardBtn = document.getElementById("radarStepForwardBtn");
+
+  playBtn?.addEventListener("click", toggleSingleSiteRadarLoop);
+
+  backBtn?.addEventListener("click", () => {
+    stopSingleSiteRadarLoop();
+    showSingleSiteRadarLoopFrame(singleSiteRadarLoopIndex - 1);
+  });
+
+  forwardBtn?.addEventListener("click", () => {
+    stopSingleSiteRadarLoop();
+    showSingleSiteRadarLoopFrame(singleSiteRadarLoopIndex + 1);
+  });
+}
 
 async function initSingleSiteRadar() {
   if (!window.L) {
@@ -8908,8 +9114,9 @@ if (radarSiteSelect) {
       singleSiteMap.setView(siteInfo.center, siteInfo.zoom);
     }
 
-    stopRadarLoop();
-    loadSingleSiteRadar(site);
+   stopSingleSiteRadarLoop();
+loadSingleSiteRadar(site);
+loadSingleSiteRadarLoopFrames();
   });
 }
 
@@ -8935,7 +9142,10 @@ if (radarLocationSearch) {
 if (radarRefreshBtn) {
   radarRefreshBtn.addEventListener("click", () => {
     const site = radarSiteSelect?.value || "RAX";
+
+    stopSingleSiteRadarLoop();
     loadSingleSiteRadar(site);
+    loadSingleSiteRadarLoopFrames();
   });
 }
 
