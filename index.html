@@ -6427,6 +6427,14 @@ body {
   #radarLoopTime {
     font-size: 0.72rem !important;
   }
+
+  .forecast-dashboard .alerts-card #alertsList .compact-alert-item:only-child {
+  min-height: 120px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+}
+
 }
  </style>
 </head>
@@ -7596,9 +7604,8 @@ if (!hasLoadedAlertsOnce) {
   `;
 }
 
-  try {
-    const results = await Promise.allSettled(
-  alertUrls.map(url => fetchWithTimeout(url, 8000))
+const results = await Promise.allSettled(
+  alertUrls.map(url => fetchWithTimeout(url, 3500))
 );
 
     const goodResponses = results
