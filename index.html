@@ -7889,8 +7889,8 @@ async function focusSingleSiteRadarOnAlert(alert) {
   }
 
   stopSingleSiteRadarLoop();
-  loadSingleSiteRadar(site.sector);
-  loadSingleSiteRadarLoopFrames();
+loadSingleSiteRadar(site.sector);
+await loadSingleSiteRadarLoopFrames();
 }
 
   singleSiteMap.setView([center.lat, center.lon], 8);
@@ -8857,6 +8857,7 @@ let singleSiteRadarLoopLayers = [];
 let singleSiteRadarLoopIndex = 0;
 let singleSiteRadarLoopTimer = null;
 let singleSiteRadarLoopReady = false;
+let singleSiteRadarLoopRequestId = 0;
 
 const SINGLE_SITE_RADAR_LOOP_MINUTES = 60;
 const SINGLE_SITE_RADAR_LOOP_SPEED = 650;
@@ -8992,6 +8993,7 @@ async function loadSingleSiteRadarLoopFrames() {
 
   const site = getSelectedRadarSiteCode();
   const product = getSelectedRadarProductCode();
+  const requestId = ++singleSiteRadarLoopRequestId;
 
   if (frameTime) {
     frameTime.textContent = "Loading...";
@@ -9018,6 +9020,13 @@ async function loadSingleSiteRadarLoopFrames() {
     }
 
     const data = await response.json();
+
+    if (
+  requestId !== singleSiteRadarLoopRequestId ||
+  getSelectedRadarSiteCode() !== site
+) {
+  return;
+}
 
     console.log("IEM radar scan response:", {
       site,
@@ -9054,15 +9063,22 @@ async function loadSingleSiteRadarLoopFrames() {
 
     showSingleSiteRadarLoopFrame(singleSiteRadarLoopFrames.length - 1);
   } catch (error) {
-    console.error("Single-site radar loop failed:", error);
+  console.error("Single-site radar loop failed:", error);
 
-    if (frameTime) {
-      frameTime.textContent = "Loop failed";
-    }
-
-    // Keep normal radar visible on failure.
-    loadSingleSiteRadar(site);
+  if (
+    requestId !== singleSiteRadarLoopRequestId ||
+    getSelectedRadarSiteCode() !== site
+  ) {
+    return;
   }
+
+  if (frameTime) {
+    frameTime.textContent = "Loop failed";
+  }
+
+  loadSingleSiteRadar(site);
+}
+
 }
 
 function setupSingleSiteRadarLoopControls() {
@@ -9127,10 +9143,12 @@ requestAnimationFrame(() => {
   singleSiteMap.invalidateSize();
 });
 
-loadSingleSiteRadar(site);
-
 setupSingleSiteRadarLoopControls();
-loadSingleSiteRadarLoopFrames();
+
+if (!pendingRadarAlert) {
+  loadSingleSiteRadar(site);
+  loadSingleSiteRadarLoopFrames();
+}
 
 return true;
 } 
