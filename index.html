@@ -23,18 +23,39 @@
     box-sizing: border-box;
     }
 
-    html, body {
-    width: 100%;
-    overflow-x: hidden;
-    }
-    body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background:
-    radial-gradient(circle at top left, rgba(80,120,255,0.14), transparent 30%),
-    linear-gradient(180deg, #09101d 0%, #101827 100%);
-  color: white;
-   }
+html,
+body {
+width: 100%;
+overflow-x: hidden;
+}
+
+body {
+margin: 0;
+font-family: Arial, sans-serif;
+
+background:
+radial-gradient(
+ellipse at top center,
+rgba(0, 220, 255, 0.78) 0%,
+rgba(0, 180, 255, 0.42) 30%,
+rgba(0, 120, 255, 0.20) 58%,
+rgba(0, 80, 255, 0.08) 74%,
+transparent 78%
+),
+radial-gradient(
+ellipse at 50% -10%,
+rgba(80, 120, 255, 0.18) 0%,
+transparent 65%
+),
+linear-gradient(
+180deg,
+#09111d 0%,
+#050b16 45%,
+#040811 100%
+) !important;
+
+color: white;
+}
 
     header {
     background: rgba(10, 15, 25, 0.92);
@@ -4474,36 +4495,6 @@ box-shadow:
   --mock-orange: #ff6b1a;
   --mock-yellow: #ffb21c;
   --mock-red: #ff3b2f;
-}
-
-/* PAGE BACKGROUND */
-html,
-body {
-background:
-
-radial-gradient(
-ellipse at top center,
-rgba(0, 220, 255, 0.78) 0%,
-rgba(0, 180, 255, 0.42) 30%,
-rgba(0, 120, 255, 0.20) 58%,
-rgba(0, 80, 255, 0.08) 74%,
-transparent 78%
-)
-
-radial-gradient(
-ellipse at 50% -10%,
-rgba(80, 120, 255, 0.18) 0%,
-transparent 65%
-)
-
-linear-gradient(
-180deg,
-#09111d 0%,
-#050b16 45%,
-#040811 100%
-) !important;
-
-color: var(--mock-text) !important;
 }
 
 .forecast-dashboard {
