@@ -8332,7 +8332,6 @@ let hiresRadarMap = null;
 let hiresRadarLayer = null;
 let radarFrames = [];
 let radarFrameIndex = 0;
-let radarLoopTimer = null;
 let radarLoopPlaying = false;
 
 function roundDownToFiveMinutes(date) {
@@ -8807,7 +8806,6 @@ async function selectNearestRadarBySearch(query) {
 let radarLoopFrames = [];
 let radarLoopLayers = [];
 let radarLoopIndex = 0;
-let radarLoopTimer = null;
 let radarLoopReady = false;
 
 async function initSingleSiteRadar() {
@@ -8912,7 +8910,6 @@ if (radarSiteSelect) {
 
     stopRadarLoop();
     loadSingleSiteRadar(site);
-    loadRadarLoopFrames();
   });
 }
 
