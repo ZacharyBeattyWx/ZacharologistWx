@@ -16,6 +16,7 @@
 />
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/esri-leaflet@3.0.14/dist/esri-leaflet.js"></script>
 
   <style>
     * {
@@ -6127,6 +6128,22 @@ body {
     z-index: 5 !important;
   }
 
+   .hires-radar-shell,
+  #hiresRadarMap {
+    min-height: 430px;
+  }
+
+  .radar-loop-controls {
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    gap: 6px;
+  }
+
+  #radarLoopTime {
+    font-size: 0.72rem;
+  }
+
 }
 
 @media (min-width: 769px) {
@@ -6280,8 +6297,137 @@ body {
   right: 16px !important;
 }
 
+.hires-radar-shell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 520px;
+  overflow: hidden;
+  border-radius: 18px;
+  background: #020617;
 }
 
+#hiresRadarMap {
+  width: 100%;
+  height: 100%;
+  min-height: 520px;
+}
+
+.radar-loop-controls {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 14px;
+  z-index: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: rgba(2, 6, 23, 0.82);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
+}
+
+.radar-loop-controls button {
+  border: 0;
+  border-radius: 999px;
+  padding: 7px 12px;
+  background: rgba(14, 165, 233, 0.22);
+  color: white;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.radar-loop-controls button:hover {
+  background: rgba(14, 165, 233, 0.38);
+}
+
+#radarLoopTime {
+  margin-left: auto;
+  font-size: 0.82rem;
+  color: #dbeafe;
+  white-space: nowrap;
+}
+
+}
+
+/* HI-RES ANIMATED RADAR MODAL */
+
+.hires-radar-shell {
+  position: relative !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 520px !important;
+  overflow: hidden !important;
+  border-radius: 3px !important;
+  background: #020617 !important;
+}
+
+#hiresRadarMap {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 520px !important;
+}
+
+.radar-loop-controls {
+  position: absolute !important;
+  left: 14px !important;
+  right: 14px !important;
+  bottom: 14px !important;
+  z-index: 600 !important;
+
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+
+  padding: 10px 12px !important;
+  border-radius: 4px !important;
+
+  background: rgba(2, 6, 23, 0.84) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(148, 163, 184, 0.25) !important;
+}
+
+.radar-loop-controls button {
+  border: 1px solid rgba(125, 211, 252, 0.28) !important;
+  border-radius: 4px !important;
+  padding: 7px 12px !important;
+  background: rgba(14, 165, 233, 0.18) !important;
+  color: white !important;
+  font-weight: 900 !important;
+  cursor: pointer !important;
+}
+
+.radar-loop-controls button:hover {
+  background: rgba(14, 165, 233, 0.34) !important;
+}
+
+#radarLoopTime {
+  margin-left: auto !important;
+  font-size: 0.82rem !important;
+  color: #dbeafe !important;
+  white-space: nowrap !important;
+}
+
+@media (max-width: 768px) {
+  .hires-radar-shell,
+  #hiresRadarMap {
+    min-height: 430px !important;
+  }
+
+  .radar-loop-controls {
+    left: 10px !important;
+    right: 10px !important;
+    bottom: 10px !important;
+    gap: 6px !important;
+  }
+
+  #radarLoopTime {
+    font-size: 0.72rem !important;
+  }
+}
  </style>
 </head>
 
@@ -6661,13 +6807,21 @@ body {
     </div>
 
     <div class="radar-frame-wrap">
-  <iframe
+
+  <div
     id="radarFrame"
+    class="hires-radar-shell"
     title="Storm radar viewer"
-    src=""
-    loading="lazy"
-    allowfullscreen>
-  </iframe>
+  >
+    <div id="hiresRadarMap"></div>
+
+    <div class="radar-loop-controls">
+      <button id="radarLoopToggle" type="button">Pause</button>
+      <button id="radarLoopBack" type="button">‹</button>
+      <button id="radarLoopForward" type="button">›</button>
+      <span id="radarLoopTime">Loading radar...</span>
+    </div>
+  </div>
 
   <div id="singleSiteRadarViewer" class="single-site-radar-viewer">
     <div class="single-radar-toolbar">
@@ -8217,6 +8371,146 @@ const radarUrls = {
 let radarSites = {};
 let radarSitesLoaded = false;
 
+let hiresRadarMap = null;
+let hiresRadarLayer = null;
+let radarFrames = [];
+let radarFrameIndex = 0;
+let radarLoopTimer = null;
+let radarLoopPlaying = false;
+
+function roundDownToFiveMinutes(date) {
+  const rounded = new Date(date);
+  rounded.setSeconds(0, 0);
+  rounded.setMinutes(Math.floor(rounded.getMinutes() / 5) * 5);
+  return rounded;
+}
+
+function buildRadarFrames() {
+  const frameSpacingMinutes = 5;
+  const frameCount = 24;
+
+  const latestFrame = roundDownToFiveMinutes(
+    new Date(Date.now() - 10 * 60 * 1000)
+  );
+
+  const frames = [];
+
+  for (let i = frameCount - 1; i >= 0; i--) {
+    frames.push(
+      new Date(latestFrame.getTime() - i * frameSpacingMinutes * 60 * 1000)
+    );
+  }
+
+  return frames;
+}
+
+function formatRadarTime(date) {
+  return date.toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short"
+  });
+}
+
+function showRadarFrame(index) {
+  if (!hiresRadarLayer || !radarFrames.length) return;
+
+  radarFrameIndex = (index + radarFrames.length) % radarFrames.length;
+
+  const frameStart = radarFrames[radarFrameIndex];
+  const frameEnd = new Date(frameStart.getTime() + 4 * 60 * 1000);
+
+  hiresRadarLayer.setTimeRange(frameStart, frameEnd);
+
+  const label = document.getElementById("radarLoopTime");
+
+  if (label) {
+    label.textContent = `Radar: ${formatRadarTime(frameStart)}`;
+  }
+}
+
+function startRadarLoop() {
+  stopRadarLoop();
+
+  radarLoopTimer = setInterval(() => {
+    showRadarFrame(radarFrameIndex + 1);
+  }, 450);
+
+  radarLoopPlaying = true;
+
+  const button = document.getElementById("radarLoopToggle");
+  if (button) button.textContent = "Pause";
+}
+
+function stopRadarLoop() {
+  if (radarLoopTimer) {
+    clearInterval(radarLoopTimer);
+    radarLoopTimer = null;
+  }
+
+  radarLoopPlaying = false;
+
+  const button = document.getElementById("radarLoopToggle");
+  if (button) button.textContent = "Play";
+}
+
+function initHiResRadar() {
+  const mapEl = document.getElementById("hiresRadarMap");
+  if (!mapEl || hiresRadarMap) return;
+
+  radarFrames = buildRadarFrames();
+  radarFrameIndex = radarFrames.length - 1;
+
+  hiresRadarMap = L.map("hiresRadarMap", {
+    zoomControl: true,
+    attributionControl: false
+  }).setView([35.78, -79.8], 7);
+
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 10
+  }).addTo(hiresRadarMap);
+
+  hiresRadarLayer = L.esri.imageMapLayer({
+    url: "https://mapservices.weather.noaa.gov/eventdriven/rest/services/radar/radar_base_reflectivity_time/ImageServer",
+    opacity: 0.78,
+    useCors: false
+  }).addTo(hiresRadarMap);
+
+  showRadarFrame(radarFrameIndex);
+
+  document.getElementById("radarLoopToggle")?.addEventListener("click", () => {
+    if (radarLoopPlaying) {
+      stopRadarLoop();
+    } else {
+      startRadarLoop();
+    }
+  });
+
+  document.getElementById("radarLoopBack")?.addEventListener("click", () => {
+    stopRadarLoop();
+    showRadarFrame(radarFrameIndex - 1);
+  });
+
+  document.getElementById("radarLoopForward")?.addEventListener("click", () => {
+    stopRadarLoop();
+    showRadarFrame(radarFrameIndex + 1);
+  });
+}
+
+function refreshHiResRadar() {
+  initHiResRadar();
+
+  radarFrames = buildRadarFrames();
+
+  setTimeout(() => {
+    if (hiresRadarMap) {
+      hiresRadarMap.invalidateSize();
+    }
+
+    startRadarLoop();
+  }, 150);
+}
+
 function getRadarIdFromFeature(feature) {
   const props = feature.properties || {};
 
@@ -8344,15 +8638,6 @@ function openRadarModal(mode = "clean") {
 }
 
 function closeRadarModal() {
-  if (!radarModal) return;
-
-  radarModal.classList.remove("is-open");
-  document.body.style.overflow = "";
-
-  if (radarFrame) {
-    radarFrame.src = "";
-  }
-}
 
 function setRadarMode(mode) {
   const selectedMode = mode === "raw" ? "raw" : "clean";
@@ -8364,6 +8649,42 @@ function setRadarMode(mode) {
     );
   });
 
+  if (selectedMode === "raw") {
+    stopRadarLoop();
+
+    if (radarFrame) {
+      radarFrame.style.display = "none";
+    }
+
+    if (singleSiteRadarViewer) {
+      singleSiteRadarViewer.style.display = "flex";
+    }
+
+    initSingleSiteRadar().then(() => {
+      requestAnimationFrame(() => {
+        if (singleSiteMap) {
+          singleSiteMap.invalidateSize();
+        }
+
+        if (pendingRadarAlert) {
+          focusSingleSiteRadarOnAlert(pendingRadarAlert);
+        }
+      });
+    });
+
+    return;
+  }
+
+  if (singleSiteRadarViewer) {
+    singleSiteRadarViewer.style.display = "none";
+  }
+
+  if (radarFrame) {
+    radarFrame.style.display = "block";
+  }
+
+  refreshHiResRadar();
+}
   if (selectedMode === "raw") {
     if (radarFrame) {
       radarFrame.style.display = "none";
