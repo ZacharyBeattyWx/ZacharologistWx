@@ -4479,10 +4479,30 @@ box-shadow:
 /* PAGE BACKGROUND */
 html,
 body {
-  background:
-    radial-gradient(circle at top left, rgba(35, 120, 170, 0.10), transparent 32%),
-    linear-gradient(180deg, #020509 0%, #07101c 58%, #050914 100%) !important;
-  color: var(--mock-text) !important;
+background:
+
+radial-gradient(
+ellipse at top center,
+rgba(0, 220, 255, 0.62) 0%,
+rgba(0, 160, 255, 0.34) 22%,
+rgba(0, 110, 255, 0.16) 48%,
+transparent 78%
+),
+
+radial-gradient(
+ellipse at 50% -10%,
+rgba(80, 120, 255, 0.18) 0%,
+transparent 65%
+),
+
+linear-gradient(
+180deg,
+#09111d 0%,
+#050b16 45%,
+#040811 100%
+) !important;
+
+color: var(--mock-text) !important;
 }
 
 /* NAV BAR — flatter, thinner, closer to mockup */
