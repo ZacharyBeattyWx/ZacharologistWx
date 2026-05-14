@@ -273,12 +273,10 @@
  .forecast-dashboard {
   width: 100%;
   padding: 70px 1.5% 70px;
-  background:
-    radial-gradient(circle at top left, rgba(80, 120, 255, 0.18), transparent 35%),
-    linear-gradient(180deg, #09101d 0%, #101827 100%);
+  background: transparent !important;
   color: white;
   position: relative;
-  overflow: transparent;
+  overflow: visible !important;
 }
 
 .dashboard-header {
@@ -1546,6 +1544,7 @@
 }
 html,
 body {
+  background: #09101d;
   min-height: 100%;
   width: 100%;
   max-width: 100%;
