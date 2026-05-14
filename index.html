@@ -6381,7 +6381,43 @@ body {
   justify-content: center !important;
 }
 
+/* FIX: single-site radar play controls should stay in the toolbar */
+.single-radar-toolbar .radar-loop-controls {
+  position: static !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  z-index: auto !important;
+
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex-wrap: nowrap !important;
+
+  width: auto !important;
+  padding: 0 !important;
+  margin: 0 !important;
+
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
 }
+
+.single-radar-toolbar .radar-loop-controls button {
+  height: 36px !important;
+  border-radius: 999px !important;
+  padding: 7px 12px !important;
+}
+
+.single-radar-toolbar .radar-frame-time {
+  width: auto !important;
+  min-width: 92px !important;
+  white-space: nowrap !important;
+}
+
+}
+
  </style>
 </head>
 
