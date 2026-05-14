@@ -3489,15 +3489,17 @@ rgba(3, 7, 16, 0.99)
 .forecast-dashboard::before {
 content: "";
 position: absolute;
-inset: -60px;
+inset: -180px -120px;
 z-index: -1;
 pointer-events: none;
 
 background:
 radial-gradient(
-circle at 50% 12%,
-rgba(0, 180, 255, 0.22),
-transparent 52%
+  elipse at top center,
+  rgba(0,145,255,0.30) 0%
+  rgba(0, 140, 255, 0.18) 22%,
+  rgba(0, 90, 255, 0.10) 42%,
+  transparent 82%
 );
 
 filter: blur(45px);
