@@ -4664,7 +4664,10 @@ color: var(--mock-text) !important;
 /* ALL DASHBOARD CARDS */
 .forecast-dashboard .dashboard-card {
   background:
-    linear-gradient(180deg, rgba(9, 17, 29, 0.96), rgba(6, 11, 20, 0.98)) !important;
+  linear-gradient(180deg,
+  rgba(14, 24, 40, 0.68),
+  rgba(7, 14, 26, 0.78)
+  ) !important;
 
   border: 1px solid var(--mock-border-soft) !important;
   border-radius: 5px !important;
@@ -4673,7 +4676,8 @@ color: var(--mock-text) !important;
     inset 0 1px 0 rgba(255,255,255,0.025),
     0 12px 28px rgba(0,0,0,0.22) !important;
 
-  backdrop-filter: none !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important
 }
 
 .forecast-dashboard .dashboard-card:hover {
