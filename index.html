@@ -7834,15 +7834,17 @@ async function focusSingleSiteRadarOnAlert(alert) {
 
   const nearest = findNearestRadarSite(center.lat, center.lon);
 
-  if (nearest && nearest.site) {
-    const site = nearest.site;
+ if (nearest && nearest.site) {
+  const site = nearest.site;
 
-    if (radarSiteSelect) {
-      radarSiteSelect.value = site.sector;
-    }
-
-    loadSingleSiteRadar(site.sector);
+  if (radarSiteSelect) {
+    radarSiteSelect.value = site.sector;
   }
+
+  stopSingleSiteRadarLoop();
+  loadSingleSiteRadar(site.sector);
+  loadSingleSiteRadarLoopFrames();
+}
 
   singleSiteMap.setView([center.lat, center.lon], 8);
 
@@ -8923,6 +8925,8 @@ async function loadSingleSiteRadarLoopFrames() {
 
   stopSingleSiteRadarLoop();
 
+  const frameTime = document.getElementById("radarFrameTime");
+
   singleSiteRadarLoopLayers.forEach(layer => {
     if (singleSiteMap.hasLayer(layer)) {
       singleSiteMap.removeLayer(layer);
@@ -8933,11 +8937,6 @@ async function loadSingleSiteRadarLoopFrames() {
   singleSiteRadarLoopLayers = [];
   singleSiteRadarLoopIndex = 0;
 
-  if (singleSiteRadarLayer) {
-    singleSiteMap.removeLayer(singleSiteRadarLayer);
-    singleSiteRadarLayer = null;
-  }
-
   if (!singleSiteMap.getPane("radarPane")) {
     singleSiteMap.createPane("radarPane");
     singleSiteMap.getPane("radarPane").style.zIndex = 450;
@@ -8947,33 +8946,56 @@ async function loadSingleSiteRadarLoopFrames() {
   const site = getSelectedRadarSiteCode();
   const product = getSelectedRadarProductCode();
 
+  if (frameTime) {
+    frameTime.textContent = "Loading...";
+  }
+
   const end = new Date();
-  const start = new Date(
-    end.getTime() - SINGLE_SITE_RADAR_LOOP_MINUTES * 60 * 1000
-  );
+
+  // Widen this. 60 minutes can miss frames if IEM archive lags or product data is sparse.
+  const start = new Date(end.getTime() - 6 * 60 * 60 * 1000);
 
   const url =
-    `https://mesonet.agron.iastate.edu/json/radar.py?operation=list` +
-    `&radar=${site}` +
-    `&product=${product}` +
+    `https://mesonet.agron.iastate.edu/json/radar` +
+    `?operation=list` +
+    `&radar=${encodeURIComponent(site)}` +
+    `&product=${encodeURIComponent(product)}` +
     `&start=${formatSingleSiteRadarApiTime(start)}` +
     `&end=${formatSingleSiteRadarApiTime(end)}`;
 
-  const frameTime = document.getElementById("radarFrameTime");
-
   try {
-    if (frameTime) frameTime.textContent = "Loading...";
-
     const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`IEM scan request failed: ${response.status}`);
+    }
+
     const data = await response.json();
 
+    console.log("IEM radar scan response:", {
+      site,
+      product,
+      url,
+      data
+    });
+
     singleSiteRadarLoopFrames =
-      extractSingleSiteRadarScanTimes(data).slice(-12);
+      extractSingleSiteRadarScanTimes(data).slice(-18);
 
     if (!singleSiteRadarLoopFrames.length) {
-      if (frameTime) frameTime.textContent = "No frames";
+      if (frameTime) {
+        frameTime.textContent = "No loop frames";
+      }
+
+      // Important: keep static radar visible instead of blanking the map.
       loadSingleSiteRadar(site);
       return;
+    }
+
+    // Now remove static only after we know loop frames exist.
+    if (singleSiteRadarLayer) {
+      singleSiteMap.removeLayer(singleSiteRadarLayer);
+      singleSiteRadarLayer = null;
     }
 
     singleSiteRadarLoopLayers = singleSiteRadarLoopFrames.map(frameDate => {
@@ -8987,8 +9009,11 @@ async function loadSingleSiteRadarLoopFrames() {
   } catch (error) {
     console.error("Single-site radar loop failed:", error);
 
-    if (frameTime) frameTime.textContent = "Loop failed";
+    if (frameTime) {
+      frameTime.textContent = "Loop failed";
+    }
 
+    // Keep normal radar visible on failure.
     loadSingleSiteRadar(site);
   }
 }
@@ -9114,9 +9139,9 @@ if (radarSiteSelect) {
       singleSiteMap.setView(siteInfo.center, siteInfo.zoom);
     }
 
-   stopSingleSiteRadarLoop();
-loadSingleSiteRadar(site);
-loadSingleSiteRadarLoopFrames();
+    stopSingleSiteRadarLoop();
+    loadSingleSiteRadar(site);
+    loadSingleSiteRadarLoopFrames();
   });
 }
 
