@@ -7497,9 +7497,10 @@ if (!hasLoadedAlertsOnce) {
   `;
 }
 
-const results = await Promise.allSettled(
-  alertUrls.map(url => fetchWithTimeout(url, 3500))
-);
+try {
+  const results = await Promise.allSettled(
+    alertUrls.map(url => fetchWithTimeout(url, 3500))
+  );
 
     const goodResponses = results
       .filter(result => result.status === "fulfilled" && result.value.ok)
@@ -8538,6 +8539,20 @@ function openRadarModal(mode = "clean") {
 }
 
 function closeRadarModal() {
+  if (!radarModal) return;
+
+  radarModal.classList.remove("is-open");
+  document.body.style.overflow = "";
+
+  if (singleSiteRadarViewer) {
+    singleSiteRadarViewer.style.display = "none";
+  }
+
+  if (radarFrame) {
+    radarFrame.style.display = "block";
+    radarFrame.src = "";
+  }
+}
 
 function setRadarMode(mode) {
   const selectedMode = mode === "raw" ? "raw" : "clean";
@@ -8549,42 +8564,6 @@ function setRadarMode(mode) {
     );
   });
 
-  if (selectedMode === "raw") {
-    stopRadarLoop();
-
-    if (radarFrame) {
-      radarFrame.style.display = "none";
-    }
-
-    if (singleSiteRadarViewer) {
-      singleSiteRadarViewer.style.display = "flex";
-    }
-
-    initSingleSiteRadar().then(() => {
-      requestAnimationFrame(() => {
-        if (singleSiteMap) {
-          singleSiteMap.invalidateSize();
-        }
-
-        if (pendingRadarAlert) {
-          focusSingleSiteRadarOnAlert(pendingRadarAlert);
-        }
-      });
-    });
-
-    return;
-  }
-
-  if (singleSiteRadarViewer) {
-    singleSiteRadarViewer.style.display = "none";
-  }
-
-  if (radarFrame) {
-    radarFrame.style.display = "block";
-  }
-
-  refreshHiResRadar();
-}
   if (selectedMode === "raw") {
     if (radarFrame) {
       radarFrame.style.display = "none";
@@ -8610,7 +8589,6 @@ function setRadarMode(mode) {
     return;
   }
 
-  // CLEAN RADAR / WINDY MODE
   if (singleSiteRadarViewer) {
     singleSiteRadarViewer.style.display = "none";
   }
@@ -9153,10 +9131,13 @@ if (useLocationBtn) {
   useLocationBtn.addEventListener("click", requestUserLocation);
 }
 
+console.log("BOTTOM OF HOMEPAGE SCRIPT REACHED");
+
 loadSPCImages();
 initSpcSlideshow();
 
 setInterval(loadSPCImages, 10 * 60 * 1000);
+
 
 </script>
 
