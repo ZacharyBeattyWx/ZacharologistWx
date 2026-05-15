@@ -6044,26 +6044,17 @@ rgba(5, 10, 18, 0.76)
   }
 }
 
-/* =========================================================
-   DESKTOP DASHBOARD HEIGHT + SCROLL FIX
-   Place ABOVE the mobile @media block
-========================================================= */
-
 @media (min-width: 769px) {
-  .forecast-dashboard .ops-dashboard-grid {
-    align-items: stretch !important;
+
+  .forecast-dashboard .alerts-card,
+  .forecast-dashboard #alertsList,
+  .forecast-dashboard .compact-alert-list {
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
   }
 
-  .forecast-dashboard .ops-column {
-    display: flex !important;
-    flex-direction: column !important;
-    min-height: 720px !important;
-  }
-
-  /* Makes the bottom cards stretch so all 3 columns end evenly */
-  .forecast-dashboard .ops-column > .dashboard-card:last-child {
-    flex: 1 1 auto !important;
-  }
+}
 
   /* -----------------------------
      ACTIVE ALERTS CARD
