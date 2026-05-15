@@ -6547,6 +6547,21 @@ body {
   image-rendering: auto !important;
 }
 
+/* Ensure the main site header remains visible on the homepage */
+.site-header {
+  display: flex !important;
+  position: sticky !important;
+  top: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  z-index: 10001 !important;
+  background: rgba(5, 10, 20, 0.94) !important;
+}
+
+header {
+  display: flex !important;
+}
+
 }
 
  </style>
