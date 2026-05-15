@@ -6603,6 +6603,61 @@ header {
   display: flex !important;
 }
 
+/* Final desktop viewport fit: keep the lower dashboard visible sooner */
+.forecast-dashboard {
+  padding-top: 14px !important;
+  padding-bottom: 160px !important;
+  min-height: calc(100vh + 160px) !important;
+}
+
+html,
+body {
+  overflow-y: auto !important;
+}
+
+body {
+  min-height: calc(100vh + 160px) !important;
+}
+
+.operations-intro {
+  padding: 18px 20px !important;
+  margin-bottom: 12px !important;
+  min-height: 0 !important;
+}
+
+.operations-intro .eyebrow {
+  margin-bottom: 6px !important;
+}
+
+.operations-intro h2 {
+  font-size: clamp(1.65rem, 2.3vw, 2.35rem) !important;
+  line-height: 1.04 !important;
+}
+
+.operations-intro .dashboard-subtitle {
+  margin-top: 8px !important;
+  line-height: 1.45 !important;
+}
+
+.operations-status-card {
+  padding: 12px 16px !important;
+}
+
+.forecast-dashboard .ops-dashboard-grid,
+.ops-column {
+  gap: 12px !important;
+}
+
+.forecast-dashboard .radar-frame {
+  height: 450px !important;
+  min-height: 450px !important;
+  max-height: 450px !important;
+}
+
+.forecast-dashboard .alerts-card {
+  min-height: 800px !important;
+}
+
 }
 
  </style>
