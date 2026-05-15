@@ -6307,15 +6307,23 @@ body {
     overflow: visible !important;
   }
 
-  .forecast-dashboard #alertsList,
-  .forecast-dashboard .compact-alert-list,
-  .forecast-dashboard .state-alert-dropdown,
-  .forecast-dashboard .state-alert-group {
+  /* Mobile only: let alert dropdowns expand naturally */
+  .forecast-dashboard .alerts-card {
     height: auto !important;
-    min-height: 0 !important;
+    max-height: none !important;
+  }
+
+  .forecast-dashboard .alerts-card #alertsList {
+    height: auto !important;
+    max-height: none !important;
+    overflow-y: visible !important;
+  }
+
+  .forecast-dashboard .alerts-card .state-alert-dropdown,
+  .forecast-dashboard .alerts-card .state-alert-group {
+    height: auto !important;
     max-height: none !important;
     overflow: visible !important;
-    overflow-y: visible !important;
   }
 
 }
