@@ -5053,14 +5053,17 @@ rgba(5, 10, 18, 0.76)
 }
 
 /* FINAL: remove fake second page scrollbar */
-html {
-  overflow-x: hidden;
-  overflow-y: hidden;
+html,
+body {
+  width: 100%;
+  min-height: 100%;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
 }
 
 body {
-  overflow-x: hidden;
-  overflow-y: auto;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* MOBILE: keep the style tighter */
