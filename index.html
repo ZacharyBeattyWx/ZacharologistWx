@@ -3280,7 +3280,7 @@ filter: brightness(1.15);
   white-space: nowrap !important;
 }
 
-/* Yellow Hi-Res / Reflectivity button */
+/* Yellow Super-Res / Reflectivity button */
 .forecast-dashboard .alerts-card .raw-radar-button {
   width: auto !important;
   min-width: 104px !important;
@@ -7037,7 +7037,7 @@ body {
       </button>
 
       <button class="radar-mode-btn" type="button" data-radar-mode="raw">
-        Single-Site Radar
+        Super-Res Radar
       </button>
     </div>
 
@@ -7079,8 +7079,8 @@ body {
           <label>
             Product
             <select id="radarProductSelect">
-              <option value="N0B">Base Reflectivity</option>
-              <option value="N0U">Base Velocity</option>
+              <option value="N0B">Super-Res Reflectivity</option>
+              <option value="N0U">Super-Res Velocity</option>
               <option value="N0S">Storm Relative Velocity</option>
               <option value="N0C">Correlation Coefficient</option>
             </select>
@@ -7105,7 +7105,7 @@ body {
     </div>
 
     <div class="radar-modal-note">
-      Single-Site Radar uses IEM RIDGE NEXRAD imagery for base reflectivity.
+      Super-Res Radar uses IEM RIDGE NEXRAD single-site products for high-detail base data.
     </div>
   </div>
 </div>
@@ -7563,7 +7563,7 @@ card.innerHTML = `
   type="button"
   data-radar-mode="raw"
   data-alert-id="${alert.id}">
-  ⚡ Hi-Res Radar
+  ⚡ Super-Res
 </button>
 
 
@@ -8149,7 +8149,7 @@ await loadSingleSiteRadarLoopFrames();
 
     singleSiteMap.fitBounds(alertPolygonLayer.getBounds(), {
       padding: [36, 36],
-      maxZoom: 9
+      maxZoom: 11
     });
   } else {
     alertCenterMarker = L.marker([center.lat, center.lon])
@@ -8819,7 +8819,7 @@ async function loadNwsRadarSites() {
           sector: id,
           name: props.sname || props.name || props.station_name || id,
           center: [lat, lon],
-          zoom: 7
+          zoom: 8
         };
       })
       .filter(Boolean)
@@ -8855,9 +8855,9 @@ async function loadNwsRadarSites() {
     `;
 
     radarSites = {
-      RAX: { sector: "RAX", name: "Raleigh/Durham", center: [35.7, -78.5], zoom: 7 },
-      FCX: { sector: "FCX", name: "Blacksburg", center: [37.0, -80.3], zoom: 7 },
-      GSP: { sector: "GSP", name: "Greer", center: [34.9, -82.2], zoom: 7 }
+      RAX: { sector: "RAX", name: "Raleigh/Durham", center: [35.7, -78.5], zoom: 8 },
+      FCX: { sector: "FCX", name: "Blacksburg", center: [37.0, -80.3], zoom: 8 },
+      GSP: { sector: "GSP", name: "Greer", center: [34.9, -82.2], zoom: 8 }
     };
 
     radarSitesLoaded = true;
@@ -9136,6 +9136,7 @@ function createSingleSiteRadarLoopLayer(site, product, stamp) {
     {
       opacity: 0,
       pane: "radarPane",
+      maxZoom: 12,
       attribution: "Radar: IEM / NEXRAD"
     }
   );
@@ -9354,7 +9355,8 @@ async function initSingleSiteRadar() {
   if (!singleSiteMap) {
     singleSiteMap = L.map("singleSiteMap", {
       zoomControl: true,
-      attributionControl: true
+      attributionControl: true,
+      maxZoom: 12
     }).setView(siteInfo.center, siteInfo.zoom);
 
     L.tileLayer(
@@ -9404,6 +9406,7 @@ function loadSingleSiteRadar(site) {
       opacity: 0.96,
       sector: site,
       prod: product,
+      maxZoom: 12,
       version: "1.1.1",
       attribution: "Radar: IEM / NEXRAD"
     }
