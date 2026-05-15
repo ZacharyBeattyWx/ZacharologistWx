@@ -5055,17 +5055,17 @@ rgba(5, 10, 18, 0.76)
 /* FINAL: remove fake second page scrollbar */
 html,
 body {
-  overflow-x: hidden !important;
-  overflow-y: auto !important;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .forecast-dashboard #alertsList,
 .forecast-dashboard .alerts-list,
 .forecast-dashboard .compact-alert-list {
-  overflow-y: visible !important;
-  overflow-x: visible !important;
-  max-height: none !important;
-  height: auto !important;
+  overflow-y: visible;
+  overflow-x: visible;
+  max-height: none;
+  height: auto;
 }
 
 /* MOBILE: keep the style tighter */
@@ -6065,9 +6065,9 @@ body {
   .forecast-dashboard .alerts-card,
   .forecast-dashboard #alertsList,
   .forecast-dashboard .compact-alert-list {
-    overflow: visible !important;
-    max-height: none !important;
-    height: auto !important;
+    overflow: visible;
+    max-height: none;
+    height: auto;
   }
 
 }
@@ -6077,45 +6077,43 @@ body {
   ----------------------------- */
 
   .forecast-dashboard .alerts-card {
-    height: 100% !important;
-    max-height: 720px !important;
-    display: flex !important;
-    flex-direction: column !important;
-    overflow: hidden !important;
+    height: 100%;
+    max-height: 720px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
 
   .forecast-dashboard .alert-tabs {
-    flex: 0 0 auto !important;
+    flex: 0 0 auto;
   }
 
   .forecast-dashboard .alert-count-bar {
-    flex: 0 0 auto !important;
+    flex: 0 0 auto;
   }
 
   .forecast-dashboard .alerts-list,
   .forecast-dashboard #alertsList {
-    flex: 1 1 auto !important;
-    min-height: 0 !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    padding-right: 6px !important;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 6px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
 
-  /* Optional: cleaner alert scrollbar */
   .forecast-dashboard .alerts-list::-webkit-scrollbar,
   .forecast-dashboard #alertsList::-webkit-scrollbar {
-    width: 8px;
+    width: 0;
+    height: 0;
   }
 
   .forecast-dashboard .alerts-list::-webkit-scrollbar-thumb,
-  .forecast-dashboard #alertsList::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.22);
-    border-radius: 999px;
-  }
-
+  .forecast-dashboard #alertsList::-webkit-scrollbar-thumb,
   .forecast-dashboard .alerts-list::-webkit-scrollbar-track,
   .forecast-dashboard #alertsList::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.05);
+    background: transparent;
   }
 
   /* -----------------------------
