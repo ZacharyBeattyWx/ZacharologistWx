@@ -5052,6 +5052,22 @@ rgba(5, 10, 18, 0.76)
   border-color: rgba(255,107,26,0.42) !important;
 }
 
+/* FINAL: remove fake second page scrollbar */
+html,
+body {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+.forecast-dashboard #alertsList,
+.forecast-dashboard .alerts-list,
+.forecast-dashboard .compact-alert-list {
+  overflow-y: visible !important;
+  overflow-x: visible !important;
+  max-height: none !important;
+  height: auto !important;
+}
+
 /* MOBILE: keep the style tighter */
 @media (max-width: 768px) {
   .site-header {
