@@ -5052,19 +5052,20 @@ rgba(5, 10, 18, 0.76)
   border-color: rgba(255,107,26,0.42) !important;
 }
 
-/* FINAL: remove fake second page scrollbar */
-html {
-  width: 100%;
-  min-height: 100%;
-  overflow-x: hidden !important;
-  overflow-y: hidden !important;
-}
-
+/* FINAL: mobile/page scroll sanity */
+html,
 body {
   width: 100%;
   min-height: 100%;
   overflow-x: hidden !important;
+}
+
+html {
   overflow-y: auto !important;
+}
+
+body {
+  overflow-y: visible !important;
   touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
 }
