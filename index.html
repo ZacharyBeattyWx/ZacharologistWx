@@ -5061,17 +5061,24 @@ body {
 }
 
 html {
-  overflow-y: auto !important;
+  overflow-y: hidden !important;
 }
 
 body {
-  overflow-y: visible !important;
+  overflow-y: auto !important;
   touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
 }
 
-/* MOBILE: keep the style tighter */
 @media (max-width: 768px) {
+  html {
+    overflow-y: auto !important;
+  }
+
+  body {
+    overflow-y: auto !important;
+  }
+
   .site-header {
     width: 100% !important;
   }
