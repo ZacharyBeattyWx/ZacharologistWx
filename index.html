@@ -7039,6 +7039,11 @@ body {
       <button class="radar-mode-btn" type="button" data-radar-mode="raw">
         Super-Res Radar
       </button>
+
+      <!-- PHASE 1: add a separate high-res site radar mode -->
+      <button class="radar-mode-btn" type="button" data-radar-mode="highres">
+        Hi-Res Site Radar
+      </button>
     </div>
 
     <div class="radar-frame-wrap">
@@ -8597,6 +8602,28 @@ const radarLocationInput = document.getElementById("radarLocationInput");
 const radarSearchStatus = document.getElementById("radarSearchStatus");
 const radarProductSelect = document.getElementById("radarProductSelect");
 
+let currentRadarMode = "clean";
+
+function getActiveHighResRadarSiteCode() {
+  if (pendingRadarAlert) {
+    const alertCenter = getAlertCenter(pendingRadarAlert);
+
+    if (alertCenter) {
+      const nearest = findNearestRadarSite(alertCenter.lat, alertCenter.lon);
+
+      if (nearest && nearest.site && nearest.site.sector) {
+        return nearest.site.sector;
+      }
+    }
+  }
+
+  if (radarSiteSelect && radarSiteSelect.value) {
+    return radarSiteSelect.value;
+  }
+
+  return "FCX";
+}
+
 let radarSearchMarker = null;
 let singleSiteMap = null;
 let singleSiteRadarLayer = null;
@@ -8890,7 +8917,10 @@ function closeRadarModal() {
 }
 
 function setRadarMode(mode) {
-  const selectedMode = mode === "raw" ? "raw" : "clean";
+  const selectedMode =
+    mode === "highres" ? "highres" : mode === "raw" ? "raw" : "clean";
+
+  currentRadarMode = selectedMode;
 
   radarModeButtons.forEach(button => {
     button.classList.toggle(
@@ -8898,6 +8928,48 @@ function setRadarMode(mode) {
       button.dataset.radarMode === selectedMode
     );
   });
+
+  if (selectedMode === "highres") {
+    if (radarFrame) {
+      radarFrame.style.display = "none";
+      radarFrame.src = "";
+    }
+
+    if (singleSiteRadarViewer) {
+      singleSiteRadarViewer.style.display = "flex";
+    }
+
+    // High-res mode uses the active/nearest radar site with IEM-served Level III N0B reflectivity.
+    if (radarProductSelect) {
+      radarProductSelect.value = "N0B";
+    }
+
+    initSingleSiteRadar({ skipLoop: true }).then(() => {
+      const siteCode = getActiveHighResRadarSiteCode();
+
+      if (radarSiteSelect) {
+        radarSiteSelect.value = siteCode;
+      }
+
+      requestAnimationFrame(() => {
+        if (singleSiteMap) {
+          singleSiteMap.invalidateSize();
+
+          const siteInfo = radarSites[siteCode];
+
+          if (siteInfo) {
+            singleSiteMap.setView(siteInfo.center, siteInfo.zoom || 8);
+          } else {
+            singleSiteMap.setView([35.38, -80.95], 8);
+          }
+        }
+
+        loadSingleSiteRadar(siteCode);
+      });
+    });
+
+    return;
+  }
 
   if (selectedMode === "raw") {
     if (radarFrame) {
@@ -9334,7 +9406,9 @@ function setupSingleSiteRadarLoopControls() {
   });
 }
 
-async function initSingleSiteRadar() {
+async function initSingleSiteRadar(options = {}) {
+  const skipLoop = options.skipLoop === true;
+
   if (!window.L) {
     console.error("Leaflet did not load.");
     return false;
@@ -9378,7 +9452,7 @@ requestAnimationFrame(() => {
 
 setupSingleSiteRadarLoopControls();
 
-if (!pendingRadarAlert) {
+if (!pendingRadarAlert && !skipLoop) {
   loadSingleSiteRadar(site);
   loadSingleSiteRadarLoopFrames();
 }
@@ -9413,6 +9487,14 @@ function loadSingleSiteRadar(site) {
   );
 
   singleSiteRadarLayer.addTo(singleSiteMap);
+
+  singleSiteRadarLayer.on("tileerror", () => {
+    if (currentRadarMode === "highres") {
+      fallbackToCleanRadar(
+        `IEM Level III tile loading error for high-res radar at ${site}`
+      );
+    }
+  });
 
   const tileContainer = singleSiteRadarLayer.getContainer();
 
