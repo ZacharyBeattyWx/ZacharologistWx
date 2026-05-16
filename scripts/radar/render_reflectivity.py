@@ -46,6 +46,7 @@ DEFAULT_MIN_VISIBLE_DBZ = 15.0
 DEFAULT_MIN_COMPONENT_PIXELS = 6
 DEFAULT_CARTESIAN_SIZE_PX = 1536
 DEFAULT_CARTESIAN_SMOOTHING_PASSES = 1
+DEFAULT_SAMPLING_MODE = "nearest"
 
 
 def load_config(path: Path) -> dict:
@@ -246,10 +247,22 @@ def sample_polar_bilinear(source, azimuth_float, gate_float):
     return sampled
 
 
+def sample_polar_nearest(source, azimuth_float, gate_float):
+    import numpy as np
+
+    numeric = np.asarray(np.ma.array(source).filled(np.nan), dtype=float)
+    azimuth_count, gate_count = numeric.shape
+
+    azimuth_index = np.rint(azimuth_float).astype(int) % azimuth_count
+    gate_index = np.clip(np.rint(gate_float).astype(int), 0, gate_count - 1)
+    return numeric[azimuth_index, gate_index]
+
+
 def polar_reflectivity_to_cartesian_grid(
     values,
     range_km: float,
     output_size_px: int = DEFAULT_CARTESIAN_SIZE_PX,
+    sampling_mode: str = DEFAULT_SAMPLING_MODE,
 ):
     import numpy as np
 
@@ -265,9 +278,13 @@ def polar_reflectivity_to_cartesian_grid(
     azimuth_degrees = np.where(azimuth_degrees < 0, azimuth_degrees + 360.0, azimuth_degrees)
     azimuth_index_float = azimuth_degrees / 360.0 * azimuth_count
     gate_index_float = range_at_pixel[in_range] / range_km * (gate_count - 1)
-    sampled_values = sample_polar_bilinear(numeric, azimuth_index_float, gate_index_float)
-    output_grid[in_range] = sampled_values
 
+    if sampling_mode == "nearest":
+        sampled_values = sample_polar_nearest(numeric, azimuth_index_float, gate_index_float)
+    else:
+        sampled_values = sample_polar_bilinear(numeric, azimuth_index_float, gate_index_float)
+
+    output_grid[in_range] = sampled_values
     return output_grid
 
 
@@ -310,10 +327,16 @@ def polar_reflectivity_to_cartesian_rgba(
     min_visible_dbz: float = DEFAULT_MIN_VISIBLE_DBZ,
     min_component_pixels: int = DEFAULT_MIN_COMPONENT_PIXELS,
     smoothing_passes: int = DEFAULT_CARTESIAN_SMOOTHING_PASSES,
+    sampling_mode: str = DEFAULT_SAMPLING_MODE,
 ):
     del radar_lat, radar_lon
 
-    cartesian_grid = polar_reflectivity_to_cartesian_grid(values, range_km, output_size_px)
+    cartesian_grid = polar_reflectivity_to_cartesian_grid(
+        values,
+        range_km,
+        output_size_px,
+        sampling_mode,
+    )
     cartesian_grid = smooth_cartesian_grid(cartesian_grid, smoothing_passes)
     rgba = reflectivity_to_rgba(cartesian_grid, min_visible_dbz, min_component_pixels)
     return rgba, cartesian_grid
@@ -593,6 +616,12 @@ def main() -> int:
         help="Number of light smoothing passes to apply to the Cartesian dBZ grid.",
     )
     parser.add_argument(
+        "--sampling-mode",
+        choices=["nearest", "bilinear"],
+        default=DEFAULT_SAMPLING_MODE,
+        help="Polar-to-Cartesian sampling mode.",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Print intended work without creating frame images.",
@@ -665,6 +694,7 @@ def main() -> int:
             args.min_visible_dbz,
             args.min_component_pixels,
             args.smoothing_passes,
+            args.sampling_mode,
         )
         stats = reflectivity_stats(cartesian_grid, args.min_visible_dbz, args.min_component_pixels)
         source_stats = reflectivity_stats(mapped, args.min_visible_dbz, args.min_component_pixels)
@@ -672,6 +702,14 @@ def main() -> int:
         image.save(frame_path, "WEBP", lossless=True)
 
         relative_url = "/" + frame_path.relative_to(REPO_ROOT).as_posix()
+        sampling_mode = args.sampling_mode
+        if sampling_mode == "nearest":
+            projection_mode = "polar-cartesian-nearest-v2"
+            output_image_mode = "north-up-cartesian-nearest-sampled"
+        else:
+            projection_mode = "polar-cartesian-bilinear-v1"
+            output_image_mode = "north-up-cartesian-bilinear-sampled"
+
         frame_entry = {
             "slug": slug,
             "url": relative_url,
@@ -693,8 +731,9 @@ def main() -> int:
                 "calculatedBounds": bounds,
                 "smoothingPasses": int(args.smoothing_passes),
                 "sourceImageMode": "azimuth-range",
-                "outputImageMode": "north-up-cartesian-bilinear-sampled",
-                "projectionMode": "polar-cartesian-bilinear-v1",
+                "outputImageMode": output_image_mode,
+                "projectionMode": projection_mode,
+                "samplingMode": sampling_mode,
             },
         }
 
@@ -715,7 +754,7 @@ def main() -> int:
         print(f"imageWidth={image.width}")
         print(f"imageHeight={image.height}")
         print(f"bounds={bounds}")
-        print("samplingMode=bilinear")
+        print(f"samplingMode={sampling_mode}")
         print(f"smoothingPasses={int(args.smoothing_passes)}")
         print(f"minVisibleDbz={stats['minVisibleDbz']}")
         print(f"minComponentPixels={stats['minComponentPixels']}")
