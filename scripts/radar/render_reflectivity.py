@@ -42,6 +42,7 @@ DEFAULT_REFLECTIVITY_COLOR_TABLE = {
         {"value": 85, "stops": [{"rgb": [255, 231, 188]}]},
     ],
 }
+DEFAULT_MIN_VISIBLE_DBZ = 15.0
 
 
 def load_config(path: Path) -> dict:
@@ -98,24 +99,45 @@ def rgba_for_dbz(value: float) -> tuple[int, int, int, int]:
     return first_stop_rgba(selected)
 
 
-def reflectivity_to_rgba(values):
+def reflectivity_to_rgba(values, min_visible_dbz: float = DEFAULT_MIN_VISIBLE_DBZ):
     import numpy as np
 
     numeric = np.asarray(np.ma.array(values).filled(np.nan), dtype=float)
     height, width = numeric.shape
     rgba = np.zeros((height, width, 4), dtype=np.uint8)
     finite_mask = np.isfinite(numeric)
-
-    if not finite_mask.any():
-        raise ValueError("No finite reflectivity values found; refusing to render empty frame.")
+    visible_mask = finite_mask & (numeric >= min_visible_dbz)
 
     for entry in DEFAULT_REFLECTIVITY_COLOR_TABLE["colors"]:
         threshold = entry["value"]
         color = first_stop_rgba(entry)
-        rgba[finite_mask & (numeric >= threshold)] = color
+        rgba[visible_mask & (numeric >= threshold)] = color
 
     rgba[~finite_mask] = [0, 0, 0, 0]
+    rgba[finite_mask & ~visible_mask] = [0, 0, 0, 0]
     return rgba
+
+
+def reflectivity_stats(values, min_visible_dbz: float = DEFAULT_MIN_VISIBLE_DBZ) -> dict:
+    import numpy as np
+
+    numeric = np.asarray(np.ma.array(values).filled(np.nan), dtype=float)
+    finite_values = numeric[np.isfinite(numeric)]
+    total_pixels = int(numeric.size)
+    finite_pixels = int(finite_values.size)
+    visible_pixels = int((finite_values >= min_visible_dbz).sum())
+    visible_coverage = (visible_pixels / total_pixels * 100) if total_pixels else 0.0
+
+    return {
+        "minVisibleDbz": float(min_visible_dbz),
+        "totalPixels": total_pixels,
+        "finitePixels": finite_pixels,
+        "visiblePixels": visible_pixels,
+        "visibleCoveragePercent": visible_coverage,
+        "finiteMin": float(np.nanmin(finite_values)) if finite_pixels else None,
+        "finiteMax": float(np.nanmax(finite_values)) if finite_pixels else None,
+        "finiteMean": float(np.nanmean(finite_values)) if finite_pixels else None,
+    }
 
 
 def catalog_product_metadata(product: str) -> dict:
@@ -431,7 +453,8 @@ def main() -> int:
 
         from PIL import Image
 
-        rgba = reflectivity_to_rgba(mapped)
+        stats = reflectivity_stats(mapped, DEFAULT_MIN_VISIBLE_DBZ)
+        rgba = reflectivity_to_rgba(mapped, DEFAULT_MIN_VISIBLE_DBZ)
         image = Image.fromarray(rgba, mode="RGBA")
         image.save(frame_path, "WEBP", lossless=True)
 
@@ -448,6 +471,7 @@ def main() -> int:
             "width": image.width,
             "height": image.height,
             "palette": "DEFAULT_REFLECTIVITY_COLOR_TABLE",
+            "stats": stats,
         }
 
         update_frames_catalog(
@@ -460,6 +484,9 @@ def main() -> int:
 
         print(f"Wrote {frame_path}")
         print(f"Updated {config.get('catalogPath', 'radar/frames.json')}")
+        print(f"visiblePixels={stats['visiblePixels']}")
+        print(f"visibleCoveragePercent={stats['visibleCoveragePercent']:.6f}")
+        print(f"minVisibleDbz={stats['minVisibleDbz']}")
         return 0
 
     # TODO: Apply DEFAULT_REFLECTIVITY_COLOR_TABLE from the frontend contract.
