@@ -418,6 +418,10 @@
       return `${frame.url.replace(/^\//, './')}?t=${Date.now()}`;
     }
 
+    function catalogUrl() {
+      return `${CATALOG_URL}?v=${Date.now()}`;
+    }
+
     function formatFrameTime(frame) {
       const validTime = new Date(frame.validTime);
 
@@ -598,7 +602,7 @@
       setStatus('Loading radar catalog...');
 
       try {
-        const response = await fetch(`${CATALOG_URL}?t=${Date.now()}`, {
+        const response = await fetch(catalogUrl(), {
           cache: 'no-store',
         });
 
