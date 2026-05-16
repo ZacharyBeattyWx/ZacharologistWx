@@ -136,10 +136,22 @@
       position: absolute;
       inset: 0;
       background: 
-        linear-gradient(135deg, rgba(0, 80, 150, 0.25) 0%, rgba(0, 30, 80, 0.1) 100%),
-        url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><defs><pattern id="dots" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse"><circle cx="20" cy="20" r="2" fill="rgba(56,189,248,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23dots)"/></svg>');
+        linear-gradient(to right, rgba(0, 0, 0, 0.3) 0%, transparent 50%),
+        linear-gradient(135deg, #1a3a52 0%, #0d1f2d 50%, #051015 100%);
       background-color: #0a1428;
       z-index: 0;
+      overflow: hidden;
+    }
+
+    .hero-background::after {
+      content: "";
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      right: -10%;
+      top: 0;
+      background: radial-gradient(ellipse at right center, rgba(56, 189, 248, 0.1) 0%, transparent 70%);
+      pointer-events: none;
     }
 
     .hero::before {
@@ -281,6 +293,19 @@
       background: rgba(28, 38, 62, 0.9);
       border-color: rgba(56, 189, 248, 0.3);
       box-shadow: 0 8px 24px rgba(50, 90, 255, 0.15);
+      transform: translateY(-2px);
+    }
+
+    .status-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      background: rgba(56, 189, 248, 0.15);
+      border-radius: 8px;
+      margin-bottom: 12px;
+      font-size: 1.4rem;
     }
 
     .status-label {
@@ -363,6 +388,8 @@
       align-items: center;
       justify-content: center;
       overflow: hidden;
+      background-image: 
+        linear-gradient(135deg, rgba(56, 189, 248, 0.1) 0%, rgba(249, 115, 22, 0.05) 100%);
     }
 
     .card-image::before {
@@ -374,9 +401,19 @@
           45deg,
           transparent,
           transparent 35px,
-          rgba(56, 189, 248, 0.05) 35px,
-          rgba(56, 189, 248, 0.05) 70px
+          rgba(56, 189, 248, 0.03) 35px,
+          rgba(56, 189, 248, 0.03) 70px
         );
+    }
+
+    .card-image.radar {
+      background: radial-gradient(circle at center, rgba(56, 189, 248, 0.2) 0%, rgba(56, 189, 248, 0.08) 35%, rgba(0, 0, 0, 0.2) 100%);
+    }
+
+    .card-image.radar::before {
+      background: 
+        radial-gradient(circle, transparent 20%, rgba(56, 189, 248, 0.1) 20%, rgba(56, 189, 248, 0.1) 40%, transparent 40%),
+        radial-gradient(circle, transparent 30%, rgba(249, 115, 22, 0.05) 30%, rgba(249, 115, 22, 0.05) 50%, transparent 50%);
     }
 
     .play-button {
@@ -446,6 +483,21 @@
       font-size: 0.8rem;
       color: #94a3b8;
       margin-bottom: 16px;
+    }
+
+    .card-timestamp {
+      position: absolute;
+      bottom: 12px;
+      right: 12px;
+      z-index: 3;
+      background: rgba(15, 23, 42, 0.8);
+      color: #64748b;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.65rem;
+      font-weight: 600;
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(56, 189, 248, 0.15);
     }
 
     .card-button {
@@ -520,7 +572,18 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.4);
+      box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.4), 0 0 30px rgba(249, 115, 22, 0.2);
+      position: relative;
+    }
+
+    .probability-gauge::before {
+      content: "";
+      position: absolute;
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      background: rgba(10, 15, 30, 0.6);
+      border: 2px solid rgba(249, 115, 22, 0.3);
     }
 
     .probability-gauge::after {
@@ -528,6 +591,8 @@
       font-size: 1.8rem;
       font-weight: 900;
       color: #fb923c;
+      position: relative;
+      z-index: 2;
     }
 
     /* RESPONSIVE */
@@ -712,12 +777,14 @@
     <!-- STATUS ROW -->
     <div class="status-row">
       <div class="status-card">
+        <div class="status-icon">⏰</div>
         <span class="status-label">Next Target Window</span>
         <div class="status-value">May 26, 2025</div>
         <div class="status-detail">2:00 PM – 10:00 PM CDT</div>
       </div>
 
       <div class="status-card">
+        <div class="status-icon">🚗</div>
         <span class="status-label">Vehicle Status</span>
         <div class="status-value">In Position</div>
         <div class="status-detail">Ready to Deploy</div>
@@ -725,6 +792,7 @@
       </div>
 
       <div class="status-card">
+        <div class="status-icon">📡</div>
         <span class="status-label">Stream Status</span>
         <div class="status-value">OFFLINE</div>
         <div class="status-detail">Standby</div>
@@ -732,6 +800,7 @@
       </div>
 
       <div class="status-card">
+        <div class="status-icon">📍</div>
         <span class="status-label">Current Location</span>
         <div class="status-value">Colby, KS</div>
         <div class="status-detail">37.46°N, 101.05°W</div>
@@ -757,7 +826,7 @@
 
       <!-- TARGET DISCUSSION CARD -->
       <div class="card">
-        <div class="card-image">
+        <div class="card-image radar">
           <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 0.85rem;">
             [Map Placeholder]
           </div>
@@ -788,10 +857,11 @@
 
       <!-- MESO ANALYSIS CARD -->
       <div class="card">
-        <div class="card-image">
+        <div class="card-image radar">
           <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 0.85rem;">
             [Analysis Map]
           </div>
+          <div class="card-timestamp">7:35 PM CDT</div>
         </div>
         <div class="card-content">
           <h3 class="card-title">Meso Analysis</h3>
