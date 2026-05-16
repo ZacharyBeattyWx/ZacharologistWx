@@ -16,6 +16,7 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_CONFIG = SCRIPT_DIR / "radar_config.json"
+REPO_ROOT = SCRIPT_DIR.parents[1]
 
 
 def load_config(path: Path) -> dict:
@@ -28,6 +29,12 @@ def main() -> int:
         description="Scaffold for rendering Level III N0B reflectivity frames."
     )
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
+    parser.add_argument(
+        "--source-cache",
+        type=Path,
+        default=REPO_ROOT / "radar" / "source" / "level3",
+        help="Directory containing raw public Level III .nids source files.",
+    )
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -49,13 +56,22 @@ def main() -> int:
         print("Dry run: would decode Level III N0B and render transparent frames.")
         return 0
 
+    source_files = sorted(args.source_cache.glob("Level3_*_N0B_*.nids"))
+
+    if not source_files:
+        print(f"No Level III N0B source files found in {args.source_cache}.")
+        return 1
+
+    print(f"Found source file: {source_files[-1]}")
+    print("Real rendering is not implemented yet; no fake radar image was created.")
+    print("Needed decoder path: MetPy Level3File or an equivalent NIDS Level III decoder, plus numpy and Pillow.")
+
     # TODO: Decode NOAA/Unidata Level III N0B source files.
     # TODO: Apply DEFAULT_REFLECTIVITY_COLOR_TABLE from the frontend contract.
     # TODO: Render transparent WebP or PNG frames.
     # TODO: Calculate geographic bounds for each output image.
     # TODO: Write frames to radar/frames/{site}/{product}/{slug}.webp.
-    print("TODO: implement Level III N0B rendering.")
-    return 0
+    return 2
 
 
 if __name__ == "__main__":
