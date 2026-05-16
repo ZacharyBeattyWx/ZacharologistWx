@@ -45,7 +45,7 @@ jobs:
           mkdir -p "$SOURCE_DIR"
 
           python - <<'PY'
-          from datetime import datetime, timezone
+          from datetime import datetime, timedelta, timezone
           import os
           import re
           import sys
@@ -127,13 +127,13 @@ jobs:
               ][:20]
 
               label = prefix or "root"
-              print(f"Diagnostic sample for {label}:")
-              print(f"  CommonPrefixes ({len(common_prefixes)} shown):")
+              print(f"Diagnostic sample for {label}:", flush=True)
+              print(f"  CommonPrefixes ({len(common_prefixes)} shown):", flush=True)
               for common_prefix in common_prefixes:
-                  print(f"    {common_prefix}")
-              print(f"  Keys ({len(keys)} shown):")
+                  print(f"    {common_prefix}", flush=True)
+              print(f"  Keys ({len(keys)} shown):", flush=True)
               for key in keys:
-                  print(f"    {key}")
+                  print(f"    {key}", flush=True)
 
           def timestamp_from_key(key):
               name = Path(key).name
@@ -157,35 +157,35 @@ jobs:
 
               return datetime.now(timezone.utc).strftime("%Y%m%d_%H%M")
 
-          prefixes = [
-              f"{site}_{product}_",
-              f"K{site}_{product}_",
-              f"{product}_{site}_",
-              f"{product}_K{site}_",
-              f"{product}/{site}/",
-              f"{product}/K{site}/",
-              f"{site}/{product}/",
-              f"K{site}/{product}/",
-              f"Level3_{site}_{product}_",
-              f"Level3_K{site}_{product}_",
-          ]
+          prefixes = []
+          now = datetime.now(timezone.utc)
+
+          for day_offset in range(3):
+              date = now - timedelta(days=day_offset)
+              date_prefix = date.strftime("%Y_%m_%d")
+              prefixes.extend(
+                  [
+                      f"{site}_{product}_{date_prefix}_",
+                      f"K{site}_{product}_{date_prefix}_",
+                  ]
+              )
 
           latest_key = None
 
           for prefix in prefixes:
-              print(f"Trying prefix: {prefix}")
+              print(f"Trying prefix: {prefix}", flush=True)
               keys = find_candidate_keys(prefix)
-              print(f"Found {len(keys)} candidate Level III files")
+              print(f"Found {len(keys)} candidate Level III files", flush=True)
 
               if keys:
                   latest_key = sorted(keys)[-1]
                   break
 
           if latest_key is None:
-              for prefix in ["", f"{site}_{product}_", f"K{site}_{product}_", f"{product}/", f"{site}/", f"K{site}/", "Level3_"]:
+              for prefix in ["", f"{product}/", f"{site}/", f"K{site}/", "Level3_"]:
                   print_diagnostic_sample(prefix)
 
-              print("No candidate Level III files found for any tried prefix", file=sys.stderr)
+              print("No candidate Level III files found for any tried date-scoped prefix", file=sys.stderr, flush=True)
               sys.exit(1)
 
           source_dir = Path("radar/source/level3")
@@ -199,10 +199,10 @@ jobs:
 
           download_url = bucket_url + "/" + urllib.parse.quote(latest_key, safe="/")
 
-          print(f"Latest key: {latest_key}")
-          print(f"Downloading: {download_url}")
-          print(f"Temporary save path: {download_path}")
-          print(f"Final renderer source path: {output_path}")
+          print(f"Latest key: {latest_key}", flush=True)
+          print(f"Downloading: {download_url}", flush=True)
+          print(f"Temporary save path: {download_path}", flush=True)
+          print(f"Final renderer source path: {output_path}", flush=True)
 
           urllib.request.urlretrieve(download_url, download_path)
 
