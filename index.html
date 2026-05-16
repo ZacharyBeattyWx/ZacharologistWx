@@ -8335,7 +8335,7 @@ function loadSPCImages() {
       Long-term: adapter-backed Super-Res radar using this site's own frame catalog.
 
   - highres:
-      Current: IEM N0B latest frame only, no playback.
+      Current: IEM N0B loop frames.
       Long-term: may collapse internally with raw/superres once the custom frame service exists.
 
   Future frame-service shape:
@@ -8347,6 +8347,8 @@ function loadSPCImages() {
 */
 
 const RADAR_FRAME_SERVICE_BASE = "/radar";
+const CUSTOM_RADAR_FRAME_SERVICE_BASE = "/radar";
+const USE_CUSTOM_RADAR_FRAMES = false;
 
 const RADAR_ADAPTER_KEYS = {
   windy: "windy",
@@ -8371,7 +8373,7 @@ const RADAR_MODE_ARCHITECTURE = {
     label: "Hi-Res Site Radar",
     currentAdapter: RADAR_ADAPTER_KEYS.iem,
     futureAdapter: RADAR_ADAPTER_KEYS.customFrames,
-    playback: false,
+    playback: true,
     forcedProduct: "N0B"
   }
 };
