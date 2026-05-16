@@ -13,16 +13,48 @@
   <style>
     html,
     body {
+      width: 100%;
       height: 100%;
+      min-height: 100%;
       margin: 0;
-      background: #0b0f14;
+      overflow: hidden;
+      background: #05080d;
       color: #edf2f7;
       font-family: Arial, Helvetica, sans-serif;
     }
 
     #map {
-      height: 100%;
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: #05080d;
+    }
+
+    .leaflet-container {
       width: 100%;
+      height: 100%;
+      background: #05080d;
+    }
+
+    .leaflet-pane,
+    .leaflet-tile,
+    .leaflet-marker-icon,
+    .leaflet-marker-shadow,
+    .leaflet-tile-container,
+    .leaflet-pane > svg,
+    .leaflet-pane > canvas,
+    .leaflet-zoom-box,
+    .leaflet-image-layer,
+    .leaflet-layer {
+      position: absolute;
+      left: 0;
+      top: 0;
+    }
+
+    .leaflet-container img {
+      max-width: none !important;
     }
 
     .info-panel {
@@ -127,6 +159,10 @@
       attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
       maxZoom: 19,
     }).addTo(map);
+
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 0);
 
     const infoGrid = document.getElementById('infoGrid');
     const statusEl = document.getElementById('status');
@@ -238,6 +274,9 @@
         });
 
         map.fitBounds(bounds, { padding: [24, 24] });
+        setTimeout(() => {
+          map.invalidateSize();
+        }, 50);
         setInfo(catalog, frame);
       } catch (error) {
         if (radarLayer) {
