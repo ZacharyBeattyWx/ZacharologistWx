@@ -155,6 +155,12 @@
       attributionControl: true,
     }).setView([37.0, -80.2], 7);
 
+    map.createPane('radarPane');
+    map.getPane('radarPane').style.zIndex = 350;
+
+    map.createPane('debugPane');
+    map.getPane('debugPane').style.zIndex = 650;
+
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
       maxZoom: 19,
@@ -303,32 +309,45 @@
 
       if (Number.isFinite(lat) && Number.isFinite(lon)) {
         radarSiteMarker = L.circleMarker([lat, lon], {
-          radius: 7,
+          radius: 9,
           color: '#38bdf8',
-          weight: 2,
+          weight: 3,
           fillColor: '#0ea5e9',
-          fillOpacity: 0.9,
+          fillOpacity: 1,
+          pane: 'debugPane',
         })
+          .bindTooltip('KFCX', {
+            permanent: true,
+            direction: 'top',
+            offset: [0, -10],
+          })
           .bindPopup('KFCX radar site')
           .addTo(map);
       }
 
       overlayBoundsRectangle = L.rectangle(bounds, {
         color: '#facc15',
-        weight: 1,
-        opacity: 0.85,
+        weight: 2,
+        opacity: 0.95,
         fillOpacity: 0,
+        pane: 'debugPane',
       })
         .bindPopup('Current image overlay bounds')
         .addTo(map);
 
       overlayCenterMarker = L.circleMarker(bounds.getCenter(), {
-        radius: 4,
-        color: '#fecaca',
+        radius: 6,
+        color: '#f87171',
         weight: 2,
         fillColor: '#ef4444',
-        fillOpacity: 0.95,
+        fillOpacity: 1,
+        pane: 'debugPane',
       })
+        .bindTooltip('Bounds center', {
+          permanent: true,
+          direction: 'top',
+          offset: [0, -8],
+        })
         .bindPopup('Current overlay bounds center')
         .addTo(map);
     }
@@ -358,6 +377,7 @@
         radarLayer = L.imageOverlay(imageUrl, bounds, {
           opacity: 1,
           interactive: false,
+          pane: 'radarPane',
         }).addTo(map);
 
         radarLayer.once('load', () => {
