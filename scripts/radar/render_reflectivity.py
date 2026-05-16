@@ -103,6 +103,30 @@ def rgba_for_dbz(value: float) -> tuple[int, int, int, int]:
     return first_stop_rgba(selected)
 
 
+def radar_app_rgba_for_dbz(value: float) -> tuple[int, int, int, int]:
+    if value < -5:
+        return 0, 0, 0, 0
+    if value < 0:
+        return 112, 128, 144, 25
+    if value < 5:
+        return 64, 80, 112, 55
+    if value < 10:
+        return 70, 130, 110, 95
+    if value < 15:
+        return 110, 200, 110, 175
+    if value < 20:
+        return 100, 220, 120, 220
+    if value < 30:
+        return 50, 205, 50, 255
+    if value < 40:
+        return 255, 215, 0, 255
+    if value < 50:
+        return 255, 140, 0, 255
+    if value < 60:
+        return 220, 40, 40, 255
+    return 190, 0, 200, 255
+
+
 def remove_small_components(visible_mask, min_component_pixels: int = DEFAULT_MIN_COMPONENT_PIXELS):
     import numpy as np
 
@@ -165,16 +189,9 @@ def reflectivity_to_rgba(
     raw_visible_mask = finite_mask & (numeric >= min_visible_dbz)
     visible_mask = remove_small_components(raw_visible_mask, min_component_pixels)
 
-    for entry in DEFAULT_REFLECTIVITY_COLOR_TABLE["colors"]:
-        threshold = entry["value"]
-        color = first_stop_rgba(entry)
-        rgba[visible_mask & (numeric >= threshold)] = color
+    for y, x in zip(*np.nonzero(visible_mask)):
+        rgba[y, x] = radar_app_rgba_for_dbz(float(numeric[y, x]))
 
-    rgba[visible_mask & (numeric < 0), 3] = 35
-    rgba[visible_mask & (numeric >= 0) & (numeric < 5), 3] = 80
-    rgba[visible_mask & (numeric >= 5) & (numeric < 10), 3] = 145
-    rgba[visible_mask & (numeric >= 10) & (numeric < 20), 3] = 210
-    rgba[visible_mask & (numeric >= 20), 3] = 255
     rgba[~finite_mask] = [0, 0, 0, 0]
     rgba[finite_mask & ~visible_mask] = [0, 0, 0, 0]
     return rgba
@@ -734,6 +751,7 @@ def main() -> int:
                 "outputImageMode": output_image_mode,
                 "projectionMode": projection_mode,
                 "samplingMode": sampling_mode,
+                "paletteMode": "radar-app-v1",
             },
         }
 
@@ -755,6 +773,7 @@ def main() -> int:
         print(f"imageHeight={image.height}")
         print(f"bounds={bounds}")
         print(f"samplingMode={sampling_mode}")
+        print("paletteMode=radar-app-v1")
         print(f"smoothingPasses={int(args.smoothing_passes)}")
         print(f"minVisibleDbz={stats['minVisibleDbz']}")
         print(f"minComponentPixels={stats['minComponentPixels']}")
