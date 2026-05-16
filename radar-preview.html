@@ -233,6 +233,7 @@
           <button class="playback-button" id="prevFrameButton" type="button">Previous</button>
           <button class="playback-button" id="playPauseButton" type="button">Play</button>
           <button class="playback-button" id="nextFrameButton" type="button">Next</button>
+          <button class="playback-button" id="resetViewButton" type="button">Reset View</button>
         </div>
         <div class="frame-status">
           <span id="frameTimeLabel">Frame time unavailable</span>
@@ -282,6 +283,7 @@
     const prevFrameButton = document.getElementById('prevFrameButton');
     const playPauseButton = document.getElementById('playPauseButton');
     const nextFrameButton = document.getElementById('nextFrameButton');
+    const resetViewButton = document.getElementById('resetViewButton');
     const frameTimeLabel = document.getElementById('frameTimeLabel');
     const frameCountLabel = document.getElementById('frameCountLabel');
     const PLAY_INTERVAL_MS = 850;
@@ -296,6 +298,7 @@
     let playbackTimer = null;
     let latestFrame = null;
     let latestBounds = null;
+    let radarBounds = null;
 
     function setStatus(message, isError = false) {
       statusEl.textContent = message;
@@ -451,6 +454,16 @@
       prevFrameButton.disabled = !hasMultipleFrames;
       playPauseButton.disabled = !hasMultipleFrames;
       nextFrameButton.disabled = !hasMultipleFrames;
+      resetViewButton.disabled = !radarBounds;
+    }
+
+    function resetMapView() {
+      if (!radarBounds) return;
+
+      map.fitBounds(radarBounds, { padding: [24, 24] });
+      setTimeout(() => {
+        map.invalidateSize();
+      }, 50);
     }
 
     function showFrame(index) {
@@ -483,10 +496,6 @@
         setStatus('Radar image failed to load.', true);
       });
 
-      map.fitBounds(bounds, { padding: [24, 24] });
-      setTimeout(() => {
-        map.invalidateSize();
-      }, 50);
       updateDebugLayers(frame, bounds);
       setInfo(currentCatalog, frame);
       updatePlaybackLabels();
@@ -605,6 +614,8 @@
         playbackFrames = [...catalogFramesNewestFirst].reverse();
         stopPlayback();
         showFrame(playbackFrames.length - 1);
+        radarBounds = latestBounds;
+        resetMapView();
       } catch (error) {
         stopPlayback();
         if (radarLayer) {
@@ -619,6 +630,7 @@
         playbackIndex = 0;
         latestFrame = null;
         latestBounds = null;
+        radarBounds = null;
 
         infoGrid.replaceChildren();
         updatePlaybackLabels();
@@ -650,6 +662,7 @@
     prevFrameButton.addEventListener('click', () => stepFrame(-1));
     playPauseButton.addEventListener('click', togglePlayback);
     nextFrameButton.addEventListener('click', () => stepFrame(1));
+    resetViewButton.addEventListener('click', resetMapView);
     refreshButton.addEventListener('click', loadRadar);
     loadRadar();
   </script>
