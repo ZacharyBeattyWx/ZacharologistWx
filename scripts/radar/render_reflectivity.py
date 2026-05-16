@@ -275,15 +275,85 @@ def sample_polar_nearest(source, azimuth_float, gate_float):
     return numeric[azimuth_index, gate_index]
 
 
+def normalize_azimuths(azimuths, expected_count: int):
+    import numpy as np
+
+    if azimuths is None:
+        return None
+
+    numeric = np.asarray(np.ma.array(azimuths).filled(np.nan), dtype=float).reshape(-1)
+
+    if numeric.size != expected_count:
+        return None
+
+    if not np.isfinite(numeric).all():
+        return None
+
+    return np.mod(numeric, 360.0)
+
+
+def circular_midpoint_degrees(start_azimuths, end_azimuths):
+    import numpy as np
+
+    start = np.asarray(np.ma.array(start_azimuths).filled(np.nan), dtype=float).reshape(-1)
+    end = np.asarray(np.ma.array(end_azimuths).filled(np.nan), dtype=float).reshape(-1)
+
+    if start.size != end.size:
+        return None
+
+    delta = np.mod(end - start, 360.0)
+    return np.mod(start + (delta / 2.0), 360.0)
+
+
+def radial_azimuth_indices(target_degrees, row_azimuths):
+    import numpy as np
+
+    sorted_angles = np.asarray(row_azimuths, dtype=float)
+    row_count = sorted_angles.size
+
+    if row_count < 2:
+        return None
+
+    targets = np.mod(target_degrees, 360.0)
+    targets = np.where(targets < sorted_angles[0], targets + 360.0, targets)
+    angle_axis = np.concatenate([sorted_angles, [sorted_angles[0] + 360.0]])
+    index_axis = np.concatenate([np.arange(row_count, dtype=float), [float(row_count)]])
+    return np.mod(np.interp(targets, angle_axis, index_axis), row_count)
+
+
+def prepare_azimuth_sample_source(values, azimuth_degrees_by_row):
+    import numpy as np
+
+    numeric = np.asarray(np.ma.array(values).filled(np.nan), dtype=float)
+    azimuth_count = numeric.shape[0]
+    row_azimuths = normalize_azimuths(azimuth_degrees_by_row, azimuth_count)
+
+    if row_azimuths is None:
+        return numeric, None, "row-index-fallback"
+
+    order = np.argsort(row_azimuths, kind="stable")
+    sorted_azimuths = row_azimuths[order]
+    sorted_numeric = numeric[order]
+
+    if np.unique(np.round(sorted_azimuths, 6)).size < 2:
+        return numeric, None, "row-index-fallback"
+
+    return sorted_numeric, sorted_azimuths, "azimuth-aware"
+
+
 def polar_reflectivity_to_cartesian_grid(
     values,
     range_km: float,
     output_size_px: int = DEFAULT_CARTESIAN_SIZE_PX,
     sampling_mode: str = DEFAULT_SAMPLING_MODE,
+    azimuth_degrees_by_row=None,
 ):
     import numpy as np
 
-    numeric = np.asarray(np.ma.array(values).filled(np.nan), dtype=float)
+    numeric, sorted_azimuths, azimuth_mapping_mode = prepare_azimuth_sample_source(
+        values,
+        azimuth_degrees_by_row,
+    )
     azimuth_count, gate_count = numeric.shape
     output_grid = np.full((output_size_px, output_size_px), np.nan, dtype=float)
     axis_km = np.linspace(-range_km, range_km, output_size_px)
@@ -293,7 +363,10 @@ def polar_reflectivity_to_cartesian_grid(
 
     azimuth_degrees = np.degrees(np.arctan2(x_km[in_range], y_km[in_range]))
     azimuth_degrees = np.where(azimuth_degrees < 0, azimuth_degrees + 360.0, azimuth_degrees)
-    azimuth_index_float = azimuth_degrees / 360.0 * azimuth_count
+    if sorted_azimuths is not None:
+        azimuth_index_float = radial_azimuth_indices(azimuth_degrees, sorted_azimuths)
+    else:
+        azimuth_index_float = azimuth_degrees / 360.0 * azimuth_count
     gate_index_float = range_at_pixel[in_range] / range_km * (gate_count - 1)
 
     if sampling_mode == "nearest":
@@ -302,7 +375,7 @@ def polar_reflectivity_to_cartesian_grid(
         sampled_values = sample_polar_bilinear(numeric, azimuth_index_float, gate_index_float)
 
     output_grid[in_range] = sampled_values
-    return output_grid
+    return output_grid, azimuth_mapping_mode
 
 
 def smooth_cartesian_grid(grid, passes=1):
@@ -345,18 +418,20 @@ def polar_reflectivity_to_cartesian_rgba(
     min_component_pixels: int = DEFAULT_MIN_COMPONENT_PIXELS,
     smoothing_passes: int = DEFAULT_CARTESIAN_SMOOTHING_PASSES,
     sampling_mode: str = DEFAULT_SAMPLING_MODE,
+    azimuth_degrees_by_row=None,
 ):
     del radar_lat, radar_lon
 
-    cartesian_grid = polar_reflectivity_to_cartesian_grid(
+    cartesian_grid, azimuth_mapping_mode = polar_reflectivity_to_cartesian_grid(
         values,
         range_km,
         output_size_px,
         sampling_mode,
+        azimuth_degrees_by_row,
     )
     cartesian_grid = smooth_cartesian_grid(cartesian_grid, smoothing_passes)
     rgba = reflectivity_to_rgba(cartesian_grid, min_visible_dbz, min_component_pixels)
-    return rgba, cartesian_grid
+    return rgba, cartesian_grid, azimuth_mapping_mode
 
 
 def catalog_product_metadata(product: str) -> dict:
@@ -513,7 +588,7 @@ def summarize_item_value(name: str, value) -> None:
 
 
 def inspect_level3_file(path: Path) -> bool:
-    level3, mapped = decode_level3_mapped_data(path)
+    level3, mapped, azimuth_degrees_by_row = decode_level3_mapped_data(path)
 
     if level3 is None:
         return False
@@ -530,11 +605,31 @@ def inspect_level3_file(path: Path) -> bool:
     print_level3_sym_block_summary(level3)
 
     if mapped is not None:
+        if azimuth_degrees_by_row is not None:
+            print(f"azimuthMetadataRows={len(azimuth_degrees_by_row)}")
+        else:
+            print("azimuthMetadataRows=0")
         print("Decode succeeded, but final WebP rendering is intentionally blocked unless --render is provided.")
         return True
 
     print("No mappable data arrays were found; no frame was generated.")
     return False
+
+
+def extract_radial_azimuths(item: dict, expected_count: int):
+    if "start_az" in item and "end_az" in item:
+        return normalize_azimuths(
+            circular_midpoint_degrees(item["start_az"], item["end_az"]),
+            expected_count,
+        )
+
+    if "start_az" in item:
+        return normalize_azimuths(item["start_az"], expected_count)
+
+    if "end_az" in item:
+        return normalize_azimuths(item["end_az"], expected_count)
+
+    return None
 
 
 def decode_level3_mapped_data(path: Path):
@@ -544,15 +639,16 @@ def decode_level3_mapped_data(path: Path):
         print("MetPy is not installed; cannot decode Level III NIDS data.")
         print("Install renderer dependencies with: pip install -r scripts/radar/requirements.txt")
         print(f"Import error: {error}")
-        return None, None
+        return None, None, None
 
     try:
         level3 = Level3File(str(path))
     except Exception as error:
         print(f"MetPy failed to open {path}: {error}")
-        return None, None
+        return None, None, None
 
     mapped = None
+    azimuth_degrees_by_row = None
 
     sym_block = getattr(level3, "sym_block", []) or []
 
@@ -562,10 +658,11 @@ def decode_level3_mapped_data(path: Path):
         if "data" in item:
             try:
                 mapped = level3.map_data(item["data"])
+                azimuth_degrees_by_row = extract_radial_azimuths(item, mapped.shape[0])
             except Exception as error:
                 print(f"MetPy decoded the file, but map_data failed: {error}")
 
-    return level3, mapped
+    return level3, mapped, azimuth_degrees_by_row
 
 
 def print_level3_metadata(level3) -> None:
@@ -627,7 +724,7 @@ def print_level3_sym_block_summary(level3) -> None:
 
 
 def render_level3_frame(source_file: Path, args, config: dict) -> bool:
-    level3, mapped = decode_level3_mapped_data(source_file)
+    level3, mapped, azimuth_degrees_by_row = decode_level3_mapped_data(source_file)
 
     if level3 is None or mapped is None:
         print("No WebP/PNG frame was created.")
@@ -649,7 +746,7 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
 
     from PIL import Image
 
-    rgba, cartesian_grid = polar_reflectivity_to_cartesian_rgba(
+    rgba, cartesian_grid, azimuth_mapping_mode = polar_reflectivity_to_cartesian_rgba(
         mapped,
         lat,
         lon,
@@ -659,6 +756,7 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
         args.min_component_pixels,
         args.smoothing_passes,
         args.sampling_mode,
+        azimuth_degrees_by_row,
     )
     stats = reflectivity_stats(cartesian_grid, args.min_visible_dbz, args.min_component_pixels)
     source_stats = reflectivity_stats(mapped, args.min_visible_dbz, args.min_component_pixels)
@@ -668,10 +766,18 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
     relative_url = "/" + frame_path.relative_to(REPO_ROOT).as_posix()
     sampling_mode = args.sampling_mode
     if sampling_mode == "nearest":
-        projection_mode = "polar-cartesian-nearest-v2"
+        projection_mode = (
+            "polar-cartesian-azimuth-aware-nearest-v1"
+            if azimuth_mapping_mode == "azimuth-aware"
+            else "polar-cartesian-nearest-v2"
+        )
         output_image_mode = "north-up-cartesian-nearest-sampled"
     else:
-        projection_mode = "polar-cartesian-bilinear-v1"
+        projection_mode = (
+            "polar-cartesian-azimuth-aware-bilinear-v1"
+            if azimuth_mapping_mode == "azimuth-aware"
+            else "polar-cartesian-bilinear-v1"
+        )
         output_image_mode = "north-up-cartesian-bilinear-sampled"
 
     frame_entry = {
@@ -698,6 +804,8 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
             "outputImageMode": output_image_mode,
             "projectionMode": projection_mode,
             "samplingMode": sampling_mode,
+            "azimuthMappingMode": azimuth_mapping_mode,
+            "azimuthMetadataRows": int(len(azimuth_degrees_by_row)) if azimuth_degrees_by_row is not None else 0,
             "paletteMode": "radar-app-v1",
         },
     }
@@ -721,6 +829,8 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
     print(f"imageHeight={image.height}")
     print(f"bounds={bounds}")
     print(f"samplingMode={sampling_mode}")
+    print(f"azimuthMappingMode={azimuth_mapping_mode}")
+    print(f"azimuthMetadataRows={len(azimuth_degrees_by_row) if azimuth_degrees_by_row is not None else 0}")
     print("paletteMode=radar-app-v1")
     print(f"smoothingPasses={int(args.smoothing_passes)}")
     print(f"minVisibleDbz={stats['minVisibleDbz']}")
