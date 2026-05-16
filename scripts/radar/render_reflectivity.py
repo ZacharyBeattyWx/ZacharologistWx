@@ -44,6 +44,7 @@ DEFAULT_REFLECTIVITY_COLOR_TABLE = {
 }
 DEFAULT_MIN_VISIBLE_DBZ = 15.0
 DEFAULT_MIN_COMPONENT_PIXELS = 6
+DEFAULT_CARTESIAN_SIZE_PX = 1024
 
 
 def load_config(path: Path) -> dict:
@@ -206,6 +207,62 @@ def reflectivity_stats(
         "finiteMax": float(np.nanmax(finite_values)) if finite_pixels else None,
         "finiteMean": float(np.nanmean(finite_values)) if finite_pixels else None,
     }
+
+
+def polar_reflectivity_to_cartesian_grid(
+    values,
+    range_km: float,
+    output_size_px: int = DEFAULT_CARTESIAN_SIZE_PX,
+):
+    import numpy as np
+
+    numeric = np.asarray(np.ma.array(values).filled(np.nan), dtype=float)
+    azimuth_count, gate_count = numeric.shape
+    output_grid = np.full((output_size_px, output_size_px), np.nan, dtype=float)
+    center = (output_size_px - 1) / 2
+
+    finite_rows, finite_cols = np.nonzero(np.isfinite(numeric))
+
+    if finite_rows.size == 0:
+        return output_grid
+
+    azimuth_radians = np.deg2rad(finite_rows / azimuth_count * 360.0)
+    gate_ranges_km = finite_cols / gate_count * range_km
+    x_km = gate_ranges_km * np.sin(azimuth_radians)
+    y_km = gate_ranges_km * np.cos(azimuth_radians)
+    output_x = np.rint(center + x_km / range_km * center).astype(int)
+    output_y = np.rint(center - y_km / range_km * center).astype(int)
+    in_bounds = (
+        (output_x >= 0)
+        & (output_x < output_size_px)
+        & (output_y >= 0)
+        & (output_y < output_size_px)
+    )
+
+    output_values = numeric[finite_rows[in_bounds], finite_cols[in_bounds]]
+
+    for y, x, value in zip(output_y[in_bounds], output_x[in_bounds], output_values):
+        existing = output_grid[y, x]
+        if not np.isfinite(existing) or value > existing:
+            output_grid[y, x] = value
+
+    return output_grid
+
+
+def polar_reflectivity_to_cartesian_rgba(
+    values,
+    radar_lat: float,
+    radar_lon: float,
+    range_km: float,
+    output_size_px: int = DEFAULT_CARTESIAN_SIZE_PX,
+    min_visible_dbz: float = DEFAULT_MIN_VISIBLE_DBZ,
+    min_component_pixels: int = DEFAULT_MIN_COMPONENT_PIXELS,
+):
+    del radar_lat, radar_lon
+
+    cartesian_grid = polar_reflectivity_to_cartesian_grid(values, range_km, output_size_px)
+    rgba = reflectivity_to_rgba(cartesian_grid, min_visible_dbz, min_component_pixels)
+    return rgba, cartesian_grid
 
 
 def catalog_product_metadata(product: str) -> dict:
@@ -531,18 +588,28 @@ def main() -> int:
         frame_dir.mkdir(parents=True, exist_ok=True)
         frame_path = frame_dir / f"{slug}.webp"
 
-        from PIL import Image
-
-        stats = reflectivity_stats(mapped, args.min_visible_dbz, args.min_component_pixels)
-        rgba = reflectivity_to_rgba(mapped, args.min_visible_dbz, args.min_component_pixels)
-        image = Image.fromarray(rgba, mode="RGBA")
-        image.save(frame_path, "WEBP", lossless=True)
-
         lat = float(getattr(level3, "lat"))
         lon = float(getattr(level3, "lon"))
         range_km = float(getattr(level3, "max_range"))
         mapped_shape = [int(dimension) for dimension in mapped.shape]
         bounds = calculate_rough_bounds(lat, lon, range_km)
+
+        from PIL import Image
+
+        rgba, cartesian_grid = polar_reflectivity_to_cartesian_rgba(
+            mapped,
+            lat,
+            lon,
+            range_km,
+            DEFAULT_CARTESIAN_SIZE_PX,
+            args.min_visible_dbz,
+            args.min_component_pixels,
+        )
+        stats = reflectivity_stats(cartesian_grid, args.min_visible_dbz, args.min_component_pixels)
+        source_stats = reflectivity_stats(mapped, args.min_visible_dbz, args.min_component_pixels)
+        image = Image.fromarray(rgba, mode="RGBA")
+        image.save(frame_path, "WEBP", lossless=True)
+
         relative_url = "/" + frame_path.relative_to(REPO_ROOT).as_posix()
         frame_entry = {
             "slug": slug,
@@ -553,15 +620,19 @@ def main() -> int:
             "height": image.height,
             "palette": "DEFAULT_REFLECTIVITY_COLOR_TABLE",
             "stats": stats,
+            "sourceStats": source_stats,
             "debug": {
                 "radarLat": lat,
                 "radarLon": lon,
                 "maxRangeKm": range_km,
                 "mappedShape": mapped_shape,
+                "cartesianSizePx": DEFAULT_CARTESIAN_SIZE_PX,
                 "imageWidth": image.width,
                 "imageHeight": image.height,
                 "calculatedBounds": bounds,
-                "projectionMode": "rough-bounds-v1",
+                "sourceImageMode": "azimuth-range",
+                "outputImageMode": "north-up-cartesian",
+                "projectionMode": "polar-cartesian-v1",
             },
         }
 
