@@ -244,6 +244,9 @@
           <span id="frameTimeLabel">Frame time unavailable</span>
           <span id="frameCountLabel">0 / 0</span>
         </div>
+        <div class="frame-status">
+          <span id="feedAgeLabel">Updated unavailable</span>
+        </div>
       </div>
     </div>
     <div class="status" id="status">Loading radar catalog...</div>
@@ -291,6 +294,7 @@
     const resetViewButton = document.getElementById('resetViewButton');
     const frameTimeLabel = document.getElementById('frameTimeLabel');
     const frameCountLabel = document.getElementById('frameCountLabel');
+    const feedAgeLabel = document.getElementById('feedAgeLabel');
     const PLAY_INTERVAL_MS = 850;
     let radarLayer = null;
     let radarSiteMarker = null;
@@ -445,6 +449,20 @@
         hour: 'numeric',
         minute: '2-digit',
       });
+    }
+
+    function updateFeedAgeLabel(newestFrame) {
+      const validTime = newestFrame ? new Date(newestFrame.validTime) : null;
+
+      if (!validTime || Number.isNaN(validTime.getTime())) {
+        feedAgeLabel.textContent = 'Updated unavailable';
+        return;
+      }
+
+      const ageMinutes = Math.max(0, Math.round((Date.now() - validTime.getTime()) / 60000));
+      feedAgeLabel.textContent = ageMinutes > 15
+        ? `Updated ${ageMinutes} min ago - Radar feed may be stale`
+        : `Updated ${ageMinutes} min ago`;
     }
 
     function stopPlayback() {
@@ -625,6 +643,7 @@
         catalogFramesNewestFirst = [...catalogFrames(catalog)].sort((a, b) => {
           return new Date(b.validTime) - new Date(a.validTime);
         });
+        updateFeedAgeLabel(catalogFramesNewestFirst[0]);
         playbackFrames = [...catalogFramesNewestFirst].reverse();
         stopPlayback();
         showFrame(playbackFrames.length - 1);
@@ -647,6 +666,7 @@
         radarBounds = null;
 
         infoGrid.replaceChildren();
+        updateFeedAgeLabel(null);
         updatePlaybackLabels();
         setStatus(error.message || 'Radar preview failed to load.', true);
       } finally {
