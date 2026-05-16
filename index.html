@@ -7006,9 +7006,7 @@ body {
             Product
             <select id="radarProductSelect">
               <option value="N0B">Super-Res Reflectivity</option>
-              <option value="N0U">Super-Res Velocity</option>
               <option value="N0S">Storm Relative Velocity</option>
-              <option value="N0C">Correlation Coefficient</option>
             </select>
           </label>
 
@@ -7861,17 +7859,8 @@ async function focusSingleSiteRadarOnAlert(alert) {
     radarSiteSelect.value = site.sector;
   }
 
-  if (currentRadarMode === "highres") {
-    if (radarProductSelect) {
-      radarProductSelect.value = "N0B";
-    }
-
-    clearSingleSiteRadarLoopLayers();
-    loadSingleSiteRadar(site.sector);
-  } else if (currentRadarMode === "raw") {
-    stopSingleSiteRadarLoop();
-    loadSingleSiteRadar(site.sector);
-    await loadSingleSiteRadarLoopFrames();
+  if (currentRadarMode === "highres" || currentRadarMode === "raw") {
+    await loadSingleSiteRadarForCurrentMode(site.sector);
   }
 }
 
@@ -8617,9 +8606,9 @@ function setRadarMode(mode) {
       singleSiteRadarViewer.style.display = "flex";
     }
 
-    // Current highres mode is a static latest-frame IEM N0B fallback.
-    // It is not the future custom frame-service radar yet.
-    setRadarPlaybackControlsVisible(false);
+    // Current highres mode uses IEM N0B loop frames until the future
+    // custom frame-service radar is available.
+    setRadarPlaybackControlsVisible(true);
 
     if (radarProductSelect) {
       radarProductSelect.value = "N0B";
@@ -8645,8 +8634,7 @@ function setRadarMode(mode) {
           }
         }
 
-        clearSingleSiteRadarLoopLayers();
-        loadSingleSiteRadar(siteCode);
+        loadSingleSiteRadarForCurrentMode(siteCode);
       });
     });
 
@@ -8665,7 +8653,7 @@ function setRadarMode(mode) {
 
     setRadarPlaybackControlsVisible(true);
 
-    initSingleSiteRadar().then(() => {
+    initSingleSiteRadar({ skipLoop: true }).then(() => {
       requestAnimationFrame(() => {
         if (singleSiteMap) {
           singleSiteMap.invalidateSize();
@@ -8673,6 +8661,8 @@ function setRadarMode(mode) {
 
         if (pendingRadarAlert) {
           focusSingleSiteRadarOnAlert(pendingRadarAlert);
+        } else {
+          loadSingleSiteRadarForCurrentMode(getSelectedRadarSiteCode());
         }
       });
     });
@@ -8826,17 +8816,8 @@ async function selectNearestRadarBySearch(query) {
         .openPopup();
     }
 
-    if (currentRadarMode === "highres") {
-      if (radarProductSelect) {
-        radarProductSelect.value = "N0B";
-      }
-
-      clearSingleSiteRadarLoopLayers();
-      loadSingleSiteRadar(site.sector);
-    } else if (currentRadarMode === "raw") {
-      stopSingleSiteRadarLoop();
-      loadSingleSiteRadar(site.sector);
-      loadSingleSiteRadarLoopFrames();
+    if (currentRadarMode === "highres" || currentRadarMode === "raw") {
+      loadSingleSiteRadarForCurrentMode(site.sector);
     }
 
     if (radarSearchStatus) {
@@ -8926,6 +8907,10 @@ function getSelectedRadarProductCode() {
   return (radarProductSelect?.value || "N0B").toUpperCase();
 }
 
+function getRadarModeProduct(mode) {
+  return mode === "highres" ? "N0B" : getSelectedRadarProductCode();
+}
+
 function extractSingleSiteRadarScanTimes(payload) {
   const scans = payload?.scans || payload?.results || payload?.data || [];
 
@@ -9010,8 +8995,12 @@ function toggleSingleSiteRadarLoop() {
   }, SINGLE_SITE_RADAR_LOOP_SPEED);
 }
 
-async function loadSingleSiteRadarLoopFrames() {
+async function loadSingleSiteRadarLoopFrames({ site, product, mode } = {}) {
   if (!singleSiteMap) return;
+
+  site = site || getSelectedRadarSiteCode();
+  product = product || getRadarModeProduct(currentRadarMode);
+  mode = mode || currentRadarMode;
 
   stopSingleSiteRadarLoop();
 
@@ -9033,8 +9022,6 @@ async function loadSingleSiteRadarLoopFrames() {
     singleSiteMap.getPane("radarPane").style.pointerEvents = "none";
   }
 
-  const site = getSelectedRadarSiteCode();
-  const product = getSelectedRadarProductCode();
   const requestId = ++singleSiteRadarLoopRequestId;
 
   if (frameTime) {
@@ -9064,11 +9051,13 @@ async function loadSingleSiteRadarLoopFrames() {
     const data = await response.json();
 
     if (
-  requestId !== singleSiteRadarLoopRequestId ||
-  getSelectedRadarSiteCode() !== site
-) {
-  return;
-}
+      requestId !== singleSiteRadarLoopRequestId ||
+      currentRadarMode !== mode ||
+      getSelectedRadarSiteCode() !== site ||
+      getRadarModeProduct(currentRadarMode) !== product
+    ) {
+      return;
+    }
 
     console.log("IEM radar scan response:", {
       site,
@@ -9109,7 +9098,9 @@ async function loadSingleSiteRadarLoopFrames() {
 
   if (
     requestId !== singleSiteRadarLoopRequestId ||
-    getSelectedRadarSiteCode() !== site
+    currentRadarMode !== mode ||
+    getSelectedRadarSiteCode() !== site ||
+    getRadarModeProduct(currentRadarMode) !== product
   ) {
     return;
   }
@@ -9121,6 +9112,38 @@ async function loadSingleSiteRadarLoopFrames() {
   loadSingleSiteRadar(site);
 }
 
+}
+
+async function loadSingleSiteRadarForCurrentMode(site) {
+  clearSingleSiteRadarLoopLayers();
+
+  if (currentRadarMode === "highres") {
+    if (radarProductSelect) {
+      radarProductSelect.value = "N0B";
+    }
+
+    setRadarPlaybackControlsVisible(true);
+    loadSingleSiteRadar(site);
+
+    await loadSingleSiteRadarLoopFrames({
+      site,
+      product: "N0B",
+      mode: "highres"
+    });
+
+    return;
+  }
+
+  if (currentRadarMode === "raw") {
+    setRadarPlaybackControlsVisible(true);
+    loadSingleSiteRadar(site);
+
+    await loadSingleSiteRadarLoopFrames({
+      site,
+      product: getSelectedRadarProductCode(),
+      mode: "raw"
+    });
+  }
 }
 
 function setupSingleSiteRadarLoopControls() {
@@ -9258,20 +9281,8 @@ if (radarSiteSelect) {
       singleSiteMap.setView(siteInfo.center, siteInfo.zoom);
     }
 
-    if (currentRadarMode === "highres") {
-      if (radarProductSelect) {
-        radarProductSelect.value = "N0B";
-      }
-
-      clearSingleSiteRadarLoopLayers();
-      loadSingleSiteRadar(site);
-      return;
-    }
-
-    if (currentRadarMode === "raw") {
-      stopSingleSiteRadarLoop();
-      loadSingleSiteRadar(site);
-      loadSingleSiteRadarLoopFrames();
+    if (currentRadarMode === "highres" || currentRadarMode === "raw") {
+      loadSingleSiteRadarForCurrentMode(site);
     }
   });
 }
@@ -9282,15 +9293,12 @@ if (radarProductSelect) {
 
     if (currentRadarMode === "highres") {
       radarProductSelect.value = "N0B";
-      clearSingleSiteRadarLoopLayers();
-      loadSingleSiteRadar(site);
+      loadSingleSiteRadarForCurrentMode(site);
       return;
     }
 
     if (currentRadarMode === "raw") {
-      stopSingleSiteRadarLoop();
-      loadSingleSiteRadar(site);
-      loadSingleSiteRadarLoopFrames();
+      loadSingleSiteRadarForCurrentMode(site);
     }
   });
 }
@@ -9308,20 +9316,8 @@ if (radarRefreshBtn) {
   radarRefreshBtn.addEventListener("click", () => {
     const site = radarSiteSelect?.value || "RAX";
 
-    if (currentRadarMode === "highres") {
-      if (radarProductSelect) {
-        radarProductSelect.value = "N0B";
-      }
-
-      clearSingleSiteRadarLoopLayers();
-      loadSingleSiteRadar(site);
-      return;
-    }
-
-    if (currentRadarMode === "raw") {
-      stopSingleSiteRadarLoop();
-      loadSingleSiteRadar(site);
-      loadSingleSiteRadarLoopFrames();
+    if (currentRadarMode === "highres" || currentRadarMode === "raw") {
+      loadSingleSiteRadarForCurrentMode(site);
     }
   });
 }
