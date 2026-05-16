@@ -20,11 +20,14 @@ jobs:
       - name: Validate radar config
         run: python -m json.tool scripts/radar/radar_config.json
 
-      - name: Fetch NEXRAD scaffold
-        run: python scripts/radar/fetch_nexrad.py --dry-run
+      - name: Install radar renderer dependencies
+        run: python -m pip install -r scripts/radar/requirements.txt
 
-      - name: Render reflectivity scaffold
-        run: python scripts/radar/render_reflectivity.py --dry-run
+      - name: Fetch one public Level III source file
+        run: python scripts/radar/fetch_nexrad.py --force
+
+      - name: Diagnose Level III decode
+        run: python scripts/radar/render_reflectivity.py --diagnose
 
       - name: Build frames catalog dry run
         run: python scripts/radar/build_frames_catalog.py --dry-run
