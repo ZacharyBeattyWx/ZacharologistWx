@@ -626,6 +626,112 @@ def print_level3_sym_block_summary(level3) -> None:
     return decoded_any
 
 
+def render_level3_frame(source_file: Path, args, config: dict) -> bool:
+    level3, mapped = decode_level3_mapped_data(source_file)
+
+    if level3 is None or mapped is None:
+        print("No WebP/PNG frame was created.")
+        return False
+
+    meta = source_metadata(source_file)
+    site = f"K{meta['sector']}"
+    product = meta["product"]
+    slug = f"{product}_{meta['date']}_{meta['time']}"
+    frame_dir = REPO_ROOT / "radar" / "frames" / site / product
+    frame_dir.mkdir(parents=True, exist_ok=True)
+    frame_path = frame_dir / f"{slug}.webp"
+
+    lat = float(getattr(level3, "lat"))
+    lon = float(getattr(level3, "lon"))
+    range_km = float(getattr(level3, "max_range"))
+    mapped_shape = [int(dimension) for dimension in mapped.shape]
+    bounds = calculate_rough_bounds(lat, lon, range_km)
+
+    from PIL import Image
+
+    rgba, cartesian_grid = polar_reflectivity_to_cartesian_rgba(
+        mapped,
+        lat,
+        lon,
+        range_km,
+        DEFAULT_CARTESIAN_SIZE_PX,
+        args.min_visible_dbz,
+        args.min_component_pixels,
+        args.smoothing_passes,
+        args.sampling_mode,
+    )
+    stats = reflectivity_stats(cartesian_grid, args.min_visible_dbz, args.min_component_pixels)
+    source_stats = reflectivity_stats(mapped, args.min_visible_dbz, args.min_component_pixels)
+    image = Image.fromarray(rgba, mode="RGBA")
+    image.save(frame_path, "WEBP", lossless=True)
+
+    relative_url = "/" + frame_path.relative_to(REPO_ROOT).as_posix()
+    sampling_mode = args.sampling_mode
+    if sampling_mode == "nearest":
+        projection_mode = "polar-cartesian-nearest-v2"
+        output_image_mode = "north-up-cartesian-nearest-sampled"
+    else:
+        projection_mode = "polar-cartesian-bilinear-v1"
+        output_image_mode = "north-up-cartesian-bilinear-sampled"
+
+    frame_entry = {
+        "slug": slug,
+        "url": relative_url,
+        "validTime": valid_time_from_metadata(meta),
+        "bounds": bounds,
+        "width": image.width,
+        "height": image.height,
+        "palette": "DEFAULT_REFLECTIVITY_COLOR_TABLE",
+        "stats": stats,
+        "sourceStats": source_stats,
+        "debug": {
+            "radarLat": lat,
+            "radarLon": lon,
+            "maxRangeKm": range_km,
+            "mappedShape": mapped_shape,
+            "cartesianSizePx": DEFAULT_CARTESIAN_SIZE_PX,
+            "imageWidth": image.width,
+            "imageHeight": image.height,
+            "calculatedBounds": bounds,
+            "smoothingPasses": int(args.smoothing_passes),
+            "sourceImageMode": "azimuth-range",
+            "outputImageMode": output_image_mode,
+            "projectionMode": projection_mode,
+            "samplingMode": sampling_mode,
+            "paletteMode": "radar-app-v1",
+        },
+    }
+
+    update_frames_catalog(
+        REPO_ROOT / config.get("catalogPath", "radar/frames.json"),
+        frame_entry,
+        site,
+        meta["sector"],
+        product,
+        config.get("frameCount"),
+    )
+
+    print(f"Wrote {frame_path}")
+    print(f"Updated {config.get('catalogPath', 'radar/frames.json')}")
+    print(f"radarLat={lat}")
+    print(f"radarLon={lon}")
+    print(f"maxRangeKm={range_km}")
+    print(f"mappedShape={mapped_shape}")
+    print(f"imageWidth={image.width}")
+    print(f"imageHeight={image.height}")
+    print(f"bounds={bounds}")
+    print(f"samplingMode={sampling_mode}")
+    print("paletteMode=radar-app-v1")
+    print(f"smoothingPasses={int(args.smoothing_passes)}")
+    print(f"minVisibleDbz={stats['minVisibleDbz']}")
+    print(f"minComponentPixels={stats['minComponentPixels']}")
+    print(f"rawVisiblePixels={stats['rawVisiblePixels']}")
+    print(f"visiblePixelsAfterDespeckle={stats['visiblePixels']}")
+    print(f"removedSpecklePixels={stats['removedSpecklePixels']}")
+    print(f"visibleCoveragePercent={stats['visibleCoveragePercent']:.6f}")
+    return True
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Scaffold for rendering Level III N0B reflectivity frames."
@@ -703,123 +809,33 @@ def main() -> int:
         print(f"No Level III N0B source files found in {args.source_cache}.")
         return 1
 
-    source_file = source_files[-1]
-    print(f"Found source file: {source_file}")
+    frame_count = safe_frame_count(config.get("frameCount"))
+    selected_source_files = source_files[-frame_count:]
+    print(f"Found {len(source_files)} Level III N0B source file(s) in {args.source_cache}.")
+    print(f"Selected {len(selected_source_files)} newest source file(s) for frameCount={frame_count}.")
 
-    decoded = inspect_level3_file(source_file)
+    decoded_all = True
+    for index, source_file in enumerate(selected_source_files, start=1):
+        print(f"Source file {index}/{len(selected_source_files)}: {source_file}")
+        decoded = inspect_level3_file(source_file)
 
-    if not decoded:
-        print("No WebP/PNG frame was created.")
-        return 2
+        if not decoded:
+            decoded_all = False
+            print("No WebP/PNG frame was created.")
+
+            if args.render:
+                return 2
+
+        if args.render and not render_level3_frame(source_file, args, config):
+            return 2
 
     if args.diagnose:
         print("Diagnostic mode complete. Stopping before image generation.")
         print("No WebP/PNG frame was created.")
-        return 0
+        return 0 if decoded_all else 2
 
     if args.render:
-        level3, mapped = decode_level3_mapped_data(source_file)
-
-        if level3 is None or mapped is None:
-            print("No WebP/PNG frame was created.")
-            return 2
-
-        meta = source_metadata(source_file)
-        site = f"K{meta['sector']}"
-        product = meta["product"]
-        slug = f"{product}_{meta['date']}_{meta['time']}"
-        frame_dir = REPO_ROOT / "radar" / "frames" / site / product
-        frame_dir.mkdir(parents=True, exist_ok=True)
-        frame_path = frame_dir / f"{slug}.webp"
-
-        lat = float(getattr(level3, "lat"))
-        lon = float(getattr(level3, "lon"))
-        range_km = float(getattr(level3, "max_range"))
-        mapped_shape = [int(dimension) for dimension in mapped.shape]
-        bounds = calculate_rough_bounds(lat, lon, range_km)
-
-        from PIL import Image
-
-        rgba, cartesian_grid = polar_reflectivity_to_cartesian_rgba(
-            mapped,
-            lat,
-            lon,
-            range_km,
-            DEFAULT_CARTESIAN_SIZE_PX,
-            args.min_visible_dbz,
-            args.min_component_pixels,
-            args.smoothing_passes,
-            args.sampling_mode,
-        )
-        stats = reflectivity_stats(cartesian_grid, args.min_visible_dbz, args.min_component_pixels)
-        source_stats = reflectivity_stats(mapped, args.min_visible_dbz, args.min_component_pixels)
-        image = Image.fromarray(rgba, mode="RGBA")
-        image.save(frame_path, "WEBP", lossless=True)
-
-        relative_url = "/" + frame_path.relative_to(REPO_ROOT).as_posix()
-        sampling_mode = args.sampling_mode
-        if sampling_mode == "nearest":
-            projection_mode = "polar-cartesian-nearest-v2"
-            output_image_mode = "north-up-cartesian-nearest-sampled"
-        else:
-            projection_mode = "polar-cartesian-bilinear-v1"
-            output_image_mode = "north-up-cartesian-bilinear-sampled"
-
-        frame_entry = {
-            "slug": slug,
-            "url": relative_url,
-            "validTime": valid_time_from_metadata(meta),
-            "bounds": bounds,
-            "width": image.width,
-            "height": image.height,
-            "palette": "DEFAULT_REFLECTIVITY_COLOR_TABLE",
-            "stats": stats,
-            "sourceStats": source_stats,
-            "debug": {
-                "radarLat": lat,
-                "radarLon": lon,
-                "maxRangeKm": range_km,
-                "mappedShape": mapped_shape,
-                "cartesianSizePx": DEFAULT_CARTESIAN_SIZE_PX,
-                "imageWidth": image.width,
-                "imageHeight": image.height,
-                "calculatedBounds": bounds,
-                "smoothingPasses": int(args.smoothing_passes),
-                "sourceImageMode": "azimuth-range",
-                "outputImageMode": output_image_mode,
-                "projectionMode": projection_mode,
-                "samplingMode": sampling_mode,
-                "paletteMode": "radar-app-v1",
-            },
-        }
-
-        update_frames_catalog(
-            REPO_ROOT / config.get("catalogPath", "radar/frames.json"),
-            frame_entry,
-            site,
-            meta["sector"],
-            product,
-            config.get("frameCount"),
-        )
-
-        print(f"Wrote {frame_path}")
-        print(f"Updated {config.get('catalogPath', 'radar/frames.json')}")
-        print(f"radarLat={lat}")
-        print(f"radarLon={lon}")
-        print(f"maxRangeKm={range_km}")
-        print(f"mappedShape={mapped_shape}")
-        print(f"imageWidth={image.width}")
-        print(f"imageHeight={image.height}")
-        print(f"bounds={bounds}")
-        print(f"samplingMode={sampling_mode}")
-        print("paletteMode=radar-app-v1")
-        print(f"smoothingPasses={int(args.smoothing_passes)}")
-        print(f"minVisibleDbz={stats['minVisibleDbz']}")
-        print(f"minComponentPixels={stats['minComponentPixels']}")
-        print(f"rawVisiblePixels={stats['rawVisiblePixels']}")
-        print(f"visiblePixelsAfterDespeckle={stats['visiblePixels']}")
-        print(f"removedSpecklePixels={stats['removedSpecklePixels']}")
-        print(f"visibleCoveragePercent={stats['visibleCoveragePercent']:.6f}")
+        print(f"Rendered {len(selected_source_files)} frame(s).")
         return 0
 
     # TODO: Apply DEFAULT_REFLECTIVITY_COLOR_TABLE from the frontend contract.
