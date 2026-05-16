@@ -45,6 +45,7 @@ jobs:
           mkdir -p "$SOURCE_DIR"
 
           python - <<'PY'
+          from datetime import datetime, timezone
           import os
           import sys
           import urllib.parse
@@ -56,46 +57,120 @@ jobs:
           product = os.environ.get("PRODUCT") or "N0B"
 
           bucket_url = "https://unidata-nexrad-level3.s3.amazonaws.com"
-
-          # Bucket keys are expected to look like:
-          # Level3_FCX_N0B_YYYYMMDD_HHMM.nids
-          prefix = f"Level3_{site}_{product}_"
-
-          list_url = (
-              bucket_url
-              + "/?list-type=2&prefix="
-              + urllib.parse.quote(prefix, safe="/")
-          )
-
-          print(f"Listing: {list_url}")
-
-          with urllib.request.urlopen(list_url, timeout=60) as response:
-              xml_body = response.read()
-
-          root = ET.fromstring(xml_body)
           namespace = {"s3": "http://s3.amazonaws.com/doc/2006-03-01/"}
 
-          keys = [
-              item.text
-              for item in root.findall(".//s3:Key", namespace)
-              if item.text and item.text.endswith(".nids")
+          def build_list_url(prefix, delimiter=None, continuation_token=None):
+              params = {
+                  "list-type": "2",
+                  "prefix": prefix,
+              }
+              if delimiter is not None:
+                  params["delimiter"] = delimiter
+              if continuation_token is not None:
+                  params["continuation-token"] = continuation_token
+
+              return bucket_url + "/?" + urllib.parse.urlencode(params, safe="/")
+
+          def fetch_listing(prefix, delimiter=None, continuation_token=None):
+              list_url = build_list_url(prefix, delimiter, continuation_token)
+
+              with urllib.request.urlopen(list_url, timeout=60) as response:
+                  xml_body = response.read()
+
+              return ET.fromstring(xml_body)
+
+          def find_nids_keys(prefix):
+              keys = []
+              continuation_token = None
+
+              while True:
+                  root = fetch_listing(prefix, continuation_token=continuation_token)
+                  keys.extend(
+                      item.text
+                      for item in root.findall(".//s3:Key", namespace)
+                      if item.text and item.text.endswith(".nids")
+                  )
+
+                  next_token = root.find("s3:NextContinuationToken", namespace)
+                  if next_token is None or not next_token.text:
+                      break
+
+                  continuation_token = next_token.text
+
+              return keys
+
+          def print_diagnostic_sample(prefix):
+              root = fetch_listing(prefix, delimiter="/")
+              keys = [
+                  item.text
+                  for item in root.findall(".//s3:Key", namespace)
+                  if item.text
+              ][:10]
+              common_prefixes = [
+                  item.text
+                  for item in root.findall(".//s3:CommonPrefixes/s3:Prefix", namespace)
+                  if item.text
+              ][:10]
+
+              label = prefix or "root"
+              print(f"Diagnostic sample for {label}:")
+              print(f"  CommonPrefixes ({len(common_prefixes)} shown):")
+              for common_prefix in common_prefixes:
+                  print(f"    {common_prefix}")
+              print(f"  Keys ({len(keys)} shown):")
+              for key in keys:
+                  print(f"    {key}")
+
+          prefixes = [
+              f"{product}/{site}/",
+              f"{product}/K{site}/",
+              f"{site}/{product}/",
+              f"K{site}/{product}/",
+              f"Level3_{site}_{product}_",
+              f"Level3_K{site}_{product}_",
           ]
 
-          if not keys:
-              print(f"No .nids files found for prefix {prefix}", file=sys.stderr)
+          latest_key = None
+
+          for prefix in prefixes:
+              print(f"Trying prefix: {prefix}")
+              keys = find_nids_keys(prefix)
+              print(f"Found {len(keys)} .nids files")
+
+              if keys:
+                  latest_key = sorted(keys)[-1]
+                  break
+
+          if latest_key is None:
+              for prefix in ["", f"{product}/", f"{site}/", f"K{site}/", "Level3_"]:
+                  print_diagnostic_sample(prefix)
+
+              print("No .nids files found for any tried prefix", file=sys.stderr)
               sys.exit(1)
 
-          latest_key = sorted(keys)[-1]
+          source_dir = Path("radar/source/level3")
           filename = Path(latest_key).name
-          output_path = Path("radar/source/level3") / filename
+          download_path = source_dir / filename
+
+          if filename.startswith("Level3_"):
+              output_path = download_path
+          else:
+              timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M")
+              output_path = source_dir / f"Level3_{site}_{product}_{timestamp}.nids"
 
           download_url = bucket_url + "/" + urllib.parse.quote(latest_key, safe="/")
 
           print(f"Latest key: {latest_key}")
           print(f"Downloading: {download_url}")
-          print(f"Saving to: {output_path}")
+          print(f"Saving to: {download_path}")
 
-          urllib.request.urlretrieve(download_url, output_path)
+          urllib.request.urlretrieve(download_url, download_path)
+
+          if download_path != output_path:
+              print(f"Renaming to: {output_path}")
+              if output_path.exists():
+                  output_path.unlink()
+              download_path.replace(output_path)
           PY
 
       - name: Render radar frame
