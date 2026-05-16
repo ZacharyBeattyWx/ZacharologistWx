@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-05-16T20:19:28Z",
+  "generatedAt": "2026-05-16T20:39:20Z",
   "sites": {
     "KFCX": {
       "id": "KFCX",
@@ -24,9 +24,9 @@
     "KFCX": {
       "N0B": [
         {
-          "slug": "N0B_20260516_2015",
-          "url": "/radar/frames/KFCX/N0B/N0B_20260516_2015.webp",
-          "validTime": "2026-05-16T20:15:00Z",
+          "slug": "N0B_20260516_2038",
+          "url": "/radar/frames/KFCX/N0B/N0B_20260516_2038.webp",
+          "validTime": "2026-05-16T20:38:00Z",
           "bounds": [
             [
               32.89176859504132,
@@ -42,29 +42,29 @@
           "palette": "DEFAULT_REFLECTIVITY_COLOR_TABLE",
           "stats": {
             "minVisibleDbz": 0.0,
-            "minComponentPixels": 10,
+            "minComponentPixels": 6,
             "totalPixels": 2359296,
-            "finitePixels": 94670,
-            "rawVisiblePixels": 75295,
-            "visiblePixels": 72501,
-            "removedSpecklePixels": 2794,
-            "visibleCoveragePercent": 3.0729929606119795,
-            "finiteMin": -9.38888888888889,
+            "finitePixels": 88655,
+            "rawVisiblePixels": 68028,
+            "visiblePixels": 66378,
+            "removedSpecklePixels": 1650,
+            "visibleCoveragePercent": 2.813466389973958,
+            "finiteMin": -10.0625,
+            "finiteMax": 39.44444444444444,
+            "finiteMean": 9.146910070515903
+          },
+          "sourceStats": {
+            "minVisibleDbz": 0.0,
+            "minComponentPixels": 6,
+            "totalPixels": 1324800,
+            "finitePixels": 237136,
+            "rawVisiblePixels": 142851,
+            "visiblePixels": 133687,
+            "removedSpecklePixels": 9164,
+            "visibleCoveragePercent": 10.09110809178744,
+            "finiteMin": -27.0,
             "finiteMax": 44.5,
-            "finiteMean": 9.688240718385169
-          },
-          "sourceStats": {
-            "minVisibleDbz": 0.0,
-            "minComponentPixels": 10,
-            "totalPixels": 1324800,
-            "finitePixels": 243049,
-            "rawVisiblePixels": 159236,
-            "visiblePixels": 148458,
-            "removedSpecklePixels": 10778,
-            "visibleCoveragePercent": 11.206068840579709,
-            "finiteMin": -21.0,
-            "finiteMax": 50.0,
-            "finiteMean": 5.074571382725294
+            "finiteMean": 4.412908626273531
           },
           "debug": {
             "radarLat": 37.024,
@@ -90,15 +90,17 @@
             "smoothingPasses": 1,
             "sourceImageMode": "azimuth-range",
             "outputImageMode": "north-up-cartesian-nearest-sampled",
-            "projectionMode": "polar-cartesian-nearest-v2",
+            "projectionMode": "polar-cartesian-azimuth-aware-nearest-v1",
             "samplingMode": "nearest",
+            "azimuthMappingMode": "azimuth-aware",
+            "azimuthMetadataRows": 720,
             "paletteMode": "radar-app-v1"
           }
         },
         {
-          "slug": "N0B_20260516_2011",
-          "url": "/radar/frames/KFCX/N0B/N0B_20260516_2011.webp",
-          "validTime": "2026-05-16T20:11:00Z",
+          "slug": "N0B_20260516_2034",
+          "url": "/radar/frames/KFCX/N0B/N0B_20260516_2034.webp",
+          "validTime": "2026-05-16T20:34:00Z",
           "bounds": [
             [
               32.89176859504132,
@@ -114,29 +116,29 @@
           "palette": "DEFAULT_REFLECTIVITY_COLOR_TABLE",
           "stats": {
             "minVisibleDbz": 0.0,
-            "minComponentPixels": 10,
+            "minComponentPixels": 6,
             "totalPixels": 2359296,
-            "finitePixels": 96577,
-            "rawVisiblePixels": 76925,
-            "visiblePixels": 74179,
-            "removedSpecklePixels": 2746,
-            "visibleCoveragePercent": 3.1441158718532987,
-            "finiteMin": -9.0,
-            "finiteMax": 45.833333333333336,
-            "finiteMean": 9.638764619266706
+            "finitePixels": 89388,
+            "rawVisiblePixels": 68839,
+            "visiblePixels": 67136,
+            "removedSpecklePixels": 1703,
+            "visibleCoveragePercent": 2.845594618055556,
+            "finiteMin": -12.2,
+            "finiteMax": 39.5,
+            "finiteMean": 9.28030785709669
           },
           "sourceStats": {
             "minVisibleDbz": 0.0,
-            "minComponentPixels": 10,
+            "minComponentPixels": 6,
             "totalPixels": 1324800,
-            "finitePixels": 245151,
-            "rawVisiblePixels": 163246,
-            "visiblePixels": 152643,
-            "removedSpecklePixels": 10603,
-            "visibleCoveragePercent": 11.521965579710145,
-            "finiteMin": -18.5,
-            "finiteMax": 49.5,
-            "finiteMean": 5.149157050144605
+            "finitePixels": 237924,
+            "rawVisiblePixels": 145630,
+            "visiblePixels": 136685,
+            "removedSpecklePixels": 8945,
+            "visibleCoveragePercent": 10.317406400966183,
+            "finiteMin": -26.0,
+            "finiteMax": 43.5,
+            "finiteMean": 4.539663926295792
           },
           "debug": {
             "radarLat": 37.024,
@@ -162,15 +164,17 @@
             "smoothingPasses": 1,
             "sourceImageMode": "azimuth-range",
             "outputImageMode": "north-up-cartesian-nearest-sampled",
-            "projectionMode": "polar-cartesian-nearest-v2",
+            "projectionMode": "polar-cartesian-azimuth-aware-nearest-v1",
             "samplingMode": "nearest",
+            "azimuthMappingMode": "azimuth-aware",
+            "azimuthMetadataRows": 720,
             "paletteMode": "radar-app-v1"
           }
         },
         {
-          "slug": "N0B_20260516_2007",
-          "url": "/radar/frames/KFCX/N0B/N0B_20260516_2007.webp",
-          "validTime": "2026-05-16T20:07:00Z",
+          "slug": "N0B_20260516_2030",
+          "url": "/radar/frames/KFCX/N0B/N0B_20260516_2030.webp",
+          "validTime": "2026-05-16T20:30:00Z",
           "bounds": [
             [
               32.89176859504132,
@@ -186,29 +190,29 @@
           "palette": "DEFAULT_REFLECTIVITY_COLOR_TABLE",
           "stats": {
             "minVisibleDbz": 0.0,
-            "minComponentPixels": 10,
+            "minComponentPixels": 6,
             "totalPixels": 2359296,
-            "finitePixels": 99105,
-            "rawVisiblePixels": 79648,
-            "visiblePixels": 76844,
-            "removedSpecklePixels": 2804,
-            "visibleCoveragePercent": 3.2570732964409723,
-            "finiteMin": -10.25,
-            "finiteMax": 45.388888888888886,
-            "finiteMean": 9.646033445768195
+            "finitePixels": 89989,
+            "rawVisiblePixels": 69535,
+            "visiblePixels": 67882,
+            "removedSpecklePixels": 1653,
+            "visibleCoveragePercent": 2.877214219835069,
+            "finiteMin": -11.916666666666666,
+            "finiteMax": 40.94444444444444,
+            "finiteMean": 9.327556066376369
           },
           "sourceStats": {
             "minVisibleDbz": 0.0,
-            "minComponentPixels": 10,
+            "minComponentPixels": 6,
             "totalPixels": 1324800,
-            "finitePixels": 247901,
-            "rawVisiblePixels": 167679,
-            "visiblePixels": 157256,
-            "removedSpecklePixels": 10423,
-            "visibleCoveragePercent": 11.870169082125603,
-            "finiteMin": -17.5,
-            "finiteMax": 49.5,
-            "finiteMean": 5.211404956010665
+            "finitePixels": 238714,
+            "rawVisiblePixels": 146848,
+            "visiblePixels": 137917,
+            "removedSpecklePixels": 8931,
+            "visibleCoveragePercent": 10.41040157004831,
+            "finiteMin": -26.5,
+            "finiteMax": 44.5,
+            "finiteMean": 4.559215211508332
           },
           "debug": {
             "radarLat": 37.024,
@@ -234,15 +238,17 @@
             "smoothingPasses": 1,
             "sourceImageMode": "azimuth-range",
             "outputImageMode": "north-up-cartesian-nearest-sampled",
-            "projectionMode": "polar-cartesian-nearest-v2",
+            "projectionMode": "polar-cartesian-azimuth-aware-nearest-v1",
             "samplingMode": "nearest",
+            "azimuthMappingMode": "azimuth-aware",
+            "azimuthMetadataRows": 720,
             "paletteMode": "radar-app-v1"
           }
         },
         {
-          "slug": "N0B_20260516_2003",
-          "url": "/radar/frames/KFCX/N0B/N0B_20260516_2003.webp",
-          "validTime": "2026-05-16T20:03:00Z",
+          "slug": "N0B_20260516_2026",
+          "url": "/radar/frames/KFCX/N0B/N0B_20260516_2026.webp",
+          "validTime": "2026-05-16T20:26:00Z",
           "bounds": [
             [
               32.89176859504132,
@@ -258,29 +264,29 @@
           "palette": "DEFAULT_REFLECTIVITY_COLOR_TABLE",
           "stats": {
             "minVisibleDbz": 0.0,
-            "minComponentPixels": 10,
+            "minComponentPixels": 6,
             "totalPixels": 2359296,
-            "finitePixels": 101710,
-            "rawVisiblePixels": 82706,
-            "visiblePixels": 79877,
-            "removedSpecklePixels": 2829,
-            "visibleCoveragePercent": 3.385628594292535,
-            "finiteMin": -9.625,
-            "finiteMax": 44.666666666666664,
-            "finiteMean": 9.640134605000522
+            "finitePixels": 91685,
+            "rawVisiblePixels": 71483,
+            "visiblePixels": 69781,
+            "removedSpecklePixels": 1702,
+            "visibleCoveragePercent": 2.9577043321397567,
+            "finiteMin": -10.11111111111111,
+            "finiteMax": 44.22222222222222,
+            "finiteMean": 9.46228171898088
           },
           "sourceStats": {
             "minVisibleDbz": 0.0,
-            "minComponentPixels": 10,
+            "minComponentPixels": 6,
             "totalPixels": 1324800,
-            "finitePixels": 250324,
-            "rawVisiblePixels": 172485,
-            "visiblePixels": 162278,
-            "removedSpecklePixels": 10207,
-            "visibleCoveragePercent": 12.249245169082124,
-            "finiteMin": -19.0,
-            "finiteMax": 50.5,
-            "finiteMean": 5.309153337274892
+            "finitePixels": 240637,
+            "rawVisiblePixels": 150253,
+            "visiblePixels": 141549,
+            "removedSpecklePixels": 8704,
+            "visibleCoveragePercent": 10.684556159420291,
+            "finiteMin": -25.0,
+            "finiteMax": 49.0,
+            "finiteMean": 4.7066868353578215
           },
           "debug": {
             "radarLat": 37.024,
@@ -306,15 +312,17 @@
             "smoothingPasses": 1,
             "sourceImageMode": "azimuth-range",
             "outputImageMode": "north-up-cartesian-nearest-sampled",
-            "projectionMode": "polar-cartesian-nearest-v2",
+            "projectionMode": "polar-cartesian-azimuth-aware-nearest-v1",
             "samplingMode": "nearest",
+            "azimuthMappingMode": "azimuth-aware",
+            "azimuthMetadataRows": 720,
             "paletteMode": "radar-app-v1"
           }
         },
         {
-          "slug": "N0B_20260516_2000",
-          "url": "/radar/frames/KFCX/N0B/N0B_20260516_2000.webp",
-          "validTime": "2026-05-16T20:00:00Z",
+          "slug": "N0B_20260516_2023",
+          "url": "/radar/frames/KFCX/N0B/N0B_20260516_2023.webp",
+          "validTime": "2026-05-16T20:23:00Z",
           "bounds": [
             [
               32.89176859504132,
@@ -330,29 +338,29 @@
           "palette": "DEFAULT_REFLECTIVITY_COLOR_TABLE",
           "stats": {
             "minVisibleDbz": 0.0,
-            "minComponentPixels": 10,
+            "minComponentPixels": 6,
             "totalPixels": 2359296,
-            "finitePixels": 102836,
-            "rawVisiblePixels": 83703,
-            "visiblePixels": 80605,
-            "removedSpecklePixels": 3098,
-            "visibleCoveragePercent": 3.4164852566189237,
-            "finiteMin": -9.875,
-            "finiteMax": 48.125,
-            "finiteMean": 9.595456305601706
+            "finitePixels": 92518,
+            "rawVisiblePixels": 72624,
+            "visiblePixels": 70838,
+            "removedSpecklePixels": 1786,
+            "visibleCoveragePercent": 3.002505832248264,
+            "finiteMin": -10.0,
+            "finiteMax": 44.27777777777778,
+            "finiteMean": 9.591615213787657
           },
           "sourceStats": {
             "minVisibleDbz": 0.0,
-            "minComponentPixels": 10,
+            "minComponentPixels": 6,
             "totalPixels": 1324800,
-            "finitePixels": 251214,
-            "rawVisiblePixels": 174043,
-            "visiblePixels": 163776,
-            "removedSpecklePixels": 10267,
-            "visibleCoveragePercent": 12.362318840579709,
-            "finiteMin": -17.5,
-            "finiteMax": 51.0,
-            "finiteMean": 5.30821331613684
+            "finitePixels": 241136,
+            "rawVisiblePixels": 153186,
+            "visiblePixels": 144726,
+            "removedSpecklePixels": 8460,
+            "visibleCoveragePercent": 10.924365942028984,
+            "finiteMin": -21.5,
+            "finiteMax": 48.5,
+            "finiteMean": 4.869608851436534
           },
           "debug": {
             "radarLat": 37.024,
@@ -378,8 +386,10 @@
             "smoothingPasses": 1,
             "sourceImageMode": "azimuth-range",
             "outputImageMode": "north-up-cartesian-nearest-sampled",
-            "projectionMode": "polar-cartesian-nearest-v2",
+            "projectionMode": "polar-cartesian-azimuth-aware-nearest-v1",
             "samplingMode": "nearest",
+            "azimuthMappingMode": "azimuth-aware",
+            "azimuthMetadataRows": 720,
             "paletteMode": "radar-app-v1"
           }
         }
