@@ -8939,6 +8939,98 @@ function createSingleSiteRadarLoopLayer(site, product, stamp) {
   );
 }
 
+function shouldUseCustomRadarFrames(mode) {
+  return (
+    USE_CUSTOM_RADAR_FRAMES === true &&
+    RADAR_MODE_ARCHITECTURE[mode]?.currentAdapter ===
+      RADAR_ADAPTER_KEYS.customFrames
+  );
+}
+
+async function fetchCustomRadarFrameCatalog() {
+  const response = await fetch(`${CUSTOM_RADAR_FRAME_SERVICE_BASE}/frames.json`);
+
+  if (!response.ok) {
+    throw new Error(`Custom radar frame catalog failed: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+function getCustomRadarSiteId(site) {
+  if (!site) return "";
+
+  const cleanSite = String(site).trim().toUpperCase();
+  return cleanSite.length === 3 ? `K${cleanSite}` : cleanSite;
+}
+
+function getCustomRadarProductId(mode, product) {
+  return mode === "highres" ? "N0B" : String(product || "N0B").toUpperCase();
+}
+
+function normalizeCustomRadarFrames(catalog, { site, product, mode } = {}) {
+  const customSite = getCustomRadarSiteId(site);
+  const customProduct = getCustomRadarProductId(mode, product);
+  const siteInfo = catalog?.sites?.[customSite] || {};
+  const frameList = catalog?.frames?.[customSite]?.[customProduct] || [];
+
+  return {
+    source: "customFrames",
+    site: customSite,
+    sector: siteInfo.sector || site || "",
+    product: customProduct,
+    mode: mode || currentRadarMode,
+    frames: frameList
+      .map(frame => {
+        const validTime = new Date(frame.validTime);
+
+        if (
+          !frame ||
+          !frame.url ||
+          !Array.isArray(frame.bounds) ||
+          Number.isNaN(validTime.getTime())
+        ) {
+          return null;
+        }
+
+        return {
+          source: "customFrames",
+          site: customSite,
+          sector: siteInfo.sector || site || "",
+          product: customProduct,
+          slug: frame.slug || "",
+          url: frame.url,
+          validTime,
+          bounds: frame.bounds,
+          width: frame.width || null,
+          height: frame.height || null,
+          palette: frame.palette || catalog?.products?.[customProduct]?.palette || ""
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.validTime - b.validTime)
+  };
+}
+
+function createCustomRadarFrameLayer(frame) {
+  return L.imageOverlay(frame.url, frame.bounds, {
+    opacity: 0,
+    pane: "radarPane",
+    attribution: "Radar: Zacharologist Wx / NEXRAD"
+  });
+}
+
+async function loadCustomRadarLoopFrames({ site, product, mode } = {}) {
+  mode = mode || currentRadarMode;
+
+  if (!shouldUseCustomRadarFrames(mode)) {
+    return false;
+  }
+
+  const catalog = await fetchCustomRadarFrameCatalog();
+  return normalizeCustomRadarFrames(catalog, { site, product, mode });
+}
+
 function showSingleSiteRadarLoopFrame(index) {
   if (!singleSiteRadarLoopLayers.length) return;
 
