@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-05-16T15:05:03Z",
+  "generatedAt": "2026-05-16T15:16:51Z",
   "sites": {
     "KFCX": {
       "id": "KFCX",
@@ -24,9 +24,9 @@
     "KFCX": {
       "N0B": [
         {
-          "slug": "N0B_20260516_1500",
-          "url": "/radar/frames/KFCX/N0B/N0B_20260516_1500.webp",
-          "validTime": "2026-05-16T15:00:00Z",
+          "slug": "N0B_20260516_1514",
+          "url": "/radar/frames/KFCX/N0B/N0B_20260516_1514.webp",
+          "validTime": "2026-05-16T15:14:00Z",
           "bounds": [
             [
               32.89176859504132,
@@ -44,27 +44,27 @@
             "minVisibleDbz": 0.0,
             "minComponentPixels": 10,
             "totalPixels": 2359296,
-            "finitePixels": 82390,
-            "rawVisiblePixels": 48197,
-            "visiblePixels": 44461,
-            "removedSpecklePixels": 3736,
-            "visibleCoveragePercent": 1.8845028347439237,
-            "finiteMin": -18.5,
-            "finiteMax": 40.0,
-            "finiteMean": 4.77280616579682
+            "finitePixels": 103529,
+            "rawVisiblePixels": 64381,
+            "visiblePixels": 62792,
+            "removedSpecklePixels": 1589,
+            "visibleCoveragePercent": 2.661471896701389,
+            "finiteMin": -11.45812773482434,
+            "finiteMax": 41.532941744151294,
+            "finiteMean": 5.3268595051314405
           },
           "sourceStats": {
             "minVisibleDbz": 0.0,
             "minComponentPixels": 10,
             "totalPixels": 1324800,
-            "finitePixels": 231564,
-            "rawVisiblePixels": 97599,
-            "visiblePixels": 85662,
-            "removedSpecklePixels": 11937,
-            "visibleCoveragePercent": 6.466032608695651,
-            "finiteMin": -19.0,
-            "finiteMax": 41.0,
-            "finiteMean": 0.013825551467412897
+            "finitePixels": 242316,
+            "rawVisiblePixels": 129032,
+            "visiblePixels": 119450,
+            "removedSpecklePixels": 9582,
+            "visibleCoveragePercent": 9.016455314009661,
+            "finiteMin": -15.0,
+            "finiteMax": 44.0,
+            "finiteMean": 1.2456977665527658
           },
           "debug": {
             "radarLat": 37.024,
@@ -87,9 +87,10 @@
                 -75.09825154152031
               ]
             ],
+            "smoothingPasses": 1,
             "sourceImageMode": "azimuth-range",
-            "outputImageMode": "north-up-cartesian-inverse-sampled",
-            "projectionMode": "polar-cartesian-inverse-v1"
+            "outputImageMode": "north-up-cartesian-bilinear-sampled",
+            "projectionMode": "polar-cartesian-bilinear-v1"
           }
         }
       ]
