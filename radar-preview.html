@@ -157,6 +157,45 @@
       width: 100%;
     }
 
+    .playback-controls {
+      display: grid;
+      gap: 8px;
+    }
+
+    .playback-buttons {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .playback-button {
+      border: 1px solid rgba(148, 163, 184, 0.55);
+      border-radius: 6px;
+      background: #1f2937;
+      color: #f8fafc;
+      cursor: pointer;
+      font-size: 13px;
+      line-height: 1;
+      padding: 8px 10px;
+    }
+
+    .playback-button:hover {
+      background: #334155;
+    }
+
+    .playback-button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    .frame-status {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      color: #cbd5e1;
+      font-size: 13px;
+    }
+
     .status {
       margin-top: 12px;
       color: #cbd5e1;
@@ -189,6 +228,17 @@
         </span>
         <input id="opacitySlider" type="range" min="0" max="1" step="0.05" value="1">
       </label>
+      <div class="playback-controls">
+        <div class="playback-buttons">
+          <button class="playback-button" id="prevFrameButton" type="button">Previous</button>
+          <button class="playback-button" id="playPauseButton" type="button">Play</button>
+          <button class="playback-button" id="nextFrameButton" type="button">Next</button>
+        </div>
+        <div class="frame-status">
+          <span id="frameTimeLabel">Frame time unavailable</span>
+          <span id="frameCountLabel">0 / 0</span>
+        </div>
+      </div>
     </div>
     <div class="status" id="status">Loading radar catalog...</div>
   </section>
@@ -229,10 +279,21 @@
     const debugToggle = document.getElementById('debugToggle');
     const opacitySlider = document.getElementById('opacitySlider');
     const opacityValue = document.getElementById('opacityValue');
+    const prevFrameButton = document.getElementById('prevFrameButton');
+    const playPauseButton = document.getElementById('playPauseButton');
+    const nextFrameButton = document.getElementById('nextFrameButton');
+    const frameTimeLabel = document.getElementById('frameTimeLabel');
+    const frameCountLabel = document.getElementById('frameCountLabel');
+    const PLAY_INTERVAL_MS = 850;
     let radarLayer = null;
     let radarSiteMarker = null;
     let overlayBoundsRectangle = null;
     let overlayCenterMarker = null;
+    let currentCatalog = null;
+    let catalogFramesNewestFirst = [];
+    let playbackFrames = [];
+    let playbackIndex = 0;
+    let playbackTimer = null;
     let latestFrame = null;
     let latestBounds = null;
 
@@ -327,26 +388,127 @@
       );
     }
 
-    function catalogFrame(catalog) {
-      const frame = catalog &&
+    function catalogFrames(catalog) {
+      const frames = catalog &&
         catalog.frames &&
         catalog.frames[SITE] &&
-        catalog.frames[SITE][PRODUCT] &&
-        catalog.frames[SITE][PRODUCT][0];
+        catalog.frames[SITE][PRODUCT];
 
-      if (!frame) {
-        throw new Error('Missing frames.KFCX.N0B[0] in radar/frames.json.');
+      if (!Array.isArray(frames) || !frames.length) {
+        throw new Error('Missing frames.KFCX.N0B[] in radar/frames.json.');
       }
 
-      if (!Array.isArray(frame.bounds) || frame.bounds.length !== 2) {
-        throw new Error('Latest radar frame is missing usable bounds.');
+      frames.forEach((frame, index) => {
+        if (!Array.isArray(frame.bounds) || frame.bounds.length !== 2) {
+          throw new Error(`Radar frame ${index + 1} is missing usable bounds.`);
+        }
+
+        if (!frame.url) {
+          throw new Error(`Radar frame ${index + 1} is missing a WebP URL.`);
+        }
+      });
+
+      return frames;
+    }
+
+    function frameImageUrl(frame) {
+      return `${frame.url.replace(/^\//, './')}?t=${Date.now()}`;
+    }
+
+    function formatFrameTime(frame) {
+      const validTime = new Date(frame.validTime);
+
+      if (Number.isNaN(validTime.getTime())) {
+        return frame.validTime || 'Frame time unavailable';
       }
 
-      if (!frame.url) {
-        throw new Error('Latest radar frame is missing a WebP URL.');
+      return validTime.toLocaleString([], {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      });
+    }
+
+    function stopPlayback() {
+      if (playbackTimer) {
+        clearInterval(playbackTimer);
+        playbackTimer = null;
       }
 
-      return frame;
+      playPauseButton.textContent = 'Play';
+    }
+
+    function updatePlaybackLabels() {
+      const frame = playbackFrames[playbackIndex];
+
+      frameTimeLabel.textContent = frame ? formatFrameTime(frame) : 'Frame time unavailable';
+      frameCountLabel.textContent = playbackFrames.length
+        ? `${playbackIndex + 1} / ${playbackFrames.length}`
+        : '0 / 0';
+
+      const hasMultipleFrames = playbackFrames.length > 1;
+      prevFrameButton.disabled = !hasMultipleFrames;
+      playPauseButton.disabled = !hasMultipleFrames;
+      nextFrameButton.disabled = !hasMultipleFrames;
+    }
+
+    function showFrame(index) {
+      if (!playbackFrames.length) {
+        updatePlaybackLabels();
+        return;
+      }
+
+      playbackIndex = (index + playbackFrames.length) % playbackFrames.length;
+      const frame = playbackFrames[playbackIndex];
+      const bounds = L.latLngBounds(frame.bounds);
+      latestFrame = frame;
+      latestBounds = bounds;
+
+      if (radarLayer) {
+        radarLayer.remove();
+      }
+
+      radarLayer = L.imageOverlay(frameImageUrl(frame), bounds, {
+        opacity: radarOpacity(),
+        interactive: false,
+        pane: 'radarPane',
+      }).addTo(map);
+
+      radarLayer.once('load', () => {
+        setStatus(`Radar frame loaded (${playbackIndex + 1} / ${playbackFrames.length}).`);
+      });
+
+      radarLayer.once('error', () => {
+        setStatus('Radar image failed to load.', true);
+      });
+
+      map.fitBounds(bounds, { padding: [24, 24] });
+      setTimeout(() => {
+        map.invalidateSize();
+      }, 50);
+      updateDebugLayers(frame, bounds);
+      setInfo(currentCatalog, frame);
+      updatePlaybackLabels();
+    }
+
+    function stepFrame(offset) {
+      stopPlayback();
+      showFrame(playbackIndex + offset);
+    }
+
+    function togglePlayback() {
+      if (playbackTimer) {
+        stopPlayback();
+        return;
+      }
+
+      if (playbackFrames.length < 2) return;
+
+      playPauseButton.textContent = 'Pause';
+      playbackTimer = setInterval(() => {
+        showFrame(playbackIndex + 1);
+      }, PLAY_INTERVAL_MS);
     }
 
     function removeDebugLayers() {
@@ -436,47 +598,29 @@
         }
 
         const catalog = await response.json();
-        const frame = catalogFrame(catalog);
-        const imageUrl = `${frame.url.replace(/^\//, './')}?t=${Date.now()}`;
-        const bounds = L.latLngBounds(frame.bounds);
-        latestFrame = frame;
-        latestBounds = bounds;
-
-        if (radarLayer) {
-          radarLayer.remove();
-        }
-
-        radarLayer = L.imageOverlay(imageUrl, bounds, {
-          opacity: radarOpacity(),
-          interactive: false,
-          pane: 'radarPane',
-        }).addTo(map);
-
-        radarLayer.once('load', () => {
-          setStatus('Latest committed radar frame loaded.');
-        });
-
-        radarLayer.once('error', () => {
-          setStatus('Radar image failed to load.', true);
-        });
-
-        map.fitBounds(bounds, { padding: [24, 24] });
-        setTimeout(() => {
-          map.invalidateSize();
-        }, 50);
-        updateDebugLayers(frame, bounds);
-        setInfo(catalog, frame);
+        currentCatalog = catalog;
+        catalogFramesNewestFirst = catalogFrames(catalog);
+        playbackFrames = [...catalogFramesNewestFirst].reverse();
+        playbackIndex = playbackFrames.length - 1;
+        stopPlayback();
+        showFrame(playbackIndex);
       } catch (error) {
+        stopPlayback();
         if (radarLayer) {
           radarLayer.remove();
           radarLayer = null;
         }
 
         removeDebugLayers();
+        currentCatalog = null;
+        catalogFramesNewestFirst = [];
+        playbackFrames = [];
+        playbackIndex = 0;
         latestFrame = null;
         latestBounds = null;
 
         infoGrid.replaceChildren();
+        updatePlaybackLabels();
         setStatus(error.message || 'Radar preview failed to load.', true);
       } finally {
         refreshButton.disabled = false;
@@ -501,6 +645,10 @@
     });
 
     updateOpacityLabel();
+    updatePlaybackLabels();
+    prevFrameButton.addEventListener('click', () => stepFrame(-1));
+    playPauseButton.addEventListener('click', togglePlayback);
+    nextFrameButton.addEventListener('click', () => stepFrame(1));
     refreshButton.addEventListener('click', loadRadar);
     loadRadar();
   </script>
