@@ -1,0 +1,38 @@
+name: Build Radar Frames
+
+on:
+  workflow_dispatch:
+
+jobs:
+  scaffold:
+    name: Radar renderer scaffold dry run
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate radar config
+        run: python -m json.tool scripts/radar/radar_config.json
+
+      - name: Fetch NEXRAD scaffold
+        run: python scripts/radar/fetch_nexrad.py --dry-run
+
+      - name: Render reflectivity scaffold
+        run: python scripts/radar/render_reflectivity.py --dry-run
+
+      - name: Build frames catalog dry run
+        run: python scripts/radar/build_frames_catalog.py --dry-run
+
+      - name: Prune frames dry run
+        run: python scripts/radar/prune_frames.py
+
+      - name: Confirm scaffold-only workflow
+        run: |
+          echo "This workflow is manual only and does not commit generated radar frames."
+          echo "Current website radar remains Windy/IEM until custom frames are explicitly enabled."
