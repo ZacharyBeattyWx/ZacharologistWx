@@ -65,6 +65,7 @@ jobs:
 
           python - <<'PY'
           from datetime import datetime, timedelta, timezone
+          import json
           import os
           import re
           import sys
@@ -78,6 +79,26 @@ jobs:
 
           bucket_url = "https://unidata-nexrad-level3.s3.amazonaws.com"
           namespace = {"s3": "http://s3.amazonaws.com/doc/2006-03-01/"}
+
+          def safe_frame_count(value):
+              try:
+                  frame_count = int(value)
+              except (TypeError, ValueError):
+                  return 1
+
+              return frame_count if frame_count > 0 else 1
+
+          def load_frame_count():
+              config_path = Path("scripts/radar/radar_config.json")
+
+              try:
+                  with config_path.open("r", encoding="utf-8") as handle:
+                      config = json.load(handle)
+              except Exception as error:
+                  print(f"Unable to read {config_path}; defaulting frameCount to 1: {error}", flush=True)
+                  return 1
+
+              return safe_frame_count(config.get("frameCount"))
 
           def build_list_url(prefix, delimiter=None, continuation_token=None):
               params = {
@@ -189,18 +210,29 @@ jobs:
                   ]
               )
 
-          latest_key = None
+          frame_count = load_frame_count()
+          all_candidate_keys = set()
 
           for prefix in prefixes:
               print(f"Trying prefix: {prefix}", flush=True)
               keys = find_candidate_keys(prefix)
               print(f"Found {len(keys)} candidate Level III files", flush=True)
+              all_candidate_keys.update(keys)
 
-              if keys:
-                  latest_key = sorted(keys)[-1]
-                  break
+          sorted_candidate_keys = sorted(all_candidate_keys)
+          selected_keys = sorted_candidate_keys[-frame_count:]
 
-          if latest_key is None:
+          print(f"frameCount={frame_count}", flush=True)
+          print(f"Total unique candidate Level III keys found: {len(sorted_candidate_keys)}", flush=True)
+          print(f"Selected key count: {len(selected_keys)}", flush=True)
+
+          if len(selected_keys) < frame_count:
+              print(
+                  f"Only {len(selected_keys)} candidate key(s) available for frameCount={frame_count}; downloading available keys.",
+                  flush=True,
+              )
+
+          if not selected_keys:
               for prefix in ["", f"{product}/", f"{site}/", f"K{site}/", "Level3_"]:
                   print_diagnostic_sample(prefix)
 
@@ -210,25 +242,26 @@ jobs:
           source_dir = Path("radar/source/level3")
           source_dir.mkdir(parents=True, exist_ok=True)
 
-          filename = Path(latest_key).name
-          download_path = source_dir / filename
+          for key in selected_keys:
+              filename = Path(key).name
+              download_path = source_dir / filename
 
-          timestamp = timestamp_from_key(latest_key)
-          output_path = source_dir / f"Level3_{site}_{product}_{timestamp}.nids"
+              timestamp = timestamp_from_key(key)
+              output_path = source_dir / f"Level3_{site}_{product}_{timestamp}.nids"
 
-          download_url = bucket_url + "/" + urllib.parse.quote(latest_key, safe="/")
+              download_url = bucket_url + "/" + urllib.parse.quote(key, safe="/")
 
-          print(f"Latest key: {latest_key}", flush=True)
-          print(f"Downloading: {download_url}", flush=True)
-          print(f"Temporary save path: {download_path}", flush=True)
-          print(f"Final renderer source path: {output_path}", flush=True)
+              print(f"Selected key: {key}", flush=True)
+              print(f"Downloading: {download_url}", flush=True)
+              print(f"Temporary save path: {download_path}", flush=True)
+              print(f"Final renderer source path: {output_path}", flush=True)
 
-          urllib.request.urlretrieve(download_url, download_path)
+              urllib.request.urlretrieve(download_url, download_path)
 
-          if download_path != output_path:
-              if output_path.exists():
-                  output_path.unlink()
-              download_path.replace(output_path)
+              if download_path != output_path:
+                  if output_path.exists():
+                      output_path.unlink()
+                  download_path.replace(output_path)
           PY
 
       - name: Clean generated radar frame folder
