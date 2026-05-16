@@ -169,6 +169,8 @@
     const refreshButton = document.getElementById('refreshButton');
     let radarLayer = null;
     let radarSiteMarker = null;
+    let overlayBoundsRectangle = null;
+    let overlayCenterMarker = null;
 
     function setStatus(message, isError = false) {
       statusEl.textContent = message;
@@ -190,6 +192,21 @@
         ['validTime', frame.validTime],
         ['generatedAt', catalog.generatedAt],
       ];
+      const imageAspect = frame.width && frame.height
+        ? frame.width / frame.height
+        : null;
+
+      if (frame.width !== undefined) {
+        rows.push(['frame width', String(frame.width)]);
+      }
+
+      if (frame.height !== undefined) {
+        rows.push(['frame height', String(frame.height)]);
+      }
+
+      if (imageAspect !== null) {
+        rows.push(['imageAspect', formatNumber(imageAspect, 4) || String(imageAspect)]);
+      }
 
       if (stats.minVisibleDbz !== undefined) {
         rows.push(['minVisibleDbz', String(stats.minVisibleDbz)]);
@@ -217,6 +234,10 @@
 
       if (debug.projectionMode !== undefined) {
         rows.push(['projectionMode', String(debug.projectionMode)]);
+      }
+
+      if (debug.mappedShape !== undefined) {
+        rows.push(['mappedShape', Array.isArray(debug.mappedShape) ? debug.mappedShape.join(' x ') : String(debug.mappedShape)]);
       }
 
       infoGrid.replaceChildren(
@@ -256,32 +277,59 @@
       return frame;
     }
 
-    function updateRadarSiteMarker(frame) {
-      const debug = frame.debug || {};
-      const lat = Number(debug.radarLat);
-      const lon = Number(debug.radarLon);
-
+    function removeDebugLayers() {
       if (radarSiteMarker) {
         radarSiteMarker.remove();
         radarSiteMarker = null;
       }
 
-      if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
-        return;
+      if (overlayBoundsRectangle) {
+        overlayBoundsRectangle.remove();
+        overlayBoundsRectangle = null;
       }
 
-      radarSiteMarker = L.circleMarker([lat, lon], {
-        radius: 6,
-        color: '#f8fafc',
+      if (overlayCenterMarker) {
+        overlayCenterMarker.remove();
+        overlayCenterMarker = null;
+      }
+    }
+
+    function updateDebugLayers(frame, bounds) {
+      const debug = frame.debug || {};
+      const lat = Number(debug.radarLat);
+      const lon = Number(debug.radarLon);
+
+      removeDebugLayers();
+
+      if (Number.isFinite(lat) && Number.isFinite(lon)) {
+        radarSiteMarker = L.circleMarker([lat, lon], {
+          radius: 7,
+          color: '#38bdf8',
+          weight: 2,
+          fillColor: '#0ea5e9',
+          fillOpacity: 0.9,
+        })
+          .bindPopup('KFCX radar site')
+          .addTo(map);
+      }
+
+      overlayBoundsRectangle = L.rectangle(bounds, {
+        color: '#facc15',
+        weight: 1,
+        opacity: 0.85,
+        fillOpacity: 0,
+      })
+        .bindPopup('Current image overlay bounds')
+        .addTo(map);
+
+      overlayCenterMarker = L.circleMarker(bounds.getCenter(), {
+        radius: 4,
+        color: '#fecaca',
         weight: 2,
-        fillColor: '#38bdf8',
+        fillColor: '#ef4444',
         fillOpacity: 0.95,
       })
-        .bindTooltip('KFCX radar site', {
-          permanent: false,
-          direction: 'top',
-          offset: [0, -8],
-        })
+        .bindPopup('Current overlay bounds center')
         .addTo(map);
     }
 
@@ -324,7 +372,7 @@
         setTimeout(() => {
           map.invalidateSize();
         }, 50);
-        updateRadarSiteMarker(frame);
+        updateDebugLayers(frame, bounds);
         setInfo(catalog, frame);
       } catch (error) {
         if (radarLayer) {
@@ -332,10 +380,7 @@
           radarLayer = null;
         }
 
-        if (radarSiteMarker) {
-          radarSiteMarker.remove();
-          radarSiteMarker = null;
-        }
+        removeDebugLayers();
 
         infoGrid.replaceChildren();
         setStatus(error.message || 'Radar preview failed to load.', true);

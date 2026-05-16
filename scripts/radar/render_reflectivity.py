@@ -558,6 +558,9 @@ def main() -> int:
                 "radarLon": lon,
                 "maxRangeKm": range_km,
                 "mappedShape": mapped_shape,
+                "imageWidth": image.width,
+                "imageHeight": image.height,
+                "calculatedBounds": bounds,
                 "projectionMode": "rough-bounds-v1",
             },
         }
