@@ -44,7 +44,7 @@ DEFAULT_REFLECTIVITY_COLOR_TABLE = {
 }
 DEFAULT_MIN_VISIBLE_DBZ = 15.0
 DEFAULT_MIN_COMPONENT_PIXELS = 6
-DEFAULT_CARTESIAN_SIZE_PX = 1024
+DEFAULT_CARTESIAN_SIZE_PX = 1536
 
 
 def load_config(path: Path) -> dict:
@@ -219,32 +219,17 @@ def polar_reflectivity_to_cartesian_grid(
     numeric = np.asarray(np.ma.array(values).filled(np.nan), dtype=float)
     azimuth_count, gate_count = numeric.shape
     output_grid = np.full((output_size_px, output_size_px), np.nan, dtype=float)
-    center = (output_size_px - 1) / 2
+    axis_km = np.linspace(-range_km, range_km, output_size_px)
+    x_km, y_km = np.meshgrid(axis_km, axis_km[::-1])
+    range_at_pixel = np.hypot(x_km, y_km)
+    in_range = range_at_pixel <= range_km
 
-    finite_rows, finite_cols = np.nonzero(np.isfinite(numeric))
-
-    if finite_rows.size == 0:
-        return output_grid
-
-    azimuth_radians = np.deg2rad(finite_rows / azimuth_count * 360.0)
-    gate_ranges_km = finite_cols / gate_count * range_km
-    x_km = gate_ranges_km * np.sin(azimuth_radians)
-    y_km = gate_ranges_km * np.cos(azimuth_radians)
-    output_x = np.rint(center + x_km / range_km * center).astype(int)
-    output_y = np.rint(center - y_km / range_km * center).astype(int)
-    in_bounds = (
-        (output_x >= 0)
-        & (output_x < output_size_px)
-        & (output_y >= 0)
-        & (output_y < output_size_px)
-    )
-
-    output_values = numeric[finite_rows[in_bounds], finite_cols[in_bounds]]
-
-    for y, x, value in zip(output_y[in_bounds], output_x[in_bounds], output_values):
-        existing = output_grid[y, x]
-        if not np.isfinite(existing) or value > existing:
-            output_grid[y, x] = value
+    azimuth_degrees = np.degrees(np.arctan2(x_km[in_range], y_km[in_range]))
+    azimuth_degrees = np.where(azimuth_degrees < 0, azimuth_degrees + 360.0, azimuth_degrees)
+    azimuth_index = np.rint(azimuth_degrees / 360.0 * azimuth_count).astype(int) % azimuth_count
+    gate_index = np.rint(range_at_pixel[in_range] / range_km * (gate_count - 1)).astype(int)
+    sampled_values = numeric[azimuth_index, gate_index]
+    output_grid[in_range] = sampled_values
 
     return output_grid
 
@@ -631,8 +616,8 @@ def main() -> int:
                 "imageHeight": image.height,
                 "calculatedBounds": bounds,
                 "sourceImageMode": "azimuth-range",
-                "outputImageMode": "north-up-cartesian",
-                "projectionMode": "polar-cartesian-v1",
+                "outputImageMode": "north-up-cartesian-inverse-sampled",
+                "projectionMode": "polar-cartesian-inverse-v1",
             },
         }
 
