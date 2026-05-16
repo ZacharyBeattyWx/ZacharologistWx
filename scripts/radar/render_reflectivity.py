@@ -45,6 +45,7 @@ DEFAULT_REFLECTIVITY_COLOR_TABLE = {
 DEFAULT_MIN_VISIBLE_DBZ = 15.0
 DEFAULT_MIN_COMPONENT_PIXELS = 6
 DEFAULT_CARTESIAN_SIZE_PX = 1536
+DEFAULT_CARTESIAN_SMOOTHING_PASSES = 1
 
 
 def load_config(path: Path) -> dict:
@@ -168,8 +169,11 @@ def reflectivity_to_rgba(
         color = first_stop_rgba(entry)
         rgba[visible_mask & (numeric >= threshold)] = color
 
-    rgba[visible_mask & (numeric < 5), 3] = 90
-    rgba[visible_mask & (numeric >= 5) & (numeric < 10), 3] = 150
+    rgba[visible_mask & (numeric < 0), 3] = 35
+    rgba[visible_mask & (numeric >= 0) & (numeric < 5), 3] = 80
+    rgba[visible_mask & (numeric >= 5) & (numeric < 10), 3] = 145
+    rgba[visible_mask & (numeric >= 10) & (numeric < 20), 3] = 210
+    rgba[visible_mask & (numeric >= 20), 3] = 255
     rgba[~finite_mask] = [0, 0, 0, 0]
     rgba[finite_mask & ~visible_mask] = [0, 0, 0, 0]
     return rgba
@@ -209,6 +213,39 @@ def reflectivity_stats(
     }
 
 
+def sample_polar_bilinear(source, azimuth_float, gate_float):
+    import numpy as np
+
+    numeric = np.asarray(np.ma.array(source).filled(np.nan), dtype=float)
+    azimuth_count, gate_count = numeric.shape
+
+    az0 = np.floor(azimuth_float).astype(int) % azimuth_count
+    az1 = (az0 + 1) % azimuth_count
+    gate0 = np.clip(np.floor(gate_float).astype(int), 0, gate_count - 1)
+    gate1 = np.clip(gate0 + 1, 0, gate_count - 1)
+    az_weight = azimuth_float - np.floor(azimuth_float)
+    gate_weight = gate_float - np.floor(gate_float)
+
+    samples = [
+        (numeric[az0, gate0], (1.0 - az_weight) * (1.0 - gate_weight)),
+        (numeric[az1, gate0], az_weight * (1.0 - gate_weight)),
+        (numeric[az0, gate1], (1.0 - az_weight) * gate_weight),
+        (numeric[az1, gate1], az_weight * gate_weight),
+    ]
+    numerator = np.zeros_like(azimuth_float, dtype=float)
+    denominator = np.zeros_like(azimuth_float, dtype=float)
+
+    for values, weights in samples:
+        finite = np.isfinite(values)
+        numerator[finite] += values[finite] * weights[finite]
+        denominator[finite] += weights[finite]
+
+    sampled = np.full_like(azimuth_float, np.nan, dtype=float)
+    valid = denominator > 0
+    sampled[valid] = numerator[valid] / denominator[valid]
+    return sampled
+
+
 def polar_reflectivity_to_cartesian_grid(
     values,
     range_km: float,
@@ -226,12 +263,42 @@ def polar_reflectivity_to_cartesian_grid(
 
     azimuth_degrees = np.degrees(np.arctan2(x_km[in_range], y_km[in_range]))
     azimuth_degrees = np.where(azimuth_degrees < 0, azimuth_degrees + 360.0, azimuth_degrees)
-    azimuth_index = np.rint(azimuth_degrees / 360.0 * azimuth_count).astype(int) % azimuth_count
-    gate_index = np.rint(range_at_pixel[in_range] / range_km * (gate_count - 1)).astype(int)
-    sampled_values = numeric[azimuth_index, gate_index]
+    azimuth_index_float = azimuth_degrees / 360.0 * azimuth_count
+    gate_index_float = range_at_pixel[in_range] / range_km * (gate_count - 1)
+    sampled_values = sample_polar_bilinear(numeric, azimuth_index_float, gate_index_float)
     output_grid[in_range] = sampled_values
 
     return output_grid
+
+
+def smooth_cartesian_grid(grid, passes=1):
+    import numpy as np
+
+    smoothed = np.asarray(grid, dtype=float).copy()
+
+    for _pass_index in range(max(0, int(passes))):
+        finite_mask = np.isfinite(smoothed)
+
+        if not finite_mask.any():
+            break
+
+        values = np.where(finite_mask, smoothed, 0.0)
+        padded_values = np.pad(values, 1, mode="constant", constant_values=0.0)
+        padded_counts = np.pad(finite_mask.astype(float), 1, mode="constant", constant_values=0.0)
+        neighbor_sum = np.zeros_like(smoothed, dtype=float)
+        neighbor_count = np.zeros_like(smoothed, dtype=float)
+
+        for dy in range(3):
+            for dx in range(3):
+                neighbor_sum += padded_values[dy:dy + smoothed.shape[0], dx:dx + smoothed.shape[1]]
+                neighbor_count += padded_counts[dy:dy + smoothed.shape[0], dx:dx + smoothed.shape[1]]
+
+        next_grid = smoothed.copy()
+        replace_mask = finite_mask & (neighbor_count > 0)
+        next_grid[replace_mask] = neighbor_sum[replace_mask] / neighbor_count[replace_mask]
+        smoothed = next_grid
+
+    return smoothed
 
 
 def polar_reflectivity_to_cartesian_rgba(
@@ -242,10 +309,12 @@ def polar_reflectivity_to_cartesian_rgba(
     output_size_px: int = DEFAULT_CARTESIAN_SIZE_PX,
     min_visible_dbz: float = DEFAULT_MIN_VISIBLE_DBZ,
     min_component_pixels: int = DEFAULT_MIN_COMPONENT_PIXELS,
+    smoothing_passes: int = DEFAULT_CARTESIAN_SMOOTHING_PASSES,
 ):
     del radar_lat, radar_lon
 
     cartesian_grid = polar_reflectivity_to_cartesian_grid(values, range_km, output_size_px)
+    cartesian_grid = smooth_cartesian_grid(cartesian_grid, smoothing_passes)
     rgba = reflectivity_to_rgba(cartesian_grid, min_visible_dbz, min_component_pixels)
     return rgba, cartesian_grid
 
@@ -518,6 +587,12 @@ def main() -> int:
         help="Minimum connected visible pixel component size to keep.",
     )
     parser.add_argument(
+        "--smoothing-passes",
+        type=int,
+        default=DEFAULT_CARTESIAN_SMOOTHING_PASSES,
+        help="Number of light smoothing passes to apply to the Cartesian dBZ grid.",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Print intended work without creating frame images.",
@@ -589,6 +664,7 @@ def main() -> int:
             DEFAULT_CARTESIAN_SIZE_PX,
             args.min_visible_dbz,
             args.min_component_pixels,
+            args.smoothing_passes,
         )
         stats = reflectivity_stats(cartesian_grid, args.min_visible_dbz, args.min_component_pixels)
         source_stats = reflectivity_stats(mapped, args.min_visible_dbz, args.min_component_pixels)
@@ -615,9 +691,10 @@ def main() -> int:
                 "imageWidth": image.width,
                 "imageHeight": image.height,
                 "calculatedBounds": bounds,
+                "smoothingPasses": int(args.smoothing_passes),
                 "sourceImageMode": "azimuth-range",
-                "outputImageMode": "north-up-cartesian-inverse-sampled",
-                "projectionMode": "polar-cartesian-inverse-v1",
+                "outputImageMode": "north-up-cartesian-bilinear-sampled",
+                "projectionMode": "polar-cartesian-bilinear-v1",
             },
         }
 
@@ -638,6 +715,8 @@ def main() -> int:
         print(f"imageWidth={image.width}")
         print(f"imageHeight={image.height}")
         print(f"bounds={bounds}")
+        print("samplingMode=bilinear")
+        print(f"smoothingPasses={int(args.smoothing_passes)}")
         print(f"minVisibleDbz={stats['minVisibleDbz']}")
         print(f"minComponentPixels={stats['minComponentPixels']}")
         print(f"rawVisiblePixels={stats['rawVisiblePixels']}")
