@@ -3,20 +3,12 @@
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Zacharologist Wx | Weather Operations Hub</title>
-  <link
-    href="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.css"
-    rel="stylesheet"
-  />
-
-<script src="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.js"></script>
-
 <link
   rel="stylesheet"
   href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
 />
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/esri-leaflet@3.0.14/dist/esri-leaflet.js"></script>
 
   <style>
     * {
@@ -2530,90 +2522,6 @@ main,
   line-height: 1.55;
   color: rgba(255,255,255,0.9) !important;
 }
-
-.radar-map-modal {
-position: fixed;
-inset: 0;
-z-index: 9999;
-display: none;
-}
-
-.radar-map-modal.is-open {
-display: block;
-}
-
-.radar-map-backdrop {
-position: absolute;
-inset: 0;
-background: rgba(2, 6, 23, 0.82);
-backdrop-filter: blur(10px);
-}
-
-.radar-map-box {
-position: relative;
-width: min(1200px, calc(100vw - 28px));
-height: min(760px, calc(100vh - 42px));
-margin: 20px auto;
-background: #07111f;
-border: 1px solid rgba(148, 163, 184, 0.35);
-border-radius: 22px;
-overflow: hidden;
-box-shadow: 0 30px 90px rgba(0,0,0,0.55);
-}
-
-.radar-map-header {
-height: 64px;
-padding: 14px 18px;
-display: flex;
-justify-content: space-between;
-align-items: center;
-background: rgba(15, 23, 42, 0.96);
-border-bottom: 1px solid rgba(148, 163, 184, 0.25);
-}
-
-.radar-map-header h2 {
-margin: 0;
-font-size: 1.15rem;
-}
-
-.radar-map-header p {
-margin: 4px 0 0;
-color: #94a3b8;
-font-size: 0.85rem;
-}
-
-.radar-map-close {
-width: 38px;
-height: 38px;
-border-radius: 999px;
-border: 1px solid rgba(255,255,255,0.25);
-background: rgba(255,255,255,0.08);
-backdrop-filter: blur(10px);
-color: white;
-font-size: 1.5rem;
-cursor: pointer;
-
-}
-
-body.radar-map-open {
-  overflow: hidden;
-  height: 100dvh;
-}
-
-#radarMap {
-width: 100%;
-height: calc(100% - 74px);
-}
-
-@media (max-width: 768px) {
-.radar-map-box {
-width: 100vw;
-height: 100dvh;
-margin: 0;
-border-radius: 0;
-}
-}
-
 
 @media (max-width: 768px) {
   .alert-modal {
@@ -6517,12 +6425,6 @@ body {
   right: 16px !important;
 }
 
-#hiresRadarMap {
-  width: 100%;
-  height: 100%;
-  min-height: 520px;
-}
-
 .radar-loop-controls {
   position: absolute;
   left: 14px;
@@ -6552,13 +6454,6 @@ body {
 
 .radar-loop-controls button:hover {
   background: rgba(14, 165, 233, 0.38);
-}
-
-#radarLoopTime {
-  margin-left: auto;
-  font-size: 0.82rem;
-  color: #dbeafe;
-  white-space: nowrap;
 }
 
   .forecast-dashboard .alerts-card #alertsList .compact-alert-item:only-child {
@@ -7617,182 +7512,6 @@ card.innerHTML = `
     alertsList.style.opacity = "1";
   });
 
-  document.addEventListener("click", event => {
-const mapButton = event.target.closest("[data-map-btn]");
-if (!mapButton) return;
-
-openRadarMap();
-});
-}
-
-let radarMap;
-let radarMapLoaded = false;
-
-async function openRadarMap() {
-const modal = document.getElementById("radarMapModal");
-if (!modal) return;
-
-document.body.classList.add("radar-map-open");
-modal.classList.add("is-open");
-
-if (!radarMapLoaded) {
-radarMapLoaded = true;
-initRadarMap();
-}
-
-setTimeout(() => {
-if (radarMap) radarMap.resize();
-}, 150);
-}
-
-function closeRadarMap() {
-const modal = document.getElementById("radarMapModal");
-if (!modal) return;
-
-document.body.classList.remove("radar-map-open");
-modal.classList.remove("is-open");
-}
-
-function closeRadarMap() {
-const modal = document.getElementById("radarMapModal");
-if (!modal) return;
-
-modal.classList.remove("is-open");
-}
-
-async function initRadarMap() {
-radarMap = new maplibregl.Map({
-container: "radarMap",
-style: {
-version: 8,
-sources: {
-osm: {
-type: "raster",
-tiles: [
-"https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-],
-tileSize: 256,
-attribution: "© OpenStreetMap contributors"
-}
-},
-layers: [
-{
-id: "osm",
-type: "raster",
-source: "osm",
-paint: {
-"raster-opacity": 0.22
-}
-}
-]
-},
-center: [-79.8, 35.8],
-zoom: 5.3
-});
-
-radarMap.addControl(new maplibregl.NavigationControl(), "top-right");
-
-radarMap.on("load", async () => {
-await addRainViewerRadarLayer();
-await addNwsAlertPolygons();
-});
-}
-
-async function addRainViewerRadarLayer() {
-const response = await fetch("https://api.rainviewer.com/public/weather-maps.json");
-const data = await response.json();
-
-const radarFrames = data.radar?.past || [];
-if (!radarFrames.length) return;
-
-const latestFrame = radarFrames[radarFrames.length - 1];
-
-const radarTileUrl = `${data.host}${latestFrame.path}/512/{z}/{x}/{y}/6/1_1.png`;
-
-radarMap.addSource("rainviewer-radar", {
-type: "raster",
-tiles: [radarTileUrl],
-tileSize: 512
-});
-
-radarMap.addLayer({
-id: "rainviewer-radar-layer",
-type: "raster",
-source: "rainviewer-radar",
-paint: {
-"raster-opacity": 0.93
-}
-});
-}
-
-async function addNwsAlertPolygons() {
-const response = await fetch(
-"https://api.weather.gov/alerts/active?area=NC&area=SC&area=VA"
-);
-
-const data = await response.json();
-
-const features = (data.features || []).filter(feature => {
-return feature.geometry && feature.geometry.coordinates;
-});
-
-radarMap.addSource("nws-alerts", {
-type: "geojson",
-data: {
-type: "FeatureCollection",
-features
-}
-});
-
-radarMap.addLayer({
-id: "nws-alert-fill",
-type: "fill",
-source: "nws-alerts",
-paint: {
-"fill-color": [
-"match",
-["get", "event"],
-"Tornado Warning", "#ff1744",
-"Severe Thunderstorm Warning", "#ffb300",
-"Flash Flood Warning", "#22c55e",
-"Special Weather Statement", "#38bdf8",
-"#facc15"
-],
-"fill-opacity": 0.22
-}
-});
-
-radarMap.addLayer({
-id: "nws-alert-outline",
-type: "line",
-source: "nws-alerts",
-paint: {
-"line-color": [
-"match",
-["get", "event"],
-"Tornado Warning", "#ff1744",
-"Severe Thunderstorm Warning", "#ffb300",
-"Flash Flood Warning", "#22c55e",
-"Special Weather Statement", "#38bdf8",
-"#facc15"
-],
-"line-width": 2.5
-}
-});
-
-radarMap.on("click", "nws-alert-fill", event => {
-const props = event.features[0].properties;
-
-alert(`${props.event}\n\n${props.headline || "No headline available"}`);
-});
-
-radarMap.on("mouseenter", "nws-alert-fill", () => {
-radarMap.getCanvas().style.cursor = "pointer";
-});
-
-radarMap.on("mouseleave", "nws-alert-fill", () => {
-radarMap.getCanvas().style.cursor = "";
-});
 }
 
 function renderCategory(category) {
@@ -7962,15 +7681,6 @@ renderCategory(currentCategory);
     isFetchingAlerts = false;
   }
 }
-
-document.addEventListener("click", event => {
-if (
-event.target.closest(".radar-map-close") ||
-event.target.classList.contains("radar-map-backdrop")
-) {
-closeRadarMap();
-}
-});
 
 document.querySelectorAll(".alert-tabs button").forEach(button => {
   button.addEventListener("click", () => {
@@ -8741,145 +8451,6 @@ const radarUrls = {
 
 let radarSites = {};
 let radarSitesLoaded = false;
-
-let hiresRadarMap = null;
-let hiresRadarLayer = null;
-let radarFrames = [];
-let radarFrameIndex = 0;
-let radarLoopPlaying = false;
-
-function roundDownToFiveMinutes(date) {
-  const rounded = new Date(date);
-  rounded.setSeconds(0, 0);
-  rounded.setMinutes(Math.floor(rounded.getMinutes() / 5) * 5);
-  return rounded;
-}
-
-function buildRadarFrames() {
-  const frameSpacingMinutes = 5;
-  const frameCount = 24;
-
-  const latestFrame = roundDownToFiveMinutes(
-    new Date(Date.now() - 10 * 60 * 1000)
-  );
-
-  const frames = [];
-
-  for (let i = frameCount - 1; i >= 0; i--) {
-    frames.push(
-      new Date(latestFrame.getTime() - i * frameSpacingMinutes * 60 * 1000)
-    );
-  }
-
-  return frames;
-}
-
-function formatRadarTime(date) {
-  return date.toLocaleTimeString([], {
-    hour: "numeric",
-    minute: "2-digit",
-    timeZoneName: "short"
-  });
-}
-
-function showRadarFrame(index) {
-  if (!hiresRadarLayer || !radarFrames.length) return;
-
-  radarFrameIndex = (index + radarFrames.length) % radarFrames.length;
-
-  const frameStart = radarFrames[radarFrameIndex];
-  const frameEnd = new Date(frameStart.getTime() + 4 * 60 * 1000);
-
-  hiresRadarLayer.setTimeRange(frameStart, frameEnd);
-
-  const label = document.getElementById("radarLoopTime");
-
-  if (label) {
-    label.textContent = `Radar: ${formatRadarTime(frameStart)}`;
-  }
-}
-
-function startRadarLoop() {
-  stopRadarLoop();
-
-  radarLoopTimer = setInterval(() => {
-    showRadarFrame(radarFrameIndex + 1);
-  }, 450);
-
-  radarLoopPlaying = true;
-
-  const button = document.getElementById("radarLoopToggle");
-  if (button) button.textContent = "Pause";
-}
-
-function stopRadarLoop() {
-  if (radarLoopTimer) {
-    clearInterval(radarLoopTimer);
-    radarLoopTimer = null;
-  }
-
-  radarLoopPlaying = false;
-
-  const button = document.getElementById("radarLoopToggle");
-  if (button) button.textContent = "Play";
-}
-
-function initHiResRadar() {
-  const mapEl = document.getElementById("hiresRadarMap");
-  if (!mapEl || hiresRadarMap) return;
-
-  radarFrames = buildRadarFrames();
-  radarFrameIndex = radarFrames.length - 1;
-
-  hiresRadarMap = L.map("hiresRadarMap", {
-    zoomControl: true,
-    attributionControl: false
-  }).setView([35.78, -79.8], 7);
-
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 10
-  }).addTo(hiresRadarMap);
-
-  hiresRadarLayer = L.esri.imageMapLayer({
-    url: "https://mapservices.weather.noaa.gov/eventdriven/rest/services/radar/radar_base_reflectivity_time/ImageServer",
-    opacity: 0.78,
-    useCors: false
-  }).addTo(hiresRadarMap);
-
-  showRadarFrame(radarFrameIndex);
-
-  document.getElementById("radarLoopToggle")?.addEventListener("click", () => {
-    if (radarLoopPlaying) {
-      stopRadarLoop();
-    } else {
-      startRadarLoop();
-    }
-  });
-
-  document.getElementById("radarLoopBack")?.addEventListener("click", () => {
-    stopRadarLoop();
-    showRadarFrame(radarFrameIndex - 1);
-  });
-
-  document.getElementById("radarLoopForward")?.addEventListener("click", () => {
-    stopRadarLoop();
-    showRadarFrame(radarFrameIndex + 1);
-  });
-}
-
-function refreshHiResRadar() {
-  initHiResRadar();
-
-  radarFrames = buildRadarFrames();
-
-  setTimeout(() => {
-    if (hiresRadarMap) {
-      hiresRadarMap.invalidateSize();
-    }
-
-    startRadarLoop();
-  }, 150);
-}
 
 function getRadarIdFromFeature(feature) {
   const props = feature.properties || {};
