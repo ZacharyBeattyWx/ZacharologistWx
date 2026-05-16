@@ -1,0 +1,111 @@
+name: Render Radar JSON-H2 Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      site:
+        description: "Radar site"
+        required: true
+        default: "FCX"
+      product:
+        description: "Level III product"
+        required: true
+        default: "N0B"
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install radar renderer dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r scripts/radar/requirements.txt
+
+      - name: Download latest Level III source
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SITE="${{ github.event.inputs.site }}"
+          PRODUCT="${{ github.event.inputs.product }}"
+          SOURCE_DIR="radar/source/level3"
+
+          mkdir -p "$SOURCE_DIR"
+
+          python - <<'PY'
+          import os
+          import sys
+          import urllib.parse
+          import urllib.request
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+
+          site = os.environ.get("SITE") or "FCX"
+          product = os.environ.get("PRODUCT") or "N0B"
+
+          bucket_url = "https://unidata-nexrad-level3.s3.amazonaws.com"
+          prefix = f"{product}/{site}/"
+
+          list_url = (
+              bucket_url
+              + "/?list-type=2&prefix="
+              + urllib.parse.quote(prefix, safe="/")
+          )
+
+          print(f"Listing: {list_url}")
+
+          with urllib.request.urlopen(list_url, timeout=60) as response:
+              xml_body = response.read()
+
+          root = ET.fromstring(xml_body)
+          namespace = {"s3": "http://s3.amazonaws.com/doc/2006-03-01/"}
+
+          keys = [
+              item.text
+              for item in root.findall(".//s3:Key", namespace)
+              if item.text and item.text.endswith(".nids")
+          ]
+
+          if not keys:
+              print(f"No .nids files found for prefix {prefix}", file=sys.stderr)
+              sys.exit(1)
+
+          latest_key = sorted(keys)[-1]
+          filename = Path(latest_key).name
+          output_path = Path("radar/source/level3") / filename
+
+          download_url = bucket_url + "/" + urllib.parse.quote(latest_key, safe="/")
+
+          print(f"Latest key: {latest_key}")
+          print(f"Downloading: {download_url}")
+          print(f"Saving to: {output_path}")
+
+          urllib.request.urlretrieve(download_url, output_path)
+          PY
+
+      - name: Render radar frame
+        run: |
+          python scripts/radar/render_reflectivity.py --render --force
+
+      - name: Show generated radar files
+        run: |
+          echo "Generated radar files:"
+          find radar -maxdepth 5 -type f | sort
+
+      - name: Upload JSON-H2 radar artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: radar-json-h2-test
+          path: |
+            radar/frames.json
+            radar/frames/**/*.webp
+          if-no-files-found: error
