@@ -42,19 +42,69 @@ def summarize_numeric_array(name: str, values) -> None:
     import numpy as np
 
     array = np.ma.array(values)
-    compressed = array.compressed()
+    filled = np.asarray(array.filled(np.nan), dtype=float)
+    finite_values = filled[np.isfinite(filled)]
+    unique_sample = np.unique(finite_values)[:20] if finite_values.size else []
+    total_count = int(filled.size)
+    finite_count = int(finite_values.size)
+    nan_count = int(np.isnan(filled).sum())
+    masked_count = int(np.ma.count_masked(array))
+    finite_coverage = (finite_count / total_count * 100) if total_count else 0.0
 
     print(f"array={name}")
     print(f"  shape={array.shape}")
     print(f"  dtype={array.dtype}")
-    print(f"  masked={int(np.ma.count_masked(array))}")
+    print(f"  total_count={total_count}")
+    print(f"  finite_count={finite_count}")
+    print(f"  nan_count={nan_count}")
+    print(f"  masked_count={masked_count}")
+    print(f"  finite_coverage_percent={finite_coverage:.6f}")
 
-    if compressed.size:
-        print(f"  min={float(compressed.min())}")
-        print(f"  max={float(compressed.max())}")
-        print(f"  mean={float(compressed.mean())}")
+    if finite_values.size:
+        print(f"  finite_min={float(np.nanmin(finite_values))}")
+        print(f"  finite_max={float(np.nanmax(finite_values))}")
+        print(f"  finite_mean={float(np.nanmean(finite_values))}")
+        print(f"  unique_finite_sample={[float(value) for value in unique_sample]}")
     else:
-        print("  no unmasked values")
+        print("  unique_finite_sample=[]")
+        if "mapped_data" in name:
+            print("  Decoded successfully, but no finite reflectivity values were found in mapped_data.")
+
+
+def summarize_item_value(name: str, value) -> None:
+    import numpy as np
+
+    print(f"  {name}_type={type(value).__name__}")
+
+    if isinstance(value, (str, bytes, int, float, bool)) or value is None:
+        print(f"  {name}_value={value!r}")
+        return
+
+    try:
+        length = len(value)
+        print(f"  {name}_length={length}")
+    except TypeError:
+        length = None
+
+    if hasattr(value, "shape"):
+        print(f"  {name}_shape={value.shape}")
+        print(f"  {name}_dtype={getattr(value, 'dtype', '')}")
+
+    if isinstance(value, dict):
+        print(f"  {name}_keys={list(value.keys())[:20]}")
+        return
+
+    if isinstance(value, (list, tuple)):
+        print(f"  {name}_sample={repr(value[:3])[:500]}")
+        return
+
+    try:
+        array = np.asarray(value)
+        print(f"  {name}_array_shape={array.shape}")
+        print(f"  {name}_array_dtype={array.dtype}")
+        print(f"  {name}_array_sample={repr(array.ravel()[:10].tolist())[:500]}")
+    except Exception as error:
+        print(f"  {name}_summary_error={error}")
 
 
 def inspect_level3_file(path: Path) -> bool:
@@ -107,12 +157,17 @@ def inspect_level3_file(path: Path) -> bool:
 
             print(f"  item[{item_index}] keys={sorted(item.keys())}")
 
+            for key in ("center", "first", "gate_scale", "data"):
+                if key in item:
+                    summarize_item_value(f"item[{item_index}].{key}", item[key])
+
             if "data" not in item:
                 continue
 
             try:
                 mapped = level3.map_data(item["data"])
                 summarize_numeric_array(f"sym_block[{block_index}][{item_index}].mapped_data", mapped)
+                print("  mapped_data_interpretation=MetPy map_data output; finite values are required before treating this as dBZ reflectivity.")
                 decoded_any = True
             except Exception as error:
                 print(f"  unable to map data values: {error}")
