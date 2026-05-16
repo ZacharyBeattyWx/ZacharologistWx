@@ -8151,9 +8151,18 @@ async function focusSingleSiteRadarOnAlert(alert) {
     radarSiteSelect.value = site.sector;
   }
 
-  stopSingleSiteRadarLoop();
-loadSingleSiteRadar(site.sector);
-await loadSingleSiteRadarLoopFrames();
+  if (currentRadarMode === "highres") {
+    if (radarProductSelect) {
+      radarProductSelect.value = "N0B";
+    }
+
+    clearSingleSiteRadarLoopLayers();
+    loadSingleSiteRadar(site.sector);
+  } else if (currentRadarMode === "raw") {
+    stopSingleSiteRadarLoop();
+    loadSingleSiteRadar(site.sector);
+    await loadSingleSiteRadarLoopFrames();
+  }
 }
 
   singleSiteMap.setView([center.lat, center.lon], 8);
@@ -9037,7 +9046,10 @@ function setRadarMode(mode) {
       singleSiteRadarViewer.style.display = "flex";
     }
 
-    // High-res mode uses the active/nearest radar site with IEM-served Level III N0B reflectivity.
+    // Current highres mode is a static latest-frame IEM N0B fallback.
+    // It is not the future custom frame-service radar yet.
+    setRadarPlaybackControlsVisible(false);
+
     if (radarProductSelect) {
       radarProductSelect.value = "N0B";
     }
@@ -9062,6 +9074,7 @@ function setRadarMode(mode) {
           }
         }
 
+        clearSingleSiteRadarLoopLayers();
         loadSingleSiteRadar(siteCode);
       });
     });
@@ -9078,6 +9091,8 @@ function setRadarMode(mode) {
     if (singleSiteRadarViewer) {
       singleSiteRadarViewer.style.display = "flex";
     }
+
+    setRadarPlaybackControlsVisible(true);
 
     initSingleSiteRadar().then(() => {
       requestAnimationFrame(() => {
@@ -9097,6 +9112,8 @@ function setRadarMode(mode) {
   if (singleSiteRadarViewer) {
     singleSiteRadarViewer.style.display = "none";
   }
+
+  setRadarPlaybackControlsVisible(false);
 
   if (radarFrame) {
     radarFrame.style.display = "block";
@@ -9238,7 +9255,18 @@ async function selectNearestRadarBySearch(query) {
         .openPopup();
     }
 
-    loadSingleSiteRadar(site.sector);
+    if (currentRadarMode === "highres") {
+      if (radarProductSelect) {
+        radarProductSelect.value = "N0B";
+      }
+
+      clearSingleSiteRadarLoopLayers();
+      loadSingleSiteRadar(site.sector);
+    } else if (currentRadarMode === "raw") {
+      stopSingleSiteRadarLoop();
+      loadSingleSiteRadar(site.sector);
+      loadSingleSiteRadarLoopFrames();
+    }
 
     if (radarSearchStatus) {
       radarSearchStatus.textContent =
@@ -9262,6 +9290,47 @@ let singleSiteRadarLoopRequestId = 0;
 
 const SINGLE_SITE_RADAR_LOOP_MINUTES = 60;
 const SINGLE_SITE_RADAR_LOOP_SPEED = 650;
+
+function setRadarPlaybackControlsVisible(isVisible) {
+  const backBtn = document.getElementById("radarStepBackBtn");
+  const playBtn = document.getElementById("radarPlayBtn");
+  const forwardBtn = document.getElementById("radarStepForwardBtn");
+  const frameTime = document.getElementById("radarFrameTime");
+  const controls = document.querySelector(".single-radar-toolbar .radar-loop-controls");
+
+  if (controls) {
+    controls.style.display = "flex";
+  }
+
+  [backBtn, playBtn, forwardBtn].forEach(button => {
+    if (button) {
+      button.style.display = isVisible ? "" : "none";
+    }
+  });
+
+  if (frameTime) {
+    frameTime.style.display = "";
+  }
+}
+
+function clearSingleSiteRadarLoopLayers() {
+  stopSingleSiteRadarLoop();
+
+  singleSiteRadarLoopLayers.forEach(layer => {
+    if (singleSiteMap && singleSiteMap.hasLayer(layer)) {
+      singleSiteMap.removeLayer(layer);
+    }
+  });
+
+  singleSiteRadarLoopFrames = [];
+  singleSiteRadarLoopLayers = [];
+  singleSiteRadarLoopIndex = 0;
+
+  const frameTime = document.getElementById("radarFrameTime");
+  if (frameTime) {
+    frameTime.textContent = "Latest";
+  }
+}
 
 function formatSingleSiteRadarApiTime(date) {
   return date.toISOString().slice(0, 16) + "Z";
@@ -9618,19 +9687,40 @@ if (radarSiteSelect) {
       singleSiteMap.setView(siteInfo.center, siteInfo.zoom);
     }
 
-    stopSingleSiteRadarLoop();
-    loadSingleSiteRadar(site);
-    loadSingleSiteRadarLoopFrames();
+    if (currentRadarMode === "highres") {
+      if (radarProductSelect) {
+        radarProductSelect.value = "N0B";
+      }
+
+      clearSingleSiteRadarLoopLayers();
+      loadSingleSiteRadar(site);
+      return;
+    }
+
+    if (currentRadarMode === "raw") {
+      stopSingleSiteRadarLoop();
+      loadSingleSiteRadar(site);
+      loadSingleSiteRadarLoopFrames();
+    }
   });
 }
 
 if (radarProductSelect) {
   radarProductSelect.addEventListener("change", () => {
-    const site = radarSiteSelect?.value || "PRAX";
+    const site = radarSiteSelect?.value || "RAX";
 
-stopSingleSiteRadarLoop();
-loadSingleSiteRadar(site);
-loadSingleSiteRadarLoopFrames();
+    if (currentRadarMode === "highres") {
+      radarProductSelect.value = "N0B";
+      clearSingleSiteRadarLoopLayers();
+      loadSingleSiteRadar(site);
+      return;
+    }
+
+    if (currentRadarMode === "raw") {
+      stopSingleSiteRadarLoop();
+      loadSingleSiteRadar(site);
+      loadSingleSiteRadarLoopFrames();
+    }
   });
 }
 
@@ -9647,9 +9737,21 @@ if (radarRefreshBtn) {
   radarRefreshBtn.addEventListener("click", () => {
     const site = radarSiteSelect?.value || "RAX";
 
-    stopSingleSiteRadarLoop();
-    loadSingleSiteRadar(site);
-    loadSingleSiteRadarLoopFrames();
+    if (currentRadarMode === "highres") {
+      if (radarProductSelect) {
+        radarProductSelect.value = "N0B";
+      }
+
+      clearSingleSiteRadarLoopLayers();
+      loadSingleSiteRadar(site);
+      return;
+    }
+
+    if (currentRadarMode === "raw") {
+      stopSingleSiteRadarLoop();
+      loadSingleSiteRadar(site);
+      loadSingleSiteRadarLoopFrames();
+    }
   });
 }
 
