@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Radar Preview</title>
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIINfQv5uSD2G3HRrA9T6QTApN6TqM6pF4M="
+    crossorigin=""
+  >
+  <style>
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      background: #0b0f14;
+      color: #edf2f7;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    #map {
+      height: 100%;
+      width: 100%;
+    }
+
+    .info-panel {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 1000;
+      width: min(320px, calc(100vw - 32px));
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      border-radius: 8px;
+      background: rgba(12, 18, 28, 0.92);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+      padding: 14px;
+      backdrop-filter: blur(8px);
+    }
+
+    .info-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .info-title {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .refresh-button {
+      border: 1px solid rgba(148, 163, 184, 0.55);
+      border-radius: 6px;
+      background: #1f2937;
+      color: #f8fafc;
+      cursor: pointer;
+      font-size: 13px;
+      line-height: 1;
+      padding: 8px 10px;
+    }
+
+    .refresh-button:hover {
+      background: #334155;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: max-content 1fr;
+      gap: 7px 12px;
+      font-size: 13px;
+    }
+
+    .info-label {
+      color: #94a3b8;
+    }
+
+    .info-value {
+      min-width: 0;
+      overflow-wrap: anywhere;
+      color: #f8fafc;
+    }
+
+    .status {
+      margin-top: 12px;
+      color: #cbd5e1;
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .status.error {
+      color: #fca5a5;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <section class="info-panel" aria-live="polite">
+    <div class="info-header">
+      <h1 class="info-title">Radar Preview</h1>
+      <button class="refresh-button" id="refreshButton" type="button">Refresh</button>
+    </div>
+    <div class="info-grid" id="infoGrid"></div>
+    <div class="status" id="status">Loading radar catalog...</div>
+  </section>
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+  <script>
+    const SITE = 'KFCX';
+    const PRODUCT = 'N0B';
+    const CATALOG_URL = './radar/frames.json';
+
+    const map = L.map('map', {
+      zoomControl: true,
+      attributionControl: true,
+    }).setView([37.0, -80.2], 7);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+      maxZoom: 19,
+    }).addTo(map);
+
+    const infoGrid = document.getElementById('infoGrid');
+    const statusEl = document.getElementById('status');
+    const refreshButton = document.getElementById('refreshButton');
+    let radarLayer = null;
+
+    function setStatus(message, isError = false) {
+      statusEl.textContent = message;
+      statusEl.classList.toggle('error', isError);
+    }
+
+    function formatNumber(value, digits = 2) {
+      return typeof value === 'number' && Number.isFinite(value)
+        ? value.toFixed(digits)
+        : null;
+    }
+
+    function setInfo(catalog, frame) {
+      const stats = frame.stats || {};
+      const rows = [
+        ['site', SITE],
+        ['product', PRODUCT],
+        ['validTime', frame.validTime],
+        ['generatedAt', catalog.generatedAt],
+      ];
+
+      if (stats.minVisibleDbz !== undefined) {
+        rows.push(['minVisibleDbz', String(stats.minVisibleDbz)]);
+      }
+
+      if (stats.minComponentPixels !== undefined) {
+        rows.push(['minComponentPixels', String(stats.minComponentPixels)]);
+      }
+
+      if (stats.visibleCoveragePercent !== undefined) {
+        rows.push(['visibleCoveragePercent', formatNumber(stats.visibleCoveragePercent, 4) || String(stats.visibleCoveragePercent)]);
+      }
+
+      infoGrid.replaceChildren(
+        ...rows.flatMap(([label, value]) => {
+          const labelEl = document.createElement('div');
+          labelEl.className = 'info-label';
+          labelEl.textContent = label;
+
+          const valueEl = document.createElement('div');
+          valueEl.className = 'info-value';
+          valueEl.textContent = value || 'unavailable';
+
+          return [labelEl, valueEl];
+        })
+      );
+    }
+
+    function catalogFrame(catalog) {
+      const frame = catalog &&
+        catalog.frames &&
+        catalog.frames[SITE] &&
+        catalog.frames[SITE][PRODUCT] &&
+        catalog.frames[SITE][PRODUCT][0];
+
+      if (!frame) {
+        throw new Error('Missing frames.KFCX.N0B[0] in radar/frames.json.');
+      }
+
+      if (!Array.isArray(frame.bounds) || frame.bounds.length !== 2) {
+        throw new Error('Latest radar frame is missing usable bounds.');
+      }
+
+      if (!frame.url) {
+        throw new Error('Latest radar frame is missing a WebP URL.');
+      }
+
+      return frame;
+    }
+
+    async function loadRadar() {
+      refreshButton.disabled = true;
+      setStatus('Loading radar catalog...');
+
+      try {
+        const response = await fetch(`${CATALOG_URL}?t=${Date.now()}`, {
+          cache: 'no-store',
+        });
+
+        if (!response.ok) {
+          throw new Error(`Unable to load radar/frames.json (${response.status}).`);
+        }
+
+        const catalog = await response.json();
+        const frame = catalogFrame(catalog);
+        const imageUrl = `${frame.url.replace(/^\//, './')}?t=${Date.now()}`;
+        const bounds = L.latLngBounds(frame.bounds);
+
+        if (radarLayer) {
+          radarLayer.remove();
+        }
+
+        radarLayer = L.imageOverlay(imageUrl, bounds, {
+          opacity: 1,
+          interactive: false,
+        }).addTo(map);
+
+        radarLayer.once('load', () => {
+          setStatus('Latest committed radar frame loaded.');
+        });
+
+        radarLayer.once('error', () => {
+          setStatus('Radar image failed to load.', true);
+        });
+
+        map.fitBounds(bounds, { padding: [24, 24] });
+        setInfo(catalog, frame);
+      } catch (error) {
+        if (radarLayer) {
+          radarLayer.remove();
+          radarLayer = null;
+        }
+
+        infoGrid.replaceChildren();
+        setStatus(error.message || 'Radar preview failed to load.', true);
+      } finally {
+        refreshButton.disabled = false;
+      }
+    }
+
+    refreshButton.addEventListener('click', loadRadar);
+    loadRadar();
+  </script>
+</body>
+</html>
