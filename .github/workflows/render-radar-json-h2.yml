@@ -19,6 +19,17 @@ on:
         description: "Minimum connected pixel blob size to keep"
         required: true
         default: "6"
+      commit_outputs:
+        description: "Commit generated radar frames and catalog back to the repository"
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+permissions:
+  contents: write
 
 jobs:
   render:
@@ -220,6 +231,12 @@ jobs:
               download_path.replace(output_path)
           PY
 
+      - name: Clean generated radar frame folder
+        shell: bash
+        run: |
+          rm -rf "radar/frames/K${{ github.event.inputs.site }}/${{ github.event.inputs.product }}"
+          mkdir -p "radar/frames/K${{ github.event.inputs.site }}/${{ github.event.inputs.product }}"
+
       - name: Render radar frame
         run: |
           python scripts/radar/render_reflectivity.py --render --force --min-visible-dbz "${{ github.event.inputs.min_visible_dbz }}" --min-component-pixels "${{ github.event.inputs.min_component_pixels }}"
@@ -237,3 +254,19 @@ jobs:
             radar/frames.json
             radar/frames/**/*.webp
           if-no-files-found: error
+
+      - name: Commit generated radar output
+        if: ${{ github.event.inputs.commit_outputs == 'true' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add radar/frames.json radar/frames
+
+          if git diff --cached --quiet; then
+            echo "No generated radar output changes to commit."
+            exit 0
+          fi
+
+          git commit -m "Update generated radar JSON-H4 output"
+          git push
