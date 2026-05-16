@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-05-16T15:16:51Z",
+  "generatedAt": "2026-05-16T15:24:32Z",
   "sites": {
     "KFCX": {
       "id": "KFCX",
@@ -24,9 +24,9 @@
     "KFCX": {
       "N0B": [
         {
-          "slug": "N0B_20260516_1514",
-          "url": "/radar/frames/KFCX/N0B/N0B_20260516_1514.webp",
-          "validTime": "2026-05-16T15:14:00Z",
+          "slug": "N0B_20260516_1521",
+          "url": "/radar/frames/KFCX/N0B/N0B_20260516_1521.webp",
+          "validTime": "2026-05-16T15:21:00Z",
           "bounds": [
             [
               32.89176859504132,
@@ -44,27 +44,27 @@
             "minVisibleDbz": 0.0,
             "minComponentPixels": 10,
             "totalPixels": 2359296,
-            "finitePixels": 103529,
-            "rawVisiblePixels": 64381,
-            "visiblePixels": 62792,
-            "removedSpecklePixels": 1589,
-            "visibleCoveragePercent": 2.661471896701389,
-            "finiteMin": -11.45812773482434,
-            "finiteMax": 41.532941744151294,
-            "finiteMean": 5.3268595051314405
+            "finitePixels": 94302,
+            "rawVisiblePixels": 62564,
+            "visiblePixels": 60750,
+            "removedSpecklePixels": 1814,
+            "visibleCoveragePercent": 2.574920654296875,
+            "finiteMin": -11.333333333333334,
+            "finiteMax": 39.27777777777778,
+            "finiteMean": 5.8934740543973385
           },
           "sourceStats": {
             "minVisibleDbz": 0.0,
             "minComponentPixels": 10,
             "totalPixels": 1324800,
-            "finitePixels": 242316,
-            "rawVisiblePixels": 129032,
-            "visiblePixels": 119450,
-            "removedSpecklePixels": 9582,
-            "visibleCoveragePercent": 9.016455314009661,
+            "finitePixels": 245399,
+            "rawVisiblePixels": 138958,
+            "visiblePixels": 130305,
+            "removedSpecklePixels": 8653,
+            "visibleCoveragePercent": 9.835824275362318,
             "finiteMin": -15.0,
-            "finiteMax": 44.0,
-            "finiteMean": 1.2456977665527658
+            "finiteMax": 41.5,
+            "finiteMean": 1.5214222551844139
           },
           "debug": {
             "radarLat": 37.024,
@@ -89,8 +89,9 @@
             ],
             "smoothingPasses": 1,
             "sourceImageMode": "azimuth-range",
-            "outputImageMode": "north-up-cartesian-bilinear-sampled",
-            "projectionMode": "polar-cartesian-bilinear-v1"
+            "outputImageMode": "north-up-cartesian-nearest-sampled",
+            "projectionMode": "polar-cartesian-nearest-v2",
+            "samplingMode": "nearest"
           }
         }
       ]
