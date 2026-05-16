@@ -414,12 +414,17 @@
       return frames;
     }
 
-    function frameImageUrl(frame) {
-      return `${frame.url.replace(/^\//, './')}?t=${Date.now()}`;
+    function cacheBustedUrl(url) {
+      const separator = url.includes('?') ? '&' : '?';
+      return `${url}${separator}v=${Date.now()}`;
     }
 
     function catalogUrl() {
-      return `${CATALOG_URL}?v=${Date.now()}`;
+      return cacheBustedUrl(CATALOG_URL);
+    }
+
+    function frameImageUrl(frame) {
+      return cacheBustedUrl(frame.url.replace(/^\//, './'));
     }
 
     function formatFrameTime(frame) {
