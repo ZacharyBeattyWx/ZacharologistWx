@@ -39,6 +39,9 @@ jobs:
           PRODUCT="${{ github.event.inputs.product }}"
           SOURCE_DIR="radar/source/level3"
 
+          export SITE
+          export PRODUCT
+
           mkdir -p "$SOURCE_DIR"
 
           python - <<'PY'
@@ -53,7 +56,10 @@ jobs:
           product = os.environ.get("PRODUCT") or "N0B"
 
           bucket_url = "https://unidata-nexrad-level3.s3.amazonaws.com"
-          prefix = f"{product}/{site}/"
+
+          # Bucket keys are expected to look like:
+          # Level3_FCX_N0B_YYYYMMDD_HHMM.nids
+          prefix = f"Level3_{site}_{product}_"
 
           list_url = (
               bucket_url
