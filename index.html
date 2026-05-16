@@ -1852,6 +1852,32 @@ color: white;
   background: #07111f;
 }
 
+.radar-legend {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 700;
+  display: none;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 10px;
+  background: rgba(2, 6, 23, 0.82);
+  pointer-events: none;
+}
+
+.radar-legend-swatch {
+  width: 18px;
+  height: 28px;
+}
+
+.radar-legend-label {
+  padding: 6px 8px;
+  color: #e5e7eb;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
 .leaflet-container {
   background: #07111f;
 }
@@ -7105,6 +7131,7 @@ body {
         </div>
 
         <div id="singleSiteMap"></div>
+        <div id="radarLegend" class="radar-legend" aria-label="Reflectivity legend"></div>
       </div>
 
     </div>
@@ -8587,6 +8614,77 @@ function loadSPCImages() {
     tryNextImage();
   });
 }
+
+/*
+  Production radar architecture target:
+
+  - clean:
+      Current: Windy iframe fallback.
+      Long-term: remains the clean external fallback mode.
+
+  - raw:
+      Current: IEM single-site radar with playback.
+      Long-term: adapter-backed Super-Res radar using this site's own frame catalog.
+
+  - highres:
+      Current: IEM N0B latest frame only, no playback.
+      Long-term: may collapse internally with raw/superres once the custom frame service exists.
+
+  Future frame-service shape:
+      /radar/frames.json
+      /radar/frames/{site}/{product}/{slug}.webp
+
+  Do not hotlink third-party rendered frame services. IEM remains the current safe active radar source
+  until a site-owned backend renderer exists.
+*/
+
+const RADAR_FRAME_SERVICE_BASE = "/radar";
+
+const RADAR_ADAPTER_KEYS = {
+  windy: "windy",
+  iem: "iem",
+  customFrames: "customFrames"
+};
+
+const RADAR_MODE_ARCHITECTURE = {
+  clean: {
+    label: "Clean Radar",
+    currentAdapter: RADAR_ADAPTER_KEYS.windy,
+    futureAdapter: RADAR_ADAPTER_KEYS.windy,
+    playback: false
+  },
+  raw: {
+    label: "Super-Res Radar",
+    currentAdapter: RADAR_ADAPTER_KEYS.iem,
+    futureAdapter: RADAR_ADAPTER_KEYS.customFrames,
+    playback: true
+  },
+  highres: {
+    label: "Hi-Res Site Radar",
+    currentAdapter: RADAR_ADAPTER_KEYS.iem,
+    futureAdapter: RADAR_ADAPTER_KEYS.customFrames,
+    playback: false,
+    forcedProduct: "N0B"
+  }
+};
+
+const DEFAULT_REFLECTIVITY_COLOR_TABLE = {
+  units: "dBZ",
+  step: 10,
+  product: "BR",
+  colors: [
+    { value: -10, stops: [{ rgb: [7, 59, 71], alpha: 0 }] },
+    { value: 0, stops: [{ rgb: [62, 69, 71] }, { rgb: [191, 193, 197] }] },
+    { value: 20, stops: [{ rgb: [135, 229, 125] }] },
+    { value: 30, stops: [{ rgb: [48, 102, 43] }] },
+    { value: 35, stops: [{ rgb: [253, 227, 0] }] },
+    { value: 50, stops: [{ rgb: [254, 26, 0] }, { rgb: [181, 0, 52] }] },
+    { value: 60, stops: [{ rgb: [163, 0, 136] }, { rgb: [254, 4, 250] }] },
+    { value: 70, stops: [{ rgb: [67, 190, 254] }, { rgb: [19, 144, 242] }] },
+    { value: 80, stops: [{ rgb: [166, 176, 150] }, { rgb: [255, 231, 188] }] },
+    { value: 85, stops: [{ rgb: [255, 231, 188] }] }
+  ]
+};
 
 const radarModal = document.getElementById("radarModal");
 const radarFrame = document.getElementById("radarFrame");
