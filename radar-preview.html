@@ -117,6 +117,46 @@
       color: #f8fafc;
     }
 
+    .controls {
+      display: grid;
+      gap: 10px;
+      margin: 12px 0;
+      border-top: 1px solid rgba(148, 163, 184, 0.2);
+      border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+      padding: 12px 0;
+      font-size: 13px;
+    }
+
+    .control-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 10px;
+      color: #e2e8f0;
+    }
+
+    .control-row input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      margin: 0;
+    }
+
+    .opacity-control {
+      display: grid;
+      gap: 7px;
+    }
+
+    .opacity-label {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      color: #e2e8f0;
+    }
+
+    .opacity-control input[type="range"] {
+      width: 100%;
+    }
+
     .status {
       margin-top: 12px;
       color: #cbd5e1;
@@ -137,6 +177,19 @@
       <button class="refresh-button" id="refreshButton" type="button">Refresh</button>
     </div>
     <div class="info-grid" id="infoGrid"></div>
+    <div class="controls">
+      <label class="control-row" for="debugToggle">
+        <span>Show debug overlays</span>
+        <input id="debugToggle" type="checkbox" checked>
+      </label>
+      <label class="opacity-control" for="opacitySlider">
+        <span class="opacity-label">
+          <span>Radar opacity</span>
+          <span id="opacityValue">1.00</span>
+        </span>
+        <input id="opacitySlider" type="range" min="0" max="1" step="0.05" value="1">
+      </label>
+    </div>
     <div class="status" id="status">Loading radar catalog...</div>
   </section>
 
@@ -173,14 +226,27 @@
     const infoGrid = document.getElementById('infoGrid');
     const statusEl = document.getElementById('status');
     const refreshButton = document.getElementById('refreshButton');
+    const debugToggle = document.getElementById('debugToggle');
+    const opacitySlider = document.getElementById('opacitySlider');
+    const opacityValue = document.getElementById('opacityValue');
     let radarLayer = null;
     let radarSiteMarker = null;
     let overlayBoundsRectangle = null;
     let overlayCenterMarker = null;
+    let latestFrame = null;
+    let latestBounds = null;
 
     function setStatus(message, isError = false) {
       statusEl.textContent = message;
       statusEl.classList.toggle('error', isError);
+    }
+
+    function radarOpacity() {
+      return Number(opacitySlider.value);
+    }
+
+    function updateOpacityLabel() {
+      opacityValue.textContent = radarOpacity().toFixed(2);
     }
 
     function formatNumber(value, digits = 2) {
@@ -307,6 +373,10 @@
 
       removeDebugLayers();
 
+      if (!debugToggle.checked) {
+        return;
+      }
+
       if (Number.isFinite(lat) && Number.isFinite(lon)) {
         radarSiteMarker = L.circleMarker([lat, lon], {
           radius: 9,
@@ -369,13 +439,15 @@
         const frame = catalogFrame(catalog);
         const imageUrl = `${frame.url.replace(/^\//, './')}?t=${Date.now()}`;
         const bounds = L.latLngBounds(frame.bounds);
+        latestFrame = frame;
+        latestBounds = bounds;
 
         if (radarLayer) {
           radarLayer.remove();
         }
 
         radarLayer = L.imageOverlay(imageUrl, bounds, {
-          opacity: 1,
+          opacity: radarOpacity(),
           interactive: false,
           pane: 'radarPane',
         }).addTo(map);
@@ -401,6 +473,8 @@
         }
 
         removeDebugLayers();
+        latestFrame = null;
+        latestBounds = null;
 
         infoGrid.replaceChildren();
         setStatus(error.message || 'Radar preview failed to load.', true);
@@ -409,6 +483,24 @@
       }
     }
 
+    debugToggle.addEventListener('change', () => {
+      if (debugToggle.checked && latestFrame && latestBounds) {
+        updateDebugLayers(latestFrame, latestBounds);
+        return;
+      }
+
+      removeDebugLayers();
+    });
+
+    opacitySlider.addEventListener('input', () => {
+      updateOpacityLabel();
+
+      if (radarLayer) {
+        radarLayer.setOpacity(radarOpacity());
+      }
+    });
+
+    updateOpacityLabel();
     refreshButton.addEventListener('click', loadRadar);
     loadRadar();
   </script>
