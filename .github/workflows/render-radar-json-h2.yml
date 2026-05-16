@@ -1,6 +1,8 @@
 name: Render Radar JSON-H2 Test
 
 on:
+  schedule:
+    - cron: "*/5 * * * *"
   workflow_dispatch:
     inputs:
       site:
@@ -31,6 +33,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: radar-json-h2
+  cancel-in-progress: true
+
 jobs:
   render:
     runs-on: ubuntu-latest
@@ -54,8 +60,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          SITE="${{ github.event.inputs.site }}"
-          PRODUCT="${{ github.event.inputs.product }}"
+          SITE="${{ github.event.inputs.site || 'FCX' }}"
+          PRODUCT="${{ github.event.inputs.product || 'N0B' }}"
           SOURCE_DIR="radar/source/level3"
 
           export SITE
@@ -267,12 +273,12 @@ jobs:
       - name: Clean generated radar frame folder
         shell: bash
         run: |
-          rm -rf "radar/frames/K${{ github.event.inputs.site }}/${{ github.event.inputs.product }}"
-          mkdir -p "radar/frames/K${{ github.event.inputs.site }}/${{ github.event.inputs.product }}"
+          rm -rf "radar/frames/K${{ github.event.inputs.site || 'FCX' }}/${{ github.event.inputs.product || 'N0B' }}"
+          mkdir -p "radar/frames/K${{ github.event.inputs.site || 'FCX' }}/${{ github.event.inputs.product || 'N0B' }}"
 
       - name: Render radar frame
         run: |
-          python scripts/radar/render_reflectivity.py --render --force --min-visible-dbz "${{ github.event.inputs.min_visible_dbz }}" --min-component-pixels "${{ github.event.inputs.min_component_pixels }}"
+          python scripts/radar/render_reflectivity.py --render --force --min-visible-dbz "${{ github.event.inputs.min_visible_dbz || '5' }}" --min-component-pixels "${{ github.event.inputs.min_component_pixels || '3' }}"
 
       - name: Show generated radar files
         run: |
@@ -289,7 +295,7 @@ jobs:
           if-no-files-found: error
 
       - name: Commit generated radar output
-        if: ${{ github.event.inputs.commit_outputs == 'true' }}
+        if: ${{ (github.event.inputs.commit_outputs || 'true') == 'true' }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
