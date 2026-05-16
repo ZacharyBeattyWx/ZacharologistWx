@@ -396,6 +396,12 @@ def main() -> int:
         help="Render one real transparent WebP from finite mapped_data values.",
     )
     parser.add_argument(
+        "--min-visible-dbz",
+        type=float,
+        default=DEFAULT_MIN_VISIBLE_DBZ,
+        help="Minimum reflectivity value to render as visible pixels.",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Print intended work without creating frame images.",
@@ -453,8 +459,8 @@ def main() -> int:
 
         from PIL import Image
 
-        stats = reflectivity_stats(mapped, DEFAULT_MIN_VISIBLE_DBZ)
-        rgba = reflectivity_to_rgba(mapped, DEFAULT_MIN_VISIBLE_DBZ)
+        stats = reflectivity_stats(mapped, args.min_visible_dbz)
+        rgba = reflectivity_to_rgba(mapped, args.min_visible_dbz)
         image = Image.fromarray(rgba, mode="RGBA")
         image.save(frame_path, "WEBP", lossless=True)
 

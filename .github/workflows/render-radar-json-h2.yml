@@ -11,6 +11,10 @@ on:
         description: "Level III product"
         required: true
         default: "N0B"
+      min_visible_dbz:
+        description: "Minimum dBZ rendered as visible"
+        required: true
+        default: "10"
 
 jobs:
   render:
@@ -214,7 +218,7 @@ jobs:
 
       - name: Render radar frame
         run: |
-          python scripts/radar/render_reflectivity.py --render --force
+          python scripts/radar/render_reflectivity.py --render --force --min-visible-dbz "${{ github.event.inputs.min_visible_dbz }}"
 
       - name: Show generated radar files
         run: |
