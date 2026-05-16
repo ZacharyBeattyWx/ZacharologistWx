@@ -168,6 +168,7 @@
     const statusEl = document.getElementById('status');
     const refreshButton = document.getElementById('refreshButton');
     let radarLayer = null;
+    let radarSiteMarker = null;
 
     function setStatus(message, isError = false) {
       statusEl.textContent = message;
@@ -182,6 +183,7 @@
 
     function setInfo(catalog, frame) {
       const stats = frame.stats || {};
+      const debug = frame.debug || {};
       const rows = [
         ['site', SITE],
         ['product', PRODUCT],
@@ -199,6 +201,22 @@
 
       if (stats.visibleCoveragePercent !== undefined) {
         rows.push(['visibleCoveragePercent', formatNumber(stats.visibleCoveragePercent, 4) || String(stats.visibleCoveragePercent)]);
+      }
+
+      if (debug.radarLat !== undefined) {
+        rows.push(['radarLat', formatNumber(debug.radarLat, 5) || String(debug.radarLat)]);
+      }
+
+      if (debug.radarLon !== undefined) {
+        rows.push(['radarLon', formatNumber(debug.radarLon, 5) || String(debug.radarLon)]);
+      }
+
+      if (debug.maxRangeKm !== undefined) {
+        rows.push(['maxRangeKm', formatNumber(debug.maxRangeKm, 2) || String(debug.maxRangeKm)]);
+      }
+
+      if (debug.projectionMode !== undefined) {
+        rows.push(['projectionMode', String(debug.projectionMode)]);
       }
 
       infoGrid.replaceChildren(
@@ -236,6 +254,35 @@
       }
 
       return frame;
+    }
+
+    function updateRadarSiteMarker(frame) {
+      const debug = frame.debug || {};
+      const lat = Number(debug.radarLat);
+      const lon = Number(debug.radarLon);
+
+      if (radarSiteMarker) {
+        radarSiteMarker.remove();
+        radarSiteMarker = null;
+      }
+
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+        return;
+      }
+
+      radarSiteMarker = L.circleMarker([lat, lon], {
+        radius: 6,
+        color: '#f8fafc',
+        weight: 2,
+        fillColor: '#38bdf8',
+        fillOpacity: 0.95,
+      })
+        .bindTooltip('KFCX radar site', {
+          permanent: false,
+          direction: 'top',
+          offset: [0, -8],
+        })
+        .addTo(map);
     }
 
     async function loadRadar() {
@@ -277,11 +324,17 @@
         setTimeout(() => {
           map.invalidateSize();
         }, 50);
+        updateRadarSiteMarker(frame);
         setInfo(catalog, frame);
       } catch (error) {
         if (radarLayer) {
           radarLayer.remove();
           radarLayer = null;
+        }
+
+        if (radarSiteMarker) {
+          radarSiteMarker.remove();
+          radarSiteMarker = null;
         }
 
         infoGrid.replaceChildren();

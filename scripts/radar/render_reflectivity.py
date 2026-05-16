@@ -541,6 +541,7 @@ def main() -> int:
         lat = float(getattr(level3, "lat"))
         lon = float(getattr(level3, "lon"))
         range_km = float(getattr(level3, "max_range"))
+        mapped_shape = [int(dimension) for dimension in mapped.shape]
         bounds = calculate_rough_bounds(lat, lon, range_km)
         relative_url = "/" + frame_path.relative_to(REPO_ROOT).as_posix()
         frame_entry = {
@@ -552,6 +553,13 @@ def main() -> int:
             "height": image.height,
             "palette": "DEFAULT_REFLECTIVITY_COLOR_TABLE",
             "stats": stats,
+            "debug": {
+                "radarLat": lat,
+                "radarLon": lon,
+                "maxRangeKm": range_km,
+                "mappedShape": mapped_shape,
+                "projectionMode": "rough-bounds-v1",
+            },
         }
 
         update_frames_catalog(
@@ -564,6 +572,13 @@ def main() -> int:
 
         print(f"Wrote {frame_path}")
         print(f"Updated {config.get('catalogPath', 'radar/frames.json')}")
+        print(f"radarLat={lat}")
+        print(f"radarLon={lon}")
+        print(f"maxRangeKm={range_km}")
+        print(f"mappedShape={mapped_shape}")
+        print(f"imageWidth={image.width}")
+        print(f"imageHeight={image.height}")
+        print(f"bounds={bounds}")
         print(f"minVisibleDbz={stats['minVisibleDbz']}")
         print(f"minComponentPixels={stats['minComponentPixels']}")
         print(f"rawVisiblePixels={stats['rawVisiblePixels']}")
