@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chase Dashboard | WX Northwest</title>
+  
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      overflow-x: hidden;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(
+        180deg,
+        #09111d 0%,
+        #050b16 45%,
+        #040811 100%
+      );
+      color: white;
+    }
+
+    /* HEADER / NAV */
+    .site-header {
+      width: 100%;
+      max-width: 100%;
+      margin: 0 auto;
+      padding: 14px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      background: rgba(5, 10, 20, 0.94);
+      border-bottom: 1px solid rgba(143, 179, 255, 0.16);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      backdrop-filter: blur(14px);
+    }
+
+    .site-brand {
+      color: white;
+      text-decoration: none;
+      display: flex;
+      flex-direction: column;
+      min-width: 160px;
+    }
+
+    .brand-main {
+      font-size: 1.1rem;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      line-height: 1;
+    }
+
+    .brand-main span {
+      color: #38bdf8;
+    }
+
+    .brand-sub {
+      margin-top: 3px;
+      color: #8fb3ff;
+      font-size: 0.6rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+    }
+
+    .site-nav {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      flex: 1;
+    }
+
+    .site-nav a {
+      padding: 8px 12px;
+      color: #e5e7eb;
+      text-decoration: none;
+      border: 1px solid transparent;
+      border-radius: 10px;
+      font-size: 0.7rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+      transition: 0.22s ease;
+    }
+
+    .site-nav a span {
+      display: block;
+      margin-top: 2px;
+      color: #64748b;
+      font-size: 0.55rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+    }
+
+    .site-nav a:hover {
+      background: rgba(56, 189, 248, 0.12);
+      border-color: rgba(56, 189, 248, 0.34);
+      color: white;
+    }
+
+    .site-nav a.active {
+      background: rgba(249, 115, 22, 0.15);
+      border-color: rgba(249, 115, 22, 0.4);
+      color: #fb923c;
+    }
+
+    .site-nav a.active span {
+      color: #f97316;
+    }
+
+    /* HERO SECTION */
+    .hero {
+      position: relative;
+      height: 65vh;
+      min-height: 500px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      margin-top: 0;
+    }
+
+    .hero-background {
+      position: absolute;
+      inset: 0;
+      background: 
+        linear-gradient(135deg, rgba(0, 80, 150, 0.25) 0%, rgba(0, 30, 80, 0.1) 100%),
+        url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><defs><pattern id="dots" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse"><circle cx="20" cy="20" r="2" fill="rgba(56,189,248,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23dots)"/></svg>');
+      background-color: #0a1428;
+      z-index: 0;
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.42);
+      z-index: 1;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 2;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 40px 32px;
+      width: 100%;
+      display: flex;
+      align-items: center;
+    }
+
+    .hero-text {
+      flex: 0 1 520px;
+      margin-right: 60px;
+    }
+
+    .hero-title {
+      font-size: 3.2rem;
+      font-weight: 900;
+      margin: 0 0 28px 0;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+    }
+
+    .mission-overview {
+      background: rgba(10, 15, 30, 0.6);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 14px;
+      padding: 28px;
+      backdrop-filter: blur(8px);
+    }
+
+    .mission-item {
+      margin-bottom: 18px;
+    }
+
+    .mission-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .mission-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: #8fb3ff;
+      margin-bottom: 5px;
+      display: block;
+    }
+
+    .mission-value {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: white;
+    }
+
+    .confidence-bar {
+      background: rgba(50, 100, 200, 0.2);
+      border-radius: 8px;
+      height: 8px;
+      overflow: hidden;
+      margin-top: 20px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    .confidence-fill {
+      background: linear-gradient(90deg, #38bdf8 0%, #fb923c 100%);
+      height: 100%;
+      width: 75%;
+      border-radius: 8px;
+      box-shadow: 0 0 12px rgba(249, 115, 22, 0.4);
+    }
+
+    .hero-button {
+      display: inline-block;
+      padding: 12px 28px;
+      background: linear-gradient(135deg, #fb923c 0%, #f97316 100%);
+      color: white;
+      text-decoration: none;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      cursor: pointer;
+      transition: 0.25s ease;
+      box-shadow: 0 6px 20px rgba(249, 115, 22, 0.3);
+    }
+
+    .hero-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(249, 115, 22, 0.45);
+    }
+
+    /* DASHBOARD SECTION */
+    .dashboard-section {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 50px 32px;
+    }
+
+    .dashboard-section-title {
+      font-size: 2rem;
+      font-weight: 800;
+      margin-bottom: 36px;
+      letter-spacing: -0.01em;
+    }
+
+    /* STATUS ROW */
+    .status-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 18px;
+      margin-bottom: 32px;
+    }
+
+    .status-card {
+      background: rgba(18, 25, 42, 0.75);
+      padding: 24px;
+      border-radius: 14px;
+      border: 1px solid rgba(143, 179, 255, 0.15);
+      backdrop-filter: blur(10px);
+      transition: 0.25s ease;
+    }
+
+    .status-card:hover {
+      background: rgba(28, 38, 62, 0.9);
+      border-color: rgba(56, 189, 248, 0.3);
+      box-shadow: 0 8px 24px rgba(50, 90, 255, 0.15);
+    }
+
+    .status-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #8fb3ff;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .status-value {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: white;
+      margin-bottom: 4px;
+    }
+
+    .status-detail {
+      font-size: 0.85rem;
+      color: #cbd5e1;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-top: 8px;
+    }
+
+    .badge-ready {
+      background: rgba(34, 197, 94, 0.2);
+      color: #86efac;
+      border: 1px solid rgba(34, 197, 94, 0.4);
+    }
+
+    .badge-offline {
+      background: rgba(239, 68, 68, 0.2);
+      color: #fca5a5;
+      border: 1px solid rgba(239, 68, 68, 0.4);
+    }
+
+    /* CARDS ROW */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 18px;
+    }
+
+    .card {
+      background: rgba(18, 25, 42, 0.75);
+      border-radius: 14px;
+      border: 1px solid rgba(143, 179, 255, 0.15);
+      backdrop-filter: blur(10px);
+      overflow: hidden;
+      transition: 0.25s ease;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .card:hover {
+      background: rgba(28, 38, 62, 0.9);
+      border-color: rgba(56, 189, 248, 0.3);
+      box-shadow: 0 12px 36px rgba(50, 90, 255, 0.2);
+      transform: translateY(-3px);
+    }
+
+    .card-image {
+      position: relative;
+      width: 100%;
+      height: 180px;
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.15) 0%, rgba(249, 115, 22, 0.08) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .card-image::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: 
+        repeating-linear-gradient(
+          45deg,
+          transparent,
+          transparent 35px,
+          rgba(56, 189, 248, 0.05) 35px,
+          rgba(56, 189, 248, 0.05) 70px
+        );
+    }
+
+    .play-button {
+      position: relative;
+      z-index: 2;
+      width: 60px;
+      height: 60px;
+      background: rgba(249, 115, 22, 0.9);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: 0.25s ease;
+    }
+
+    .play-button:hover {
+      background: #fb923c;
+      transform: scale(1.1);
+    }
+
+    .play-button::after {
+      content: "▶";
+      color: white;
+      font-size: 1.5rem;
+      margin-left: 3px;
+    }
+
+    .live-badge {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 3;
+      background: #ef4444;
+      color: white;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.65rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+    }
+
+    .card-content {
+      padding: 24px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin: 0 0 12px 0;
+      color: white;
+    }
+
+    .card-text {
+      font-size: 0.9rem;
+      color: #cbd5e1;
+      margin-bottom: 16px;
+      flex: 1;
+    }
+
+    .card-meta {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      margin-bottom: 16px;
+    }
+
+    .card-button {
+      display: inline-block;
+      padding: 10px 16px;
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #38bdf8;
+      text-decoration: none;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      cursor: pointer;
+      transition: 0.22s ease;
+      text-align: center;
+    }
+
+    .card-button:hover {
+      background: rgba(56, 189, 248, 0.25);
+      border-color: rgba(56, 189, 248, 0.5);
+    }
+
+    .card-button.orange {
+      background: rgba(249, 115, 22, 0.15);
+      border-color: rgba(249, 115, 22, 0.3);
+      color: #fb923c;
+    }
+
+    .card-button.orange:hover {
+      background: rgba(249, 115, 22, 0.25);
+      border-color: rgba(249, 115, 22, 0.5);
+    }
+
+    /* PROBABILITY CARD SPECIAL */
+    .probability-display {
+      text-align: center;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .probability-number {
+      font-size: 3.5rem;
+      font-weight: 900;
+      color: #fb923c;
+      margin: 0;
+      line-height: 1;
+    }
+
+    .probability-label {
+      font-size: 1rem;
+      color: #8fb3ff;
+      margin-top: 8px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .probability-gauge {
+      width: 120px;
+      height: 120px;
+      margin: 12px 0;
+      border-radius: 50%;
+      background: conic-gradient(
+        #fb923c 0deg 270deg,
+        rgba(56, 189, 248, 0.2) 270deg 360deg
+      );
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .probability-gauge::after {
+      content: "75%";
+      font-size: 1.8rem;
+      font-weight: 900;
+      color: #fb923c;
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 1200px) {
+      .status-row {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .cards-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .hero-text {
+        margin-right: 40px;
+      }
+
+      .hero-title {
+        font-size: 2.5rem;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .site-header {
+        padding: 12px 16px;
+        gap: 12px;
+      }
+
+      .site-nav {
+        gap: 4px;
+      }
+
+      .site-nav a {
+        padding: 6px 8px;
+        font-size: 0.65rem;
+      }
+
+      .hero {
+        height: 50vh;
+        min-height: 400px;
+      }
+
+      .hero-content {
+        padding: 24px 16px;
+        flex-direction: column;
+      }
+
+      .hero-text {
+        margin-right: 0;
+        margin-bottom: 24px;
+        flex: 1;
+      }
+
+      .hero-title {
+        font-size: 2rem;
+      }
+
+      .dashboard-section {
+        padding: 32px 16px;
+      }
+
+      .status-row {
+        grid-template-columns: 1fr;
+      }
+
+      .cards-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .mission-overview {
+        padding: 20px;
+      }
+
+      .mission-item {
+        margin-bottom: 14px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .hero-title {
+        font-size: 1.6rem;
+      }
+
+      .dashboard-section-title {
+        font-size: 1.5rem;
+      }
+
+      .site-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .site-nav {
+        width: 100%;
+        justify-content: flex-start;
+        overflow-x: auto;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- HEADER / NAV -->
+  <header class="site-header">
+    <a href="#" class="site-brand">
+      <div class="brand-main">WX <span>NORTHWEST</span></div>
+      <div class="brand-sub">Storm Operations</div>
+    </a>
+    
+    <nav class="site-nav">
+      <a href="chase-dashboard.html" class="active">
+        Dashboard
+        <span>Ops</span>
+      </a>
+      <a href="#chase-logs">
+        Chase Logs
+        <span>History</span>
+      </a>
+      <a href="#live">
+        Live Streams
+        <span>Feed</span>
+      </a>
+      <a href="#gallery">
+        Gallery
+        <span>Media</span>
+      </a>
+      <a href="#gear">
+        Gear & Vehicle
+        <span>Equipment</span>
+      </a>
+      <a href="#targets">
+        Targets
+        <span>Alerts</span>
+      </a>
+      <a href="#archive">
+        Archive
+        <span>History</span>
+      </a>
+    </nav>
+  </header>
+
+  <!-- HERO SECTION -->
+  <section class="hero">
+    <div class="hero-background"></div>
+    
+    <div class="hero-content">
+      <div class="hero-text">
+        <h1 class="hero-title">CHASE<br>DASHBOARD</h1>
+        
+        <div class="mission-overview">
+          <div class="mission-item">
+            <span class="mission-label">Current Mission Overview</span>
+          </div>
+          
+          <div class="mission-item">
+            <span class="mission-label">Target Area</span>
+            <span class="mission-value">Western Kansas</span>
+          </div>
+          
+          <div class="mission-item">
+            <span class="mission-label">Primary Hazards</span>
+            <span class="mission-value">Large Hail, Tornadoes</span>
+          </div>
+          
+          <div class="mission-item">
+            <span class="mission-label">Confidence Level</span>
+            <span class="mission-value">75%</span>
+            <div class="confidence-bar">
+              <div class="confidence-fill"></div>
+            </div>
+          </div>
+
+          <button class="hero-button" onclick="alert('View Target Discussion')">
+            View Target Discussion
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DASHBOARD CARDS SECTION -->
+  <section class="dashboard-section">
+    <!-- STATUS ROW -->
+    <div class="status-row">
+      <div class="status-card">
+        <span class="status-label">Next Target Window</span>
+        <div class="status-value">May 26, 2025</div>
+        <div class="status-detail">2:00 PM – 10:00 PM CDT</div>
+      </div>
+
+      <div class="status-card">
+        <span class="status-label">Vehicle Status</span>
+        <div class="status-value">In Position</div>
+        <div class="status-detail">Ready to Deploy</div>
+        <div class="status-badge badge-ready">Operational</div>
+      </div>
+
+      <div class="status-card">
+        <span class="status-label">Stream Status</span>
+        <div class="status-value">OFFLINE</div>
+        <div class="status-detail">Standby</div>
+        <div class="status-badge badge-offline">Inactive</div>
+      </div>
+
+      <div class="status-card">
+        <span class="status-label">Current Location</span>
+        <div class="status-value">Colby, KS</div>
+        <div class="status-detail">37.46°N, 101.05°W</div>
+      </div>
+    </div>
+
+    <!-- CARDS GRID -->
+    <div class="cards-grid">
+      <!-- LIVE STREAM CARD -->
+      <div class="card">
+        <div class="card-image">
+          <div class="play-button"></div>
+          <div class="live-badge">LIVE</div>
+        </div>
+        <div class="card-content">
+          <h3 class="card-title">Live Stream</h3>
+          <p class="card-text">Real-time storm chase feed from the field</p>
+          <button class="card-button orange" onclick="alert('View Stream')">
+            View Stream
+          </button>
+        </div>
+      </div>
+
+      <!-- TARGET DISCUSSION CARD -->
+      <div class="card">
+        <div class="card-image">
+          <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 0.85rem;">
+            [Map Placeholder]
+          </div>
+        </div>
+        <div class="card-content">
+          <h3 class="card-title">Target Discussion</h3>
+          <p class="card-text">Storm forecast analysis and discussion</p>
+          <div class="card-meta">Updated 2 hours ago</div>
+          <button class="card-button" onclick="alert('View Discussion')">
+            View Discussion
+          </button>
+        </div>
+      </div>
+
+      <!-- CHASE PROBABILITY CARD -->
+      <div class="card">
+        <div class="card-content" style="padding-top: 28px;">
+          <div class="probability-display">
+            <h3 class="card-title" style="margin-bottom: 0;">Chase Probability</h3>
+            <div class="probability-gauge"></div>
+            <div class="probability-label">HIGH CONFIDENCE</div>
+          </div>
+          <button class="card-button" style="margin-top: auto;" onclick="alert('View Details')">
+            View Details
+          </button>
+        </div>
+      </div>
+
+      <!-- MESO ANALYSIS CARD -->
+      <div class="card">
+        <div class="card-image">
+          <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 0.85rem;">
+            [Analysis Map]
+          </div>
+        </div>
+        <div class="card-content">
+          <h3 class="card-title">Meso Analysis</h3>
+          <p class="card-text">Mesoscale analysis and visualization</p>
+          <div class="card-meta">Updated 45 minutes ago</div>
+          <button class="card-button" onclick="alert('View Map')">
+            View Map
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SIMPLE JAVASCRIPT FOR BUTTON INTERACTIONS -->
+  <script>
+    // Button click handlers - replace with actual functionality
+    document.querySelectorAll('button').forEach(button => {
+      button.addEventListener('click', function(e) {
+        if (this.getAttribute('onclick')) {
+          // Allow default onclick handlers
+          return;
+        }
+        e.preventDefault();
+        // Add your button functionality here
+      });
+    });
+
+    // Simple demo: log navigation
+    document.querySelectorAll('.site-nav a').forEach(link => {
+      link.addEventListener('click', function(e) {
+        if (this.getAttribute('href') === '#') {
+          e.preventDefault();
+        }
+      });
+    });
+  </script>
+</body>
+</html>
