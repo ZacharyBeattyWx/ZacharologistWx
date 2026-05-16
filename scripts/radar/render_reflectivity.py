@@ -43,6 +43,7 @@ DEFAULT_REFLECTIVITY_COLOR_TABLE = {
     ],
 }
 DEFAULT_MIN_VISIBLE_DBZ = 15.0
+DEFAULT_MIN_COMPONENT_PIXELS = 6
 
 
 def load_config(path: Path) -> dict:
@@ -99,40 +100,107 @@ def rgba_for_dbz(value: float) -> tuple[int, int, int, int]:
     return first_stop_rgba(selected)
 
 
-def reflectivity_to_rgba(values, min_visible_dbz: float = DEFAULT_MIN_VISIBLE_DBZ):
+def remove_small_components(visible_mask, min_component_pixels: int = DEFAULT_MIN_COMPONENT_PIXELS):
+    import numpy as np
+
+    mask = np.asarray(visible_mask, dtype=bool)
+
+    if min_component_pixels <= 1:
+        return mask.copy()
+
+    height, width = mask.shape
+    cleaned = np.zeros_like(mask, dtype=bool)
+    visited = np.zeros_like(mask, dtype=bool)
+
+    for start_y, start_x in zip(*np.nonzero(mask)):
+        if visited[start_y, start_x]:
+            continue
+
+        component = []
+        stack = [(int(start_y), int(start_x))]
+        visited[start_y, start_x] = True
+
+        while stack:
+            y, x = stack.pop()
+            component.append((y, x))
+
+            for dy in (-1, 0, 1):
+                for dx in (-1, 0, 1):
+                    if dy == 0 and dx == 0:
+                        continue
+
+                    ny = y + dy
+                    nx = x + dx
+
+                    if ny < 0 or ny >= height or nx < 0 or nx >= width:
+                        continue
+
+                    if visited[ny, nx] or not mask[ny, nx]:
+                        continue
+
+                    visited[ny, nx] = True
+                    stack.append((ny, nx))
+
+        if len(component) >= min_component_pixels:
+            for y, x in component:
+                cleaned[y, x] = True
+
+    return cleaned
+
+
+def reflectivity_to_rgba(
+    values,
+    min_visible_dbz: float = DEFAULT_MIN_VISIBLE_DBZ,
+    min_component_pixels: int = DEFAULT_MIN_COMPONENT_PIXELS,
+):
     import numpy as np
 
     numeric = np.asarray(np.ma.array(values).filled(np.nan), dtype=float)
     height, width = numeric.shape
     rgba = np.zeros((height, width, 4), dtype=np.uint8)
     finite_mask = np.isfinite(numeric)
-    visible_mask = finite_mask & (numeric >= min_visible_dbz)
+    raw_visible_mask = finite_mask & (numeric >= min_visible_dbz)
+    visible_mask = remove_small_components(raw_visible_mask, min_component_pixels)
 
     for entry in DEFAULT_REFLECTIVITY_COLOR_TABLE["colors"]:
         threshold = entry["value"]
         color = first_stop_rgba(entry)
         rgba[visible_mask & (numeric >= threshold)] = color
 
+    rgba[visible_mask & (numeric < 5), 3] = 90
+    rgba[visible_mask & (numeric >= 5) & (numeric < 10), 3] = 150
     rgba[~finite_mask] = [0, 0, 0, 0]
     rgba[finite_mask & ~visible_mask] = [0, 0, 0, 0]
     return rgba
 
 
-def reflectivity_stats(values, min_visible_dbz: float = DEFAULT_MIN_VISIBLE_DBZ) -> dict:
+def reflectivity_stats(
+    values,
+    min_visible_dbz: float = DEFAULT_MIN_VISIBLE_DBZ,
+    min_component_pixels: int = DEFAULT_MIN_COMPONENT_PIXELS,
+) -> dict:
     import numpy as np
 
     numeric = np.asarray(np.ma.array(values).filled(np.nan), dtype=float)
+    finite_mask = np.isfinite(numeric)
     finite_values = numeric[np.isfinite(numeric)]
     total_pixels = int(numeric.size)
     finite_pixels = int(finite_values.size)
-    visible_pixels = int((finite_values >= min_visible_dbz).sum())
+    raw_visible_mask = finite_mask & (numeric >= min_visible_dbz)
+    visible_mask = remove_small_components(raw_visible_mask, min_component_pixels)
+    raw_visible_pixels = int(raw_visible_mask.sum())
+    visible_pixels = int(visible_mask.sum())
+    removed_speckle_pixels = raw_visible_pixels - visible_pixels
     visible_coverage = (visible_pixels / total_pixels * 100) if total_pixels else 0.0
 
     return {
         "minVisibleDbz": float(min_visible_dbz),
+        "minComponentPixels": int(min_component_pixels),
         "totalPixels": total_pixels,
         "finitePixels": finite_pixels,
+        "rawVisiblePixels": raw_visible_pixels,
         "visiblePixels": visible_pixels,
+        "removedSpecklePixels": removed_speckle_pixels,
         "visibleCoveragePercent": visible_coverage,
         "finiteMin": float(np.nanmin(finite_values)) if finite_pixels else None,
         "finiteMax": float(np.nanmax(finite_values)) if finite_pixels else None,
@@ -402,6 +470,12 @@ def main() -> int:
         help="Minimum reflectivity value to render as visible pixels.",
     )
     parser.add_argument(
+        "--min-component-pixels",
+        type=int,
+        default=DEFAULT_MIN_COMPONENT_PIXELS,
+        help="Minimum connected visible pixel component size to keep.",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Print intended work without creating frame images.",
@@ -459,8 +533,8 @@ def main() -> int:
 
         from PIL import Image
 
-        stats = reflectivity_stats(mapped, args.min_visible_dbz)
-        rgba = reflectivity_to_rgba(mapped, args.min_visible_dbz)
+        stats = reflectivity_stats(mapped, args.min_visible_dbz, args.min_component_pixels)
+        rgba = reflectivity_to_rgba(mapped, args.min_visible_dbz, args.min_component_pixels)
         image = Image.fromarray(rgba, mode="RGBA")
         image.save(frame_path, "WEBP", lossless=True)
 
@@ -490,9 +564,12 @@ def main() -> int:
 
         print(f"Wrote {frame_path}")
         print(f"Updated {config.get('catalogPath', 'radar/frames.json')}")
-        print(f"visiblePixels={stats['visiblePixels']}")
-        print(f"visibleCoveragePercent={stats['visibleCoveragePercent']:.6f}")
         print(f"minVisibleDbz={stats['minVisibleDbz']}")
+        print(f"minComponentPixels={stats['minComponentPixels']}")
+        print(f"rawVisiblePixels={stats['rawVisiblePixels']}")
+        print(f"visiblePixelsAfterDespeckle={stats['visiblePixels']}")
+        print(f"removedSpecklePixels={stats['removedSpecklePixels']}")
+        print(f"visibleCoveragePercent={stats['visibleCoveragePercent']:.6f}")
         return 0
 
     # TODO: Apply DEFAULT_REFLECTIVITY_COLOR_TABLE from the frontend contract.

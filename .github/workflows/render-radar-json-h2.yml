@@ -15,6 +15,10 @@ on:
         description: "Minimum dBZ rendered as visible"
         required: true
         default: "10"
+      min_component_pixels:
+        description: "Minimum connected pixel blob size to keep"
+        required: true
+        default: "6"
 
 jobs:
   render:
@@ -218,7 +222,7 @@ jobs:
 
       - name: Render radar frame
         run: |
-          python scripts/radar/render_reflectivity.py --render --force --min-visible-dbz "${{ github.event.inputs.min_visible_dbz }}"
+          python scripts/radar/render_reflectivity.py --render --force --min-visible-dbz "${{ github.event.inputs.min_visible_dbz }}" --min-component-pixels "${{ github.event.inputs.min_component_pixels }}"
 
       - name: Show generated radar files
         run: |
