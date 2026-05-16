@@ -137,7 +137,8 @@
       inset: 0;
       background-color: #0a1428;
       /* Place your hero image at assets/hero-chase.jpg (recommended) */
-      background-image: url('assets/hero-chase.jpg');
+      /* try the image if present, otherwise fallback to a moody gradient */
+      background-image: url('assets/hero-chase.jpg'), linear-gradient(90deg, #081018 0%, #071018 40%, #051015 100%);
       background-size: cover;
       background-position: right center;
       background-repeat: no-repeat;
@@ -167,15 +168,18 @@
       z-index: 2;
       max-width: 1400px;
       margin: 0 auto;
-      padding: 40px 32px;
+      /* left-aligned layout */
+      padding: 40px 48px;
       width: 100%;
       display: flex;
       align-items: center;
+      justify-content: flex-start;
     }
 
     .hero-text {
       flex: 0 1 520px;
-      margin-right: 60px;
+      margin-right: 0;
+      margin-left: 0;
     }
 
     .hero-title {
