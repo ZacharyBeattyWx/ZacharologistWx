@@ -47,6 +47,7 @@ jobs:
           python - <<'PY'
           from datetime import datetime, timezone
           import os
+          import re
           import sys
           import urllib.parse
           import urllib.request
@@ -73,22 +74,35 @@ jobs:
 
           def fetch_listing(prefix, delimiter=None, continuation_token=None):
               list_url = build_list_url(prefix, delimiter, continuation_token)
-
               with urllib.request.urlopen(list_url, timeout=60) as response:
                   xml_body = response.read()
-
               return ET.fromstring(xml_body)
 
-          def find_nids_keys(prefix):
+          def is_candidate_key(key):
+              if not key:
+                  return False
+
+              name = Path(key).name
+
+              valid_starts = (
+                  f"{site}_{product}_",
+                  f"K{site}_{product}_",
+                  "Level3_",
+              )
+
+              return f"_{product}_" in name and name.startswith(valid_starts)
+
+          def find_candidate_keys(prefix):
               keys = []
               continuation_token = None
 
               while True:
                   root = fetch_listing(prefix, continuation_token=continuation_token)
+
                   keys.extend(
                       item.text
                       for item in root.findall(".//s3:Key", namespace)
-                      if item.text and item.text.endswith(".nids")
+                      if item.text and is_candidate_key(item.text)
                   )
 
                   next_token = root.find("s3:NextContinuationToken", namespace)
@@ -105,12 +119,12 @@ jobs:
                   item.text
                   for item in root.findall(".//s3:Key", namespace)
                   if item.text
-              ][:10]
+              ][:20]
               common_prefixes = [
                   item.text
                   for item in root.findall(".//s3:CommonPrefixes/s3:Prefix", namespace)
                   if item.text
-              ][:10]
+              ][:20]
 
               label = prefix or "root"
               print(f"Diagnostic sample for {label}:")
@@ -121,7 +135,33 @@ jobs:
               for key in keys:
                   print(f"    {key}")
 
+          def timestamp_from_key(key):
+              name = Path(key).name
+
+              # Example:
+              # FCX_N0B_2026_05_16_13_12_00
+              match = re.search(
+                  r"_(\d{4})_(\d{2})_(\d{2})_(\d{2})_(\d{2})(?:_(\d{2}))?$",
+                  name,
+              )
+
+              if match:
+                  year, month, day, hour, minute, _second = match.groups()
+                  return f"{year}{month}{day}_{hour}{minute}"
+
+              # Example:
+              # Level3_FCX_N0B_20260516_1312.nids
+              match = re.search(r"_(\d{8})_(\d{4})", name)
+              if match:
+                  return f"{match.group(1)}_{match.group(2)}"
+
+              return datetime.now(timezone.utc).strftime("%Y%m%d_%H%M")
+
           prefixes = [
+              f"{site}_{product}_",
+              f"K{site}_{product}_",
+              f"{product}_{site}_",
+              f"{product}_K{site}_",
               f"{product}/{site}/",
               f"{product}/K{site}/",
               f"{site}/{product}/",
@@ -134,40 +174,39 @@ jobs:
 
           for prefix in prefixes:
               print(f"Trying prefix: {prefix}")
-              keys = find_nids_keys(prefix)
-              print(f"Found {len(keys)} .nids files")
+              keys = find_candidate_keys(prefix)
+              print(f"Found {len(keys)} candidate Level III files")
 
               if keys:
                   latest_key = sorted(keys)[-1]
                   break
 
           if latest_key is None:
-              for prefix in ["", f"{product}/", f"{site}/", f"K{site}/", "Level3_"]:
+              for prefix in ["", f"{site}_{product}_", f"K{site}_{product}_", f"{product}/", f"{site}/", f"K{site}/", "Level3_"]:
                   print_diagnostic_sample(prefix)
 
-              print("No .nids files found for any tried prefix", file=sys.stderr)
+              print("No candidate Level III files found for any tried prefix", file=sys.stderr)
               sys.exit(1)
 
           source_dir = Path("radar/source/level3")
+          source_dir.mkdir(parents=True, exist_ok=True)
+
           filename = Path(latest_key).name
           download_path = source_dir / filename
 
-          if filename.startswith("Level3_"):
-              output_path = download_path
-          else:
-              timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M")
-              output_path = source_dir / f"Level3_{site}_{product}_{timestamp}.nids"
+          timestamp = timestamp_from_key(latest_key)
+          output_path = source_dir / f"Level3_{site}_{product}_{timestamp}.nids"
 
           download_url = bucket_url + "/" + urllib.parse.quote(latest_key, safe="/")
 
           print(f"Latest key: {latest_key}")
           print(f"Downloading: {download_url}")
-          print(f"Saving to: {download_path}")
+          print(f"Temporary save path: {download_path}")
+          print(f"Final renderer source path: {output_path}")
 
           urllib.request.urlretrieve(download_url, download_path)
 
           if download_path != output_path:
-              print(f"Renaming to: {output_path}")
               if output_path.exists():
                   output_path.unlink()
               download_path.replace(output_path)
