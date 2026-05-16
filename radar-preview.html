@@ -599,11 +599,12 @@
 
         const catalog = await response.json();
         currentCatalog = catalog;
-        catalogFramesNewestFirst = catalogFrames(catalog);
+        catalogFramesNewestFirst = [...catalogFrames(catalog)].sort((a, b) => {
+          return new Date(b.validTime) - new Date(a.validTime);
+        });
         playbackFrames = [...catalogFramesNewestFirst].reverse();
-        playbackIndex = playbackFrames.length - 1;
         stopPlayback();
-        showFrame(playbackIndex);
+        showFrame(playbackFrames.length - 1);
       } catch (error) {
         stopPlayback();
         if (radarLayer) {
