@@ -368,8 +368,29 @@ def catalog_product_metadata(product: str) -> dict:
     }
 
 
-def update_frames_catalog(catalog_path: Path, frame_entry: dict, site: str, sector: str, product: str) -> None:
+def safe_frame_count(value) -> int:
+    try:
+        frame_count = int(value)
+    except (TypeError, ValueError):
+        return 1
+
+    return frame_count if frame_count > 0 else 1
+
+
+def frame_sort_key(frame: dict) -> str:
+    return str(frame.get("validTime") or "")
+
+
+def update_frames_catalog(
+    catalog_path: Path,
+    frame_entry: dict,
+    site: str,
+    sector: str,
+    product: str,
+    frame_count: int = 1,
+) -> None:
     catalog_path.parent.mkdir(parents=True, exist_ok=True)
+    max_frames = safe_frame_count(frame_count)
 
     if catalog_path.exists():
         with catalog_path.open("r", encoding="utf-8") as handle:
@@ -398,7 +419,24 @@ def update_frames_catalog(catalog_path: Path, frame_entry: dict, site: str, sect
     }
     catalog["products"][product] = catalog_product_metadata(product)
     catalog["frames"].setdefault(site, {})
-    catalog["frames"][site][product] = [frame_entry]
+    existing_frames = catalog["frames"][site].setdefault(product, [])
+    new_slug = frame_entry.get("slug")
+    replaced = False
+
+    for index, existing_frame in enumerate(existing_frames):
+        if existing_frame.get("slug") == new_slug:
+            existing_frames[index] = frame_entry
+            replaced = True
+            break
+
+    if not replaced:
+        existing_frames.append(frame_entry)
+
+    catalog["frames"][site][product] = sorted(
+        existing_frames,
+        key=frame_sort_key,
+        reverse=True,
+    )[:max_frames]
 
     with catalog_path.open("w", encoding="utf-8") as handle:
         json.dump(catalog, handle, indent=2)
@@ -761,6 +799,7 @@ def main() -> int:
             site,
             meta["sector"],
             product,
+            config.get("frameCount"),
         )
 
         print(f"Wrote {frame_path}")
