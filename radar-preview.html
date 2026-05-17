@@ -105,6 +105,31 @@
       background: #334155;
     }
 
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .details-toggle {
+      border: 1px solid rgba(148, 163, 184, 0.55);
+      border-radius: 6px;
+      background: rgba(15, 23, 42, 0.9);
+      color: #f8fafc;
+      cursor: pointer;
+      font-size: 13px;
+      line-height: 1;
+      padding: 8px 10px;
+    }
+
+    .details-toggle:hover {
+      background: #334155;
+    }
+
+    .info-panel.details-collapsed .details-region {
+      display: none;
+    }
+
     .info-grid {
       display: grid;
       grid-template-columns: max-content 1fr;
@@ -218,9 +243,14 @@
   <section class="info-panel" aria-live="polite">
     <div class="info-header">
       <h1 class="info-title">Radar Preview</h1>
-      <button class="refresh-button" id="refreshButton" type="button">Refresh</button>
+      <div class="header-actions">
+        <button class="details-toggle" id="detailsToggle" type="button" aria-controls="detailsRegion" aria-expanded="true">Hide Details</button>
+        <button class="refresh-button" id="refreshButton" type="button">Refresh</button>
+      </div>
     </div>
-    <div class="info-grid" id="infoGrid"></div>
+    <div class="details-region" id="detailsRegion">
+      <div class="info-grid" id="infoGrid"></div>
+    </div>
     <div class="controls">
       <label class="control-row" for="debugToggle">
         <span>Show debug overlays</span>
@@ -287,6 +317,8 @@
     const infoGrid = document.getElementById('infoGrid');
     const statusEl = document.getElementById('status');
     const refreshButton = document.getElementById('refreshButton');
+    const detailsToggle = document.getElementById('detailsToggle');
+    const infoPanel = document.querySelector('.info-panel');
     const debugToggle = document.getElementById('debugToggle');
     const opacitySlider = document.getElementById('opacitySlider');
     const opacityValue = document.getElementById('opacityValue');
@@ -465,14 +497,20 @@
       const validTime = newestFrame ? new Date(newestFrame.validTime) : null;
 
       if (!validTime || Number.isNaN(validTime.getTime())) {
-        feedAgeLabel.textContent = 'Updated unavailable';
+        feedAgeLabel.textContent = 'Radar scan age: unavailable';
         return;
       }
 
       const ageMinutes = Math.max(0, Math.round((Date.now() - validTime.getTime()) / 60000));
       feedAgeLabel.textContent = ageMinutes > 15
-        ? `Updated ${ageMinutes} min ago - Radar feed may be stale`
-        : `Updated ${ageMinutes} min ago`;
+        ? `Radar scan age: ${ageMinutes} min - Radar feed may be stale`
+        : `Radar scan age: ${ageMinutes} min`;
+    }
+
+    function toggleDetails() {
+      const isCollapsed = infoPanel.classList.toggle('details-collapsed');
+      detailsToggle.setAttribute('aria-expanded', String(!isCollapsed));
+      detailsToggle.textContent = isCollapsed ? 'Show Details' : 'Hide Details';
     }
 
     function stopPlayback() {
@@ -763,6 +801,7 @@
     playPauseButton.addEventListener('click', togglePlayback);
     nextFrameButton.addEventListener('click', () => stepFrame(1));
     resetViewButton.addEventListener('click', resetMapView);
+    detailsToggle.addEventListener('click', toggleDetails);
     refreshButton.addEventListener('click', loadRadar);
     loadRadar();
     catalogPollTimer = setInterval(checkForRadarUpdate, CATALOG_POLL_INTERVAL_MS);
