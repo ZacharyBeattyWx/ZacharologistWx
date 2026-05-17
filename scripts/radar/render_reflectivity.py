@@ -456,6 +456,36 @@ def frame_sort_key(frame: dict) -> str:
     return str(frame.get("validTime") or "")
 
 
+def source_file_valid_time(path: Path) -> datetime | None:
+    meta = source_metadata(path)
+    if not meta:
+        return None
+
+    try:
+        return datetime.strptime(
+            valid_time_from_metadata(meta),
+            "%Y-%m-%dT%H:%M:%SZ",
+        ).replace(tzinfo=timezone.utc)
+    except (KeyError, ValueError):
+        return None
+
+
+def source_file_sort_key(path: Path) -> tuple[int, datetime]:
+    valid_time = source_file_valid_time(path)
+    if valid_time is None:
+        return (0, datetime.min.replace(tzinfo=timezone.utc))
+
+    return (1, valid_time)
+
+
+def source_file_valid_time_label(path: Path) -> str:
+    valid_time = source_file_valid_time(path)
+    if valid_time is None:
+        return "unparsed"
+
+    return valid_time.isoformat().replace("+00:00", "Z")
+
+
 def update_frames_catalog(
     catalog_path: Path,
     frame_entry: dict,
@@ -913,7 +943,10 @@ def main() -> int:
         print("Dry run: would decode Level III N0B and render transparent frames.")
         return 0
 
-    source_files = sorted(args.source_cache.glob("Level3_*_N0B_*.nids"))
+    source_files = sorted(
+        args.source_cache.glob("Level3_*_N0B_*.nids"),
+        key=lambda path: (source_file_sort_key(path), path.name),
+    )
 
     if not source_files:
         print(f"No Level III N0B source files found in {args.source_cache}.")
@@ -926,7 +959,8 @@ def main() -> int:
 
     decoded_all = True
     for index, source_file in enumerate(selected_source_files, start=1):
-        print(f"Source file {index}/{len(selected_source_files)}: {source_file}")
+        valid_time = source_file_valid_time_label(source_file)
+        print(f"Source file {index}/{len(selected_source_files)}: {source_file} validTime={valid_time}")
         decoded = inspect_level3_file(source_file)
 
         if not decoded:

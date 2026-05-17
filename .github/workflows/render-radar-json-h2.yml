@@ -67,6 +67,7 @@ jobs:
           export SITE
           export PRODUCT
 
+          rm -rf "$SOURCE_DIR"
           mkdir -p "$SOURCE_DIR"
 
           python - <<'PY'
@@ -181,7 +182,7 @@ jobs:
               for key in keys:
                   print(f"    {key}", flush=True)
 
-          def timestamp_from_key(key):
+          def parsed_time_from_key(key):
               name = Path(key).name
 
               # Example:
@@ -193,15 +194,43 @@ jobs:
 
               if match:
                   year, month, day, hour, minute, _second = match.groups()
-                  return f"{year}{month}{day}_{hour}{minute}"
+                  return datetime(
+                      int(year),
+                      int(month),
+                      int(day),
+                      int(hour),
+                      int(minute),
+                      tzinfo=timezone.utc,
+                  )
 
               # Example:
               # Level3_FCX_N0B_20260516_1312.nids
               match = re.search(r"_(\d{8})_(\d{4})", name)
               if match:
-                  return f"{match.group(1)}_{match.group(2)}"
+                  return datetime.strptime(
+                      f"{match.group(1)}{match.group(2)}",
+                      "%Y%m%d%H%M",
+                  ).replace(tzinfo=timezone.utc)
 
-              return datetime.now(timezone.utc).strftime("%Y%m%d_%H%M")
+              return None
+
+          def timestamp_from_key(key):
+              parsed_time = parsed_time_from_key(key)
+              if parsed_time is None:
+                  return datetime.now(timezone.utc).strftime("%Y%m%d_%H%M")
+
+              return parsed_time.strftime("%Y%m%d_%H%M")
+
+          def prefer_key(existing_key, candidate_key):
+              existing_name = Path(existing_key).name
+              candidate_name = Path(candidate_key).name
+              existing_score = 1 if existing_name.startswith(f"K{site}_{product}_") else 0
+              candidate_score = 1 if candidate_name.startswith(f"K{site}_{product}_") else 0
+
+              if candidate_score != existing_score:
+                  return candidate_key if candidate_score > existing_score else existing_key
+
+              return max(existing_key, candidate_key)
 
           prefixes = []
           now = datetime.now(timezone.utc)
@@ -225,12 +254,40 @@ jobs:
               print(f"Found {len(keys)} candidate Level III files", flush=True)
               all_candidate_keys.update(keys)
 
-          sorted_candidate_keys = sorted(all_candidate_keys)
-          selected_keys = sorted_candidate_keys[-frame_count:]
+          keys_by_time = {}
+          skipped_keys = []
+
+          print("Candidate Level III keys with parsed timestamps:", flush=True)
+          for key in sorted(all_candidate_keys):
+              parsed_time = parsed_time_from_key(key)
+              parsed_label = parsed_time.isoformat().replace("+00:00", "Z") if parsed_time else "unparsed"
+              print(f"  {parsed_label} {key}", flush=True)
+
+              if parsed_time is None:
+                  skipped_keys.append(key)
+                  continue
+
+              if parsed_time in keys_by_time:
+                  keys_by_time[parsed_time] = prefer_key(keys_by_time[parsed_time], key)
+              else:
+                  keys_by_time[parsed_time] = key
+
+          sorted_candidate_items = sorted(keys_by_time.items())
+          selected_items = sorted_candidate_items[-frame_count:]
+          selected_keys = [key for _parsed_time, key in selected_items]
 
           print(f"frameCount={frame_count}", flush=True)
-          print(f"Total unique candidate Level III keys found: {len(sorted_candidate_keys)}", flush=True)
+          print(f"Total unique candidate Level III keys found: {len(all_candidate_keys)}", flush=True)
+          print(f"Skipped key count with unparsed timestamps: {len(skipped_keys)}", flush=True)
+          print(f"Unique parsed radar timestamps found: {len(sorted_candidate_items)}", flush=True)
           print(f"Selected key count: {len(selected_keys)}", flush=True)
+          print("Selected Level III keys:", flush=True)
+          for parsed_time, key in selected_items:
+              print(f"  {parsed_time.isoformat().replace('+00:00', 'Z')} {key}", flush=True)
+
+          if selected_items:
+              newest_selected_time = selected_items[-1][0].isoformat().replace("+00:00", "Z")
+              print(f"Newest selected radar timestamp: {newest_selected_time}", flush=True)
 
           if len(selected_keys) < frame_count:
               print(
