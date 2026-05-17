@@ -701,6 +701,7 @@
         throw new Error(`Unable to load radar/frames.json (${response.status}).`);
       }
 
+      updateLastCheckedLabel();
       return response.json();
     }
 
@@ -773,7 +774,6 @@
       if (isLoadingRadar || isCheckingRadarUpdate) return;
 
       isCheckingRadarUpdate = true;
-      updateLastCheckedLabel();
 
       try {
         const catalog = await fetchRadarCatalog();
