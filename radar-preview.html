@@ -262,6 +262,7 @@
     const PRODUCT = 'N0B';
     const RADAR_DATA_BASE_URL = 'https://pub-59a095878bc54839a2fef46404fa6f83.r2.dev';
     const CATALOG_URL = `${RADAR_DATA_BASE_URL}/radar/frames.json`;
+    const CATALOG_POLL_INTERVAL_MS = 60000;
 
     const map = L.map('map', {
       zoomControl: true,
@@ -306,6 +307,9 @@
     let playbackFrames = [];
     let playbackIndex = 0;
     let playbackTimer = null;
+    let catalogPollTimer = null;
+    let isLoadingRadar = false;
+    let isCheckingRadarUpdate = false;
     let latestFrame = null;
     let latestBounds = null;
     let radarBounds = null;
@@ -631,30 +635,57 @@
         .addTo(map);
     }
 
+    async function fetchRadarCatalog() {
+      const response = await fetch(catalogUrl(), {
+        cache: 'no-store',
+      });
+
+      if (!response.ok) {
+        throw new Error(`Unable to load radar/frames.json (${response.status}).`);
+      }
+
+      return response.json();
+    }
+
+    function applyRadarCatalog(catalog, { resetView = true, stopPlaybackForLoad = true } = {}) {
+      const previousPlaybackIndex = playbackIndex;
+      const wasViewingNewest = playbackFrames.length > 0 &&
+        previousPlaybackIndex === playbackFrames.length - 1;
+
+      currentCatalog = catalog;
+      catalogFramesNewestFirst = [...catalogFrames(catalog)].sort((a, b) => {
+        return new Date(b.validTime) - new Date(a.validTime);
+      });
+      updateFeedAgeLabel(catalogFramesNewestFirst[0]);
+      playbackFrames = [...catalogFramesNewestFirst].reverse();
+      const nextPlaybackIndex = stopPlaybackForLoad
+        ? playbackFrames.length - 1
+        : wasViewingNewest
+          ? playbackFrames.length - 1
+          : Math.min(previousPlaybackIndex, Math.max(0, playbackFrames.length - 1));
+
+      if (stopPlaybackForLoad) {
+        stopPlayback();
+      }
+
+      showFrame(nextPlaybackIndex);
+      radarBounds = latestBounds;
+
+      if (resetView) {
+        resetMapView();
+      }
+    }
+
     async function loadRadar() {
+      if (isLoadingRadar) return;
+
+      isLoadingRadar = true;
       refreshButton.disabled = true;
       setStatus('Loading radar catalog...');
 
       try {
-        const response = await fetch(catalogUrl(), {
-          cache: 'no-store',
-        });
-
-        if (!response.ok) {
-          throw new Error(`Unable to load radar/frames.json (${response.status}).`);
-        }
-
-        const catalog = await response.json();
-        currentCatalog = catalog;
-        catalogFramesNewestFirst = [...catalogFrames(catalog)].sort((a, b) => {
-          return new Date(b.validTime) - new Date(a.validTime);
-        });
-        updateFeedAgeLabel(catalogFramesNewestFirst[0]);
-        playbackFrames = [...catalogFramesNewestFirst].reverse();
-        stopPlayback();
-        showFrame(playbackFrames.length - 1);
-        radarBounds = latestBounds;
-        resetMapView();
+        const catalog = await fetchRadarCatalog();
+        applyRadarCatalog(catalog);
       } catch (error) {
         stopPlayback();
         if (radarLayer) {
@@ -676,7 +707,36 @@
         updatePlaybackLabels();
         setStatus(error.message || 'Radar preview failed to load.', true);
       } finally {
+        isLoadingRadar = false;
         refreshButton.disabled = false;
+      }
+    }
+
+    async function checkForRadarUpdate() {
+      if (isLoadingRadar || isCheckingRadarUpdate) return;
+
+      isCheckingRadarUpdate = true;
+
+      try {
+        const catalog = await fetchRadarCatalog();
+        if (isLoadingRadar) return;
+
+        if (!currentCatalog || catalog.generatedAt !== currentCatalog.generatedAt) {
+          applyRadarCatalog(catalog, {
+            resetView: false,
+            stopPlaybackForLoad: false,
+          });
+          setStatus('Radar catalog updated.');
+          return;
+        }
+
+        if (catalogFramesNewestFirst.length) {
+          updateFeedAgeLabel(catalogFramesNewestFirst[0]);
+        }
+      } catch (error) {
+        setStatus(error.message || 'Radar update check failed.', true);
+      } finally {
+        isCheckingRadarUpdate = false;
       }
     }
 
@@ -705,6 +765,7 @@
     resetViewButton.addEventListener('click', resetMapView);
     refreshButton.addEventListener('click', loadRadar);
     loadRadar();
+    catalogPollTimer = setInterval(checkForRadarUpdate, CATALOG_POLL_INTERVAL_MS);
   </script>
 </body>
 </html>
