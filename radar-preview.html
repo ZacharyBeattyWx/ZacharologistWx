@@ -260,7 +260,8 @@
   <script>
     const SITE = 'KFCX';
     const PRODUCT = 'N0B';
-    const CATALOG_URL = './radar/frames.json';
+    const RADAR_DATA_BASE_URL = 'https://pub-59a095878bc54839a2fef46404fa6f83.r2.dev';
+    const CATALOG_URL = `${RADAR_DATA_BASE_URL}/radar/frames.json`;
 
     const map = L.map('map', {
       zoomControl: true,
@@ -428,12 +429,17 @@
       return `${url}${separator}v=${Date.now()}`;
     }
 
+    function radarDataUrl(path) {
+      const normalizedPath = String(path || '').replace(/^https?:\/\/[^/]+/i, '');
+      return new URL(normalizedPath, `${RADAR_DATA_BASE_URL}/`).toString();
+    }
+
     function catalogUrl() {
       return cacheBustedUrl(CATALOG_URL);
     }
 
     function frameImageUrl(frame) {
-      return cacheBustedUrl(frame.url.replace(/^\//, './'));
+      return cacheBustedUrl(radarDataUrl(frame.url));
     }
 
     function formatFrameTime(frame) {
