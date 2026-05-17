@@ -7,7 +7,7 @@
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-p4NxAoJBhIINfQv5uSD2G3HRrA9T6QTApN6TqM6pF4M="
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
     crossorigin=""
   >
   <style>
@@ -60,6 +60,10 @@
     .leaflet-image-layer {
       image-rendering: pixelated;
       image-rendering: crisp-edges;
+    }
+
+    .radar-image-layer {
+      transition: none !important;
     }
 
     .info-panel {
@@ -196,6 +200,7 @@
       display: flex;
       align-items: center;
       gap: 8px;
+      flex-wrap: wrap;
     }
 
     .playback-button {
@@ -216,6 +221,24 @@
     .playback-button:disabled {
       cursor: not-allowed;
       opacity: 0.55;
+    }
+
+    .speed-control {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #cbd5e1;
+      font-size: 13px;
+    }
+
+    .speed-control select {
+      border: 1px solid rgba(148, 163, 184, 0.55);
+      border-radius: 6px;
+      background: #1f2937;
+      color: #f8fafc;
+      font-size: 13px;
+      line-height: 1;
+      padding: 7px 8px;
     }
 
     .frame-status {
@@ -269,6 +292,16 @@
           <button class="playback-button" id="playPauseButton" type="button">Play</button>
           <button class="playback-button" id="nextFrameButton" type="button">Next</button>
           <button class="playback-button" id="resetViewButton" type="button">Reset View</button>
+          <label class="speed-control" for="playbackSpeedSelect">
+            <span>Speed</span>
+            <select id="playbackSpeedSelect">
+              <option value="0.5">0.5x</option>
+              <option value="1">1x</option>
+              <option value="2" selected>2x</option>
+              <option value="3">3x</option>
+              <option value="4">4x</option>
+            </select>
+          </label>
         </div>
         <div class="frame-status">
           <span id="frameTimeLabel">Frame time unavailable</span>
@@ -296,6 +329,7 @@
     const RADAR_DATA_BASE_URL = 'https://pub-59a095878bc54839a2fef46404fa6f83.r2.dev';
     const CATALOG_URL = `${RADAR_DATA_BASE_URL}/radar/frames.json`;
     const CATALOG_POLL_INTERVAL_MS = 60000;
+    const FRAME_CACHE_BUSTER = Date.now();
 
     const map = L.map('map', {
       zoomControl: true,
@@ -329,19 +363,22 @@
     const playPauseButton = document.getElementById('playPauseButton');
     const nextFrameButton = document.getElementById('nextFrameButton');
     const resetViewButton = document.getElementById('resetViewButton');
+    const playbackSpeedSelect = document.getElementById('playbackSpeedSelect');
     const frameTimeLabel = document.getElementById('frameTimeLabel');
     const frameCountLabel = document.getElementById('frameCountLabel');
     const feedAgeLabel = document.getElementById('feedAgeLabel');
     const lastCheckedLabel = document.getElementById('lastCheckedLabel');
-    const PLAY_INTERVAL_MS = 850;
+    const BASE_PLAY_INTERVAL_MS = 850;
     let radarLayer = null;
     let radarSiteMarker = null;
     let overlayBoundsRectangle = null;
     let overlayCenterMarker = null;
+    let radarFrameLayers = [];
     let currentCatalog = null;
     let catalogFramesNewestFirst = [];
     let playbackFrames = [];
     let playbackIndex = 0;
+    let visibleRadarLayerIndex = -1;
     let playbackTimer = null;
     let catalogPollTimer = null;
     let isLoadingRadar = false;
@@ -479,7 +516,7 @@
     }
 
     function frameImageUrl(frame) {
-      return cacheBustedUrl(radarDataUrl(frame.url));
+      return `${radarDataUrl(frame.url)}?v=${FRAME_CACHE_BUSTER}`;
     }
 
     function formatFrameTime(frame) {
@@ -541,6 +578,25 @@
       playPauseButton.textContent = 'Play';
     }
 
+    function getPlaybackDelayMs() {
+      const speed = Number(playbackSpeedSelect.value);
+      const safeSpeed = Number.isFinite(speed) && speed > 0 ? speed : 2;
+      return Math.max(100, Math.round(BASE_PLAY_INTERVAL_MS / safeSpeed));
+    }
+
+    function startPlayback() {
+      if (playbackFrames.length < 2) return;
+
+      if (playbackTimer) {
+        clearInterval(playbackTimer);
+      }
+
+      playPauseButton.textContent = 'Pause';
+      playbackTimer = setInterval(() => {
+        showFrame(playbackIndex + 1);
+      }, getPlaybackDelayMs());
+    }
+
     function updatePlaybackLabels() {
       const frame = playbackFrames[playbackIndex];
 
@@ -565,6 +621,71 @@
       }, 50);
     }
 
+    async function preloadFrameImage(url) {
+      const image = new Image();
+      image.decoding = 'async';
+      image.src = url;
+
+      try {
+        if (image.decode) {
+          await image.decode();
+          return;
+        }
+      } catch (_error) {
+        // Fall through to load/error events for browsers that reject decode early.
+      }
+
+      if (image.complete) return;
+
+      await new Promise((resolve, reject) => {
+        image.onload = resolve;
+        image.onerror = reject;
+      });
+    }
+
+    function removeRadarFrameLayers(frameLayers) {
+      frameLayers.forEach(({ layer }) => {
+        layer.remove();
+      });
+    }
+
+    function clearRadarFrameLayers() {
+      removeRadarFrameLayers(radarFrameLayers);
+      radarFrameLayers = [];
+      radarLayer = null;
+    }
+
+    function buildRadarFrameLayers() {
+      const previousLayers = radarFrameLayers;
+      radarFrameLayers = playbackFrames.map((frame) => {
+        const bounds = L.latLngBounds(frame.bounds);
+        const url = frameImageUrl(frame);
+        const layer = L.imageOverlay(url, bounds, {
+          opacity: 0,
+          interactive: false,
+          pane: 'radarPane',
+          className: 'radar-image-layer',
+        }).addTo(map);
+
+        return { frame, bounds, layer, url };
+      });
+      return previousLayers;
+    }
+
+    async function preloadPlaybackFrames() {
+      if (!playbackFrames.length) return;
+
+      setStatus('Preloading radar frames...');
+      const results = await Promise.allSettled(
+        radarFrameLayers.map(({ url }) => preloadFrameImage(url))
+      );
+
+      const failedCount = results.filter((result) => result.status === 'rejected').length;
+      if (failedCount) {
+        setStatus(`${failedCount} radar frame image(s) failed to preload.`, true);
+      }
+    }
+
     function showFrame(index) {
       if (!playbackFrames.length) {
         updatePlaybackLabels();
@@ -572,32 +693,35 @@
       }
 
       playbackIndex = (index + playbackFrames.length) % playbackFrames.length;
-      const frame = playbackFrames[playbackIndex];
-      const bounds = L.latLngBounds(frame.bounds);
+      const frameLayer = radarFrameLayers[playbackIndex];
+      const frame = frameLayer ? frameLayer.frame : playbackFrames[playbackIndex];
+      const bounds = frameLayer ? frameLayer.bounds : L.latLngBounds(frame.bounds);
       latestFrame = frame;
       latestBounds = bounds;
 
-      if (radarLayer) {
-        radarLayer.remove();
+      if (frameLayer) {
+        frameLayer.layer.setOpacity(radarOpacity());
+        frameLayer.layer.bringToFront();
+        visibleRadarLayerIndex = playbackIndex;
+
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            if (visibleRadarLayerIndex !== playbackIndex) return;
+
+            radarFrameLayers.forEach(({ layer }, layerIndex) => {
+              if (layerIndex !== playbackIndex) {
+                layer.setOpacity(0);
+              }
+            });
+          });
+        });
       }
-
-      radarLayer = L.imageOverlay(frameImageUrl(frame), bounds, {
-        opacity: radarOpacity(),
-        interactive: false,
-        pane: 'radarPane',
-      }).addTo(map);
-
-      radarLayer.once('load', () => {
-        setStatus(`Radar frame loaded (${playbackIndex + 1} / ${playbackFrames.length}).`);
-      });
-
-      radarLayer.once('error', () => {
-        setStatus('Radar image failed to load.', true);
-      });
+      radarLayer = frameLayer ? frameLayer.layer : null;
 
       updateDebugLayers(frame, bounds);
       setInfo(currentCatalog, frame);
       updatePlaybackLabels();
+      setStatus(`Radar frame loaded (${playbackIndex + 1} / ${playbackFrames.length}).`);
     }
 
     function stepFrame(offset) {
@@ -611,12 +735,7 @@
         return;
       }
 
-      if (playbackFrames.length < 2) return;
-
-      playPauseButton.textContent = 'Pause';
-      playbackTimer = setInterval(() => {
-        showFrame(playbackIndex + 1);
-      }, PLAY_INTERVAL_MS);
+      startPlayback();
     }
 
     function removeDebugLayers() {
@@ -726,6 +845,10 @@
         stopPlayback();
       }
 
+      const previousLayers = buildRadarFrameLayers();
+      preloadPlaybackFrames().finally(() => {
+        removeRadarFrameLayers(previousLayers);
+      });
       showFrame(nextPlaybackIndex);
       radarBounds = latestBounds;
 
@@ -746,16 +869,14 @@
         applyRadarCatalog(catalog);
       } catch (error) {
         stopPlayback();
-        if (radarLayer) {
-          radarLayer.remove();
-          radarLayer = null;
-        }
+        clearRadarFrameLayers();
 
         removeDebugLayers();
         currentCatalog = null;
         catalogFramesNewestFirst = [];
         playbackFrames = [];
         playbackIndex = 0;
+        visibleRadarLayerIndex = -1;
         latestFrame = null;
         latestBounds = null;
         radarBounds = null;
@@ -810,9 +931,9 @@
     opacitySlider.addEventListener('input', () => {
       updateOpacityLabel();
 
-      if (radarLayer) {
-        radarLayer.setOpacity(radarOpacity());
-      }
+      radarFrameLayers.forEach(({ layer }, layerIndex) => {
+        layer.setOpacity(layerIndex === visibleRadarLayerIndex ? radarOpacity() : 0);
+      });
     });
 
     updateOpacityLabel();
@@ -822,6 +943,11 @@
     playPauseButton.addEventListener('click', togglePlayback);
     nextFrameButton.addEventListener('click', () => stepFrame(1));
     resetViewButton.addEventListener('click', resetMapView);
+    playbackSpeedSelect.addEventListener('change', () => {
+      if (playbackTimer) {
+        startPlayback();
+      }
+    });
     detailsToggle.addEventListener('click', toggleDetails);
     refreshButton.addEventListener('click', loadRadar);
     loadRadar();
