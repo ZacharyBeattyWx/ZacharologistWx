@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Radar Preview</title>
+  <title>High-Res KFCX Radar</title>
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -242,7 +242,7 @@
   <div id="map"></div>
   <section class="info-panel" aria-live="polite">
     <div class="info-header">
-      <h1 class="info-title">Radar Preview</h1>
+      <h1 class="info-title">High-Res KFCX Radar</h1>
       <div class="header-actions">
         <button class="details-toggle" id="detailsToggle" type="button" aria-controls="detailsRegion" aria-expanded="true">Hide Details</button>
         <button class="refresh-button" id="refreshButton" type="button">Refresh</button>
@@ -253,8 +253,8 @@
     </div>
     <div class="controls">
       <label class="control-row" for="debugToggle">
-        <span>Show debug overlays</span>
-        <input id="debugToggle" type="checkbox" checked>
+        <span>Show radar range box</span>
+        <input id="debugToggle" type="checkbox">
       </label>
       <label class="opacity-control" for="opacitySlider">
         <span class="opacity-label">
@@ -275,7 +275,10 @@
           <span id="frameCountLabel">0 / 0</span>
         </div>
         <div class="frame-status">
-          <span id="feedAgeLabel">Updated unavailable</span>
+          <span id="feedAgeLabel">Radar scan age: unavailable</span>
+        </div>
+        <div class="frame-status">
+          <span id="lastCheckedLabel">Last checked: unavailable</span>
         </div>
       </div>
     </div>
@@ -329,6 +332,7 @@
     const frameTimeLabel = document.getElementById('frameTimeLabel');
     const frameCountLabel = document.getElementById('frameCountLabel');
     const feedAgeLabel = document.getElementById('feedAgeLabel');
+    const lastCheckedLabel = document.getElementById('lastCheckedLabel');
     const PLAY_INTERVAL_MS = 850;
     let radarLayer = null;
     let radarSiteMarker = null;
@@ -502,15 +506,30 @@
       }
 
       const ageMinutes = Math.max(0, Math.round((Date.now() - validTime.getTime()) / 60000));
-      feedAgeLabel.textContent = ageMinutes > 15
+      feedAgeLabel.textContent = ageMinutes >= 25
         ? `Radar scan age: ${ageMinutes} min - Radar feed may be stale`
         : `Radar scan age: ${ageMinutes} min`;
     }
 
-    function toggleDetails() {
-      const isCollapsed = infoPanel.classList.toggle('details-collapsed');
+    function formatClockTime(date) {
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      return `${hours}:${minutes}:${seconds}`;
+    }
+
+    function updateLastCheckedLabel(date = new Date()) {
+      lastCheckedLabel.textContent = `Last checked: ${formatClockTime(date)}`;
+    }
+
+    function setDetailsCollapsed(isCollapsed) {
+      infoPanel.classList.toggle('details-collapsed', isCollapsed);
       detailsToggle.setAttribute('aria-expanded', String(!isCollapsed));
       detailsToggle.textContent = isCollapsed ? 'Show Details' : 'Hide Details';
+    }
+
+    function toggleDetails() {
+      setDetailsCollapsed(!infoPanel.classList.contains('details-collapsed'));
     }
 
     function stopPlayback() {
@@ -754,6 +773,7 @@
       if (isLoadingRadar || isCheckingRadarUpdate) return;
 
       isCheckingRadarUpdate = true;
+      updateLastCheckedLabel();
 
       try {
         const catalog = await fetchRadarCatalog();
@@ -797,6 +817,7 @@
 
     updateOpacityLabel();
     updatePlaybackLabels();
+    setDetailsCollapsed(window.matchMedia('(max-width: 768px)').matches);
     prevFrameButton.addEventListener('click', () => stepFrame(-1));
     playPauseButton.addEventListener('click', togglePlayback);
     nextFrameButton.addEventListener('click', () => stepFrame(1));
