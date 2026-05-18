@@ -48,6 +48,7 @@ DEFAULT_CARTESIAN_SIZE_PX = 1536
 DEFAULT_CARTESIAN_SMOOTHING_PASSES = 0
 DEFAULT_SAMPLING_MODE = "nearest"
 DEFAULT_PALETTE_MODE = "radar-app-v1"
+DEFAULT_RENDER_MODE = "cartesian"
 
 
 def load_config(path: Path) -> dict:
@@ -311,6 +312,15 @@ def normalized_radial_interpolation(value):
     }
 
 
+def normalized_render_mode(value) -> str:
+    normalized = str(value or DEFAULT_RENDER_MODE).strip()
+
+    if normalized.lower() == "nativepolar":
+        return "nativePolar"
+
+    return DEFAULT_RENDER_MODE
+
+
 def opacity_for_dbz(value: float, opacity_taper: dict | None) -> float:
     if not opacity_taper or not opacity_taper.get("enabled"):
         return 1.0
@@ -346,6 +356,7 @@ def reflectivity_rendering_settings(config: dict, args) -> dict:
     color_table = custom_color_table if custom_color_table and palette == "customColorTable" else None
 
     return {
+        "renderMode": normalized_render_mode(render_config.get("renderMode")),
         "minimumDbz": render_settings_number(
             render_config.get("minimumDbz"),
             args.min_visible_dbz,
@@ -652,6 +663,156 @@ def radar_site_centered_km_grid(
     x_km = (pixel_x - origin_x) * km_per_pixel_x
     y_km = (origin_y - pixel_y) * km_per_pixel_y
     return x_km, y_km
+
+
+def destination_lat_lon(
+    origin_lat: float,
+    origin_lon: float,
+    range_km: float,
+    azimuth_degrees: float,
+) -> tuple[float, float]:
+    earth_radius_km = 6371.0088
+    angular_distance = range_km / earth_radius_km
+    bearing = math.radians(azimuth_degrees)
+    lat1 = math.radians(origin_lat)
+    lon1 = math.radians(origin_lon)
+
+    sin_lat2 = (
+        math.sin(lat1) * math.cos(angular_distance)
+        + math.cos(lat1) * math.sin(angular_distance) * math.cos(bearing)
+    )
+    lat2 = math.asin(max(-1.0, min(1.0, sin_lat2)))
+    lon2 = lon1 + math.atan2(
+        math.sin(bearing) * math.sin(angular_distance) * math.cos(lat1),
+        math.cos(angular_distance) - math.sin(lat1) * math.sin(lat2),
+    )
+    lon2 = (math.degrees(lon2) + 540.0) % 360.0 - 180.0
+    return math.degrees(lat2), lon2
+
+
+def lat_lon_to_pixel_xy(
+    lat: float,
+    lon: float,
+    bounds: list[list[float]],
+    output_size_px: int,
+) -> tuple[float, float] | None:
+    return radar_site_pixel_xy(lat, lon, bounds, output_size_px)
+
+
+def azimuth_bin_edges(azimuth_degrees_by_row, azimuth_count: int, azimuth_edges_by_row=None):
+    import numpy as np
+
+    if azimuth_edges_by_row is not None:
+        edges = np.asarray(np.ma.array(azimuth_edges_by_row).filled(np.nan), dtype=float)
+
+        if edges.shape == (azimuth_count, 2) and np.isfinite(edges).all():
+            return [(float(left), float(right)) for left, right in edges]
+
+    row_azimuths = normalize_azimuths(azimuth_degrees_by_row, azimuth_count)
+
+    if row_azimuths is None:
+        centers = np.arange(azimuth_count, dtype=float) * (360.0 / azimuth_count)
+    else:
+        centers = np.asarray(row_azimuths, dtype=float)
+
+    if azimuth_count == 1:
+        return [(float(centers[0] - 180.0), float(centers[0] + 180.0))]
+
+    edges = []
+    for index, center in enumerate(centers):
+        previous_center = centers[index - 1]
+        next_center = centers[(index + 1) % azimuth_count]
+        previous_delta = (center - previous_center) % 360.0
+        next_delta = (next_center - center) % 360.0
+        left = center - previous_delta / 2.0
+        right = center + next_delta / 2.0
+        edges.append((float(left), float(right)))
+
+    return edges
+
+
+def native_polar_reflectivity_to_rgba(
+    values,
+    radar_lat: float,
+    radar_lon: float,
+    range_km: float,
+    bounds: list[list[float]],
+    output_size_px: int = DEFAULT_CARTESIAN_SIZE_PX,
+    min_visible_dbz: float = DEFAULT_MIN_VISIBLE_DBZ,
+    maximum_dbz: float | None = None,
+    palette: str = DEFAULT_PALETTE_MODE,
+    color_table: dict | None = None,
+    opacity_taper: dict | None = None,
+    azimuth_degrees_by_row=None,
+    azimuth_edges_by_row=None,
+):
+    import numpy as np
+    from PIL import Image, ImageDraw
+
+    numeric = np.asarray(np.ma.array(values).filled(np.nan), dtype=float)
+    azimuth_count, gate_count = numeric.shape
+    image = Image.new("RGBA", (output_size_px, output_size_px), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image, "RGBA")
+    azimuth_edges = azimuth_bin_edges(
+        azimuth_degrees_by_row,
+        azimuth_count,
+        azimuth_edges_by_row,
+    )
+    gate_width_km = range_km / max(1, gate_count - 1)
+    radial_bins_drawn = 0
+
+    for azimuth_index, (left_azimuth, right_azimuth) in enumerate(azimuth_edges):
+        for gate_index in range(gate_count):
+            value = float(numeric[azimuth_index, gate_index])
+
+            if not math.isfinite(value) or value < min_visible_dbz:
+                continue
+
+            inner_range = max(0.0, (gate_index - 0.5) * gate_width_km)
+            outer_range = min(range_km, (gate_index + 0.5) * gate_width_km)
+
+            if outer_range <= inner_range:
+                continue
+
+            corners = (
+                (inner_range, left_azimuth),
+                (outer_range, left_azimuth),
+                (outer_range, right_azimuth),
+                (inner_range, right_azimuth),
+            )
+            polygon = []
+
+            for corner_range, corner_azimuth in corners:
+                corner_lat, corner_lon = destination_lat_lon(
+                    radar_lat,
+                    radar_lon,
+                    corner_range,
+                    corner_azimuth,
+                )
+                pixel = lat_lon_to_pixel_xy(corner_lat, corner_lon, bounds, output_size_px)
+
+                if pixel is None:
+                    polygon = []
+                    break
+
+                polygon.append(pixel)
+
+            if len(polygon) != 4:
+                continue
+
+            draw.polygon(
+                polygon,
+                fill=rgba_for_rendered_dbz(
+                    value,
+                    palette,
+                    color_table,
+                    maximum_dbz,
+                    opacity_taper,
+                ),
+            )
+            radial_bins_drawn += 1
+
+    return np.asarray(image, dtype=np.uint8), numeric, radial_bins_drawn
 
 
 def prepare_azimuth_sample_source(values, azimuth_degrees_by_row):
@@ -1016,7 +1177,7 @@ def summarize_item_value(name: str, value) -> None:
 
 
 def inspect_level3_file(path: Path) -> bool:
-    level3, mapped, azimuth_degrees_by_row = decode_level3_mapped_data(path)
+    level3, mapped, azimuth_degrees_by_row, azimuth_edges_by_row = decode_level3_mapped_data(path)
 
     if level3 is None:
         return False
@@ -1037,6 +1198,10 @@ def inspect_level3_file(path: Path) -> bool:
             print(f"azimuthMetadataRows={len(azimuth_degrees_by_row)}")
         else:
             print("azimuthMetadataRows=0")
+        if azimuth_edges_by_row is not None:
+            print(f"azimuthEdgeMetadataRows={len(azimuth_edges_by_row)}")
+        else:
+            print("azimuthEdgeMetadataRows=0")
         print("Decode succeeded, but final WebP rendering is intentionally blocked unless --render is provided.")
         return True
 
@@ -1060,6 +1225,19 @@ def extract_radial_azimuths(item: dict, expected_count: int):
     return None
 
 
+def extract_radial_azimuth_edges(item: dict, expected_count: int):
+    if "start_az" not in item or "end_az" not in item:
+        return None
+
+    start_azimuths = normalize_azimuths(item["start_az"], expected_count)
+    end_azimuths = normalize_azimuths(item["end_az"], expected_count)
+
+    if start_azimuths is None or end_azimuths is None:
+        return None
+
+    return list(zip(start_azimuths.tolist(), end_azimuths.tolist()))
+
+
 def decode_level3_mapped_data(path: Path):
     try:
         from metpy.io import Level3File
@@ -1067,16 +1245,17 @@ def decode_level3_mapped_data(path: Path):
         print("MetPy is not installed; cannot decode Level III NIDS data.")
         print("Install renderer dependencies with: pip install -r scripts/radar/requirements.txt")
         print(f"Import error: {error}")
-        return None, None, None
+        return None, None, None, None
 
     try:
         level3 = Level3File(str(path))
     except Exception as error:
         print(f"MetPy failed to open {path}: {error}")
-        return None, None, None
+        return None, None, None, None
 
     mapped = None
     azimuth_degrees_by_row = None
+    azimuth_edges_by_row = None
 
     sym_block = getattr(level3, "sym_block", []) or []
 
@@ -1087,10 +1266,11 @@ def decode_level3_mapped_data(path: Path):
             try:
                 mapped = level3.map_data(item["data"])
                 azimuth_degrees_by_row = extract_radial_azimuths(item, mapped.shape[0])
+                azimuth_edges_by_row = extract_radial_azimuth_edges(item, mapped.shape[0])
             except Exception as error:
                 print(f"MetPy decoded the file, but map_data failed: {error}")
 
-    return level3, mapped, azimuth_degrees_by_row
+    return level3, mapped, azimuth_degrees_by_row, azimuth_edges_by_row
 
 
 def print_level3_metadata(level3) -> None:
@@ -1152,7 +1332,7 @@ def print_level3_sym_block_summary(level3) -> None:
 
 
 def render_level3_frame(source_file: Path, args, config: dict) -> bool:
-    level3, mapped, azimuth_degrees_by_row = decode_level3_mapped_data(source_file)
+    level3, mapped, azimuth_degrees_by_row, azimuth_edges_by_row = decode_level3_mapped_data(source_file)
 
     if level3 is None or mapped is None:
         print("No WebP/PNG frame was created.")
@@ -1173,6 +1353,8 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
     bounds = calculate_rough_bounds(lat, lon, range_km)
     radar_origin_px = radar_site_pixel_xy(lat, lon, bounds, DEFAULT_CARTESIAN_SIZE_PX)
     rendering = reflectivity_rendering_settings(config, args)
+    render_mode = rendering["renderMode"]
+    native_polar_enabled = render_mode == "nativePolar"
     minimum_dbz = rendering["minimumDbz"]
     maximum_dbz = rendering["maximumDbz"]
     minimum_blob_size = rendering["minimumConnectedPixelBlobSize"]
@@ -1184,33 +1366,57 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
 
     from PIL import Image
 
-    rgba, cartesian_grid, azimuth_mapping_mode = polar_reflectivity_to_cartesian_rgba(
-        mapped,
-        lat,
-        lon,
-        range_km,
-        DEFAULT_CARTESIAN_SIZE_PX,
-        minimum_dbz,
-        minimum_blob_size,
-        maximum_dbz,
-        palette,
-        color_table,
-        opacity_taper,
-        speckle_dampen,
-        radial_interpolation,
-        bounds,
-        args.smoothing_passes,
-        args.sampling_mode,
-        azimuth_degrees_by_row,
-    )
-    stats = reflectivity_stats(cartesian_grid, minimum_dbz, minimum_blob_size, maximum_dbz, speckle_dampen)
+    radial_bins_drawn = 0
+    if native_polar_enabled:
+        rgba, cartesian_grid, radial_bins_drawn = native_polar_reflectivity_to_rgba(
+            mapped,
+            lat,
+            lon,
+            range_km,
+            bounds,
+            DEFAULT_CARTESIAN_SIZE_PX,
+            minimum_dbz,
+            maximum_dbz,
+            palette,
+            color_table,
+            opacity_taper,
+            azimuth_degrees_by_row,
+            azimuth_edges_by_row,
+        )
+        azimuth_mapping_mode = "azimuth-aware" if azimuth_degrees_by_row is not None else "row-index-fallback"
+        stats_speckle_dampen = None
+    else:
+        rgba, cartesian_grid, azimuth_mapping_mode = polar_reflectivity_to_cartesian_rgba(
+            mapped,
+            lat,
+            lon,
+            range_km,
+            DEFAULT_CARTESIAN_SIZE_PX,
+            minimum_dbz,
+            minimum_blob_size,
+            maximum_dbz,
+            palette,
+            color_table,
+            opacity_taper,
+            speckle_dampen,
+            radial_interpolation,
+            bounds,
+            args.smoothing_passes,
+            args.sampling_mode,
+            azimuth_degrees_by_row,
+        )
+        stats_speckle_dampen = speckle_dampen
+    stats = reflectivity_stats(cartesian_grid, minimum_dbz, minimum_blob_size, maximum_dbz, stats_speckle_dampen)
     source_stats = reflectivity_stats(mapped, minimum_dbz, minimum_blob_size, maximum_dbz, speckle_dampen)
     image = Image.fromarray(rgba, mode="RGBA")
     image.save(frame_path, "WEBP", lossless=True)
 
     relative_url = "/" + frame_path.relative_to(REPO_ROOT).as_posix()
     sampling_mode = args.sampling_mode
-    if sampling_mode == "nearest":
+    if native_polar_enabled:
+        projection_mode = "native-polar-gate-polygons-v1"
+        output_image_mode = "native-polar-radial-gate-polygons"
+    elif sampling_mode == "nearest":
         radial_blend_enabled = bool(radial_interpolation and radial_interpolation.get("enabled"))
         if radial_blend_enabled:
             projection_mode = "polar-cartesian-radial-blend-v1"
@@ -1241,6 +1447,7 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
         "stats": stats,
         "sourceStats": source_stats,
         "debug": {
+            "renderMode": render_mode,
             "radarLat": lat,
             "radarLon": lon,
             "radarOriginPixel": [
@@ -1260,6 +1467,9 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
             "samplingMode": sampling_mode,
             "azimuthMappingMode": azimuth_mapping_mode,
             "azimuthMetadataRows": int(len(azimuth_degrees_by_row)) if azimuth_degrees_by_row is not None else 0,
+            "azimuthEdgeMetadataRows": int(len(azimuth_edges_by_row)) if azimuth_edges_by_row is not None else 0,
+            "radialBinsDrawn": int(radial_bins_drawn),
+            "nativePolarEnabled": native_polar_enabled,
             "paletteMode": palette,
             "maximumDbz": maximum_dbz,
             "minimumDbz": minimum_dbz,
@@ -1291,9 +1501,13 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
     print(f"imageWidth={image.width}")
     print(f"imageHeight={image.height}")
     print(f"bounds={bounds}")
+    print(f"renderMode={render_mode}")
+    print(f"nativePolarEnabled={native_polar_enabled}")
+    print(f"radialBinsDrawn={radial_bins_drawn}")
     print(f"samplingMode={sampling_mode}")
     print(f"azimuthMappingMode={azimuth_mapping_mode}")
     print(f"azimuthMetadataRows={len(azimuth_degrees_by_row) if azimuth_degrees_by_row is not None else 0}")
+    print(f"azimuthEdgeMetadataRows={len(azimuth_edges_by_row) if azimuth_edges_by_row is not None else 0}")
     print(f"paletteMode={palette}")
     print(f"maximumDbz={maximum_dbz}")
     print(f"radialInterpolation.enabled={radial_interpolation['enabled']}")
@@ -1374,6 +1588,7 @@ def main() -> int:
     print(f"palette={config.get('palette')}")
     print(f"frameOutputDir={config.get('frameOutputDir')}")
     rendering = reflectivity_rendering_settings(config, args)
+    print(f"reflectivityRendering.renderMode={rendering['renderMode']}")
     print(f"reflectivityRendering.minimumDbz={rendering['minimumDbz']}")
     print(f"reflectivityRendering.maximumDbz={rendering['maximumDbz']}")
     print(
