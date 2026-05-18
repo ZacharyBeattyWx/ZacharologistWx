@@ -49,6 +49,16 @@ DEFAULT_CARTESIAN_SMOOTHING_PASSES = 0
 DEFAULT_SAMPLING_MODE = "nearest"
 DEFAULT_PALETTE_MODE = "radar-app-v1"
 DEFAULT_RENDER_MODE = "cartesian"
+DEFAULT_NATIVE_POLAR_OPACITY_TAPER = {
+    "enabled": True,
+    "points": [
+        {"dbz": -10.0, "opacity": 0.16},
+        {"dbz": -5.0, "opacity": 0.28},
+        {"dbz": 0.0, "opacity": 0.48},
+        {"dbz": 5.0, "opacity": 0.72},
+        {"dbz": 10.0, "opacity": 1.0},
+    ],
+}
 WEB_MERCATOR_RADIUS_M = 6378137.0
 WEB_MERCATOR_MAX_LAT = 85.0511287798066
 
@@ -330,7 +340,7 @@ def normalized_center_no_data_mask(value):
 def normalized_render_mode(value) -> str:
     normalized = str(value or DEFAULT_RENDER_MODE).strip()
 
-    if normalized.lower() == "nativepolar":
+    if normalized.lower() in ("nativepolar", "native-polar-gate-polygons"):
         return "nativePolar"
 
     return DEFAULT_RENDER_MODE
@@ -341,6 +351,14 @@ def normalized_output_size(value) -> int:
         2,
         render_settings_int(value, DEFAULT_CARTESIAN_SIZE_PX),
     )
+
+
+def normalized_antialias_scale(value) -> int:
+    return max(1, min(4, render_settings_int(value, 1)))
+
+
+def normalized_substeps(value, default_value: int) -> int:
+    return max(1, min(6, render_settings_int(value, default_value)))
 
 
 def opacity_for_dbz(value: float, opacity_taper: dict | None) -> float:
@@ -377,9 +395,27 @@ def reflectivity_rendering_settings(config: dict, args) -> dict:
     )
     color_table = custom_color_table if custom_color_table and palette == "customColorTable" else None
 
+    opacity_taper_value = render_config.get("lowDbzOpacityTaper")
+    opacity_taper = normalized_opacity_taper(opacity_taper_value)
+    if isinstance(opacity_taper_value, bool):
+        opacity_taper = (
+            DEFAULT_NATIVE_POLAR_OPACITY_TAPER
+            if opacity_taper_value
+            else None
+        )
+
+    output_size_value = (
+        render_config.get("outputSizePx")
+        if render_config.get("outputSizePx") is not None
+        else render_config.get("outputSize")
+    )
+
     return {
         "renderMode": normalized_render_mode(render_config.get("renderMode")),
-        "outputSize": normalized_output_size(render_config.get("outputSize")),
+        "outputSize": normalized_output_size(output_size_value),
+        "antialiasScale": normalized_antialias_scale(render_config.get("antialiasScale")),
+        "azimuthSubsteps": normalized_substeps(render_config.get("azimuthSubsteps"), 1),
+        "rangeSubsteps": normalized_substeps(render_config.get("rangeSubsteps"), 1),
         "minimumDbz": render_settings_number(
             render_config.get("minimumDbz"),
             args.min_visible_dbz,
@@ -397,7 +433,7 @@ def reflectivity_rendering_settings(config: dict, args) -> dict:
         ),
         "palette": palette,
         "colorTable": color_table,
-        "lowDbzOpacityTaper": normalized_opacity_taper(render_config.get("lowDbzOpacityTaper")),
+        "lowDbzOpacityTaper": opacity_taper,
         "isolatedSpeckleDampen": normalized_speckle_dampen(render_config.get("isolatedSpeckleDampen")),
         "radialInterpolation": normalized_radial_interpolation(render_config.get("radialInterpolation")),
         "centerNoDataMask": normalized_center_no_data_mask(render_config.get("centerNoDataMask")),
@@ -915,13 +951,17 @@ def native_polar_reflectivity_to_rgba(
     azimuth_degrees_by_row=None,
     azimuth_edges_by_row=None,
     center_no_data_mask: dict | None = None,
+    antialias_scale: int = 1,
+    azimuth_substeps: int = 1,
+    range_substeps: int = 1,
 ):
     import numpy as np
     from PIL import Image, ImageDraw
 
     numeric = np.asarray(np.ma.array(values).filled(np.nan), dtype=float)
     azimuth_count, gate_count = numeric.shape
-    image = Image.new("RGBA", (output_size_px, output_size_px), (0, 0, 0, 0))
+    internal_size_px = max(2, int(output_size_px) * max(1, int(antialias_scale)))
+    image = Image.new("RGBA", (internal_size_px, internal_size_px), (0, 0, 0, 0))
     draw = ImageDraw.Draw(image, "RGBA")
     azimuth_edges = azimuth_bin_edges(
         azimuth_degrees_by_row,
@@ -930,6 +970,9 @@ def native_polar_reflectivity_to_rgba(
     )
     gate_width_km = range_km / max(1, gate_count - 1)
     radial_bins_drawn = 0
+
+    azimuth_substeps = max(1, int(azimuth_substeps))
+    range_substeps = max(1, int(range_substeps))
 
     for azimuth_index, (left_azimuth, right_azimuth) in enumerate(azimuth_edges):
         for gate_index in range(gate_count):
@@ -944,45 +987,80 @@ def native_polar_reflectivity_to_rgba(
             if outer_range <= inner_range:
                 continue
 
-            corners = (
-                (inner_range, left_azimuth),
-                (outer_range, left_azimuth),
-                (outer_range, right_azimuth),
-                (inner_range, right_azimuth),
+            substep_drawn = False
+            fill_rgba = rgba_for_rendered_dbz(
+                value,
+                palette,
+                color_table,
+                maximum_dbz,
+                opacity_taper,
             )
-            polygon = []
 
-            for corner_range, corner_azimuth in corners:
-                corner_lat, corner_lon = destination_lat_lon(
-                    radar_lat,
-                    radar_lon,
-                    corner_range,
-                    corner_azimuth,
+            for azimuth_step in range(azimuth_substeps):
+                azimuth_start = left_azimuth + (
+                    (right_azimuth - left_azimuth) * azimuth_step / azimuth_substeps
                 )
-                pixel = lat_lon_to_pixel_xy(corner_lat, corner_lon, bounds, output_size_px)
+                azimuth_end = left_azimuth + (
+                    (right_azimuth - left_azimuth) * (azimuth_step + 1) / azimuth_substeps
+                )
 
-                if pixel is None:
+                for range_step in range(range_substeps):
+                    sub_inner_range = inner_range + (
+                        (outer_range - inner_range) * range_step / range_substeps
+                    )
+                    sub_outer_range = inner_range + (
+                        (outer_range - inner_range) * (range_step + 1) / range_substeps
+                    )
+                    corners = (
+                        (sub_inner_range, azimuth_start),
+                        (sub_outer_range, azimuth_start),
+                        (sub_outer_range, azimuth_end),
+                        (sub_inner_range, azimuth_end),
+                    )
                     polygon = []
-                    break
 
-                polygon.append(pixel)
+                    for corner_range, corner_azimuth in corners:
+                        corner_lat, corner_lon = destination_lat_lon(
+                            radar_lat,
+                            radar_lon,
+                            corner_range,
+                            corner_azimuth,
+                        )
+                        pixel = lat_lon_to_pixel_xy(corner_lat, corner_lon, bounds, internal_size_px)
 
-            if len(polygon) != 4:
-                continue
+                        if pixel is None:
+                            polygon = []
+                            break
 
-            draw.polygon(
-                polygon,
-                fill=rgba_for_rendered_dbz(
-                    value,
-                    palette,
-                    color_table,
-                    maximum_dbz,
-                    opacity_taper,
-                ),
-            )
-            radial_bins_drawn += 1
+                        polygon.append(pixel)
 
-    rgba = np.array(image, dtype=np.uint8)
+                    if len(polygon) != 4:
+                        continue
+
+                    draw.polygon(polygon, fill=fill_rgba)
+                    substep_drawn = True
+
+            if substep_drawn:
+                radial_bins_drawn += 1
+
+    rgba_internal = np.array(image, dtype=np.uint8)
+    _internal_center_mask_pixel_radius = apply_center_no_data_mask(
+        rgba_internal,
+        radar_lat,
+        radar_lon,
+        bounds,
+        internal_size_px,
+        center_no_data_mask,
+    )
+    if internal_size_px != output_size_px:
+        downsampled_image = Image.fromarray(rgba_internal, mode="RGBA").resize(
+            (output_size_px, output_size_px),
+            Image.Resampling.LANCZOS,
+        )
+        rgba = np.array(downsampled_image, dtype=np.uint8)
+    else:
+        rgba = rgba_internal
+
     center_mask_pixel_radius = apply_center_no_data_mask(
         rgba,
         radar_lat,
@@ -1533,6 +1611,9 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
     rendering = reflectivity_rendering_settings(config, args)
     render_mode = rendering["renderMode"]
     output_size = rendering["outputSize"]
+    antialias_scale = rendering["antialiasScale"]
+    azimuth_substeps = rendering["azimuthSubsteps"]
+    range_substeps = rendering["rangeSubsteps"]
     radar_origin_px = radar_site_pixel_xy(lat, lon, bounds, output_size)
     native_polar_enabled = render_mode == "nativePolar"
     minimum_dbz = rendering["minimumDbz"]
@@ -1565,6 +1646,9 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
             azimuth_degrees_by_row,
             azimuth_edges_by_row,
             center_no_data_mask,
+            antialias_scale,
+            azimuth_substeps,
+            range_substeps,
         )
         azimuth_mapping_mode = "azimuth-aware" if azimuth_degrees_by_row is not None else "row-index-fallback"
         stats_speckle_dampen = None
@@ -1646,6 +1730,9 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
             "mappedShape": mapped_shape,
             "cartesianSizePx": output_size,
             "configuredOutputSize": output_size,
+            "antialiasScale": antialias_scale,
+            "azimuthSubsteps": azimuth_substeps,
+            "rangeSubsteps": range_substeps,
             "imageWidth": image.width,
             "imageHeight": image.height,
             "calculatedBounds": bounds,
@@ -1699,6 +1786,9 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
     print(f"imageWidth={image.width}")
     print(f"imageHeight={image.height}")
     print(f"configuredOutputSize={output_size}")
+    print(f"antialiasScale={antialias_scale}")
+    print(f"azimuthSubsteps={azimuth_substeps}")
+    print(f"rangeSubsteps={range_substeps}")
     print(f"bounds={bounds}")
     print(f"renderMode={render_mode}")
     print(f"nativePolarEnabled={native_polar_enabled}")
@@ -1795,6 +1885,9 @@ def main() -> int:
     rendering = reflectivity_rendering_settings(config, args)
     print(f"reflectivityRendering.renderMode={rendering['renderMode']}")
     print(f"reflectivityRendering.outputSize={rendering['outputSize']}")
+    print(f"reflectivityRendering.antialiasScale={rendering['antialiasScale']}")
+    print(f"reflectivityRendering.azimuthSubsteps={rendering['azimuthSubsteps']}")
+    print(f"reflectivityRendering.rangeSubsteps={rendering['rangeSubsteps']}")
     print(f"reflectivityRendering.minimumDbz={rendering['minimumDbz']}")
     print(f"reflectivityRendering.maximumDbz={rendering['maximumDbz']}")
     print(

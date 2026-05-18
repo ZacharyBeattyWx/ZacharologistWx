@@ -8,9 +8,12 @@
   "catalogPath": "radar/frames.json",
   "palette": "customColorTable",
   "reflectivityRendering": {
-    "renderMode": "nativePolar",
-    "outputSize": 3072,
-    "minimumDbz": -15,
+    "renderMode": "native-polar-gate-polygons",
+    "outputSizePx": 4096,
+    "antialiasScale": 2,
+    "azimuthSubsteps": 2,
+    "rangeSubsteps": 1,
+    "minimumDbz": -10,
     "maximumDbz": 95,
     "minimumConnectedPixelBlobSize": 1,
     "palette": "customColorTable",
@@ -18,17 +21,7 @@
       "enabled": true,
       "radiusKm": 3
     },
-    "lowDbzOpacityTaper": {
-     "enabled": true,
-      "points": [
-        { "dbz": -15, "opacity": 0.38 },
-       { "dbz": -10, "opacity": 0.52 },
-       { "dbz": -5, "opacity": 0.66 },
-       { "dbz": 0, "opacity": 0.78 },
-       { "dbz": 5, "opacity": 0.90 },
-        { "dbz": 10, "opacity": 1.0 }
-  ]
-},
+    "lowDbzOpacityTaper": true,
     "isolatedSpeckleDampen": {
       "enabled": true,
       "maximumDbz": 10,
