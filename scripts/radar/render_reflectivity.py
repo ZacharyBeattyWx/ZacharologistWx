@@ -1137,12 +1137,17 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
     relative_url = "/" + frame_path.relative_to(REPO_ROOT).as_posix()
     sampling_mode = args.sampling_mode
     if sampling_mode == "nearest":
-        projection_mode = (
-            "polar-cartesian-azimuth-aware-nearest-v1"
-            if azimuth_mapping_mode == "azimuth-aware"
-            else "polar-cartesian-nearest-v2"
-        )
-        output_image_mode = "north-up-cartesian-nearest-sampled"
+        radial_blend_enabled = bool(radial_interpolation and radial_interpolation.get("enabled"))
+        if radial_blend_enabled:
+            projection_mode = "polar-cartesian-radial-blend-v1"
+            output_image_mode = "north-up-cartesian-nearest-plus-radial-blend"
+        else:
+            projection_mode = (
+                "polar-cartesian-azimuth-aware-nearest-v1"
+                if azimuth_mapping_mode == "azimuth-aware"
+                else "polar-cartesian-nearest-v2"
+            )
+            output_image_mode = "north-up-cartesian-nearest-sampled"
     else:
         projection_mode = (
             "polar-cartesian-azimuth-aware-bilinear-v1"
