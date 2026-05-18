@@ -8,7 +8,7 @@
   "catalogPath": "radar/frames.json",
   "palette": "customColorTable",
   "reflectivityRendering": {
-    "minimumDbz": -10,
+    "minimumDbz": -5,
     "maximumDbz": 95,
     "minimumConnectedPixelBlobSize": 1,
     "palette": "customColorTable",
@@ -27,6 +27,13 @@
       "maximumDbz": 10,
       "minimumNeighborPixels": 2,
       "alphaMultiplier": 0.45
+    },
+    "radialInterpolation": {
+      "enabled": true,
+      "mode": "weak-reflectivity-polar-blend",
+      "strength": 0.28,
+      "maximumDbz": 18,
+      "preserveAboveDbz": 35
     },
     "customColorTable": {
       "units": "dBZ",

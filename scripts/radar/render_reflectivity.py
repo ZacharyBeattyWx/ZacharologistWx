@@ -284,6 +284,33 @@ def normalized_speckle_dampen(value):
     }
 
 
+def normalized_radial_interpolation(value):
+    if not isinstance(value, dict):
+        return {
+            "enabled": False,
+            "strength": 0.0,
+            "maximumDbz": 20.0,
+            "preserveAboveDbz": 35.0,
+            "mode": "weak-reflectivity-polar-blend",
+        }
+
+    maximum_dbz = render_settings_number(value.get("maximumDbz"), 20.0)
+    preserve_above_dbz = render_settings_number(value.get("preserveAboveDbz"), 35.0)
+    if preserve_above_dbz <= maximum_dbz:
+        preserve_above_dbz = maximum_dbz + 1.0
+
+    return {
+        "enabled": render_settings_bool(value.get("enabled"), False),
+        "strength": min(
+            1.0,
+            max(0.0, render_settings_number(value.get("strength"), 0.25)),
+        ),
+        "maximumDbz": maximum_dbz,
+        "preserveAboveDbz": preserve_above_dbz,
+        "mode": str(value.get("mode") or "weak-reflectivity-polar-blend"),
+    }
+
+
 def opacity_for_dbz(value: float, opacity_taper: dict | None) -> float:
     if not opacity_taper or not opacity_taper.get("enabled"):
         return 1.0
@@ -338,6 +365,7 @@ def reflectivity_rendering_settings(config: dict, args) -> dict:
         "colorTable": color_table,
         "lowDbzOpacityTaper": normalized_opacity_taper(render_config.get("lowDbzOpacityTaper")),
         "isolatedSpeckleDampen": normalized_speckle_dampen(render_config.get("isolatedSpeckleDampen")),
+        "radialInterpolation": normalized_radial_interpolation(render_config.get("radialInterpolation")),
     }
 
 
@@ -603,6 +631,7 @@ def polar_reflectivity_to_cartesian_grid(
     output_size_px: int = DEFAULT_CARTESIAN_SIZE_PX,
     sampling_mode: str = DEFAULT_SAMPLING_MODE,
     azimuth_degrees_by_row=None,
+    radial_interpolation: dict | None = None,
 ):
     import numpy as np
 
@@ -627,6 +656,31 @@ def polar_reflectivity_to_cartesian_grid(
 
     if sampling_mode == "nearest":
         sampled_values = sample_polar_nearest(numeric, azimuth_index_float, gate_index_float)
+        if radial_interpolation and radial_interpolation.get("enabled"):
+            interpolated_values = sample_polar_bilinear(numeric, azimuth_index_float, gate_index_float)
+            finite_pair = np.isfinite(sampled_values) & np.isfinite(interpolated_values)
+            if finite_pair.any():
+                maximum_dbz = radial_interpolation["maximumDbz"]
+                preserve_above_dbz = radial_interpolation["preserveAboveDbz"]
+                strength = radial_interpolation["strength"]
+                blend = np.zeros_like(sampled_values, dtype=float)
+                blend[finite_pair] = np.where(
+                    sampled_values[finite_pair] <= maximum_dbz,
+                    strength,
+                    np.where(
+                        sampled_values[finite_pair] >= preserve_above_dbz,
+                        0.0,
+                        strength
+                        * (
+                            (preserve_above_dbz - sampled_values[finite_pair])
+                            / (preserve_above_dbz - maximum_dbz)
+                        ),
+                    ),
+                )
+                sampled_values[finite_pair] = (
+                    sampled_values[finite_pair] * (1.0 - blend[finite_pair])
+                    + interpolated_values[finite_pair] * blend[finite_pair]
+                )
     else:
         sampled_values = sample_polar_bilinear(numeric, azimuth_index_float, gate_index_float)
 
@@ -677,6 +731,7 @@ def polar_reflectivity_to_cartesian_rgba(
     color_table: dict | None = None,
     opacity_taper: dict | None = None,
     speckle_dampen: dict | None = None,
+    radial_interpolation: dict | None = None,
     smoothing_passes: int = DEFAULT_CARTESIAN_SMOOTHING_PASSES,
     sampling_mode: str = DEFAULT_SAMPLING_MODE,
     azimuth_degrees_by_row=None,
@@ -689,6 +744,7 @@ def polar_reflectivity_to_cartesian_rgba(
         output_size_px,
         sampling_mode,
         azimuth_degrees_by_row,
+        radial_interpolation,
     )
     cartesian_grid = smooth_cartesian_grid(cartesian_grid, smoothing_passes)
     rgba = reflectivity_to_rgba(
@@ -1051,6 +1107,7 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
     color_table = rendering["colorTable"]
     opacity_taper = rendering["lowDbzOpacityTaper"]
     speckle_dampen = rendering["isolatedSpeckleDampen"]
+    radial_interpolation = rendering["radialInterpolation"]
 
     from PIL import Image
 
@@ -1067,6 +1124,7 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
         color_table,
         opacity_taper,
         speckle_dampen,
+        radial_interpolation,
         args.smoothing_passes,
         args.sampling_mode,
         azimuth_degrees_by_row,
@@ -1079,12 +1137,17 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
     relative_url = "/" + frame_path.relative_to(REPO_ROOT).as_posix()
     sampling_mode = args.sampling_mode
     if sampling_mode == "nearest":
-        projection_mode = (
-            "polar-cartesian-azimuth-aware-nearest-v1"
-            if azimuth_mapping_mode == "azimuth-aware"
-            else "polar-cartesian-nearest-v2"
-        )
-        output_image_mode = "north-up-cartesian-nearest-sampled"
+        radial_blend_enabled = bool(radial_interpolation and radial_interpolation.get("enabled"))
+        if radial_blend_enabled:
+            projection_mode = "polar-cartesian-radial-blend-v1"
+            output_image_mode = "north-up-cartesian-nearest-plus-radial-blend"
+        else:
+            projection_mode = (
+                "polar-cartesian-azimuth-aware-nearest-v1"
+                if azimuth_mapping_mode == "azimuth-aware"
+                else "polar-cartesian-nearest-v2"
+            )
+            output_image_mode = "north-up-cartesian-nearest-sampled"
     else:
         projection_mode = (
             "polar-cartesian-azimuth-aware-bilinear-v1"
@@ -1126,6 +1189,7 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
             "customColorTable": bool(color_table),
             "lowDbzOpacityTaper": bool(opacity_taper and opacity_taper.get("enabled")),
             "isolatedSpeckleDampen": bool(speckle_dampen and speckle_dampen.get("enabled")),
+            "radialInterpolation": radial_interpolation,
         },
     }
 
@@ -1152,6 +1216,10 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
     print(f"azimuthMetadataRows={len(azimuth_degrees_by_row) if azimuth_degrees_by_row is not None else 0}")
     print(f"paletteMode={palette}")
     print(f"maximumDbz={maximum_dbz}")
+    print(f"radialInterpolation.enabled={radial_interpolation['enabled']}")
+    print(f"radialInterpolation.strength={radial_interpolation['strength']}")
+    print(f"radialInterpolation.maximumDbz={radial_interpolation['maximumDbz']}")
+    print(f"radialInterpolation.preserveAboveDbz={radial_interpolation['preserveAboveDbz']}")
     print(f"smoothingPasses={int(args.smoothing_passes)}")
     print(f"minVisibleDbz={stats['minVisibleDbz']}")
     print(f"minComponentPixels={stats['minComponentPixels']}")
@@ -1241,6 +1309,14 @@ def main() -> int:
     print(
         "reflectivityRendering.isolatedSpeckleDampen="
         f"{bool(rendering['isolatedSpeckleDampen'] and rendering['isolatedSpeckleDampen'].get('enabled'))}"
+    )
+    radial_interpolation = rendering["radialInterpolation"]
+    print(f"reflectivityRendering.radialInterpolation.enabled={radial_interpolation['enabled']}")
+    print(f"reflectivityRendering.radialInterpolation.strength={radial_interpolation['strength']}")
+    print(f"reflectivityRendering.radialInterpolation.maximumDbz={radial_interpolation['maximumDbz']}")
+    print(
+        "reflectivityRendering.radialInterpolation.preserveAboveDbz="
+        f"{radial_interpolation['preserveAboveDbz']}"
     )
 
     if not config.get("enabled") and not (args.force or args.diagnose or args.render):
