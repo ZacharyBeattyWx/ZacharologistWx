@@ -6,12 +6,32 @@
   "outputRoot": "radar",
   "frameOutputDir": "radar/frames",
   "catalogPath": "radar/frames.json",
-  "palette": "DEFAULT_REFLECTIVITY_COLOR_TABLE",
+  "palette": "CUSTOM_RADARSCOPE_1",
   "reflectivityRendering": {
-    "minimumDbz": -10,
-    "maximumDbz": 95,
-    "minimumConnectedPixelBlobSize": 1,
-    "palette": "radar-app-v1",
-    "customColorTable": null
+  "minimumDbz": -10,
+  "maximumDbz": 95,
+  "minimumConnectedPixelBlobSize": 1,
+  "palette": "CUSTOM_RADARSCOPE_1",
+  "customColorTable": {
+    "units": "dBZ",
+    "step": 5,
+    "product": "BR",
+    "colors": [
+      { "value": -15, "stops": [{ "rgb": [0, 0, 0], "alpha": 0 }] },
+      { "value": 5, "stops": [{ "rgb": [29, 37, 60] }] },
+      { "value": 17.5, "stops": [{ "rgb": [89, 155, 171] }] },
+      { "value": 22.5, "stops": [{ "rgb": [33, 186, 72] }] },
+      { "value": 32.5, "stops": [{ "rgb": [5, 101, 1] }] },
+      { "value": 37.5, "stops": [{ "rgb": [251, 252, 0] }, { "rgb": [199, 176, 0] }] },
+      { "value": 42.5, "stops": [{ "rgb": [253, 149, 2] }, { "rgb": [172, 92, 2] }] },
+      { "value": 50, "stops": [{ "rgb": [253, 38, 0] }, { "rgb": [135, 43, 22] }] },
+      { "value": 60, "stops": [{ "rgb": [193, 148, 179] }, { "rgb": [200, 23, 119] }] },
+      { "value": 70, "stops": [{ "rgb": [165, 2, 215] }, { "rgb": [64, 0, 146] }] },
+      { "value": 75, "stops": [{ "rgb": [135, 255, 253] }, { "rgb": [54, 120, 142] }] },
+      { "value": 80, "stops": [{ "rgb": [173, 99, 64] }] },
+      { "value": 85, "stops": [{ "rgb": [105, 0, 4] }] },
+      { "value": 95, "stops": [{ "rgb": [0, 0, 0] }] }
+    ]
   }
+}
 }
