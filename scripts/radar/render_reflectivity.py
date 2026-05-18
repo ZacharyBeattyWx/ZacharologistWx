@@ -936,6 +936,16 @@ def azimuth_bin_edges(azimuth_degrees_by_row, azimuth_count: int, azimuth_edges_
     return edges
 
 
+def unwrap_circular_span(start_degrees: float, end_degrees: float) -> float:
+    span = (end_degrees - start_degrees) % 360.0
+    return span if span > 0 else 360.0
+
+
+def circular_interpolate_degrees(start_degrees: float, end_degrees: float, ratio: float) -> float:
+    span = unwrap_circular_span(start_degrees, end_degrees)
+    return (start_degrees + span * ratio) % 360.0
+
+
 def native_polar_reflectivity_to_rgba(
     values,
     radar_lat: float,
@@ -1002,11 +1012,15 @@ def native_polar_reflectivity_to_rgba(
             )
 
             for azimuth_step in range(azimuth_substeps):
-                azimuth_start = left_azimuth + (
-                    (right_azimuth - left_azimuth) * azimuth_step / azimuth_substeps
+                azimuth_start = circular_interpolate_degrees(
+                    left_azimuth,
+                    right_azimuth,
+                    azimuth_step / azimuth_substeps,
                 )
-                azimuth_end = left_azimuth + (
-                    (right_azimuth - left_azimuth) * (azimuth_step + 1) / azimuth_substeps
+                azimuth_end = circular_interpolate_degrees(
+                    left_azimuth,
+                    right_azimuth,
+                    (azimuth_step + 1) / azimuth_substeps,
                 )
 
                 for range_step in range(range_substeps):
