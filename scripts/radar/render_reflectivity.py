@@ -605,6 +605,55 @@ def radial_azimuth_indices(target_degrees, row_azimuths):
     return np.mod(np.interp(targets, angle_axis, index_axis), row_count)
 
 
+def radar_site_pixel_xy(
+    radar_lat: float,
+    radar_lon: float,
+    bounds: list[list[float]],
+    output_size_px: int,
+) -> tuple[float, float] | None:
+    if output_size_px < 2:
+        return None
+
+    south, west = bounds[0]
+    north, east = bounds[1]
+
+    if north == south or east == west:
+        return None
+
+    x = (radar_lon - west) / (east - west) * (output_size_px - 1)
+    y = (north - radar_lat) / (north - south) * (output_size_px - 1)
+    return x, y
+
+
+def radar_site_centered_km_grid(
+    radar_lat: float,
+    radar_lon: float,
+    bounds: list[list[float]],
+    output_size_px: int,
+):
+    import numpy as np
+
+    south, west = bounds[0]
+    north, east = bounds[1]
+    origin = radar_site_pixel_xy(radar_lat, radar_lon, bounds, output_size_px)
+
+    if origin is None:
+        return None
+
+    origin_x, origin_y = origin
+    km_per_degree_lon = 111.32 * math.cos(math.radians(radar_lat))
+    km_per_pixel_x = (east - west) * km_per_degree_lon / (output_size_px - 1)
+    km_per_pixel_y = (north - south) * 111.32 / (output_size_px - 1)
+    pixel_x, pixel_y = np.meshgrid(
+        np.arange(output_size_px, dtype=float),
+        np.arange(output_size_px, dtype=float),
+    )
+
+    x_km = (pixel_x - origin_x) * km_per_pixel_x
+    y_km = (origin_y - pixel_y) * km_per_pixel_y
+    return x_km, y_km
+
+
 def prepare_azimuth_sample_source(values, azimuth_degrees_by_row):
     import numpy as np
 
@@ -627,7 +676,10 @@ def prepare_azimuth_sample_source(values, azimuth_degrees_by_row):
 
 def polar_reflectivity_to_cartesian_grid(
     values,
+    radar_lat: float,
+    radar_lon: float,
     range_km: float,
+    bounds: list[list[float]] | None = None,
     output_size_px: int = DEFAULT_CARTESIAN_SIZE_PX,
     sampling_mode: str = DEFAULT_SAMPLING_MODE,
     azimuth_degrees_by_row=None,
@@ -641,8 +693,25 @@ def polar_reflectivity_to_cartesian_grid(
     )
     azimuth_count, gate_count = numeric.shape
     output_grid = np.full((output_size_px, output_size_px), np.nan, dtype=float)
-    axis_km = np.linspace(-range_km, range_km, output_size_px)
-    x_km, y_km = np.meshgrid(axis_km, axis_km[::-1])
+
+    render_bounds = bounds or calculate_rough_bounds(radar_lat, radar_lon, range_km)
+    centered_grid = radar_site_centered_km_grid(
+        radar_lat,
+        radar_lon,
+        render_bounds,
+        output_size_px,
+    )
+    if centered_grid is None:
+        render_bounds = calculate_rough_bounds(radar_lat, radar_lon, range_km)
+        centered_grid = radar_site_centered_km_grid(
+            radar_lat,
+            radar_lon,
+            render_bounds,
+            output_size_px,
+        )
+    if centered_grid is None:
+        raise ValueError("Unable to calculate radar-site-centered pixel grid.")
+    x_km, y_km = centered_grid
     range_at_pixel = np.hypot(x_km, y_km)
     in_range = range_at_pixel <= range_km
 
@@ -732,21 +801,24 @@ def polar_reflectivity_to_cartesian_rgba(
     opacity_taper: dict | None = None,
     speckle_dampen: dict | None = None,
     radial_interpolation: dict | None = None,
+    bounds: list[list[float]] | None = None,
     smoothing_passes: int = DEFAULT_CARTESIAN_SMOOTHING_PASSES,
     sampling_mode: str = DEFAULT_SAMPLING_MODE,
     azimuth_degrees_by_row=None,
 ):
-    del radar_lat, radar_lon
-
     cartesian_grid, azimuth_mapping_mode = polar_reflectivity_to_cartesian_grid(
         values,
+        radar_lat,
+        radar_lon,
         range_km,
+        bounds,
         output_size_px,
         sampling_mode,
         azimuth_degrees_by_row,
         radial_interpolation,
     )
-    cartesian_grid = smooth_cartesian_grid(cartesian_grid, smoothing_passes)
+    if not (radial_interpolation and radial_interpolation.get("enabled")):
+        cartesian_grid = smooth_cartesian_grid(cartesian_grid, smoothing_passes)
     rgba = reflectivity_to_rgba(
         cartesian_grid,
         min_visible_dbz,
@@ -1099,6 +1171,7 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
     range_km = float(getattr(level3, "max_range"))
     mapped_shape = [int(dimension) for dimension in mapped.shape]
     bounds = calculate_rough_bounds(lat, lon, range_km)
+    radar_origin_px = radar_site_pixel_xy(lat, lon, bounds, DEFAULT_CARTESIAN_SIZE_PX)
     rendering = reflectivity_rendering_settings(config, args)
     minimum_dbz = rendering["minimumDbz"]
     maximum_dbz = rendering["maximumDbz"]
@@ -1125,6 +1198,7 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
         opacity_taper,
         speckle_dampen,
         radial_interpolation,
+        bounds,
         args.smoothing_passes,
         args.sampling_mode,
         azimuth_degrees_by_row,
@@ -1169,6 +1243,10 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
         "debug": {
             "radarLat": lat,
             "radarLon": lon,
+            "radarOriginPixel": [
+                float(radar_origin_px[0]),
+                float(radar_origin_px[1]),
+            ] if radar_origin_px is not None else None,
             "maxRangeKm": range_km,
             "mappedShape": mapped_shape,
             "cartesianSizePx": DEFAULT_CARTESIAN_SIZE_PX,
@@ -1206,6 +1284,8 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
     print(f"Updated {config.get('catalogPath', 'radar/frames.json')}")
     print(f"radarLat={lat}")
     print(f"radarLon={lon}")
+    if radar_origin_px is not None:
+        print(f"radarOriginPixel={[float(radar_origin_px[0]), float(radar_origin_px[1])]}")
     print(f"maxRangeKm={range_km}")
     print(f"mappedShape={mapped_shape}")
     print(f"imageWidth={image.width}")
