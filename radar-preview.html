@@ -584,7 +584,9 @@
     const MIN_MOBILE_PLAY_INTERVAL_MS = 25;
     const LOOP_END_PAUSE_MS = 1200;
     const MOBILE_PLAYBACK_FRAME_LIMIT = 12;
+    const MOBILE_DECODED_CACHE_LIMIT = 2;
     const MOBILE_BREAKPOINT_QUERY = '(max-width: 768px)';
+    const MOBILE_RESIZE_DEBOUNCE_MS = 250;
     const mobilePlaybackQuery = window.matchMedia(MOBILE_BREAKPOINT_QUERY);
     let radarAnimationLayer = null;
     let radarSiteMarker = null;
@@ -610,6 +612,8 @@
     let latestFrame = null;
     let latestBounds = null;
     let radarBounds = null;
+    let playbackModeIsMobile = isMobilePlaybackMode();
+    let playbackModeChangeTimer = null;
 
     function setStatus(message, isError = false) {
       statusEl.textContent = message;
@@ -1019,20 +1023,31 @@
       preparedFrameCache = new Map();
     }
 
-    function playbackNeighborIndexes(index) {
+    function frameIndexUrl(index) {
+      return frameImageUrl(playbackFrames[index]);
+    }
+
+    function mobileCacheTargetIndexes(index, direction = 'next') {
       if (!playbackFrames.length) return [];
 
       const frameCount = playbackFrames.length;
-      return [
-        (index - 1 + frameCount) % frameCount,
-        index,
-        (index + 1) % frameCount,
-      ];
+      const current = ((index % frameCount) + frameCount) % frameCount;
+      const neighbor = direction === 'previous'
+        ? (current - 1 + frameCount) % frameCount
+        : (current + 1) % frameCount;
+
+      if (neighbor === current) {
+        return [current];
+      }
+
+      return [current, neighbor];
     }
 
-    function frameCacheWindowUrls(index = playbackIndex) {
+    function mobileCacheTargetUrls(index = playbackIndex, direction = 'next') {
       return new Set(
-        playbackNeighborIndexes(index).map((frameIndex) => frameImageUrl(playbackFrames[frameIndex]))
+        mobileCacheTargetIndexes(index, direction)
+          .slice(0, MOBILE_DECODED_CACHE_LIMIT)
+          .map((frameIndex) => frameIndexUrl(frameIndex))
       );
     }
 
@@ -1047,11 +1062,11 @@
       });
     }
 
-    async function preloadFrameWindow(index = playbackIndex) {
+    async function preloadFrameWindow(index = playbackIndex, direction = 'next') {
       if (!playbackFrames.length) return true;
 
-      const keepUrls = frameCacheWindowUrls(index);
-      const currentUrl = frameImageUrl(playbackFrames[index]);
+      const keepUrls = mobileCacheTargetUrls(index, direction);
+      const currentUrl = frameIndexUrl(index);
       prunePreparedFrameCache(keepUrls);
       const preloadResults = await Promise.allSettled(
         [...keepUrls].map(async (url) => {
@@ -1067,10 +1082,10 @@
         preloadResults.every((result) => result.status === 'fulfilled' && result.value === true);
     }
 
-    function warmFrameWindow(index = playbackIndex) {
+    function warmFrameWindow(index = playbackIndex, direction = 'next') {
       if (!isMobilePlaybackMode()) return;
 
-      preloadFrameWindow(index).catch(() => {});
+      preloadFrameWindow(index, direction).catch(() => {});
     }
 
     function waitForNextPaint(cycles = 2) {
@@ -1117,7 +1132,7 @@
 
       if (isMobilePlaybackMode()) {
         setStatus('Preloading nearby radar frames...');
-        playbackPreloadPromise = preloadFrameWindow(playbackIndex).then((allFramesReady) => {
+        playbackPreloadPromise = preloadFrameWindow(playbackIndex, 'next').then((allFramesReady) => {
           if (!allFramesReady) {
             setStatus('Some nearby radar frames failed to preload.', true);
           }
@@ -1150,7 +1165,7 @@
       return playbackPreloadPromise;
     }
 
-    async function showFrame(index) {
+    async function showFrame(index, { mobileWarmDirection = 'next' } = {}) {
       if (!playbackFrames.length) {
         updatePlaybackLabels();
         return false;
@@ -1161,6 +1176,14 @@
       const frameUrl = frameImageUrl(frame);
       const swapToken = ++frameSwapToken;
       isFrameSwapInProgress = true;
+
+      if (isMobilePlaybackMode()) {
+        const keepUrls = new Set([frameUrl]);
+        if (visibleRadarLayerIndex >= 0 && visibleRadarLayerIndex < playbackFrames.length) {
+          keepUrls.add(frameIndexUrl(visibleRadarLayerIndex));
+        }
+        prunePreparedFrameCache(keepUrls);
+      }
 
       let preparedFrame = preparedFrameCache.get(frameUrl);
       if (!preparedFrame) {
@@ -1200,7 +1223,7 @@
       if (isMobilePlaybackMode()) {
         playbackPreloadPromise = null;
       }
-      warmFrameWindow(playbackIndex);
+      warmFrameWindow(playbackIndex, mobileWarmDirection);
 
       updateDebugLayers(frame, bounds);
       setInfo(currentCatalog, frame);
@@ -1211,7 +1234,9 @@
 
     function stepFrame(offset) {
       stopPlayback();
-      showFrame(playbackIndex + offset);
+      showFrame(playbackIndex + offset, {
+        mobileWarmDirection: offset < 0 ? 'previous' : 'next',
+      });
     }
 
     function togglePlayback() {
@@ -1228,7 +1253,7 @@
 
       isAdvancingPlayback = true;
       try {
-        await showFrame(playbackIndex + 1);
+        await showFrame(playbackIndex + 1, { mobileWarmDirection: 'next' });
       } finally {
         isAdvancingPlayback = false;
       }
@@ -1337,6 +1362,7 @@
         previousPlaybackIndex === playbackFrames.length - 1;
 
       currentCatalog = catalog;
+      playbackModeIsMobile = isMobilePlaybackMode();
       catalogFramesNewestFirst = [...catalogFrames(catalog)].sort((a, b) => {
         return new Date(b.validTime) - new Date(a.validTime);
       });
@@ -1438,12 +1464,23 @@
     }
 
     function handlePlaybackDeviceModeChange() {
-      if (!currentCatalog) return;
+      if (playbackModeChangeTimer) {
+        clearTimeout(playbackModeChangeTimer);
+      }
 
-      applyRadarCatalog(currentCatalog, {
-        resetView: false,
-        stopPlaybackForLoad: true,
-      });
+      playbackModeChangeTimer = setTimeout(() => {
+        playbackModeChangeTimer = null;
+
+        if (!currentCatalog || isLoadingRadar || isCheckingRadarUpdate || isFrameSwapInProgress) return;
+
+        const nextModeIsMobile = isMobilePlaybackMode();
+        if (nextModeIsMobile === playbackModeIsMobile) return;
+
+        applyRadarCatalog(currentCatalog, {
+          resetView: false,
+          stopPlaybackForLoad: true,
+        });
+      }, MOBILE_RESIZE_DEBOUNCE_MS);
     }
 
     debugToggle.addEventListener('change', () => {
