@@ -198,6 +198,19 @@ def render_settings_int(value, default: int) -> int:
     return numeric
 
 
+def render_settings_bool(value, default: bool = False) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in ("1", "true", "yes", "on"):
+            return True
+        if normalized in ("0", "false", "no", "off"):
+            return False
+
+    return default
+
+
 def normalized_color_table(value):
     if not isinstance(value, dict):
         return None
@@ -218,6 +231,78 @@ def normalized_color_table(value):
                 return None
 
     return value
+
+
+def normalized_opacity_taper(value):
+    if not isinstance(value, dict):
+        return None
+
+    points = value.get("points")
+    if not isinstance(points, list) or len(points) < 2:
+        return None
+
+    normalized_points = []
+    for point in points:
+        if not isinstance(point, dict):
+            continue
+
+        dbz = render_settings_number(point.get("dbz"))
+        opacity = render_settings_number(point.get("opacity"))
+
+        if dbz is None or opacity is None:
+            continue
+
+        normalized_points.append({
+            "dbz": dbz,
+            "opacity": min(1.0, max(0.0, opacity)),
+        })
+
+    if len(normalized_points) < 2:
+        return None
+
+    return {
+        "enabled": render_settings_bool(value.get("enabled"), True),
+        "points": sorted(normalized_points, key=lambda point: point["dbz"]),
+    }
+
+
+def normalized_speckle_dampen(value):
+    if not isinstance(value, dict):
+        return None
+
+    return {
+        "enabled": render_settings_bool(value.get("enabled"), False),
+        "maximumDbz": render_settings_number(value.get("maximumDbz"), 10.0),
+        "minimumNeighborPixels": max(
+            0,
+            render_settings_int(value.get("minimumNeighborPixels"), 2),
+        ),
+        "alphaMultiplier": min(
+            1.0,
+            max(0.0, render_settings_number(value.get("alphaMultiplier"), 0.45)),
+        ),
+    }
+
+
+def opacity_for_dbz(value: float, opacity_taper: dict | None) -> float:
+    if not opacity_taper or not opacity_taper.get("enabled"):
+        return 1.0
+
+    points = opacity_taper["points"]
+    if value <= points[0]["dbz"]:
+        return points[0]["opacity"]
+    if value >= points[-1]["dbz"]:
+        return points[-1]["opacity"]
+
+    for lower, upper in zip(points, points[1:]):
+        if lower["dbz"] <= value <= upper["dbz"]:
+            span = upper["dbz"] - lower["dbz"]
+            if span <= 0:
+                return upper["opacity"]
+            ratio = (value - lower["dbz"]) / span
+            return lower["opacity"] + (upper["opacity"] - lower["opacity"]) * ratio
+
+    return 1.0
 
 
 def reflectivity_rendering_settings(config: dict, args) -> dict:
@@ -251,6 +336,8 @@ def reflectivity_rendering_settings(config: dict, args) -> dict:
         ),
         "palette": palette,
         "colorTable": color_table,
+        "lowDbzOpacityTaper": normalized_opacity_taper(render_config.get("lowDbzOpacityTaper")),
+        "isolatedSpeckleDampen": normalized_speckle_dampen(render_config.get("isolatedSpeckleDampen")),
     }
 
 
@@ -259,13 +346,64 @@ def rgba_for_rendered_dbz(
     palette: str = DEFAULT_PALETTE_MODE,
     color_table: dict | None = None,
     maximum_dbz: float | None = None,
+    opacity_taper: dict | None = None,
 ) -> tuple[int, int, int, int]:
     rendered_value = min(value, maximum_dbz) if maximum_dbz is not None else value
 
     if palette in ("DEFAULT_REFLECTIVITY_COLOR_TABLE", "customColorTable"):
-        return rgba_for_dbz(rendered_value, color_table)
+        red, green, blue, alpha = rgba_for_dbz(rendered_value, color_table)
+    else:
+        red, green, blue, alpha = radar_app_rgba_for_dbz(rendered_value)
 
-    return radar_app_rgba_for_dbz(rendered_value)
+    alpha = int(round(alpha * opacity_for_dbz(value, opacity_taper)))
+    return red, green, blue, min(255, max(0, alpha))
+
+
+def neighbor_count_mask(mask):
+    import numpy as np
+
+    padded = np.pad(
+        np.asarray(mask, dtype=bool).astype(np.uint8),
+        1,
+        mode="constant",
+        constant_values=0,
+    )
+    return (
+        padded[:-2, :-2]
+        + padded[:-2, 1:-1]
+        + padded[:-2, 2:]
+        + padded[1:-1, :-2]
+        + padded[1:-1, 2:]
+        + padded[2:, :-2]
+        + padded[2:, 1:-1]
+        + padded[2:, 2:]
+    )
+
+
+def dampen_isolated_weak_speckles(rgba, numeric, visible_mask, speckle_dampen: dict | None):
+    if not speckle_dampen or not speckle_dampen.get("enabled"):
+        return 0
+
+    import numpy as np
+
+    maximum_dbz = speckle_dampen["maximumDbz"]
+    minimum_neighbors = speckle_dampen["minimumNeighborPixels"]
+    alpha_multiplier = speckle_dampen["alphaMultiplier"]
+    neighbors = neighbor_count_mask(visible_mask)
+    isolated_mask = (
+        np.asarray(visible_mask, dtype=bool)
+        & np.isfinite(numeric)
+        & (numeric <= maximum_dbz)
+        & (neighbors < minimum_neighbors)
+    )
+    dampened_pixels = int(isolated_mask.sum())
+
+    if dampened_pixels:
+        alpha = rgba[:, :, 3].astype(float)
+        alpha[isolated_mask] = np.round(alpha[isolated_mask] * alpha_multiplier)
+        rgba[:, :, 3] = np.clip(alpha, 0, 255).astype(np.uint8)
+
+    return dampened_pixels
 
 
 def reflectivity_to_rgba(
@@ -275,6 +413,8 @@ def reflectivity_to_rgba(
     maximum_dbz: float | None = None,
     palette: str = DEFAULT_PALETTE_MODE,
     color_table: dict | None = None,
+    opacity_taper: dict | None = None,
+    speckle_dampen: dict | None = None,
 ):
     import numpy as np
 
@@ -291,8 +431,10 @@ def reflectivity_to_rgba(
             palette,
             color_table,
             maximum_dbz,
+            opacity_taper,
         )
 
+    dampen_isolated_weak_speckles(rgba, numeric, visible_mask, speckle_dampen)
     rgba[~finite_mask] = [0, 0, 0, 0]
     rgba[finite_mask & ~visible_mask] = [0, 0, 0, 0]
     return rgba
@@ -303,6 +445,7 @@ def reflectivity_stats(
     min_visible_dbz: float = DEFAULT_MIN_VISIBLE_DBZ,
     min_component_pixels: int = DEFAULT_MIN_COMPONENT_PIXELS,
     maximum_dbz: float | None = None,
+    speckle_dampen: dict | None = None,
 ) -> dict:
     import numpy as np
 
@@ -316,6 +459,15 @@ def reflectivity_stats(
     raw_visible_pixels = int(raw_visible_mask.sum())
     visible_pixels = int(visible_mask.sum())
     removed_speckle_pixels = raw_visible_pixels - visible_pixels
+    dampened_speckle_pixels = 0
+    if speckle_dampen and speckle_dampen.get("enabled"):
+        neighbors = neighbor_count_mask(visible_mask)
+        dampened_speckle_pixels = int((
+            visible_mask
+            & finite_mask
+            & (numeric <= speckle_dampen["maximumDbz"])
+            & (neighbors < speckle_dampen["minimumNeighborPixels"])
+        ).sum())
     visible_coverage = (visible_pixels / total_pixels * 100) if total_pixels else 0.0
 
     return {
@@ -327,6 +479,7 @@ def reflectivity_stats(
         "rawVisiblePixels": raw_visible_pixels,
         "visiblePixels": visible_pixels,
         "removedSpecklePixels": removed_speckle_pixels,
+        "dampenedSpecklePixels": dampened_speckle_pixels,
         "visibleCoveragePercent": visible_coverage,
         "finiteMin": float(np.nanmin(finite_values)) if finite_pixels else None,
         "finiteMax": float(np.nanmax(finite_values)) if finite_pixels else None,
@@ -522,6 +675,8 @@ def polar_reflectivity_to_cartesian_rgba(
     maximum_dbz: float | None = None,
     palette: str = DEFAULT_PALETTE_MODE,
     color_table: dict | None = None,
+    opacity_taper: dict | None = None,
+    speckle_dampen: dict | None = None,
     smoothing_passes: int = DEFAULT_CARTESIAN_SMOOTHING_PASSES,
     sampling_mode: str = DEFAULT_SAMPLING_MODE,
     azimuth_degrees_by_row=None,
@@ -543,6 +698,8 @@ def polar_reflectivity_to_cartesian_rgba(
         maximum_dbz,
         palette,
         color_table,
+        opacity_taper,
+        speckle_dampen,
     )
     return rgba, cartesian_grid, azimuth_mapping_mode
 
@@ -892,6 +1049,8 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
     minimum_blob_size = rendering["minimumConnectedPixelBlobSize"]
     palette = rendering["palette"]
     color_table = rendering["colorTable"]
+    opacity_taper = rendering["lowDbzOpacityTaper"]
+    speckle_dampen = rendering["isolatedSpeckleDampen"]
 
     from PIL import Image
 
@@ -906,12 +1065,14 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
         maximum_dbz,
         palette,
         color_table,
+        opacity_taper,
+        speckle_dampen,
         args.smoothing_passes,
         args.sampling_mode,
         azimuth_degrees_by_row,
     )
-    stats = reflectivity_stats(cartesian_grid, minimum_dbz, minimum_blob_size, maximum_dbz)
-    source_stats = reflectivity_stats(mapped, minimum_dbz, minimum_blob_size, maximum_dbz)
+    stats = reflectivity_stats(cartesian_grid, minimum_dbz, minimum_blob_size, maximum_dbz, speckle_dampen)
+    source_stats = reflectivity_stats(mapped, minimum_dbz, minimum_blob_size, maximum_dbz, speckle_dampen)
     image = Image.fromarray(rgba, mode="RGBA")
     image.save(frame_path, "WEBP", lossless=True)
 
@@ -963,6 +1124,8 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
             "minimumDbz": minimum_dbz,
             "minimumConnectedPixelBlobSize": minimum_blob_size,
             "customColorTable": bool(color_table),
+            "lowDbzOpacityTaper": bool(opacity_taper and opacity_taper.get("enabled")),
+            "isolatedSpeckleDampen": bool(speckle_dampen and speckle_dampen.get("enabled")),
         },
     }
 
@@ -995,6 +1158,7 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
     print(f"rawVisiblePixels={stats['rawVisiblePixels']}")
     print(f"visiblePixelsAfterDespeckle={stats['visiblePixels']}")
     print(f"removedSpecklePixels={stats['removedSpecklePixels']}")
+    print(f"dampenedSpecklePixels={stats['dampenedSpecklePixels']}")
     print(f"visibleCoveragePercent={stats['visibleCoveragePercent']:.6f}")
     return True
 
@@ -1070,6 +1234,14 @@ def main() -> int:
     )
     print(f"reflectivityRendering.palette={rendering['palette']}")
     print(f"reflectivityRendering.customColorTable={bool(rendering['colorTable'])}")
+    print(
+        "reflectivityRendering.lowDbzOpacityTaper="
+        f"{bool(rendering['lowDbzOpacityTaper'] and rendering['lowDbzOpacityTaper'].get('enabled'))}"
+    )
+    print(
+        "reflectivityRendering.isolatedSpeckleDampen="
+        f"{bool(rendering['isolatedSpeckleDampen'] and rendering['isolatedSpeckleDampen'].get('enabled'))}"
+    )
 
     if not config.get("enabled") and not (args.force or args.diagnose or args.render):
         print("Renderer is disabled; no frames will be rendered. Pass --diagnose for a manual decode inspection.")
