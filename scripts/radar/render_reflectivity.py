@@ -321,6 +321,13 @@ def normalized_render_mode(value) -> str:
     return DEFAULT_RENDER_MODE
 
 
+def normalized_output_size(value) -> int:
+    return max(
+        2,
+        render_settings_int(value, DEFAULT_CARTESIAN_SIZE_PX),
+    )
+
+
 def opacity_for_dbz(value: float, opacity_taper: dict | None) -> float:
     if not opacity_taper or not opacity_taper.get("enabled"):
         return 1.0
@@ -357,6 +364,7 @@ def reflectivity_rendering_settings(config: dict, args) -> dict:
 
     return {
         "renderMode": normalized_render_mode(render_config.get("renderMode")),
+        "outputSize": normalized_output_size(render_config.get("outputSize")),
         "minimumDbz": render_settings_number(
             render_config.get("minimumDbz"),
             args.min_visible_dbz,
@@ -1351,9 +1359,10 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
     range_km = float(getattr(level3, "max_range"))
     mapped_shape = [int(dimension) for dimension in mapped.shape]
     bounds = calculate_rough_bounds(lat, lon, range_km)
-    radar_origin_px = radar_site_pixel_xy(lat, lon, bounds, DEFAULT_CARTESIAN_SIZE_PX)
     rendering = reflectivity_rendering_settings(config, args)
     render_mode = rendering["renderMode"]
+    output_size = rendering["outputSize"]
+    radar_origin_px = radar_site_pixel_xy(lat, lon, bounds, output_size)
     native_polar_enabled = render_mode == "nativePolar"
     minimum_dbz = rendering["minimumDbz"]
     maximum_dbz = rendering["maximumDbz"]
@@ -1374,7 +1383,7 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
             lon,
             range_km,
             bounds,
-            DEFAULT_CARTESIAN_SIZE_PX,
+            output_size,
             minimum_dbz,
             maximum_dbz,
             palette,
@@ -1391,7 +1400,7 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
             lat,
             lon,
             range_km,
-            DEFAULT_CARTESIAN_SIZE_PX,
+            output_size,
             minimum_dbz,
             minimum_blob_size,
             maximum_dbz,
@@ -1456,7 +1465,8 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
             ] if radar_origin_px is not None else None,
             "maxRangeKm": range_km,
             "mappedShape": mapped_shape,
-            "cartesianSizePx": DEFAULT_CARTESIAN_SIZE_PX,
+            "cartesianSizePx": output_size,
+            "configuredOutputSize": output_size,
             "imageWidth": image.width,
             "imageHeight": image.height,
             "calculatedBounds": bounds,
@@ -1500,6 +1510,7 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
     print(f"mappedShape={mapped_shape}")
     print(f"imageWidth={image.width}")
     print(f"imageHeight={image.height}")
+    print(f"configuredOutputSize={output_size}")
     print(f"bounds={bounds}")
     print(f"renderMode={render_mode}")
     print(f"nativePolarEnabled={native_polar_enabled}")
@@ -1589,6 +1600,7 @@ def main() -> int:
     print(f"frameOutputDir={config.get('frameOutputDir')}")
     rendering = reflectivity_rendering_settings(config, args)
     print(f"reflectivityRendering.renderMode={rendering['renderMode']}")
+    print(f"reflectivityRendering.outputSize={rendering['outputSize']}")
     print(f"reflectivityRendering.minimumDbz={rendering['minimumDbz']}")
     print(f"reflectivityRendering.maximumDbz={rendering['maximumDbz']}")
     print(
