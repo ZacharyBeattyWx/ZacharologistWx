@@ -10,7 +10,7 @@
   "reflectivityRendering": {
     "renderMode": "native-polar-gate-polygons",
     "outputSizePx": 4096,
-    "antialiasScale": 2,
+    "antialiasScale": 1,
     "azimuthSubsteps": 2,
     "rangeSubsteps": 1,
     "minimumDbz": -10,
@@ -37,28 +37,23 @@
     },
     "customColorTable": {
       "units": "dBZ",
-      "step": 5,
+      "step": 10,
       "product": "BR",
       "colors": [
-        { "value": -15, "stops": [{ "rgb": [0, 0, 0], "alpha": 0 }] },
-        { "value": -10, "stops": [{ "rgb": [7, 12, 24], "alpha": 95 }] },
-        { "value": -5, "stops": [{ "rgb": [11, 19, 34], "alpha": 120 }] },
-        { "value": 0, "stops": [{ "rgb": [18, 30, 48], "alpha": 160 }] },
-        { "value": 5, "stops": [{ "rgb": [29, 44, 67], "alpha": 210 }] },
-        { "value": 10, "stops": [{ "rgb": [43, 66, 91], "alpha": 255 }] },
-        { "value": 15, "stops": [{ "rgb": [66, 105, 125] }] },
-        { "value": 17.5, "stops": [{ "rgb": [80, 135, 151] }] },
-        { "value": 22.5, "stops": [{ "rgb": [33, 186, 72] }] },
-        { "value": 32.5, "stops": [{ "rgb": [5, 101, 1] }] },
-        { "value": 37.5, "stops": [{ "rgb": [251, 252, 0] }, { "rgb": [199, 176, 0] }] },
-        { "value": 42.5, "stops": [{ "rgb": [253, 149, 2] }, { "rgb": [172, 92, 2] }] },
-        { "value": 50, "stops": [{ "rgb": [253, 38, 0] }, { "rgb": [135, 43, 22] }] },
-        { "value": 60, "stops": [{ "rgb": [193, 148, 179] }, { "rgb": [200, 23, 119] }] },
-        { "value": 70, "stops": [{ "rgb": [165, 2, 215] }, { "rgb": [64, 0, 146] }] },
-        { "value": 75, "stops": [{ "rgb": [135, 255, 253] }, { "rgb": [54, 120, 142] }] },
-        { "value": 80, "stops": [{ "rgb": [173, 99, 64] }] },
-        { "value": 85, "stops": [{ "rgb": [105, 0, 4] }] },
-        { "value": 95, "stops": [{ "rgb": [0, 0, 0] }] }
+        { "value": -10, "stops": [{ "rgb": [7, 59, 71], "alpha": 0 }] },
+        { "value": 0, "stops": [{ "rgb": [62, 69, 71] }] },
+        { "value": 10, "stops": [{ "rgb": [191, 193, 197] }] },
+        { "value": 20, "stops": [{ "rgb": [135, 229, 125] }] },
+        { "value": 30, "stops": [{ "rgb": [48, 102, 43] }] },
+        { "value": 35, "stops": [{ "rgb": [253, 227, 0] }] },
+        { "value": 50, "stops": [{ "rgb": [254, 26, 0] }] },
+        { "value": 55, "stops": [{ "rgb": [181, 0, 52] }] },
+        { "value": 60, "stops": [{ "rgb": [163, 0, 136] }] },
+        { "value": 65, "stops": [{ "rgb": [254, 4, 250] }] },
+        { "value": 70, "stops": [{ "rgb": [67, 190, 254] }] },
+        { "value": 75, "stops": [{ "rgb": [19, 144, 242] }] },
+        { "value": 80, "stops": [{ "rgb": [166, 176, 150] }] },
+        { "value": 85, "stops": [{ "rgb": [255, 231, 188] }] }
       ]
     }
   }

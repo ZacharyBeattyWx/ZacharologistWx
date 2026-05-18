@@ -957,7 +957,9 @@ def native_polar_reflectivity_to_rgba(
 ):
     import numpy as np
     from PIL import Image, ImageDraw
+    from time import perf_counter
 
+    stage_start = perf_counter()
     numeric = np.asarray(np.ma.array(values).filled(np.nan), dtype=float)
     azimuth_count, gate_count = numeric.shape
     internal_size_px = max(2, int(output_size_px) * max(1, int(antialias_scale)))
@@ -973,6 +975,9 @@ def native_polar_reflectivity_to_rgba(
 
     azimuth_substeps = max(1, int(azimuth_substeps))
     range_substeps = max(1, int(range_substeps))
+    setup_elapsed = perf_counter() - stage_start
+
+    draw_start = perf_counter()
 
     for azimuth_index, (left_azimuth, right_azimuth) in enumerate(azimuth_edges):
         for gate_index in range(gate_count):
@@ -1042,7 +1047,9 @@ def native_polar_reflectivity_to_rgba(
 
             if substep_drawn:
                 radial_bins_drawn += 1
+    draw_elapsed = perf_counter() - draw_start
 
+    mask_internal_start = perf_counter()
     rgba_internal = np.array(image, dtype=np.uint8)
     _internal_center_mask_pixel_radius = apply_center_no_data_mask(
         rgba_internal,
@@ -1052,15 +1059,21 @@ def native_polar_reflectivity_to_rgba(
         internal_size_px,
         center_no_data_mask,
     )
+    mask_internal_elapsed = perf_counter() - mask_internal_start
+
+    downsample_elapsed = 0.0
     if internal_size_px != output_size_px:
+        downsample_start = perf_counter()
         downsampled_image = Image.fromarray(rgba_internal, mode="RGBA").resize(
             (output_size_px, output_size_px),
             Image.Resampling.LANCZOS,
         )
         rgba = np.array(downsampled_image, dtype=np.uint8)
+        downsample_elapsed = perf_counter() - downsample_start
     else:
         rgba = rgba_internal
 
+    mask_final_start = perf_counter()
     center_mask_pixel_radius = apply_center_no_data_mask(
         rgba,
         radar_lat,
@@ -1068,6 +1081,15 @@ def native_polar_reflectivity_to_rgba(
         bounds,
         output_size_px,
         center_no_data_mask,
+    )
+    mask_final_elapsed = perf_counter() - mask_final_start
+    print(
+        "nativePolar.timing.seconds "
+        f"setup={setup_elapsed:.3f} "
+        f"drawPolygons={draw_elapsed:.3f} "
+        f"applyMaskInternal={mask_internal_elapsed:.3f} "
+        f"downsample={downsample_elapsed:.3f} "
+        f"applyMaskFinal={mask_final_elapsed:.3f}"
     )
     return rgba, numeric, radial_bins_drawn, center_mask_pixel_radius
 
@@ -1496,6 +1518,9 @@ def extract_radial_azimuth_edges(item: dict, expected_count: int):
 
 
 def decode_level3_mapped_data(path: Path):
+    from time import perf_counter
+
+    decode_start = perf_counter()
     try:
         from metpy.io import Level3File
     except ImportError as error:
@@ -1505,7 +1530,9 @@ def decode_level3_mapped_data(path: Path):
         return None, None, None, None
 
     try:
+        open_start = perf_counter()
         level3 = Level3File(str(path))
+        open_elapsed = perf_counter() - open_start
     except Exception as error:
         print(f"MetPy failed to open {path}: {error}")
         return None, None, None, None
@@ -1521,12 +1548,22 @@ def decode_level3_mapped_data(path: Path):
 
         if "data" in item:
             try:
+                map_start = perf_counter()
                 mapped = level3.map_data(item["data"])
+                map_elapsed = perf_counter() - map_start
                 azimuth_degrees_by_row = extract_radial_azimuths(item, mapped.shape[0])
                 azimuth_edges_by_row = extract_radial_azimuth_edges(item, mapped.shape[0])
             except Exception as error:
                 print(f"MetPy decoded the file, but map_data failed: {error}")
+                map_elapsed = 0.0
 
+    decode_elapsed = perf_counter() - decode_start
+    print(
+        "decodeLevel3.timing.seconds "
+        f"openFile={open_elapsed if 'open_elapsed' in locals() else 0.0:.3f} "
+        f"mapData={map_elapsed if 'map_elapsed' in locals() else 0.0:.3f} "
+        f"totalDecode={decode_elapsed:.3f}"
+    )
     return level3, mapped, azimuth_degrees_by_row, azimuth_edges_by_row
 
 
@@ -1589,6 +1626,9 @@ def print_level3_sym_block_summary(level3) -> None:
 
 
 def render_level3_frame(source_file: Path, args, config: dict) -> bool:
+    from time import perf_counter
+
+    frame_render_start = perf_counter()
     level3, mapped, azimuth_degrees_by_row, azimuth_edges_by_row = decode_level3_mapped_data(source_file)
 
     if level3 is None or mapped is None:
@@ -1630,6 +1670,7 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
 
     radial_bins_drawn = 0
     center_mask_pixel_radius = 0.0
+    render_convert_start = perf_counter()
     if native_polar_enabled:
         rgba, cartesian_grid, radial_bins_drawn, center_mask_pixel_radius = native_polar_reflectivity_to_rgba(
             mapped,
@@ -1673,10 +1714,13 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
             azimuth_degrees_by_row,
         )
         stats_speckle_dampen = speckle_dampen
+    render_convert_elapsed = perf_counter() - render_convert_start
     stats = reflectivity_stats(cartesian_grid, minimum_dbz, minimum_blob_size, maximum_dbz, stats_speckle_dampen)
     source_stats = reflectivity_stats(mapped, minimum_dbz, minimum_blob_size, maximum_dbz, speckle_dampen)
     image = Image.fromarray(rgba, mode="RGBA")
+    write_start = perf_counter()
     image.save(frame_path, "WEBP", lossless=True)
+    write_elapsed = perf_counter() - write_start
 
     relative_url = "/" + frame_path.relative_to(REPO_ROOT).as_posix()
     sampling_mode = args.sampling_mode
@@ -1817,6 +1861,12 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
     print(f"removedSpecklePixels={stats['removedSpecklePixels']}")
     print(f"dampenedSpecklePixels={stats['dampenedSpecklePixels']}")
     print(f"visibleCoveragePercent={stats['visibleCoveragePercent']:.6f}")
+    print(
+        "renderFrame.timing.seconds "
+        f"convertRadarData={render_convert_elapsed:.3f} "
+        f"writeOutputImage={write_elapsed:.3f} "
+        f"totalFrame={perf_counter() - frame_render_start:.3f}"
+    )
     return True
 
 
@@ -1888,6 +1938,17 @@ def main() -> int:
     print(f"reflectivityRendering.antialiasScale={rendering['antialiasScale']}")
     print(f"reflectivityRendering.azimuthSubsteps={rendering['azimuthSubsteps']}")
     print(f"reflectivityRendering.rangeSubsteps={rendering['rangeSubsteps']}")
+    internal_size = rendering["outputSize"] * rendering["antialiasScale"]
+    print(
+        "reflectivityRendering.nativePolarInternalSizePx="
+        f"{internal_size} "
+        "(outputSize * antialiasScale; larger values increase render cost substantially)"
+    )
+    if rendering["antialiasScale"] > 1:
+        print(
+            "reflectivityRendering.performanceNote="
+            "antialiasScale>1 is typically the largest native-polar render-time multiplier."
+        )
     print(f"reflectivityRendering.minimumDbz={rendering['minimumDbz']}")
     print(f"reflectivityRendering.maximumDbz={rendering['maximumDbz']}")
     print(
