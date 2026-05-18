@@ -583,6 +583,9 @@
     const MIN_PLAY_INTERVAL_MS = 180;
     const MIN_MOBILE_PLAY_INTERVAL_MS = 25;
     const LOOP_END_PAUSE_MS = 1200;
+    const MOBILE_PLAYBACK_FRAME_LIMIT = 12;
+    const MOBILE_BREAKPOINT_QUERY = '(max-width: 768px)';
+    const mobilePlaybackQuery = window.matchMedia(MOBILE_BREAKPOINT_QUERY);
     let radarAnimationLayer = null;
     let radarSiteMarker = null;
     let overlayBoundsRectangle = null;
@@ -619,6 +622,10 @@
 
     function updateOpacityLabel() {
       opacityValue.textContent = radarOpacity().toFixed(2);
+    }
+
+    function isMobilePlaybackMode() {
+      return mobilePlaybackQuery.matches || window.matchMedia('(pointer: coarse)').matches;
     }
 
     function formatNumber(value, digits = 2) {
@@ -759,6 +766,14 @@
       return frames;
     }
 
+    function playbackFramesForDevice(framesNewestFirst) {
+      if (!isMobilePlaybackMode()) {
+        return [...framesNewestFirst].reverse();
+      }
+
+      return framesNewestFirst.slice(0, MOBILE_PLAYBACK_FRAME_LIMIT).reverse();
+    }
+
     function cacheBustedUrl(url) {
       const separator = url.includes('?') ? '&' : '?';
       return `${url}${separator}v=${Date.now()}`;
@@ -852,7 +867,7 @@
     function getPlaybackIntervalMs() {
       const speed = Number(playbackSpeedSelect.value);
       const safeSpeed = Number.isFinite(speed) && speed > 0 ? speed : 2;
-      const minimumInterval = window.matchMedia('(pointer: coarse)').matches
+      const minimumInterval = isMobilePlaybackMode()
         ? MIN_MOBILE_PLAY_INTERVAL_MS
         : MIN_PLAY_INTERVAL_MS;
       return Math.max(minimumInterval, Math.round(BASE_PLAY_INTERVAL_MS / safeSpeed));
@@ -983,13 +998,79 @@
       };
     }
 
+    function releasePreparedFrame(preparedFrame) {
+      if (!preparedFrame) return;
+
+      if (preparedFrame.source && typeof preparedFrame.source.close === 'function') {
+        preparedFrame.source.close();
+        return;
+      }
+
+      if (preparedFrame.source && preparedFrame.source instanceof HTMLCanvasElement) {
+        preparedFrame.source.width = 0;
+        preparedFrame.source.height = 0;
+      }
+    }
+
     function releasePreparedFrameCache() {
       preparedFrameCache.forEach((preparedFrame) => {
-        if (preparedFrame.source && typeof preparedFrame.source.close === 'function') {
-          preparedFrame.source.close();
-        }
+        releasePreparedFrame(preparedFrame);
       });
       preparedFrameCache = new Map();
+    }
+
+    function playbackNeighborIndexes(index) {
+      if (!playbackFrames.length) return [];
+
+      const frameCount = playbackFrames.length;
+      return [
+        (index - 1 + frameCount) % frameCount,
+        index,
+        (index + 1) % frameCount,
+      ];
+    }
+
+    function frameCacheWindowUrls(index = playbackIndex) {
+      return new Set(
+        playbackNeighborIndexes(index).map((frameIndex) => frameImageUrl(playbackFrames[frameIndex]))
+      );
+    }
+
+    function prunePreparedFrameCache(keepUrls = new Set()) {
+      if (!isMobilePlaybackMode()) return;
+
+      preparedFrameCache.forEach((preparedFrame, url) => {
+        if (keepUrls.has(url)) return;
+
+        releasePreparedFrame(preparedFrame);
+        preparedFrameCache.delete(url);
+      });
+    }
+
+    async function preloadFrameWindow(index = playbackIndex) {
+      if (!playbackFrames.length) return true;
+
+      const keepUrls = frameCacheWindowUrls(index);
+      const currentUrl = frameImageUrl(playbackFrames[index]);
+      prunePreparedFrameCache(keepUrls);
+      const preloadResults = await Promise.allSettled(
+        [...keepUrls].map(async (url) => {
+          if (preparedFrameCache.has(url)) return true;
+
+          const preparedFrame = await prepareFrameSurface(url);
+          preparedFrameCache.set(url, preparedFrame);
+          return true;
+        })
+      );
+
+      return preparedFrameCache.has(currentUrl) ||
+        preloadResults.every((result) => result.status === 'fulfilled' && result.value === true);
+    }
+
+    function warmFrameWindow(index = playbackIndex) {
+      if (!isMobilePlaybackMode()) return;
+
+      preloadFrameWindow(index).catch(() => {});
     }
 
     function waitForNextPaint(cycles = 2) {
@@ -1033,6 +1114,18 @@
     async function preloadPlaybackFrames() {
       if (!playbackFrames.length) return Promise.resolve();
       if (playbackPreloadPromise) return playbackPreloadPromise;
+
+      if (isMobilePlaybackMode()) {
+        setStatus('Preloading nearby radar frames...');
+        playbackPreloadPromise = preloadFrameWindow(playbackIndex).then((allFramesReady) => {
+          if (!allFramesReady) {
+            setStatus('Some nearby radar frames failed to preload.', true);
+          }
+
+          return allFramesReady;
+        });
+        return playbackPreloadPromise;
+      }
 
       setStatus('Preloading radar frames...');
       playbackPreloadPromise = Promise.allSettled(
@@ -1104,6 +1197,10 @@
       visibleRadarLayerIndex = playbackIndex;
       isFrameSwapInProgress = false;
       applyPendingCatalogIfIdle();
+      if (isMobilePlaybackMode()) {
+        playbackPreloadPromise = null;
+      }
+      warmFrameWindow(playbackIndex);
 
       updateDebugLayers(frame, bounds);
       setInfo(currentCatalog, frame);
@@ -1244,7 +1341,7 @@
         return new Date(b.validTime) - new Date(a.validTime);
       });
       updateFeedAgeLabel(catalogFramesNewestFirst[0]);
-      playbackFrames = [...catalogFramesNewestFirst].reverse();
+      playbackFrames = playbackFramesForDevice(catalogFramesNewestFirst);
       const nextPlaybackIndex = stopPlaybackForLoad
         ? playbackFrames.length - 1
         : wasViewingNewest
@@ -1257,7 +1354,9 @@
 
       resetRadarFrameCache();
       ensureRadarAnimationLayer();
-      const preloadPromise = preloadPlaybackFrames();
+      const preloadPromise = isMobilePlaybackMode()
+        ? Promise.resolve(true)
+        : preloadPlaybackFrames();
       radarBounds = playbackFrames[nextPlaybackIndex]
         ? L.latLngBounds(playbackFrames[nextPlaybackIndex].bounds)
         : null;
@@ -1338,6 +1437,15 @@
       }
     }
 
+    function handlePlaybackDeviceModeChange() {
+      if (!currentCatalog) return;
+
+      applyRadarCatalog(currentCatalog, {
+        resetView: false,
+        stopPlaybackForLoad: true,
+      });
+    }
+
     debugToggle.addEventListener('change', () => {
       if (debugToggle.checked && latestFrame && latestBounds) {
         updateDebugLayers(latestFrame, latestBounds);
@@ -1369,6 +1477,11 @@
     });
     detailsToggle.addEventListener('click', toggleDetails);
     refreshButton.addEventListener('click', loadRadar);
+    if (typeof mobilePlaybackQuery.addEventListener === 'function') {
+      mobilePlaybackQuery.addEventListener('change', handlePlaybackDeviceModeChange);
+    } else if (typeof mobilePlaybackQuery.addListener === 'function') {
+      mobilePlaybackQuery.addListener(handlePlaybackDeviceModeChange);
+    }
     loadRadar();
     catalogPollTimer = setInterval(checkForRadarUpdate, CATALOG_POLL_INTERVAL_MS);
   </script>
