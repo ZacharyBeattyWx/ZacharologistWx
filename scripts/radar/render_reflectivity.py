@@ -49,6 +49,8 @@ DEFAULT_CARTESIAN_SMOOTHING_PASSES = 0
 DEFAULT_SAMPLING_MODE = "nearest"
 DEFAULT_PALETTE_MODE = "radar-app-v1"
 DEFAULT_RENDER_MODE = "cartesian"
+WEB_MERCATOR_RADIUS_M = 6378137.0
+WEB_MERCATOR_MAX_LAT = 85.0511287798066
 
 
 def load_config(path: Path) -> dict:
@@ -644,18 +646,83 @@ def radar_site_pixel_xy(
     bounds: list[list[float]],
     output_size_px: int,
 ) -> tuple[float, float] | None:
-    if output_size_px < 2:
-        return None
+    return latlon_to_pixel_web_mercator(
+        radar_lat,
+        radar_lon,
+        bounds,
+        output_size_px,
+        output_size_px,
+    )
 
+
+def mercator_project(lat: float, lon: float) -> tuple[float, float]:
+    clamped_lat = min(WEB_MERCATOR_MAX_LAT, max(-WEB_MERCATOR_MAX_LAT, lat))
+    lat_rad = math.radians(clamped_lat)
+    lon_rad = math.radians(lon)
+    x = WEB_MERCATOR_RADIUS_M * lon_rad
+    y = WEB_MERCATOR_RADIUS_M * math.log(math.tan(math.pi / 4.0 + lat_rad / 2.0))
+    return x, y
+
+
+def mercator_unproject(x: float, y: float) -> tuple[float, float]:
+    lon = math.degrees(x / WEB_MERCATOR_RADIUS_M)
+    lat = math.degrees(2.0 * math.atan(math.exp(y / WEB_MERCATOR_RADIUS_M)) - math.pi / 2.0)
+    return lat, lon
+
+
+def mercator_bounds(bounds: list[list[float]]) -> tuple[float, float, float, float] | None:
     south, west = bounds[0]
     north, east = bounds[1]
+    west_x, south_y = mercator_project(south, west)
+    east_x, north_y = mercator_project(north, east)
 
-    if north == south or east == west:
+    if east_x == west_x or north_y == south_y:
         return None
 
-    x = (radar_lon - west) / (east - west) * (output_size_px - 1)
-    y = (north - radar_lat) / (north - south) * (output_size_px - 1)
-    return x, y
+    return west_x, south_y, east_x, north_y
+
+
+def latlon_to_pixel_web_mercator(
+    lat: float,
+    lon: float,
+    bounds: list[list[float]],
+    width: int,
+    height: int,
+) -> tuple[float, float] | None:
+    if width < 2 or height < 2:
+        return None
+
+    projected_bounds = mercator_bounds(bounds)
+
+    if projected_bounds is None:
+        return None
+
+    west_x, south_y, east_x, north_y = projected_bounds
+    x, y = mercator_project(lat, lon)
+    pixel_x = (x - west_x) / (east_x - west_x) * (width - 1)
+    pixel_y = (north_y - y) / (north_y - south_y) * (height - 1)
+    return pixel_x, pixel_y
+
+
+def pixel_to_latlon_web_mercator(
+    x: float,
+    y: float,
+    bounds: list[list[float]],
+    width: int,
+    height: int,
+) -> tuple[float, float] | None:
+    if width < 2 or height < 2:
+        return None
+
+    projected_bounds = mercator_bounds(bounds)
+
+    if projected_bounds is None:
+        return None
+
+    west_x, south_y, east_x, north_y = projected_bounds
+    projected_x = west_x + (x / (width - 1)) * (east_x - west_x)
+    projected_y = north_y - (y / (height - 1)) * (north_y - south_y)
+    return mercator_unproject(projected_x, projected_y)
 
 
 def radar_site_centered_km_grid(
@@ -666,17 +733,17 @@ def radar_site_centered_km_grid(
 ):
     import numpy as np
 
-    south, west = bounds[0]
-    north, east = bounds[1]
     origin = radar_site_pixel_xy(radar_lat, radar_lon, bounds, output_size_px)
+    projected_bounds = mercator_bounds(bounds)
 
-    if origin is None:
+    if origin is None or projected_bounds is None:
         return None
 
     origin_x, origin_y = origin
-    km_per_degree_lon = 111.32 * math.cos(math.radians(radar_lat))
-    km_per_pixel_x = (east - west) * km_per_degree_lon / (output_size_px - 1)
-    km_per_pixel_y = (north - south) * 111.32 / (output_size_px - 1)
+    west_x, south_y, east_x, north_y = projected_bounds
+    projection_scale = math.cos(math.radians(radar_lat))
+    km_per_pixel_x = (east_x - west_x) * projection_scale / 1000.0 / (output_size_px - 1)
+    km_per_pixel_y = (north_y - south_y) * projection_scale / 1000.0 / (output_size_px - 1)
     pixel_x, pixel_y = np.meshgrid(
         np.arange(output_size_px, dtype=float),
         np.arange(output_size_px, dtype=float),
@@ -695,15 +762,15 @@ def km_per_pixel_at_radar_origin(
     if output_size_px < 2:
         return None
 
-    south, west = bounds[0]
-    north, east = bounds[1]
+    projected_bounds = mercator_bounds(bounds)
 
-    if north == south or east == west:
+    if projected_bounds is None:
         return None
 
-    km_per_degree_lon = 111.32 * math.cos(math.radians(radar_lat))
-    km_per_pixel_x = abs((east - west) * km_per_degree_lon / (output_size_px - 1))
-    km_per_pixel_y = abs((north - south) * 111.32 / (output_size_px - 1))
+    west_x, south_y, east_x, north_y = projected_bounds
+    projection_scale = math.cos(math.radians(radar_lat))
+    km_per_pixel_x = abs((east_x - west_x) * projection_scale / 1000.0 / (output_size_px - 1))
+    km_per_pixel_y = abs((north_y - south_y) * projection_scale / 1000.0 / (output_size_px - 1))
     return km_per_pixel_x, km_per_pixel_y
 
 
@@ -792,7 +859,13 @@ def lat_lon_to_pixel_xy(
     bounds: list[list[float]],
     output_size_px: int,
 ) -> tuple[float, float] | None:
-    return radar_site_pixel_xy(lat, lon, bounds, output_size_px)
+    return latlon_to_pixel_web_mercator(
+        lat,
+        lon,
+        bounds,
+        output_size_px,
+        output_size_px,
+    )
 
 
 def azimuth_bin_edges(azimuth_degrees_by_row, azimuth_count: int, azimuth_edges_by_row=None):
@@ -1564,6 +1637,11 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
                 float(radar_origin_px[0]),
                 float(radar_origin_px[1]),
             ] if radar_origin_px is not None else None,
+            "radarOriginPixelWebMercator": [
+                float(radar_origin_px[0]),
+                float(radar_origin_px[1]),
+            ] if radar_origin_px is not None else None,
+            "projectionMapping": "web-mercator",
             "maxRangeKm": range_km,
             "mappedShape": mapped_shape,
             "cartesianSizePx": output_size,
@@ -1614,6 +1692,8 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
     print(f"radarLon={lon}")
     if radar_origin_px is not None:
         print(f"radarOriginPixel={[float(radar_origin_px[0]), float(radar_origin_px[1])]}")
+        print(f"radarOriginPixelWebMercator={[float(radar_origin_px[0]), float(radar_origin_px[1])]}")
+    print("projectionMapping=web-mercator")
     print(f"maxRangeKm={range_km}")
     print(f"mappedShape={mapped_shape}")
     print(f"imageWidth={image.width}")
