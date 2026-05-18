@@ -2,9 +2,16 @@
   "enabled": false,
   "sites": ["KFCX"],
   "products": ["N0B"],
-  "frameCount": 10,
+  "frameCount": 25,
   "outputRoot": "radar",
   "frameOutputDir": "radar/frames",
   "catalogPath": "radar/frames.json",
-  "palette": "DEFAULT_REFLECTIVITY_COLOR_TABLE"
+  "palette": "DEFAULT_REFLECTIVITY_COLOR_TABLE",
+  "reflectivityRendering": {
+    "minimumDbz": -10,
+    "maximumDbz": 95,
+    "minimumConnectedPixelBlobSize": 1,
+    "palette": "radar-app-v1",
+    "customColorTable": null
+  }
 }

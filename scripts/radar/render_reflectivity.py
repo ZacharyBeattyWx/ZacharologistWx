@@ -47,6 +47,7 @@ DEFAULT_MIN_COMPONENT_PIXELS = 6
 DEFAULT_CARTESIAN_SIZE_PX = 1536
 DEFAULT_CARTESIAN_SMOOTHING_PASSES = 0
 DEFAULT_SAMPLING_MODE = "nearest"
+DEFAULT_PALETTE_MODE = "radar-app-v1"
 
 
 def load_config(path: Path) -> dict:
@@ -86,8 +87,9 @@ def first_stop_rgba(color_entry: dict) -> tuple[int, int, int, int]:
     return int(red), int(green), int(blue), int(alpha)
 
 
-def rgba_for_dbz(value: float) -> tuple[int, int, int, int]:
-    color_entries = DEFAULT_REFLECTIVITY_COLOR_TABLE["colors"]
+def rgba_for_dbz(value: float, color_table: dict | None = None) -> tuple[int, int, int, int]:
+    table = color_table or DEFAULT_REFLECTIVITY_COLOR_TABLE
+    color_entries = table["colors"]
 
     if value < color_entries[0]["value"]:
         return first_stop_rgba(color_entries[0])
@@ -175,10 +177,104 @@ def remove_small_components(visible_mask, min_component_pixels: int = DEFAULT_MI
     return cleaned
 
 
+def render_settings_number(value, default=None):
+    if value is None:
+        return default
+
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return default
+
+    return numeric if math.isfinite(numeric) else default
+
+
+def render_settings_int(value, default: int) -> int:
+    try:
+        numeric = int(value)
+    except (TypeError, ValueError):
+        return default
+
+    return numeric
+
+
+def normalized_color_table(value):
+    if not isinstance(value, dict):
+        return None
+
+    colors = value.get("colors")
+    if not isinstance(colors, list) or not colors:
+        return None
+
+    for entry in colors:
+        if not isinstance(entry, dict):
+            return None
+        if "value" not in entry or not isinstance(entry.get("stops"), list) or not entry["stops"]:
+            return None
+
+        for stop in entry["stops"]:
+            rgb = stop.get("rgb") if isinstance(stop, dict) else None
+            if not isinstance(rgb, list) or len(rgb) != 3:
+                return None
+
+    return value
+
+
+def reflectivity_rendering_settings(config: dict, args) -> dict:
+    render_config = config.get("reflectivityRendering")
+    if not isinstance(render_config, dict):
+        render_config = {}
+
+    custom_color_table = normalized_color_table(render_config.get("customColorTable"))
+    palette = str(
+        render_config.get("palette")
+        or config.get("palette")
+        or DEFAULT_PALETTE_MODE
+    )
+    color_table = custom_color_table if custom_color_table and palette == "customColorTable" else None
+
+    return {
+        "minimumDbz": render_settings_number(
+            render_config.get("minimumDbz"),
+            args.min_visible_dbz,
+        ),
+        "maximumDbz": render_settings_number(
+            render_config.get("maximumDbz"),
+            None,
+        ),
+        "minimumConnectedPixelBlobSize": max(
+            1,
+            render_settings_int(
+                render_config.get("minimumConnectedPixelBlobSize"),
+                args.min_component_pixels,
+            ),
+        ),
+        "palette": palette,
+        "colorTable": color_table,
+    }
+
+
+def rgba_for_rendered_dbz(
+    value: float,
+    palette: str = DEFAULT_PALETTE_MODE,
+    color_table: dict | None = None,
+    maximum_dbz: float | None = None,
+) -> tuple[int, int, int, int]:
+    rendered_value = min(value, maximum_dbz) if maximum_dbz is not None else value
+
+    if palette in ("DEFAULT_REFLECTIVITY_COLOR_TABLE", "customColorTable"):
+        return rgba_for_dbz(rendered_value, color_table)
+
+    return radar_app_rgba_for_dbz(rendered_value)
+
+
 def reflectivity_to_rgba(
     values,
     min_visible_dbz: float = DEFAULT_MIN_VISIBLE_DBZ,
     min_component_pixels: int = DEFAULT_MIN_COMPONENT_PIXELS,
+    maximum_dbz: float | None = None,
+    palette: str = DEFAULT_PALETTE_MODE,
+    color_table: dict | None = None,
 ):
     import numpy as np
 
@@ -190,7 +286,12 @@ def reflectivity_to_rgba(
     visible_mask = remove_small_components(raw_visible_mask, min_component_pixels)
 
     for y, x in zip(*np.nonzero(visible_mask)):
-        rgba[y, x] = radar_app_rgba_for_dbz(float(numeric[y, x]))
+        rgba[y, x] = rgba_for_rendered_dbz(
+            float(numeric[y, x]),
+            palette,
+            color_table,
+            maximum_dbz,
+        )
 
     rgba[~finite_mask] = [0, 0, 0, 0]
     rgba[finite_mask & ~visible_mask] = [0, 0, 0, 0]
@@ -201,6 +302,7 @@ def reflectivity_stats(
     values,
     min_visible_dbz: float = DEFAULT_MIN_VISIBLE_DBZ,
     min_component_pixels: int = DEFAULT_MIN_COMPONENT_PIXELS,
+    maximum_dbz: float | None = None,
 ) -> dict:
     import numpy as np
 
@@ -218,6 +320,7 @@ def reflectivity_stats(
 
     return {
         "minVisibleDbz": float(min_visible_dbz),
+        "maxVisibleDbz": float(maximum_dbz) if maximum_dbz is not None else None,
         "minComponentPixels": int(min_component_pixels),
         "totalPixels": total_pixels,
         "finitePixels": finite_pixels,
@@ -416,6 +519,9 @@ def polar_reflectivity_to_cartesian_rgba(
     output_size_px: int = DEFAULT_CARTESIAN_SIZE_PX,
     min_visible_dbz: float = DEFAULT_MIN_VISIBLE_DBZ,
     min_component_pixels: int = DEFAULT_MIN_COMPONENT_PIXELS,
+    maximum_dbz: float | None = None,
+    palette: str = DEFAULT_PALETTE_MODE,
+    color_table: dict | None = None,
     smoothing_passes: int = DEFAULT_CARTESIAN_SMOOTHING_PASSES,
     sampling_mode: str = DEFAULT_SAMPLING_MODE,
     azimuth_degrees_by_row=None,
@@ -430,7 +536,14 @@ def polar_reflectivity_to_cartesian_rgba(
         azimuth_degrees_by_row,
     )
     cartesian_grid = smooth_cartesian_grid(cartesian_grid, smoothing_passes)
-    rgba = reflectivity_to_rgba(cartesian_grid, min_visible_dbz, min_component_pixels)
+    rgba = reflectivity_to_rgba(
+        cartesian_grid,
+        min_visible_dbz,
+        min_component_pixels,
+        maximum_dbz,
+        palette,
+        color_table,
+    )
     return rgba, cartesian_grid, azimuth_mapping_mode
 
 
@@ -773,6 +886,12 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
     range_km = float(getattr(level3, "max_range"))
     mapped_shape = [int(dimension) for dimension in mapped.shape]
     bounds = calculate_rough_bounds(lat, lon, range_km)
+    rendering = reflectivity_rendering_settings(config, args)
+    minimum_dbz = rendering["minimumDbz"]
+    maximum_dbz = rendering["maximumDbz"]
+    minimum_blob_size = rendering["minimumConnectedPixelBlobSize"]
+    palette = rendering["palette"]
+    color_table = rendering["colorTable"]
 
     from PIL import Image
 
@@ -782,14 +901,17 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
         lon,
         range_km,
         DEFAULT_CARTESIAN_SIZE_PX,
-        args.min_visible_dbz,
-        args.min_component_pixels,
+        minimum_dbz,
+        minimum_blob_size,
+        maximum_dbz,
+        palette,
+        color_table,
         args.smoothing_passes,
         args.sampling_mode,
         azimuth_degrees_by_row,
     )
-    stats = reflectivity_stats(cartesian_grid, args.min_visible_dbz, args.min_component_pixels)
-    source_stats = reflectivity_stats(mapped, args.min_visible_dbz, args.min_component_pixels)
+    stats = reflectivity_stats(cartesian_grid, minimum_dbz, minimum_blob_size, maximum_dbz)
+    source_stats = reflectivity_stats(mapped, minimum_dbz, minimum_blob_size, maximum_dbz)
     image = Image.fromarray(rgba, mode="RGBA")
     image.save(frame_path, "WEBP", lossless=True)
 
@@ -817,7 +939,7 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
         "bounds": bounds,
         "width": image.width,
         "height": image.height,
-        "palette": "DEFAULT_REFLECTIVITY_COLOR_TABLE",
+        "palette": palette,
         "stats": stats,
         "sourceStats": source_stats,
         "debug": {
@@ -836,7 +958,11 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
             "samplingMode": sampling_mode,
             "azimuthMappingMode": azimuth_mapping_mode,
             "azimuthMetadataRows": int(len(azimuth_degrees_by_row)) if azimuth_degrees_by_row is not None else 0,
-            "paletteMode": "radar-app-v1",
+            "paletteMode": palette,
+            "maximumDbz": maximum_dbz,
+            "minimumDbz": minimum_dbz,
+            "minimumConnectedPixelBlobSize": minimum_blob_size,
+            "customColorTable": bool(color_table),
         },
     }
 
@@ -861,7 +987,8 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
     print(f"samplingMode={sampling_mode}")
     print(f"azimuthMappingMode={azimuth_mapping_mode}")
     print(f"azimuthMetadataRows={len(azimuth_degrees_by_row) if azimuth_degrees_by_row is not None else 0}")
-    print("paletteMode=radar-app-v1")
+    print(f"paletteMode={palette}")
+    print(f"maximumDbz={maximum_dbz}")
     print(f"smoothingPasses={int(args.smoothing_passes)}")
     print(f"minVisibleDbz={stats['minVisibleDbz']}")
     print(f"minComponentPixels={stats['minComponentPixels']}")
@@ -934,6 +1061,15 @@ def main() -> int:
     print(f"enabled={config.get('enabled')}")
     print(f"palette={config.get('palette')}")
     print(f"frameOutputDir={config.get('frameOutputDir')}")
+    rendering = reflectivity_rendering_settings(config, args)
+    print(f"reflectivityRendering.minimumDbz={rendering['minimumDbz']}")
+    print(f"reflectivityRendering.maximumDbz={rendering['maximumDbz']}")
+    print(
+        "reflectivityRendering.minimumConnectedPixelBlobSize="
+        f"{rendering['minimumConnectedPixelBlobSize']}"
+    )
+    print(f"reflectivityRendering.palette={rendering['palette']}")
+    print(f"reflectivityRendering.customColorTable={bool(rendering['colorTable'])}")
 
     if not config.get("enabled") and not (args.force or args.diagnose or args.render):
         print("Renderer is disabled; no frames will be rendered. Pass --diagnose for a manual decode inspection.")
