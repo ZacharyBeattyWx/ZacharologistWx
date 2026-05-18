@@ -52,10 +52,10 @@ DEFAULT_RENDER_MODE = "cartesian"
 DEFAULT_NATIVE_POLAR_OPACITY_TAPER = {
     "enabled": True,
     "points": [
-        {"dbz": -10.0, "opacity": 0.16},
-        {"dbz": -5.0, "opacity": 0.28},
-        {"dbz": 0.0, "opacity": 0.48},
-        {"dbz": 5.0, "opacity": 0.72},
+        {"dbz": -10.0, "opacity": 0.34},
+        {"dbz": -5.0, "opacity": 0.48},
+        {"dbz": 0.0, "opacity": 0.65},
+        {"dbz": 5.0, "opacity": 0.82},
         {"dbz": 10.0, "opacity": 1.0},
     ],
 }
