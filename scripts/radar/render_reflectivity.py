@@ -312,6 +312,19 @@ def normalized_radial_interpolation(value):
     }
 
 
+def normalized_center_no_data_mask(value):
+    if not isinstance(value, dict):
+        return {
+            "enabled": False,
+            "radiusKm": 0.0,
+        }
+
+    return {
+        "enabled": render_settings_bool(value.get("enabled"), False),
+        "radiusKm": max(0.0, render_settings_number(value.get("radiusKm"), 0.0)),
+    }
+
+
 def normalized_render_mode(value) -> str:
     normalized = str(value or DEFAULT_RENDER_MODE).strip()
 
@@ -385,6 +398,7 @@ def reflectivity_rendering_settings(config: dict, args) -> dict:
         "lowDbzOpacityTaper": normalized_opacity_taper(render_config.get("lowDbzOpacityTaper")),
         "isolatedSpeckleDampen": normalized_speckle_dampen(render_config.get("isolatedSpeckleDampen")),
         "radialInterpolation": normalized_radial_interpolation(render_config.get("radialInterpolation")),
+        "centerNoDataMask": normalized_center_no_data_mask(render_config.get("centerNoDataMask")),
     }
 
 
@@ -673,6 +687,80 @@ def radar_site_centered_km_grid(
     return x_km, y_km
 
 
+def km_per_pixel_at_radar_origin(
+    radar_lat: float,
+    bounds: list[list[float]],
+    output_size_px: int,
+) -> tuple[float, float] | None:
+    if output_size_px < 2:
+        return None
+
+    south, west = bounds[0]
+    north, east = bounds[1]
+
+    if north == south or east == west:
+        return None
+
+    km_per_degree_lon = 111.32 * math.cos(math.radians(radar_lat))
+    km_per_pixel_x = abs((east - west) * km_per_degree_lon / (output_size_px - 1))
+    km_per_pixel_y = abs((north - south) * 111.32 / (output_size_px - 1))
+    return km_per_pixel_x, km_per_pixel_y
+
+
+def center_no_data_mask_pixel_radius(
+    radar_lat: float,
+    bounds: list[list[float]],
+    output_size_px: int,
+    radius_km: float,
+) -> float | None:
+    km_per_pixel = km_per_pixel_at_radar_origin(radar_lat, bounds, output_size_px)
+
+    if km_per_pixel is None:
+        return None
+
+    km_per_pixel_x, km_per_pixel_y = km_per_pixel
+    mean_km_per_pixel = (km_per_pixel_x + km_per_pixel_y) / 2.0
+
+    if mean_km_per_pixel <= 0:
+        return None
+
+    return radius_km / mean_km_per_pixel
+
+
+def apply_center_no_data_mask(
+    rgba,
+    radar_lat: float,
+    radar_lon: float,
+    bounds: list[list[float]],
+    output_size_px: int,
+    center_no_data_mask: dict | None,
+):
+    import numpy as np
+
+    if not center_no_data_mask or not center_no_data_mask.get("enabled"):
+        return 0.0
+
+    radius_km = center_no_data_mask["radiusKm"]
+
+    if radius_km <= 0:
+        return 0.0
+
+    centered_grid = radar_site_centered_km_grid(
+        radar_lat,
+        radar_lon,
+        bounds,
+        output_size_px,
+    )
+
+    if centered_grid is None:
+        return 0.0
+
+    x_km, y_km = centered_grid
+    mask = np.hypot(x_km, y_km) <= radius_km
+    rgba[mask] = [0, 0, 0, 0]
+    return center_no_data_mask_pixel_radius(radar_lat, bounds, output_size_px, radius_km) or 0.0
+
+
 def destination_lat_lon(
     origin_lat: float,
     origin_lon: float,
@@ -753,6 +841,7 @@ def native_polar_reflectivity_to_rgba(
     opacity_taper: dict | None = None,
     azimuth_degrees_by_row=None,
     azimuth_edges_by_row=None,
+    center_no_data_mask: dict | None = None,
 ):
     import numpy as np
     from PIL import Image, ImageDraw
@@ -820,7 +909,16 @@ def native_polar_reflectivity_to_rgba(
             )
             radial_bins_drawn += 1
 
-    return np.asarray(image, dtype=np.uint8), numeric, radial_bins_drawn
+    rgba = np.array(image, dtype=np.uint8)
+    center_mask_pixel_radius = apply_center_no_data_mask(
+        rgba,
+        radar_lat,
+        radar_lon,
+        bounds,
+        output_size_px,
+        center_no_data_mask,
+    )
+    return rgba, numeric, radial_bins_drawn, center_mask_pixel_radius
 
 
 def prepare_azimuth_sample_source(values, azimuth_degrees_by_row):
@@ -1372,12 +1470,14 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
     opacity_taper = rendering["lowDbzOpacityTaper"]
     speckle_dampen = rendering["isolatedSpeckleDampen"]
     radial_interpolation = rendering["radialInterpolation"]
+    center_no_data_mask = rendering["centerNoDataMask"]
 
     from PIL import Image
 
     radial_bins_drawn = 0
+    center_mask_pixel_radius = 0.0
     if native_polar_enabled:
-        rgba, cartesian_grid, radial_bins_drawn = native_polar_reflectivity_to_rgba(
+        rgba, cartesian_grid, radial_bins_drawn, center_mask_pixel_radius = native_polar_reflectivity_to_rgba(
             mapped,
             lat,
             lon,
@@ -1391,6 +1491,7 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
             opacity_taper,
             azimuth_degrees_by_row,
             azimuth_edges_by_row,
+            center_no_data_mask,
         )
         azimuth_mapping_mode = "azimuth-aware" if azimuth_degrees_by_row is not None else "row-index-fallback"
         stats_speckle_dampen = None
@@ -1480,6 +1581,13 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
             "azimuthEdgeMetadataRows": int(len(azimuth_edges_by_row)) if azimuth_edges_by_row is not None else 0,
             "radialBinsDrawn": int(radial_bins_drawn),
             "nativePolarEnabled": native_polar_enabled,
+            "centerNoDataMaskEnabled": bool(
+                native_polar_enabled
+                and center_no_data_mask
+                and center_no_data_mask.get("enabled")
+            ),
+            "centerNoDataMaskRadiusKm": float(center_no_data_mask["radiusKm"]),
+            "centerNoDataMaskPixelRadius": float(center_mask_pixel_radius),
             "paletteMode": palette,
             "maximumDbz": maximum_dbz,
             "minimumDbz": minimum_dbz,
@@ -1515,6 +1623,12 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
     print(f"renderMode={render_mode}")
     print(f"nativePolarEnabled={native_polar_enabled}")
     print(f"radialBinsDrawn={radial_bins_drawn}")
+    print(
+        "centerNoDataMask.enabled="
+        f"{bool(native_polar_enabled and center_no_data_mask and center_no_data_mask.get('enabled'))}"
+    )
+    print(f"centerNoDataMask.radiusKm={center_no_data_mask['radiusKm']}")
+    print(f"centerNoDataMask.pixelRadius={center_mask_pixel_radius}")
     print(f"samplingMode={sampling_mode}")
     print(f"azimuthMappingMode={azimuth_mapping_mode}")
     print(f"azimuthMetadataRows={len(azimuth_degrees_by_row) if azimuth_degrees_by_row is not None else 0}")
@@ -1617,6 +1731,9 @@ def main() -> int:
         "reflectivityRendering.isolatedSpeckleDampen="
         f"{bool(rendering['isolatedSpeckleDampen'] and rendering['isolatedSpeckleDampen'].get('enabled'))}"
     )
+    center_no_data_mask = rendering["centerNoDataMask"]
+    print(f"reflectivityRendering.centerNoDataMask.enabled={center_no_data_mask['enabled']}")
+    print(f"reflectivityRendering.centerNoDataMask.radiusKm={center_no_data_mask['radiusKm']}")
     radial_interpolation = rendering["radialInterpolation"]
     print(f"reflectivityRendering.radialInterpolation.enabled={radial_interpolation['enabled']}")
     print(f"reflectivityRendering.radialInterpolation.strength={radial_interpolation['strength']}")

@@ -672,8 +672,45 @@
         rows.push(['radarLon', formatNumber(debug.radarLon, 5) || String(debug.radarLon)]);
       }
 
+      if (debug.radarOriginPixel !== undefined) {
+        rows.push([
+          'radarOriginPixel',
+          Array.isArray(debug.radarOriginPixel)
+            ? debug.radarOriginPixel.map((value) => formatNumber(value, 2) || String(value)).join(', ')
+            : String(debug.radarOriginPixel),
+        ]);
+      }
+
       if (debug.maxRangeKm !== undefined) {
         rows.push(['maxRangeKm', formatNumber(debug.maxRangeKm, 2) || String(debug.maxRangeKm)]);
+      }
+
+      if (debug.renderMode !== undefined) {
+        rows.push(['renderMode', String(debug.renderMode)]);
+      }
+
+      if (debug.configuredOutputSize !== undefined) {
+        rows.push(['configuredOutputSize', String(debug.configuredOutputSize)]);
+      }
+
+      if (debug.radialBinsDrawn !== undefined) {
+        rows.push(['radialBinsDrawn', String(debug.radialBinsDrawn)]);
+      }
+
+      if (debug.nativePolarEnabled !== undefined) {
+        rows.push(['nativePolarEnabled', String(debug.nativePolarEnabled)]);
+      }
+
+      if (debug.centerNoDataMaskEnabled !== undefined) {
+        rows.push(['centerNoDataMaskEnabled', String(debug.centerNoDataMaskEnabled)]);
+      }
+
+      if (debug.centerNoDataMaskRadiusKm !== undefined) {
+        rows.push(['centerNoDataMaskRadiusKm', formatNumber(debug.centerNoDataMaskRadiusKm, 2) || String(debug.centerNoDataMaskRadiusKm)]);
+      }
+
+      if (debug.centerNoDataMaskPixelRadius !== undefined) {
+        rows.push(['centerNoDataMaskPixelRadius', formatNumber(debug.centerNoDataMaskPixelRadius, 2) || String(debug.centerNoDataMaskPixelRadius)]);
       }
 
       if (debug.projectionMode !== undefined) {
@@ -1137,12 +1174,12 @@
           fillOpacity: 1,
           pane: 'debugPane',
         })
-          .bindTooltip('KFCX', {
+          .bindTooltip(`${SITE} radar origin`, {
             permanent: true,
             direction: 'top',
             offset: [0, -10],
           })
-          .bindPopup('KFCX radar site')
+          .bindPopup(`${SITE} radar origin`)
           .addTo(map);
       }
 
@@ -1156,21 +1193,23 @@
         .bindPopup('Current image overlay bounds')
         .addTo(map);
 
-      overlayCenterMarker = L.circleMarker(bounds.getCenter(), {
-        radius: 6,
-        color: '#f87171',
-        weight: 2,
-        fillColor: '#ef4444',
-        fillOpacity: 1,
-        pane: 'debugPane',
-      })
-        .bindTooltip('Bounds center', {
-          permanent: true,
-          direction: 'top',
-          offset: [0, -8],
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+        overlayCenterMarker = L.circleMarker(bounds.getCenter(), {
+          radius: 6,
+          color: '#f87171',
+          weight: 2,
+          fillColor: '#ef4444',
+          fillOpacity: 1,
+          pane: 'debugPane',
         })
-        .bindPopup('Current overlay bounds center')
-        .addTo(map);
+          .bindTooltip('Bounds center fallback', {
+            permanent: true,
+            direction: 'top',
+            offset: [0, -8],
+          })
+          .bindPopup('Current overlay bounds center fallback')
+          .addTo(map);
+      }
     }
 
     async function fetchRadarCatalog() {
