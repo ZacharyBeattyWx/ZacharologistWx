@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-05-18T17:53:41Z",
+  "generatedAt": "2026-05-18T17:58:54Z",
   "sites": {
     "KFCX": {
       "id": "KFCX",
@@ -23,6 +23,114 @@
   "frames": {
     "KFCX": {
       "N0B": [
+        {
+          "slug": "N0B_20260518_1754",
+          "url": "/radar/frames/KFCX/N0B/N0B_20260518_1754.webp",
+          "validTime": "2026-05-18T17:54:00Z",
+          "bounds": [
+            [
+              32.89176859504132,
+              -85.44974845847969
+            ],
+            [
+              41.15623140495868,
+              -75.09825154152031
+            ]
+          ],
+          "width": 3072,
+          "height": 3072,
+          "palette": "customColorTable",
+          "stats": {
+            "minVisibleDbz": -15.0,
+            "maxVisibleDbz": 95.0,
+            "minComponentPixels": 1,
+            "totalPixels": 1324800,
+            "finitePixels": 297085,
+            "rawVisiblePixels": 297085,
+            "visiblePixels": 297085,
+            "removedSpecklePixels": 0,
+            "dampenedSpecklePixels": 0,
+            "visibleCoveragePercent": 22.4248943236715,
+            "finiteMin": -14.5,
+            "finiteMax": 56.0,
+            "finiteMean": -0.02110507093929347
+          },
+          "sourceStats": {
+            "minVisibleDbz": -15.0,
+            "maxVisibleDbz": 95.0,
+            "minComponentPixels": 1,
+            "totalPixels": 1324800,
+            "finitePixels": 297085,
+            "rawVisiblePixels": 297085,
+            "visiblePixels": 297085,
+            "removedSpecklePixels": 0,
+            "dampenedSpecklePixels": 2391,
+            "visibleCoveragePercent": 22.4248943236715,
+            "finiteMin": -14.5,
+            "finiteMax": 56.0,
+            "finiteMean": -0.02110507093929347
+          },
+          "debug": {
+            "renderMode": "nativePolar",
+            "radarLat": 37.024,
+            "radarLon": -80.274,
+            "radarOriginPixel": [
+              1535.5000000000023,
+              1577.3364900734005
+            ],
+            "radarOriginPixelWebMercator": [
+              1535.5000000000023,
+              1577.3364900734005
+            ],
+            "projectionMapping": "web-mercator",
+            "maxRangeKm": 460.0,
+            "mappedShape": [
+              720,
+              1840
+            ],
+            "cartesianSizePx": 3072,
+            "configuredOutputSize": 3072,
+            "imageWidth": 3072,
+            "imageHeight": 3072,
+            "calculatedBounds": [
+              [
+                32.89176859504132,
+                -85.44974845847969
+              ],
+              [
+                41.15623140495868,
+                -75.09825154152031
+              ]
+            ],
+            "smoothingPasses": 0,
+            "sourceImageMode": "azimuth-range",
+            "outputImageMode": "native-polar-radial-gate-polygons",
+            "projectionMode": "native-polar-gate-polygons-v1",
+            "samplingMode": "nearest",
+            "azimuthMappingMode": "azimuth-aware",
+            "azimuthMetadataRows": 720,
+            "azimuthEdgeMetadataRows": 720,
+            "radialBinsDrawn": 297085,
+            "nativePolarEnabled": true,
+            "centerNoDataMaskEnabled": true,
+            "centerNoDataMaskRadiusKm": 3.0,
+            "centerNoDataMaskPixelRadius": 10.004873421495788,
+            "paletteMode": "customColorTable",
+            "maximumDbz": 95.0,
+            "minimumDbz": -15.0,
+            "minimumConnectedPixelBlobSize": 1,
+            "customColorTable": true,
+            "lowDbzOpacityTaper": true,
+            "isolatedSpeckleDampen": true,
+            "radialInterpolation": {
+              "enabled": true,
+              "strength": 0.22,
+              "maximumDbz": 18.0,
+              "preserveAboveDbz": 28.0,
+              "mode": "weak-reflectivity-polar-blend"
+            }
+          }
+        },
         {
           "slug": "N0B_20260518_1747",
           "url": "/radar/frames/KFCX/N0B/N0B_20260518_1747.webp",
@@ -2595,114 +2703,6 @@
             "azimuthMetadataRows": 720,
             "azimuthEdgeMetadataRows": 720,
             "radialBinsDrawn": 231245,
-            "nativePolarEnabled": true,
-            "centerNoDataMaskEnabled": true,
-            "centerNoDataMaskRadiusKm": 3.0,
-            "centerNoDataMaskPixelRadius": 10.004873421495788,
-            "paletteMode": "customColorTable",
-            "maximumDbz": 95.0,
-            "minimumDbz": -15.0,
-            "minimumConnectedPixelBlobSize": 1,
-            "customColorTable": true,
-            "lowDbzOpacityTaper": true,
-            "isolatedSpeckleDampen": true,
-            "radialInterpolation": {
-              "enabled": true,
-              "strength": 0.22,
-              "maximumDbz": 18.0,
-              "preserveAboveDbz": 28.0,
-              "mode": "weak-reflectivity-polar-blend"
-            }
-          }
-        },
-        {
-          "slug": "N0B_20260518_1452",
-          "url": "/radar/frames/KFCX/N0B/N0B_20260518_1452.webp",
-          "validTime": "2026-05-18T14:52:00Z",
-          "bounds": [
-            [
-              32.89176859504132,
-              -85.44974845847969
-            ],
-            [
-              41.15623140495868,
-              -75.09825154152031
-            ]
-          ],
-          "width": 3072,
-          "height": 3072,
-          "palette": "customColorTable",
-          "stats": {
-            "minVisibleDbz": -15.0,
-            "maxVisibleDbz": 95.0,
-            "minComponentPixels": 1,
-            "totalPixels": 1324800,
-            "finitePixels": 229593,
-            "rawVisiblePixels": 229593,
-            "visiblePixels": 229593,
-            "removedSpecklePixels": 0,
-            "dampenedSpecklePixels": 0,
-            "visibleCoveragePercent": 17.33038949275362,
-            "finiteMin": -14.5,
-            "finiteMax": 34.0,
-            "finiteMean": 0.5996872726955961
-          },
-          "sourceStats": {
-            "minVisibleDbz": -15.0,
-            "maxVisibleDbz": 95.0,
-            "minComponentPixels": 1,
-            "totalPixels": 1324800,
-            "finitePixels": 229593,
-            "rawVisiblePixels": 229593,
-            "visiblePixels": 229593,
-            "removedSpecklePixels": 0,
-            "dampenedSpecklePixels": 2516,
-            "visibleCoveragePercent": 17.33038949275362,
-            "finiteMin": -14.5,
-            "finiteMax": 34.0,
-            "finiteMean": 0.5996872726955961
-          },
-          "debug": {
-            "renderMode": "nativePolar",
-            "radarLat": 37.024,
-            "radarLon": -80.274,
-            "radarOriginPixel": [
-              1535.5000000000023,
-              1577.3364900734005
-            ],
-            "radarOriginPixelWebMercator": [
-              1535.5000000000023,
-              1577.3364900734005
-            ],
-            "projectionMapping": "web-mercator",
-            "maxRangeKm": 460.0,
-            "mappedShape": [
-              720,
-              1840
-            ],
-            "cartesianSizePx": 3072,
-            "configuredOutputSize": 3072,
-            "imageWidth": 3072,
-            "imageHeight": 3072,
-            "calculatedBounds": [
-              [
-                32.89176859504132,
-                -85.44974845847969
-              ],
-              [
-                41.15623140495868,
-                -75.09825154152031
-              ]
-            ],
-            "smoothingPasses": 0,
-            "sourceImageMode": "azimuth-range",
-            "outputImageMode": "native-polar-radial-gate-polygons",
-            "projectionMode": "native-polar-gate-polygons-v1",
-            "samplingMode": "nearest",
-            "azimuthMappingMode": "azimuth-aware",
-            "azimuthMetadataRows": 720,
-            "azimuthEdgeMetadataRows": 720,
-            "radialBinsDrawn": 229593,
             "nativePolarEnabled": true,
             "centerNoDataMaskEnabled": true,
             "centerNoDataMaskRadiusKm": 3.0,
