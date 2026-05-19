@@ -290,22 +290,13 @@
       color: #fca5a5;
     }
 
+     .leaflet-tile-pane {
+      opacity: 0.72 !important;
+    }
+
     #map,
     .leaflet-container{
-      background: #061426 !important
-    }
-
-    .leaflet-tile-pane {
-      filter: brightness(0.72) saturate(1.15) !important;
-    }
-
-    .leaflet-map-pane::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: rgba(0, 32, 70, 0.32);
-      pointer-events: none;
-      z-index: 250;
+      background: #061426 !important;
     }
 
     @media (max-width: 768px) {
