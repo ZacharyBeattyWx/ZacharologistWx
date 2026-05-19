@@ -378,8 +378,8 @@ jobs:
           cp -R radar/frames "$BACKUP_DIR/radar/frames"
 
           git fetch origin main
-          git reset --hard HEAD
-          git rebase origin/main
+          git reset --hard origin/main
+          git clean -fd radar/frames
 
           cp "$BACKUP_DIR/radar/frames.json" radar/frames.json
           rm -rf radar/frames
