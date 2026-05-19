@@ -366,8 +366,23 @@ jobs:
       - name: Commit generated radar output
         if: ${{ (github.event.inputs.commit_outputs || 'true') == 'true' }}
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          export GIT_EDITOR=true
+          BACKUP_DIR="$(mktemp -d)"
+          trap 'rm -rf "$BACKUP_DIR"' EXIT
+          mkdir -p "$BACKUP_DIR/radar"
+
+          cp radar/frames.json "$BACKUP_DIR/radar/frames.json"
+          cp -R radar/frames "$BACKUP_DIR/radar/frames"
+
+          git fetch origin main
+          git rebase origin/main
+
+          cp "$BACKUP_DIR/radar/frames.json" radar/frames.json
+          rm -rf radar/frames
+          cp -R "$BACKUP_DIR/radar/frames" radar/frames
 
           git add radar/frames.json radar/frames
 
@@ -377,4 +392,5 @@ jobs:
           fi
 
           git commit -m "Update generated radar JSON-H4 output"
-          git push
+
+          git push origin HEAD:main
