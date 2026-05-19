@@ -290,13 +290,22 @@
       color: #fca5a5;
     }
 
-    .navy-basemap {
-      filter: hue-rotate(175deg) saturate(1.65) brightness(0.72) !important
-    }
-
     #map,
     .leaflet-container{
       background: #061426 !important
+    }
+
+    .leaflet-tile-pane {
+      filter: brightness(0.72) saturate(1.15) !important;
+    }
+
+    .leaflet-map-pane::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 32, 70, 0.32);
+      pointer-events: none;
+      z-index: 250;
     }
 
     @media (max-width: 768px) {
@@ -455,7 +464,6 @@
       attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
       subdomains: 'abcd',
       maxZoom: 20,
-      className: 'navy-basemap'
     }).addTo(map);
 
     setTimeout(() => {
