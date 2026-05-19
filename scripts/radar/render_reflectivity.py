@@ -2017,7 +2017,9 @@ def main() -> int:
     for index, source_file in enumerate(selected_source_files, start=1):
         valid_time = source_file_valid_time_label(source_file)
         print(f"Source file {index}/{len(selected_source_files)}: {source_file} validTime={valid_time}")
-        decoded = inspect_level3_file(source_file)
+        # Avoid duplicate decode work during render runs.
+        # render_level3_frame() performs its own decode and emits render diagnostics.
+        decoded = True if args.render else inspect_level3_file(source_file)
 
         if not decoded:
             decoded_all = False
