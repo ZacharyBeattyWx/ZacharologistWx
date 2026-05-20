@@ -36,7 +36,14 @@
     .leaflet-container {
       width: 100%;
       height: 100%;
-      background: #05080d;
+      background: #071426;
+    }
+
+    .leaflet-map-pane,
+    .leaflet-tile-pane,
+    .leaflet-tile {
+      opacity: 1 !important;
+      visibility: visible !important;
     }
 
     .leaflet-pane,
@@ -459,6 +466,7 @@
       `https://api.mapbox.com/styles/v1/${MAPBOX_STYLE_USERNAME}/${MAPBOX_STYLE_ID}/tiles/512/{z}/{x}/{y}@2x?access_token=${MAPBOX_PUBLIC_TOKEN}`,
       {
         pane: 'baseMapPane',
+        opacity: 1,
         tileSize: 512,
         zoomOffset: -1,
         maxZoom: 22,
@@ -469,6 +477,20 @@
     setTimeout(() => {
       map.invalidateSize();
     }, 0);
+
+    window.addEventListener('load', () => {
+      map.invalidateSize();
+    });
+
+    window.addEventListener('resize', () => {
+      map.invalidateSize();
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        map.invalidateSize();
+      }
+    });
 
     const RadarAnimationLayer = L.Layer.extend({
       initialize(options = {}) {
