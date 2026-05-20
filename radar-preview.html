@@ -466,7 +466,7 @@
             glMap.setLayoutProperty(layerId, property, value);
           }
         } catch (error) {
-          console.warn('Could not style vector layout', layerId, property, error);
+          console.warn('Could not set layout property', layerId, property, error);
         }
       };
 
@@ -478,16 +478,25 @@
         const type = layer.type || '';
         const sourceLayer = layer['source-layer'] || '';
         const layerName = `${id} ${sourceLayer}`.toLowerCase();
+        const isMajorRoadLayer =
+          layerName.includes('motorway') ||
+          layerName.includes('trunk') ||
+          layerName.includes('primary') ||
+          layerName.includes('interstate') ||
+          layerName.includes('highway');
+        const isMinorRoadLayer =
+          layerName.includes('secondary') ||
+          layerName.includes('tertiary') ||
+          layerName.includes('minor') ||
+          layerName.includes('residential') ||
+          layerName.includes('service');
         const isRoadLayer =
           layerName.includes('road') ||
           layerName.includes('transport') ||
           layerName.includes('highway') ||
           layerName.includes('street') ||
-          layerName.includes('motorway') ||
-          layerName.includes('trunk') ||
-          layerName.includes('primary') ||
-          layerName.includes('secondary') ||
-          layerName.includes('tertiary');
+          isMajorRoadLayer ||
+          isMinorRoadLayer;
         const isBoundaryLayer =
           layerName.includes('boundary') ||
           layerName.includes('admin') ||
@@ -507,12 +516,6 @@
           layerName.includes('admin-4') ||
           layerName.includes('admin_4') ||
           layerName.includes('admin4');
-        const isMajorRoadLayer =
-          layerName.includes('motorway') ||
-          layerName.includes('trunk') ||
-          layerName.includes('primary') ||
-          layerName.includes('interstate') ||
-          layerName.includes('highway');
         const isWaterLayer =
           layerName.includes('water') ||
           layerName.includes('ocean') ||
@@ -590,24 +593,74 @@
         }
 
         if (type === 'line') {
-          if (isRoadLayer) {
-            safeSetPaint(id, 'line-color', '#b8c2cc');
-            safeSetPaint(id, 'line-opacity', 0.46);
-            safeSetPaint(id, 'line-width', 0.65);
-
-            if (isMajorRoadLayer) {
-              safeSetPaint(id, 'line-color', '#c7d0d8');
-              safeSetPaint(id, 'line-opacity', 0.58);
-              safeSetPaint(id, 'line-width', 0.85);
-            }
-          } else if (isStateBoundaryLayer) {
-            safeSetPaint(id, 'line-color', '#c8d3dd');
-            safeSetPaint(id, 'line-opacity', 0.72);
-            safeSetPaint(id, 'line-width', 1.35);
+          if (isStateBoundaryLayer) {
+            safeSetPaint(id, 'line-color', '#d7e2ec');
+            safeSetPaint(id, 'line-opacity', 0.82);
+            safeSetPaint(id, 'line-width', [
+              'interpolate', ['linear'], ['zoom'],
+              4, 1.1,
+              6, 1.35,
+              8, 1.6,
+              10, 1.9
+            ]);
           } else if (isCountyBoundaryLayer) {
-            safeSetPaint(id, 'line-color', '#8fa4b8');
+            safeSetPaint(id, 'line-color', '#9fb3c4');
+            safeSetPaint(id, 'line-opacity', [
+              'interpolate', ['linear'], ['zoom'],
+              5, 0.22,
+              7, 0.42,
+              9, 0.58,
+              11, 0.68
+            ]);
+            safeSetPaint(id, 'line-width', [
+              'interpolate', ['linear'], ['zoom'],
+              5, 0.35,
+              7, 0.55,
+              9, 0.75,
+              11, 0.9
+            ]);
+          } else if (isMajorRoadLayer) {
+            safeSetPaint(id, 'line-color', '#c7d0d8');
+            safeSetPaint(id, 'line-opacity', [
+              'interpolate', ['linear'], ['zoom'],
+              4, 0.38,
+              6, 0.48,
+              8, 0.55,
+              10, 0.62
+            ]);
+            safeSetPaint(id, 'line-width', [
+              'interpolate', ['linear'], ['zoom'],
+              4, 0.45,
+              6, 0.55,
+              8, 0.7,
+              10, 0.85
+            ]);
+          } else if (isMinorRoadLayer) {
+            safeSetPaint(id, 'line-color', '#aeb8c2');
+            safeSetPaint(id, 'line-opacity', [
+              'interpolate', ['linear'], ['zoom'],
+              5, 0.05,
+              7, 0.18,
+              9, 0.34,
+              11, 0.48
+            ]);
+            safeSetPaint(id, 'line-width', [
+              'interpolate', ['linear'], ['zoom'],
+              5, 0.2,
+              7, 0.32,
+              9, 0.48,
+              11, 0.65
+            ]);
+          } else if (isRoadLayer) {
+            safeSetPaint(id, 'line-color', '#b8c2cc');
             safeSetPaint(id, 'line-opacity', 0.38);
-            safeSetPaint(id, 'line-width', 0.75);
+            safeSetPaint(id, 'line-width', [
+              'interpolate', ['linear'], ['zoom'],
+              5, 0.28,
+              7, 0.42,
+              9, 0.55,
+              11, 0.7
+            ]);
           } else if (isBoundaryLayer) {
             safeSetPaint(id, 'line-color', '#9fb2c3');
             safeSetPaint(id, 'line-opacity', 0.48);
@@ -628,6 +681,13 @@
             safeSetPaint(id, 'text-halo-width', 1.9);
             safeSetPaint(id, 'text-halo-blur', 0.2);
             safeSetPaint(id, 'text-opacity', 1);
+            safeSetLayout(id, 'text-size', [
+              'interpolate', ['linear'], ['zoom'],
+              4, 11,
+              6, 12,
+              8, 13,
+              10, 14
+            ]);
             return;
           }
 
@@ -664,6 +724,29 @@
             .map((layer) => layer.id)
         );
         glMap.__boundaryLayerLogDone = true;
+      }
+
+      if (!glMap.__roadLayerLogDone) {
+        console.log(
+          'Road vector layers:',
+          style.layers
+            .filter((layer) => {
+              const name = `${layer.id || ''} ${layer['source-layer'] || ''}`.toLowerCase();
+              return (
+                name.includes('road') ||
+                name.includes('transport') ||
+                name.includes('highway') ||
+                name.includes('street') ||
+                name.includes('motorway') ||
+                name.includes('trunk') ||
+                name.includes('primary') ||
+                name.includes('secondary') ||
+                name.includes('tertiary')
+              );
+            })
+            .map((layer) => layer.id)
+        );
+        glMap.__roadLayerLogDone = true;
       }
     }
 
