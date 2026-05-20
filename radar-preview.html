@@ -296,7 +296,7 @@
     }
 
     #map .navy-road-basemap {
-      filter: grayscale(1) invert(1) sepia(0.8) saturate(2.4) hue-rotate(175deg) brightness(0.48) contrast(1.15);
+      filter: grayscale(1) invert(1) sepia(0.65) saturate(2.8) hue-rotate(175deg) brightness(0.72) contrast(1.35);
     }
 
     @media (max-width: 768px) {
@@ -454,7 +454,7 @@
     const roadBaseLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors',
       maxZoom: 19,
-      opacity: 0.48,
+      opacity: 0.82,
       className: 'navy-road-basemap',
     }).addTo(map);
 
