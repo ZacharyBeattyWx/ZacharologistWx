@@ -469,17 +469,48 @@
         const type = layer.type || '';
         const sourceLayer = layer['source-layer'] || '';
         const layerName = `${id} ${sourceLayer}`.toLowerCase();
+        const isRoadLayer =
+          layerName.includes('road') ||
+          layerName.includes('transport') ||
+          layerName.includes('highway') ||
+          layerName.includes('street') ||
+          layerName.includes('motorway') ||
+          layerName.includes('trunk') ||
+          layerName.includes('primary') ||
+          layerName.includes('secondary') ||
+          layerName.includes('tertiary');
+        const isBoundaryLayer =
+          layerName.includes('boundary') ||
+          layerName.includes('admin') ||
+          layerName.includes('state') ||
+          layerName.includes('county');
+        const isWaterLayer =
+          layerName.includes('water') ||
+          layerName.includes('ocean') ||
+          layerName.includes('lake') ||
+          layerName.includes('river');
+        const isPlaceLabel =
+          layerName.includes('city') ||
+          layerName.includes('place') ||
+          layerName.includes('town') ||
+          layerName.includes('village') ||
+          layerName.includes('settlement');
         const isNatureLayer =
           layerName.includes('park') ||
           layerName.includes('forest') ||
           layerName.includes('wood') ||
+          layerName.includes('woodland') ||
           layerName.includes('landcover') ||
           layerName.includes('landuse') ||
           layerName.includes('nature') ||
           layerName.includes('natural') ||
           layerName.includes('protected') ||
           layerName.includes('grass') ||
-          layerName.includes('green');
+          layerName.includes('green') ||
+          layerName.includes('scrub') ||
+          layerName.includes('meadow') ||
+          layerName.includes('wetland') ||
+          layerName.includes('reserve');
 
         if (type === 'background') {
           safeSetPaint(id, 'background-color', '#061a33');
@@ -487,17 +518,12 @@
         }
 
         if (type === 'fill') {
-          if (isNatureLayer) {
-            safeSetPaint(id, 'fill-color', '#061a33');
-            safeSetPaint(id, 'fill-opacity', 0);
-          } else if (layerName.includes('water')) {
+          if (isWaterLayer) {
             safeSetPaint(id, 'fill-color', '#08294a');
             safeSetPaint(id, 'fill-opacity', 0.95);
-          } else if (
-            layerName.includes('land')
-          ) {
+          } else {
             safeSetPaint(id, 'fill-color', '#061a33');
-            safeSetPaint(id, 'fill-opacity', 0.92);
+            safeSetPaint(id, 'fill-opacity', 0.88);
           }
         }
 
@@ -505,25 +531,18 @@
           if (isNatureLayer) {
             safeSetPaint(id, 'line-color', '#061a33');
             safeSetPaint(id, 'line-opacity', 0);
-          } else if (
-            layerName.includes('boundary') ||
-            layerName.includes('admin') ||
-            layerName.includes('state') ||
-            layerName.includes('county')
-          ) {
-            safeSetPaint(id, 'line-color', '#7f9db8');
-            safeSetPaint(id, 'line-opacity', 0.45);
-          } else if (
-            layerName.includes('road') ||
-            layerName.includes('transport') ||
-            layerName.includes('highway') ||
-            layerName.includes('street')
-          ) {
+          } else if (isRoadLayer) {
             safeSetPaint(id, 'line-color', '#c7d0d8');
             safeSetPaint(id, 'line-opacity', 0.62);
-          } else if (layerName.includes('water')) {
+          } else if (isBoundaryLayer) {
+            safeSetPaint(id, 'line-color', '#7f9db8');
+            safeSetPaint(id, 'line-opacity', 0.45);
+          } else if (isWaterLayer) {
             safeSetPaint(id, 'line-color', '#0f6fae');
-            safeSetPaint(id, 'line-opacity', 0.75);
+            safeSetPaint(id, 'line-opacity', 0.65);
+          } else {
+            safeSetPaint(id, 'line-color', '#12314c');
+            safeSetPaint(id, 'line-opacity', 0.12);
           }
         }
 
@@ -534,35 +553,29 @@
             return;
           }
 
-          safeSetPaint(id, 'text-color', '#c8d8e8');
-          safeSetPaint(id, 'text-halo-color', '#061a33');
-          safeSetPaint(id, 'text-halo-width', 1.25);
-          safeSetPaint(id, 'text-halo-blur', 0.25);
-          safeSetPaint(id, 'text-opacity', 0.88);
-
-          if (
-            layerName.includes('city') ||
-            layerName.includes('place') ||
-            layerName.includes('town') ||
-            layerName.includes('village')
-          ) {
+          if (isPlaceLabel) {
             safeSetPaint(id, 'text-color', '#ffffff');
             safeSetPaint(id, 'text-halo-color', '#061a33');
-            safeSetPaint(id, 'text-halo-width', 1.8);
+            safeSetPaint(id, 'text-halo-width', 1.9);
             safeSetPaint(id, 'text-halo-blur', 0.2);
             safeSetPaint(id, 'text-opacity', 1);
+            return;
           }
 
-          if (
-            layerName.includes('road') ||
-            layerName.includes('highway') ||
-            layerName.includes('street')
-          ) {
+          if (isRoadLayer) {
             safeSetPaint(id, 'text-color', '#d6dde5');
             safeSetPaint(id, 'text-halo-color', '#061a33');
             safeSetPaint(id, 'text-halo-width', 1.2);
-            safeSetPaint(id, 'text-opacity', 0.9);
+            safeSetPaint(id, 'text-opacity', 0.88);
+            safeSetPaint(id, 'icon-opacity', 0);
+            return;
           }
+
+          safeSetPaint(id, 'text-color', '#c8d8e8');
+          safeSetPaint(id, 'text-halo-color', '#061a33');
+          safeSetPaint(id, 'text-halo-width', 1.25);
+          safeSetPaint(id, 'text-opacity', 0.55);
+          safeSetPaint(id, 'icon-opacity', 0.25);
         }
       });
     }
