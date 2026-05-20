@@ -1876,7 +1876,7 @@ color: white;
 }
 
 #singleSiteMap .navy-basemap {
-  filter: hue-rotate(165deg) saturate(1.8) brightness(0.78) contrast(1.08);
+  filter: brightness(0.72) sepia(1) saturate(5.5) hue-rotate(172deg) contrast(1.12);
 }
 
 .radar-modal-note {
@@ -9302,7 +9302,7 @@ async function initSingleSiteRadar(options = {}) {
       '&copy; OpenStreetMap contributors &copy; CARTO',
     subdomains: "abcd",
     maxZoom: 19,
-    opacity: 0.68,
+    opacity: 0.76,
     className: "navy-basemap"
   }
 ).addTo(singleSiteMap);
