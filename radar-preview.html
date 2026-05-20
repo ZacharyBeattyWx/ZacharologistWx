@@ -458,17 +458,14 @@
     map.createPane('debugPane');
     map.getPane('debugPane').style.zIndex = 650;
 
-    const MAPBOX_STYLE_USERNAME = "zacharybeattywx";
-    const MAPBOX_STYLE_ID = "cmpdipwzh00fq01sccdj806xy";
-    const MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpbXdlYjA3MnMycXFhNnI0YWUybmcifQ.GXJ6k8d1Y7KYrpVpoLdUWg";
-
     const mapboxBaseLayer = L.tileLayer(
-      `https://{s}.tile.openstreemap.org/{z}/{x}/{y}.png`,
+      'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
       {
         pane: 'baseMapPane',
         opacity: 1,
-        maxZoom: 19,
-        attribution: '&copy; OpenStreeMap contributors'
+        subdomains: 'abcd',
+        maxZoom: 20,
+        attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
       }
     ).addTo(map);
 
