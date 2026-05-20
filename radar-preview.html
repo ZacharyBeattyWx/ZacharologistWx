@@ -463,14 +463,12 @@
     const MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpbXdlYjA3MnMycXFhNnI0YWUybmcifQ.GXJ6k8d1Y7KYrpVpoLdUWg";
 
     const mapboxBaseLayer = L.tileLayer(
-      `https://api.mapbox.com/styles/v1/${MAPBOX_STYLE_USERNAME}/${MAPBOX_STYLE_ID}/tiles/512/{z}/{x}/{y}@2x?access_token=${MAPBOX_PUBLIC_TOKEN}`,
+      `https://{s}.tile.openstreemap.org/{z}/{x}/{y}.png`,
       {
         pane: 'baseMapPane',
         opacity: 1,
-        tileSize: 512,
-        zoomOffset: -1,
-        maxZoom: 22,
-        attribution: '&copy; Mapbox &copy; OpenStreetMap'
+        maxZoom: 19,
+        attribution: '&copy; OpenStreeMap contributors'
       }
     ).addTo(map);
 
