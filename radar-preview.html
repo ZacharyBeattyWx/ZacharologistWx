@@ -18,7 +18,7 @@
       min-height: 100%;
       margin: 0;
       overflow: hidden;
-      background: #05080d;
+      background: #061a33 !important;
       color: #edf2f7;
       font-family: Arial, Helvetica, sans-serif;
     }
@@ -290,13 +290,13 @@
       color: #fca5a5;
     }
 
-     .leaflet-tile-pane {
-      opacity: 0.72 !important;
-    }
-
     #map,
     #map.leaflet-container {
       background: #061a33 !important;
+    }
+
+    #map .navy-road-basemap {
+      filter: grayscale(1) invert(1) sepia(0.8) saturate(2.4) hue-rotate(175deg) brightness(0.48) contrast(1.15);
     }
 
     @media (max-width: 768px) {
@@ -450,6 +450,13 @@
 
     map.createPane('debugPane');
     map.getPane('debugPane').style.zIndex = 650;
+
+    const roadBaseLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 19,
+      opacity: 0.48,
+      className: 'navy-road-basemap',
+    }).addTo(map);
 
     setTimeout(() => {
       map.invalidateSize();
