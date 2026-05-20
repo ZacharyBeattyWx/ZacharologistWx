@@ -460,6 +460,15 @@
           console.warn('Could not style vector layer', layerId, property, error);
         }
       };
+      const safeSetLayout = (layerId, property, value) => {
+        try {
+          if (glMap.getLayer(layerId)) {
+            glMap.setLayoutProperty(layerId, property, value);
+          }
+        } catch (error) {
+          console.warn('Could not style vector layout', layerId, property, error);
+        }
+      };
 
       const style = glMap.getStyle();
       if (!style || !Array.isArray(style.layers)) return;
@@ -510,7 +519,39 @@
           layerName.includes('scrub') ||
           layerName.includes('meadow') ||
           layerName.includes('wetland') ||
-          layerName.includes('reserve');
+          layerName.includes('reserve') ||
+          layerName.includes('national') ||
+          layerName.includes('conservation') ||
+          layerName.includes('recreation') ||
+          layerName.includes('wildlife') ||
+          layerName.includes('wilderness') ||
+          layerName.includes('aeroway') ||
+          layerName.includes('cemetery') ||
+          layerName.includes('golf') ||
+          layerName.includes('pitch') ||
+          layerName.includes('playground') ||
+          layerName.includes('farm') ||
+          layerName.includes('farmland') ||
+          layerName.includes('orchard') ||
+          layerName.includes('vineyard');
+
+        if (isNatureLayer) {
+          safeSetLayout(id, 'visibility', 'none');
+
+          if (type === 'fill') {
+            safeSetPaint(id, 'fill-color', '#061a33');
+            safeSetPaint(id, 'fill-opacity', 0);
+            safeSetPaint(id, 'fill-outline-color', '#061a33');
+          } else if (type === 'line') {
+            safeSetPaint(id, 'line-color', '#061a33');
+            safeSetPaint(id, 'line-opacity', 0);
+          } else if (type === 'symbol') {
+            safeSetPaint(id, 'text-opacity', 0);
+            safeSetPaint(id, 'icon-opacity', 0);
+          }
+
+          return;
+        }
 
         if (type === 'background') {
           safeSetPaint(id, 'background-color', '#061a33');
@@ -523,15 +564,13 @@
             safeSetPaint(id, 'fill-opacity', 0.95);
           } else {
             safeSetPaint(id, 'fill-color', '#061a33');
-            safeSetPaint(id, 'fill-opacity', 0.88);
+            safeSetPaint(id, 'fill-opacity', 0.9);
+            safeSetPaint(id, 'fill-outline-color', '#061a33');
           }
         }
 
         if (type === 'line') {
-          if (isNatureLayer) {
-            safeSetPaint(id, 'line-color', '#061a33');
-            safeSetPaint(id, 'line-opacity', 0);
-          } else if (isRoadLayer) {
+          if (isRoadLayer) {
             safeSetPaint(id, 'line-color', '#c7d0d8');
             safeSetPaint(id, 'line-opacity', 0.62);
           } else if (isBoundaryLayer) {
@@ -547,12 +586,6 @@
         }
 
         if (type === 'symbol') {
-          if (isNatureLayer) {
-            safeSetPaint(id, 'text-opacity', 0);
-            safeSetPaint(id, 'icon-opacity', 0);
-            return;
-          }
-
           if (isPlaceLabel) {
             safeSetPaint(id, 'text-color', '#ffffff');
             safeSetPaint(id, 'text-halo-color', '#061a33');
