@@ -1842,7 +1842,6 @@ color: white;
 #singleSiteMap {
   width: 100%;
   height: 100%;
-  background: #07111f;
 }
 
 .radar-legend {
@@ -1871,12 +1870,9 @@ color: white;
   font-weight: 800;
 }
 
-.leaflet-container {
+#singleSiteMap,
+#singleSiteMap.leaflet-container {
   background: #061a33 !important;
-}
-
-#singleSiteMap .navy-basemap {
-  filter: brightness(0.72) sepia(1) saturate(5.5) hue-rotate(172deg) contrast(1.12);
 }
 
 .radar-modal-note {
@@ -9294,18 +9290,6 @@ async function initSingleSiteRadar(options = {}) {
       attributionControl: true,
       maxZoom: 12
     }).setView(siteInfo.center, siteInfo.zoom);
-
-    L.tileLayer(
-  "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-  {
-    attribution:
-      '&copy; OpenStreetMap contributors &copy; CARTO',
-    subdomains: "abcd",
-    maxZoom: 19,
-    opacity: 0.76,
-    className: "navy-basemap"
-  }
-).addTo(singleSiteMap);
   }
 
   singleSiteMap.setView(siteInfo.center, siteInfo.zoom);
