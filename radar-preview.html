@@ -492,7 +492,27 @@
           layerName.includes('boundary') ||
           layerName.includes('admin') ||
           layerName.includes('state') ||
-          layerName.includes('county');
+          layerName.includes('county') ||
+          layerName.includes('province') ||
+          layerName.includes('region');
+        const isCountyBoundaryLayer =
+          layerName.includes('county') ||
+          layerName.includes('admin-6') ||
+          layerName.includes('admin_6') ||
+          layerName.includes('admin6');
+        const isStateBoundaryLayer =
+          layerName.includes('state') ||
+          layerName.includes('province') ||
+          layerName.includes('region') ||
+          layerName.includes('admin-4') ||
+          layerName.includes('admin_4') ||
+          layerName.includes('admin4');
+        const isMajorRoadLayer =
+          layerName.includes('motorway') ||
+          layerName.includes('trunk') ||
+          layerName.includes('primary') ||
+          layerName.includes('interstate') ||
+          layerName.includes('highway');
         const isWaterLayer =
           layerName.includes('water') ||
           layerName.includes('ocean') ||
@@ -571,11 +591,27 @@
 
         if (type === 'line') {
           if (isRoadLayer) {
-            safeSetPaint(id, 'line-color', '#c7d0d8');
-            safeSetPaint(id, 'line-opacity', 0.62);
+            safeSetPaint(id, 'line-color', '#b8c2cc');
+            safeSetPaint(id, 'line-opacity', 0.46);
+            safeSetPaint(id, 'line-width', 0.65);
+
+            if (isMajorRoadLayer) {
+              safeSetPaint(id, 'line-color', '#c7d0d8');
+              safeSetPaint(id, 'line-opacity', 0.58);
+              safeSetPaint(id, 'line-width', 0.85);
+            }
+          } else if (isStateBoundaryLayer) {
+            safeSetPaint(id, 'line-color', '#c8d3dd');
+            safeSetPaint(id, 'line-opacity', 0.72);
+            safeSetPaint(id, 'line-width', 1.35);
+          } else if (isCountyBoundaryLayer) {
+            safeSetPaint(id, 'line-color', '#8fa4b8');
+            safeSetPaint(id, 'line-opacity', 0.38);
+            safeSetPaint(id, 'line-width', 0.75);
           } else if (isBoundaryLayer) {
-            safeSetPaint(id, 'line-color', '#7f9db8');
-            safeSetPaint(id, 'line-opacity', 0.45);
+            safeSetPaint(id, 'line-color', '#9fb2c3');
+            safeSetPaint(id, 'line-opacity', 0.48);
+            safeSetPaint(id, 'line-width', 0.95);
           } else if (isWaterLayer) {
             safeSetPaint(id, 'line-color', '#0f6fae');
             safeSetPaint(id, 'line-opacity', 0.65);
@@ -611,6 +647,24 @@
           safeSetPaint(id, 'icon-opacity', 0.25);
         }
       });
+
+      if (!glMap.__boundaryLayerLogDone) {
+        console.log(
+          'Boundary/admin vector layers:',
+          style.layers
+            .filter((layer) => {
+              const name = `${layer.id || ''} ${layer['source-layer'] || ''}`.toLowerCase();
+              return (
+                name.includes('boundary') ||
+                name.includes('admin') ||
+                name.includes('county') ||
+                name.includes('state')
+              );
+            })
+            .map((layer) => layer.id)
+        );
+        glMap.__boundaryLayerLogDone = true;
+      }
     }
 
     const vectorBaseLayer = L.maplibreGL({
