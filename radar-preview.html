@@ -469,6 +469,17 @@
         const type = layer.type || '';
         const sourceLayer = layer['source-layer'] || '';
         const layerName = `${id} ${sourceLayer}`.toLowerCase();
+        const isNatureLayer =
+          layerName.includes('park') ||
+          layerName.includes('forest') ||
+          layerName.includes('wood') ||
+          layerName.includes('landcover') ||
+          layerName.includes('landuse') ||
+          layerName.includes('nature') ||
+          layerName.includes('natural') ||
+          layerName.includes('protected') ||
+          layerName.includes('grass') ||
+          layerName.includes('green');
 
         if (type === 'background') {
           safeSetPaint(id, 'background-color', '#061a33');
@@ -476,14 +487,14 @@
         }
 
         if (type === 'fill') {
-          if (layerName.includes('water')) {
+          if (isNatureLayer) {
+            safeSetPaint(id, 'fill-color', '#071f35');
+            safeSetPaint(id, 'fill-opacity', 0.35);
+          } else if (layerName.includes('water')) {
             safeSetPaint(id, 'fill-color', '#08294a');
             safeSetPaint(id, 'fill-opacity', 0.95);
           } else if (
-            layerName.includes('land') ||
-            layerName.includes('park') ||
-            layerName.includes('landcover') ||
-            layerName.includes('landuse')
+            layerName.includes('land')
           ) {
             safeSetPaint(id, 'fill-color', '#061a33');
             safeSetPaint(id, 'fill-opacity', 0.92);
@@ -491,7 +502,10 @@
         }
 
         if (type === 'line') {
-          if (
+          if (isNatureLayer) {
+            safeSetPaint(id, 'line-color', '#12314c');
+            safeSetPaint(id, 'line-opacity', 0.25);
+          } else if (
             layerName.includes('boundary') ||
             layerName.includes('admin') ||
             layerName.includes('state') ||
@@ -514,6 +528,12 @@
         }
 
         if (type === 'symbol') {
+          if (isNatureLayer) {
+            safeSetPaint(id, 'text-opacity', 0.25);
+            safeSetPaint(id, 'icon-opacity', 0.2);
+            return;
+          }
+
           safeSetPaint(id, 'text-color', '#a9cff5');
           safeSetPaint(id, 'text-halo-color', '#031120');
           safeSetPaint(id, 'text-halo-width', 1.2);
