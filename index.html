@@ -1872,7 +1872,11 @@ color: white;
 }
 
 .leaflet-container {
-  background: #07111f;
+  background: #061a33 !important;
+}
+
+#singleSiteMap .navy-basemap {
+  filter: brightness(0.72) sepia(1) saturate(5.5) hue-rotate(172deg) contrast(1.12);
 }
 
 .radar-modal-note {
@@ -9297,7 +9301,9 @@ async function initSingleSiteRadar(options = {}) {
     attribution:
       '&copy; OpenStreetMap contributors &copy; CARTO',
     subdomains: "abcd",
-    maxZoom: 19
+    maxZoom: 19,
+    opacity: 0.76,
+    className: "navy-basemap"
   }
 ).addTo(singleSiteMap);
   }
