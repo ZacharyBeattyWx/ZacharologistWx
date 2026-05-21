@@ -29,6 +29,14 @@ on:
         options:
           - "false"
           - "true"
+      force_rebuild:
+        description: "Force a full rebuild for the selected site/product"
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
 
 permissions:
   contents: write
@@ -66,6 +74,7 @@ jobs:
 
           SITE_INPUT="${{ matrix.site }}"
           PRODUCT="${{ github.event.inputs.product || 'N0B' }}"
+          FORCE_RENDER="${{ github.event.inputs.force_rebuild || 'false' }}"
           SOURCE_DIR="radar/source/level3"
 
           case "${SITE_INPUT^^}" in
@@ -86,10 +95,13 @@ jobs:
           export SITE3
           export SITE4
           export PRODUCT
+          export FORCE_RENDER
           echo "SITE3=${SITE3}" >> "$GITHUB_ENV"
           echo "SITE4=${SITE4}" >> "$GITHUB_ENV"
           echo "PRODUCT=${PRODUCT}" >> "$GITHUB_ENV"
+          echo "FORCE_RENDER=${FORCE_RENDER}" >> "$GITHUB_ENV"
           echo "Normalized radar site input: site3=${SITE3} site4=${SITE4} product=${PRODUCT}"
+          echo "Force rebuild enabled: ${FORCE_RENDER}"
 
           rm -rf "$SOURCE_DIR"
           mkdir -p "$SOURCE_DIR"
@@ -384,13 +396,30 @@ jobs:
         run: |
           set -euo pipefail
 
-          rm -rf "radar/frames/${SITE4}/${PRODUCT}"
+          if [[ "${FORCE_RENDER}" == "true" ]]; then
+            rm -rf "radar/frames/${SITE4}/${PRODUCT}"
+          fi
           mkdir -p "radar/frames/${SITE4}/${PRODUCT}"
           echo "Rendered output folder: radar/frames/${SITE4}/${PRODUCT}"
 
       - name: Render radar frame
+        shell: bash
         run: |
-          python scripts/radar/render_reflectivity.py --render --force --site "${SITE4}" --product "${PRODUCT}" --min-visible-dbz "${{ github.event.inputs.min_visible_dbz || '5' }}" --min-component-pixels "${{ github.event.inputs.min_component_pixels || '3' }}"
+          set -euo pipefail
+
+          render_args=(
+            --render
+            --site "${SITE4}"
+            --product "${PRODUCT}"
+            --min-visible-dbz "${{ github.event.inputs.min_visible_dbz || '5' }}"
+            --min-component-pixels "${{ github.event.inputs.min_component_pixels || '3' }}"
+          )
+
+          if [[ "${FORCE_RENDER}" == "true" ]]; then
+            render_args+=(--force)
+          fi
+
+          python scripts/radar/render_reflectivity.py "${render_args[@]}"
 
       - name: Show generated radar catalog keys
         shell: bash
@@ -429,7 +458,19 @@ jobs:
           R2_ENDPOINT="https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com"
 
           aws s3 cp radar/frames.json "s3://${{ secrets.R2_BUCKET }}/radar/frames.json" --endpoint-url "$R2_ENDPOINT"
-          aws s3 sync "radar/frames/${SITE4}/${PRODUCT}" "s3://${{ secrets.R2_BUCKET }}/radar/frames/${SITE4}/${PRODUCT}" --exclude "*" --include "*.webp" --delete --endpoint-url "$R2_ENDPOINT"
+          sync_args=(
+            "radar/frames/${SITE4}/${PRODUCT}"
+            "s3://${{ secrets.R2_BUCKET }}/radar/frames/${SITE4}/${PRODUCT}"
+            --exclude "*"
+            --include "*.webp"
+            --endpoint-url "$R2_ENDPOINT"
+          )
+
+          if [[ "${FORCE_RENDER}" == "true" ]]; then
+            sync_args+=(--delete)
+          fi
+
+          aws s3 sync "${sync_args[@]}"
 
           TMP_CATALOG="$(mktemp)"
           aws s3 cp "s3://${{ secrets.R2_BUCKET }}/radar/frames.json" "$TMP_CATALOG" --endpoint-url "$R2_ENDPOINT"

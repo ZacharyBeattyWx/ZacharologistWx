@@ -1388,6 +1388,74 @@ def source_file_valid_time_label(path: Path) -> str:
     return valid_time.isoformat().replace("+00:00", "Z")
 
 
+def source_file_slug(path: Path) -> str | None:
+    meta = source_metadata(path)
+    if not meta:
+        return None
+
+    return f"{meta['product']}_{meta['date']}_{meta['time']}"
+
+
+def empty_frames_catalog() -> dict:
+    return {
+        "schemaVersion": 1,
+        "generatedAt": "",
+        "sites": {},
+        "products": {},
+        "frames": {},
+    }
+
+
+def load_frames_catalog(catalog_path: Path) -> dict:
+    if catalog_path.exists():
+        with catalog_path.open("r", encoding="utf-8") as handle:
+            return json.load(handle)
+
+    return empty_frames_catalog()
+
+
+def write_frames_catalog(catalog_path: Path, catalog: dict) -> None:
+    catalog_path.parent.mkdir(parents=True, exist_ok=True)
+    catalog["schemaVersion"] = catalog.get("schemaVersion", 1)
+    catalog["generatedAt"] = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    catalog.setdefault("sites", {})
+    catalog.setdefault("products", {})
+    catalog.setdefault("frames", {})
+
+    with catalog_path.open("w", encoding="utf-8") as handle:
+        json.dump(catalog, handle, indent=2)
+        handle.write("\n")
+
+
+def catalog_product_frames(catalog: dict, site: str, product: str) -> list[dict]:
+    return catalog.get("frames", {}).get(site, {}).get(product, [])
+
+
+def catalog_product_frame_count(catalog: dict, site: str, product: str) -> int:
+    frames = catalog_product_frames(catalog, site, product)
+    return len(frames) if isinstance(frames, list) else 0
+
+
+def existing_catalog_slugs(catalog: dict, site: str, product: str) -> set[str]:
+    return {
+        str(frame.get("slug"))
+        for frame in catalog_product_frames(catalog, site, product)
+        if frame.get("slug")
+    }
+
+
+def prune_catalog_product(catalog: dict, site: str, product: str, frame_count: int) -> None:
+    frames = catalog_product_frames(catalog, site, product)
+    if not isinstance(frames, list):
+        return
+
+    catalog["frames"].setdefault(site, {})[product] = sorted(
+        frames,
+        key=frame_sort_key,
+        reverse=True,
+    )[:safe_frame_count(frame_count)]
+
+
 def update_frames_catalog(
     catalog_path: Path,
     frame_entry: dict,
@@ -1400,23 +1468,7 @@ def update_frames_catalog(
     catalog_path.parent.mkdir(parents=True, exist_ok=True)
     max_frames = safe_frame_count(frame_count)
 
-    if catalog_path.exists():
-        with catalog_path.open("r", encoding="utf-8") as handle:
-            catalog = json.load(handle)
-    else:
-        catalog = {
-            "schemaVersion": 1,
-            "generatedAt": "",
-            "sites": {},
-            "products": {},
-            "frames": {},
-        }
-
-    catalog["schemaVersion"] = catalog.get("schemaVersion", 1)
-    catalog["generatedAt"] = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
-    catalog.setdefault("sites", {})
-    catalog.setdefault("products", {})
-    catalog.setdefault("frames", {})
+    catalog = load_frames_catalog(catalog_path)
     ensure_configured_catalog_metadata(catalog, config)
 
     catalog["sites"][site] = catalog_site_metadata(site, [product])
@@ -1442,9 +1494,7 @@ def update_frames_catalog(
         reverse=True,
     )[:max_frames]
 
-    with catalog_path.open("w", encoding="utf-8") as handle:
-        json.dump(catalog, handle, indent=2)
-        handle.write("\n")
+    write_frames_catalog(catalog_path, catalog)
 
 
 def summarize_numeric_array(name: str, values) -> None:
@@ -1933,6 +1983,9 @@ def render_level3_frame(source_file: Path, args, config: dict, selected_site: st
 
 
 def main() -> int:
+    from time import perf_counter
+
+    site_runtime_start = perf_counter()
     parser = argparse.ArgumentParser(
         description="Scaffold for rendering Level III N0B reflectivity frames."
     )
@@ -2002,11 +2055,27 @@ def main() -> int:
     selected_site = normalize_site(args.site) if args.site else None
     selected_sector = site_sector(selected_site) if selected_site else None
     selected_product = str(args.product or "N0B").strip().upper()
+    catalog_path = REPO_ROOT / config.get("catalogPath", "radar/frames.json")
+    frame_count = safe_frame_count(config.get("frameCount"))
+    existing_catalog = load_frames_catalog(catalog_path)
+    ensure_configured_catalog_metadata(existing_catalog, config)
+    existing_frame_count = (
+        catalog_product_frame_count(existing_catalog, selected_site, selected_product)
+        if selected_site
+        else 0
+    )
+    existing_slugs = (
+        existing_catalog_slugs(existing_catalog, selected_site, selected_product)
+        if selected_site
+        else set()
+    )
     print("Reflectivity renderer scaffold")
     print(f"enabled={config.get('enabled')}")
     print(f"selectedSite={selected_site or 'any'}")
     print(f"selectedSector={selected_sector or 'any'}")
     print(f"selectedProduct={selected_product}")
+    print(f"existingCatalogFrameCount={existing_frame_count}")
+    print(f"forceRebuild={args.force}")
     print(f"palette={config.get('palette')}")
     print(f"frameOutputDir={config.get('frameOutputDir')}")
     rendering = reflectivity_rendering_settings(config, args)
@@ -2076,13 +2145,40 @@ def main() -> int:
         print(f"No Level III {selected_product} source files found in {args.source_cache} with pattern {source_pattern}.")
         return 1
 
-    frame_count = safe_frame_count(config.get("frameCount"))
-    selected_source_files = source_files[-frame_count:]
+    candidate_source_files = source_files[-frame_count:]
+    skipped_existing_frame_count = 0
+    selected_source_files = []
+
+    for source_file in candidate_source_files:
+        slug = source_file_slug(source_file)
+        if args.render and not args.force and slug and slug in existing_slugs:
+            skipped_existing_frame_count += 1
+            print(f"Skipping existing frame source: {source_file} slug={slug}")
+            continue
+
+        selected_source_files.append(source_file)
+
     print(f"sourcePattern={source_pattern}")
-    print(f"Found {len(source_files)} Level III {selected_product} source file(s) in {args.source_cache}.")
-    print(f"Selected {len(selected_source_files)} newest source file(s) for frameCount={frame_count}.")
+    print(f"candidateLevel3SourceCount={len(source_files)}")
+    print(f"Candidate newest source file count for frameCount={frame_count}: {len(candidate_source_files)}")
+    print(f"skippedExistingFrameCount={skipped_existing_frame_count}")
+    print(f"newFramesToRenderCount={len(selected_source_files) if args.render else 0}")
+
+    if args.render and not selected_source_files:
+        ensure_configured_catalog_metadata(existing_catalog, config)
+        if selected_site:
+            prune_catalog_product(existing_catalog, selected_site, selected_product, frame_count)
+        write_frames_catalog(catalog_path, existing_catalog)
+        final_catalog = load_frames_catalog(catalog_path)
+        print(f"No new {selected_site or 'radar'} {selected_product} frames to render.")
+        print(f"finalCatalogFrameCount.KFCX.{selected_product}={catalog_product_frame_count(final_catalog, 'KFCX', selected_product)}")
+        print(f"finalCatalogFrameCount.KRAX.{selected_product}={catalog_product_frame_count(final_catalog, 'KRAX', selected_product)}")
+        print(f"newFramesRenderedCount=0")
+        print(f"siteRuntimeSeconds={perf_counter() - site_runtime_start:.3f}")
+        return 0
 
     decoded_all = True
+    rendered_count = 0
     for index, source_file in enumerate(selected_source_files, start=1):
         valid_time = source_file_valid_time_label(source_file)
         print(f"Source file {index}/{len(selected_source_files)}: {source_file} validTime={valid_time}")
@@ -2097,8 +2193,10 @@ def main() -> int:
             if args.render:
                 return 2
 
-        if args.render and not render_level3_frame(source_file, args, config, selected_site):
-            return 2
+        if args.render:
+            if not render_level3_frame(source_file, args, config, selected_site):
+                return 2
+            rendered_count += 1
 
     if args.diagnose:
         print("Diagnostic mode complete. Stopping before image generation.")
@@ -2106,7 +2204,12 @@ def main() -> int:
         return 0 if decoded_all else 2
 
     if args.render:
-        print(f"Rendered {len(selected_source_files)} frame(s).")
+        final_catalog = load_frames_catalog(catalog_path)
+        print(f"Rendered {rendered_count} new frame(s).")
+        print(f"newFramesRenderedCount={rendered_count}")
+        print(f"finalCatalogFrameCount.KFCX.{selected_product}={catalog_product_frame_count(final_catalog, 'KFCX', selected_product)}")
+        print(f"finalCatalogFrameCount.KRAX.{selected_product}={catalog_product_frame_count(final_catalog, 'KRAX', selected_product)}")
+        print(f"siteRuntimeSeconds={perf_counter() - site_runtime_start:.3f}")
         return 0
 
     # TODO: Apply DEFAULT_REFLECTIVITY_COLOR_TABLE from the frontend contract.
