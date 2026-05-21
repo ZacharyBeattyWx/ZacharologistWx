@@ -443,6 +443,7 @@
   <script>
     const DEFAULT_SITE = 'KFCX';
     const AVAILABLE_SITES = ['KFCX', 'KRAX'];
+    const SITE_STORAGE_KEY = 'radarPreview:selectedSite';
     const PRODUCT = 'N0B';
     const RADAR_DATA_BASE_URL = 'https://radar.zacharologistwx.com';
     const CATALOG_URL = `${RADAR_DATA_BASE_URL}/radar/frames.json`;
@@ -657,7 +658,7 @@
     let radarBounds = null;
     let playbackModeIsMobile = isMobilePlaybackMode();
     let playbackModeChangeTimer = null;
-    let selectedSite = DEFAULT_SITE;
+    let selectedSite = initialSelectedSite();
 
     function setStatus(message, isError = false) {
       statusEl.textContent = message;
@@ -668,8 +669,35 @@
       return AVAILABLE_SITES.includes(site) ? site : DEFAULT_SITE;
     }
 
+    function storedSite() {
+      try {
+        return localStorage.getItem(SITE_STORAGE_KEY);
+      } catch (_error) {
+        return null;
+      }
+    }
+
+    function initialSelectedSite() {
+      const params = new URLSearchParams(window.location.search);
+      return normalizeSite(params.get('site') || storedSite() || DEFAULT_SITE);
+    }
+
     function currentSite() {
       return selectedSite;
+    }
+
+    function saveSelectedSite() {
+      try {
+        localStorage.setItem(SITE_STORAGE_KEY, selectedSite);
+      } catch (_error) {
+        // Browsers can disable storage; keep the in-page selection working.
+      }
+    }
+
+    function updateSiteUrl() {
+      const url = new URL(window.location.href);
+      url.searchParams.set('site', selectedSite);
+      history.replaceState(null, '', url);
     }
 
     function updateRadarSiteLabels() {
@@ -1502,6 +1530,8 @@
       if (nextSite === currentSite()) return;
 
       selectedSite = nextSite;
+      saveSelectedSite();
+      updateSiteUrl();
       updateRadarSiteLabels();
       loadRadar();
     }
@@ -1574,6 +1604,8 @@
     });
 
     updateOpacityLabel();
+    saveSelectedSite();
+    updateSiteUrl();
     updateRadarSiteLabels();
     updatePlaybackLabels();
     setDetailsCollapsed(window.matchMedia('(max-width: 768px)').matches);
