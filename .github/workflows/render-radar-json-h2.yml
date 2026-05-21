@@ -60,11 +60,27 @@ jobs:
         run: |
           set -euo pipefail
 
-          SITE="${{ github.event.inputs.site || 'FCX' }}"
+          SITE_INPUT="${{ github.event.inputs.site || 'FCX' }}"
           PRODUCT="${{ github.event.inputs.product || 'N0B' }}"
           SOURCE_DIR="radar/source/level3"
 
-          export SITE
+          case "${SITE_INPUT^^}" in
+            FCX|KFCX)
+              SITE3="FCX"
+              SITE4="KFCX"
+              ;;
+            RAX|KRAX)
+              SITE3="RAX"
+              SITE4="KRAX"
+              ;;
+            *)
+              echo "Unsupported radar site: $SITE_INPUT" >&2
+              exit 1
+              ;;
+          esac
+
+          export SITE3
+          export SITE4
           export PRODUCT
 
           rm -rf "$SOURCE_DIR"
@@ -81,7 +97,8 @@ jobs:
           import xml.etree.ElementTree as ET
           from pathlib import Path
 
-          site = os.environ.get("SITE") or "FCX"
+          site3 = os.environ.get("SITE3") or "FCX"
+          site4 = os.environ.get("SITE4") or "KFCX"
           product = os.environ.get("PRODUCT") or "N0B"
 
           bucket_url = "https://unidata-nexrad-level3.s3.amazonaws.com"
@@ -132,8 +149,8 @@ jobs:
               name = Path(key).name
 
               valid_starts = (
-                  f"{site}_{product}_",
-                  f"K{site}_{product}_",
+                  f"{site3}_{product}_",
+                  f"{site4}_{product}_",
                   "Level3_",
               )
 
@@ -224,8 +241,8 @@ jobs:
           def prefer_key(existing_key, candidate_key):
               existing_name = Path(existing_key).name
               candidate_name = Path(candidate_key).name
-              existing_score = 1 if existing_name.startswith(f"K{site}_{product}_") else 0
-              candidate_score = 1 if candidate_name.startswith(f"K{site}_{product}_") else 0
+              existing_score = 1 if existing_name.startswith(f"{site4}_{product}_") else 0
+              candidate_score = 1 if candidate_name.startswith(f"{site4}_{product}_") else 0
 
               if candidate_score != existing_score:
                   return candidate_key if candidate_score > existing_score else existing_key
@@ -240,8 +257,8 @@ jobs:
               date_prefix = date.strftime("%Y_%m_%d")
               prefixes.extend(
                   [
-                      f"{site}_{product}_{date_prefix}_",
-                      f"K{site}_{product}_{date_prefix}_",
+                      f"{site3}_{product}_{date_prefix}_",
+                      f"{site4}_{product}_{date_prefix}_",
                   ]
               )
 
@@ -296,7 +313,7 @@ jobs:
               )
 
           if not selected_keys:
-              for prefix in ["", f"{product}/", f"{site}/", f"K{site}/", "Level3_"]:
+              for prefix in ["", f"{product}/", f"{site3}/", f"{site4}/", "Level3_"]:
                   print_diagnostic_sample(prefix)
 
               print("No candidate Level III files found for any tried date-scoped prefix", file=sys.stderr, flush=True)
@@ -310,7 +327,7 @@ jobs:
               download_path = source_dir / filename
 
               timestamp = timestamp_from_key(key)
-              output_path = source_dir / f"Level3_{site}_{product}_{timestamp}.nids"
+              output_path = source_dir / f"Level3_{site3}_{product}_{timestamp}.nids"
 
               download_url = bucket_url + "/" + urllib.parse.quote(key, safe="/")
 
@@ -330,8 +347,26 @@ jobs:
       - name: Clean generated radar frame folder
         shell: bash
         run: |
-          rm -rf "radar/frames/K${{ github.event.inputs.site || 'FCX' }}/${{ github.event.inputs.product || 'N0B' }}"
-          mkdir -p "radar/frames/K${{ github.event.inputs.site || 'FCX' }}/${{ github.event.inputs.product || 'N0B' }}"
+          set -euo pipefail
+
+          SITE_INPUT="${{ github.event.inputs.site || 'FCX' }}"
+          PRODUCT="${{ github.event.inputs.product || 'N0B' }}"
+
+          case "${SITE_INPUT^^}" in
+            FCX|KFCX)
+              SITE4="KFCX"
+              ;;
+            RAX|KRAX)
+              SITE4="KRAX"
+              ;;
+            *)
+              echo "Unsupported radar site: $SITE_INPUT" >&2
+              exit 1
+              ;;
+          esac
+
+          rm -rf "radar/frames/${SITE4}/${PRODUCT}"
+          mkdir -p "radar/frames/${SITE4}/${PRODUCT}"
 
       - name: Render radar frame
         run: |
