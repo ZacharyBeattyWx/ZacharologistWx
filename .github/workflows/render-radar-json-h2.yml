@@ -40,6 +40,10 @@ concurrency:
 jobs:
   render:
     runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 1
+      matrix:
+        site: ${{ fromJSON(github.event_name == 'schedule' && '["KFCX","KRAX"]' || format('["{0}"]', github.event.inputs.site || 'FCX')) }}
 
     steps:
       - name: Check out repository
@@ -60,7 +64,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          SITE_INPUT="${{ github.event.inputs.site || 'FCX' }}"
+          SITE_INPUT="${{ matrix.site }}"
           PRODUCT="${{ github.event.inputs.product || 'N0B' }}"
           SOURCE_DIR="radar/source/level3"
 
@@ -442,7 +446,7 @@ jobs:
       - name: Upload JSON-H2 radar artifact
         uses: actions/upload-artifact@v4
         with:
-          name: radar-json-h2-test
+          name: radar-json-h2-test-${{ matrix.site }}
           path: |
             radar/frames.json
             radar/frames/**/*.webp
