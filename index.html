@@ -7762,6 +7762,7 @@ document.addEventListener("click", function (e) {
 let pendingRadarAlert = null;
 let alertPolygonLayer = null;
 let alertCenterMarker = null;
+let isFocusingRadarAlert = false;
 
 function getAlertCenter(alert) {
   if (!alert || !alert.geometry) return null;
@@ -7863,7 +7864,10 @@ async function focusSingleSiteRadarOnAlert(alert) {
     radarSiteSelect.value = site.sector;
   }
 
-  if (currentRadarMode === "highres" || currentRadarMode === "raw") {
+  if (
+    !isFocusingRadarAlert &&
+    (currentRadarMode === "highres" || currentRadarMode === "raw")
+  ) {
     await loadSingleSiteRadarForCurrentMode(site.sector);
   }
 }
@@ -7880,6 +7884,13 @@ async function focusSingleSiteRadarOnAlert(alert) {
     alertCenterMarker = null;
   }
 
+  if (!singleSiteMap.getPane("alertPane")) {
+    singleSiteMap.createPane("alertPane");
+  }
+
+  singleSiteMap.getPane("alertPane").style.zIndex = 700;
+  singleSiteMap.getPane("alertPane").style.pointerEvents = "none";
+
   const polygonLatLngs = getAlertPolygonLatLngs(alert);
 
   if (polygonLatLngs) {
@@ -7888,7 +7899,8 @@ async function focusSingleSiteRadarOnAlert(alert) {
       weight: 3,
       opacity: 0.95,
       fillColor: getAlertColor(alert.properties?.event),
-      fillOpacity: 0.16
+      fillOpacity: 0.16,
+      pane: "alertPane"
     }).addTo(singleSiteMap);
 
     singleSiteMap.fitBounds(alertPolygonLayer.getBounds(), {
@@ -7896,7 +7908,9 @@ async function focusSingleSiteRadarOnAlert(alert) {
       maxZoom: 11
     });
   } else {
-    alertCenterMarker = L.marker([center.lat, center.lon])
+    alertCenterMarker = L.marker([center.lat, center.lon], {
+      pane: "alertPane"
+    })
       .addTo(singleSiteMap)
       .bindPopup(alert.properties?.event || "Weather Alert")
       .openPopup();
@@ -8351,7 +8365,7 @@ function loadSPCImages() {
 */
 
 const RADAR_FRAME_SERVICE_BASE = "/radar";
-const CUSTOM_RADAR_FRAME_SERVICE_BASE = "/radar";
+const CUSTOM_RADAR_FRAME_SERVICE_BASE = "https://pub-59a095878bc54839a2fef46404fa6f83.r2.dev/radar";
 const USE_CUSTOM_RADAR_FRAMES = true;
 
 const RADAR_ADAPTER_KEYS = {
@@ -8849,6 +8863,7 @@ let singleSiteRadarLoopIndex = 0;
 let singleSiteRadarLoopTimer = null;
 let singleSiteRadarLoopReady = false;
 let singleSiteRadarLoopRequestId = 0;
+let singleSiteRadarLoopSource = "iem";
 
 const SINGLE_SITE_RADAR_LOOP_MINUTES = 60;
 const SINGLE_SITE_RADAR_LOOP_SPEED = 650;
@@ -8887,6 +8902,7 @@ function clearSingleSiteRadarLoopLayers() {
   singleSiteRadarLoopFrames = [];
   singleSiteRadarLoopLayers = [];
   singleSiteRadarLoopIndex = 0;
+  singleSiteRadarLoopSource = "iem";
 
   const frameTime = document.getElementById("radarFrameTime");
   if (frameTime) {
@@ -8976,11 +8992,29 @@ function getCustomRadarProductId(mode, product) {
   return mode === "highres" ? "N0B" : String(product || "N0B").toUpperCase();
 }
 
+function resolveCustomRadarFrameUrl(url) {
+  if (!url) return "";
+
+  const trimmedUrl = String(url).trim();
+  const r2Origin = new URL(CUSTOM_RADAR_FRAME_SERVICE_BASE).origin;
+
+  if (/^https?:\/\//i.test(trimmedUrl)) {
+    return trimmedUrl;
+  }
+
+  if (trimmedUrl.startsWith("/radar/") || trimmedUrl.startsWith("/")) {
+    return `${r2Origin}${trimmedUrl}`;
+  }
+
+  return new URL(trimmedUrl, `${CUSTOM_RADAR_FRAME_SERVICE_BASE}/`).toString();
+}
+
 function normalizeCustomRadarFrames(catalog, { site, product, mode } = {}) {
   const customSite = getCustomRadarSiteId(site);
   const customProduct = getCustomRadarProductId(mode, product);
   const siteInfo = catalog?.sites?.[customSite] || {};
   const frameList = catalog?.frames?.[customSite]?.[customProduct] || [];
+  let loggedResolvedFrameUrl = false;
 
   return {
     source: "customFrames",
@@ -9001,13 +9035,20 @@ function normalizeCustomRadarFrames(catalog, { site, product, mode } = {}) {
           return null;
         }
 
+        const resolvedUrl = resolveCustomRadarFrameUrl(frame.url);
+
+        if (!loggedResolvedFrameUrl) {
+          console.log("Resolved Zach Radar frame URL:", resolvedUrl);
+          loggedResolvedFrameUrl = true;
+        }
+
         return {
           source: "customFrames",
           site: customSite,
           sector: siteInfo.sector || site || "",
           product: customProduct,
           slug: frame.slug || "",
-          url: frame.url,
+          url: resolvedUrl,
           validTime,
           bounds: frame.bounds,
           width: frame.width || null,
@@ -9061,19 +9102,76 @@ async function tryLoadCustomSingleSiteRadarLoopFrames({ site, product, mode, req
       return false;
     }
 
+    if (!singleSiteMap.getPane("radarPane")) {
+      singleSiteMap.createPane("radarPane");
+    }
+
+    singleSiteMap.getPane("radarPane").style.zIndex = 650;
+    singleSiteMap.getPane("radarPane").style.pointerEvents = "none";
+
+    singleSiteRadarLoopLayers.forEach(layer => {
+      if (singleSiteMap.hasLayer(layer)) {
+        singleSiteMap.removeLayer(layer);
+      }
+    });
+
+    singleSiteRadarLoopLayers = [];
+    singleSiteRadarLoopFrames = [];
+    singleSiteRadarLoopIndex = 0;
+
     if (singleSiteRadarLayer) {
       singleSiteMap.removeLayer(singleSiteRadarLayer);
       singleSiteRadarLayer = null;
     }
 
-    singleSiteRadarLoopFrames = frames.map(frame => frame.validTime);
     singleSiteRadarLoopLayers = frames.map(frame => {
       const layer = createCustomRadarFrameLayer(frame);
       layer.addTo(singleSiteMap);
       return layer;
     });
 
-    showSingleSiteRadarLoopFrame(singleSiteRadarLoopFrames.length - 1);
+    singleSiteRadarLoopFrames = frames.map(frame => frame.validTime);
+    singleSiteRadarLoopSource = "customFrames";
+
+    showSingleSiteRadarLoopFrame(singleSiteRadarLoopLayers.length - 1);
+
+    const activeLayer = singleSiteRadarLoopLayers[singleSiteRadarLoopIndex];
+
+    if (activeLayer && typeof activeLayer.getBounds === "function") {
+      singleSiteMap.fitBounds(activeLayer.getBounds(), {
+        padding: [24, 24],
+        maxZoom: 8
+      });
+    }
+
+    if (pendingRadarAlert) {
+      isFocusingRadarAlert = true;
+
+      try {
+        await focusSingleSiteRadarOnAlert(pendingRadarAlert);
+      } finally {
+        isFocusingRadarAlert = false;
+      }
+    }
+
+    const frameTime = document.getElementById("radarFrameTime");
+
+    if (frameTime) {
+      frameTime.textContent = `Zach Radar · ${site}`;
+    }
+
+    console.log("Showing Zach Radar frame", {
+      index: singleSiteRadarLoopIndex,
+      frame: singleSiteRadarLoopFrames[singleSiteRadarLoopIndex],
+      layerCount: singleSiteRadarLoopLayers.length
+    });
+
+    console.log("Using Zach Radar custom frames:", {
+      site,
+      product,
+      frameCount: singleSiteRadarLoopLayers.length
+    });
+
     return true;
   } catch (error) {
     console.warn("Custom radar frame loop unavailable; falling back to IEM:", error);
@@ -9092,7 +9190,10 @@ function showSingleSiteRadarLoopFrame(index) {
     (index + singleSiteRadarLoopLayers.length) %
     singleSiteRadarLoopLayers.length;
 
-  singleSiteRadarLoopLayers[singleSiteRadarLoopIndex].setOpacity(0.78);
+  const activeOpacity =
+    singleSiteRadarLoopSource === "customFrames" ? 1.0 : 0.78;
+
+  singleSiteRadarLoopLayers[singleSiteRadarLoopIndex].setOpacity(activeOpacity);
 
   const frameTime = document.getElementById("radarFrameTime");
   const frameDate = singleSiteRadarLoopFrames[singleSiteRadarLoopIndex];
@@ -9159,12 +9260,14 @@ async function loadSingleSiteRadarLoopFrames({ site, product, mode } = {}) {
   singleSiteRadarLoopFrames = [];
   singleSiteRadarLoopLayers = [];
   singleSiteRadarLoopIndex = 0;
+  singleSiteRadarLoopSource = "iem";
 
   if (!singleSiteMap.getPane("radarPane")) {
     singleSiteMap.createPane("radarPane");
-    singleSiteMap.getPane("radarPane").style.zIndex = 450;
-    singleSiteMap.getPane("radarPane").style.pointerEvents = "none";
   }
+
+  singleSiteMap.getPane("radarPane").style.zIndex = 650;
+  singleSiteMap.getPane("radarPane").style.pointerEvents = "none";
 
   const requestId = ++singleSiteRadarLoopRequestId;
 
@@ -9247,6 +9350,7 @@ async function loadSingleSiteRadarLoopFrames({ site, product, mode } = {}) {
       return layer;
     });
 
+    singleSiteRadarLoopSource = "iem";
     showSingleSiteRadarLoopFrame(singleSiteRadarLoopFrames.length - 1);
   } catch (error) {
   console.error("Single-site radar loop failed:", error);
