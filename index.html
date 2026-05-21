@@ -6554,6 +6554,119 @@ body {
   image-rendering: auto !important;
 }
 
+@media (max-width: 768px) {
+  .single-site-radar-viewer .single-radar-toolbar {
+    top: auto !important;
+    left: 8px !important;
+    right: 8px !important;
+    bottom: 8px !important;
+    width: auto !important;
+    max-width: none !important;
+    max-height: 46% !important;
+    overflow-y: auto !important;
+    z-index: 1000 !important;
+
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 7px !important;
+    align-items: stretch !important;
+
+    padding: 9px 10px calc(10px + env(safe-area-inset-bottom)) !important;
+    border-radius: 16px 16px 10px 10px !important;
+    background: rgba(2, 6, 23, 0.86) !important;
+    border: 1px solid rgba(148, 163, 184, 0.26) !important;
+    box-shadow: 0 -18px 42px rgba(0, 0, 0, 0.35) !important;
+    backdrop-filter: blur(14px) !important;
+  }
+
+  .single-site-radar-viewer .radar-location-search {
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: 6px !important;
+    align-items: center !important;
+  }
+
+  .single-site-radar-viewer .radar-location-search input {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    padding: 6px 8px !important;
+    font-size: 0.78rem !important;
+  }
+
+  .single-site-radar-viewer .radar-location-search button {
+    padding: 6px 8px !important;
+    font-size: 0.76rem !important;
+    white-space: nowrap !important;
+  }
+
+  .single-site-radar-viewer #radarSearchStatus {
+    grid-column: 1 / -1 !important;
+    font-size: 0.72rem !important;
+    line-height: 1.15 !important;
+    white-space: normal !important;
+  }
+
+  .single-site-radar-viewer .single-radar-toolbar > label:not(.radar-speed-control) {
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: 72px minmax(0, 1fr) !important;
+    gap: 7px !important;
+    align-items: center !important;
+    font-size: 0.74rem !important;
+  }
+
+  .single-site-radar-viewer .single-radar-toolbar select {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    padding: 6px 8px !important;
+    font-size: 0.78rem !important;
+  }
+
+  .single-site-radar-viewer #radarRefreshBtn {
+    width: 100% !important;
+    height: 32px !important;
+    padding: 5px 8px !important;
+    font-size: 0.78rem !important;
+  }
+
+  .single-site-radar-viewer .single-radar-toolbar .radar-loop-controls {
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, auto)) minmax(76px, 1fr) !important;
+    gap: 6px !important;
+    align-items: center !important;
+  }
+
+  .single-site-radar-viewer .single-radar-toolbar .radar-loop-controls button {
+    height: 31px !important;
+    min-width: 0 !important;
+    padding: 5px 9px !important;
+    font-size: 0.76rem !important;
+  }
+
+  .single-site-radar-viewer .single-radar-toolbar .radar-frame-time {
+    min-width: 0 !important;
+    width: auto !important;
+    font-size: 0.72rem !important;
+    text-align: right !important;
+  }
+
+  .single-site-radar-viewer .single-radar-toolbar .radar-speed-control {
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    gap: 4px !important;
+  }
+
+  .single-site-radar-viewer .single-radar-toolbar .radar-speed-label {
+    font-size: 0.7rem !important;
+  }
+}
+
 /* Ensure the main site header remains visible on the homepage */
 .site-header {
   display: flex !important;
