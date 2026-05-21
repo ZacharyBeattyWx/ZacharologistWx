@@ -82,6 +82,10 @@ jobs:
           export SITE3
           export SITE4
           export PRODUCT
+          echo "SITE3=${SITE3}" >> "$GITHUB_ENV"
+          echo "SITE4=${SITE4}" >> "$GITHUB_ENV"
+          echo "PRODUCT=${PRODUCT}" >> "$GITHUB_ENV"
+          echo "Normalized radar site input: site3=${SITE3} site4=${SITE4} product=${PRODUCT}"
 
           rm -rf "$SOURCE_DIR"
           mkdir -p "$SOURCE_DIR"
@@ -293,6 +297,7 @@ jobs:
           selected_items = sorted_candidate_items[-frame_count:]
           selected_keys = [key for _parsed_time, key in selected_items]
 
+          print(f"Normalized radar site: site3={site3} site4={site4} product={product}", flush=True)
           print(f"frameCount={frame_count}", flush=True)
           print(f"Total unique candidate Level III keys found: {len(all_candidate_keys)}", flush=True)
           print(f"Skipped key count with unparsed timestamps: {len(skipped_keys)}", flush=True)
@@ -344,33 +349,64 @@ jobs:
                   download_path.replace(output_path)
           PY
 
+      - name: Restore existing R2 radar catalog
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_EC2_METADATA_DISABLED: true
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          R2_ENDPOINT="https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com"
+          mkdir -p radar
+
+          if aws s3 cp "s3://${{ secrets.R2_BUCKET }}/radar/frames.json" radar/frames.json --endpoint-url "$R2_ENDPOINT"; then
+            python - <<'PY'
+          import json
+          from pathlib import Path
+
+          catalog = json.loads(Path("radar/frames.json").read_text(encoding="utf-8"))
+          site_keys = sorted((catalog.get("frames") or {}).keys())
+          print(f"Restored R2 catalog site keys: {', '.join(site_keys) if site_keys else '(none)'}")
+          PY
+          else
+            echo "No existing R2 radar/frames.json found; renderer will create a new catalog."
+          fi
+
       - name: Clean generated radar frame folder
         shell: bash
         run: |
           set -euo pipefail
 
-          SITE_INPUT="${{ github.event.inputs.site || 'FCX' }}"
-          PRODUCT="${{ github.event.inputs.product || 'N0B' }}"
-
-          case "${SITE_INPUT^^}" in
-            FCX|KFCX)
-              SITE4="KFCX"
-              ;;
-            RAX|KRAX)
-              SITE4="KRAX"
-              ;;
-            *)
-              echo "Unsupported radar site: $SITE_INPUT" >&2
-              exit 1
-              ;;
-          esac
-
           rm -rf "radar/frames/${SITE4}/${PRODUCT}"
           mkdir -p "radar/frames/${SITE4}/${PRODUCT}"
+          echo "Rendered output folder: radar/frames/${SITE4}/${PRODUCT}"
 
       - name: Render radar frame
         run: |
-          python scripts/radar/render_reflectivity.py --render --force --min-visible-dbz "${{ github.event.inputs.min_visible_dbz || '5' }}" --min-component-pixels "${{ github.event.inputs.min_component_pixels || '3' }}"
+          python scripts/radar/render_reflectivity.py --render --force --site "${SITE4}" --product "${PRODUCT}" --min-visible-dbz "${{ github.event.inputs.min_visible_dbz || '5' }}" --min-component-pixels "${{ github.event.inputs.min_component_pixels || '3' }}"
+
+      - name: Show generated radar catalog keys
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          catalog = json.loads(Path("radar/frames.json").read_text(encoding="utf-8"))
+          sites = sorted((catalog.get("sites") or {}).keys())
+          frames = catalog.get("frames") or {}
+          frame_keys = sorted(frames.keys())
+          print(f"Generated catalog site keys: {', '.join(sites) if sites else '(none)'}")
+          print(f"Generated catalog frame site keys: {', '.join(frame_keys) if frame_keys else '(none)'}")
+          for site in frame_keys:
+              products = sorted((frames.get(site) or {}).keys())
+              print(f"Generated catalog products for {site}: {', '.join(products) if products else '(none)'}")
+          PY
 
       - name: Show generated radar files
         run: |
@@ -384,10 +420,24 @@ jobs:
           AWS_DEFAULT_REGION: auto
           AWS_EC2_METADATA_DISABLED: true
         run: |
+          set -euo pipefail
+
           R2_ENDPOINT="https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com"
 
           aws s3 cp radar/frames.json "s3://${{ secrets.R2_BUCKET }}/radar/frames.json" --endpoint-url "$R2_ENDPOINT"
-          aws s3 sync radar/frames "s3://${{ secrets.R2_BUCKET }}/radar/frames" --exclude "*" --include "*.webp" --delete --endpoint-url "$R2_ENDPOINT"
+          aws s3 sync "radar/frames/${SITE4}/${PRODUCT}" "s3://${{ secrets.R2_BUCKET }}/radar/frames/${SITE4}/${PRODUCT}" --exclude "*" --include "*.webp" --delete --endpoint-url "$R2_ENDPOINT"
+
+          TMP_CATALOG="$(mktemp)"
+          aws s3 cp "s3://${{ secrets.R2_BUCKET }}/radar/frames.json" "$TMP_CATALOG" --endpoint-url "$R2_ENDPOINT"
+          python - "$TMP_CATALOG" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          catalog = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          site_keys = sorted((catalog.get("frames") or {}).keys())
+          print(f"Uploaded R2 catalog site keys: {', '.join(site_keys) if site_keys else '(none)'}")
+          PY
 
       - name: Upload JSON-H2 radar artifact
         uses: actions/upload-artifact@v4
@@ -407,20 +457,20 @@ jobs:
           export GIT_EDITOR=true
           BACKUP_DIR="$(mktemp -d)"
           trap 'rm -rf "$BACKUP_DIR"' EXIT
-          mkdir -p "$BACKUP_DIR/radar"
+          mkdir -p "$BACKUP_DIR/radar/frames/${SITE4}"
 
           cp radar/frames.json "$BACKUP_DIR/radar/frames.json"
-          cp -R radar/frames "$BACKUP_DIR/radar/frames"
+          cp -R "radar/frames/${SITE4}/${PRODUCT}" "$BACKUP_DIR/radar/frames/${SITE4}/${PRODUCT}"
 
           git fetch origin main
           git reset --hard origin/main
-          git clean -fd radar/frames
 
           cp "$BACKUP_DIR/radar/frames.json" radar/frames.json
-          rm -rf radar/frames
-          cp -R "$BACKUP_DIR/radar/frames" radar/frames
+          rm -rf "radar/frames/${SITE4}/${PRODUCT}"
+          mkdir -p "radar/frames/${SITE4}"
+          cp -R "$BACKUP_DIR/radar/frames/${SITE4}/${PRODUCT}" "radar/frames/${SITE4}/${PRODUCT}"
 
-          git add radar/frames.json radar/frames
+          git add radar/frames.json "radar/frames/${SITE4}/${PRODUCT}"
 
           if git diff --cached --quiet; then
             echo "No generated radar output changes to commit."
