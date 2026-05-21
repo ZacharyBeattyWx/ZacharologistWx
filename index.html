@@ -6968,6 +6968,45 @@ body {
   }
 }
 
+@media (max-width: 768px) {
+  #radarModal.is-open #singleSiteRadarViewer.single-site-radar-viewer > .single-radar-toolbar {
+    bottom: 42px !important;
+    gap: 8px !important;
+    padding: 10px 12px !important;
+  }
+
+  #radarModal.is-open #singleSiteRadarViewer .radar-loop-controls {
+    grid-template-columns: 44px minmax(0, 1fr) 44px !important;
+    grid-template-areas:
+      "speed speed speed"
+      "time time time"
+      "back play next" !important;
+    gap: 6px !important;
+  }
+
+  #radarModal.is-open #singleSiteRadarViewer .radar-loop-controls button {
+    height: 44px !important;
+    padding: 7px 8px !important;
+  }
+
+  #radarModal.is-open #singleSiteRadarViewer #radarStepBackBtn,
+  #radarModal.is-open #singleSiteRadarViewer #radarStepForwardBtn {
+    width: 44px !important;
+    min-width: 44px !important;
+    max-width: 44px !important;
+  }
+
+  #radarModal.is-open #singleSiteRadarViewer #radarPlayBtn {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  #radarModal.is-open #singleSiteRadarViewer #radarFrameTime {
+    align-self: center !important;
+    line-height: 1.1 !important;
+  }
+}
+
  </style>
 </head>
 
