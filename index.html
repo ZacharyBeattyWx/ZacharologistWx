@@ -9335,10 +9335,13 @@ let singleSiteRadarLoopRequestId = 0;
 let singleSiteRadarLoopSource = "iem";
 let singleSiteRadarLoopSwapToken = 0;
 let isSingleSiteRadarFrameSwapInProgress = false;
+let customFrameSwapInProgress = false;
 
 const SINGLE_SITE_RADAR_LOOP_MINUTES = 60;
 const SINGLE_SITE_MOBILE_PLAYBACK_FRAME_LIMIT = 12;
 const SINGLE_SITE_MOBILE_DECODED_CACHE_LIMIT = 2;
+const ZACH_RADAR_FRAME_FADE_MS = 180;
+const DEBUG_ZACH_RADAR_FRAMES = false;
 const SINGLE_SITE_BASE_PLAY_INTERVAL_MS = 360;
 const SINGLE_SITE_MIN_PLAY_INTERVAL_MS = 60;
 const SINGLE_SITE_MIN_MOBILE_PLAY_INTERVAL_MS = 120;
@@ -9429,6 +9432,7 @@ function rescheduleSingleSitePlaybackForSpeedChange() {
   clearInterval(singleSiteRadarLoopTimer);
   singleSiteRadarLoopTimer = setInterval(() => {
     if (isSingleSiteRadarFrameSwapInProgress) return;
+    if (customFrameSwapInProgress) return;
 
     showSingleSiteRadarLoopFrame(singleSiteRadarLoopIndex + 1, {
       mobileWarmDirection: "next"
@@ -9450,6 +9454,7 @@ function clearSingleSiteRadarLoopLayers() {
   singleSiteRadarLoopSource = "iem";
   singleSiteRadarLoopSwapToken++;
   isSingleSiteRadarFrameSwapInProgress = false;
+  customFrameSwapInProgress = false;
 
   const frameTime = document.getElementById("radarFrameTime");
   if (frameTime) {
@@ -9465,6 +9470,7 @@ function cleanupSingleSiteRadarRuntime(options = {}) {
   singleSiteRadarLoopRequestId++;
   singleSiteRadarLoopSwapToken++;
   isSingleSiteRadarFrameSwapInProgress = false;
+  customFrameSwapInProgress = false;
 
   singleSiteRadarLoopLayers.forEach(layer => {
     releaseSingleSiteRadarLoopLayer(layer);
@@ -9475,6 +9481,7 @@ function cleanupSingleSiteRadarRuntime(options = {}) {
   singleSiteRadarLoopFrameData = [];
   singleSiteRadarLoopIndex = 0;
   singleSiteRadarLoopSource = "iem";
+  customFrameSwapInProgress = false;
 
   if (singleSiteRadarLayer) {
     singleSiteRadarLayer.off();
@@ -9665,11 +9672,13 @@ function createCustomRadarFrameLayer(frame) {
   const layer = L.imageOverlay(frame.url, frame.bounds, {
     opacity: 0,
     pane: "radarPane",
+    interactive: false,
     attribution: "Radar: Zacharologist Wx / NEXRAD"
   });
 
   layer._zachRadarFrame = frame;
   layer._zachRadarLoaded = false;
+  layer._zachRadarFailed = false;
   layer.once("load", () => {
     layer._zachRadarLoaded = true;
   });
@@ -9689,6 +9698,17 @@ function releaseSingleSiteRadarLoopLayer(layer) {
     layer._image.onerror = null;
     layer._image.removeAttribute("src");
   }
+}
+
+function debugZachRadarFrame(message, payload = {}) {
+  if (!DEBUG_ZACH_RADAR_FRAMES) return;
+  console.log(message, payload);
+}
+
+function waitForZachRadarFade() {
+  return new Promise(resolve => {
+    setTimeout(resolve, ZACH_RADAR_FRAME_FADE_MS);
+  });
 }
 
 function customRadarNeighborIndex(index, direction = "next") {
@@ -9725,6 +9745,7 @@ function pruneCustomRadarMobileLayers(keepIndexes = []) {
   }
 
   const keepSet = new Set(keepIndexes);
+  keepSet.add(singleSiteRadarLoopIndex);
 
   singleSiteRadarLoopLayers.forEach((layer, index) => {
     if (!layer || keepSet.has(index)) return;
@@ -9750,12 +9771,17 @@ function ensureCustomRadarLoopLayer(index) {
     layer.addTo(singleSiteMap);
   }
 
+  if (typeof layer.setZIndex === "function") {
+    layer.setZIndex(index === singleSiteRadarLoopIndex ? 2 : 3);
+  }
+
   return layer;
 }
 
 function waitForCustomRadarLayerLoad(layer) {
   if (!layer) return Promise.resolve(false);
   if (layer._zachRadarLoaded) return Promise.resolve(true);
+  if (layer._zachRadarFailed) return Promise.resolve(false);
 
   return new Promise(resolve => {
     const cleanup = () => {
@@ -9770,6 +9796,7 @@ function waitForCustomRadarLayerLoad(layer) {
     };
 
     const onError = () => {
+      layer._zachRadarFailed = true;
       cleanup();
       resolve(false);
     };
@@ -9931,7 +9958,7 @@ async function showSingleSiteRadarLoopFrame(index, { mobileWarmDirection = "next
 
   if (
     singleSiteRadarLoopSource === "customFrames" &&
-    isSingleSiteRadarFrameSwapInProgress
+    customFrameSwapInProgress
   ) {
     return false;
   }
@@ -9946,7 +9973,21 @@ async function showSingleSiteRadarLoopFrame(index, { mobileWarmDirection = "next
     singleSiteRadarLoopSource === "customFrames" ? 1.0 : 0.78;
 
   if (singleSiteRadarLoopSource === "customFrames") {
+    debugZachRadarFrame("Zach Radar requested frame index", {
+      requestedIndex: targetIndex,
+      currentIndex: singleSiteRadarLoopIndex
+    });
+
+    if (
+      targetIndex === singleSiteRadarLoopIndex &&
+      singleSiteRadarLoopLayers[targetIndex]
+    ) {
+      singleSiteRadarLoopLayers[targetIndex].setOpacity(activeOpacity);
+      return true;
+    }
+
     isSingleSiteRadarFrameSwapInProgress = true;
+    customFrameSwapInProgress = true;
 
     const keepIndexes = isSingleSiteMobilePlaybackMode()
       ? [
@@ -9957,7 +9998,19 @@ async function showSingleSiteRadarLoopFrame(index, { mobileWarmDirection = "next
 
     pruneCustomRadarMobileLayers(keepIndexes);
 
+    const previousIndex = singleSiteRadarLoopIndex;
+    const previousLayer = singleSiteRadarLoopLayers[previousIndex];
     const targetLayer = ensureCustomRadarLoopLayer(targetIndex);
+    targetLayer?.setOpacity(0);
+
+    if (previousLayer && typeof previousLayer.setZIndex === "function") {
+      previousLayer.setZIndex(2);
+    }
+
+    if (targetLayer && typeof targetLayer.setZIndex === "function") {
+      targetLayer.setZIndex(3);
+    }
+
     const targetLoaded = await waitForCustomRadarLayerLoad(targetLayer);
 
     if (
@@ -9965,17 +10018,58 @@ async function showSingleSiteRadarLoopFrame(index, { mobileWarmDirection = "next
       swapToken !== singleSiteRadarLoopSwapToken ||
       !targetLayer
     ) {
+      debugZachRadarFrame("Zach Radar skipped frame index", {
+        skippedIndex: targetIndex,
+        currentIndex: singleSiteRadarLoopIndex
+      });
+      if (targetIndex !== singleSiteRadarLoopIndex) {
+        releaseSingleSiteRadarLoopLayer(targetLayer);
+        singleSiteRadarLoopLayers[targetIndex] = null;
+      }
       isSingleSiteRadarFrameSwapInProgress = false;
+      customFrameSwapInProgress = false;
       return false;
     }
 
-    singleSiteRadarLoopLayers.forEach((layer, layerIndex) => {
-      if (!layer) return;
-      layer.setOpacity(layerIndex === targetIndex ? activeOpacity : 0);
+    debugZachRadarFrame("Zach Radar loaded frame index", {
+      loadedIndex: targetIndex,
+      previousIndex
     });
 
+    targetLayer.setOpacity(activeOpacity);
+    await waitForZachRadarFade();
+
+    if (swapToken !== singleSiteRadarLoopSwapToken) {
+      isSingleSiteRadarFrameSwapInProgress = false;
+      customFrameSwapInProgress = false;
+      return false;
+    }
+
     singleSiteRadarLoopIndex = targetIndex;
+
+    singleSiteRadarLoopLayers.forEach((layer, layerIndex) => {
+      if (!layer || layerIndex === targetIndex) return;
+
+      if (
+        !isSingleSiteMobilePlaybackMode() &&
+        layerIndex !== previousIndex
+      ) {
+        layer.setOpacity(0);
+        return;
+      }
+
+      if (layerIndex === previousIndex) {
+        releaseSingleSiteRadarLoopLayer(layer);
+        singleSiteRadarLoopLayers[layerIndex] = null;
+        debugZachRadarFrame("Zach Radar active layer removed", {
+          removedIndex: layerIndex,
+          activeIndex: singleSiteRadarLoopIndex
+        });
+      }
+    });
+
     isSingleSiteRadarFrameSwapInProgress = false;
+    customFrameSwapInProgress = false;
     warmCustomRadarFrameWindow(singleSiteRadarLoopIndex, mobileWarmDirection);
   } else {
     singleSiteRadarLoopLayers.forEach(layer => {
@@ -9985,7 +10079,7 @@ async function showSingleSiteRadarLoopFrame(index, { mobileWarmDirection = "next
     singleSiteRadarLoopIndex = targetIndex;
   }
 
-  singleSiteRadarLoopLayers[singleSiteRadarLoopIndex].setOpacity(activeOpacity);
+  singleSiteRadarLoopLayers[singleSiteRadarLoopIndex]?.setOpacity(activeOpacity);
 
   const frameTime = document.getElementById("radarFrameTime");
   const frameDate = singleSiteRadarLoopFrames[singleSiteRadarLoopIndex];
@@ -10031,6 +10125,7 @@ function toggleSingleSiteRadarLoop() {
 
   singleSiteRadarLoopTimer = setInterval(() => {
     if (isSingleSiteRadarFrameSwapInProgress) return;
+    if (customFrameSwapInProgress) return;
 
     showSingleSiteRadarLoopFrame(singleSiteRadarLoopIndex + 1, {
       mobileWarmDirection: "next"
