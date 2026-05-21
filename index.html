@@ -1720,6 +1720,27 @@ color: white;
   font-weight: 700;
 }
 
+.radar-speed-control {
+  display: grid;
+  gap: 6px;
+  min-width: 150px;
+  max-width: 190px;
+}
+
+.radar-speed-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: #cbd5e1;
+  font-size: 0.76rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.radar-speed-control input[type="range"] {
+  width: 100%;
+}
+
 .single-radar-toolbar {
   position: absolute;
   top: 12px;
@@ -6248,6 +6269,11 @@ body {
     font-size: 0.78rem;
   }
 
+  .radar-speed-control {
+    width: 100%;
+    max-width: none;
+  }
+
   .forecast-dashboard .alerts-card {
     height: auto !important;
     min-height: 0 !important;
@@ -6476,7 +6502,7 @@ body {
   display: flex !important;
   align-items: center !important;
   gap: 8px !important;
-  flex-wrap: nowrap !important;
+  flex-wrap: wrap !important;
 
   width: auto !important;
   padding: 0 !important;
@@ -6498,6 +6524,23 @@ body {
   width: auto !important;
   min-width: 92px !important;
   white-space: nowrap !important;
+}
+
+.single-radar-toolbar .radar-speed-control {
+  display: grid !important;
+  gap: 6px !important;
+  min-width: 150px !important;
+  max-width: 180px !important;
+  margin: 0 !important;
+}
+
+.single-radar-toolbar .radar-speed-label {
+  font-size: 0.72rem !important;
+}
+
+.single-radar-toolbar .radar-speed-control input[type="range"] {
+  width: 100% !important;
+  accent-color: #38bdf8;
 }
 
 /* Improve single-site radar display clarity */
@@ -7023,6 +7066,13 @@ body {
 <button id="radarPlayBtn" type="button" class="radar-loop-btn radar-play-btn">▶ Play</button>
 <button id="radarStepForwardBtn" type="button" class="radar-loop-btn">›</button>
 <span id="radarFrameTime" class="radar-frame-time">Latest</span>
+<label class="radar-speed-control" for="radarSpeedSlider">
+  <span class="radar-speed-label">
+    <span>Playback speed</span>
+    <span id="radarSpeedValue">— 1x</span>
+  </span>
+  <input id="radarSpeedSlider" type="range" min="0.5" max="6" step="0.25" value="1">
+</label>
 </div>
 
         </div>
@@ -7762,7 +7812,6 @@ document.addEventListener("click", function (e) {
 let pendingRadarAlert = null;
 let alertPolygonLayer = null;
 let alertCenterMarker = null;
-let isFocusingRadarAlert = false;
 
 function getAlertCenter(alert) {
   if (!alert || !alert.geometry) return null;
@@ -7841,8 +7890,11 @@ async function openRadarForAlert(alertId, mode = "raw") {
   openRadarModal(mode);
 }
 
-async function focusSingleSiteRadarOnAlert(alert) {
+async function focusSingleSiteRadarOnAlert(alert, options = {}) {
   if (!alert || !singleSiteMap) return;
+
+  const skipRadarReload = options.skipRadarReload === true;
+  const skipFitBounds = options.skipFitBounds === true;
 
   const center = getAlertCenter(alert);
 
@@ -7865,14 +7917,16 @@ async function focusSingleSiteRadarOnAlert(alert) {
   }
 
   if (
-    !isFocusingRadarAlert &&
+    !skipRadarReload &&
     (currentRadarMode === "highres" || currentRadarMode === "raw")
   ) {
     await loadSingleSiteRadarForCurrentMode(site.sector);
   }
 }
 
-  singleSiteMap.setView([center.lat, center.lon], 8);
+  if (!skipFitBounds) {
+    singleSiteMap.setView([center.lat, center.lon], 8);
+  }
 
   if (alertPolygonLayer) {
     singleSiteMap.removeLayer(alertPolygonLayer);
@@ -7903,10 +7957,12 @@ async function focusSingleSiteRadarOnAlert(alert) {
       pane: "alertPane"
     }).addTo(singleSiteMap);
 
-    singleSiteMap.fitBounds(alertPolygonLayer.getBounds(), {
-      padding: [36, 36],
-      maxZoom: 11
-    });
+    if (!skipFitBounds) {
+      singleSiteMap.fitBounds(alertPolygonLayer.getBounds(), {
+        padding: [36, 36],
+        maxZoom: 11
+      });
+    }
   } else {
     alertCenterMarker = L.marker([center.lat, center.lon], {
       pane: "alertPane"
@@ -8452,6 +8508,7 @@ function getActiveHighResRadarSiteCode() {
 
 let radarSearchMarker = null;
 let singleSiteMap = null;
+let singleSiteBaseLayer = null;
 let singleSiteRadarLayer = null;
 
 const radarUrls = {
@@ -8866,13 +8923,20 @@ let singleSiteRadarLoopRequestId = 0;
 let singleSiteRadarLoopSource = "iem";
 
 const SINGLE_SITE_RADAR_LOOP_MINUTES = 60;
-const SINGLE_SITE_RADAR_LOOP_SPEED = 650;
+const SINGLE_SITE_BASE_PLAY_INTERVAL_MS = 360;
+const SINGLE_SITE_MIN_PLAY_INTERVAL_MS = 60;
+const SINGLE_SITE_MIN_MOBILE_PLAY_INTERVAL_MS = 120;
+const SINGLE_SITE_MOBILE_BREAKPOINT_QUERY = "(max-width: 768px)";
+const singleSiteMobilePlaybackQuery = window.matchMedia(
+  SINGLE_SITE_MOBILE_BREAKPOINT_QUERY
+);
 
 function setRadarPlaybackControlsVisible(isVisible) {
   const backBtn = document.getElementById("radarStepBackBtn");
   const playBtn = document.getElementById("radarPlayBtn");
   const forwardBtn = document.getElementById("radarStepForwardBtn");
   const frameTime = document.getElementById("radarFrameTime");
+  const speedControl = document.querySelector(".single-radar-toolbar .radar-speed-control");
   const controls = document.querySelector(".single-radar-toolbar .radar-loop-controls");
 
   if (controls) {
@@ -8888,6 +8952,60 @@ function setRadarPlaybackControlsVisible(isVisible) {
   if (frameTime) {
     frameTime.style.display = "";
   }
+
+  if (speedControl) {
+    speedControl.style.display = isVisible ? "" : "none";
+  }
+}
+
+function isSingleSiteMobilePlaybackMode() {
+  return (
+    singleSiteMobilePlaybackQuery.matches ||
+    window.matchMedia("(pointer: coarse)").matches
+  );
+}
+
+function getSingleSitePlaybackSpeed() {
+  const speedSlider = document.getElementById("radarSpeedSlider");
+  const speed = Number(speedSlider?.value);
+  return Number.isFinite(speed) && speed > 0 ? speed : 1;
+}
+
+function formatSingleSitePlaybackSpeed(speed) {
+  return Number.isInteger(speed)
+    ? `${speed}x`
+    : `${speed.toFixed(2).replace(/0+$/, "").replace(/\.$/, "")}x`;
+}
+
+function updateSingleSitePlaybackSpeedLabel() {
+  const speedValue = document.getElementById("radarSpeedValue");
+
+  if (speedValue) {
+    speedValue.textContent =
+      `— ${formatSingleSitePlaybackSpeed(getSingleSitePlaybackSpeed())}`;
+  }
+}
+
+function getSingleSitePlaybackIntervalMs() {
+  const minimumInterval = isSingleSiteMobilePlaybackMode()
+    ? SINGLE_SITE_MIN_MOBILE_PLAY_INTERVAL_MS
+    : SINGLE_SITE_MIN_PLAY_INTERVAL_MS;
+
+  return Math.max(
+    minimumInterval,
+    Math.round(SINGLE_SITE_BASE_PLAY_INTERVAL_MS / getSingleSitePlaybackSpeed())
+  );
+}
+
+function rescheduleSingleSitePlaybackForSpeedChange() {
+  updateSingleSitePlaybackSpeedLabel();
+
+  if (!singleSiteRadarLoopTimer) return;
+
+  clearInterval(singleSiteRadarLoopTimer);
+  singleSiteRadarLoopTimer = setInterval(() => {
+    showSingleSiteRadarLoopFrame(singleSiteRadarLoopIndex + 1);
+  }, getSingleSitePlaybackIntervalMs());
 }
 
 function clearSingleSiteRadarLoopLayers() {
@@ -9137,21 +9255,28 @@ async function tryLoadCustomSingleSiteRadarLoopFrames({ site, product, mode, req
 
     const activeLayer = singleSiteRadarLoopLayers[singleSiteRadarLoopIndex];
 
-    if (activeLayer && typeof activeLayer.getBounds === "function") {
+    if (pendingRadarAlert) {
+      await focusSingleSiteRadarOnAlert(pendingRadarAlert, {
+        skipRadarReload: true,
+        skipFitBounds: true
+      });
+
+      if (alertPolygonLayer) {
+        singleSiteMap.fitBounds(alertPolygonLayer.getBounds(), {
+          padding: [48, 48],
+          maxZoom: 7
+        });
+      } else if (activeLayer && singleSiteMap && typeof activeLayer.getBounds === "function") {
+        singleSiteMap.fitBounds(activeLayer.getBounds(), {
+          padding: [24, 24],
+          maxZoom: 8
+        });
+      }
+    } else if (activeLayer && singleSiteMap && typeof activeLayer.getBounds === "function") {
       singleSiteMap.fitBounds(activeLayer.getBounds(), {
         padding: [24, 24],
         maxZoom: 8
       });
-    }
-
-    if (pendingRadarAlert) {
-      isFocusingRadarAlert = true;
-
-      try {
-        await focusSingleSiteRadarOnAlert(pendingRadarAlert);
-      } finally {
-        isFocusingRadarAlert = false;
-      }
     }
 
     const frameTime = document.getElementById("radarFrameTime");
@@ -9237,7 +9362,7 @@ function toggleSingleSiteRadarLoop() {
 
   singleSiteRadarLoopTimer = setInterval(() => {
     showSingleSiteRadarLoopFrame(singleSiteRadarLoopIndex + 1);
-  }, SINGLE_SITE_RADAR_LOOP_SPEED);
+  }, getSingleSitePlaybackIntervalMs());
 }
 
 async function loadSingleSiteRadarLoopFrames({ site, product, mode } = {}) {
@@ -9412,8 +9537,23 @@ function setupSingleSiteRadarLoopControls() {
   const playBtn = document.getElementById("radarPlayBtn");
   const backBtn = document.getElementById("radarStepBackBtn");
   const forwardBtn = document.getElementById("radarStepForwardBtn");
+  const speedSlider = document.getElementById("radarSpeedSlider");
 
   playBtn?.addEventListener("click", toggleSingleSiteRadarLoop);
+  speedSlider?.addEventListener("input", rescheduleSingleSitePlaybackForSpeedChange);
+
+  if (typeof singleSiteMobilePlaybackQuery.addEventListener === "function") {
+    singleSiteMobilePlaybackQuery.addEventListener(
+      "change",
+      rescheduleSingleSitePlaybackForSpeedChange
+    );
+  } else if (typeof singleSiteMobilePlaybackQuery.addListener === "function") {
+    singleSiteMobilePlaybackQuery.addListener(
+      rescheduleSingleSitePlaybackForSpeedChange
+    );
+  }
+
+  updateSingleSitePlaybackSpeedLabel();
 
   backBtn?.addEventListener("click", () => {
     stopSingleSiteRadarLoop();
@@ -9452,6 +9592,16 @@ async function initSingleSiteRadar(options = {}) {
       attributionControl: true,
       maxZoom: 12
     }).setView(siteInfo.center, siteInfo.zoom);
+  }
+
+  if (!singleSiteBaseLayer) {
+    singleSiteBaseLayer = L.tileLayer(
+      "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+      {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap contributors &copy; CARTO"
+      }
+    ).addTo(singleSiteMap);
   }
 
   singleSiteMap.setView(siteInfo.center, siteInfo.zoom);
