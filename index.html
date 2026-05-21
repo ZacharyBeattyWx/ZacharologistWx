@@ -6781,8 +6781,32 @@ body {
 }
 
 @media (max-width: 768px) {
+  #radarModal.is-open .radar-modal-box {
+    height: min(94vh, 760px) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+  }
+
+  #radarModal.is-open .radar-modal-header {
+    padding: 10px 12px !important;
+    flex: 0 0 auto !important;
+  }
+
+  #radarModal.is-open .radar-mode-buttons,
+  #radarModal.is-open .radar-modal-note {
+    display: none !important;
+  }
+
+  #radarModal.is-open .radar-frame-wrap {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+  }
+
   #radarModal.is-open #singleSiteRadarViewer.single-site-radar-viewer {
     position: relative !important;
+    height: 100% !important;
+    min-height: 0 !important;
   }
 
   #radarModal.is-open #singleSiteRadarViewer.single-site-radar-viewer > .single-radar-toolbar {
@@ -6796,6 +6820,151 @@ body {
     transform: none !important;
     margin: 0 !important;
     z-index: 1000 !important;
+
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    grid-template-areas:
+      "search site"
+      "controls controls" !important;
+    gap: 7px !important;
+    align-items: center !important;
+
+    padding: 12px 14px calc(12px + env(safe-area-inset-bottom)) !important;
+    border-radius: 14px !important;
+    background: rgba(2, 6, 23, 0.88) !important;
+    border: 1px solid rgba(148, 163, 184, 0.45) !important;
+    box-shadow: 0 -18px 42px rgba(0, 0, 0, 0.38) !important;
+    backdrop-filter: blur(14px) !important;
+  }
+
+  #radarModal.is-open #singleSiteRadarViewer .radar-location-search {
+    grid-area: search !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 34px !important;
+    gap: 6px !important;
+    align-items: center !important;
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  #radarModal.is-open #singleSiteRadarViewer .radar-location-search input {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    height: 34px !important;
+    padding: 6px 8px !important;
+    font-size: 0.78rem !important;
+  }
+
+  #radarModal.is-open #singleSiteRadarViewer .radar-location-search button {
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    color: transparent !important;
+    font-size: 0 !important;
+    position: relative !important;
+  }
+
+  #radarModal.is-open #singleSiteRadarViewer .radar-location-search button::before {
+    content: "⌕" !important;
+    color: #fde68a !important;
+    font-size: 1rem !important;
+    line-height: 1 !important;
+  }
+
+  #radarModal.is-open #singleSiteRadarViewer #radarSearchStatus {
+    display: none !important;
+  }
+
+  #radarModal.is-open #singleSiteRadarViewer > .single-radar-toolbar > label:not(.radar-speed-control) {
+    font-size: 0 !important;
+  }
+
+  #radarModal.is-open #singleSiteRadarViewer .radar-site-control {
+    grid-area: site !important;
+    display: block !important;
+    min-width: 112px !important;
+    width: 112px !important;
+  }
+
+  #radarModal.is-open #singleSiteRadarViewer .radar-product-control,
+  #radarModal.is-open #singleSiteRadarViewer #radarRefreshBtn {
+    display: none !important;
+  }
+
+  #radarModal.is-open #singleSiteRadarViewer #radarSiteSelect {
+    width: 100% !important;
+    max-width: none !important;
+    height: 34px !important;
+    padding: 6px 8px !important;
+    font-size: 0.78rem !important;
+  }
+
+  #radarModal.is-open #singleSiteRadarViewer .radar-loop-controls {
+    grid-area: controls !important;
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: 42px minmax(70px, 1fr) 42px !important;
+    grid-template-areas:
+      "speed speed speed"
+      "back play next"
+      "time time time" !important;
+    gap: 6px !important;
+    align-items: center !important;
+  }
+
+  #radarModal.is-open #singleSiteRadarViewer .radar-speed-control {
+    grid-area: speed !important;
+    display: grid !important;
+    gap: 4px !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+  }
+
+  #radarModal.is-open #singleSiteRadarViewer .radar-speed-label {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    font-size: 12px !important;
+  }
+
+  #radarModal.is-open #singleSiteRadarViewer .radar-speed-control input[type="range"] {
+    width: 100% !important;
+    min-height: 36px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    touch-action: pan-y !important;
+  }
+
+  #radarModal.is-open #singleSiteRadarViewer #radarStepBackBtn {
+    grid-area: back !important;
+  }
+
+  #radarModal.is-open #singleSiteRadarViewer #radarPlayBtn {
+    grid-area: play !important;
+  }
+
+  #radarModal.is-open #singleSiteRadarViewer #radarStepForwardBtn {
+    grid-area: next !important;
+  }
+
+  #radarModal.is-open #singleSiteRadarViewer .radar-loop-controls button {
+    height: 34px !important;
+    min-width: 0 !important;
+    padding: 7px 8px !important;
+    font-size: 0.78rem !important;
+  }
+
+  #radarModal.is-open #singleSiteRadarViewer #radarFrameTime {
+    grid-area: time !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    text-align: center !important;
+    font-size: 0.72rem !important;
+    color: #cbd5e1 !important;
   }
 }
 
@@ -7215,14 +7384,14 @@ body {
             <span id="radarSearchStatus"></span>
           </form>
 
-          <label>
+          <label class="radar-site-control">
             Radar Site
             <select id="radarSiteSelect">
               <option value="">Loading radar sites...</option>
             </select>
           </label>
 
-          <label>
+          <label class="radar-product-control">
             Product
             <select id="radarProductSelect">
               <option value="N0B">Super-Res Reflectivity</option>
