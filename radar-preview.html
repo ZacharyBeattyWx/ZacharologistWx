@@ -325,9 +325,27 @@
       }
 
       .controls {
+        gap: 7px;
         margin: 0;
         border: 0;
         padding: 0;
+      }
+
+      .playback-speed-control {
+        width: 100%;
+        gap: 4px;
+      }
+
+      .playback-speed-label {
+        align-items: center;
+        font-size: 12px;
+      }
+
+      .playback-speed-control input[type="range"] {
+        min-height: 36px;
+        margin: 0;
+        padding: 0;
+        touch-action: pan-y;
       }
 
       .playback-controls {
@@ -387,7 +405,7 @@
       <label class="playback-speed-control" for="playbackSpeedSlider">
         <span class="playback-speed-label">
           <span>Playback speed</span>
-          <span id="playbackSpeedValue">Speed 1x</span>
+          <span id="playbackSpeedValue">— 1x</span>
         </span>
         <input id="playbackSpeedSlider" type="range" min="0.5" max="6" step="0.25" value="1">
       </label>
@@ -703,7 +721,7 @@
     }
 
     function updatePlaybackSpeedLabel() {
-      playbackSpeedValue.textContent = `Speed ${formatPlaybackSpeed(playbackSpeed())}`;
+      playbackSpeedValue.textContent = `— ${formatPlaybackSpeed(playbackSpeed())}`;
     }
 
     function isMobilePlaybackMode() {
