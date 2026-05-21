@@ -261,6 +261,7 @@
       opacity: 0.55;
     }
 
+    .site-control,
     .speed-control {
       display: flex;
       align-items: center;
@@ -269,6 +270,7 @@
       font-size: 13px;
     }
 
+    .site-control select,
     .speed-control select {
       border: 1px solid rgba(148, 163, 184, 0.55);
       border-radius: 6px;
@@ -349,11 +351,13 @@
         display: none;
       }
 
+      .site-control,
       .speed-control {
         gap: 4px;
         font-size: 12px;
       }
 
+      .site-control select,
       .speed-control select {
         font-size: 12px;
         padding: 7px 6px;
@@ -371,7 +375,7 @@
   <div id="map"></div>
   <section class="info-panel" aria-live="polite">
     <div class="info-header">
-      <h1 class="info-title">High-Res KFCX Radar</h1>
+      <h1 class="info-title" id="radarTitle">High-Res KFCX Radar</h1>
       <div class="header-actions">
         <button class="details-toggle" id="detailsToggle" type="button" aria-controls="detailsRegion" aria-expanded="true">Hide Details</button>
         <button class="refresh-button" id="refreshButton" type="button">Refresh</button>
@@ -394,6 +398,13 @@
       </label>
       <div class="playback-controls">
         <div class="playback-buttons">
+          <label class="site-control" for="siteSelect">
+            <span>Site</span>
+            <select id="siteSelect">
+              <option value="KFCX" selected>KFCX</option>
+              <option value="KRAX">KRAX</option>
+            </select>
+          </label>
           <button class="playback-button" id="prevFrameButton" type="button">Previous</button>
           <button class="playback-button" id="playPauseButton" type="button">Play</button>
           <button class="playback-button" id="nextFrameButton" type="button">Next</button>
@@ -430,7 +441,9 @@
     crossorigin=""
   ></script>
   <script>
-    const SITE = 'KFCX';
+    const DEFAULT_SITE = 'KFCX';
+    const AVAILABLE_SITES = ['KFCX', 'KRAX'];
+    const SITE_STORAGE_KEY = 'radarPreview:selectedSite';
     const PRODUCT = 'N0B';
     const RADAR_DATA_BASE_URL = 'https://radar.zacharologistwx.com';
     const CATALOG_URL = `${RADAR_DATA_BASE_URL}/radar/frames.json`;
@@ -592,6 +605,7 @@
     });
 
     const infoGrid = document.getElementById('infoGrid');
+    const radarTitle = document.getElementById('radarTitle');
     const statusEl = document.getElementById('status');
     const refreshButton = document.getElementById('refreshButton');
     const detailsToggle = document.getElementById('detailsToggle');
@@ -603,6 +617,7 @@
     const playPauseButton = document.getElementById('playPauseButton');
     const nextFrameButton = document.getElementById('nextFrameButton');
     const resetViewButton = document.getElementById('resetViewButton');
+    const siteSelect = document.getElementById('siteSelect');
     const playbackSpeedSelect = document.getElementById('playbackSpeedSelect');
     const frameTimeLabel = document.getElementById('frameTimeLabel');
     const frameCountLabel = document.getElementById('frameCountLabel');
@@ -643,10 +658,55 @@
     let radarBounds = null;
     let playbackModeIsMobile = isMobilePlaybackMode();
     let playbackModeChangeTimer = null;
+    let selectedSite = initialSelectedSite();
 
     function setStatus(message, isError = false) {
       statusEl.textContent = message;
       statusEl.classList.toggle('error', isError);
+    }
+
+    function normalizeSite(site) {
+      return AVAILABLE_SITES.includes(site) ? site : DEFAULT_SITE;
+    }
+
+    function storedSite() {
+      try {
+        return localStorage.getItem(SITE_STORAGE_KEY);
+      } catch (_error) {
+        return null;
+      }
+    }
+
+    function initialSelectedSite() {
+      const params = new URLSearchParams(window.location.search);
+      return normalizeSite(params.get('site') || storedSite() || DEFAULT_SITE);
+    }
+
+    function currentSite() {
+      return selectedSite;
+    }
+
+    function saveSelectedSite() {
+      try {
+        localStorage.setItem(SITE_STORAGE_KEY, selectedSite);
+      } catch (_error) {
+        // Browsers can disable storage; keep the in-page selection working.
+      }
+    }
+
+    function updateSiteUrl() {
+      const url = new URL(window.location.href);
+      url.searchParams.set('site', selectedSite);
+      history.replaceState(null, '', url);
+    }
+
+    function updateRadarSiteLabels() {
+      const title = `High-Res ${currentSite()} Radar`;
+      radarTitle.textContent = title;
+      document.title = title;
+      if (siteSelect.value !== currentSite()) {
+        siteSelect.value = currentSite();
+      }
     }
 
     function radarOpacity() {
@@ -671,7 +731,7 @@
       const stats = frame.stats || {};
       const debug = frame.debug || {};
       const rows = [
-        ['site', SITE],
+        ['site', currentSite()],
         ['product', PRODUCT],
         ['validTime', frame.validTime],
         ['generatedAt', catalog.generatedAt],
@@ -777,13 +837,14 @@
     }
 
     function catalogFrames(catalog) {
+      const site = currentSite();
       const frames = catalog &&
         catalog.frames &&
-        catalog.frames[SITE] &&
-        catalog.frames[SITE][PRODUCT];
+        catalog.frames[site] &&
+        catalog.frames[site][PRODUCT];
 
       if (!Array.isArray(frames) || !frames.length) {
-        throw new Error('Missing frames.KFCX.N0B[] in radar/frames.json.');
+        throw new Error(`Missing frames.${site}.${PRODUCT}[] in radar/frames.json.`);
       }
 
       frames.forEach((frame, index) => {
@@ -1325,12 +1386,12 @@
           fillOpacity: 1,
           pane: 'debugPane',
         })
-          .bindTooltip(`${SITE} radar origin`, {
+          .bindTooltip(`${currentSite()} radar origin`, {
             permanent: true,
             direction: 'top',
             offset: [0, -10],
           })
-          .bindPopup(`${SITE} radar origin`)
+          .bindPopup(`${currentSite()} radar origin`)
           .addTo(map);
       }
 
@@ -1433,7 +1494,8 @@
 
       isLoadingRadar = true;
       refreshButton.disabled = true;
-      setStatus('Loading radar catalog...');
+      siteSelect.disabled = true;
+      setStatus(`Loading ${currentSite()} radar catalog...`);
 
       try {
         const catalog = await fetchRadarCatalog();
@@ -1459,7 +1521,19 @@
       } finally {
         isLoadingRadar = false;
         refreshButton.disabled = false;
+        siteSelect.disabled = false;
       }
+    }
+
+    function changeRadarSite(site) {
+      const nextSite = normalizeSite(site);
+      if (nextSite === currentSite()) return;
+
+      selectedSite = nextSite;
+      saveSelectedSite();
+      updateSiteUrl();
+      updateRadarSiteLabels();
+      loadRadar();
     }
 
     async function checkForRadarUpdate() {
@@ -1530,6 +1604,9 @@
     });
 
     updateOpacityLabel();
+    saveSelectedSite();
+    updateSiteUrl();
+    updateRadarSiteLabels();
     updatePlaybackLabels();
     setDetailsCollapsed(window.matchMedia('(max-width: 768px)').matches);
     prevFrameButton.addEventListener('click', () => stepFrame(-1));
@@ -1543,6 +1620,7 @@
     });
     detailsToggle.addEventListener('click', toggleDetails);
     refreshButton.addEventListener('click', loadRadar);
+    siteSelect.addEventListener('change', () => changeRadarSite(siteSelect.value));
     if (typeof mobilePlaybackQuery.addEventListener === 'function') {
       mobilePlaybackQuery.addEventListener('change', handlePlaybackDeviceModeChange);
     } else if (typeof mobilePlaybackQuery.addListener === 'function') {

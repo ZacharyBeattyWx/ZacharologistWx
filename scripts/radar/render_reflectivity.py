@@ -1295,6 +1295,56 @@ def catalog_product_metadata(product: str) -> dict:
     }
 
 
+def normalize_site(site: str | None) -> str | None:
+    if not site:
+        return None
+
+    normalized = site.strip().upper()
+    if normalized in {"FCX", "KFCX"}:
+        return "KFCX"
+    if normalized in {"RAX", "KRAX"}:
+        return "KRAX"
+
+    raise ValueError(f"Unsupported radar site: {site}")
+
+
+def site_sector(site: str) -> str:
+    return site[1:] if len(site) == 4 and site.startswith("K") else site
+
+
+def catalog_site_metadata(site: str, products: list[str] | None = None) -> dict:
+    return {
+        "id": site,
+        "sector": site_sector(site),
+        "name": site,
+        "network": "NEXRAD",
+        "products": sorted(set(products or [])),
+    }
+
+
+def ensure_configured_catalog_metadata(catalog: dict, config: dict) -> None:
+    configured_products = [str(product).strip().upper() for product in config.get("products", []) if product]
+    configured_sites = []
+
+    for site in config.get("sites", []):
+        try:
+            configured_sites.append(normalize_site(str(site)))
+        except ValueError:
+            continue
+
+    for product in configured_products:
+        catalog["products"][product] = catalog_product_metadata(product)
+
+    for site in configured_sites:
+        site_entry = catalog["sites"].setdefault(site, catalog_site_metadata(site))
+        products = set(site_entry.get("products") or [])
+        products.update(configured_products)
+        catalog["sites"][site] = catalog_site_metadata(site, sorted(products))
+        catalog["frames"].setdefault(site, {})
+        for product in configured_products:
+            catalog["frames"][site].setdefault(product, [])
+
+
 def safe_frame_count(value) -> int:
     try:
         frame_count = int(value)
@@ -1344,6 +1394,7 @@ def update_frames_catalog(
     site: str,
     sector: str,
     product: str,
+    config: dict,
     frame_count: int = 1,
 ) -> None:
     catalog_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1366,14 +1417,10 @@ def update_frames_catalog(
     catalog.setdefault("sites", {})
     catalog.setdefault("products", {})
     catalog.setdefault("frames", {})
+    ensure_configured_catalog_metadata(catalog, config)
 
-    catalog["sites"][site] = {
-        "id": site,
-        "sector": sector,
-        "name": site,
-        "network": "NEXRAD",
-        "products": [product],
-    }
+    catalog["sites"][site] = catalog_site_metadata(site, [product])
+    catalog["sites"][site]["sector"] = sector
     catalog["products"][product] = catalog_product_metadata(product)
     catalog["frames"].setdefault(site, {})
     existing_frames = catalog["frames"][site].setdefault(product, [])
@@ -1639,7 +1686,7 @@ def print_level3_sym_block_summary(level3) -> None:
     return decoded_any
 
 
-def render_level3_frame(source_file: Path, args, config: dict) -> bool:
+def render_level3_frame(source_file: Path, args, config: dict, selected_site: str | None = None) -> bool:
     from time import perf_counter
 
     frame_render_start = perf_counter()
@@ -1650,7 +1697,7 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
         return False
 
     meta = source_metadata(source_file)
-    site = f"K{meta['sector']}"
+    site = selected_site or normalize_site(f"K{meta['sector']}")
     product = meta["product"]
     slug = f"{product}_{meta['date']}_{meta['time']}"
     frame_dir = REPO_ROOT / "radar" / "frames" / site / product
@@ -1828,6 +1875,7 @@ def render_level3_frame(source_file: Path, args, config: dict) -> bool:
         site,
         meta["sector"],
         product,
+        config,
         config.get("frameCount"),
     )
 
@@ -1911,6 +1959,15 @@ def main() -> int:
         help="Render one real transparent WebP from finite mapped_data values.",
     )
     parser.add_argument(
+        "--site",
+        help="Radar site to render. Accepts FCX/KFCX or RAX/KRAX.",
+    )
+    parser.add_argument(
+        "--product",
+        default="N0B",
+        help="Level III product code to render.",
+    )
+    parser.add_argument(
         "--min-visible-dbz",
         type=float,
         default=DEFAULT_MIN_VISIBLE_DBZ,
@@ -1942,8 +1999,14 @@ def main() -> int:
     args = parser.parse_args()
 
     config = load_config(args.config)
+    selected_site = normalize_site(args.site) if args.site else None
+    selected_sector = site_sector(selected_site) if selected_site else None
+    selected_product = str(args.product or "N0B").strip().upper()
     print("Reflectivity renderer scaffold")
     print(f"enabled={config.get('enabled')}")
+    print(f"selectedSite={selected_site or 'any'}")
+    print(f"selectedSector={selected_sector or 'any'}")
+    print(f"selectedProduct={selected_product}")
     print(f"palette={config.get('palette')}")
     print(f"frameOutputDir={config.get('frameOutputDir')}")
     rendering = reflectivity_rendering_settings(config, args)
@@ -1999,18 +2062,24 @@ def main() -> int:
         print("Dry run: would decode Level III N0B and render transparent frames.")
         return 0
 
+    source_pattern = (
+        f"Level3_{selected_sector}_{selected_product}_*.nids"
+        if selected_sector
+        else f"Level3_*_{selected_product}_*.nids"
+    )
     source_files = sorted(
-        args.source_cache.glob("Level3_*_N0B_*.nids"),
+        args.source_cache.glob(source_pattern),
         key=lambda path: (source_file_sort_key(path), path.name),
     )
 
     if not source_files:
-        print(f"No Level III N0B source files found in {args.source_cache}.")
+        print(f"No Level III {selected_product} source files found in {args.source_cache} with pattern {source_pattern}.")
         return 1
 
     frame_count = safe_frame_count(config.get("frameCount"))
     selected_source_files = source_files[-frame_count:]
-    print(f"Found {len(source_files)} Level III N0B source file(s) in {args.source_cache}.")
+    print(f"sourcePattern={source_pattern}")
+    print(f"Found {len(source_files)} Level III {selected_product} source file(s) in {args.source_cache}.")
     print(f"Selected {len(selected_source_files)} newest source file(s) for frameCount={frame_count}.")
 
     decoded_all = True
@@ -2028,7 +2097,7 @@ def main() -> int:
             if args.render:
                 return 2
 
-        if args.render and not render_level3_frame(source_file, args, config):
+        if args.render and not render_level3_frame(source_file, args, config, selected_site):
             return 2
 
     if args.diagnose:
