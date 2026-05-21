@@ -6962,7 +6962,7 @@ body {
       </button>
 
       <button class="radar-mode-btn" type="button" data-radar-mode="raw">
-        Super-Res Radar
+        Zach Radar
       </button>
 
       <!-- PHASE 1: add a separate high-res site radar mode -->
@@ -7034,7 +7034,7 @@ body {
     </div>
 
     <div class="radar-modal-note">
-      Super-Res Radar uses IEM RIDGE NEXRAD single-site products for high-detail base data.
+      Zach Radar uses IEM RIDGE NEXRAD single-site products for high-detail base data.
     </div>
   </div>
 </div>
@@ -7492,7 +7492,7 @@ card.innerHTML = `
   type="button"
   data-radar-mode="raw"
   data-alert-id="${alert.id}">
-  ⚡ Super-Res
+  📡 Zach Radar
 </button>
 
 
@@ -8352,7 +8352,7 @@ function loadSPCImages() {
 
 const RADAR_FRAME_SERVICE_BASE = "/radar";
 const CUSTOM_RADAR_FRAME_SERVICE_BASE = "/radar";
-const USE_CUSTOM_RADAR_FRAMES = false;
+const USE_CUSTOM_RADAR_FRAMES = true;
 
 const RADAR_ADAPTER_KEYS = {
   windy: "windy",
@@ -8368,7 +8368,7 @@ const RADAR_MODE_ARCHITECTURE = {
     playback: false
   },
   raw: {
-    label: "Super-Res Radar",
+    label: "Zach Radar",
     currentAdapter: RADAR_ADAPTER_KEYS.iem,
     futureAdapter: RADAR_ADAPTER_KEYS.customFrames,
     playback: true
@@ -8640,7 +8640,11 @@ function setRadarMode(mode) {
           }
         }
 
-        loadSingleSiteRadarForCurrentMode(siteCode);
+        if (pendingRadarAlert) {
+          focusSingleSiteRadarOnAlert(pendingRadarAlert);
+        } else {
+          loadSingleSiteRadarForCurrentMode(siteCode);
+        }
       });
     });
 
@@ -8946,7 +8950,7 @@ function createSingleSiteRadarLoopLayer(site, product, stamp) {
 function shouldUseCustomRadarFrames(mode) {
   return (
     USE_CUSTOM_RADAR_FRAMES === true &&
-    RADAR_MODE_ARCHITECTURE[mode]?.currentAdapter ===
+    RADAR_MODE_ARCHITECTURE[mode]?.futureAdapter ===
       RADAR_ADAPTER_KEYS.customFrames
   );
 }
@@ -9033,6 +9037,48 @@ async function loadCustomRadarLoopFrames({ site, product, mode } = {}) {
 
   const catalog = await fetchCustomRadarFrameCatalog();
   return normalizeCustomRadarFrames(catalog, { site, product, mode });
+}
+
+async function tryLoadCustomSingleSiteRadarLoopFrames({ site, product, mode, requestId } = {}) {
+  if (mode !== "raw" || !shouldUseCustomRadarFrames(mode)) {
+    return false;
+  }
+
+  try {
+    const customLoop = await loadCustomRadarLoopFrames({ site, product, mode });
+    const frames = customLoop?.frames || [];
+
+    if (
+      requestId !== singleSiteRadarLoopRequestId ||
+      currentRadarMode !== mode ||
+      getSelectedRadarSiteCode() !== site ||
+      getRadarModeProduct(currentRadarMode) !== product
+    ) {
+      return true;
+    }
+
+    if (!frames.length) {
+      return false;
+    }
+
+    if (singleSiteRadarLayer) {
+      singleSiteMap.removeLayer(singleSiteRadarLayer);
+      singleSiteRadarLayer = null;
+    }
+
+    singleSiteRadarLoopFrames = frames.map(frame => frame.validTime);
+    singleSiteRadarLoopLayers = frames.map(frame => {
+      const layer = createCustomRadarFrameLayer(frame);
+      layer.addTo(singleSiteMap);
+      return layer;
+    });
+
+    showSingleSiteRadarLoopFrame(singleSiteRadarLoopFrames.length - 1);
+    return true;
+  } catch (error) {
+    console.warn("Custom radar frame loop unavailable; falling back to IEM:", error);
+    return false;
+  }
 }
 
 function showSingleSiteRadarLoopFrame(index) {
@@ -9124,6 +9170,17 @@ async function loadSingleSiteRadarLoopFrames({ site, product, mode } = {}) {
 
   if (frameTime) {
     frameTime.textContent = "Loading...";
+  }
+
+  const loadedCustomFrames = await tryLoadCustomSingleSiteRadarLoopFrames({
+    site,
+    product,
+    mode,
+    requestId
+  });
+
+  if (loadedCustomFrames) {
+    return;
   }
 
   const end = new Date();
