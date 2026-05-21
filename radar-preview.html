@@ -213,19 +213,19 @@
       margin: 0;
     }
 
-    .opacity-control {
+    .playback-speed-control {
       display: grid;
       gap: 7px;
     }
 
-    .opacity-label {
+    .playback-speed-label {
       display: flex;
       justify-content: space-between;
       gap: 10px;
       color: #e2e8f0;
     }
 
-    .opacity-control input[type="range"] {
+    .playback-speed-control input[type="range"] {
       width: 100%;
     }
 
@@ -261,8 +261,7 @@
       opacity: 0.55;
     }
 
-    .site-control,
-    .speed-control {
+    .site-control {
       display: flex;
       align-items: center;
       gap: 6px;
@@ -270,8 +269,7 @@
       font-size: 13px;
     }
 
-    .site-control select,
-    .speed-control select {
+    .site-control select {
       border: 1px solid rgba(148, 163, 184, 0.55);
       border-radius: 6px;
       background: #1f2937;
@@ -320,7 +318,6 @@
       .info-header,
       .details-region,
       .control-row,
-      .opacity-control,
       .feed-age-row,
       .last-checked-row,
       .status {
@@ -351,14 +348,12 @@
         display: none;
       }
 
-      .site-control,
-      .speed-control {
+      .site-control {
         gap: 4px;
         font-size: 12px;
       }
 
-      .site-control select,
-      .speed-control select {
+      .site-control select {
         font-size: 12px;
         padding: 7px 6px;
       }
@@ -389,12 +384,12 @@
         <span>Show radar range box</span>
         <input id="debugToggle" type="checkbox">
       </label>
-      <label class="opacity-control" for="opacitySlider">
-        <span class="opacity-label">
-          <span>Radar opacity</span>
-          <span id="opacityValue">1.00</span>
+      <label class="playback-speed-control" for="playbackSpeedSlider">
+        <span class="playback-speed-label">
+          <span>Playback speed</span>
+          <span id="playbackSpeedValue">Speed 1x</span>
         </span>
-        <input id="opacitySlider" type="range" min="0" max="1" step="0.05" value="1">
+        <input id="playbackSpeedSlider" type="range" min="0.5" max="6" step="0.25" value="1">
       </label>
       <div class="playback-controls">
         <div class="playback-buttons">
@@ -409,16 +404,6 @@
           <button class="playback-button" id="playPauseButton" type="button">Play</button>
           <button class="playback-button" id="nextFrameButton" type="button">Next</button>
           <button class="playback-button" id="resetViewButton" type="button">Reset View</button>
-          <label class="speed-control" for="playbackSpeedSelect">
-            <span>Speed</span>
-            <select id="playbackSpeedSelect">
-              <option value="0.5">0.5x</option>
-              <option value="1">1x</option>
-              <option value="2" selected>2x</option>
-              <option value="3">3x</option>
-              <option value="4">4x</option>
-            </select>
-          </label>
         </div>
         <div class="frame-status frame-time-row">
           <span id="frameTimeLabel">Frame time unavailable</span>
@@ -611,27 +596,26 @@
     const detailsToggle = document.getElementById('detailsToggle');
     const infoPanel = document.querySelector('.info-panel');
     const debugToggle = document.getElementById('debugToggle');
-    const opacitySlider = document.getElementById('opacitySlider');
-    const opacityValue = document.getElementById('opacityValue');
+    const playbackSpeedSlider = document.getElementById('playbackSpeedSlider');
+    const playbackSpeedValue = document.getElementById('playbackSpeedValue');
     const prevFrameButton = document.getElementById('prevFrameButton');
     const playPauseButton = document.getElementById('playPauseButton');
     const nextFrameButton = document.getElementById('nextFrameButton');
     const resetViewButton = document.getElementById('resetViewButton');
     const siteSelect = document.getElementById('siteSelect');
-    const playbackSpeedSelect = document.getElementById('playbackSpeedSelect');
     const frameTimeLabel = document.getElementById('frameTimeLabel');
     const frameCountLabel = document.getElementById('frameCountLabel');
     const feedAgeLabel = document.getElementById('feedAgeLabel');
     const lastCheckedLabel = document.getElementById('lastCheckedLabel');
-const BASE_PLAY_INTERVAL_MS = 240;
-const MIN_PLAY_INTERVAL_MS = 60;
-const MIN_MOBILE_PLAY_INTERVAL_MS = 120;
-const LOOP_END_PAUSE_MS = 1200;
-const MOBILE_PLAYBACK_FRAME_LIMIT = 12;
-const MOBILE_DECODED_CACHE_LIMIT = 2;
-const MOBILE_BREAKPOINT_QUERY = '(max-width: 768px)';
-const MOBILE_RESIZE_DEBOUNCE_MS = 250;
-const mobilePlaybackQuery = window.matchMedia(MOBILE_BREAKPOINT_QUERY);
+    const BASE_PLAY_INTERVAL_MS = 360;
+    const MIN_PLAY_INTERVAL_MS = 60;
+    const MIN_MOBILE_PLAY_INTERVAL_MS = 120;
+    const LOOP_END_PAUSE_MS = 1200;
+    const MOBILE_PLAYBACK_FRAME_LIMIT = 12;
+    const MOBILE_DECODED_CACHE_LIMIT = 2;
+    const MOBILE_BREAKPOINT_QUERY = '(max-width: 768px)';
+    const MOBILE_RESIZE_DEBOUNCE_MS = 250;
+    const mobilePlaybackQuery = window.matchMedia(MOBILE_BREAKPOINT_QUERY);
     let radarAnimationLayer = null;
     let radarSiteMarker = null;
     let overlayBoundsRectangle = null;
@@ -709,12 +693,17 @@ const mobilePlaybackQuery = window.matchMedia(MOBILE_BREAKPOINT_QUERY);
       }
     }
 
-    function radarOpacity() {
-      return Number(opacitySlider.value);
+    function playbackSpeed() {
+      const speed = Number(playbackSpeedSlider.value);
+      return Number.isFinite(speed) && speed > 0 ? speed : 1;
     }
 
-    function updateOpacityLabel() {
-      opacityValue.textContent = radarOpacity().toFixed(2);
+    function formatPlaybackSpeed(speed) {
+      return Number.isInteger(speed) ? `${speed}x` : `${speed.toFixed(2).replace(/0+$/, '').replace(/\.$/, '')}x`;
+    }
+
+    function updatePlaybackSpeedLabel() {
+      playbackSpeedValue.textContent = `Speed ${formatPlaybackSpeed(playbackSpeed())}`;
     }
 
     function isMobilePlaybackMode() {
@@ -959,12 +948,10 @@ const mobilePlaybackQuery = window.matchMedia(MOBILE_BREAKPOINT_QUERY);
     }
 
     function getPlaybackIntervalMs() {
-      const speed = Number(playbackSpeedSelect.value);
-      const safeSpeed = Number.isFinite(speed) && speed > 0 ? speed : 2;
       const minimumInterval = isMobilePlaybackMode()
         ? MIN_MOBILE_PLAY_INTERVAL_MS
         : MIN_PLAY_INTERVAL_MS;
-      return Math.max(minimumInterval, Math.round(BASE_PLAY_INTERVAL_MS / safeSpeed));
+      return Math.max(minimumInterval, Math.round(BASE_PLAY_INTERVAL_MS / playbackSpeed()));
     }
 
     function getNextPlaybackDelayMs() {
@@ -1009,6 +996,18 @@ const mobilePlaybackQuery = window.matchMedia(MOBILE_BREAKPOINT_QUERY);
 
         schedulePlaybackTick(startToken, getNextPlaybackDelayMs());
       }, delayMs);
+    }
+
+    function reschedulePlaybackForSpeedChange() {
+      updatePlaybackSpeedLabel();
+      if (!isPlaybackActive) return;
+
+      if (playbackTimer) {
+        clearTimeout(playbackTimer);
+        playbackTimer = null;
+      }
+
+      schedulePlaybackTick(++playbackStartToken, getNextPlaybackDelayMs());
     }
 
     function updatePlaybackLabels() {
@@ -1195,7 +1194,7 @@ const mobilePlaybackQuery = window.matchMedia(MOBILE_BREAKPOINT_QUERY);
 
     function ensureRadarAnimationLayer() {
       if (!radarAnimationLayer) {
-        radarAnimationLayer = new RadarAnimationLayer({ opacity: radarOpacity() }).addTo(map);
+        radarAnimationLayer = new RadarAnimationLayer({ opacity: 1 }).addTo(map);
       }
     }
 
@@ -1595,15 +1594,9 @@ const mobilePlaybackQuery = window.matchMedia(MOBILE_BREAKPOINT_QUERY);
       removeDebugLayers();
     });
 
-    opacitySlider.addEventListener('input', () => {
-      updateOpacityLabel();
+    playbackSpeedSlider.addEventListener('input', reschedulePlaybackForSpeedChange);
 
-      if (radarAnimationLayer) {
-        radarAnimationLayer.setOpacity(radarOpacity());
-      }
-    });
-
-    updateOpacityLabel();
+    updatePlaybackSpeedLabel();
     saveSelectedSite();
     updateSiteUrl();
     updateRadarSiteLabels();
@@ -1613,11 +1606,6 @@ const mobilePlaybackQuery = window.matchMedia(MOBILE_BREAKPOINT_QUERY);
     playPauseButton.addEventListener('click', togglePlayback);
     nextFrameButton.addEventListener('click', () => stepFrame(1));
     resetViewButton.addEventListener('click', resetMapView);
-    playbackSpeedSelect.addEventListener('change', () => {
-      if (isPlaybackActive) {
-        startPlayback();
-      }
-    });
     detailsToggle.addEventListener('click', toggleDetails);
     refreshButton.addEventListener('click', loadRadar);
     siteSelect.addEventListener('change', () => changeRadarSite(siteSelect.value));
