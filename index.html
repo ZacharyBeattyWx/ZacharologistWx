@@ -9028,8 +9028,14 @@ function openRadarModal(mode = "clean") {
 function closeRadarModal() {
   if (!radarModal) return;
 
+  cleanupSingleSiteRadarRuntime({
+    resetFrameTime: true,
+    clearAlertOverlays: true
+  });
+
   radarModal.classList.remove("is-open");
   document.body.style.overflow = "";
+  currentRadarMode = "clean";
 
   if (singleSiteRadarViewer) {
     singleSiteRadarViewer.style.display = "none";
@@ -9044,8 +9050,16 @@ function closeRadarModal() {
 function setRadarMode(mode) {
   const selectedMode =
     mode === "highres" ? "highres" : mode === "raw" ? "raw" : "clean";
+  const previousMode = currentRadarMode;
 
   currentRadarMode = selectedMode;
+
+  if (previousMode !== selectedMode) {
+    cleanupSingleSiteRadarRuntime({
+      resetFrameTime: true,
+      clearAlertOverlays: selectedMode === "clean"
+    });
+  }
 
   radarModeButtons.forEach(button => {
     button.classList.toggle(
@@ -9073,6 +9087,10 @@ function setRadarMode(mode) {
     }
 
     initSingleSiteRadar({ skipLoop: true }).then(() => {
+      if (!radarModal.classList.contains("is-open") || currentRadarMode !== "highres") {
+        return;
+      }
+
       const siteCode = getActiveHighResRadarSiteCode();
 
       if (radarSiteSelect) {
@@ -9080,6 +9098,10 @@ function setRadarMode(mode) {
       }
 
       requestAnimationFrame(() => {
+        if (!radarModal.classList.contains("is-open") || currentRadarMode !== "highres") {
+          return;
+        }
+
         if (singleSiteMap) {
           singleSiteMap.invalidateSize();
 
@@ -9116,7 +9138,15 @@ function setRadarMode(mode) {
     setRadarPlaybackControlsVisible(true);
 
     initSingleSiteRadar({ skipLoop: true }).then(() => {
+      if (!radarModal.classList.contains("is-open") || currentRadarMode !== "raw") {
+        return;
+      }
+
       requestAnimationFrame(() => {
+        if (!radarModal.classList.contains("is-open") || currentRadarMode !== "raw") {
+          return;
+        }
+
         if (singleSiteMap) {
           singleSiteMap.invalidateSize();
         }
@@ -9297,13 +9327,18 @@ async function selectNearestRadarBySearch(query) {
 
 let singleSiteRadarLoopFrames = [];
 let singleSiteRadarLoopLayers = [];
+let singleSiteRadarLoopFrameData = [];
 let singleSiteRadarLoopIndex = 0;
 let singleSiteRadarLoopTimer = null;
 let singleSiteRadarLoopReady = false;
 let singleSiteRadarLoopRequestId = 0;
 let singleSiteRadarLoopSource = "iem";
+let singleSiteRadarLoopSwapToken = 0;
+let isSingleSiteRadarFrameSwapInProgress = false;
 
 const SINGLE_SITE_RADAR_LOOP_MINUTES = 60;
+const SINGLE_SITE_MOBILE_PLAYBACK_FRAME_LIMIT = 12;
+const SINGLE_SITE_MOBILE_DECODED_CACHE_LIMIT = 2;
 const SINGLE_SITE_BASE_PLAY_INTERVAL_MS = 360;
 const SINGLE_SITE_MIN_PLAY_INTERVAL_MS = 60;
 const SINGLE_SITE_MIN_MOBILE_PLAY_INTERVAL_MS = 120;
@@ -9346,6 +9381,14 @@ function isSingleSiteMobilePlaybackMode() {
   );
 }
 
+function singleSitePlaybackFramesForDevice(frames) {
+  if (!isSingleSiteMobilePlaybackMode()) {
+    return frames;
+  }
+
+  return frames.slice(-SINGLE_SITE_MOBILE_PLAYBACK_FRAME_LIMIT);
+}
+
 function getSingleSitePlaybackSpeed() {
   const speedSlider = document.getElementById("radarSpeedSlider");
   const speed = Number(speedSlider?.value);
@@ -9385,7 +9428,11 @@ function rescheduleSingleSitePlaybackForSpeedChange() {
 
   clearInterval(singleSiteRadarLoopTimer);
   singleSiteRadarLoopTimer = setInterval(() => {
-    showSingleSiteRadarLoopFrame(singleSiteRadarLoopIndex + 1);
+    if (isSingleSiteRadarFrameSwapInProgress) return;
+
+    showSingleSiteRadarLoopFrame(singleSiteRadarLoopIndex + 1, {
+      mobileWarmDirection: "next"
+    });
   }, getSingleSitePlaybackIntervalMs());
 }
 
@@ -9393,19 +9440,73 @@ function clearSingleSiteRadarLoopLayers() {
   stopSingleSiteRadarLoop();
 
   singleSiteRadarLoopLayers.forEach(layer => {
-    if (singleSiteMap && singleSiteMap.hasLayer(layer)) {
-      singleSiteMap.removeLayer(layer);
-    }
+    releaseSingleSiteRadarLoopLayer(layer);
   });
 
   singleSiteRadarLoopFrames = [];
   singleSiteRadarLoopLayers = [];
+  singleSiteRadarLoopFrameData = [];
   singleSiteRadarLoopIndex = 0;
   singleSiteRadarLoopSource = "iem";
+  singleSiteRadarLoopSwapToken++;
+  isSingleSiteRadarFrameSwapInProgress = false;
 
   const frameTime = document.getElementById("radarFrameTime");
   if (frameTime) {
     frameTime.textContent = "Latest";
+  }
+}
+
+function cleanupSingleSiteRadarRuntime(options = {}) {
+  const resetFrameTime = options.resetFrameTime === true;
+  const clearAlertOverlays = options.clearAlertOverlays === true;
+
+  stopSingleSiteRadarLoop();
+  singleSiteRadarLoopRequestId++;
+  singleSiteRadarLoopSwapToken++;
+  isSingleSiteRadarFrameSwapInProgress = false;
+
+  singleSiteRadarLoopLayers.forEach(layer => {
+    releaseSingleSiteRadarLoopLayer(layer);
+  });
+
+  singleSiteRadarLoopFrames = [];
+  singleSiteRadarLoopLayers = [];
+  singleSiteRadarLoopFrameData = [];
+  singleSiteRadarLoopIndex = 0;
+  singleSiteRadarLoopSource = "iem";
+
+  if (singleSiteRadarLayer) {
+    singleSiteRadarLayer.off();
+
+    if (singleSiteMap && singleSiteMap.hasLayer(singleSiteRadarLayer)) {
+      singleSiteMap.removeLayer(singleSiteRadarLayer);
+    }
+
+    singleSiteRadarLayer = null;
+  }
+
+  if (radarSearchMarker && singleSiteMap) {
+    singleSiteMap.removeLayer(radarSearchMarker);
+    radarSearchMarker = null;
+  }
+
+  if (clearAlertOverlays && alertPolygonLayer && singleSiteMap) {
+    singleSiteMap.removeLayer(alertPolygonLayer);
+    alertPolygonLayer = null;
+  }
+
+  if (clearAlertOverlays && alertCenterMarker && singleSiteMap) {
+    singleSiteMap.removeLayer(alertCenterMarker);
+    alertCenterMarker = null;
+  }
+
+  if (resetFrameTime) {
+    const frameTime = document.getElementById("radarFrameTime");
+
+    if (frameTime) {
+      frameTime.textContent = "Latest";
+    }
   }
 }
 
@@ -9561,10 +9662,137 @@ function normalizeCustomRadarFrames(catalog, { site, product, mode } = {}) {
 }
 
 function createCustomRadarFrameLayer(frame) {
-  return L.imageOverlay(frame.url, frame.bounds, {
+  const layer = L.imageOverlay(frame.url, frame.bounds, {
     opacity: 0,
     pane: "radarPane",
     attribution: "Radar: Zacharologist Wx / NEXRAD"
+  });
+
+  layer._zachRadarFrame = frame;
+  layer._zachRadarLoaded = false;
+  layer.once("load", () => {
+    layer._zachRadarLoaded = true;
+  });
+
+  return layer;
+}
+
+function releaseSingleSiteRadarLoopLayer(layer) {
+  if (!layer) return;
+
+  if (singleSiteMap && singleSiteMap.hasLayer(layer)) {
+    singleSiteMap.removeLayer(layer);
+  }
+
+  if (layer._image) {
+    layer._image.onload = null;
+    layer._image.onerror = null;
+    layer._image.removeAttribute("src");
+  }
+}
+
+function customRadarNeighborIndex(index, direction = "next") {
+  if (!singleSiteRadarLoopFrameData.length) return -1;
+
+  const frameCount = singleSiteRadarLoopFrameData.length;
+  const current = ((index % frameCount) + frameCount) % frameCount;
+
+  return direction === "previous"
+    ? (current - 1 + frameCount) % frameCount
+    : (current + 1) % frameCount;
+}
+
+function customRadarCacheTargetIndexes(index = singleSiteRadarLoopIndex, direction = "next") {
+  if (!singleSiteRadarLoopFrameData.length) return [];
+
+  const frameCount = singleSiteRadarLoopFrameData.length;
+  const current = ((index % frameCount) + frameCount) % frameCount;
+  const neighbor = customRadarNeighborIndex(current, direction);
+
+  if (neighbor === current || neighbor < 0) {
+    return [current];
+  }
+
+  return [current, neighbor].slice(0, SINGLE_SITE_MOBILE_DECODED_CACHE_LIMIT);
+}
+
+function pruneCustomRadarMobileLayers(keepIndexes = []) {
+  if (
+    singleSiteRadarLoopSource !== "customFrames" ||
+    !isSingleSiteMobilePlaybackMode()
+  ) {
+    return;
+  }
+
+  const keepSet = new Set(keepIndexes);
+
+  singleSiteRadarLoopLayers.forEach((layer, index) => {
+    if (!layer || keepSet.has(index)) return;
+
+    releaseSingleSiteRadarLoopLayer(layer);
+    singleSiteRadarLoopLayers[index] = null;
+  });
+}
+
+function ensureCustomRadarLoopLayer(index) {
+  const frame = singleSiteRadarLoopFrameData[index];
+
+  if (!frame) return null;
+
+  let layer = singleSiteRadarLoopLayers[index];
+
+  if (!layer) {
+    layer = createCustomRadarFrameLayer(frame);
+    singleSiteRadarLoopLayers[index] = layer;
+  }
+
+  if (!singleSiteMap.hasLayer(layer)) {
+    layer.addTo(singleSiteMap);
+  }
+
+  return layer;
+}
+
+function waitForCustomRadarLayerLoad(layer) {
+  if (!layer) return Promise.resolve(false);
+  if (layer._zachRadarLoaded) return Promise.resolve(true);
+
+  return new Promise(resolve => {
+    const cleanup = () => {
+      layer.off("load", onLoad);
+      layer.off("error", onError);
+    };
+
+    const onLoad = () => {
+      layer._zachRadarLoaded = true;
+      cleanup();
+      resolve(true);
+    };
+
+    const onError = () => {
+      cleanup();
+      resolve(false);
+    };
+
+    layer.once("load", onLoad);
+    layer.once("error", onError);
+  });
+}
+
+function warmCustomRadarFrameWindow(index = singleSiteRadarLoopIndex, direction = "next") {
+  if (
+    singleSiteRadarLoopSource !== "customFrames" ||
+    !isSingleSiteMobilePlaybackMode()
+  ) {
+    return;
+  }
+
+  const keepIndexes = customRadarCacheTargetIndexes(index, direction);
+  pruneCustomRadarMobileLayers(keepIndexes);
+
+  keepIndexes.forEach(frameIndex => {
+    const layer = ensureCustomRadarLoopLayer(frameIndex);
+    waitForCustomRadarLayerLoad(layer).catch(() => {});
   });
 }
 
@@ -9601,6 +9829,12 @@ async function tryLoadCustomSingleSiteRadarLoopFrames({ site, product, mode, req
       return false;
     }
 
+    const playbackFrames = singleSitePlaybackFramesForDevice(frames);
+
+    if (!playbackFrames.length) {
+      return false;
+    }
+
     if (!singleSiteMap.getPane("radarPane")) {
       singleSiteMap.createPane("radarPane");
     }
@@ -9609,9 +9843,7 @@ async function tryLoadCustomSingleSiteRadarLoopFrames({ site, product, mode, req
     singleSiteMap.getPane("radarPane").style.pointerEvents = "none";
 
     singleSiteRadarLoopLayers.forEach(layer => {
-      if (singleSiteMap.hasLayer(layer)) {
-        singleSiteMap.removeLayer(layer);
-      }
+      releaseSingleSiteRadarLoopLayer(layer);
     });
 
     singleSiteRadarLoopLayers = [];
@@ -9623,16 +9855,25 @@ async function tryLoadCustomSingleSiteRadarLoopFrames({ site, product, mode, req
       singleSiteRadarLayer = null;
     }
 
-    singleSiteRadarLoopLayers = frames.map(frame => {
-      const layer = createCustomRadarFrameLayer(frame);
-      layer.addTo(singleSiteMap);
-      return layer;
-    });
+    singleSiteRadarLoopFrameData = playbackFrames;
+    singleSiteRadarLoopLayers = isSingleSiteMobilePlaybackMode()
+      ? playbackFrames.map(() => null)
+      : playbackFrames.map(frame => {
+          const layer = createCustomRadarFrameLayer(frame);
+          layer.addTo(singleSiteMap);
+          return layer;
+        });
 
-    singleSiteRadarLoopFrames = frames.map(frame => frame.validTime);
+    singleSiteRadarLoopFrames = playbackFrames.map(frame => frame.validTime);
     singleSiteRadarLoopSource = "customFrames";
 
-    showSingleSiteRadarLoopFrame(singleSiteRadarLoopLayers.length - 1);
+    const didShowCustomFrame = await showSingleSiteRadarLoopFrame(
+      singleSiteRadarLoopFrames.length - 1
+    );
+
+    if (!didShowCustomFrame) {
+      return false;
+    }
 
     const activeLayer = singleSiteRadarLoopLayers[singleSiteRadarLoopIndex];
 
@@ -9685,19 +9926,64 @@ async function tryLoadCustomSingleSiteRadarLoopFrames({ site, product, mode, req
   }
 }
 
-function showSingleSiteRadarLoopFrame(index) {
+async function showSingleSiteRadarLoopFrame(index, { mobileWarmDirection = "next" } = {}) {
   if (!singleSiteRadarLoopLayers.length) return;
 
-  singleSiteRadarLoopLayers.forEach(layer => {
-    layer.setOpacity(0);
-  });
+  if (
+    singleSiteRadarLoopSource === "customFrames" &&
+    isSingleSiteRadarFrameSwapInProgress
+  ) {
+    return false;
+  }
 
-  singleSiteRadarLoopIndex =
+  const targetIndex =
     (index + singleSiteRadarLoopLayers.length) %
     singleSiteRadarLoopLayers.length;
 
+  const swapToken = ++singleSiteRadarLoopSwapToken;
+
   const activeOpacity =
     singleSiteRadarLoopSource === "customFrames" ? 1.0 : 0.78;
+
+  if (singleSiteRadarLoopSource === "customFrames") {
+    isSingleSiteRadarFrameSwapInProgress = true;
+
+    const keepIndexes = isSingleSiteMobilePlaybackMode()
+      ? [
+          singleSiteRadarLoopIndex,
+          targetIndex
+        ].slice(0, SINGLE_SITE_MOBILE_DECODED_CACHE_LIMIT)
+      : singleSiteRadarLoopLayers.map((_layer, layerIndex) => layerIndex);
+
+    pruneCustomRadarMobileLayers(keepIndexes);
+
+    const targetLayer = ensureCustomRadarLoopLayer(targetIndex);
+    const targetLoaded = await waitForCustomRadarLayerLoad(targetLayer);
+
+    if (
+      !targetLoaded ||
+      swapToken !== singleSiteRadarLoopSwapToken ||
+      !targetLayer
+    ) {
+      isSingleSiteRadarFrameSwapInProgress = false;
+      return false;
+    }
+
+    singleSiteRadarLoopLayers.forEach((layer, layerIndex) => {
+      if (!layer) return;
+      layer.setOpacity(layerIndex === targetIndex ? activeOpacity : 0);
+    });
+
+    singleSiteRadarLoopIndex = targetIndex;
+    isSingleSiteRadarFrameSwapInProgress = false;
+    warmCustomRadarFrameWindow(singleSiteRadarLoopIndex, mobileWarmDirection);
+  } else {
+    singleSiteRadarLoopLayers.forEach(layer => {
+      layer.setOpacity(0);
+    });
+
+    singleSiteRadarLoopIndex = targetIndex;
+  }
 
   singleSiteRadarLoopLayers[singleSiteRadarLoopIndex].setOpacity(activeOpacity);
 
@@ -9710,6 +9996,8 @@ function showSingleSiteRadarLoopFrame(index) {
       minute: "2-digit"
     });
   }
+
+  return true;
 }
 
 function stopSingleSiteRadarLoop() {
@@ -9742,12 +10030,25 @@ function toggleSingleSiteRadarLoop() {
   }
 
   singleSiteRadarLoopTimer = setInterval(() => {
-    showSingleSiteRadarLoopFrame(singleSiteRadarLoopIndex + 1);
+    if (isSingleSiteRadarFrameSwapInProgress) return;
+
+    showSingleSiteRadarLoopFrame(singleSiteRadarLoopIndex + 1, {
+      mobileWarmDirection: "next"
+    });
   }, getSingleSitePlaybackIntervalMs());
 }
 
 async function loadSingleSiteRadarLoopFrames({ site, product, mode } = {}) {
   if (!singleSiteMap) return;
+  if (!radarModal.classList.contains("is-open")) return;
+
+  if (
+    singleSiteRadarLoopSource === "customFrames" &&
+    isSingleSiteRadarFrameSwapInProgress
+  ) {
+    console.warn("Skipping radar loop reload while Zach Radar frame swap is in progress.");
+    return;
+  }
 
   site = site || getSelectedRadarSiteCode();
   product = product || getRadarModeProduct(currentRadarMode);
@@ -9758,15 +10059,15 @@ async function loadSingleSiteRadarLoopFrames({ site, product, mode } = {}) {
   const frameTime = document.getElementById("radarFrameTime");
 
   singleSiteRadarLoopLayers.forEach(layer => {
-    if (singleSiteMap.hasLayer(layer)) {
-      singleSiteMap.removeLayer(layer);
-    }
+    releaseSingleSiteRadarLoopLayer(layer);
   });
 
   singleSiteRadarLoopFrames = [];
   singleSiteRadarLoopLayers = [];
+  singleSiteRadarLoopFrameData = [];
   singleSiteRadarLoopIndex = 0;
   singleSiteRadarLoopSource = "iem";
+  isSingleSiteRadarFrameSwapInProgress = false;
 
   if (!singleSiteMap.getPane("radarPane")) {
     singleSiteMap.createPane("radarPane");
@@ -9880,6 +10181,8 @@ async function loadSingleSiteRadarLoopFrames({ site, product, mode } = {}) {
 }
 
 async function loadSingleSiteRadarForCurrentMode(site) {
+  if (!radarModal.classList.contains("is-open")) return;
+
   clearSingleSiteRadarLoopLayers();
 
   if (currentRadarMode === "highres") {
@@ -9938,12 +10241,16 @@ function setupSingleSiteRadarLoopControls() {
 
   backBtn?.addEventListener("click", () => {
     stopSingleSiteRadarLoop();
-    showSingleSiteRadarLoopFrame(singleSiteRadarLoopIndex - 1);
+    showSingleSiteRadarLoopFrame(singleSiteRadarLoopIndex - 1, {
+      mobileWarmDirection: "previous"
+    });
   });
 
   forwardBtn?.addEventListener("click", () => {
     stopSingleSiteRadarLoop();
-    showSingleSiteRadarLoopFrame(singleSiteRadarLoopIndex + 1);
+    showSingleSiteRadarLoopFrame(singleSiteRadarLoopIndex + 1, {
+      mobileWarmDirection: "next"
+    });
   });
 }
 
