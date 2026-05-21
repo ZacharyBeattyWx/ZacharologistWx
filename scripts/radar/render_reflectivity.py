@@ -100,6 +100,71 @@ def first_stop_rgba(color_entry: dict) -> tuple[int, int, int, int]:
     return int(red), int(green), int(blue), int(alpha)
 
 
+def interpolate_rgba(
+    lower_rgba: tuple[int, int, int, int],
+    upper_rgba: tuple[int, int, int, int],
+    ratio: float,
+) -> tuple[int, int, int, int]:
+    bounded_ratio = min(1.0, max(0.0, ratio))
+    return tuple(
+        int(round(lower + (upper - lower) * bounded_ratio))
+        for lower, upper in zip(lower_rgba, upper_rgba)
+    )
+
+
+def interpolated_rgba_for_dbz(value: float, color_table: dict) -> tuple[int, int, int, int]:
+    color_entries = sorted(color_table["colors"], key=lambda entry: entry["value"])
+
+    if value <= color_entries[0]["value"]:
+        return first_stop_rgba(color_entries[0])
+    if value >= color_entries[-1]["value"]:
+        return first_stop_rgba(color_entries[-1])
+
+    for lower, upper in zip(color_entries, color_entries[1:]):
+        lower_value = lower["value"]
+        upper_value = upper["value"]
+        if lower_value <= value <= upper_value:
+            span = upper_value - lower_value
+            if span <= 0:
+                return first_stop_rgba(upper)
+            return interpolate_rgba(
+                first_stop_rgba(lower),
+                first_stop_rgba(upper),
+                (value - lower_value) / span,
+            )
+
+    return first_stop_rgba(color_entries[-1])
+
+
+def densified_color_table(color_table: dict, step_dbz: float | None) -> dict:
+    if step_dbz is None or step_dbz <= 0:
+        return color_table
+
+    color_entries = sorted(color_table["colors"], key=lambda entry: entry["value"])
+    minimum_value = color_entries[0]["value"]
+    maximum_value = color_entries[-1]["value"]
+    densified_entries = []
+    entry_count = int(math.floor((maximum_value - minimum_value) / step_dbz)) + 1
+
+    for index in range(entry_count + 1):
+        value = minimum_value + index * step_dbz
+        if value > maximum_value:
+            value = maximum_value
+        red, green, blue, alpha = interpolated_rgba_for_dbz(value, color_table)
+        densified_entries.append({
+            "value": round(value, 6),
+            "stops": [{"rgb": [red, green, blue], "alpha": alpha}],
+        })
+        if value >= maximum_value:
+            break
+
+    return {
+        **color_table,
+        "step": step_dbz,
+        "colors": densified_entries,
+    }
+
+
 def rgba_for_dbz(value: float, color_table: dict | None = None) -> tuple[int, int, int, int]:
     table = color_table or DEFAULT_REFLECTIVITY_COLOR_TABLE
     color_entries = table["colors"]
@@ -232,18 +297,42 @@ def normalized_color_table(value):
     if not isinstance(colors, list) or not colors:
         return None
 
+    normalized_entries = []
     for entry in colors:
         if not isinstance(entry, dict):
             return None
-        if "value" not in entry or not isinstance(entry.get("stops"), list) or not entry["stops"]:
+        entry_value = render_settings_number(entry.get("value"))
+        if entry_value is None or not isinstance(entry.get("stops"), list) or not entry["stops"]:
             return None
 
+        normalized_stops = []
         for stop in entry["stops"]:
             rgb = stop.get("rgb") if isinstance(stop, dict) else None
             if not isinstance(rgb, list) or len(rgb) != 3:
                 return None
+            normalized_rgb = []
+            for channel in rgb:
+                channel_value = render_settings_number(channel)
+                if channel_value is None:
+                    return None
+                normalized_rgb.append(int(round(min(255, max(0, channel_value)))))
+            alpha = render_settings_number(stop.get("alpha"), 255)
+            normalized_stops.append({
+                **stop,
+                "rgb": normalized_rgb,
+                "alpha": int(round(min(255, max(0, alpha)))),
+            })
 
-    return value
+        normalized_entries.append({
+            **entry,
+            "value": entry_value,
+            "stops": normalized_stops,
+        })
+
+    return {
+        **value,
+        "colors": normalized_entries,
+    }
 
 
 def normalized_opacity_taper(value):
@@ -388,12 +477,19 @@ def reflectivity_rendering_settings(config: dict, args) -> dict:
         render_config = {}
 
     custom_color_table = normalized_color_table(render_config.get("customColorTable"))
+    palette_step_dbz = (
+        render_settings_number(render_config.get("paletteStepDbz"))
+        if "paletteStepDbz" in render_config
+        else None
+    )
     palette = str(
         render_config.get("palette")
         or config.get("palette")
         or DEFAULT_PALETTE_MODE
     )
     color_table = custom_color_table if custom_color_table and palette == "customColorTable" else None
+    if color_table is not None and palette_step_dbz is not None:
+        color_table = densified_color_table(color_table, palette_step_dbz)
 
     opacity_taper_value = render_config.get("lowDbzOpacityTaper")
     opacity_taper = normalized_opacity_taper(opacity_taper_value)
@@ -432,6 +528,7 @@ def reflectivity_rendering_settings(config: dict, args) -> dict:
             ),
         ),
         "palette": palette,
+        "paletteStepDbz": palette_step_dbz,
         "colorTable": color_table,
         "lowDbzOpacityTaper": opacity_taper,
         "isolatedSpeckleDampen": normalized_speckle_dampen(render_config.get("isolatedSpeckleDampen")),
@@ -1909,6 +2006,7 @@ def render_level3_frame(source_file: Path, args, config: dict, selected_site: st
             "centerNoDataMaskRadiusKm": float(center_no_data_mask["radiusKm"]),
             "centerNoDataMaskPixelRadius": float(center_mask_pixel_radius),
             "paletteMode": palette,
+            "paletteStepDbz": rendering["paletteStepDbz"],
             "maximumDbz": maximum_dbz,
             "minimumDbz": minimum_dbz,
             "minimumConnectedPixelBlobSize": minimum_blob_size,
@@ -1960,6 +2058,7 @@ def render_level3_frame(source_file: Path, args, config: dict, selected_site: st
     print(f"azimuthMetadataRows={len(azimuth_degrees_by_row) if azimuth_degrees_by_row is not None else 0}")
     print(f"azimuthEdgeMetadataRows={len(azimuth_edges_by_row) if azimuth_edges_by_row is not None else 0}")
     print(f"paletteMode={palette}")
+    print(f"paletteStepDbz={rendering['paletteStepDbz']}")
     print(f"maximumDbz={maximum_dbz}")
     print(f"radialInterpolation.enabled={radial_interpolation['enabled']}")
     print(f"radialInterpolation.strength={radial_interpolation['strength']}")
@@ -2102,6 +2201,7 @@ def main() -> int:
         f"{rendering['minimumConnectedPixelBlobSize']}"
     )
     print(f"reflectivityRendering.palette={rendering['palette']}")
+    print(f"reflectivityRendering.paletteStepDbz={rendering['paletteStepDbz']}")
     print(f"reflectivityRendering.customColorTable={bool(rendering['colorTable'])}")
     print(
         "reflectivityRendering.lowDbzOpacityTaper="
