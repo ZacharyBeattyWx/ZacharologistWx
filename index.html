@@ -5451,6 +5451,125 @@ body {
   border-radius: 4px !important;
 }
 
+/* Final scoped layout for homepage active alert cards */
+.forecast-dashboard .alerts-card .ro-alert-card {
+  gap: 7px !important;
+  padding: 10px 12px !important;
+  min-height: auto !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
+
+.forecast-dashboard .alerts-card .ro-alert-title-row {
+  grid-template-columns: 24px minmax(0, 1fr) !important;
+  gap: 8px !important;
+}
+
+.forecast-dashboard .alerts-card .ro-alert-icon {
+  width: 24px !important;
+  height: 24px !important;
+  font-size: 1rem !important;
+}
+
+.forecast-dashboard .alerts-card .ro-alert-title-row .compact-alert-title {
+  font-size: 0.88rem !important;
+  line-height: 1.15 !important;
+  margin: 0 !important;
+  min-width: 0 !important;
+}
+
+.forecast-dashboard .alerts-card .ro-alert-meta-row {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 5px !important;
+  margin: -1px 0 0 !important;
+  max-width: 100% !important;
+}
+
+.forecast-dashboard .alerts-card .ro-meta-chip {
+  display: inline-flex !important;
+  align-items: center !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+
+  background: rgba(255,255,255,0.065) !important;
+  color: rgba(245,248,252,0.9) !important;
+  border: 1px solid rgba(120,155,180,0.14) !important;
+  border-radius: 4px !important;
+
+  padding: 3px 7px !important;
+  font-size: 0.66rem !important;
+  font-weight: 800 !important;
+  line-height: 1.15 !important;
+  letter-spacing: 0.03em !important;
+
+  overflow-wrap: anywhere !important;
+}
+
+.forecast-dashboard .alerts-card .ro-alert-meta-row .ro-meta-chip:first-child {
+  background: var(--alert-color) !important;
+  color: #06111f !important;
+  border-color: var(--alert-color) !important;
+}
+
+.forecast-dashboard .alerts-card .ro-main-tags {
+  gap: 6px !important;
+  margin: 1px 0 0 !important;
+}
+
+.forecast-dashboard .alerts-card .ro-main-tag {
+  padding: 4px 8px !important;
+  font-size: 0.66rem !important;
+  line-height: 1.1 !important;
+}
+
+.forecast-dashboard .alerts-card .ro-alert-bottom-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, auto) minmax(0, auto) 34px !important;
+  justify-content: end !important;
+  align-items: center !important;
+  gap: 6px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  margin-top: 1px !important;
+}
+
+.forecast-dashboard .alerts-card .globe-button,
+.forecast-dashboard .alerts-card .raw-radar-button,
+.forecast-dashboard .alerts-card .ro-alert-bottom-row .compact-details-btn {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 32px !important;
+  padding: 0 8px !important;
+  font-size: 0.62rem !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+}
+
+.forecast-dashboard .alerts-card .ro-alert-bottom-row .compact-details-btn {
+  width: 34px !important;
+  padding: 0 !important;
+}
+
+@media (max-width: 640px) {
+  .forecast-dashboard .alerts-card .ro-alert-card {
+    padding: 10px !important;
+  }
+
+  .forecast-dashboard .alerts-card .ro-alert-bottom-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 34px !important;
+    justify-content: stretch !important;
+  }
+
+  .forecast-dashboard .alerts-card .ro-meta-chip {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    overflow-wrap: normal !important;
+  }
+}
+
 /* Keep only the small green status dot glow */
 .status-dot {
   box-shadow: 0 0 8px rgba(40,231,111,0.7) !important;
@@ -7785,6 +7904,15 @@ function getCompactExpireLabel(expires) {
   return text;
 }
 
+function escapeAlertChipText(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 
 function renderCompactAlerts(alerts, category) {
 
@@ -7870,10 +7998,21 @@ stateDetails.addEventListener("toggle", () => {
       card.className = "compact-alert-item ro-alert-card";
       card.style.setProperty("--alert-color", alertColor);
       const metrics = getCompactAlertMetrics(alert);
-const locationText = (props.areaDesc || "Area unavailable")
+const areaChips = (props.areaDesc || "Area unavailable")
   .split(";")
-  .slice(0, 3)
-  .join("; ");
+  .map(area => area.trim())
+  .filter(Boolean);
+
+const visibleAreaChips = areaChips.slice(0, 3);
+const hiddenAreaCount = Math.max(areaChips.length - visibleAreaChips.length, 0);
+
+const metaChipsHtml = [
+  getStateFromAlert(alert),
+  ...visibleAreaChips,
+  ...(hiddenAreaCount ? [`+${hiddenAreaCount} MORE`] : [])
+]
+  .map(chip => `<span class="ro-meta-chip">${escapeAlertChipText(chip)}</span>`)
+  .join("");
 
 
 
@@ -7887,6 +8026,10 @@ card.innerHTML = `
          style="color:${getAlertColor(props.event)};">
       ${props.event}
     </div>
+  </div>
+
+  <div class="ro-alert-meta-row">
+    ${metaChipsHtml}
   </div>
 
   <div class="ro-main-tags">
@@ -7904,13 +8047,6 @@ card.innerHTML = `
   </div>
 
   <div class="ro-alert-bottom-row">
-    <span class="ro-state-chip">${getStateFromAlert(alert)}</span>
-
-    <span class="alert-location">
-      ${locationText}
-    </span>
-
-
 <button
   class="globe-button alert-radar-btn"
   type="button"
