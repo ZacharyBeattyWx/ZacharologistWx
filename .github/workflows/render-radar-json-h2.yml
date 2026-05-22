@@ -8,7 +8,7 @@ on:
       site:
         description: "Radar site"
         required: true
-        default: "FCX"
+        default: "all"
       product:
         description: "Level III product"
         required: true
@@ -46,12 +46,59 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  prepare-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      sites: ${{ steps.sites.outputs.sites }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build radar site matrix
+        id: sites
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SITE_INPUT="${{ github.event.inputs.site || 'all' }}"
+          export SITE_INPUT
+
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          import os
+          import re
+          from pathlib import Path
+
+          def normalize_site(site):
+              normalized = str(site or "").strip().upper()
+              if re.fullmatch(r"[A-Z0-9]{3}", normalized):
+                  return f"K{normalized}"
+              if re.fullmatch(r"[A-Z0-9]{4}", normalized):
+                  return normalized
+              raise ValueError(f"Unsupported radar site ID: {site}")
+
+          config = json.loads(Path("scripts/radar/radar_config.json").read_text(encoding="utf-8"))
+          configured_sites = config.get("renderSites") or config.get("sites") or []
+          site_input = os.environ.get("SITE_INPUT", "all").strip()
+
+          if site_input.lower() == "all":
+              sites = [normalize_site(site) for site in configured_sites]
+          else:
+              sites = [normalize_site(site_input)]
+
+          if not sites:
+              raise SystemExit("No radar sites configured for rendering")
+
+          print(f"sites={json.dumps(sites)}")
+          PY
+
   render:
+    needs: prepare-matrix
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 1
       matrix:
-        site: ${{ fromJSON(github.event_name == 'schedule' && '["KFCX","KRAX"]' || format('["{0}"]', github.event.inputs.site || 'FCX')) }}
+        site: ${{ fromJSON(needs.prepare-matrix.outputs.sites) }}
 
     steps:
       - name: Check out repository
@@ -77,20 +124,17 @@ jobs:
           FORCE_RENDER="${{ github.event.inputs.force_rebuild || 'false' }}"
           SOURCE_DIR="radar/source/level3"
 
-          case "${SITE_INPUT^^}" in
-            FCX|KFCX)
-              SITE3="FCX"
-              SITE4="KFCX"
-              ;;
-            RAX|KRAX)
-              SITE3="RAX"
-              SITE4="KRAX"
-              ;;
-            *)
-              echo "Unsupported radar site: $SITE_INPUT" >&2
-              exit 1
-              ;;
-          esac
+          SITE_INPUT="${SITE_INPUT^^}"
+          if [[ "$SITE_INPUT" =~ ^[A-Z0-9]{3}$ ]]; then
+            SITE3="$SITE_INPUT"
+            SITE4="K${SITE_INPUT}"
+          elif [[ "$SITE_INPUT" =~ ^[A-Z0-9]{4}$ ]]; then
+            SITE3="${SITE_INPUT:1}"
+            SITE4="$SITE_INPUT"
+          else
+            echo "Unsupported radar site ID: $SITE_INPUT" >&2
+            exit 1
+          fi
 
           export SITE3
           export SITE4
@@ -117,8 +161,8 @@ jobs:
           import xml.etree.ElementTree as ET
           from pathlib import Path
 
-          site3 = os.environ.get("SITE3") or "FCX"
-          site4 = os.environ.get("SITE4") or "KFCX"
+          site3 = os.environ["SITE3"]
+          site4 = os.environ["SITE4"]
           product = os.environ.get("PRODUCT") or "N0B"
 
           bucket_url = "https://unidata-nexrad-level3.s3.amazonaws.com"

@@ -1397,16 +1397,19 @@ def normalize_site(site: str | None) -> str | None:
         return None
 
     normalized = site.strip().upper()
-    if normalized in {"FCX", "KFCX"}:
-        return "KFCX"
-    if normalized in {"RAX", "KRAX"}:
-        return "KRAX"
+    if re.fullmatch(r"[A-Z0-9]{3}", normalized):
+        return f"K{normalized}"
+    if re.fullmatch(r"[A-Z0-9]{4}", normalized):
+        return normalized
 
-    raise ValueError(f"Unsupported radar site: {site}")
+    raise ValueError(f"Unsupported radar site ID: {site}")
 
 
 def site_sector(site: str) -> str:
-    return site[1:] if len(site) == 4 and site.startswith("K") else site
+    normalized = normalize_site(site)
+    if not normalized:
+        raise ValueError(f"Unsupported radar site ID: {site}")
+    return normalized[1:] if len(normalized) == 4 else normalized
 
 
 def catalog_site_metadata(site: str, products: list[str] | None = None) -> dict:
@@ -2112,7 +2115,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--site",
-        help="Radar site to render. Accepts FCX/KFCX or RAX/KRAX.",
+        help="Radar site to render. Accepts 3-letter or 4-letter radar IDs.",
     )
     parser.add_argument(
         "--product",
@@ -2271,8 +2274,11 @@ def main() -> int:
         write_frames_catalog(catalog_path, existing_catalog)
         final_catalog = load_frames_catalog(catalog_path)
         print(f"No new {selected_site or 'radar'} {selected_product} frames to render.")
-        print(f"finalCatalogFrameCount.KFCX.{selected_product}={catalog_product_frame_count(final_catalog, 'KFCX', selected_product)}")
-        print(f"finalCatalogFrameCount.KRAX.{selected_product}={catalog_product_frame_count(final_catalog, 'KRAX', selected_product)}")
+        if selected_site:
+            print(
+                f"finalCatalogFrameCount.{selected_site}.{selected_product}="
+                f"{catalog_product_frame_count(final_catalog, selected_site, selected_product)}"
+            )
         print(f"newFramesRenderedCount=0")
         print(f"siteRuntimeSeconds={perf_counter() - site_runtime_start:.3f}")
         return 0
@@ -2307,8 +2313,11 @@ def main() -> int:
         final_catalog = load_frames_catalog(catalog_path)
         print(f"Rendered {rendered_count} new frame(s).")
         print(f"newFramesRenderedCount={rendered_count}")
-        print(f"finalCatalogFrameCount.KFCX.{selected_product}={catalog_product_frame_count(final_catalog, 'KFCX', selected_product)}")
-        print(f"finalCatalogFrameCount.KRAX.{selected_product}={catalog_product_frame_count(final_catalog, 'KRAX', selected_product)}")
+        if selected_site:
+            print(
+                f"finalCatalogFrameCount.{selected_site}.{selected_product}="
+                f"{catalog_product_frame_count(final_catalog, selected_site, selected_product)}"
+            )
         print(f"siteRuntimeSeconds={perf_counter() - site_runtime_start:.3f}")
         return 0
 
