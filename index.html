@@ -7978,7 +7978,7 @@ stateDetails.className = "state-alert-group";
 
 const memoryKey = `${category}-${state}`;
 
-stateDetails.open = dropdownMemory[memoryKey] ?? stateIndex === 0;
+stateDetails.open = dropdownMemory[memoryKey] ?? false;
 
 stateDetails.addEventListener("toggle", () => {
   dropdownMemory[memoryKey] = stateDetails.open;
