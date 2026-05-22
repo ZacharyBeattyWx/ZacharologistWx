@@ -13,8 +13,46 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <style>
-    * {
-    box-sizing: border-box;
+    :root {
+      --page-max: 1760px;
+      --page-pad: clamp(18px, 2vw, 36px);
+      --section-space: clamp(42px, 6vw, 76px);
+      --card-pad: clamp(18px, 2vw, 28px);
+      --grid-gap: clamp(14px, 1.6vw, 22px);
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    img,
+    iframe,
+    video,
+    svg {
+      max-width: 100%;
+      height: auto;
+    }
+
+    canvas {
+      max-width: 100%;
+    }
+
+    img,
+    iframe,
+    video {
+      display: block;
+    }
+
+    .leaflet-container img,
+    .leaflet-container svg {
+      max-width: none;
+    }
+
+    .page-shell {
+      width: min(100% - (var(--page-pad) * 2), var(--page-max));
+      margin-inline: auto;
     }
 
 html,
@@ -241,14 +279,14 @@ color: white;
 
     .section-alt {
   background: transparent !important;
-  padding: 50px 0;
+  padding: var(--section-space) 0;
   margin-top: -20px;
     }
 
     .section-block {
       max-width: 1200px;
       margin: 0 auto;
-      padding: 20px;
+      padding: var(--card-pad);
     }
 
     .section-title {
@@ -261,12 +299,12 @@ color: white;
     .grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 20px;
+      gap: var(--grid-gap);
     }
 
     .card {
   background: rgba(18, 25, 42, 0.85);
-  padding: 28px 22px;
+  padding: var(--card-pad);
   border-radius: 22px;
   text-decoration: none;
   color: white;
