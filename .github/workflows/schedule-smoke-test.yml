@@ -1,0 +1,17 @@
+name: Schedule Smoke Test
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Show schedule context
+        run: |
+          echo "github.event_name=${{ github.event_name }}"
+          echo "utc_now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          echo "repository=${{ github.repository }}"
+          echo "ref=${{ github.ref }}"
+          echo "ref_name=${{ github.ref_name }}"
