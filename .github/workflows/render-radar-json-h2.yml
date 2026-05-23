@@ -553,7 +553,7 @@ jobs:
           if-no-files-found: error
 
       - name: Commit generated radar output
-        if: ${{fasle}}
+        if: ${{false}}
   
         run: |
           set -euo pipefail
