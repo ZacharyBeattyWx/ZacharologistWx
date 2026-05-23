@@ -553,8 +553,7 @@ jobs:
           if-no-files-found: error
 
       - name: Commit generated radar output
-        if: ${{false}}
-  
+        if: ${{ always() && false}}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
