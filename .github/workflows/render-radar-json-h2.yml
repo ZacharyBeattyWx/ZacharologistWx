@@ -60,9 +60,9 @@ jobs:
         run: |
           set -euo pipefail
 
-          SITE_INPUT="${{ github.event.inputs.site || 'all' }}"
+          RAW_SITE_INPUT="${{ github.event.inputs.site }}"
           EVENT_NAME="${{ github.event_name }}"
-          export SITE_INPUT
+          export RAW_SITE_INPUT
           export EVENT_NAME
 
           python - <<'PY'
@@ -99,7 +99,8 @@ jobs:
           regional_sites = config.get("regionalRenderSites") or legacy_sites
           render_policy = config.get("renderPolicy") or {}
           event_name = os.environ.get("EVENT_NAME", "")
-          site_input = os.environ.get("SITE_INPUT", "all").strip()
+          raw_site_input = os.environ.get("RAW_SITE_INPUT", "")
+          site_input = raw_site_input.strip() or "all"
 
           if event_name == "schedule":
               mode = render_policy.get("scheduledMode") or "core-only"
@@ -120,11 +121,14 @@ jobs:
           if not sites:
               raise SystemExit("No radar sites configured for rendering")
 
+          matrix_sites_json = json.dumps(sites)
+          print(f"github.event_name: {event_name}")
+          print(f"Raw site input: {raw_site_input or '(empty)'}")
           print(f"Selected radar render mode: {mode}")
-          print(f"Radar render matrix sites: {', '.join(sites)}")
+          print(f"Radar render matrix sites JSON: {matrix_sites_json}")
 
           with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as output:
-              print(f"sites={json.dumps(sites)}", file=output)
+              print(f"sites={matrix_sites_json}", file=output)
           PY
 
   render:
@@ -148,6 +152,16 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r scripts/radar/requirements.txt
+
+      - name: Show radar render matrix context
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "github.event_name: ${{ github.event_name }}"
+          echo "Raw site input: ${{ github.event.inputs.site }}"
+          echo "Matrix sites JSON: ${{ needs.prepare-matrix.outputs.sites }}"
+          echo "Current matrix.site: ${{ matrix.site }}"
 
       - name: Download latest Level III source
         shell: bash
