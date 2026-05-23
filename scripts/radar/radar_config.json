@@ -2,6 +2,15 @@
   "enabled": true,
   "sites": ["KFCX", "KRAX"],
   "renderSites": ["KFCX", "KRAX", "KGSP", "KLTX", "KMHX", "KAKQ"],
+  "coreRenderSites": ["KFCX", "KRAX"],
+  "regionalRenderSites": ["KFCX", "KRAX", "KGSP", "KLTX", "KMHX", "KAKQ"],
+  "availableSitesMode": "all-nexrad",
+  "renderPolicy": {
+    "scheduledMode": "core-only",
+    "manualAllMode": "regional",
+    "maxScheduledSitesPerRun": 2,
+    "maxManualSitesPerRun": 8
+  },
   "products": ["N0B"],
   "frameCount": 25,
   "outputRoot": "radar",

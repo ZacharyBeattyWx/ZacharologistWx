@@ -61,9 +61,11 @@ jobs:
           set -euo pipefail
 
           SITE_INPUT="${{ github.event.inputs.site || 'all' }}"
+          EVENT_NAME="${{ github.event_name }}"
           export SITE_INPUT
+          export EVENT_NAME
 
-          python - <<'PY' >> "$GITHUB_OUTPUT"
+          python - <<'PY'
           import json
           import os
           import re
@@ -77,19 +79,52 @@ jobs:
                   return normalized
               raise ValueError(f"Unsupported radar site ID: {site}")
 
+          def normalize_sites(sites):
+              return [normalize_site(site) for site in sites]
+
+          def limit_sites(sites, limit):
+              if limit is None:
+                  return sites
+
+              try:
+                  limit = int(limit)
+              except (TypeError, ValueError):
+                  return sites
+
+              return sites[:limit] if limit > 0 else sites
+
           config = json.loads(Path("scripts/radar/radar_config.json").read_text(encoding="utf-8"))
-          configured_sites = config.get("renderSites") or config.get("sites") or []
+          legacy_sites = config.get("renderSites") or config.get("sites") or []
+          core_sites = config.get("coreRenderSites") or legacy_sites
+          regional_sites = config.get("regionalRenderSites") or legacy_sites
+          render_policy = config.get("renderPolicy") or {}
+          event_name = os.environ.get("EVENT_NAME", "")
           site_input = os.environ.get("SITE_INPUT", "all").strip()
 
-          if site_input.lower() == "all":
-              sites = [normalize_site(site) for site in configured_sites]
+          if event_name == "schedule":
+              mode = render_policy.get("scheduledMode") or "core-only"
+              sites = limit_sites(
+                  normalize_sites(core_sites),
+                  render_policy.get("maxScheduledSitesPerRun"),
+              )
+          elif site_input.lower() == "all":
+              mode = render_policy.get("manualAllMode") or "regional"
+              sites = limit_sites(
+                  normalize_sites(regional_sites),
+                  render_policy.get("maxManualSitesPerRun"),
+              )
           else:
+              mode = "manual-specific"
               sites = [normalize_site(site_input)]
 
           if not sites:
               raise SystemExit("No radar sites configured for rendering")
 
-          print(f"sites={json.dumps(sites)}")
+          print(f"Selected radar render mode: {mode}")
+          print(f"Radar render matrix sites: {', '.join(sites)}")
+
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as output:
+              print(f"sites={json.dumps(sites)}", file=output)
           PY
 
   render:
