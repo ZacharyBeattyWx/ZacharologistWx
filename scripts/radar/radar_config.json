@@ -23,7 +23,18 @@
       "enabled": true,
       "radiusKm": 3
     },
-    "lowDbzOpacityTaper": true,
+    "lowDbzOpacityTaper": {
+      "enabled": true,
+      "points": [
+        { "dbz": -32, "opacity": 0.0 },
+        { "dbz": -20, "opacity": 0.01 },
+        { "dbz": -10, "opacity": 0.04 },
+        { "dbz": 0, "opacity": 0.12 },
+        { "dbz": 5, "opacity": 0.32 },
+        { "dbz": 10, "opacity": 0.70 },
+        { "dbz": 15, "opacity": 1.0 }
+      ]
+    },
     "isolatedSpeckleDampen": {
       "enabled": true,
       "maximumDbz": 10,
