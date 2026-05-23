@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZacharologistWx Mapbox Test</title>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
+  <style>
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      background: #030711;
+      color: #f8fafc;
+      font-family: Arial, sans-serif;
+      overflow: hidden;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    #map {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .map-title {
+      position: fixed;
+      top: 14px;
+      left: 14px;
+      z-index: 2;
+      padding: 10px 13px;
+      background: rgba(3, 7, 18, 0.82);
+      border: 1px solid rgba(148, 163, 184, 0.28);
+      border-radius: 6px;
+      color: #ffffff;
+      font-size: 0.82rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+      backdrop-filter: blur(10px);
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div class="map-title">ZacharologistWx Mapbox Test</div>
+
+  <script>
+    const MAPBOX_TOKEN = "PASTE_PUBLIC_MAPBOX_TOKEN_HERE";
+    const MAPBOX_STYLE = "mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
+
+    if (!MAPBOX_TOKEN.startsWith("pk.")) {
+      throw new Error("Mapbox token must be a public pk.* token.");
+    }
+
+    mapboxgl.accessToken = MAPBOX_TOKEN;
+
+    const map = new mapboxgl.Map({
+      container: "map",
+      style: MAPBOX_STYLE,
+      center: [-79.8, 35.8],
+      zoom: 6.1,
+      projection: "mercator",
+      attributionControl: true
+    });
+
+    map.addControl(new mapboxgl.NavigationControl(), "top-right");
+
+    map.on("load", () => {
+      console.log("ZacharologistWx Mapbox Test: map loaded", {
+        style: MAPBOX_STYLE,
+        center: map.getCenter().toArray(),
+        zoom: map.getZoom()
+      });
+    });
+
+    map.on("error", (event) => {
+      console.error("ZacharologistWx Mapbox Test: map error", event && event.error ? event.error : event);
+    });
+  </script>
+</body>
+</html>
