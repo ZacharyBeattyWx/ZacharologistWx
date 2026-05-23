@@ -100,7 +100,7 @@ jobs:
     needs: prepare-matrix
     runs-on: ubuntu-latest
     strategy:
-      max-parallel: 1
+      max-parallel: 2
       matrix:
         site: ${{ fromJSON(needs.prepare-matrix.outputs.sites) }}
 
@@ -543,16 +543,18 @@ jobs:
           PY
 
       - name: Upload JSON-H2 radar artifact
+        if: ${{failure()}}
         uses: actions/upload-artifact@v4
         with:
-          name: radar-json-h2-test-${{ matrix.site }}
+          name: radar-json-h2-test-${{matrix.site}}
           path: |
             radar/frames.json
             radar/frames/**/*.webp
           if-no-files-found: error
 
       - name: Commit generated radar output
-        if: ${{ (github.event.inputs.commit_outputs || 'true') == 'true' }}
+        if: ${{fasle}}
+  
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
