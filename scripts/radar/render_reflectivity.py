@@ -52,11 +52,13 @@ DEFAULT_RENDER_MODE = "cartesian"
 DEFAULT_NATIVE_POLAR_OPACITY_TAPER = {
     "enabled": True,
     "points": [
-        {"dbz": -10.0, "opacity": 0.34},
-        {"dbz": -5.0, "opacity": 0.48},
-        {"dbz": 0.0, "opacity": 0.65},
-        {"dbz": 5.0, "opacity": 0.82},
-        {"dbz": 10.0, "opacity": 1.0},
+        {"dbz": -32.0, "opacity": 0.0},
+        {"dbz": -20.0, "opacity": 0.02},
+        {"dbz": -10.0, "opacity": 0.07},
+        {"dbz": 0.0, "opacity": 0.18},
+        {"dbz": 5.0, "opacity": 0.45},
+        {"dbz": 10.0, "opacity": 0.78},
+        {"dbz": 15.0, "opacity": 1.0},
     ],
 }
 WEB_MERCATOR_RADIUS_M = 6378137.0
@@ -555,6 +557,45 @@ def rgba_for_rendered_dbz(
     return red, green, blue, min(255, max(0, alpha))
 
 
+def apply_no_data_transparency_cleanup(rgba):
+    """Remove low-signal haze while preserving colored reflectivity returns.
+
+    NEXRAD Level III grids often contain finite very-low dBZ bins around the
+    radar. Those bins are not true missing data, but visually they read as a
+    smoky gray/black sheet over dark basemaps. The renderer still draws weak
+    returns through the configured dBZ opacity taper; this final cleanup only
+    makes nearly transparent and neutral dark pixels disappear and leaves
+    saturated green/yellow/orange/red reflectivity colors intact.
+    """
+    import numpy as np
+
+    alpha = rgba[:, :, 3].astype(np.uint16)
+    red = rgba[:, :, 0].astype(np.uint16)
+    green = rgba[:, :, 1].astype(np.uint16)
+    blue = rgba[:, :, 2].astype(np.uint16)
+    max_channel = np.maximum(np.maximum(red, green), blue)
+    min_channel = np.minimum(np.minimum(red, green), blue)
+    saturation = max_channel - min_channel
+
+    green_return = (green >= red + 8) & (green >= blue + 4) & (saturation >= 16)
+    warm_return = (
+        ((red >= 120) | (green >= 120))
+        & (red >= blue + 12)
+        & (green >= blue + 8)
+        & (saturation >= 18)
+    )
+    vivid_return = (saturation >= 36) & (max_channel >= 80)
+    reflectivity_color = (alpha > 0) & (green_return | warm_return | vivid_return)
+
+    nearly_invisible = alpha <= 10
+    dark_neutral_haze = (alpha <= 72) & (max_channel <= 70) & (saturation <= 30)
+    smoky_gray_haze = (alpha <= 125) & (max_channel <= 130) & (saturation <= 18)
+    cleanup_mask = (nearly_invisible | dark_neutral_haze | smoky_gray_haze) & ~reflectivity_color
+
+    rgba[cleanup_mask, 3] = 0
+    return int(cleanup_mask.sum())
+
+
 def neighbor_count_mask(mask):
     import numpy as np
 
@@ -633,6 +674,7 @@ def reflectivity_to_rgba(
     dampen_isolated_weak_speckles(rgba, numeric, visible_mask, speckle_dampen)
     rgba[~finite_mask] = [0, 0, 0, 0]
     rgba[finite_mask & ~visible_mask] = [0, 0, 0, 0]
+    apply_no_data_transparency_cleanup(rgba)
     return rgba
 
 
@@ -1194,14 +1236,19 @@ def native_polar_reflectivity_to_rgba(
         center_no_data_mask,
     )
     mask_final_elapsed = perf_counter() - mask_final_start
+    cleanup_start = perf_counter()
+    cleaned_no_data_pixels = apply_no_data_transparency_cleanup(rgba)
+    cleanup_elapsed = perf_counter() - cleanup_start
     print(
         "nativePolar.timing.seconds "
         f"setup={setup_elapsed:.3f} "
         f"drawPolygons={draw_elapsed:.3f} "
         f"applyMaskInternal={mask_internal_elapsed:.3f} "
         f"downsample={downsample_elapsed:.3f} "
-        f"applyMaskFinal={mask_final_elapsed:.3f}"
+        f"applyMaskFinal={mask_final_elapsed:.3f} "
+        f"cleanupNoData={cleanup_elapsed:.3f}"
     )
+    print(f"nativePolar.cleanedNoDataHazePixels={cleaned_no_data_pixels}")
     return rgba, numeric, radial_bins_drawn, center_mask_pixel_radius
 
 
