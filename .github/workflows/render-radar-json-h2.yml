@@ -3,41 +3,6 @@ name: Render Radar JSON-H2
 on:
   schedule:
     - cron: "2,7,12,17,22,27,32,37,42,47,52,57 * * * *"
-  workflow_dispatch:
-    inputs:
-      site:
-        description: "Radar site"
-        required: true
-        default: "all"
-      product:
-        description: "Level III product"
-        required: true
-        default: "N0B"
-      min_visible_dbz:
-        description: "Minimum dBZ rendered as visible"
-        required: true
-        default: "10"
-      min_component_pixels:
-        description: "Minimum connected pixel blob size to keep"
-        required: true
-        default: "6"
-      commit_outputs:
-        description: "Commit generated radar frames and catalog back to the repository"
-        required: true
-        default: "false"
-        type: choice
-        options:
-          - "false"
-          - "true"
-      force_rebuild:
-        description: "Force a full rebuild for the selected site/product"
-        required: true
-        default: "false"
-        type: choice
-        options:
-          - "false"
-          - "true"
-
 permissions:
   contents: write
 
