@@ -415,7 +415,6 @@
             <span>Site</span>
             <select id="siteSelect">
               <option value="KFCX" selected>KFCX</option>
-              <option value="KRAX">KRAX</option>
             </select>
           </label>
           <button class="playback-button" id="prevFrameButton" type="button">Previous</button>
@@ -445,7 +444,6 @@
   ></script>
   <script>
     const DEFAULT_SITE = 'KFCX';
-    const AVAILABLE_SITES = ['KFCX', 'KRAX'];
     const SITE_STORAGE_KEY = 'radarPreview:selectedSite';
     const PRODUCT = 'N0B';
     const RADAR_DATA_BASE_URL = 'https://radar.zacharologistwx.com';
@@ -660,6 +658,7 @@
     let radarBounds = null;
     let playbackModeIsMobile = isMobilePlaybackMode();
     let playbackModeChangeTimer = null;
+    let availableSites = [];
     let selectedSite = initialSelectedSite();
 
     function setStatus(message, isError = false) {
@@ -668,7 +667,10 @@
     }
 
     function normalizeSite(site) {
-      return AVAILABLE_SITES.includes(site) ? site : DEFAULT_SITE;
+      const normalized = String(site || '').trim().toUpperCase();
+      if (/^[A-Z0-9]{3}$/.test(normalized)) return `K${normalized}`;
+      if (/^[A-Z0-9]{4}$/.test(normalized)) return normalized;
+      return DEFAULT_SITE;
     }
 
     function storedSite() {
@@ -686,6 +688,36 @@
 
     function currentSite() {
       return selectedSite;
+    }
+
+    function catalogSitesForProduct(catalog) {
+      const frames = catalog && catalog.frames;
+      if (!frames || typeof frames !== 'object') return [];
+
+      return Object.keys(frames)
+        .filter((site) => {
+          const productFrames = frames[site] && frames[site][PRODUCT];
+          return Array.isArray(productFrames) && productFrames.length > 0;
+        })
+        .sort((a, b) => a.localeCompare(b));
+    }
+
+    function preferredSiteForCatalog(sites) {
+      if (sites.includes(currentSite())) return currentSite();
+      if (sites.includes(DEFAULT_SITE)) return DEFAULT_SITE;
+      return sites[0] || DEFAULT_SITE;
+    }
+
+    function updateSiteOptions(sites) {
+      siteSelect.replaceChildren(
+        ...sites.map((site) => {
+          const option = document.createElement('option');
+          option.value = site;
+          option.textContent = site;
+          option.selected = site === currentSite();
+          return option;
+        })
+      );
     }
 
     function saveSelectedSite() {
@@ -706,7 +738,7 @@
       const title = `High-Res ${currentSite()} Radar`;
       radarTitle.textContent = title;
       document.title = title;
-      if (siteSelect.value !== currentSite()) {
+      if (siteSelect.value !== currentSite() && Array.from(siteSelect.options).some((option) => option.value === currentSite())) {
         siteSelect.value = currentSite();
       }
     }
@@ -1467,6 +1499,24 @@
       const previousPlaybackIndex = playbackIndex;
       const wasViewingNewest = playbackFrames.length > 0 &&
         previousPlaybackIndex === playbackFrames.length - 1;
+      const nextAvailableSites = catalogSitesForProduct(catalog);
+
+      if (!nextAvailableSites.length) {
+        throw new Error(`Missing frames for ${PRODUCT} in radar/frames.json.`);
+      }
+
+      const nextSite = preferredSiteForCatalog(nextAvailableSites);
+      const didChangeSite = nextSite !== currentSite();
+
+      availableSites = nextAvailableSites;
+      selectedSite = nextSite;
+      updateSiteOptions(availableSites);
+      updateRadarSiteLabels();
+
+      if (didChangeSite) {
+        saveSelectedSite();
+        updateSiteUrl();
+      }
 
       currentCatalog = catalog;
       playbackModeIsMobile = isMobilePlaybackMode();
@@ -1544,6 +1594,7 @@
 
     function changeRadarSite(site) {
       const nextSite = normalizeSite(site);
+      if (availableSites.length && !availableSites.includes(nextSite)) return;
       if (nextSite === currentSite()) return;
 
       selectedSite = nextSite;
