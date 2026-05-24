@@ -2,13 +2,13 @@
   "enabled": true,
   "sites": ["KFCX", "KRAX"],
   "renderSites": ["KFCX", "KRAX", "KGSP", "KLTX", "KMHX", "KAKQ"],
-  "coreRenderSites": ["KFCX", "KRAX"],
+  "coreRenderSites": ["KFCX", "KRAX", "KGSP"],
   "regionalRenderSites": ["KFCX", "KRAX", "KGSP", "KLTX", "KMHX", "KAKQ"],
   "availableSitesMode": "all-nexrad",
   "renderPolicy": {
     "scheduledMode": "core-only",
     "manualAllMode": "regional",
-    "maxScheduledSitesPerRun": 2,
+    "maxScheduledSitesPerRun": 3,
     "maxManualSitesPerRun": 8
   },
   "products": ["N0B"],
