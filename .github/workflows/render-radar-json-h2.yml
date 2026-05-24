@@ -509,7 +509,56 @@ jobs:
           echo "Generated radar files:"
           find radar -maxdepth 5 -type f | sort
 
-      - name: Upload JSON-H2 radar output to Cloudflare R2
+      - name: Create per-site radar catalog fragment
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p artifacts/catalog-fragments
+
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          config = json.loads(Path("scripts/radar/radar_config.json").read_text(encoding="utf-8"))
+          catalog = json.loads(Path("radar/frames.json").read_text(encoding="utf-8"))
+          site = os.environ["SITE4"]
+          product = os.environ["PRODUCT"]
+          frame_count = int(config.get("frameCount") or 1)
+          frames = (((catalog.get("frames") or {}).get(site) or {}).get(product) or [])
+
+          fragment = {
+              "site": site,
+              "product": product,
+              "frameCount": frame_count,
+              "sites": {
+                  site: (catalog.get("sites") or {}).get(site, {}),
+              },
+              "products": {
+                  product: (catalog.get("products") or {}).get(product, {}),
+              },
+              "frames": {
+                  site: {
+                      product: frames,
+                  },
+              },
+          }
+
+          output_path = Path("artifacts/catalog-fragments") / f"{site}-{product}.json"
+          output_path.write_text(json.dumps(fragment, indent=2) + "\n", encoding="utf-8")
+          print(f"Wrote catalog fragment: {output_path}")
+          print(f"Fragment frame count for {site}.{product}: {len(frames)}")
+          PY
+
+      - name: Upload per-site radar catalog fragment
+        uses: actions/upload-artifact@v4
+        with:
+          name: radar-catalog-fragment-${{ matrix.site }}
+          path: artifacts/catalog-fragments/*.json
+          if-no-files-found: error
+
+      - name: Upload JSON-H2 radar frames to Cloudflare R2
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
@@ -520,7 +569,6 @@ jobs:
 
           R2_ENDPOINT="https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com"
 
-          aws s3 cp radar/frames.json "s3://${{ secrets.R2_BUCKET }}/radar/frames.json" --endpoint-url "$R2_ENDPOINT"
           sync_args=(
             "radar/frames/${SITE4}/${PRODUCT}"
             "s3://${{ secrets.R2_BUCKET }}/radar/frames/${SITE4}/${PRODUCT}"
@@ -534,18 +582,6 @@ jobs:
           fi
 
           aws s3 sync "${sync_args[@]}"
-
-          TMP_CATALOG="$(mktemp)"
-          aws s3 cp "s3://${{ secrets.R2_BUCKET }}/radar/frames.json" "$TMP_CATALOG" --endpoint-url "$R2_ENDPOINT"
-          python - "$TMP_CATALOG" <<'PY'
-          import json
-          import sys
-          from pathlib import Path
-
-          catalog = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-          site_keys = sorted((catalog.get("frames") or {}).keys())
-          print(f"Uploaded R2 catalog site keys: {', '.join(site_keys) if site_keys else '(none)'}")
-          PY
 
       - name: Upload JSON-H2 radar artifact
         if: ${{ failure() }}
@@ -589,3 +625,169 @@ jobs:
           git commit -m "Update generated radar JSON-H4 output"
 
           git push origin HEAD:main
+
+  merge-catalog:
+    needs: render
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Download per-site radar catalog fragments
+        uses: actions/download-artifact@v4
+        with:
+          pattern: radar-catalog-fragment-*
+          path: artifacts/catalog-fragments
+          merge-multiple: true
+
+      - name: Restore latest R2 radar catalog
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_EC2_METADATA_DISABLED: true
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          R2_ENDPOINT="https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com"
+          mkdir -p radar
+
+          if aws s3 cp "s3://${{ secrets.R2_BUCKET }}/radar/frames.json" radar/frames.json --endpoint-url "$R2_ENDPOINT"; then
+            python - <<'PY'
+          import json
+          from pathlib import Path
+
+          catalog = json.loads(Path("radar/frames.json").read_text(encoding="utf-8"))
+          site_keys = sorted((catalog.get("frames") or {}).keys())
+          print(f"Restored latest R2 catalog site keys: {', '.join(site_keys) if site_keys else '(none)'}")
+          PY
+          else
+            echo "No existing R2 radar/frames.json found; final merge will create a new catalog."
+          fi
+
+      - name: Merge per-site radar catalog fragments
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python - <<'PY'
+          import json
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          def parse_time(value):
+              if not value:
+                  return datetime.min.replace(tzinfo=timezone.utc)
+              normalized = str(value).replace("Z", "+00:00")
+              try:
+                  return datetime.fromisoformat(normalized)
+              except ValueError:
+                  return datetime.min.replace(tzinfo=timezone.utc)
+
+          def frame_sort_key(frame):
+              return (
+                  parse_time(frame.get("validTime")),
+                  str(frame.get("slug") or ""),
+                  str(frame.get("url") or ""),
+              )
+
+          def safe_frame_count(value):
+              try:
+                  return max(1, int(value))
+              except (TypeError, ValueError):
+                  return 1
+
+          config = json.loads(Path("scripts/radar/radar_config.json").read_text(encoding="utf-8"))
+          catalog_path = Path(config.get("catalogPath", "radar/frames.json"))
+          frame_count = safe_frame_count(config.get("frameCount"))
+
+          if catalog_path.exists():
+              catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+          else:
+              catalog = {}
+
+          catalog["schemaVersion"] = catalog.get("schemaVersion", 1)
+          catalog.setdefault("sites", {})
+          catalog.setdefault("products", {})
+          catalog.setdefault("frames", {})
+
+          fragment_paths = sorted(Path("artifacts/catalog-fragments").glob("*.json"))
+          if not fragment_paths:
+              raise SystemExit("No per-site catalog fragments found.")
+
+          for fragment_path in fragment_paths:
+              fragment = json.loads(fragment_path.read_text(encoding="utf-8"))
+              site = str(fragment.get("site") or "").strip().upper()
+              product = str(fragment.get("product") or "").strip().upper()
+              if not site or not product:
+                  raise SystemExit(f"Catalog fragment missing site/product: {fragment_path}")
+
+              fragment_frame_count = safe_frame_count(fragment.get("frameCount") or frame_count)
+              max_frames = min(frame_count, fragment_frame_count)
+
+              site_metadata = (fragment.get("sites") or {}).get(site)
+              product_metadata = (fragment.get("products") or {}).get(product)
+              if site_metadata:
+                  catalog["sites"][site] = site_metadata
+              if product_metadata:
+                  catalog["products"][product] = product_metadata
+
+              existing_frames = (((catalog.get("frames") or {}).get(site) or {}).get(product) or [])
+              fragment_frames = (((fragment.get("frames") or {}).get(site) or {}).get(product) or [])
+
+              merged_by_slug = {}
+              unkeyed_frames = []
+              for frame in [*existing_frames, *fragment_frames]:
+                  if not isinstance(frame, dict):
+                      continue
+                  slug = frame.get("slug")
+                  if slug:
+                      merged_by_slug[str(slug)] = frame
+                  else:
+                      unkeyed_frames.append(frame)
+
+              merged_frames = [*merged_by_slug.values(), *unkeyed_frames]
+              catalog["frames"].setdefault(site, {})[product] = sorted(
+                  merged_frames,
+                  key=frame_sort_key,
+                  reverse=True,
+              )[:max_frames]
+              print(
+                  f"Merged {fragment_path.name}: "
+                  f"{site}.{product}={len(catalog['frames'][site][product])}"
+              )
+
+          catalog["generatedAt"] = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+          catalog_path.parent.mkdir(parents=True, exist_ok=True)
+          catalog_path.write_text(json.dumps(catalog, indent=2) + "\n", encoding="utf-8")
+
+          site_keys = sorted((catalog.get("frames") or {}).keys())
+          print(f"Final merged catalog site keys: {', '.join(site_keys) if site_keys else '(none)'}")
+          PY
+
+      - name: Upload merged radar catalog to Cloudflare R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_EC2_METADATA_DISABLED: true
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          R2_ENDPOINT="https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com"
+          aws s3 cp radar/frames.json "s3://${{ secrets.R2_BUCKET }}/radar/frames.json" --endpoint-url "$R2_ENDPOINT"
+
+          TMP_CATALOG="$(mktemp)"
+          aws s3 cp "s3://${{ secrets.R2_BUCKET }}/radar/frames.json" "$TMP_CATALOG" --endpoint-url "$R2_ENDPOINT"
+          python - "$TMP_CATALOG" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          catalog = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          site_keys = sorted((catalog.get("frames") or {}).keys())
+          print(f"Uploaded final R2 catalog site keys: {', '.join(site_keys) if site_keys else '(none)'}")
+          PY
