@@ -1,0 +1,9 @@
+name = "zacharologistwx-radar-h2-dispatcher"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+# Required secret:
+# wrangler secret put GITHUB_DISPATCH_TOKEN
+
+[triggers]
+crons = ["*/10 * * * *"]

@@ -3,6 +3,8 @@ name: Render Radar JSON-H2
 on:
   schedule:
     - cron: "*/10 * * * *"
+  repository_dispatch:
+    types: [radar_h2_cron]
 permissions:
   contents: write
 
@@ -27,8 +29,12 @@ jobs:
 
           RAW_SITE_INPUT="${{ github.event.inputs.site }}"
           EVENT_NAME="${{ github.event_name }}"
+          EVENT_ACTION="${{ github.event.action }}"
+          DISPATCH_PAYLOAD='${{ toJSON(github.event.client_payload) }}'
           export RAW_SITE_INPUT
           export EVENT_NAME
+          export EVENT_ACTION
+          export DISPATCH_PAYLOAD
 
           python - <<'PY'
           import json
@@ -61,33 +67,29 @@ jobs:
           config = json.loads(Path("scripts/radar/radar_config.json").read_text(encoding="utf-8"))
           legacy_sites = config.get("renderSites") or config.get("sites") or []
           core_sites = config.get("coreRenderSites") or legacy_sites
-          regional_sites = config.get("regionalRenderSites") or legacy_sites
           render_policy = config.get("renderPolicy") or {}
           event_name = os.environ.get("EVENT_NAME", "")
+          event_action = os.environ.get("EVENT_ACTION", "")
+          dispatch_payload = os.environ.get("DISPATCH_PAYLOAD", "")
           raw_site_input = os.environ.get("RAW_SITE_INPUT", "")
-          site_input = raw_site_input.strip() or "all"
 
-          if event_name == "schedule":
+          if event_name in ("schedule", "repository_dispatch"):
               mode = render_policy.get("scheduledMode") or "core-only"
               sites = limit_sites(
                   normalize_sites(core_sites),
                   render_policy.get("maxScheduledSitesPerRun"),
               )
-          elif site_input.lower() == "all":
-              mode = render_policy.get("manualAllMode") or "regional"
-              sites = limit_sites(
-                  normalize_sites(regional_sites),
-                  render_policy.get("maxManualSitesPerRun"),
-              )
           else:
-              mode = "manual-specific"
-              sites = [normalize_site(site_input)]
+              raise SystemExit(f"Unsupported radar H2 trigger event: {event_name}")
 
           if not sites:
               raise SystemExit("No radar sites configured for rendering")
 
           matrix_sites_json = json.dumps(sites)
           print(f"github.event_name: {event_name}")
+          print(f"github.event.action: {event_action or '(empty)'}")
+          print(f"repository_dispatch event_type: {event_action if event_name == 'repository_dispatch' else '(not repository_dispatch)'}")
+          print(f"repository_dispatch client_payload: {dispatch_payload if event_name == 'repository_dispatch' else '(not repository_dispatch)'}")
           print(f"Raw site input: {raw_site_input or '(empty)'}")
           print(f"Selected radar render mode: {mode}")
           print(f"Radar render matrix sites JSON: {matrix_sites_json}")
@@ -124,7 +126,10 @@ jobs:
           set -euo pipefail
 
           echo "github.event_name: ${{ github.event_name }}"
+          echo "github.event.action: ${{ github.event.action }}"
+          echo 'repository_dispatch client_payload: ${{ toJSON(github.event.client_payload) }}'
           echo "Raw site input: ${{ github.event.inputs.site }}"
+          echo "Selected radar render mode: scheduled/core-only"
           echo "Matrix sites JSON: ${{ needs.prepare-matrix.outputs.sites }}"
           echo "Current matrix.site: ${{ matrix.site }}"
 
@@ -543,7 +548,7 @@ jobs:
           PY
 
       - name: Upload JSON-H2 radar artifact
-        if: ${{failure()}}
+        if: ${{ failure() }}
         uses: actions/upload-artifact@v4
         with:
           name: radar-json-h2-test-${{matrix.site}}
@@ -553,7 +558,7 @@ jobs:
           if-no-files-found: error
 
       - name: Commit generated radar output
-        if: ${{ always() && false}}
+        if: ${{ always() && false }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
