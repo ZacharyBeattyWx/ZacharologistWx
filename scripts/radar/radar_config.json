@@ -1,14 +1,14 @@
 {
   "enabled": true,
   "sites": ["KFCX", "KRAX"],
-  "renderSites": ["KFCX", "KRAX", "KGSP", "KLTX", "KMHX", "KAKQ"],
-  "coreRenderSites": ["KFCX", "KRAX", "KGSP", "KLTX"],
-  "regionalRenderSites": ["KFCX", "KRAX", "KGSP", "KLTX", "KMHX", "KAKQ"],
+  "renderSites": ["KFCX", "KRAX", "KGSP", "KLTX", "KMHX", "KCAE", "KAKQ"],
+  "coreRenderSites": ["KFCX", "KRAX", "KGSP", "KLTX", "KMHX", "KCAE"],
+  "regionalRenderSites": ["KFCX", "KRAX", "KGSP", "KLTX", "KMHX", "KCAE", "KAKQ"],
   "availableSitesMode": "all-nexrad",
   "renderPolicy": {
     "scheduledMode": "core-only",
     "manualAllMode": "regional",
-    "maxScheduledSitesPerRun": 4,
+    "maxScheduledSitesPerRun": 6,
     "maxManualSitesPerRun": 8
   },
   "products": ["N0B"],
