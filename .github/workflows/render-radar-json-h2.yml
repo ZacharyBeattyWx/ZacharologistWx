@@ -102,7 +102,7 @@ jobs:
     needs: prepare-matrix
     runs-on: ubuntu-latest
     strategy:
-      max-parallel: 3
+      max-parallel: 4
       matrix:
         site: ${{ fromJSON(needs.prepare-matrix.outputs.sites) }}
 
