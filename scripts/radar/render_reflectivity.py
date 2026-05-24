@@ -1612,6 +1612,9 @@ def update_frames_catalog(
     config: dict,
     frame_count: int = 1,
 ) -> None:
+    from time import perf_counter
+
+    catalog_update_start = perf_counter()
     catalog_path.parent.mkdir(parents=True, exist_ok=True)
     max_frames = safe_frame_count(frame_count)
 
@@ -1641,7 +1644,14 @@ def update_frames_catalog(
         reverse=True,
     )[:max_frames]
 
+    write_catalog_start = perf_counter()
     write_frames_catalog(catalog_path, catalog)
+    write_catalog_elapsed = perf_counter() - write_catalog_start
+    print(
+        "catalogUpdate.timing.seconds "
+        f"writeCatalog={write_catalog_elapsed:.3f} "
+        f"totalCatalogUpdate={perf_counter() - catalog_update_start:.3f}"
+    )
 
 
 def summarize_numeric_array(name: str, values) -> None:
@@ -2206,7 +2216,10 @@ def main() -> int:
     selected_product = str(args.product or "N0B").strip().upper()
     catalog_path = REPO_ROOT / config.get("catalogPath", "radar/frames.json")
     frame_count = safe_frame_count(config.get("frameCount"))
+    catalog_load_start = perf_counter()
     existing_catalog = load_frames_catalog(catalog_path)
+    catalog_load_elapsed = perf_counter() - catalog_load_start
+    existing_lookup_start = perf_counter()
     ensure_configured_catalog_metadata(existing_catalog, config)
     existing_frame_count = (
         catalog_product_frame_count(existing_catalog, selected_site, selected_product)
@@ -2218,12 +2231,19 @@ def main() -> int:
         if selected_site
         else set()
     )
+    existing_lookup_elapsed = perf_counter() - existing_lookup_start
     print("Reflectivity renderer scaffold")
     print(f"enabled={config.get('enabled')}")
     print(f"selectedSite={selected_site or 'any'}")
     print(f"selectedSector={selected_sector or 'any'}")
     print(f"selectedProduct={selected_product}")
+    print(
+        "catalogRead.timing.seconds "
+        f"loadCatalog={catalog_load_elapsed:.3f} "
+        f"existingLookup={existing_lookup_elapsed:.3f}"
+    )
     print(f"existingCatalogFrameCount={existing_frame_count}")
+    print(f"existingCatalogSlugCount={len(existing_slugs)}")
     print(f"forceRebuild={args.force}")
     print(f"palette={config.get('palette')}")
     print(f"frameOutputDir={config.get('frameOutputDir')}")
@@ -2286,10 +2306,12 @@ def main() -> int:
         if selected_sector
         else f"Level3_*_{selected_product}_*.nids"
     )
+    discover_sources_start = perf_counter()
     source_files = sorted(
         args.source_cache.glob(source_pattern),
         key=lambda path: (source_file_sort_key(path), path.name),
     )
+    discover_sources_elapsed = perf_counter() - discover_sources_start
 
     if not source_files:
         print(f"No Level III {selected_product} source files found in {args.source_cache} with pattern {source_pattern}.")
@@ -2299,26 +2321,55 @@ def main() -> int:
     skipped_existing_frame_count = 0
     selected_source_files = []
 
+    decide_sources_start = perf_counter()
     for source_file in candidate_source_files:
         slug = source_file_slug(source_file)
         if args.render and not args.force and slug and slug in existing_slugs:
             skipped_existing_frame_count += 1
+            print(f"sourceDecision file={source_file} slug={slug} action=skip reason=existing-slug")
             print(f"Skipping existing frame source: {source_file} slug={slug}")
             continue
 
+        if args.render and args.force:
+            source_decision_reason = "force"
+        elif args.render and slug:
+            source_decision_reason = "new-slug"
+        elif args.render:
+            source_decision_reason = "missing-slug"
+        else:
+            source_decision_reason = "render-disabled"
+        print(
+            f"sourceDecision file={source_file} slug={slug or 'none'} "
+            f"action=select reason={source_decision_reason}"
+        )
         selected_source_files.append(source_file)
+    decide_sources_elapsed = perf_counter() - decide_sources_start
 
     print(f"sourcePattern={source_pattern}")
     print(f"candidateLevel3SourceCount={len(source_files)}")
     print(f"Candidate newest source file count for frameCount={frame_count}: {len(candidate_source_files)}")
     print(f"skippedExistingFrameCount={skipped_existing_frame_count}")
     print(f"newFramesToRenderCount={len(selected_source_files) if args.render else 0}")
+    print(
+        "sourceSelection.timing.seconds "
+        f"discoverSources={discover_sources_elapsed:.3f} "
+        f"decideSkipVsRender={decide_sources_elapsed:.3f}"
+    )
+    print(f"selectedSourceCount={len(selected_source_files)}")
 
     if args.render and not selected_source_files:
         ensure_configured_catalog_metadata(existing_catalog, config)
         if selected_site:
             prune_catalog_product(existing_catalog, selected_site, selected_product, frame_count)
+        catalog_update_start = perf_counter()
+        write_catalog_start = perf_counter()
         write_frames_catalog(catalog_path, existing_catalog)
+        write_catalog_elapsed = perf_counter() - write_catalog_start
+        print(
+            "catalogUpdate.timing.seconds "
+            f"writeCatalog={write_catalog_elapsed:.3f} "
+            f"totalCatalogUpdate={perf_counter() - catalog_update_start:.3f}"
+        )
         final_catalog = load_frames_catalog(catalog_path)
         print(f"No new {selected_site or 'radar'} {selected_product} frames to render.")
         if selected_site:
