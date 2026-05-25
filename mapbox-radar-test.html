@@ -27,6 +27,7 @@
       inset: 0;
       width: 100%;
       height: 100%;
+      background: #071426;
     }
 
     .map-title,
@@ -725,6 +726,18 @@
       }
       placeNwsAlertLayersAboveRadar();
       updateDebug();
+    }
+
+    function tuneMapBasePresentation() {
+      if (!map) return;
+
+      const layers = map.getStyle().layers || [];
+      layers
+        .filter((layer) => layer.type === "background")
+        .forEach((layer) => {
+          map.setPaintProperty(layer.id, "background-color", "#071426");
+          map.setPaintProperty(layer.id, "background-opacity", 1);
+        });
     }
 
     function nwsAlertColorExpression(fallbackColor = "#7c4dff") {
@@ -1610,6 +1623,7 @@
           center: map.getCenter().toArray(),
           zoom: map.getZoom()
         });
+        tuneMapBasePresentation();
         loadRadarCatalog();
         startNwsAlertRefresh();
       });
