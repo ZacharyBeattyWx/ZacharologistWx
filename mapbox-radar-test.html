@@ -430,7 +430,7 @@
     </div>
     <div class="button-row">
       <button id="cleanPresetButton" type="button">Radar-app clean preset</button>
-      <button id="rawFrameButton" type="button">Raw frame</button>
+      <button id="rawFrameButton" type="button" title="Diagnostic: disables cleanup and boosts, but still uses a canvas-prepared PNG because direct raw WebP Mapbox sources can show black alpha artifacts.">Raw frame</button>
     </div>
     <label class="range-row">
       <span>No-data darkness</span>
@@ -1175,18 +1175,6 @@
     async function processedRadarUrl(rawUrl) {
       const settings = tuningSettings();
 
-      if (!settings.enabled) {
-        lastTuningStats = {
-          usingProcessedCanvas: "raw image",
-          rawImageSize: "(raw)",
-          madeTransparentPercent: "0.00%",
-          preservedPercent: "100.00%",
-          boostedPercent: "0.00%",
-          tuningValues: settings
-        };
-        return rawUrl;
-      }
-
       const cacheKey = tuningCacheKey(rawUrl);
       if (processedFrameCache.has(cacheKey)) {
         const cached = processedFrameCache.get(cacheKey);
@@ -1202,6 +1190,7 @@
       context.drawImage(image, 0, 0);
       const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
       const data = imageData.data;
+      let inputTransparent = 0;
       let madeTransparent = 0;
       let preserved = 0;
       let boosted = 0;
@@ -1213,7 +1202,14 @@
         const blue = data[index + 2];
         const alpha = data[index + 3];
 
-        if (shouldRemoveNoDataPixel(red, green, blue, alpha, settings)) {
+        if (alpha <= 8) {
+          data[index + 3] = 0;
+          inputTransparent += 1;
+          preserved += 1;
+          continue;
+        }
+
+        if (settings.enabled && shouldRemoveNoDataPixel(red, green, blue, alpha, settings)) {
           data[index + 3] = 0;
           madeTransparent += 1;
           continue;
@@ -1221,7 +1217,7 @@
 
         preserved += 1;
 
-        if (isReflectivityColor(red, green, blue, alpha)) {
+        if (settings.enabled && isReflectivityColor(red, green, blue, alpha)) {
           const average = (red + green + blue) / 3;
           data[index] = boostedChannel(red, average, settings.saturationBoost, settings.brightnessBoost);
           data[index + 1] = boostedChannel(green, average, settings.saturationBoost, settings.brightnessBoost);
@@ -1235,10 +1231,13 @@
 
       context.putImageData(imageData, 0, 0);
       const url = canvas.toDataURL("image/png");
+      const outputTransparent = inputTransparent + madeTransparent;
       const stats = {
-        usingProcessedCanvas: "processed canvas",
+        usingProcessedCanvas: settings.enabled ? "prepared PNG canvas" : "raw diagnostic via prepared PNG canvas",
         rawImageSize: `${image.naturalWidth} x ${image.naturalHeight}`,
+        inputTransparentPercent: percent(inputTransparent, totalPixels),
         madeTransparentPercent: percent(madeTransparent, totalPixels),
+        outputTransparentPercent: percent(outputTransparent, totalPixels),
         preservedPercent: percent(preserved, totalPixels),
         boostedPercent: percent(boosted, totalPixels),
         tuningValues: settings
@@ -1353,7 +1352,9 @@
         "mobile mode": isMobilePlaybackMode() ? "yes" : "no",
         "processed source": tuningStats.usingProcessedCanvas || "raw image",
         "raw image size": tuningStats.rawImageSize || "(unknown)",
-        "pixels transparent": tuningStats.madeTransparentPercent || "0.00%",
+        "input alpha transparent": tuningStats.inputTransparentPercent || "0.00%",
+        "pixels made transparent": tuningStats.madeTransparentPercent || "0.00%",
+        "output transparent": tuningStats.outputTransparentPercent || "0.00%",
         "pixels preserved": tuningStats.preservedPercent || "100.00%",
         "pixels boosted": tuningStats.boostedPercent || "0.00%",
         "tuning values": tuningStats.tuningValues || tuningSettings()
