@@ -345,6 +345,8 @@
     const NWS_ALERT_FILL_LAYER_ID = "nws-alert-polygons-fill";
     const NWS_ALERT_LINE_LAYER_ID = "nws-alert-polygons-line";
     const NWS_ALERT_REFRESH_MS = 60000;
+    const RADAR_FRAME_SOURCE_ID = "zach radar-frame";
+    const RADAR_FRAME_LAYER_ID = "zach radar-frame-layer";
     const DEFAULT_SITE = "KFCX";
     const DEFAULT_PRODUCT = "N0B";
 
@@ -493,6 +495,7 @@
         console.log("map loaded");
         resizeRadarCanvas();
         resizeAlertCanvas();
+        ensureRadarFrameLayer();
         setStatus("Loading radar catalog...");
         await loadRadarCatalog();
         await loadNwsAlerts();
@@ -632,18 +635,7 @@
       alertOverlayContext.clearRect(0, 0, alertOverlayCanvas.clientWidth, alertOverlayCanvas.clientHeight);
     }
 
-    function frameBoundsToScreenRect(frame) {
-const [[south, west], [north, east]] = frame.bounds;
-const northWest = map.project([west, north]);
-const southEast = map.project([east, south]);
 
-const x = Math.min(northWest.x, southEast.x);
-const y = Math.min(northWest.y, southEast.y);
-const width = Math.abs(southEast.x - northWest.x);
-const height = Math.abs(southEast.y - northWest.y);
-
-return { x, y, width, height };
-}
 
     async function loadRadarFrameImage(frameUrl) {
       const image = new Image();
@@ -663,27 +655,79 @@ return { x, y, width, height };
       return image;
     }
 
-    function drawRadarOverlay() {
-      clearRadarOverlay();
+    function prepareRadarPngDataUrl(image) {
+const canvas = document.createElement("canvas");
+canvas.width = image.naturalWidth || image.width;
+canvas.height = image.naturalHeight || image.height;
+const context = canvas.getContext("2d", { willReadFrequently: true });
+context.imageSmoothingEnabled = false;
+context.drawImage(image, 0, 0);
 
-      if (!map || !activeRadarFrame || !activeRadarImage) {
-        return;
-      }
+const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+const data = imageData.data;
+for (let index = 0; index < data.length; index += 4) {
+if (data[index] <= 2 && data[index + 1] <= 2 && data[index + 2] <= 2) {
+data[index + 3] = 0;
+}
+}
+context.putImageData(imageData, 0, 0);
 
-      const rect = frameBoundsToScreenRect(activeRadarFrame);
-      radarOverlayContext.save();
-      radarOverlayContext.globalAlpha = Math.min(1, Math.max(0, Number(opacityRange.value)));
-      radarOverlayContext.imageSmoothingEnabled = false;
-      radarOverlayContext.drawImage(activeRadarImage, rect.x, rect.y, rect.width, rect.height);
-      radarOverlayContext.restore();
-    }
+return canvas.toDataURL("image/png");
+}
+
+function radarFrameCoordinates(frame) {
+const [[south, west], [north, east]] = frame.bounds;
+return [[west, north], [east, north], [east, south], [west, south]];
+}
+
+function ensureRadarFrameLayer() {
+if (!map || map.getLayer(RADAR_FRAME_LAYER_ID) || map.getSource(RADAR_FRAME_SOURCE_ID)) {
+return;
+}
+
+map.addSource(RADAR_FRAME_SOURCE_ID, {
+type: "image",
+url: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7wYQ8AAAAASUVORK5CYII=",
+coordinates: [[-180, 90], [-179, 90], [-179, 89], [-180, 89]]
+});
+
+map.addLayer({
+id: RADAR_FRAME_LAYER_ID,
+type: "raster",
+source: RADAR_FRAME_SOURCE_ID,
+paint: {
+"raster-opacity": Math.min(1, Math.max(0, Number(opacityRange.value))),
+"raster-resampling": "nearest"
+}
+}, overlayCeilingLayerId());
+}
 
     function applyRadarOverlay(frame, image) {
       activeRadarFrame = frame;
       activeRadarImage = image;
+     
+        if (!map) {
+          return;
+        }
+
+        ensureRadarFrameLayer();
+        const source = map.getSource(RADAR_FRAME_SOURCE_ID);
+        if (!source) {
+          return;
+        }
+
+        source.updateImage({
+        url: prepareRadarPngDataUrl(image),
+        coordinates: radarFrameCoordinates(frame)
+    });
+    
+    map.setPaintProperty(RADAR_FRAME_LAYER_ID, "raster-opacity", Math.min(1, Math.max(0, Number(opacityRange.value))));
+    console.log ("radar frame applied");
+
+      const dataUrl = prepareRadarPngDataUrl(image)
       scheduleOverlayRedraw();
       console.log("radar frame applied");
-    }
+  }
 
     async function applySelectedFrame() {
       const frame = selectedFrames[selectedFrameIndex];
@@ -724,6 +768,9 @@ return { x, y, width, height };
       const opacity = Math.min(1, Math.max(0, Number(opacityRange.value)));
       opacityRange.value = opacity.toFixed(2);
       opacityValue.textContent = opacity.toFixed(2);
+      if (map?.getLayer(RADAR_FRAME_LAYER_ID)) {
+        map.setPaintProperty(RADAR_FRAME_LAYER_ID, "raster-opacity", opacity);
+      }
       scheduleOverlayRedraw();
     }
 
