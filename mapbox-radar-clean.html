@@ -628,17 +628,17 @@
     }
 
     function frameBoundsToScreenRect(frame) {
-      const [[south, west], [north, east]] = frame.bounds;
-      const topLeft = map.project([west, north]);
-      const bottomRight = map.project([east, south]);
+const [[south, west], [north, east]] = frame.bounds;
+const northWest = map.project([west, north]);
+const southEast = map.project([east, south]);
 
-      return {
-        x: topLeft.x,
-        y: topLeft.y,
-        width: bottomRight.x - topLeft.x,
-        height: bottomRight.y - topLeft.y
-      };
-    }
+const x = Math.min(northWest.x, southEast.x);
+const y = Math.min(northWest.y, southEast.y);
+const width = Math.abs(southEast.x - northWest.x);
+const height = Math.abs(southEast.y - northWest.y);
+
+return { x, y, width, height };
+}
 
     async function loadRadarFrameImage(frameUrl) {
       const image = new Image();
