@@ -476,9 +476,10 @@
       if (map.setMaxPitch) {
         map.setMaxPitch(0);
       }
-      map.on("move", scheduleOverlayRedraw);
-      map.on("zoom", scheduleOverlayRedraw);
-      map.on("render", scheduleOverlayRedraw);
+      map.on("move", () => scheduleOverlayRedraw({ deferDuringMotion: true }));
+      map.on("zoom", () => scheduleOverlayRedraw({ deferDuringMotion: true }));
+      map.on("moveend", scheduleOverlayRedraw);
+      map.on("zoomend", scheduleOverlayRedraw);
       map.on("rotate", lockMapOrientation);
       map.on("pitch", lockMapOrientation);
       map.on("resize", () => {
@@ -597,7 +598,11 @@
       context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
     }
 
-    function scheduleOverlayRedraw() {
+    function scheduleOverlayRedraw(options = {}) {
+      if (options.deferDuringMotion && (map?.isMoving?.() || map?.isZooming?.())) {
+        return;
+      }
+
       if (overlayRedrawFrame !== null) {
         return;
       }
