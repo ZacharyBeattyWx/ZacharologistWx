@@ -480,7 +480,7 @@
     const RADAR_CATALOG_URL = "radar/frames.json";
     const RADAR_SOURCE_ID = "zach-radar-frame";
     const RADAR_LAYER_ID = "zach-radar-frame-layer";
-    const NWS_ALERTS_URL = "https://api.weather.gov/alerts/active?area=NC&area=SC&area=VA";
+    const NWS_ALERTS_URL = "https://api.weather.gov/alerts/active?area=NC&area=SC&area=VA&area=GA";
     const NWS_ALERT_SOURCE_ID = "nws-alert-polygons";
     const NWS_ALERT_FILL_LAYER_ID = "nws-alert-polygons-fill";
     const NWS_ALERT_LINE_LAYER_ID = "nws-alert-polygons-line";
@@ -727,15 +727,15 @@
       updateDebug();
     }
 
-    function nwsAlertColorExpression(fallbackColor = "#a855f7") {
+    function nwsAlertColorExpression(fallbackColor = "#7c4dff") {
       return [
         "match",
         ["get", "event"],
-        "Tornado Warning", "#ef4444",
-        "Severe Thunderstorm Warning", "#f59e0b",
-        "Flash Flood Warning", "#22c55e",
-        "Flood Warning", "#22c55e",
-        "Special Marine Warning", "#f97316",
+        "Tornado Warning", "#ff1744",
+        "Severe Thunderstorm Warning", "#ffb300",
+        "Flash Flood Warning", "#00e676",
+        "Flood Warning", "#00c853",
+        "Special Marine Warning", "#ff9800",
         fallbackColor
       ];
     }
@@ -765,12 +765,12 @@
           type: "fill",
           source: NWS_ALERT_SOURCE_ID,
           paint: {
-            "fill-color": nwsAlertColorExpression("#a855f7"),
+            "fill-color": nwsAlertColorExpression("#7c4dff"),
             "fill-opacity": [
               "case",
               ["boolean", ["feature-state", "hover"], false],
-              0.34,
-              0.18
+              0.12,
+              0.1
             ]
           }
         },
@@ -818,14 +818,14 @@
     }
 
     function normalizeNwsAlertFeature(feature, index) {
-      if (!feature?.geometry) return null;
-
       const properties = feature.properties || {};
       const alertId = String(feature.id || properties.id || `${properties.event || "alert"}-${index}`);
 
       return {
+        type: "Feature",
         ...feature,
         id: alertId,
+        geometry: feature.geometry,
         properties: {
           ...properties,
           _alertId: alertId
@@ -838,6 +838,7 @@
 
       try {
         const response = await fetch(NWS_ALERTS_URL, {
+          cache: "no-store",
           headers: {
             Accept: "application/geo+json"
           }
@@ -848,9 +849,9 @@
         }
 
         const alertCollection = await response.json();
-        const features = (Array.isArray(alertCollection.features) ? alertCollection.features : [])
-          .map(normalizeNwsAlertFeature)
-          .filter(Boolean);
+        const geometryFeatures = (Array.isArray(alertCollection.features) ? alertCollection.features : [])
+          .filter((feature) => feature && feature.geometry);
+        const features = geometryFeatures.map(normalizeNwsAlertFeature);
 
         activeNwsAlertsById = new Map(features.map((feature) => [feature.properties._alertId, feature.properties]));
 
