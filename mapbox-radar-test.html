@@ -1,0 +1,1627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZacharologistWx Mapbox Radar Test</title>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
+  <style>
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      background: #030711;
+      color: #f8fafc;
+      font-family: Arial, sans-serif;
+      overflow: hidden;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    #map {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .map-title,
+    .status-panel,
+    .control-panel,
+    .debug-panel {
+      position: fixed;
+      left: 14px;
+      z-index: 2;
+      background: rgba(3, 7, 18, 0.84);
+      border: 1px solid rgba(148, 163, 184, 0.28);
+      border-radius: 6px;
+      color: #ffffff;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+      backdrop-filter: blur(10px);
+    }
+
+    .map-title {
+      top: 14px;
+      padding: 10px 13px;
+      font-size: 0.82rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+
+    .status-panel {
+      top: 58px;
+      width: min(92vw, 520px);
+      padding: 10px 13px;
+      color: #dbeafe;
+      font-size: 0.78rem;
+      line-height: 1.45;
+    }
+
+    .status-panel strong {
+      display: block;
+      margin-bottom: 4px;
+      color: #ffffff;
+    }
+
+    .control-panel {
+      top: 122px;
+      display: grid;
+      width: min(92vw, 520px);
+      max-height: calc(100vh - 150px);
+      padding: 12px;
+      gap: 10px;
+      overflow: auto;
+      color: #dbeafe;
+      font-size: 0.76rem;
+    }
+
+    .control-panel h2,
+    .debug-panel h2 {
+      margin: 0 0 2px;
+      color: #ffffff;
+      font-size: 0.84rem;
+    }
+
+    .control-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .control-row,
+    .range-row,
+    .toggle-row {
+      display: grid;
+      gap: 5px;
+      min-width: 0;
+    }
+
+    .control-row span,
+    .range-row span,
+    .toggle-row span,
+    .debug-label {
+      color: #93c5fd;
+      font-weight: 800;
+    }
+
+    select,
+    button,
+    input[type="range"] {
+      min-width: 0;
+      font: inherit;
+    }
+
+    select,
+    button {
+      border: 1px solid rgba(148, 163, 184, 0.32);
+      border-radius: 5px;
+      background: rgba(15, 23, 42, 0.94);
+      color: #ffffff;
+    }
+
+    select {
+      width: 100%;
+      padding: 7px 8px;
+    }
+
+    button {
+      padding: 8px 10px;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    button:hover:not(:disabled) {
+      border-color: rgba(56, 189, 248, 0.58);
+    }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .toggle-row {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+
+    .toggle-row label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #f8fafc;
+    }
+
+    input[type="checkbox"],
+    input[type="range"] {
+      accent-color: #38bdf8;
+    }
+
+    .range-row {
+      grid-template-columns: 82px minmax(0, 1fr) 42px;
+      align-items: center;
+    }
+
+    .range-row output {
+      color: #ffffff;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .frame-readout {
+      min-height: 1.4em;
+      color: #f8fafc;
+      overflow-wrap: anywhere;
+    }
+
+    .debug-panel {
+      right: 14px;
+      left: auto;
+      top: 14px;
+      width: min(92vw, 430px);
+      max-height: calc(100vh - 28px);
+      padding: 12px;
+      overflow: auto;
+      color: #dbeafe;
+      font-size: 0.74rem;
+      line-height: 1.4;
+    }
+
+    .debug-grid {
+      display: grid;
+      grid-template-columns: 112px minmax(0, 1fr);
+      gap: 5px 9px;
+      margin-top: 8px;
+    }
+
+    .debug-value {
+      min-width: 0;
+      overflow-wrap: anywhere;
+      color: #f8fafc;
+    }
+
+    .alert-detail-card {
+      position: fixed;
+      right: 14px;
+      bottom: 14px;
+      z-index: 3;
+      display: none;
+      width: min(92vw, 430px);
+      max-height: calc(100vh - 28px);
+      padding: 14px;
+      overflow: auto;
+      background: rgba(3, 7, 18, 0.92);
+      border: 1px solid rgba(148, 163, 184, 0.34);
+      border-radius: 6px;
+      color: #e0f2fe;
+      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.36);
+      backdrop-filter: blur(10px);
+    }
+
+    .alert-detail-card.is-visible {
+      display: grid;
+      gap: 10px;
+    }
+
+    .alert-detail-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: start;
+    }
+
+    .alert-detail-title {
+      margin: 0;
+      color: #ffffff;
+      font-size: 0.96rem;
+      line-height: 1.25;
+    }
+
+    .alert-detail-close {
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      font-size: 1.2rem;
+      line-height: 1;
+    }
+
+    .alert-detail-grid {
+      display: grid;
+      grid-template-columns: 88px minmax(0, 1fr);
+      gap: 6px 10px;
+      font-size: 0.75rem;
+      line-height: 1.4;
+    }
+
+    .alert-detail-label {
+      color: #93c5fd;
+      font-weight: 800;
+    }
+
+    .alert-detail-value {
+      min-width: 0;
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+      color: #f8fafc;
+    }
+
+    .mapboxgl-popup-content {
+      max-width: min(82vw, 340px);
+      background: rgba(3, 7, 18, 0.94);
+      border: 1px solid rgba(148, 163, 184, 0.34);
+      border-radius: 6px;
+      color: #f8fafc;
+      box-shadow: 0 16px 34px rgba(0, 0, 0, 0.34);
+    }
+
+    .mapboxgl-popup-tip {
+      border-top-color: rgba(3, 7, 18, 0.94);
+      border-bottom-color: rgba(3, 7, 18, 0.94);
+    }
+
+    .alert-popup {
+      display: grid;
+      gap: 7px;
+      font-size: 0.75rem;
+      line-height: 1.35;
+    }
+
+    .alert-popup-title {
+      color: #ffffff;
+      font-weight: 800;
+    }
+
+    .alert-popup-meta {
+      display: grid;
+      grid-template-columns: 68px minmax(0, 1fr);
+      gap: 4px 8px;
+    }
+
+    .alert-popup-label {
+      color: #93c5fd;
+      font-weight: 800;
+    }
+
+    .alert-popup-value {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .alert-popup-button {
+      justify-self: start;
+      padding: 7px 9px;
+      font-size: 0.74rem;
+    }
+
+    .token-message {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      z-index: 3;
+      width: min(92vw, 520px);
+      transform: translate(-50%, -50%);
+      padding: 18px 20px;
+      background: rgba(3, 7, 18, 0.92);
+      border: 1px solid rgba(248, 113, 113, 0.45);
+      border-radius: 8px;
+      color: #fee2e2;
+      line-height: 1.5;
+      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(10px);
+    }
+
+    .token-message strong {
+      display: block;
+      margin-bottom: 6px;
+      color: #ffffff;
+      font-size: 1rem;
+    }
+
+    .token-message code {
+      color: #bfdbfe;
+    }
+
+    @media (max-width: 760px) {
+      .debug-panel {
+        display: none;
+      }
+
+      .alert-detail-card {
+        right: 14px;
+        bottom: 14px;
+        width: calc(100vw - 28px);
+      }
+
+      .control-grid,
+      .button-row,
+      .toggle-row {
+        grid-template-columns: 1fr;
+      }
+
+      .control-panel {
+        width: calc(100vw - 28px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div class="map-title">ZacharologistWx Mapbox Test</div>
+  <div class="status-panel" id="radarStatus">
+    <strong>Radar Overlay</strong>
+    <span>Loading radar catalog...</span>
+  </div>
+
+  <section class="control-panel" aria-label="Radar playback controls">
+    <h2>Radar Playback</h2>
+    <div class="control-grid">
+      <label class="control-row">
+        <span>Site</span>
+        <select id="siteSelect"></select>
+      </label>
+      <label class="control-row">
+        <span>Product</span>
+        <select id="productSelect"></select>
+      </label>
+      <label class="control-row">
+        <span>Frame</span>
+        <select id="frameSelect"></select>
+      </label>
+    </div>
+
+    <div class="button-row">
+      <button id="prevFrameButton" type="button">Prev</button>
+      <button id="playPauseButton" type="button">Play</button>
+      <button id="nextFrameButton" type="button">Next</button>
+      <button id="latestFrameButton" type="button">Latest</button>
+    </div>
+
+    <div class="toggle-row">
+      <label>
+        <input id="visibilityToggle" type="checkbox" checked>
+        <span>Radar visible</span>
+      </label>
+      <label>
+        <input id="aboveLabelsToggle" type="checkbox">
+        <span>Radar above labels/borders</span>
+      </label>
+    </div>
+
+    <label class="range-row">
+      <span>Opacity</span>
+      <input id="opacityRange" type="range" min="0" max="1" step="0.05" value="0.65">
+      <output id="opacityValue">0.65</output>
+    </label>
+
+    <h2>Radar Color Tuning</h2>
+    <div class="toggle-row">
+      <label>
+        <input id="cleanNoDataToggle" type="checkbox" checked>
+        <span>Clean no-data background</span>
+      </label>
+    </div>
+    <div class="button-row">
+      <button id="cleanPresetButton" type="button">Radar-app clean preset</button>
+      <button id="rawFrameButton" type="button">Raw frame</button>
+    </div>
+    <label class="range-row">
+      <span>No-data darkness</span>
+      <input id="darknessThresholdRange" type="range" min="0" max="90" step="1" value="42">
+      <output id="darknessThresholdValue">42</output>
+    </label>
+    <label class="range-row">
+      <span>Gray removal</span>
+      <input id="grayRemovalRange" type="range" min="0" max="100" step="1" value="76">
+      <output id="grayRemovalValue">76</output>
+    </label>
+    <label class="range-row">
+      <span>Saturation boost</span>
+      <input id="saturationBoostRange" type="range" min="1" max="1.6" step="0.05" value="1.28">
+      <output id="saturationBoostValue">1.28</output>
+    </label>
+    <label class="range-row">
+      <span>Brightness boost</span>
+      <input id="brightnessBoostRange" type="range" min="1" max="1.4" step="0.05" value="1.12">
+      <output id="brightnessBoostValue">1.12</output>
+    </label>
+    <label class="range-row">
+      <span>Min alpha</span>
+      <input id="minAlphaRange" type="range" min="0" max="120" step="1" value="24">
+      <output id="minAlphaValue">24</output>
+    </label>
+
+    <div class="frame-readout" id="frameReadout">Frame time unavailable</div>
+  </section>
+
+  <section class="debug-panel" aria-label="Radar debug details">
+    <h2>Integration Debug</h2>
+    <div class="debug-grid" id="debugGrid"></div>
+  </section>
+
+  <section class="alert-detail-card" id="alertDetailCard" aria-label="NWS alert details" aria-live="polite">
+    <div class="alert-detail-header">
+      <h2 class="alert-detail-title" id="alertDetailTitle">Alert Details</h2>
+      <button class="alert-detail-close" id="alertDetailCloseButton" type="button" aria-label="Close alert details">&times;</button>
+    </div>
+    <div class="alert-detail-grid" id="alertDetailGrid"></div>
+  </section>
+
+  <script src="mapbox-token.local.js"></script>
+  <script>
+    const MAPBOX_TOKEN = window.MAPBOX_PUBLIC_TOKEN;
+    const MAPBOX_STYLE = "mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
+    const RADAR_CATALOG_URL = "radar/frames.json";
+    const RADAR_SOURCE_ID = "zach-radar-frame";
+    const RADAR_LAYER_ID = "zach-radar-frame-layer";
+    const NWS_ALERTS_URL = "https://api.weather.gov/alerts/active?area=NC&area=SC&area=VA";
+    const NWS_ALERT_SOURCE_ID = "nws-alert-polygons";
+    const NWS_ALERT_FILL_LAYER_ID = "nws-alert-polygons-fill";
+    const NWS_ALERT_LINE_LAYER_ID = "nws-alert-polygons-line";
+    const NWS_ALERT_REFRESH_MS = 60000;
+    const DEFAULT_SITE = "KFCX";
+    const DEFAULT_PRODUCT = "N0B";
+    const INITIAL_RADAR_OPACITY = 0.65;
+    const BASE_PLAY_INTERVAL_MS = 500;
+    const LOOP_END_PAUSE_MS = 950;
+    const MIN_PLAY_INTERVAL_MS = 160;
+    const MOBILE_PLAYBACK_FRAME_LIMIT = 12;
+    const MOBILE_PRELOAD_RADIUS = 2;
+    const MOBILE_BREAKPOINT_QUERY = "(max-width: 768px)";
+    const mobilePlaybackQuery = window.matchMedia(MOBILE_BREAKPOINT_QUERY);
+
+    const statusText = document.querySelector("#radarStatus span");
+    const siteSelect = document.querySelector("#siteSelect");
+    const productSelect = document.querySelector("#productSelect");
+    const frameSelect = document.querySelector("#frameSelect");
+    const prevFrameButton = document.querySelector("#prevFrameButton");
+    const playPauseButton = document.querySelector("#playPauseButton");
+    const nextFrameButton = document.querySelector("#nextFrameButton");
+    const latestFrameButton = document.querySelector("#latestFrameButton");
+    const visibilityToggle = document.querySelector("#visibilityToggle");
+    const aboveLabelsToggle = document.querySelector("#aboveLabelsToggle");
+    const opacityRange = document.querySelector("#opacityRange");
+    const opacityValue = document.querySelector("#opacityValue");
+    const cleanNoDataToggle = document.querySelector("#cleanNoDataToggle");
+    const cleanPresetButton = document.querySelector("#cleanPresetButton");
+    const rawFrameButton = document.querySelector("#rawFrameButton");
+    const darknessThresholdRange = document.querySelector("#darknessThresholdRange");
+    const darknessThresholdValue = document.querySelector("#darknessThresholdValue");
+    const grayRemovalRange = document.querySelector("#grayRemovalRange");
+    const grayRemovalValue = document.querySelector("#grayRemovalValue");
+    const saturationBoostRange = document.querySelector("#saturationBoostRange");
+    const saturationBoostValue = document.querySelector("#saturationBoostValue");
+    const brightnessBoostRange = document.querySelector("#brightnessBoostRange");
+    const brightnessBoostValue = document.querySelector("#brightnessBoostValue");
+    const minAlphaRange = document.querySelector("#minAlphaRange");
+    const minAlphaValue = document.querySelector("#minAlphaValue");
+    const frameReadout = document.querySelector("#frameReadout");
+    const debugGrid = document.querySelector("#debugGrid");
+    const alertDetailCard = document.querySelector("#alertDetailCard");
+    const alertDetailTitle = document.querySelector("#alertDetailTitle");
+    const alertDetailCloseButton = document.querySelector("#alertDetailCloseButton");
+    const alertDetailGrid = document.querySelector("#alertDetailGrid");
+
+    let map = null;
+    let radarCatalog = null;
+    let selectedSite = DEFAULT_SITE;
+    let selectedProduct = DEFAULT_PRODUCT;
+    let catalogFramesNewestFirst = [];
+    let playbackFrames = [];
+    let playbackIndex = 0;
+    let playbackTimer = null;
+    let playbackStartToken = 0;
+    let isPlaybackActive = false;
+    let isFrameSwapInProgress = false;
+    let frameSwapToken = 0;
+    let imagePreloadCache = new Map();
+    let processedFrameCache = new Map();
+    let lastTuningStats = null;
+    let activeNwsAlertsById = new Map();
+    let nwsAlertRefreshTimer = null;
+
+    function setStatus(message) {
+      statusText.textContent = message;
+    }
+
+    function setDebug(values) {
+      debugGrid.replaceChildren(
+        ...Object.entries(values).flatMap(([label, value]) => {
+          const labelEl = document.createElement("div");
+          labelEl.className = "debug-label";
+          labelEl.textContent = label;
+
+          const valueEl = document.createElement("div");
+          valueEl.className = "debug-value";
+          valueEl.textContent = typeof value === "string" ? value : JSON.stringify(value);
+
+          return [labelEl, valueEl];
+        })
+      );
+    }
+
+    function showTokenMessage() {
+      const message = document.createElement("div");
+      message.className = "token-message";
+      message.innerHTML = `
+        <strong>Missing Mapbox public token</strong>
+        Create a local ignored file named <code>mapbox-token.local.js</code> that defines
+        <code>window.MAPBOX_PUBLIC_TOKEN</code> with a public <code>pk.*</code> token.
+      `;
+      document.body.appendChild(message);
+    }
+
+    function resolveRadarUrl(url) {
+      const trimmedUrl = String(url || "").trim();
+
+      if (/^https?:\/\//i.test(trimmedUrl)) {
+        return trimmedUrl;
+      }
+
+      return new URL(trimmedUrl, window.location.href).toString();
+    }
+
+    function validateBounds(bounds) {
+      return Array.isArray(bounds) &&
+        bounds.length === 2 &&
+        Array.isArray(bounds[0]) &&
+        Array.isArray(bounds[1]) &&
+        bounds[0].length === 2 &&
+        bounds[1].length === 2 &&
+        bounds.flat().every(Number.isFinite);
+    }
+
+    function boundsToImageCoordinates(bounds) {
+      const [[south, west], [north, east]] = bounds;
+
+      return [
+        [west, north],
+        [east, north],
+        [east, south],
+        [west, south]
+      ];
+    }
+
+    function option(label, value) {
+      const optionEl = document.createElement("option");
+      optionEl.value = value;
+      optionEl.textContent = label;
+      return optionEl;
+    }
+
+    function isMobilePlaybackMode() {
+      return mobilePlaybackQuery.matches;
+    }
+
+    function availableSites() {
+      const configuredSites = Object.keys(radarCatalog?.frames || {}).sort();
+      const preferredOrder = ["KFCX", "KRAX"];
+
+      return [
+        ...preferredOrder.filter((site) => configuredSites.includes(site)),
+        ...configuredSites.filter((site) => !preferredOrder.includes(site))
+      ];
+    }
+
+    function availableProducts(site) {
+      return Object.keys(radarCatalog?.frames?.[site] || {}).sort();
+    }
+
+    function frameImageUrl(frame) {
+      return resolveRadarUrl(frame.url);
+    }
+
+    function productFrames(site = selectedSite, product = selectedProduct) {
+      const frames = radarCatalog?.frames?.[site]?.[product];
+
+      if (!Array.isArray(frames)) {
+        return [];
+      }
+
+      return frames
+        .map((frame) => ({
+          ...frame,
+          validTimeDate: new Date(frame?.validTime)
+        }))
+        .filter((frame) => frame.url && validateBounds(frame.bounds) && !Number.isNaN(frame.validTimeDate.getTime()))
+        .sort((a, b) => b.validTimeDate - a.validTimeDate);
+    }
+
+    function playbackFramesForDevice(framesNewestFirst) {
+      const newestLimited = isMobilePlaybackMode()
+        ? framesNewestFirst.slice(0, MOBILE_PLAYBACK_FRAME_LIMIT)
+        : framesNewestFirst;
+
+      return [...newestLimited].reverse();
+    }
+
+    function populateSiteSelect() {
+      const sites = availableSites();
+      siteSelect.replaceChildren(...sites.map((site) => option(site, site)));
+      selectedSite = sites.includes(DEFAULT_SITE) ? DEFAULT_SITE : sites[0] || "";
+      siteSelect.value = selectedSite;
+    }
+
+    function populateProductSelect(preferredProduct = DEFAULT_PRODUCT) {
+      const products = availableProducts(selectedSite);
+      productSelect.replaceChildren(...products.map((product) => option(product, product)));
+      selectedProduct = products.includes(preferredProduct) ? preferredProduct : products[0] || "";
+      productSelect.value = selectedProduct;
+    }
+
+    function populateFrameSelect() {
+      frameSelect.replaceChildren(
+        ...playbackFrames.map((frame, index) => {
+          return option(`${index + 1} / ${playbackFrames.length} - ${frame.slug || frame.validTime}`, String(index));
+        })
+      );
+      frameSelect.value = String(playbackIndex);
+    }
+
+    function formatFrameTime(frame) {
+      const validTime = new Date(frame?.validTime);
+
+      if (!frame || Number.isNaN(validTime.getTime())) {
+        return "Frame time unavailable";
+      }
+
+      return `${validTime.toLocaleString([], {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit"
+      })} (${frame.slug || "no slug"})`;
+    }
+
+    function overlayCeilingLayerId() {
+      const layers = map?.getStyle().layers || [];
+      const ceilingLayer = layers.find((layer) => {
+        const id = String(layer.id || "").toLowerCase();
+        const sourceLayer = String(layer["source-layer"] || "").toLowerCase();
+        return layer.type === "symbol" ||
+          id.includes("label") ||
+          id.includes("boundary") ||
+          id.includes("admin") ||
+          sourceLayer.includes("boundary") ||
+          sourceLayer.includes("admin");
+      });
+      return ceilingLayer ? ceilingLayer.id : undefined;
+    }
+
+    function radarInsertionBeforeLayerId() {
+      return aboveLabelsToggle.checked ? undefined : overlayCeilingLayerId();
+    }
+
+    function applyLayerOrdering() {
+      if (!map) return;
+      if (map.getLayer(RADAR_LAYER_ID)) {
+        map.moveLayer(RADAR_LAYER_ID, radarInsertionBeforeLayerId());
+      }
+      placeNwsAlertLayersAboveRadar();
+      updateDebug();
+    }
+
+    function nwsAlertColorExpression(fallbackColor = "#a855f7") {
+      return [
+        "match",
+        ["get", "event"],
+        "Tornado Warning", "#ef4444",
+        "Severe Thunderstorm Warning", "#f59e0b",
+        "Flash Flood Warning", "#22c55e",
+        "Flood Warning", "#22c55e",
+        "Special Marine Warning", "#f97316",
+        fallbackColor
+      ];
+    }
+
+    function placeNwsAlertLayersAboveRadar() {
+      if (!map || !map.getLayer(NWS_ALERT_FILL_LAYER_ID) || !map.getLayer(NWS_ALERT_LINE_LAYER_ID)) return;
+
+      const beforeLayerId = radarInsertionBeforeLayerId();
+      map.moveLayer(NWS_ALERT_FILL_LAYER_ID, beforeLayerId);
+      map.moveLayer(NWS_ALERT_LINE_LAYER_ID, beforeLayerId);
+    }
+
+    function ensureNwsAlertLayers() {
+      if (!map || map.getSource(NWS_ALERT_SOURCE_ID)) return;
+
+      map.addSource(NWS_ALERT_SOURCE_ID, {
+        type: "geojson",
+        data: {
+          type: "FeatureCollection",
+          features: []
+        }
+      });
+
+      map.addLayer(
+        {
+          id: NWS_ALERT_FILL_LAYER_ID,
+          type: "fill",
+          source: NWS_ALERT_SOURCE_ID,
+          paint: {
+            "fill-color": nwsAlertColorExpression("#a855f7"),
+            "fill-opacity": [
+              "case",
+              ["boolean", ["feature-state", "hover"], false],
+              0.34,
+              0.18
+            ]
+          }
+        },
+        radarInsertionBeforeLayerId()
+      );
+
+      map.addLayer(
+        {
+          id: NWS_ALERT_LINE_LAYER_ID,
+          type: "line",
+          source: NWS_ALERT_SOURCE_ID,
+          paint: {
+            "line-color": nwsAlertColorExpression("#ffffff"),
+            "line-opacity": 0.95,
+            "line-width": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              4,
+              1.4,
+              8,
+              2.6
+            ]
+          }
+        },
+        radarInsertionBeforeLayerId()
+      );
+
+      map.on("click", NWS_ALERT_FILL_LAYER_ID, handleNwsAlertClick);
+      map.on("click", NWS_ALERT_LINE_LAYER_ID, handleNwsAlertClick);
+      map.on("mouseenter", NWS_ALERT_FILL_LAYER_ID, () => {
+        map.getCanvas().style.cursor = "pointer";
+      });
+      map.on("mouseleave", NWS_ALERT_FILL_LAYER_ID, () => {
+        map.getCanvas().style.cursor = "";
+      });
+      map.on("mouseenter", NWS_ALERT_LINE_LAYER_ID, () => {
+        map.getCanvas().style.cursor = "pointer";
+      });
+      map.on("mouseleave", NWS_ALERT_LINE_LAYER_ID, () => {
+        map.getCanvas().style.cursor = "";
+      });
+
+      placeNwsAlertLayersAboveRadar();
+    }
+
+    function normalizeNwsAlertFeature(feature, index) {
+      if (!feature?.geometry) return null;
+
+      const properties = feature.properties || {};
+      const alertId = String(feature.id || properties.id || `${properties.event || "alert"}-${index}`);
+
+      return {
+        ...feature,
+        id: alertId,
+        properties: {
+          ...properties,
+          _alertId: alertId
+        }
+      };
+    }
+
+    async function fetchNwsAlerts() {
+      ensureNwsAlertLayers();
+
+      try {
+        const response = await fetch(NWS_ALERTS_URL, {
+          headers: {
+            Accept: "application/geo+json"
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`Unable to load NWS alerts (${response.status}).`);
+        }
+
+        const alertCollection = await response.json();
+        const features = (Array.isArray(alertCollection.features) ? alertCollection.features : [])
+          .map(normalizeNwsAlertFeature)
+          .filter(Boolean);
+
+        activeNwsAlertsById = new Map(features.map((feature) => [feature.properties._alertId, feature.properties]));
+
+        const source = map.getSource(NWS_ALERT_SOURCE_ID);
+        if (source) {
+          source.setData({
+            type: "FeatureCollection",
+            features
+          });
+        }
+
+        placeNwsAlertLayersAboveRadar();
+        console.log("ZacharologistWx Mapbox Radar Test: NWS alerts loaded", {
+          count: features.length,
+          refreshedAt: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error("ZacharologistWx Mapbox Radar Test: NWS alert error", error);
+      }
+    }
+
+    function startNwsAlertRefresh() {
+      fetchNwsAlerts();
+
+      if (nwsAlertRefreshTimer) {
+        clearInterval(nwsAlertRefreshTimer);
+      }
+
+      nwsAlertRefreshTimer = setInterval(fetchNwsAlerts, NWS_ALERT_REFRESH_MS);
+    }
+
+    function alertValue(value) {
+      return value ? String(value) : "Unavailable";
+    }
+
+    function formatAlertTime(value) {
+      const date = new Date(value);
+
+      if (!value || Number.isNaN(date.getTime())) {
+        return "Unavailable";
+      }
+
+      return date.toLocaleString([], {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        timeZoneName: "short"
+      });
+    }
+
+    function popupField(label, value) {
+      const labelEl = document.createElement("div");
+      labelEl.className = "alert-popup-label";
+      labelEl.textContent = label;
+
+      const valueEl = document.createElement("div");
+      valueEl.className = "alert-popup-value";
+      valueEl.textContent = alertValue(value);
+
+      return [labelEl, valueEl];
+    }
+
+    function showNwsAlertPopup(feature, lngLat) {
+      const properties = feature?.properties || {};
+      const alertId = properties._alertId;
+      const popupContent = document.createElement("div");
+      popupContent.className = "alert-popup";
+
+      const title = document.createElement("div");
+      title.className = "alert-popup-title";
+      title.textContent = alertValue(properties.event);
+
+      const meta = document.createElement("div");
+      meta.className = "alert-popup-meta";
+      meta.replaceChildren(
+        ...popupField("Headline", properties.headline),
+        ...popupField("Area", properties.areaDesc),
+        ...popupField("Severity", properties.severity),
+        ...popupField("Urgency", properties.urgency)
+      );
+
+      const detailsButton = document.createElement("button");
+      detailsButton.className = "alert-popup-button";
+      detailsButton.type = "button";
+      detailsButton.textContent = "Details";
+      detailsButton.addEventListener("click", () => {
+        showNwsAlertDetails(alertId);
+      });
+
+      popupContent.replaceChildren(title, meta, detailsButton);
+
+      new mapboxgl.Popup({ closeButton: true, closeOnClick: true })
+        .setLngLat(lngLat)
+        .setDOMContent(popupContent)
+        .addTo(map);
+    }
+
+    function handleNwsAlertClick(event) {
+      const feature = event.features?.[0];
+      if (!feature) return;
+
+      event.preventDefault();
+      showNwsAlertPopup(feature, event.lngLat);
+    }
+
+    function detailField(label, value) {
+      const labelEl = document.createElement("div");
+      labelEl.className = "alert-detail-label";
+      labelEl.textContent = label;
+
+      const valueEl = document.createElement("div");
+      valueEl.className = "alert-detail-value";
+      valueEl.textContent = alertValue(value);
+
+      return [labelEl, valueEl];
+    }
+
+    function showNwsAlertDetails(alertId) {
+      const properties = activeNwsAlertsById.get(alertId);
+      if (!properties) return;
+
+      alertDetailTitle.textContent = alertValue(properties.event);
+      alertDetailGrid.replaceChildren(
+        ...detailField("Headline", properties.headline),
+        ...detailField("Area", properties.areaDesc),
+        ...detailField("Description", properties.description),
+        ...detailField("Instruction", properties.instruction),
+        ...detailField("Severity", properties.severity),
+        ...detailField("Urgency", properties.urgency),
+        ...detailField("Certainty", properties.certainty),
+        ...detailField("Effective", formatAlertTime(properties.effective)),
+        ...detailField("Expires", formatAlertTime(properties.expires))
+      );
+      alertDetailCard.classList.add("is-visible");
+    }
+
+    function hideNwsAlertDetails() {
+      alertDetailCard.classList.remove("is-visible");
+    }
+
+    function updateRadarOpacity() {
+      const opacity = Math.min(1, Math.max(0, Number(opacityRange.value)));
+      opacityRange.value = opacity.toFixed(2);
+      opacityValue.textContent = opacity.toFixed(2);
+
+      if (map && map.getLayer(RADAR_LAYER_ID)) {
+        map.setPaintProperty(RADAR_LAYER_ID, "raster-opacity", opacity);
+      }
+
+      updateDebug();
+    }
+
+    function updateRadarVisibility() {
+      if (!map || !map.getLayer(RADAR_LAYER_ID)) return;
+
+      map.setLayoutProperty(
+        RADAR_LAYER_ID,
+        "visibility",
+        visibilityToggle.checked ? "visible" : "none"
+      );
+      updateDebug();
+    }
+
+    function removeRadarOverlay() {
+      if (!map) return;
+
+      if (map.getLayer(RADAR_LAYER_ID)) {
+        map.removeLayer(RADAR_LAYER_ID);
+      }
+
+      if (map.getSource(RADAR_SOURCE_ID)) {
+        map.removeSource(RADAR_SOURCE_ID);
+      }
+    }
+
+    function addRadarOverlay(url, coordinates) {
+      map.addSource(RADAR_SOURCE_ID, {
+        type: "image",
+        url,
+        coordinates
+      });
+
+      map.addLayer(
+        {
+          id: RADAR_LAYER_ID,
+          type: "raster",
+          source: RADAR_SOURCE_ID,
+          paint: {
+            "raster-opacity": Number(opacityRange.value),
+            "raster-fade-duration": 0
+          },
+          layout: {
+            visibility: visibilityToggle.checked ? "visible" : "none"
+          }
+        },
+        radarInsertionBeforeLayerId()
+      );
+      placeNwsAlertLayersAboveRadar();
+    }
+
+    function tuningSettings() {
+      return {
+        enabled: cleanNoDataToggle.checked,
+        darknessThreshold: Number(darknessThresholdRange.value),
+        grayRemovalStrength: Number(grayRemovalRange.value),
+        saturationBoost: Number(saturationBoostRange.value),
+        brightnessBoost: Number(brightnessBoostRange.value),
+        minAlphaToKeep: Number(minAlphaRange.value)
+      };
+    }
+
+    function updateTuningLabels() {
+      const settings = tuningSettings();
+      darknessThresholdValue.textContent = String(settings.darknessThreshold);
+      grayRemovalValue.textContent = String(settings.grayRemovalStrength);
+      saturationBoostValue.textContent = settings.saturationBoost.toFixed(2);
+      brightnessBoostValue.textContent = settings.brightnessBoost.toFixed(2);
+      minAlphaValue.textContent = String(settings.minAlphaToKeep);
+      updateDebug();
+    }
+
+    function refreshCurrentFrameForTuning() {
+      processedFrameCache = new Map();
+      if (!playbackFrames.length) return;
+      showFrame(playbackIndex, { direction: "next" });
+    }
+
+    function applyCleanPreset() {
+      cleanNoDataToggle.checked = true;
+      darknessThresholdRange.value = "42";
+      grayRemovalRange.value = "76";
+      saturationBoostRange.value = "1.28";
+      brightnessBoostRange.value = "1.12";
+      minAlphaRange.value = "24";
+      updateTuningLabels();
+      refreshCurrentFrameForTuning();
+    }
+
+    function applyRawFramePreset() {
+      cleanNoDataToggle.checked = false;
+      saturationBoostRange.value = "1";
+      brightnessBoostRange.value = "1";
+      updateTuningLabels();
+      refreshCurrentFrameForTuning();
+    }
+
+    function tuningCacheKey(url) {
+      const settings = tuningSettings();
+      return JSON.stringify({ url, settings });
+    }
+
+    function percent(value, total) {
+      return total ? `${((value / total) * 100).toFixed(2)}%` : "0.00%";
+    }
+
+    function pixelTraits(red, green, blue) {
+      const max = Math.max(red, green, blue);
+      const min = Math.min(red, green, blue);
+      const saturation = max - min;
+      const brightness = (red + green + blue) / 3;
+      return { max, min, saturation, brightness };
+    }
+
+    function isReflectivityColor(red, green, blue, alpha) {
+      if (alpha <= 8) return false;
+      const { saturation, max } = pixelTraits(red, green, blue);
+      const greenReturn = green >= red + 8 && green >= blue + 4 && saturation >= 16;
+      const warmReturn = (red >= 120 || green >= 120) && red >= blue + 12 && green >= blue + 8 && saturation >= 18;
+      const brightReturn = saturation >= 34 && max >= 80;
+      return greenReturn || warmReturn || brightReturn;
+    }
+
+    function shouldRemoveNoDataPixel(red, green, blue, alpha, settings) {
+      if (isReflectivityColor(red, green, blue, alpha)) {
+        return false;
+      }
+
+      const traits = pixelTraits(red, green, blue);
+      const grayAllowance = 10 + settings.grayRemovalStrength * 0.35;
+      const smokyCeiling = settings.darknessThreshold + settings.grayRemovalStrength * 1.35;
+      const darkPixel = traits.max <= settings.darknessThreshold;
+      const smokyGrayPixel = traits.max <= smokyCeiling && traits.saturation <= grayAllowance;
+      const lowAlphaNoData = alpha < settings.minAlphaToKeep && traits.saturation <= 44;
+
+      return darkPixel || smokyGrayPixel || lowAlphaNoData;
+    }
+
+    function boostedChannel(channel, average, saturationBoost, brightnessBoost) {
+      const saturated = average + (channel - average) * saturationBoost;
+      return Math.max(0, Math.min(255, Math.round(saturated * brightnessBoost)));
+    }
+
+    function loadImageElement(url) {
+      return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.decoding = "async";
+        image.onload = () => resolve(image);
+        image.onerror = reject;
+        image.src = url;
+
+        if (image.decode) {
+          image.decode().then(() => resolve(image)).catch(() => {});
+        }
+      });
+    }
+
+    async function processedRadarUrl(rawUrl) {
+      const settings = tuningSettings();
+
+      if (!settings.enabled) {
+        lastTuningStats = {
+          usingProcessedCanvas: "raw image",
+          rawImageSize: "(raw)",
+          madeTransparentPercent: "0.00%",
+          preservedPercent: "100.00%",
+          boostedPercent: "0.00%",
+          tuningValues: settings
+        };
+        return rawUrl;
+      }
+
+      const cacheKey = tuningCacheKey(rawUrl);
+      if (processedFrameCache.has(cacheKey)) {
+        const cached = processedFrameCache.get(cacheKey);
+        lastTuningStats = cached.stats;
+        return cached.url;
+      }
+
+      const image = await loadImageElement(rawUrl);
+      const canvas = document.createElement("canvas");
+      canvas.width = image.naturalWidth;
+      canvas.height = image.naturalHeight;
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      context.drawImage(image, 0, 0);
+      const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      let madeTransparent = 0;
+      let preserved = 0;
+      let boosted = 0;
+      const totalPixels = canvas.width * canvas.height;
+
+      for (let index = 0; index < data.length; index += 4) {
+        const red = data[index];
+        const green = data[index + 1];
+        const blue = data[index + 2];
+        const alpha = data[index + 3];
+
+        if (shouldRemoveNoDataPixel(red, green, blue, alpha, settings)) {
+          data[index + 3] = 0;
+          madeTransparent += 1;
+          continue;
+        }
+
+        preserved += 1;
+
+        if (isReflectivityColor(red, green, blue, alpha)) {
+          const average = (red + green + blue) / 3;
+          data[index] = boostedChannel(red, average, settings.saturationBoost, settings.brightnessBoost);
+          data[index + 1] = boostedChannel(green, average, settings.saturationBoost, settings.brightnessBoost);
+          data[index + 2] = boostedChannel(blue, average, settings.saturationBoost, settings.brightnessBoost);
+
+          if (settings.saturationBoost > 1 || settings.brightnessBoost > 1) {
+            boosted += 1;
+          }
+        }
+      }
+
+      context.putImageData(imageData, 0, 0);
+      const url = canvas.toDataURL("image/png");
+      const stats = {
+        usingProcessedCanvas: "processed canvas",
+        rawImageSize: `${image.naturalWidth} x ${image.naturalHeight}`,
+        madeTransparentPercent: percent(madeTransparent, totalPixels),
+        preservedPercent: percent(preserved, totalPixels),
+        boostedPercent: percent(boosted, totalPixels),
+        tuningValues: settings
+      };
+
+      processedFrameCache.set(cacheKey, { url, stats });
+      lastTuningStats = stats;
+      return url;
+    }
+
+    async function preloadImage(url) {
+      if (imagePreloadCache.has(url)) {
+        return imagePreloadCache.get(url);
+      }
+
+      const preloadPromise = new Promise((resolve, reject) => {
+        const image = new Image();
+        image.decoding = "async";
+        image.onload = () => resolve(true);
+        image.onerror = reject;
+        image.src = url;
+
+        if (image.decode) {
+          image.decode().then(() => resolve(true)).catch(() => {});
+        }
+      });
+
+      imagePreloadCache.set(url, preloadPromise);
+      return preloadPromise;
+    }
+
+    function frameUrlAt(index) {
+      const frame = playbackFrames[index];
+      return frame ? frameImageUrl(frame) : "";
+    }
+
+    function warmFrameWindow(index = playbackIndex, direction = "next") {
+      if (!playbackFrames.length) return;
+
+      const radius = isMobilePlaybackMode() ? MOBILE_PRELOAD_RADIUS : playbackFrames.length;
+      const indices = [];
+
+      for (let offset = 0; offset <= radius; offset += 1) {
+        const nextOffset = direction === "previous" ? -offset : offset;
+        indices.push((index + nextOffset + playbackFrames.length) % playbackFrames.length);
+      }
+
+      if (!isMobilePlaybackMode()) {
+        playbackFrames.forEach((_frame, frameIndex) => indices.push(frameIndex));
+      }
+
+      [...new Set(indices)].forEach((frameIndex) => {
+        const url = frameUrlAt(frameIndex);
+        if (url) preloadImage(url).catch(() => {});
+      });
+    }
+
+    async function preloadPlaybackFrames() {
+      if (!playbackFrames.length) return false;
+
+      setStatus(isMobilePlaybackMode() ? "Preloading nearby radar frames..." : "Preloading radar frames...");
+
+      const targetFrames = isMobilePlaybackMode()
+        ? [
+            playbackFrames[playbackIndex],
+            playbackFrames[(playbackIndex + 1) % playbackFrames.length],
+            playbackFrames[(playbackIndex + 2) % playbackFrames.length]
+          ].filter(Boolean)
+        : playbackFrames;
+
+      const results = await Promise.allSettled(targetFrames.map((frame) => preloadImage(frameImageUrl(frame))));
+      const failedCount = results.filter((result) => result.status === "rejected").length;
+
+      if (failedCount) {
+        setStatus(`${failedCount} radar frame image(s) failed to preload; playback may stutter.`);
+      }
+
+      return failedCount === 0;
+    }
+
+    function updatePlaybackLabels() {
+      const frame = playbackFrames[playbackIndex];
+      frameReadout.textContent = frame ? formatFrameTime(frame) : "Frame time unavailable";
+      frameSelect.value = String(playbackIndex);
+
+      const hasMultipleFrames = playbackFrames.length > 1;
+      prevFrameButton.disabled = !hasMultipleFrames;
+      playPauseButton.disabled = !hasMultipleFrames;
+      nextFrameButton.disabled = !hasMultipleFrames;
+      latestFrameButton.disabled = !playbackFrames.length;
+      playPauseButton.textContent = isPlaybackActive ? "Pause" : "Play";
+    }
+
+    function updateDebug() {
+      const frame = playbackFrames[playbackIndex];
+      const coordinates = frame ? boundsToImageCoordinates(frame.bounds) : [];
+      const frameUrl = frame ? frameImageUrl(frame) : "";
+      const tuningStats = lastTuningStats || {};
+
+      setDebug({
+        "selected site": selectedSite || "(none)",
+        "product": selectedProduct || "(none)",
+        "frame index": playbackFrames.length ? `${playbackIndex + 1} / ${playbackFrames.length}` : "0 / 0",
+        "frame count": playbackFrames.length,
+        "frame URL": frameUrl || "(none)",
+        "bounds": frame?.bounds || "(none)",
+        "corners": coordinates,
+        "playback state": isPlaybackActive ? "playing" : "paused",
+        "opacity": Number(opacityRange.value).toFixed(2),
+        "layer order": aboveLabelsToggle.checked ? "above labels/borders" : "below labels/borders",
+        "visibility": visibilityToggle.checked ? "visible" : "hidden",
+        "mobile mode": isMobilePlaybackMode() ? "yes" : "no",
+        "processed source": tuningStats.usingProcessedCanvas || "raw image",
+        "raw image size": tuningStats.rawImageSize || "(unknown)",
+        "pixels transparent": tuningStats.madeTransparentPercent || "0.00%",
+        "pixels preserved": tuningStats.preservedPercent || "100.00%",
+        "pixels boosted": tuningStats.boostedPercent || "0.00%",
+        "tuning values": tuningStats.tuningValues || tuningSettings()
+      });
+    }
+
+    async function showFrame(index, { direction = "next" } = {}) {
+      if (!playbackFrames.length || !map) {
+        updatePlaybackLabels();
+        updateDebug();
+        return false;
+      }
+
+      const targetIndex = (index + playbackFrames.length) % playbackFrames.length;
+      const frame = playbackFrames[targetIndex];
+      const frameUrl = frameImageUrl(frame);
+      const swapToken = ++frameSwapToken;
+      isFrameSwapInProgress = true;
+      let displayFrameUrl = frameUrl;
+
+      try {
+        await preloadImage(frameUrl);
+        displayFrameUrl = await processedRadarUrl(frameUrl);
+      } catch (_error) {
+        if (swapToken === frameSwapToken) {
+          isFrameSwapInProgress = false;
+          setStatus("Next radar frame failed to load or process; keeping current frame visible.");
+        }
+        return false;
+      }
+
+      if (swapToken !== frameSwapToken) {
+        isFrameSwapInProgress = false;
+        return false;
+      }
+
+      const coordinates = boundsToImageCoordinates(frame.bounds);
+      removeRadarOverlay();
+      addRadarOverlay(displayFrameUrl, coordinates);
+
+      playbackIndex = targetIndex;
+      isFrameSwapInProgress = false;
+      warmFrameWindow(playbackIndex, direction);
+      updatePlaybackLabels();
+      updateRadarOpacity();
+      updateRadarVisibility();
+      updateDebug();
+      setStatus(`Radar frame loaded (${playbackIndex + 1} / ${playbackFrames.length}).`);
+      console.log("ZacharologistWx Mapbox Radar Test: radar frame applied", {
+        site: selectedSite,
+        product: selectedProduct,
+        frameUrl,
+        processedSource: lastTuningStats?.usingProcessedCanvas || "raw image",
+        bounds: frame.bounds,
+        corners: coordinates
+      });
+      return true;
+    }
+
+    function stopPlayback() {
+      playbackStartToken += 1;
+      isPlaybackActive = false;
+
+      if (playbackTimer) {
+        clearTimeout(playbackTimer);
+        playbackTimer = null;
+      }
+
+      updatePlaybackLabels();
+      updateDebug();
+    }
+
+    function playbackDelayMs() {
+      return playbackIndex === playbackFrames.length - 1 ? LOOP_END_PAUSE_MS : Math.max(MIN_PLAY_INTERVAL_MS, BASE_PLAY_INTERVAL_MS);
+    }
+
+    async function advancePlaybackFrame() {
+      if (isFrameSwapInProgress) return;
+      await showFrame(playbackIndex + 1, { direction: "next" });
+    }
+
+    function schedulePlaybackTick(startToken, delayMs) {
+      if (!isPlaybackActive || startToken !== playbackStartToken) return;
+
+      playbackTimer = setTimeout(async () => {
+        playbackTimer = null;
+        if (!isPlaybackActive || startToken !== playbackStartToken) return;
+
+        await advancePlaybackFrame();
+        if (!isPlaybackActive || startToken !== playbackStartToken) return;
+
+        schedulePlaybackTick(startToken, playbackDelayMs());
+      }, delayMs);
+    }
+
+    async function startPlayback() {
+      if (playbackFrames.length < 2) return;
+
+      if (playbackTimer) {
+        clearTimeout(playbackTimer);
+        playbackTimer = null;
+      }
+
+      isPlaybackActive = true;
+      updatePlaybackLabels();
+      const startToken = ++playbackStartToken;
+      const ready = await preloadPlaybackFrames();
+
+      if (startToken !== playbackStartToken || !isPlaybackActive) return;
+      if (!ready && !isMobilePlaybackMode()) {
+        isPlaybackActive = false;
+        updatePlaybackLabels();
+        return;
+      }
+
+      schedulePlaybackTick(startToken, playbackDelayMs());
+      updateDebug();
+    }
+
+    function togglePlayback() {
+      if (isPlaybackActive) {
+        stopPlayback();
+      } else {
+        startPlayback();
+      }
+    }
+
+    function stepFrame(offset) {
+      stopPlayback();
+      showFrame(playbackIndex + offset, {
+        direction: offset < 0 ? "previous" : "next"
+      });
+    }
+
+    function goLatestFrame() {
+      stopPlayback();
+      showFrame(playbackFrames.length - 1, { direction: "next" });
+    }
+
+    function applyCatalogSelection({ keepSite = false, keepProduct = false } = {}) {
+      if (!radarCatalog) return;
+
+      if (!keepSite) {
+        populateSiteSelect();
+      }
+
+      if (!keepProduct) {
+        populateProductSelect(DEFAULT_PRODUCT);
+      }
+
+      catalogFramesNewestFirst = productFrames(selectedSite, selectedProduct);
+      playbackFrames = playbackFramesForDevice(catalogFramesNewestFirst);
+      playbackIndex = playbackFrames.length ? playbackFrames.length - 1 : 0;
+      imagePreloadCache = new Map();
+      populateFrameSelect();
+      updatePlaybackLabels();
+      updateDebug();
+
+      if (!playbackFrames.length) {
+        setStatus(`No usable ${selectedSite}/${selectedProduct} radar frames found.`);
+        return;
+      }
+
+      showFrame(playbackIndex, { direction: "next" });
+      preloadPlaybackFrames().catch(() => {});
+    }
+
+    async function loadRadarCatalog() {
+      setStatus("Loading radar catalog...");
+
+      try {
+        const response = await fetch(RADAR_CATALOG_URL, { cache: "no-store" });
+
+        if (!response.ok) {
+          throw new Error(`Unable to load radar catalog (${response.status}).`);
+        }
+
+        radarCatalog = await response.json();
+        console.log("ZacharologistWx Mapbox Radar Test: radar catalog loaded", {
+          generatedAt: radarCatalog.generatedAt,
+          sites: Object.keys(radarCatalog.sites || {}),
+          frameSites: Object.keys(radarCatalog.frames || {})
+        });
+        applyCatalogSelection();
+      } catch (error) {
+        setStatus("Radar frame failed");
+        console.error("ZacharologistWx Mapbox Radar Test: radar error", error);
+      }
+    }
+
+    function wireControls() {
+      siteSelect.addEventListener("change", () => {
+        stopPlayback();
+        selectedSite = siteSelect.value;
+        populateProductSelect(DEFAULT_PRODUCT);
+        applyCatalogSelection({ keepSite: true, keepProduct: true });
+      });
+
+      productSelect.addEventListener("change", () => {
+        stopPlayback();
+        selectedProduct = productSelect.value;
+        applyCatalogSelection({ keepSite: true, keepProduct: true });
+      });
+
+      frameSelect.addEventListener("change", () => {
+        stopPlayback();
+        showFrame(Number(frameSelect.value), { direction: "next" });
+      });
+
+      prevFrameButton.addEventListener("click", () => stepFrame(-1));
+      playPauseButton.addEventListener("click", togglePlayback);
+      nextFrameButton.addEventListener("click", () => stepFrame(1));
+      latestFrameButton.addEventListener("click", goLatestFrame);
+      visibilityToggle.addEventListener("change", updateRadarVisibility);
+      aboveLabelsToggle.addEventListener("change", applyLayerOrdering);
+      opacityRange.addEventListener("input", () => {
+        updateRadarOpacity();
+        console.log("ZacharologistWx Mapbox Radar Test: opacity changed", {
+          opacity: Number(opacityRange.value)
+        });
+      });
+      cleanNoDataToggle.addEventListener("change", () => {
+        updateTuningLabels();
+        refreshCurrentFrameForTuning();
+      });
+      cleanPresetButton.addEventListener("click", applyCleanPreset);
+      rawFrameButton.addEventListener("click", applyRawFramePreset);
+      alertDetailCloseButton.addEventListener("click", hideNwsAlertDetails);
+      [
+        darknessThresholdRange,
+        grayRemovalRange,
+        saturationBoostRange,
+        brightnessBoostRange,
+        minAlphaRange
+      ].forEach((control) => {
+        control.addEventListener("input", () => {
+          updateTuningLabels();
+          refreshCurrentFrameForTuning();
+        });
+      });
+      updateTuningLabels();
+      updateRadarOpacity();
+    }
+
+    if (typeof MAPBOX_TOKEN !== "string" || !MAPBOX_TOKEN.startsWith("pk.")) {
+      console.error("ZacharologistWx Mapbox Radar Test: missing public pk.* Mapbox token.");
+      setStatus("Radar frame failed");
+      showTokenMessage();
+    } else {
+      mapboxgl.accessToken = MAPBOX_TOKEN;
+
+      map = new mapboxgl.Map({
+        container: "map",
+        style: MAPBOX_STYLE,
+        center: [-79.8, 35.8],
+        zoom: 6.1,
+        projection: "mercator",
+        attributionControl: true
+      });
+
+      map.addControl(new mapboxgl.NavigationControl(), "top-right");
+      wireControls();
+
+      map.on("load", () => {
+        console.log("ZacharologistWx Mapbox Radar Test: Mapbox loaded", {
+          style: MAPBOX_STYLE,
+          center: map.getCenter().toArray(),
+          zoom: map.getZoom()
+        });
+        loadRadarCatalog();
+        startNwsAlertRefresh();
+      });
+
+      map.on("error", (event) => {
+        console.error("ZacharologistWx Mapbox Radar Test: Mapbox error", event && event.error ? event.error : event);
+      });
+
+      mobilePlaybackQuery.addEventListener?.("change", () => {
+        stopPlayback();
+        applyCatalogSelection({ keepSite: true, keepProduct: true });
+      });
+    }
+  </script>
+</body>
+</html>
