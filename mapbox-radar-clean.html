@@ -556,7 +556,7 @@
         type="range"
         min="1"
         max="6"
-        step="1"
+        step="0.25"
         value="1"
         aria-label="Playback speed"
       >
@@ -636,7 +636,9 @@
     // constants
     const MAPBOX_TOKEN = window.MAPBOX_PUBLIC_TOKEN;
     const MAPBOX_STYLE = "mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
-    const RADAR_CATALOG_URL = "/radar/frames.json";
+    const RADAR_DATA_BASE_URL = "https://radar.zacharologistwx.com";
+    const RADAR_CATALOG_URL = `${RADAR_DATA_BASE_URL}/radar/frames.json`;
+    const LOCAL_RADAR_CATALOG_URL = "/radar/frames.json";
     const NWS_ALERT_AREAS = ["NC", "SC", "VA", "GA"];
     const NWS_ALERTS_URL = `https://api.weather.gov/alerts/active?${NWS_ALERT_AREAS.map((area) => `area=${area}`).join("&")}`;
     const NWS_ALERT_SOURCE_ID = "nws-alert-polygons";
@@ -646,6 +648,11 @@
     const RADAR_CATALOG_REFRESH_MS = 60000;
     const DEFAULT_SITE = "KFCX";
     const DEFAULT_PRODUCT = "N0B";
+    const BASE_PLAY_INTERVAL_MS = 850;
+    const MIN_PLAY_INTERVAL_MS = 110;
+    const LOOP_END_PAUSE_MS = 2500;
+    const MOBILE_PRELOAD_RADIUS = 3;
+    const DESKTOP_PRELOAD_FRAME_LIMIT = 25;
 
     const statusText = document.querySelector("#statusText");
     const siteSelect = document.querySelector("#siteSelect");
@@ -702,9 +709,14 @@
     let radarCatalogRefreshTimer = null;
     let lastCatalogSignature = "";
     let lastRadarCatalogCheckText = "";
+    let activeRadarCatalogSource = "external";
     let isRadarPlaying = false;
     let radarPlaybackTimer = null;
+    let radarPlaybackToken = 0;
+    const radarImageCache = new Map();
+    let radarPreloadToken = 0;
     let isAlertsPanelExpanded = false;
+    let hasLoggedDirectRadarDraw = false;
 
     function setStatus(message) {
       statusText.textContent = message;
@@ -747,8 +759,47 @@
       });
     }
 
-    function resolveUrl(url) {
-      return new URL(String(url || ""), window.location.href).toString();
+    function resolveRadarFrameUrl(url) {
+      const rawUrl = String(url || "").trim();
+
+      if (!rawUrl) {
+        return "";
+      }
+
+      if (/^https?:\/\//i.test(rawUrl)) {
+        return rawUrl;
+      }
+
+      if (rawUrl.startsWith("/radar/")) {
+        return `${RADAR_DATA_BASE_URL}${rawUrl}`;
+      }
+
+      return new URL(rawUrl, `${RADAR_DATA_BASE_URL}/`).toString();
+    }
+
+    function isMobileRadarPlaybackMode() {
+      return window.matchMedia("(max-width: 700px), (pointer: coarse)").matches;
+    }
+
+    function normalizePlaybackSpeed(value) {
+      const rawSpeed = Number(value);
+      const finiteSpeed = Number.isFinite(rawSpeed) ? rawSpeed : 1;
+      const quarterStepSpeed = Math.round(finiteSpeed * 4) / 4;
+      return Math.min(6, Math.max(1, quarterStepSpeed));
+    }
+
+    function formatPlaybackSpeed(speed) {
+      return Number.isInteger(speed)
+        ? `${speed}x`
+        : `${speed.toFixed(2).replace(/0+$/, "").replace(/\.$/, "")}x`;
+    }
+
+    function getRadarFrameUrl(frame) {
+      return frame ? resolveRadarFrameUrl(frame.url) : "";
+    }
+
+    function selectedFrameUrl(index) {
+      return getRadarFrameUrl(selectedFrames[index]);
     }
 
     function validateBounds(bounds) {
@@ -893,10 +944,12 @@
 
     function refreshSelectedFrames() {
       stopRadarPlayback();
+      clearRadarFrameImageCache();
       selectedFrames = productFrames(selectedSite, selectedProduct);
       selectedFrameIndex = 0;
       lastCatalogSignature = radarCatalogSignatureFor(selectedSite, selectedProduct);
       populateFrameSelect();
+      preloadSelectedFrameSet();
       applySelectedFrame();
     }
 
@@ -912,10 +965,37 @@
       return productFrames(site, product).map(frameIdentity).join("||");
     }
 
-    function catalogUrl() {
-      const url = new URL(RADAR_CATALOG_URL, window.location.href);
+    function catalogUrlWithTimestamp(baseUrl) {
+      const url = new URL(baseUrl, window.location.href);
       url.searchParams.set("ts", String(Date.now()));
       return url.toString();
+    }
+
+    async function fetchRadarCatalogWithFallback() {
+      const externalUrl = catalogUrlWithTimestamp(RADAR_CATALOG_URL);
+
+      try {
+        const response = await fetch(externalUrl, { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error(`Radar catalog failed: ${response.status}`);
+        }
+        const catalog = await response.json();
+        console.log("Radar catalog loaded: external radar data source", externalUrl);
+        activeRadarCatalogSource = "external";
+        return { catalog, source: "external" };
+      } catch (externalError) {
+        console.warn("External radar catalog failed, falling back to local /radar/frames.json", externalError);
+      }
+
+      const localUrl = catalogUrlWithTimestamp(LOCAL_RADAR_CATALOG_URL);
+      const response = await fetch(localUrl, { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error(`Local fallback radar catalog failed: ${response.status}`);
+      }
+      const catalog = await response.json();
+      console.log("Radar catalog loaded: local fallback", localUrl);
+      activeRadarCatalogSource = "local";
+      return { catalog, source: "local" };
     }
 
     function updateCatalogCheckedStatus(message = "Radar catalog checked") {
@@ -944,6 +1024,7 @@
       }
 
       selectedFrames = nextFrames;
+      clearRadarFrameImageCache();
       const newestIndex = getNewestFrameIndex();
       const newestFrame = selectedFrames[newestIndex];
       const hasNewerFrame = previousFrame
@@ -960,6 +1041,7 @@
       }
 
       populateFrameSelect();
+      preloadSelectedFrameSet(selectedFrameIndex);
       applySelectedFrame();
 
       if (catalogChanged) {
@@ -977,15 +1059,25 @@
     }
 
     function updatePlaybackSpeedDisplay() {
-      const speed = Math.min(6, Math.max(1, Number(playbackSpeedSlider.value) || 1));
+      const speed = normalizePlaybackSpeed(playbackSpeedSlider.value);
       playbackSpeedSlider.value = String(speed);
-      playbackSpeedValue.textContent = `${Number.isInteger(speed) ? speed : speed.toFixed(1)}x`;
+      playbackSpeedValue.textContent = formatPlaybackSpeed(speed);
       return speed;
     }
 
     function playbackIntervalMs() {
       const speed = updatePlaybackSpeedDisplay();
-      return Math.max(250, Math.round(700 / speed));
+      return Math.max(MIN_PLAY_INTERVAL_MS, Math.round(BASE_PLAY_INTERVAL_MS / speed));
+    }
+
+    function playbackDelayAfterAdvance(didShowNewestFrame) {
+      return didShowNewestFrame ? LOOP_END_PAUSE_MS : playbackIntervalMs();
+    }
+
+    function playbackDelayForCurrentFrame() {
+      return selectedFrameIndex === getNewestFrameIndex()
+        ? LOOP_END_PAUSE_MS
+        : playbackIntervalMs();
     }
 
     function chronologicalFrameIndices() {
@@ -1031,10 +1123,11 @@
 
     function stopRadarPlayback() {
       if (radarPlaybackTimer !== null) {
-        window.clearInterval(radarPlaybackTimer);
+        window.clearTimeout(radarPlaybackTimer);
         radarPlaybackTimer = null;
       }
 
+      radarPlaybackToken += 1;
       isRadarPlaying = false;
       updatePlaybackButton();
     }
@@ -1046,20 +1139,37 @@
       }
 
       if (radarPlaybackTimer !== null) {
-        window.clearInterval(radarPlaybackTimer);
+        window.clearTimeout(radarPlaybackTimer);
+        radarPlaybackTimer = null;
       }
 
       isRadarPlaying = true;
       updatePlaybackButton();
+      const playbackToken = ++radarPlaybackToken;
       if (selectedFrameIndex === getNewestFrameIndex()) {
         selectedFrameIndex = getOldestFrameIndex();
         syncFrameSelectToSelection();
         applySelectedFrame();
       }
 
-      radarPlaybackTimer = window.setInterval(() => {
-        stepRadarFrame("next", { fromPlayback: true });
-      }, playbackIntervalMs());
+      preloadSelectedFrameSet(selectedFrameIndex);
+      scheduleRadarPlaybackTick(playbackToken, playbackIntervalMs());
+    }
+
+    function scheduleRadarPlaybackTick(playbackToken, delayMs) {
+      if (!isRadarPlaying || playbackToken !== radarPlaybackToken) return;
+
+      radarPlaybackTimer = window.setTimeout(async () => {
+        radarPlaybackTimer = null;
+
+        if (!isRadarPlaying || playbackToken !== radarPlaybackToken) return;
+
+        const didShowNewestFrame = await advanceRadarPlaybackFrame();
+
+        if (!isRadarPlaying || playbackToken !== radarPlaybackToken) return;
+
+        scheduleRadarPlaybackTick(playbackToken, playbackDelayAfterAdvance(didShowNewestFrame));
+      }, delayMs);
     }
 
     function toggleRadarPlayback() {
@@ -1071,14 +1181,21 @@
     }
 
     function restartRadarPlayback() {
+      updatePlaybackSpeedDisplay();
       if (!isRadarPlaying) return;
-      startRadarPlayback();
+
+      if (radarPlaybackTimer !== null) {
+        window.clearTimeout(radarPlaybackTimer);
+        radarPlaybackTimer = null;
+      }
+
+      scheduleRadarPlaybackTick(++radarPlaybackToken, playbackDelayForCurrentFrame());
     }
 
-    function stepRadarFrame(direction, options = {}) {
+    async function stepRadarFrame(direction, options = {}) {
       if (selectedFrames.length === 0) {
         setStatus("No usable radar frames found.");
-        return;
+        return false;
       }
 
       if (!options.fromPlayback) {
@@ -1089,23 +1206,33 @@
         ? getPreviousChronologicalFrameIndex(selectedFrameIndex)
         : getNextChronologicalFrameIndex(selectedFrameIndex);
       syncFrameSelectToSelection();
-      applySelectedFrame();
+      return applySelectedFrame({ fromPlayback: Boolean(options.fromPlayback) });
+    }
+
+    async function advanceRadarPlaybackFrame() {
+      const frameCount = selectedFrames.length;
+      if (frameCount < 2) return false;
+
+      for (let attempt = 0; attempt < frameCount; attempt += 1) {
+        const didApplyFrame = await stepRadarFrame("next", { fromPlayback: true });
+        if (didApplyFrame) {
+          return selectedFrameIndex === getNewestFrameIndex();
+        }
+      }
+
+      setStatus("Radar playback skipped unavailable frames.");
+      return false;
     }
 
     async function loadRadarCatalog() {
       try {
-        const response = await fetch(catalogUrl(), { cache: "no-store" });
-
-        if (!response.ok) {
-          throw new Error(`Radar catalog failed: ${response.status}`);
-        }
-
-        radarCatalog = await response.json();
+        const { catalog, source } = await fetchRadarCatalogWithFallback();
+        radarCatalog = catalog;
         console.log("radar catalog loaded");
         populateSiteSelect();
         populateProductSelect();
         refreshSelectedFrames();
-        updateCatalogCheckedStatus("Radar catalog loaded");
+        updateCatalogCheckedStatus(source === "local" ? "Radar catalog loaded (local fallback)" : "Radar catalog loaded");
       } catch (error) {
         setStatus(error.message || "Unable to load radar catalog.");
       }
@@ -1115,23 +1242,21 @@
       const { forceLatest = false } = options;
 
       try {
-        const response = await fetch(catalogUrl(), { cache: "no-store" });
-
-        if (!response.ok) {
-          throw new Error(`Radar catalog refresh failed: ${response.status}`);
-        }
-
-        const nextCatalog = await response.json();
+        const { catalog: nextCatalog, source } = await fetchRadarCatalogWithFallback();
         const previousSignature = lastCatalogSignature;
         radarCatalog = nextCatalog;
         const nextSignature = radarCatalogSignatureFor(selectedSite, selectedProduct);
         const catalogChanged = nextSignature !== previousSignature;
         lastCatalogSignature = nextSignature;
+        const sourceSuffix = source === "local" ? " (local fallback)" : "";
 
         if (catalogChanged || forceLatest) {
           updateSelectedFramesFromCatalog({ forceLatest, catalogChanged });
+          if (source === "local") {
+            updateCatalogCheckedStatus(`Radar catalog refreshed${sourceSuffix}`);
+          }
         } else {
-          updateCatalogCheckedStatus("Radar catalog checked, no new frames");
+          updateCatalogCheckedStatus(`Radar catalog checked, no new frames${sourceSuffix}`);
         }
       } catch (error) {
         setStatus(error.message || "Unable to refresh radar catalog.");
@@ -1222,55 +1347,174 @@
 
 
 
-    async function loadRadarFrameImage(frameUrl) {
+    function clearRadarFrameImageCache() {
+      radarPreloadToken += 1;
+      radarImageCache.clear();
+      console.debug("Radar image cache cleared");
+    }
+
+    function radarImageCacheStats() {
+      const entries = [...radarImageCache.values()];
+      return {
+        size: radarImageCache.size,
+        loaded: entries.filter((entry) => entry.status === "loaded").length,
+        loading: entries.filter((entry) => entry.status === "loading").length,
+        error: entries.filter((entry) => entry.status === "error").length
+      };
+    }
+
+    function logRadarImageCacheStats(label) {
+      console.debug(`Radar image cache ${label}`, radarImageCacheStats());
+    }
+
+    function preloadRadarFrame(frame) {
+      const frameUrl = getRadarFrameUrl(frame);
+      if (!frameUrl) {
+        return Promise.reject(new Error("Radar frame URL unavailable."));
+      }
+
+      const cacheToken = radarPreloadToken;
+      const cachedFrame = radarImageCache.get(frameUrl);
+      if (cachedFrame?.status === "loaded") {
+        return Promise.resolve(cachedFrame.image);
+      }
+
+      if (cachedFrame?.status === "loading") {
+        return cachedFrame.promise;
+      }
+
+      if (cachedFrame?.status === "error") {
+        return Promise.reject(cachedFrame.error || new Error("Radar frame image failed to load."));
+      }
+
       const image = new Image();
       image.decoding = "async";
-      const imageLoaded = new Promise((resolve, reject) => {
+
+      const loadEvents = new Promise((resolve, reject) => {
         image.onload = resolve;
         image.onerror = reject;
       });
 
-      image.src = frameUrl;
-      if (image.decode) {
-        await image.decode();
-      } else {
-        await imageLoaded;
-      }
+      const loadPromise = (async () => {
+        image.src = frameUrl;
 
-      return image;
+        try {
+          if (image.decode) {
+            await image.decode();
+          } else {
+            await loadEvents;
+          }
+        } catch (error) {
+          if (!image.complete) {
+            await loadEvents;
+          } else if (!image.naturalWidth) {
+            throw error;
+          }
+        }
+
+        if (!image.naturalWidth) {
+          throw new Error("Radar frame image failed to decode.");
+        }
+
+        if (cacheToken === radarPreloadToken) {
+          radarImageCache.set(frameUrl, {
+            url: frameUrl,
+            status: "loaded",
+            image
+          });
+          logRadarImageCacheStats("loaded frame");
+        }
+        return image;
+      })().catch((error) => {
+        if (cacheToken === radarPreloadToken) {
+          radarImageCache.set(frameUrl, {
+            url: frameUrl,
+            status: "error",
+            error
+          });
+          logRadarImageCacheStats("frame error");
+        }
+        throw error;
+      });
+
+      radarImageCache.set(frameUrl, {
+        url: frameUrl,
+        status: "loading",
+        promise: loadPromise
+      });
+      logRadarImageCacheStats("started load");
+
+      return loadPromise;
     }
 
-    function cleanRadarImageToCanvas(image) {
-      const canvas = document.createElement("canvas");
-      canvas.width = image.naturalWidth || image.width;
-      canvas.height = image.naturalHeight || image.height;
+    function getCachedRadarImage(frame) {
+      const frameUrl = getRadarFrameUrl(frame);
+      const cachedFrame = radarImageCache.get(frameUrl);
+      return cachedFrame?.status === "loaded" ? cachedFrame.image : null;
+    }
 
-      const context = canvas.getContext("2d", { willReadFrequently: true });
-      context.imageSmoothingEnabled = false;
-      context.drawImage(image, 0, 0);
+    function preloadRadarFrames(frames, token = radarPreloadToken) {
+      frames.forEach((frame) => {
+        preloadRadarFrame(frame).catch(() => {
+          if (token === radarPreloadToken) {
+            console.warn("Radar frame preload failed", getRadarFrameUrl(frame));
+          }
+        });
+      });
+    }
 
-      const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-      const data = imageData.data;
+    function pruneMobileRadarFrameCache(keepUrls) {
+      if (!isMobileRadarPlaybackMode()) return;
 
-      for (let index = 0; index < data.length; index += 4) {
-        const red = data[index];
-        const green = data[index + 1];
-        const blue = data[index + 2];
-        const alpha = data[index + 3];
-        const maxChannel = Math.max(red, green, blue);
-        const minChannel = Math.min(red, green, blue);
-        const saturation = maxChannel - minChannel;
-        const isTransparent = alpha <= 8;
-        const isBlack = maxChannel <= 12;
-        const isNeutralSmoke = saturation <= 10 && maxChannel <= 105;
+      radarImageCache.forEach((_cachedFrame, frameUrl) => {
+        if (!keepUrls.has(frameUrl)) {
+          radarImageCache.delete(frameUrl);
+        }
+      });
+    }
 
-        if (isTransparent || isBlack || isNeutralSmoke) {
-          data[index + 3] = 0;
+    function preloadFramesAround(index = selectedFrameIndex) {
+      if (!selectedFrames.length) return [];
+
+      const frameCount = selectedFrames.length;
+      const frames = [];
+
+      for (let offset = -MOBILE_PRELOAD_RADIUS; offset <= MOBILE_PRELOAD_RADIUS; offset += 1) {
+        const frameIndex = (index + offset + frameCount) % frameCount;
+        const frame = selectedFrames[frameIndex];
+        if (frame && !frames.includes(frame)) {
+          frames.push(frame);
         }
       }
 
-      context.putImageData(imageData, 0, 0);
-      return canvas;
+      return frames;
+    }
+
+    function preloadRadarFramesAround(index = selectedFrameIndex) {
+      const frames = preloadFramesAround(index);
+      const keepUrls = new Set(frames.map(getRadarFrameUrl).filter(Boolean));
+      pruneMobileRadarFrameCache(keepUrls);
+      preloadRadarFrames(frames);
+      logRadarImageCacheStats("preloading nearby frames");
+    }
+
+    function preloadSelectedFrameSet(index = selectedFrameIndex) {
+      if (!selectedFrames.length) return;
+
+      const preloadToken = radarPreloadToken;
+      const frames = isMobileRadarPlaybackMode()
+        ? preloadFramesAround(index)
+        : selectedFrames
+          .slice(0, DESKTOP_PRELOAD_FRAME_LIMIT);
+      const keepUrls = new Set(frames.map(getRadarFrameUrl).filter(Boolean));
+
+      pruneMobileRadarFrameCache(keepUrls);
+      preloadRadarFrames(frames, preloadToken);
+      logRadarImageCacheStats("preloading selected set");
+    }
+
+    async function loadRadarFrameImage(frameUrl) {
+      return preloadRadarFrame({ url: frameUrl });
     }
 
     function drawRadarOverlay() {
@@ -1304,7 +1548,11 @@
     function applyRadarOverlay(frame, image) {
       activeRadarFrame = frame;
       activeRadarImage = image;
-      activeRadarCanvas = cleanRadarImageToCanvas(image);
+      activeRadarCanvas = image;
+      if (!hasLoggedDirectRadarDraw) {
+        console.log("Drawing external radar frame directly; skipping pixel readback to avoid CORS taint.");
+        hasLoggedDirectRadarDraw = true;
+      }
       scheduleOverlayRedraw();
       console.log("radar frame applied");
     }
@@ -1314,7 +1562,8 @@
       frameReadout.textContent = `Radar: updated ${formatShortTime(frame.validTime)}${checkedText}`;
     }
 
-    async function applySelectedFrame() {
+    async function applySelectedFrame(options = {}) {
+      const { fromPlayback = false } = options;
       const frame = selectedFrames[selectedFrameIndex];
       const applyToken = ++radarFrameApplyToken;
 
@@ -1325,28 +1574,75 @@
         clearRadarOverlay();
         frameReadout.textContent = "No usable radar frame selected.";
         setStatus("No usable radar frames found.");
-        return;
+        return false;
       }
 
-      const frameUrl = resolveUrl(frame.url);
+      const frameUrl = selectedFrameUrl(selectedFrameIndex);
       updateFrameReadout(frame);
       setStatus(`Preparing radar frame: ${selectedSite} ${selectedProduct}`);
+      preloadRadarFramesAround(selectedFrameIndex);
+
+      const cachedRadarImage = getCachedRadarImage(frame);
+      if (cachedRadarImage) {
+        console.debug("Radar frame drawn from cache", {
+          frameUrl,
+          cache: radarImageCacheStats()
+        });
+        applyRadarOverlay(frame, cachedRadarImage);
+        setStatus(`Radar frame loaded: ${selectedSite} ${selectedProduct}`);
+        preloadRadarFramesAround(selectedFrameIndex);
+        return true;
+      }
+
+      const cachedFrame = radarImageCache.get(frameUrl);
+      if (fromPlayback && cachedFrame?.status === "loading") {
+        console.debug("Radar playback waiting for loading frame; keeping current frame visible", {
+          frameUrl,
+          cache: radarImageCacheStats()
+        });
+        return false;
+      }
+
+      if (fromPlayback && cachedFrame?.status === "error") {
+        console.debug("Radar playback skipped errored frame", {
+          frameUrl,
+          cache: radarImageCacheStats()
+        });
+        return false;
+      }
 
       try {
-        const radarImage = await loadRadarFrameImage(frameUrl);
+        const radarImagePromise = loadRadarFrameImage(frameUrl);
 
-        if (applyToken !== radarFrameApplyToken) {
-          return;
+        if (fromPlayback) {
+          console.debug("Radar playback started frame load; keeping current frame visible", {
+            frameUrl,
+            cache: radarImageCacheStats()
+          });
+          return false;
         }
 
+        const radarImage = await radarImagePromise;
+
+        if (applyToken !== radarFrameApplyToken) {
+          return false;
+        }
+
+        console.debug("Radar frame drawn after network/decode", {
+          frameUrl,
+          cache: radarImageCacheStats()
+        });
         applyRadarOverlay(frame, radarImage);
         setStatus(`Radar frame loaded: ${selectedSite} ${selectedProduct}`);
+        preloadRadarFramesAround(selectedFrameIndex);
+        return true;
       } catch (error) {
         if (applyToken !== radarFrameApplyToken) {
-          return;
+          return false;
         }
 
-        setStatus(error.message || "Unable to prepare radar frame.");
+        setStatus("Radar frame failed to load; keeping current frame visible.");
+        return false;
       }
     }
 
