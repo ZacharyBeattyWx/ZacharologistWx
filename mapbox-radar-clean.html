@@ -57,17 +57,37 @@
       backdrop-filter: blur(10px);
     }
 
+    .right-ui-rail {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 6;
+      width: clamp(340px, 26vw, 430px);
+      max-height: calc(100vh - 32px);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      pointer-events: none;
+    }
+
+    .right-ui-rail > .panel {
+      position: relative;
+      top: auto;
+      right: auto;
+      bottom: auto;
+      left: auto;
+      width: 100%;
+      transform: none;
+      pointer-events: auto;
+    }
+
     .control-card {
-      top: 12px;
-      right: 12px;
-      width: clamp(340px, 30vw, 390px);
-      max-height: 80vh;
+      max-height: min(52vh, 440px);
       display: flex;
       flex-direction: column;
       gap: 8px;
       padding: 10px;
       overflow-y: auto;
-      z-index: 6;
     }
 
     .control-title {
@@ -229,6 +249,15 @@
       color: #bfdbfe;
     }
 
+    .right-alerts-panel {
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow: hidden;
+      max-height: min(46vh, 430px);
+    }
+
     .alerts-drawer-header {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
@@ -263,15 +292,17 @@
       display: flex;
       flex-direction: column;
       gap: 8px;
-      max-height: 0;
-      overflow: hidden;
-      transition: max-height 0.16s ease;
-    }
-
-    .control-card.is-alerts-expanded .active-alerts-panel {
-      max-height: 260px;
+      flex: 1 1 auto;
+      min-height: 0;
+      max-height: 320px;
       overflow-y: auto;
       padding-right: 2px;
+    }
+
+    .right-alerts-panel.is-collapsed .active-alerts-panel {
+      max-height: 0;
+      overflow: hidden;
+      padding-right: 0;
     }
 
     .active-alert-group {
@@ -340,11 +371,11 @@
     }
 
     .details-panel {
-      right: 14px;
-      top: 146px;
+      right: calc(clamp(340px, 26vw, 430px) + 28px);
+      top: 16px;
       display: none;
-      width: min(94vw, 450px);
-      max-height: min(58vh, 500px);
+      width: min(42vw, 480px);
+      max-height: calc(100vh - 32px);
       padding: 12px;
       overflow: auto;
       z-index: 7;
@@ -457,13 +488,13 @@
     }
 
     @media (max-width: 720px) {
-      .control-card {
-        top: 8px;
+      .right-ui-rail {
+        top: 10px;
         left: 8px;
         right: 8px;
         width: auto;
-        max-height: 76vh;
-        padding: 8px;
+        max-height: calc(100vh - 20px);
+        gap: 10px;
       }
 
       .primary-controls-row,
@@ -480,11 +511,26 @@
         justify-content: flex-start;
       }
 
+      .control-card {
+        max-height: 44vh;
+      }
+
+      .right-alerts-panel {
+        padding: 10px;
+        max-height: 42vh;
+      }
+
+      .active-alerts-panel {
+        max-height: 30vh;
+      }
+
       .details-panel {
+        top: auto;
         left: 8px;
         right: 8px;
         bottom: 8px;
-        max-height: 30vh;
+        width: auto;
+        max-height: 35vh;
       }
     }
   </style>
@@ -494,11 +540,11 @@
   <canvas id="radarOverlayCanvas" aria-hidden="true"></canvas>
   <canvas id="alertOverlayCanvas" aria-hidden="true"></canvas>
 
-  <section class="panel control-card" aria-label="Radar controls and alerts">
+  <div class="right-ui-rail">
+  <section class="panel control-card" aria-label="Radar controls">
     <div class="card-header">
       <h1 class="card-title">Mapbox Radar + Alerts</h1>
       <div class="card-actions">
-        <button id="showDetailsButton" type="button">Show Details</button>
         <button id="refreshNowButton" type="button">Refresh</button>
       </div>
     </div>
@@ -556,18 +602,23 @@
     <div class="readout" id="frameReadout">Frame time unavailable</div>
     <div class="readout alert-readout" id="alertReadout">Alerts: waiting for NWS refresh...</div>
 
+  </section>
+
+  <section class="panel right-alerts-panel" aria-label="Active alerts list">
     <div class="alerts-drawer-header">
-      <div class="alerts-drawer-summary" id="alertsDrawerSummary">Active Alerts: none</div>
+      <h2 class="alerts-drawer-title">Active Alerts</h2>
       <button
         id="toggleAlertsPanelButton"
         class="alerts-drawer-toggle"
         type="button"
         aria-expanded="false"
         aria-controls="activeAlertsPanel"
-      >Show</button>
+      >Hide</button>
     </div>
+    <div class="alerts-drawer-summary" id="alertsDrawerSummary">Active Alerts: none</div>
     <div class="active-alerts-panel" id="activeAlertsPanel" aria-live="polite"></div>
   </section>
+  </div>
 
   <section class="panel details-panel" id="detailsPanel" aria-label="NWS alert details" aria-live="polite">
     <div class="details-header">
@@ -613,11 +664,10 @@
     const alertOverlayContext = alertOverlayCanvas.getContext("2d");
     const frameReadout = document.querySelector("#frameReadout");
     const alertReadout = document.querySelector("#alertReadout");
-    const controlCard = document.querySelector(".control-card");
+    const rightAlertsPanel = document.querySelector(".right-alerts-panel");
     const alertsDrawerSummary = document.querySelector("#alertsDrawerSummary");
     const toggleAlertsPanelButton = document.querySelector("#toggleAlertsPanelButton");
     const activeAlertsPanel = document.querySelector("#activeAlertsPanel");
-    const showDetailsButton = document.querySelector("#showDetailsButton");
     const refreshNowButton = document.querySelector("#refreshNowButton");
     const detailsPanel = document.querySelector("#detailsPanel");
     const detailsTitle = document.querySelector("#detailsTitle");
@@ -1418,8 +1468,12 @@
       const bounds = alertBounds(feature);
 
       if (bounds && map) {
+        const isNarrow = window.innerWidth <= 900;
+        const fitPadding = isNarrow
+          ? { top: 52, right: 52, bottom: 52, left: 40 }
+          : { top: 62, right: 470, bottom: 62, left: 48 };
         map.fitBounds(bounds, {
-          padding: 70,
+          padding: fitPadding,
           maxZoom: 9,
           duration: 650
         });
@@ -1497,17 +1551,15 @@
 
       alertsDrawerSummary.textContent =
         `Active Alerts: ${total} · ${mapped} mapped · ${listedOnly} listed only`;
-      
     }
 
     function setAlertsPanelExpanded(expanded) {
       isAlertsPanelExpanded = expanded;
-      controlCard?.classList.toggle("is-alerts-expanded", expanded);
+      rightAlertsPanel?.classList.toggle("is-collapsed", !expanded);
       if (toggleAlertsPanelButton) {
         toggleAlertsPanelButton.textContent = expanded ? "Hide" : "Show";
         toggleAlertsPanelButton.setAttribute("aria-expanded", String(expanded));
       }
-      
     }
 
     function toggleAlertsPanel() {
@@ -1875,16 +1927,6 @@
     setAlertsPanelExpanded(false);
     updateAlertsDrawerSummary();
 
-    if (showDetailsButton) {
-      showDetailsButton.addEventListener("click", () => {
-        const firstAlert = activeAlertFeatures[0] || activeAlertsWithoutGeometry[0];
-        if (!firstAlert?.properties?._alertId) {
-          setStatus("No active alerts available for details.");
-          return;
-        }
-        showAlertDetails(firstAlert.properties._alertId);
-      });
-    }
     if (refreshNowButton) {
       refreshNowButton.addEventListener("click", async () => {
         setStatus("Refreshing radar and alerts...");
