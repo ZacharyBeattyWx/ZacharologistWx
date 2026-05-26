@@ -52,18 +52,22 @@
       z-index: 3;
       background: rgba(5, 10, 22, 0.88);
       border: 1px solid rgba(148, 163, 184, 0.34);
-      border-radius: 6px;
+      border-radius: 12px;
       box-shadow: 0 14px 36px rgba(0, 0, 0, 0.34);
       backdrop-filter: blur(10px);
     }
 
-    .control-panel {
-      top: 14px;
-      left: 14px;
-      display: grid;
-      gap: 10px;
-      width: min(94vw, 430px);
-      padding: 12px;
+    .control-card {
+      top: 12px;
+      right: 12px;
+      width: clamp(340px, 30vw, 390px);
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 10px;
+      overflow-y: auto;
+      z-index: 6;
     }
 
     .control-title {
@@ -80,10 +84,30 @@
       overflow-wrap: anywhere;
     }
 
-    .control-grid {
+    .card-title {
+      margin: 0;
+      color: #ffffff;
+      font-size: 0.92rem;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .card-header {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: minmax(0, 1fr) auto;
       gap: 8px;
+      align-items: center;
+    }
+
+    .card-actions {
+      display: inline-flex;
+      gap: 6px;
+    }
+
+    .card-actions button {
+      padding: 6px 8px;
+      font-size: 0.72rem;
+      white-space: nowrap;
     }
 
     label {
@@ -124,37 +148,66 @@
       border-color: rgba(56, 189, 248, 0.72);
     }
 
-    .playback-controls {
-      display: flex;
-      flex-wrap: wrap;
+    .toolbar-field {
+      min-width: 0;
+    }
+
+    .primary-controls-row,
+    .select-row {
+      display: grid;
+      grid-template-columns: minmax(120px, 1fr) auto;
       gap: 8px;
+      align-items: end;
+    }
+
+    .select-row {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .playback-controls {
+      display: inline-flex;
+      gap: 6px;
       align-items: center;
     }
 
     .playback-controls button {
-      min-width: 72px;
+      min-width: 56px;
+      padding: 7px 8px;
     }
 
-    .playback-controls select {
-      width: auto;
-      min-width: 104px;
-      flex: 1 1 116px;
-    }
-
-    .range-row {
+    .speed-toolbar {
       display: grid;
-      grid-template-columns: 66px minmax(0, 1fr) 42px;
-      gap: 8px;
+      grid-template-columns: auto minmax(90px, 1fr) auto;
+      gap: 6px;
       align-items: center;
+      min-width: 0;
     }
 
-    .range-row span {
+    .speed-toolbar span,
+    .opacity-toolbar span {
       color: #93c5fd;
       font-size: 0.72rem;
       font-weight: 800;
+      white-space: nowrap;
     }
 
-    .range-row output {
+    .speed-toolbar output {
+      color: #ffffff;
+      font-size: 0.76rem;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .opacity-toolbar {
+      display: grid;
+      grid-template-columns: auto minmax(90px, 1fr) auto;
+      gap: 6px;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .opacity-toolbar output {
       color: #ffffff;
       font-size: 0.78rem;
       text-align: right;
@@ -176,20 +229,49 @@
       color: #bfdbfe;
     }
 
-    .active-alerts-panel {
+    .alerts-drawer-header {
       display: grid;
-      gap: 8px;
-      max-height: 250px;
-      overflow-y: auto;
-      overflow-x: hidden;
-      padding-right: 2px;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 6px;
+      align-items: center;
+      min-width: 0;
     }
 
-    .active-alerts-title {
-      margin: 2px 0 0;
+    .alerts-drawer-title {
+      margin: 0;
       color: #ffffff;
-      font-size: 0.8rem;
+      font-size: 0.82rem;
       line-height: 1.2;
+      font-weight: 800;
+    }
+
+    .alerts-drawer-summary {
+      color: #dbeafe;
+      font-size: 0.74rem;
+      line-height: 1.2;
+      overflow-wrap: anywhere;
+    }
+
+    .alerts-drawer-toggle {
+      min-width: 70px;
+      padding: 5px 10px;
+      font-size: 0.72rem;
+      white-space: nowrap;
+    }
+
+    .active-alerts-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.16s ease;
+    }
+
+    .control-card.is-alerts-expanded .active-alerts-panel {
+      max-height: 260px;
+      overflow-y: auto;
+      padding-right: 2px;
     }
 
     .active-alert-group {
@@ -199,9 +281,10 @@
 
     .active-alert-group-title {
       color: #93c5fd;
+      margin: 0;
       font-size: 0.68rem;
       font-weight: 800;
-      letter-spacing: 0.03em;
+      letter-spacing: 0.02em;
       text-transform: uppercase;
     }
 
@@ -212,9 +295,9 @@
 
     .active-alert-item {
       display: grid;
-      gap: 3px;
+      gap: 2px;
       width: 100%;
-      padding: 8px;
+      padding: 8px 10px;
       border: 1px solid rgba(148, 163, 184, 0.24);
       border-left: 4px solid var(--alert-color, #7c4dff);
       border-radius: 5px;
@@ -231,15 +314,15 @@
 
     .active-alert-event {
       color: #ffffff;
-      font-size: 0.76rem;
+      font-size: 0.74rem;
       font-weight: 800;
-      line-height: 1.25;
+      line-height: 1.2;
     }
 
     .active-alert-area,
     .active-alert-meta {
-      font-size: 0.68rem;
-      line-height: 1.3;
+      font-size: 0.66rem;
+      line-height: 1.2;
     }
 
     .active-alert-area {
@@ -258,12 +341,13 @@
 
     .details-panel {
       right: 14px;
-      bottom: 14px;
+      top: 146px;
       display: none;
       width: min(94vw, 450px);
-      max-height: calc(100vh - 28px);
+      max-height: min(58vh, 500px);
       padding: 12px;
       overflow: auto;
+      z-index: 7;
     }
 
     .details-panel.is-visible {
@@ -324,6 +408,11 @@
       z-index: 4;
     }
 
+    .mapboxgl-ctrl-top-left {
+      top: 12px;
+      left: 12px;
+    }
+
     .mapboxgl-popup-tip {
       border-top-color: rgba(5, 10, 22, 0.96) !important;
       border-bottom-color: rgba(5, 10, 22, 0.96) !important;
@@ -368,22 +457,34 @@
     }
 
     @media (max-width: 720px) {
-      .control-panel {
-        right: 10px;
-        left: 10px;
+      .control-card {
+        top: 8px;
+        left: 8px;
+        right: 8px;
         width: auto;
+        max-height: 76vh;
+        padding: 8px;
       }
 
-      .control-grid {
+      .primary-controls-row,
+      .select-row {
         grid-template-columns: 1fr;
       }
 
+      .card-header {
+        grid-template-columns: 1fr;
+        align-items: start;
+      }
+
+      .card-actions {
+        justify-content: flex-start;
+      }
+
       .details-panel {
-        right: 10px;
-        bottom: 10px;
-        left: 10px;
-        width: auto;
-        max-height: 45vh;
+        left: 8px;
+        right: 8px;
+        bottom: 8px;
+        max-height: 30vh;
       }
     }
   </style>
@@ -393,46 +494,78 @@
   <canvas id="radarOverlayCanvas" aria-hidden="true"></canvas>
   <canvas id="alertOverlayCanvas" aria-hidden="true"></canvas>
 
-  <section class="panel control-panel" aria-label="Radar controls">
-    <h1 class="control-title">Mapbox Radar + Alerts</h1>
-    <div class="status" id="statusText">Loading map...</div>
-    <div class="control-grid">
-      <label>
+  <section class="panel control-card" aria-label="Radar controls and alerts">
+    <div class="card-header">
+      <h1 class="card-title">Mapbox Radar + Alerts</h1>
+      <div class="card-actions">
+        <button id="showDetailsButton" type="button">Show Details</button>
+        <button id="refreshNowButton" type="button">Refresh</button>
+      </div>
+    </div>
+
+    <div class="speed-toolbar">
+      <span>Playback speed</span>
+      <input
+        id="playbackSpeedSlider"
+        type="range"
+        min="1"
+        max="6"
+        step="1"
+        value="1"
+        aria-label="Playback speed"
+      >
+      <output id="playbackSpeedValue">1x</output>
+    </div>
+
+    <div class="primary-controls-row">
+      <label class="toolbar-field">
         Site
         <select id="siteSelect">
           <option value="">Loading...</option>
         </select>
       </label>
-      <label>
+      <div class="playback-controls" aria-label="Radar playback controls">
+        <button id="previousFrameButton" type="button">Prev</button>
+        <button id="playPauseButton" type="button" aria-pressed="false">Play</button>
+        <button id="nextFrameButton" type="button">Next</button>
+      </div>
+    </div>
+
+    <div class="select-row">
+      <label class="toolbar-field">
         Product
         <select id="productSelect">
           <option value="">Loading...</option>
         </select>
       </label>
+      <label class="toolbar-field">
+        Frame
+        <select id="frameSelect">
+          <option value="">Loading...</option>
+        </select>
+      </label>
     </div>
-    <label>
-      Frame
-      <select id="frameSelect">
-        <option value="">Loading...</option>
-      </select>
-    </label>
-    <div class="playback-controls" aria-label="Radar playback controls">
-      <button id="previousFrameButton" type="button">Previous</button>
-      <button id="playPauseButton" type="button" aria-pressed="false">Play</button>
-      <button id="nextFrameButton" type="button">Next</button>
-      <select id="playbackSpeedSelect" aria-label="Playback speed">
-        <option value="900">Slow</option>
-        <option value="700" selected>Normal</option>
-        <option value="450">Fast</option>
-      </select>
-    </div>
-    <div class="range-row">
+
+    <div class="opacity-toolbar">
       <span>Opacity</span>
-      <input id="opacityRange" type="range" min="0" max="1" step="0.05" value="0.65">
-      <output id="opacityValue">0.65</output>
+      <input id="opacityRange" type="range" min="0" max="1" step="0.05" value="1">
+      <output id="opacityValue">100%</output>
     </div>
+
+    <div class="status" id="statusText">Loading map...</div>
     <div class="readout" id="frameReadout">Frame time unavailable</div>
     <div class="readout alert-readout" id="alertReadout">Alerts: waiting for NWS refresh...</div>
+
+    <div class="alerts-drawer-header">
+      <div class="alerts-drawer-summary" id="alertsDrawerSummary">Active Alerts: none</div>
+      <button
+        id="toggleAlertsPanelButton"
+        class="alerts-drawer-toggle"
+        type="button"
+        aria-expanded="false"
+        aria-controls="activeAlertsPanel"
+      >Show</button>
+    </div>
     <div class="active-alerts-panel" id="activeAlertsPanel" aria-live="polite"></div>
   </section>
 
@@ -470,7 +603,8 @@
     const previousFrameButton = document.querySelector("#previousFrameButton");
     const playPauseButton = document.querySelector("#playPauseButton");
     const nextFrameButton = document.querySelector("#nextFrameButton");
-    const playbackSpeedSelect = document.querySelector("#playbackSpeedSelect");
+    const playbackSpeedSlider = document.querySelector("#playbackSpeedSlider");
+    const playbackSpeedValue = document.querySelector("#playbackSpeedValue");
     const opacityRange = document.querySelector("#opacityRange");
     const opacityValue = document.querySelector("#opacityValue");
     const radarOverlayCanvas = document.querySelector("#radarOverlayCanvas");
@@ -479,7 +613,12 @@
     const alertOverlayContext = alertOverlayCanvas.getContext("2d");
     const frameReadout = document.querySelector("#frameReadout");
     const alertReadout = document.querySelector("#alertReadout");
+    const controlCard = document.querySelector(".control-card");
+    const alertsDrawerSummary = document.querySelector("#alertsDrawerSummary");
+    const toggleAlertsPanelButton = document.querySelector("#toggleAlertsPanelButton");
     const activeAlertsPanel = document.querySelector("#activeAlertsPanel");
+    const showDetailsButton = document.querySelector("#showDetailsButton");
+    const refreshNowButton = document.querySelector("#refreshNowButton");
     const detailsPanel = document.querySelector("#detailsPanel");
     const detailsTitle = document.querySelector("#detailsTitle");
     const detailsGrid = document.querySelector("#detailsGrid");
@@ -515,6 +654,7 @@
     let lastRadarCatalogCheckText = "";
     let isRadarPlaying = false;
     let radarPlaybackTimer = null;
+    let isAlertsPanelExpanded = false;
 
     function setStatus(message) {
       statusText.textContent = message;
@@ -620,7 +760,7 @@
         attributionControl: true
       });
 
-      map.addControl(new mapboxgl.NavigationControl(), "top-right");
+      map.addControl(new mapboxgl.NavigationControl(), "top-left");
       map.dragRotate.disable();
       map.touchZoomRotate.disableRotation();
       if (map.setMaxPitch) {
@@ -786,8 +926,16 @@
       playPauseButton.setAttribute("aria-pressed", String(isRadarPlaying));
     }
 
+    function updatePlaybackSpeedDisplay() {
+      const speed = Math.min(6, Math.max(1, Number(playbackSpeedSlider.value) || 1));
+      playbackSpeedSlider.value = String(speed);
+      playbackSpeedValue.textContent = `${Number.isInteger(speed) ? speed : speed.toFixed(1)}x`;
+      return speed;
+    }
+
     function playbackIntervalMs() {
-      return Math.max(250, Number(playbackSpeedSelect.value) || 700);
+      const speed = updatePlaybackSpeedDisplay();
+      return Math.max(250, Math.round(700 / speed));
     }
 
     function chronologicalFrameIndices() {
@@ -1155,7 +1303,7 @@
     function updateRadarOpacity() {
       const opacity = Math.min(1, Math.max(0, Number(opacityRange.value)));
       opacityRange.value = opacity.toFixed(2);
-      opacityValue.textContent = opacity.toFixed(2);
+      opacityValue.textContent = `${Math.round(opacity * 100)}%`;
       scheduleOverlayRedraw();
     }
 
@@ -1335,25 +1483,54 @@
       return group;
     }
 
+    function updateAlertsDrawerSummary() {
+      if (!alertsDrawerSummary) return;
+
+      const total = alertDiagnostics.totalFetched || 0;
+      const mapped = alertDiagnostics.withGeometry || 0;
+      const listedOnly = alertDiagnostics.withoutGeometry || 0;
+
+      if (total === 0) {
+        alertsDrawerSummary.textContent = "Active Alerts: none";
+        return;
+      }
+
+      alertsDrawerSummary.textContent =
+        `Active Alerts: ${total} · ${mapped} mapped · ${listedOnly} listed only`;
+      
+    }
+
+    function setAlertsPanelExpanded(expanded) {
+      isAlertsPanelExpanded = expanded;
+      controlCard?.classList.toggle("is-alerts-expanded", expanded);
+      if (toggleAlertsPanelButton) {
+        toggleAlertsPanelButton.textContent = expanded ? "Hide" : "Show";
+        toggleAlertsPanelButton.setAttribute("aria-expanded", String(expanded));
+      }
+      
+    }
+
+    function toggleAlertsPanel() {
+      setAlertsPanelExpanded(!isAlertsPanelExpanded);
+    }
+
     function updateActiveAlertsPanel() {
       const allAlerts = [...activeAlertFeatures, ...activeAlertsWithoutGeometry];
-      const title = document.createElement("h2");
-      title.className = "active-alerts-title";
-      title.textContent = "Active Alerts";
 
       if (!allAlerts.length) {
         const empty = document.createElement("div");
         empty.className = "active-alert-empty";
-        empty.textContent = "No active alerts for NC, SC, VA, or GA.";
-        activeAlertsPanel.replaceChildren(title, empty);
+        empty.textContent = "No active alerts";
+        activeAlertsPanel.replaceChildren(empty);
+        updateAlertsDrawerSummary();
         return;
       }
 
       activeAlertsPanel.replaceChildren(
-        title,
         createAlertGroup("Mapped Alerts", activeAlertFeatures, true),
         createAlertGroup("Listed Alerts", activeAlertsWithoutGeometry, false)
       );
+      updateAlertsDrawerSummary();
     }
 
     function updateAlertReadout() {
@@ -1366,6 +1543,7 @@
         `Alerts: ${alertDiagnostics.totalFetched} active · ${alertDiagnostics.withGeometry} mapped` +
         ` · ${alertDiagnostics.withoutGeometry} listed only · ${updatedText}${errorText}`;
       updateActiveAlertsPanel();
+      updateAlertsDrawerSummary();
     }
 
     function drawAlertRing(ring) {
@@ -1681,13 +1859,39 @@
       stepRadarFrame("next");
     });
 
-    playbackSpeedSelect.addEventListener("change", restartRadarPlayback);
+    playbackSpeedSlider.addEventListener("input", restartRadarPlayback);
+
+    updatePlaybackSpeedDisplay();
 
     opacityRange.addEventListener("input", updateRadarOpacity);
 
     detailsCloseButton.addEventListener("click", () => {
       detailsPanel.classList.remove("is-visible");
     });
+
+    if (toggleAlertsPanelButton) {
+      toggleAlertsPanelButton.addEventListener("click", toggleAlertsPanel);
+    }
+    setAlertsPanelExpanded(false);
+    updateAlertsDrawerSummary();
+
+    if (showDetailsButton) {
+      showDetailsButton.addEventListener("click", () => {
+        const firstAlert = activeAlertFeatures[0] || activeAlertsWithoutGeometry[0];
+        if (!firstAlert?.properties?._alertId) {
+          setStatus("No active alerts available for details.");
+          return;
+        }
+        showAlertDetails(firstAlert.properties._alertId);
+      });
+    }
+    if (refreshNowButton) {
+      refreshNowButton.addEventListener("click", async () => {
+        setStatus("Refreshing radar and alerts...");
+        await refreshRadarCatalog({ forceLatest: !isRadarPlaying });
+        await loadNwsAlerts();
+      });
+    }
 
     window.addEventListener("beforeunload", () => {
       if (alertRefreshTimer) {
