@@ -32,7 +32,7 @@
 
     #radarOverlayCanvas,
     #alertOverlayCanvas {
-      position: fixed;
+      position: absolute;
       inset: 0;
       width: 100%;
       height: 100%;
@@ -345,8 +345,6 @@
     const NWS_ALERT_FILL_LAYER_ID = "nws-alert-polygons-fill";
     const NWS_ALERT_LINE_LAYER_ID = "nws-alert-polygons-line";
     const NWS_ALERT_REFRESH_MS = 60000;
-    const RADAR_FRAME_SOURCE_ID = "zach radar-frame";
-    const RADAR_FRAME_LAYER_ID = "zach radar-frame-layer";
     const DEFAULT_SITE = "KFCX";
     const DEFAULT_PRODUCT = "N0B";
 
@@ -375,6 +373,7 @@
     let radarFrameApplyToken = 0;
     let activeRadarFrame = null;
     let activeRadarImage = null;
+    let activeRadarCanvas = null;
     let activeAlertFeatures = [];
     let overlayRedrawFrame = null;
     let activeAlertsById = new Map();
@@ -466,6 +465,8 @@
         style: MAPBOX_STYLE,
         center: [-79.4, 35.5],
         zoom: 5.5,
+        projection: "mercator",
+        renderWorldCopies: false,
         bearing: 0,
         pitch: 0,
         pitchWithRotate: false,
@@ -478,8 +479,9 @@
       if (map.setMaxPitch) {
         map.setMaxPitch(0);
       }
-      map.on("move", () => scheduleOverlayRedraw({ deferDuringMotion: true }));
-      map.on("zoom", () => scheduleOverlayRedraw({ deferDuringMotion: true }));
+      map.on("move", scheduleOverlayRedraw);
+      map.on("zoom", scheduleOverlayRedraw);
+      map.on("render", scheduleOverlayRedraw);
       map.on("moveend", scheduleOverlayRedraw);
       map.on("zoomend", scheduleOverlayRedraw);
       map.on("rotate", lockMapOrientation);
@@ -495,7 +497,6 @@
         console.log("map loaded");
         resizeRadarCanvas();
         resizeAlertCanvas();
-        ensureRadarFrameLayer();
         setStatus("Loading radar catalog...");
         await loadRadarCatalog();
         await loadNwsAlerts();
@@ -578,27 +579,39 @@
     }
 
     // radar overlay handling
+    function mapCanvasMetrics() {
+      const mapCanvas = map?.getCanvas?.();
+      const cssWidth = Math.max(1, mapCanvas?.clientWidth || radarOverlayCanvas.clientWidth || 1);
+      const cssHeight = Math.max(1, mapCanvas?.clientHeight || radarOverlayCanvas.clientHeight || 1);
+      const backingWidth = Math.max(1, mapCanvas?.width || cssWidth);
+      const backingHeight = Math.max(1, mapCanvas?.height || cssHeight);
+
+      return {
+        cssWidth,
+        cssHeight,
+        backingWidth,
+        backingHeight,
+        scaleX: backingWidth / cssWidth,
+        scaleY: backingHeight / cssHeight
+      };
+    }
+
     function resizeOverlayCanvas(canvas, context) {
-      const pixelRatio = window.devicePixelRatio || 1;
-      const mapContainerRect = map?.getContainer?.().getBoundingClientRect();
-      const width = Math.max(1, mapContainerRect?.width || canvas.clientWidth);
-      const height = Math.max(1, mapContainerRect?.height || canvas.clientHeight);
-      const canvasWidth = Math.round(width * pixelRatio);
-      const canvasHeight = Math.round(height * pixelRatio);
+      const { cssWidth, cssHeight, backingWidth, backingHeight } = mapCanvasMetrics();
 
       canvas.style.right = "auto";
       canvas.style.bottom = "auto";
       canvas.style.left = "0px";
       canvas.style.top = "0px";
-      canvas.style.width = `${width}px`;
-      canvas.style.height = `${height}px`;
+      canvas.style.width = `${cssWidth}px`;
+      canvas.style.height = `${cssHeight}px`;
 
-      if (canvas.width !== canvasWidth || canvas.height !== canvasHeight) {
-        canvas.width = canvasWidth;
-        canvas.height = canvasHeight;
+      if (canvas.width !== backingWidth || canvas.height !== backingHeight) {
+        canvas.width = backingWidth;
+        canvas.height = backingHeight;
       }
 
-      context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+      context.setTransform(1, 0, 0, 1, 0, 0);
     }
 
     function scheduleOverlayRedraw(options = {}) {
@@ -612,6 +625,7 @@
 
       overlayRedrawFrame = window.requestAnimationFrame(() => {
         overlayRedrawFrame = null;
+        drawRadarOverlay();
         drawAlertOverlay();
       });
     }
@@ -626,12 +640,12 @@
 
     function clearRadarOverlay() {
       resizeRadarCanvas();
-      radarOverlayContext.clearRect(0, 0, radarOverlayCanvas.clientWidth, radarOverlayCanvas.clientHeight);
+      radarOverlayContext.clearRect(0, 0, radarOverlayCanvas.width, radarOverlayCanvas.height);
     }
 
     function clearAlertOverlay() {
       resizeAlertCanvas();
-      alertOverlayContext.clearRect(0, 0, alertOverlayCanvas.clientWidth, alertOverlayCanvas.clientHeight);
+      alertOverlayContext.clearRect(0, 0, alertOverlayCanvas.width, alertOverlayCanvas.height);
     }
 
 
@@ -654,79 +668,74 @@
       return image;
     }
 
-    function prepareRadarPngDataUrl(image) {
-const canvas = document.createElement("canvas");
-canvas.width = image.naturalWidth || image.width;
-canvas.height = image.naturalHeight || image.height;
-const context = canvas.getContext("2d", { willReadFrequently: true });
-context.imageSmoothingEnabled = false;
-context.drawImage(image, 0, 0);
+    function cleanRadarImageToCanvas(image) {
+      const canvas = document.createElement("canvas");
+      canvas.width = image.naturalWidth || image.width;
+      canvas.height = image.naturalHeight || image.height;
 
-const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-const data = imageData.data;
-for (let index = 0; index < data.length; index += 4) {
-if (data[index] <= 2 && data[index + 1] <= 2 && data[index + 2] <= 2) {
-data[index + 3] = 0;
-}
-}
-context.putImageData(imageData, 0, 0);
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      context.imageSmoothingEnabled = false;
+      context.drawImage(image, 0, 0);
 
-return canvas.toDataURL("image/png");
-}
+      const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
 
-function radarFrameCoordinates(frame) {
-const [[south, west], [north, east]] = frame.bounds;
-return [[west, north], [east, north], [east, south], [west, south]];
-}
+      for (let index = 0; index < data.length; index += 4) {
+        const red = data[index];
+        const green = data[index + 1];
+        const blue = data[index + 2];
+        const alpha = data[index + 3];
+        const maxChannel = Math.max(red, green, blue);
+        const minChannel = Math.min(red, green, blue);
+        const saturation = maxChannel - minChannel;
+        const isTransparent = alpha <= 8;
+        const isBlack = maxChannel <= 12;
+        const isNeutralSmoke = saturation <= 10 && maxChannel <= 105;
 
-function ensureRadarFrameLayer() {
-if (!map || map.getLayer(RADAR_FRAME_LAYER_ID) || map.getSource(RADAR_FRAME_SOURCE_ID)) {
-return;
-}
+        if (isTransparent || isBlack || isNeutralSmoke) {
+          data[index + 3] = 0;
+        }
+      }
 
-map.addSource(RADAR_FRAME_SOURCE_ID, {
-type: "image",
-url: "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='2' height='2'%3E%3C/svg%3E",
-coordinates: [[-180, 90], [-179, 90], [-179, 89], [-180, 89]]
-});
+      context.putImageData(imageData, 0, 0);
+      return canvas;
+    }
 
-map.addLayer({
-id: RADAR_FRAME_LAYER_ID,
-type: "raster",
-source: RADAR_FRAME_SOURCE_ID,
-paint: {
-"raster-opacity": Math.min(1, Math.max(0, Number(opacityRange.value))),
-"raster-resampling": "nearest"
-}
-}, overlayCeilingLayerId());
-}
+    function drawRadarOverlay() {
+      clearRadarOverlay();
+
+      if (!map || !activeRadarFrame || !activeRadarCanvas) {
+        return;
+      }
+
+      const { scaleX, scaleY } = mapCanvasMetrics();
+      const [[south, west], [north, east]] = activeRadarFrame.bounds;
+      const northwest = map.project([west, north]);
+      const southeast = map.project([east, south]);
+      const left = Math.min(northwest.x, southeast.x) * scaleX;
+      const top = Math.min(northwest.y, southeast.y) * scaleY;
+      const width = Math.abs(southeast.x - northwest.x) * scaleX;
+      const height = Math.abs(southeast.y - northwest.y) * scaleY;
+      const opacity = Math.min(1, Math.max(0, Number(opacityRange.value)));
+
+      if (width <= 0 || height <= 0 || opacity <= 0) {
+        return;
+      }
+
+      radarOverlayContext.save();
+      radarOverlayContext.globalAlpha = opacity;
+      radarOverlayContext.imageSmoothingEnabled = false;
+      radarOverlayContext.drawImage(activeRadarCanvas, left, top, width, height);
+      radarOverlayContext.restore();
+    }
 
     function applyRadarOverlay(frame, image) {
       activeRadarFrame = frame;
       activeRadarImage = image;
-     
-        if (!map) {
-          return;
-        }
-
-        ensureRadarFrameLayer();
-        const source = map.getSource(RADAR_FRAME_SOURCE_ID);
-        if (!source) {
-          return;
-        }
-
-        source.updateImage({
-        url: prepareRadarPngDataUrl(image),
-        coordinates: radarFrameCoordinates(frame)
-    });
-    
-    map.setPaintProperty(RADAR_FRAME_LAYER_ID, "raster-opacity", Math.min(1, Math.max(0, Number(opacityRange.value))));
-    console.log ("radar frame applied");
-
-      const dataUrl = prepareRadarPngDataUrl(image)
+      activeRadarCanvas = cleanRadarImageToCanvas(image);
       scheduleOverlayRedraw();
       console.log("radar frame applied");
-  }
+    }
 
     async function applySelectedFrame() {
       const frame = selectedFrames[selectedFrameIndex];
@@ -735,6 +744,7 @@ paint: {
       if (!map || !frame) {
         activeRadarFrame = null;
         activeRadarImage = null;
+        activeRadarCanvas = null;
         clearRadarOverlay();
         frameReadout.textContent = "No usable radar frame selected.";
         setStatus("No usable radar frames found.");
@@ -767,9 +777,6 @@ paint: {
       const opacity = Math.min(1, Math.max(0, Number(opacityRange.value)));
       opacityRange.value = opacity.toFixed(2);
       opacityValue.textContent = opacity.toFixed(2);
-      if (map?.getLayer(RADAR_FRAME_LAYER_ID)) {
-        map.setPaintProperty(RADAR_FRAME_LAYER_ID, "raster-opacity", opacity);
-      }
       scheduleOverlayRedraw();
     }
 
@@ -822,13 +829,17 @@ paint: {
     }
 
     function drawAlertRing(ring) {
+      const { scaleX, scaleY } = mapCanvasMetrics();
+
       ring.forEach((coordinate, index) => {
         const point = map.project(coordinate);
+        const x = point.x * scaleX;
+        const y = point.y * scaleY;
 
         if (index === 0) {
-          alertOverlayContext.moveTo(point.x, point.y);
+          alertOverlayContext.moveTo(x, y);
         } else {
-          alertOverlayContext.lineTo(point.x, point.y);
+          alertOverlayContext.lineTo(x, y);
         }
       });
       alertOverlayContext.closePath();
