@@ -1,0 +1,685 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZacharologistWx Level II Radar Test</title>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
+  <script src="https://unpkg.com/geotiff/dist-browser/geotiff.js"></script>
+  <script src="mapbox-token.local.js"></script>
+  <style>
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #061025; color: #f8fafc; font-family: Arial, sans-serif; }
+    #map { position: fixed; inset: 0; }
+    #radarOverlayCanvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+    #radarCanvas { display: none; }
+    .panel {
+      position: fixed; top: 16px; right: 16px; z-index: 20; width: min(340px, calc(100vw - 32px));
+      padding: 12px; border-radius: 12px; border: 1px solid rgba(148, 163, 184, 0.36);
+      background: rgba(8, 16, 32, 0.9); box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(8px); display: grid; gap: 10px;
+    }
+    .title { margin: 0; font-size: 0.96rem; font-weight: 700; }
+    .meta { display: grid; gap: 3px; font-size: 0.78rem; color: #cbd5e1; line-height: 1.3; }
+    label { display: grid; gap: 5px; font-size: 0.76rem; color: #93c5fd; font-weight: 700; }
+    .row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
+    input[type="range"] { width: 100%; }
+    output { font-size: 0.78rem; color: #f8fafc; min-width: 44px; text-align: right; font-variant-numeric: tabular-nums; }
+    .error-panel {
+      display: none; margin-top: 2px; padding: 8px 10px; border-radius: 8px;
+      border: 1px solid rgba(248, 113, 113, 0.9); background: rgba(127, 29, 29, 0.82);
+      color: #fee2e2; font-size: 0.78rem; line-height: 1.3;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <canvas id="radarOverlayCanvas"></canvas>
+  <canvas id="radarCanvas"></canvas>
+
+  <div class="panel">
+    <p class="title">ZacharologistWx Level II Radar Test</p>
+    <div class="meta">
+      <div>Site: KFCX</div>
+      <div>Product: Level II Reflectivity</div>
+      <div>Renderer: projected dBZ GeoTIFF + external canvas</div>
+      <div id="validTimeRow">Valid time: loading...</div>
+      <div id="sourceRow">Radar source: loading...</div>
+      <div id="statusRow">Renderer status: loading...</div>
+    </div>
+    <div id="errorPanel" class="error-panel"></div>
+    <label for="opacitySlider">
+      Opacity
+      <div class="row">
+        <input id="opacitySlider" type="range" min="0" max="1" step="0.01" value="1">
+        <output id="opacityValue">100%</output>
+      </div>
+    </label>
+  </div>
+
+  <script>
+    const MAPBOX_TOKEN = window.MAPBOX_PUBLIC_TOKEN;
+    const MAPBOX_STYLE = "mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
+
+    const LEVEL2_META_URL = "/radar/tilesets/test/KFCX/LEVEL2/REF0/latest.json";
+    const FALLBACK_LEVEL2_TIF = "/radar/tilesets/test/KFCX/LEVEL2/REF0/KFCX_20260527_153300_projected_dbz.tif";
+    const DISPLAY_MIN_DBZ = -32;
+    const FORCE_DEBUG_RADAR_COLORS = false;
+    const ENABLE_WEAK_DESPECKLE = false;
+    const USE_STEPPED_REFLECTIVITY_PALETTE = false;
+    const NODATA_DEFAULT = -9999;
+    const RADAR_OVERLAY_VERTICAL_STRIPS = 96;
+    const PALETTE_SOURCE_FILE = "scripts/radar/radar_config.json";
+
+    const ALERT_SOURCE_ID = "nws-alert-polygons";
+    const ALERT_FILL_LAYER_ID = "nws-alert-polygons-fill";
+    const ALERT_LINE_LAYER_ID = "nws-alert-polygons-line";
+    const ALERT_STATES = ["NC", "SC", "VA", "GA"];
+
+    const SITE_SOURCE_ID = "weatherwise-radar-sites";
+    const SITE_CIRCLE_LAYER_ID = "weatherwise-radar-sites-circle";
+    const SITE_LABEL_LAYER_ID = "weatherwise-radar-sites-label";
+
+    // Copied from ZacharologistWx main radar renderer color table
+    const RADAR_DBZ_PALETTE = [
+      { v: -32, r: 88, g: 54, b: 128, a: 8 },
+      { v: -30, r: 96, g: 62, b: 138, a: 10 },
+      { v: -28, r: 105, g: 72, b: 145, a: 12 },
+      { v: -26, r: 116, g: 85, b: 150, a: 15 },
+      { v: -24, r: 128, g: 99, b: 153, a: 18 },
+      { v: -22, r: 139, g: 113, b: 153, a: 22 },
+      { v: -20, r: 148, g: 128, b: 150, a: 28 },
+      { v: -18, r: 155, g: 140, b: 145, a: 34 },
+      { v: -16, r: 160, g: 150, b: 138, a: 42 },
+      { v: -14, r: 163, g: 157, b: 130, a: 52 },
+      { v: -12, r: 160, g: 158, b: 123, a: 62 },
+      { v: -10, r: 156, g: 155, b: 119, a: 72 },
+      { v: -8, r: 167, g: 167, b: 136, a: 80 },
+      { v: -6, r: 175, g: 176, b: 150, a: 88 },
+      { v: -4, r: 158, g: 163, b: 150, a: 98 },
+      { v: -2, r: 135, g: 144, b: 145, a: 108 },
+      { v: 0, r: 115, g: 128, b: 142, a: 120 },
+      { v: 2, r: 92, g: 109, b: 137, a: 132 },
+      { v: 4, r: 73, g: 93, b: 133, a: 144 },
+      { v: 6, r: 55, g: 81, b: 132, a: 156 },
+      { v: 8, r: 63, g: 97, b: 141, a: 168 },
+      { v: 10, r: 73, g: 117, b: 152, a: 180 },
+      { v: 15, r: 76, g: 165, b: 142, a: 205 },
+      { v: 20, r: 18, g: 118, b: 24, a: 230 },
+      { v: 25, r: 203, g: 222, b: 1, a: 245 },
+      { v: 30, r: 215, g: 203, b: 0, a: 255 },
+      { v: 35, r: 227, g: 129, b: 3, a: 255 },
+      { v: 40, r: 185, g: 95, b: 10, a: 255 },
+      { v: 45, r: 192, g: 37, b: 20, a: 255 },
+      { v: 50, r: 202, g: 153, b: 180, a: 255 },
+      { v: 55, r: 196, g: 74, b: 138, a: 255 },
+      { v: 60, r: 139, g: 32, b: 210, a: 255 },
+      { v: 65, r: 86, g: 20, b: 162, a: 255 },
+      { v: 70, r: 111, g: 210, b: 219, a: 255 },
+      { v: 75, r: 74, g: 132, b: 154, a: 255 },
+      { v: 80, r: 115, g: 10, b: 1, a: 255 },
+      { v: 85, r: 235, g: 190, b: 255, a: 255 },
+      { v: 90, r: 255, g: 230, b: 245, a: 255 },
+      { v: 95, r: 255, g: 255, b: 255, a: 255 }
+    ];
+    let RADAR_DBZ_PALETTE_NORMALIZED = [];
+    const LOW_DBZ_OPACITY_TAPER = [
+      { dbz: -32, opacity: 0.0 },
+      { dbz: -20, opacity: 0.01 },
+      { dbz: -10, opacity: 0.04 },
+      { dbz: 0, opacity: 0.12 },
+      { dbz: 5, opacity: 0.32 },
+      { dbz: 10, opacity: 0.7 },
+      { dbz: 15, opacity: 1.0 }
+    ];
+
+    const radarOverlayCanvas = document.getElementById("radarOverlayCanvas");
+    const radarOverlayContext = radarOverlayCanvas.getContext("2d");
+    const radarCanvas = document.getElementById("radarCanvas");
+    const radarContext = radarCanvas.getContext("2d", { willReadFrequently: true });
+
+    const opacitySlider = document.getElementById("opacitySlider");
+    const opacityValue = document.getElementById("opacityValue");
+    const validTimeRow = document.getElementById("validTimeRow");
+    const sourceRow = document.getElementById("sourceRow");
+    const statusRow = document.getElementById("statusRow");
+    const errorPanel = document.getElementById("errorPanel");
+
+    let map;
+    let popup;
+    let radarBounds = [[32.2, -86.6], [42.2, -73.4]];
+    let paletteLogPrinted = false;
+    let colorizerSmokeLogged = false;
+
+    function clamp255(value) {
+      return Math.max(0, Math.min(255, Math.round(value)));
+    }
+
+    function parseHexColor(hex) {
+      if (typeof hex !== "string") {
+        throw new Error("hex color must be a string");
+      }
+      const cleaned = hex.trim().replace(/^#/, "");
+      if (!/^[0-9a-fA-F]{6}$/.test(cleaned)) {
+        throw new Error(`invalid hex color: ${hex}`);
+      }
+      return {
+        r: parseInt(cleaned.slice(0, 2), 16),
+        g: parseInt(cleaned.slice(2, 4), 16),
+        b: parseInt(cleaned.slice(4, 6), 16)
+      };
+    }
+
+    function normalizePaletteStop(stop) {
+      let vRaw;
+      let rRaw;
+      let gRaw;
+      let bRaw;
+      let alphaCandidate = 255;
+
+      if (Array.isArray(stop)) {
+        if (stop.length < 2) throw new Error("array palette stop must include at least value + color");
+        vRaw = stop[0];
+        if (typeof stop[1] === "string") {
+          const rgb = parseHexColor(stop[1]);
+          rRaw = rgb.r;
+          gRaw = rgb.g;
+          bRaw = rgb.b;
+          alphaCandidate = stop.length >= 3 ? stop[2] : 255;
+        } else {
+          if (stop.length < 5) throw new Error("numeric array palette stop must be [dbz,r,g,b,a]");
+          rRaw = stop[1];
+          gRaw = stop[2];
+          bRaw = stop[3];
+          alphaCandidate = stop[4];
+        }
+      } else if (stop && typeof stop === "object") {
+        vRaw = stop.v ?? stop.dbz ?? stop.value;
+        if (stop.color != null) {
+          const rgb = parseHexColor(stop.color);
+          rRaw = rgb.r;
+          gRaw = rgb.g;
+          bRaw = rgb.b;
+        } else {
+          rRaw = stop.r;
+          gRaw = stop.g;
+          bRaw = stop.b;
+        }
+        const alphaValue = stop.a ?? stop.alpha ?? stop.opacity ?? 255;
+        alphaCandidate = alphaValue;
+      } else {
+        throw new Error("palette stop must be an object or array");
+      }
+
+      const v = Number(vRaw);
+      const r = Number(rRaw);
+      const g = Number(gRaw);
+      const b = Number(bRaw);
+      let aNum = Number(alphaCandidate);
+
+      if (!Number.isFinite(v)) throw new Error(`invalid stop value: ${String(vRaw)}`);
+      if (!Number.isFinite(r) || !Number.isFinite(g) || !Number.isFinite(b)) {
+        throw new Error("invalid RGB channel");
+      }
+      if (!Number.isFinite(aNum)) aNum = 255;
+      if (aNum >= 0 && aNum <= 1) aNum *= 255;
+
+      return {
+        v,
+        r: clamp255(r),
+        g: clamp255(g),
+        b: clamp255(b),
+        a: clamp255(aNum)
+      };
+    }
+
+    function normalizeRadarPalette(stops) {
+      if (!Array.isArray(stops) || stops.length === 0) {
+        throw new Error("palette is empty");
+      }
+      const normalized = stops.map(normalizePaletteStop).sort((a, b) => a.v - b.v);
+      return normalized;
+    }
+
+    function updateOpacity() {
+      const value = Number(opacitySlider.value);
+      opacityValue.textContent = `${Math.round(value * 100)}%`;
+      redrawRadarOverlay();
+    }
+
+    function lockOrientation() {
+      if (!map) return;
+      if (Math.abs(map.getPitch()) > 0.01) map.setPitch(0);
+      if (Math.abs(map.getBearing()) > 0.01) map.setBearing(0);
+    }
+
+    function colorForDbz(dbz) {
+      if (!Number.isFinite(dbz) || dbz < DISPLAY_MIN_DBZ) return { r: 0, g: 0, b: 0, a: 0 };
+      if (FORCE_DEBUG_RADAR_COLORS) {
+        if (dbz < 10) return { r: 0, g: 255, b: 255, a: 255 };
+        if (dbz < 20) return { r: 0, g: 255, b: 0, a: 255 };
+        if (dbz < 35) return { r: 255, g: 255, b: 0, a: 255 };
+        return { r: 255, g: 0, b: 255, a: 255 };
+      }
+      const stops = RADAR_DBZ_PALETTE_NORMALIZED;
+      if (!Array.isArray(stops) || stops.length === 0) return { r: 0, g: 0, b: 0, a: 0 };
+      if (dbz <= stops[0].v) return { r: stops[0].r, g: stops[0].g, b: stops[0].b, a: stops[0].a };
+      if (dbz >= stops[stops.length - 1].v) {
+        const last = stops[stops.length - 1];
+        return { r: last.r, g: last.g, b: last.b, a: last.a };
+      }
+      if (USE_STEPPED_REFLECTIVITY_PALETTE) {
+        for (let i = stops.length - 1; i >= 0; i -= 1) {
+          const stop = stops[i];
+          if (dbz >= stop.v) {
+            return {
+              r: stop.r,
+              g: stop.g,
+              b: stop.b,
+              a: stop.a
+            };
+          }
+        }
+      }
+      for (let i = 0; i < stops.length - 1; i += 1) {
+        const lower = stops[i];
+        const upper = stops[i + 1];
+        if (dbz >= lower.v && dbz <= upper.v) {
+          const span = upper.v - lower.v;
+          const t = span === 0 ? 0 : (dbz - lower.v) / span;
+          const r = Math.round(lower.r + (upper.r - lower.r) * t);
+          const g = Math.round(lower.g + (upper.g - lower.g) * t);
+          const b = Math.round(lower.b + (upper.b - lower.b) * t);
+          const alpha = Math.round(lower.a + (upper.a - lower.a) * t);
+          return {
+            r,
+            g,
+            b,
+            a: alpha
+          };
+        }
+      }
+      return { r: 0, g: 0, b: 0, a: 0 };
+    }
+
+    function opacityMultiplierForDbz(dbz) {
+      if (!Number.isFinite(dbz) || !LOW_DBZ_OPACITY_TAPER.length) return 1;
+      const points = LOW_DBZ_OPACITY_TAPER;
+      if (dbz <= points[0].dbz) return points[0].opacity;
+      if (dbz >= points[points.length - 1].dbz) return points[points.length - 1].opacity;
+      for (let i = 0; i < points.length - 1; i += 1) {
+        const lower = points[i];
+        const upper = points[i + 1];
+        if (dbz >= lower.dbz && dbz <= upper.dbz) {
+          const span = upper.dbz - lower.dbz;
+          const t = span === 0 ? 0 : (dbz - lower.dbz) / span;
+          return lower.opacity + (upper.opacity - lower.opacity) * t;
+        }
+      }
+      return 1;
+    }
+
+    async function resolveLevel2Target() {
+      try {
+        const response = await fetch(LEVEL2_META_URL, { cache: "no-store" });
+        if (!response.ok) throw new Error(`metadata fetch failed (${response.status})`);
+        const meta = await response.json();
+        const b = meta?.bounds;
+        if (b && Number.isFinite(b.west) && Number.isFinite(b.south) && Number.isFinite(b.east) && Number.isFinite(b.north)) {
+          radarBounds = [[b.south, b.west], [b.north, b.east]];
+        }
+        if (meta?.validTime) validTimeRow.textContent = `Valid time: ${meta.validTime}`;
+        if (meta?.path) return meta.path;
+      } catch (_error) {
+        // Use fallback file path.
+      }
+      return FALLBACK_LEVEL2_TIF;
+    }
+
+    async function renderLevel2Dbz() {
+      try {
+        try {
+          RADAR_DBZ_PALETTE_NORMALIZED = normalizeRadarPalette(RADAR_DBZ_PALETTE);
+        } catch (error) {
+          throw new Error(`Palette normalization failed: ${error?.message || "unknown error"}`);
+        }
+        if (!paletteLogPrinted) {
+          console.log("Normalized Level II palette:", RADAR_DBZ_PALETTE_NORMALIZED);
+          paletteLogPrinted = true;
+        }
+        if (!colorizerSmokeLogged) {
+          console.log("Colorizer smoke test:", {
+            minus10: colorForDbz(-10),
+            zero: colorForDbz(0),
+            ten: colorForDbz(10),
+            thirtyFive: colorForDbz(35)
+          });
+          colorizerSmokeLogged = true;
+        }
+
+        const tifPath = await resolveLevel2Target();
+        sourceRow.textContent = `Radar source: ${tifPath}`;
+
+        const response = await fetch(tifPath, { cache: "no-store" });
+        if (!response.ok) throw new Error(`GeoTIFF fetch failed: ${response.status} ${response.statusText}`);
+        const buffer = await response.arrayBuffer();
+        const tiff = await GeoTIFF.fromArrayBuffer(buffer);
+        const image = await tiff.getImage();
+        const width = image.getWidth();
+        const height = image.getHeight();
+        const nodataRaw = image.getGDALNoData();
+        const nodata = Number.isFinite(Number(nodataRaw)) ? Number(nodataRaw) : NODATA_DEFAULT;
+        const dbz = await image.readRasters({ samples: [0], interleave: true });
+        if (!dbz || dbz.length !== width * height) {
+          throw new Error(`invalid raster length (${dbz ? dbz.length : "none"}), expected ${width * height}`);
+        }
+
+        radarCanvas.width = width;
+        radarCanvas.height = height;
+        const imageData = radarContext.createImageData(width, height);
+        const data = imageData.data;
+        data.fill(0);
+        const weakMask = new Uint8Array(width * height);
+        const validMask = new Uint8Array(width * height);
+        let belowDisplayMin = 0;
+        let negativeVisible = 0;
+        let zeroToFive = 0;
+        let fiveToFifteen = 0;
+        let fifteenToThirty = 0;
+        let thirtyPlus = 0;
+        let colored = 0;
+        let transparent = 0;
+
+        for (let i = 0, p = 0; i < dbz.length; i += 1, p += 4) {
+          const value = dbz[i];
+          const isNoData = !Number.isFinite(value) || value === nodata;
+          if (isNoData) {
+            data[p] = 0; data[p + 1] = 0; data[p + 2] = 0; data[p + 3] = 0;
+            transparent += 1;
+            continue;
+          }
+          if (value < DISPLAY_MIN_DBZ) {
+            belowDisplayMin += 1;
+            data[p] = 0; data[p + 1] = 0; data[p + 2] = 0; data[p + 3] = 0;
+            transparent += 1;
+            continue;
+          }
+          validMask[i] = 1;
+          if (ENABLE_WEAK_DESPECKLE && value >= 0 && value < 8) weakMask[i] = 1;
+          if (value < 0) negativeVisible += 1;
+          else if (value < 5) zeroToFive += 1;
+          else if (value < 15) fiveToFifteen += 1;
+          else if (value < 30) fifteenToThirty += 1;
+          else thirtyPlus += 1;
+          const color = colorForDbz(value);
+          const baseAlpha = color.a;
+          const taperOpacity = opacityMultiplierForDbz(value);
+          const finalAlpha = Math.max(0, Math.min(255, Math.round(baseAlpha * taperOpacity)));
+          data[p] = color.r;
+          data[p + 1] = color.g;
+          data[p + 2] = color.b;
+          data[p + 3] = finalAlpha;
+          if (finalAlpha > 0) colored += 1;
+          else transparent += 1;
+        }
+
+        if (ENABLE_WEAK_DESPECKLE) {
+        for (let y = 1; y < height - 1; y += 1) {
+          for (let x = 1; x < width - 1; x += 1) {
+            const idx = y * width + x;
+            if (!weakMask[idx]) continue;
+            let neighbors = 0;
+            for (let oy = -1; oy <= 1; oy += 1) {
+              for (let ox = -1; ox <= 1; ox += 1) {
+                if (ox === 0 && oy === 0) continue;
+                const nIdx = (y + oy) * width + (x + ox);
+                if (validMask[nIdx]) neighbors += 1;
+              }
+            }
+            if (neighbors === 0) {
+              const p = idx * 4;
+              if (data[p + 3] > 0) {
+                data[p] = 0;
+                data[p + 1] = 0;
+                data[p + 2] = 0;
+                data[p + 3] = 0;
+                colored = Math.max(0, colored - 1);
+                transparent += 1;
+              }
+            }
+          }
+        }
+        }
+
+        let blackPixelsClearedBySafetyPass = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          if (data[i] === 0 && data[i + 1] === 0 && data[i + 2] === 0 && data[i + 3] > 0) {
+            data[i + 3] = 0;
+            blackPixelsClearedBySafetyPass += 1;
+            colored = Math.max(0, colored - 1);
+            transparent += 1;
+          }
+        }
+
+        radarContext.putImageData(imageData, 0, 0);
+        const readback = radarContext.getImageData(0, 0, width, height).data;
+        let blackNonTransparentPixelsAfterCleanup = 0;
+        for (let i = 0; i < readback.length; i += 4) {
+          const r = readback[i];
+          const g = readback[i + 1];
+          const b = readback[i + 2];
+          const alphaReadback = readback[i + 3];
+          if (alphaReadback > 0 && r === 0 && g === 0 && b === 0) blackNonTransparentPixelsAfterCleanup += 1;
+        }
+        if (blackNonTransparentPixelsAfterCleanup > 0) {
+          console.warn("Black radar pixels still remain after cleanup", blackNonTransparentPixelsAfterCleanup);
+        }
+        console.log("Level II dBZ renderer diagnostics:", {
+          paletteSourceFileFound: PALETTE_SOURCE_FILE,
+          displayMinDbz: DISPLAY_MIN_DBZ,
+          belowDisplayMin,
+          negativeVisible,
+          zeroToFive,
+          fiveToFifteen,
+          fifteenToThirty,
+          thirtyPlus,
+          colored,
+          transparent,
+          blackNonTransparentPixelsAfterCleanup
+        });
+        redrawRadarOverlay();
+        statusRow.textContent = "Renderer status: success";
+      } catch (error) {
+        console.error("Level II render failed", error);
+        throw error;
+      }
+    }
+
+    function redrawRadarOverlay() {
+      if (!map || radarCanvas.width === 0 || radarCanvas.height === 0 || !radarBounds) return;
+
+      const dpr = window.devicePixelRatio || 1;
+      const container = map.getContainer();
+      const width = Math.max(1, Math.round(container.clientWidth * dpr));
+      const height = Math.max(1, Math.round(container.clientHeight * dpr));
+
+      if (radarOverlayCanvas.width !== width || radarOverlayCanvas.height !== height) {
+        radarOverlayCanvas.width = width;
+        radarOverlayCanvas.height = height;
+      }
+
+      radarOverlayContext.clearRect(0, 0, width, height);
+      radarOverlayContext.globalAlpha = Number(opacitySlider.value);
+      radarOverlayContext.imageSmoothingEnabled = false;
+
+      const west = radarBounds[0][1];
+      const south = radarBounds[0][0];
+      const east = radarBounds[1][1];
+      const north = radarBounds[1][0];
+      const latSpan = north - south;
+
+      for (let strip = 0; strip < RADAR_OVERLAY_VERTICAL_STRIPS; strip += 1) {
+        const t0 = strip / RADAR_OVERLAY_VERTICAL_STRIPS;
+        const t1 = (strip + 1) / RADAR_OVERLAY_VERTICAL_STRIPS;
+        const srcY = t0 * radarCanvas.height;
+        const srcH = (t1 - t0) * radarCanvas.height;
+
+        const stripNorth = north - t0 * latSpan;
+        const stripSouth = north - t1 * latSpan;
+        const nw = map.project([west, stripNorth]);
+        const se = map.project([east, stripSouth]);
+
+        radarOverlayContext.drawImage(
+          radarCanvas,
+          0, srcY, radarCanvas.width, srcH,
+          nw.x * dpr,
+          nw.y * dpr,
+          (se.x - nw.x) * dpr,
+          (se.y - nw.y) * dpr
+        );
+      }
+      radarOverlayContext.globalAlpha = 1;
+    }
+
+    function alertColorExpression() {
+      return [
+        "match", ["coalesce", ["get", "event"], ""],
+        "Tornado Warning", "#ff3b30",
+        "Severe Thunderstorm Warning", "#ff8c00",
+        "Flash Flood Warning", "#2ecc71",
+        "Flood Warning", "#22c55e",
+        "Tornado Watch", "#ffd700",
+        "Severe Thunderstorm Watch", "#ffd700",
+        "#9ca3af"
+      ];
+    }
+
+    function addAlertLayers() {
+      map.addSource(ALERT_SOURCE_ID, { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+      map.addLayer({ id: ALERT_FILL_LAYER_ID, type: "fill", source: ALERT_SOURCE_ID, paint: { "fill-color": alertColorExpression(), "fill-opacity": 0.17 } });
+      map.addLayer({ id: ALERT_LINE_LAYER_ID, type: "line", source: ALERT_SOURCE_ID, paint: { "line-color": alertColorExpression(), "line-width": 2, "line-opacity": 0.95 } });
+
+      const onInteract = (event) => {
+        const feature = event?.features?.[0];
+        if (!feature) return;
+        const props = feature.properties || {};
+        const instruction = props.instruction ? `<p><strong>Instruction:</strong> ${props.instruction}</p>` : "";
+        const html = `<div style="min-width:220px;max-width:320px;"><p><strong>${props.event || "Unknown Event"}</strong></p><p><strong>Headline:</strong> ${props.headline || "No headline"}</p><p><strong>Area:</strong> ${props.areaDesc || "Unknown"}</p><p><strong>Expires:</strong> ${props.expires ? new Date(props.expires).toLocaleString() : "Unknown"}</p>${instruction}</div>`;
+        if (popup) popup.remove();
+        popup = new mapboxgl.Popup({ closeButton: true, closeOnClick: true }).setLngLat(event.lngLat).setHTML(html).addTo(map);
+      };
+      map.on("click", ALERT_FILL_LAYER_ID, onInteract);
+      map.on("click", ALERT_LINE_LAYER_ID, onInteract);
+      map.on("touchstart", ALERT_FILL_LAYER_ID, onInteract);
+      map.on("touchstart", ALERT_LINE_LAYER_ID, onInteract);
+    }
+
+    function addRadarSiteLabels() {
+      const sites = {
+        type: "FeatureCollection",
+        features: [
+          { type: "Feature", properties: { id: "KFCX" }, geometry: { type: "Point", coordinates: [-80.273, 37.024] } },
+          { type: "Feature", properties: { id: "KRAX" }, geometry: { type: "Point", coordinates: [-78.49, 35.665] } },
+          { type: "Feature", properties: { id: "KGSP" }, geometry: { type: "Point", coordinates: [-82.22, 34.883] } },
+          { type: "Feature", properties: { id: "KLTX" }, geometry: { type: "Point", coordinates: [-78.429, 33.989] } },
+          { type: "Feature", properties: { id: "KMHX" }, geometry: { type: "Point", coordinates: [-76.877, 34.775] } },
+          { type: "Feature", properties: { id: "KAKQ" }, geometry: { type: "Point", coordinates: [-77.007, 36.983] } }
+        ]
+      };
+
+      map.addSource(SITE_SOURCE_ID, { type: "geojson", data: sites });
+      map.addLayer({ id: SITE_CIRCLE_LAYER_ID, type: "circle", source: SITE_SOURCE_ID, paint: { "circle-radius": 16, "circle-color": "#0b1f3f", "circle-opacity": 0.96, "circle-stroke-color": "rgba(148,163,184,0.72)", "circle-stroke-width": 1 } });
+      map.addLayer({ id: SITE_LABEL_LAYER_ID, type: "symbol", source: SITE_SOURCE_ID, layout: { "text-field": ["get", "id"], "text-size": 10, "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"], "text-allow-overlap": true, "text-ignore-placement": true }, paint: { "text-color": "#ffffff" } });
+    }
+
+    function isValidGeometry(geometry) {
+      if (!geometry || typeof geometry !== "object") return false;
+      if (geometry.type === "Polygon") return Array.isArray(geometry.coordinates) && geometry.coordinates.length > 0;
+      if (geometry.type === "MultiPolygon") return Array.isArray(geometry.coordinates) && geometry.coordinates.length > 0;
+      return false;
+    }
+
+    async function loadAlerts() {
+      const responses = await Promise.all(ALERT_STATES.map((state) => fetch(`https://api.weather.gov/alerts/active?area=${encodeURIComponent(state)}`, { headers: { Accept: "application/geo+json" } })));
+      const payloads = await Promise.all(responses.map((response) => {
+        if (!response.ok) throw new Error(`NWS request failed (${response.status})`);
+        return response.json();
+      }));
+
+      const deduped = new Map();
+      payloads.forEach((geojson) => {
+        const features = Array.isArray(geojson?.features) ? geojson.features : [];
+        features.forEach((feature) => {
+          if (!isValidGeometry(feature.geometry)) return;
+          const props = feature.properties || {};
+          const key = props.id || `${props.event || ""}|${props.areaDesc || ""}`;
+          if (!deduped.has(key)) {
+            deduped.set(key, {
+              type: "Feature",
+              geometry: feature.geometry,
+              properties: {
+                event: props.event || "",
+                headline: props.headline || "",
+                areaDesc: props.areaDesc || "",
+                expires: props.expires || "",
+                instruction: props.instruction || ""
+              }
+            });
+          }
+        });
+      });
+
+      map.getSource(ALERT_SOURCE_ID).setData({ type: "FeatureCollection", features: Array.from(deduped.values()) });
+    }
+
+    function initializeMap() {
+      if (!MAPBOX_TOKEN || !String(MAPBOX_TOKEN).startsWith("pk.")) {
+        statusRow.textContent = "Renderer status: missing Mapbox token";
+        return;
+      }
+
+      mapboxgl.accessToken = MAPBOX_TOKEN;
+      map = new mapboxgl.Map({
+        container: "map",
+        style: MAPBOX_STYLE,
+        center: [-80.5, 37.43],
+        zoom: 4.92,
+        projection: "mercator",
+        renderWorldCopies: false,
+        bearing: 0,
+        pitch: 0,
+        pitchWithRotate: false,
+        attributionControl: true
+      });
+      window.zachLevel2RadarMap = map;
+
+      map.addControl(new mapboxgl.NavigationControl(), "top-left");
+      map.dragRotate.disable();
+      map.touchZoomRotate.disableRotation();
+      if (map.setMaxPitch) map.setMaxPitch(0);
+      map.on("rotate", lockOrientation);
+      map.on("pitch", lockOrientation);
+      map.on("move", redrawRadarOverlay);
+      map.on("zoom", redrawRadarOverlay);
+      map.on("resize", redrawRadarOverlay);
+
+      map.on("load", async () => {
+        try {
+          addAlertLayers();
+          addRadarSiteLabels();
+          await Promise.all([renderLevel2Dbz(), loadAlerts()]);
+        } catch (error) {
+          const message = error?.message || "error";
+          statusRow.textContent = `Renderer status: failed: ${message}`;
+          errorPanel.style.display = "block";
+          errorPanel.textContent = `Level II renderer failed: ${message}`;
+        }
+      });
+    }
+
+    opacitySlider.addEventListener("input", updateOpacity);
+    updateOpacity();
+    initializeMap();
+  </script>
+</body>
+</html>
