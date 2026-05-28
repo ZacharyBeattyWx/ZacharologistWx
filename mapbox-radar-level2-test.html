@@ -72,6 +72,35 @@
     .speed-toolbar output, .opacity-toolbar output, .alert-opacity-toolbar output {
       color: #fff; font-size: 0.78rem; text-align: right; font-variant-numeric: tabular-nums;
     }
+    .speed-toolbar-tail {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      min-width: 0;
+    }
+    .compact-site-field {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: #93c5fd;
+      font-size: 0.72rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .compact-site-label {
+      font-size: 0.68rem;
+      color: #93c5fd;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+    .compact-site-field select {
+      min-width: 0;
+      height: 28px;
+      padding: 2px 6px;
+      font-size: 0.72rem;
+    }
     label { display: grid; gap: 5px; font-size: 0.76rem; color: #93c5fd; font-weight: 700; }
     .row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
     input[type="range"] { width: 100%; }
@@ -84,6 +113,20 @@
     .mapboxgl-popup { z-index: 12; }
     .playback-controls { display: inline-flex; gap: 6px; align-items: center; }
     .playback-controls button { min-width: 56px; padding: 7px 8px; }
+    .mobile-radar-options-toggle {
+      display: none;
+      width: 34px;
+      height: 34px;
+      min-width: 34px;
+      min-height: 34px;
+      border-radius: 999px;
+      font-size: 1.05rem;
+      line-height: 1;
+      padding: 0;
+    }
+    #mobileRadarOptionsPanel {
+      display: contents;
+    }
     .level2-alert-popup .mapboxgl-popup-content {
       width: 340px;
       max-width: calc(100vw - 28px);
@@ -291,12 +334,168 @@
       font-size: 0.84rem;
     }
     @media (max-width: 720px) {
+      html, body {
+        height: 100dvh;
+      }
+      #map, #radarOverlayCanvas, #alertOverlayCanvas {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100dvh;
+      }
+      .right-ui-rail {
+        position: fixed !important;
+        inset: 0 !important;
+        width: 100vw !important;
+        height: 100dvh !important;
+        pointer-events: none !important;
+        z-index: 20 !important;
+      }
+      .control-card {
+        position: fixed !important;
+        left: 50% !important;
+        right: auto !important;
+        top: auto !important;
+        bottom: calc(env(safe-area-inset-bottom, 0px) + 8px) !important;
+        width: min(92vw, 390px) !important;
+        max-width: 390px !important;
+        transform: translateX(-50%) !important;
+        box-sizing: border-box !important;
+        pointer-events: auto !important;
+      }
+      .card-header,
+      .desktop-product-field {
+        display: none !important;
+      }
+      .speed-toolbar {
+        display: grid !important;
+        grid-template-columns: auto minmax(0, 1fr) auto !important;
+        align-items: center !important;
+        gap: 8px !important;
+        width: 100% !important;
+        padding: 0 !important;
+      }
+      .primary-controls-row {
+        display: grid !important;
+        grid-template-columns: 42px minmax(0, 1fr) !important;
+        align-items: center !important;
+        gap: 8px !important;
+        width: 100% !important;
+      }
+      .mobile-radar-options-toggle {
+        display: grid !important;
+        place-items: center !important;
+        width: 42px !important;
+        height: 42px !important;
+        min-width: 42px !important;
+        min-height: 42px !important;
+        border-radius: 999px !important;
+        padding: 0 !important;
+      }
+      .playback-controls {
+        display: grid !important;
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: 8px !important;
+        width: 100% !important;
+      }
+      .playback-controls button {
+        min-width: 0 !important;
+        min-height: 38px !important;
+        padding: 5px 8px !important;
+        border-radius: 12px !important;
+        font-size: 0.88rem !important;
+      }
+      #mobileRadarOptionsPanel {
+        display: none !important;
+      }
+      body.mobile-radar-options-open #mobileRadarOptionsPanel {
+        display: grid !important;
+        gap: 8px !important;
+        border-top: 1px solid rgba(148, 163, 184, 0.28) !important;
+        padding-top: 8px !important;
+      }
+      body.mobile-radar-options-open #mobileRadarOptionsPanel .toolbar-field {
+        width: 160px !important;
+        max-width: 160px !important;
+      }
+      body.mobile-radar-options-open #siteSelect {
+        width: 160px !important;
+      }
+      .control-card .select-row,
+      .control-card .opacity-toolbar,
+      .control-card .alert-opacity-toolbar,
+      .control-card #statusText,
+      .control-card #frameReadout,
+      .control-card #alertsStatusRow,
+      .control-card #errorPanel {
+        display: none;
+      }
+      body.mobile-radar-options-open .control-card .select-row,
+      body.mobile-radar-options-open .control-card .opacity-toolbar,
+      body.mobile-radar-options-open .control-card .alert-opacity-toolbar,
+      body.mobile-radar-options-open .control-card #statusText,
+      body.mobile-radar-options-open .control-card #frameReadout,
+      body.mobile-radar-options-open .control-card #alertsStatusRow,
+      body.mobile-radar-options-open .control-card #errorPanel {
+        display: grid;
+      }
+      body.mobile-radar-options-open .control-card #errorPanel {
+        display: block;
+      }
       .level2-alert-popup-wrap { width: min(340px, calc(100vw - 24px)); }
       .level2-alert-popup .level2-alert-detail-panel {
         width: min(340px, calc(100vw - 24px));
         max-height: min(360px, 44vh);
       }
       .level2-alert-popup .alert-detail-metrics { grid-template-columns: 1fr; }
+      .level2-alert-popup-wrap {
+        width: min(86vw, 330px) !important;
+        max-width: 330px !important;
+      }
+      .level2-alert-popup .mapboxgl-popup-content {
+        width: min(86vw, 330px) !important;
+        max-width: 330px !important;
+        padding: 0 !important;
+      }
+      .level2-alert-summary-card {
+        font-size: 0.82rem !important;
+      }
+      .level2-alert-summary-card .alert-headline,
+      .level2-alert-summary-card .alert-title,
+      .level2-alert-summary-card .alert-expires {
+        padding: 8px 10px !important;
+      }
+      .level2-alert-summary-card .alert-title {
+        font-size: 0.82rem !important;
+        line-height: 1.25 !important;
+      }
+      .level2-alert-summary-card .alert-expires {
+        font-size: 0.8rem !important;
+      }
+      .level2-alert-summary-card button,
+      .level2-alert-summary-card .alert-detail-button {
+        width: 34px !important;
+        height: 34px !important;
+        min-width: 34px !important;
+      }
+      .level2-alert-popup .omega-alert-header {
+        min-height: 24px;
+        padding: 0 18px 0 8px;
+        font-size: 0.6rem;
+      }
+      .level2-alert-popup .omega-alert-headline {
+        font-size: 0.64rem;
+      }
+      .level2-alert-popup .omega-alert-expires {
+        min-height: 28px;
+        font-size: 0.64rem;
+      }
+      .level2-alert-popup .omega-alert-icon-btn {
+        width: 22px;
+        height: 22px;
+        min-height: 22px;
+        font-size: 0.62rem;
+      }
     }
   </style>
 </head>
@@ -316,39 +515,42 @@
         <input id="playbackSpeedSlider" type="range" min="0.5" max="6" step="0.25" value="1" aria-label="Playback speed">
         <output id="playbackSpeedValue">1x</output>
       </div>
+      <label class="toolbar-field desktop-product-field">Product
+        <select id="productSelect"><option value="LEVEL2_REF0">LEVEL2_REF0</option></select>
+      </label>
       <div class="primary-controls-row">
-        <label class="toolbar-field">Site
-          <select id="siteSelect"><option value="KFCX">KFCX</option></select>
-        </label>
+        <button id="mobileRadarOptionsButton" class="mobile-radar-options-toggle" type="button" aria-controls="mobileRadarOptionsPanel" aria-expanded="false" aria-label="Radar options">&hellip;</button>
         <div class="playback-controls" aria-label="Radar playback controls">
           <button id="previousFrameButton" type="button">Prev</button>
           <button id="playPauseButton" type="button" aria-pressed="false">Play</button>
           <button id="nextFrameButton" type="button">Next</button>
         </div>
       </div>
-      <div class="select-row">
-        <label class="toolbar-field">Product
-          <select id="productSelect"><option value="LEVEL2_REF0">LEVEL2_REF0</option></select>
+      <div id="mobileRadarOptionsPanel">
+        <label class="toolbar-field">Site
+          <select id="siteSelect"><option value="KFCX">KFCX</option></select>
         </label>
-        <label class="toolbar-field">Frame
-          <select id="frameSelect"></select>
-        </label>
+        <div class="select-row">
+          <label class="toolbar-field">Frame
+            <select id="frameSelect"></select>
+          </label>
+        </div>
+        <div class="opacity-toolbar">
+          <span>Radar opacity</span>
+          <input id="opacityRange" type="range" min="0" max="1" step="0.01" value="1">
+          <output id="opacityValue">100%</output>
+        </div>
+        <div class="alert-opacity-toolbar">
+          <span>Alerts</span>
+          <button id="toggleAlertOverlayButton" type="button" aria-pressed="true">Alerts On</button>
+          <input id="alertOpacityRange" type="range" min="0" max="1" step="0.05" value="0.75">
+          <output id="alertOpacityValue">75%</output>
+        </div>
+        <div class="status" id="statusText">Loading map...</div>
+        <div class="readout" id="frameReadout">Frame time unavailable</div>
+        <div class="readout alert-readout" id="alertsStatusRow">Alerts: loading...</div>
+        <div id="errorPanel" class="error-panel"></div>
       </div>
-      <div class="opacity-toolbar">
-        <span>Radar opacity</span>
-        <input id="opacityRange" type="range" min="0" max="1" step="0.01" value="1">
-        <output id="opacityValue">100%</output>
-      </div>
-      <div class="alert-opacity-toolbar">
-        <span>Alerts</span>
-        <button id="toggleAlertOverlayButton" type="button" aria-pressed="true">Alerts On</button>
-        <input id="alertOpacityRange" type="range" min="0" max="1" step="0.05" value="0.75">
-        <output id="alertOpacityValue">75%</output>
-      </div>
-      <div class="status" id="statusText">Loading map...</div>
-      <div class="readout" id="frameReadout">Frame time unavailable</div>
-      <div class="readout alert-readout" id="alertsStatusRow">Alerts: loading...</div>
-      <div id="errorPanel" class="error-panel"></div>
     </section>
   </div>
 
@@ -469,6 +671,7 @@
     const previousFrameButton = document.getElementById("previousFrameButton");
     const playPauseButton = document.getElementById("playPauseButton");
     const nextFrameButton = document.getElementById("nextFrameButton");
+    const mobileRadarOptionsButton = document.getElementById("mobileRadarOptionsButton");
 
     let map;
     let popup;
@@ -1827,6 +2030,19 @@
       statusText.textContent = `Renderer status: ${text}`;
     }
 
+    function setMobileRadarOptionsOpen(isOpen) {
+      document.body.classList.toggle("mobile-radar-options-open", isOpen);
+      if (mobileRadarOptionsButton) {
+        mobileRadarOptionsButton.setAttribute("aria-expanded", isOpen ? "true" : "false");
+      }
+    }
+
+    mobileRadarOptionsButton?.addEventListener("click", () => {
+      const nextOpen = !document.body.classList.contains("mobile-radar-options-open");
+      setMobileRadarOptionsOpen(nextOpen);
+    });
+
+
     previousFrameButton.addEventListener("click", async () => {
       stopPlayback();
       await stepFrame(-1);
@@ -1868,3 +2084,15 @@
   </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
