@@ -16,12 +16,20 @@
     #radarCanvas { display: none; }
     .panel {
       position: fixed; top: 16px; right: 16px; z-index: 20; width: min(340px, calc(100vw - 32px));
+      max-width: min(420px, calc(100vw - 24px));
       padding: 12px; border-radius: 12px; border: 1px solid rgba(148, 163, 184, 0.36);
       background: rgba(8, 16, 32, 0.9); box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
+      box-sizing: border-box; overflow: hidden;
       backdrop-filter: blur(8px); display: grid; gap: 10px;
     }
     .title { margin: 0; font-size: 0.96rem; font-weight: 700; }
     .meta { display: grid; gap: 3px; font-size: 0.78rem; color: #cbd5e1; line-height: 1.3; }
+    .meta, #sourceRow, #statusRow, #frameInfoRow {
+      min-width: 0;
+      max-width: 100%;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
     label { display: grid; gap: 5px; font-size: 0.76rem; color: #93c5fd; font-weight: 700; }
     .row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
     input[type="range"] { width: 100%; }
@@ -30,6 +38,17 @@
       display: none; margin-top: 2px; padding: 8px 10px; border-radius: 8px;
       border: 1px solid rgba(248, 113, 113, 0.9); background: rgba(127, 29, 29, 0.82);
       color: #fee2e2; font-size: 0.78rem; line-height: 1.3;
+    }
+    .playback-controls {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .playback-controls button {
+      width: 100%;
+      min-width: 0;
+      min-height: 32px;
     }
   </style>
 </head>
@@ -57,6 +76,12 @@
         <output id="opacityValue">100%</output>
       </div>
     </label>
+    <div class="playback-controls">
+      <button id="previousFrameButton" type="button">Prev</button>
+      <button id="playPauseButton" type="button" aria-pressed="false">Play</button>
+      <button id="nextFrameButton" type="button">Next</button>
+    </div>
+    <div id="frameInfoRow" class="meta">Frame: loading...</div>
   </div>
 
   <script>
@@ -64,7 +89,10 @@
     const MAPBOX_STYLE = "mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
 
     const LEVEL2_META_URL = "/radar/tilesets/test/KFCX/LEVEL2/REF0/latest.json";
+    const LEVEL2_FRAMES_URL = "/radar/tilesets/test/KFCX/LEVEL2/REF0/frames.json";
     const FALLBACK_LEVEL2_TIF = "/radar/tilesets/test/KFCX/LEVEL2/REF0/KFCX_20260527_153300_projected_dbz.tif";
+    const FRAME_REFRESH_MS = 60000;
+    const PLAYBACK_INTERVAL_MS = 900;
     const DISPLAY_MIN_DBZ = -32;
     const FORCE_DEBUG_RADAR_COLORS = false;
     const ENABLE_WEAK_DESPECKLE = false;
@@ -147,11 +175,20 @@
     const sourceRow = document.getElementById("sourceRow");
     const statusRow = document.getElementById("statusRow");
     const errorPanel = document.getElementById("errorPanel");
+    const previousFrameButton = document.getElementById("previousFrameButton");
+    const playPauseButton = document.getElementById("playPauseButton");
+    const nextFrameButton = document.getElementById("nextFrameButton");
+    const frameInfoRow = document.getElementById("frameInfoRow");
 
     let map;
     let popup;
     let radarBounds = [[32.2, -86.6], [42.2, -73.4]];
     let activeAlertFeatures = [];
+    let level2Frames = [];
+    let currentFrameIndex = 0;
+    let isPlaying = false;
+    let playbackTimer = null;
+    let frameRefreshTimer = null;
     let paletteLogPrinted = false;
     let colorizerSmokeLogged = false;
 
@@ -251,6 +288,64 @@
       redrawRadarOverlay();
     }
 
+    function normalizeLevel2Frame(meta) {
+      if (!meta?.path) return null;
+      const bounds = meta?.bounds;
+      const hasBounds = bounds &&
+        Number.isFinite(bounds.west) &&
+        Number.isFinite(bounds.south) &&
+        Number.isFinite(bounds.east) &&
+        Number.isFinite(bounds.north);
+      const validTimeDate = new Date(meta.validTime || "");
+      return {
+        path: meta.path,
+        validTime: meta.validTime || "",
+        validTimeDate,
+        bounds: hasBounds ? [[bounds.south, bounds.west], [bounds.north, bounds.east]] : null
+      };
+    }
+
+    function upsertLevel2Frame(frame) {
+      if (!frame?.path) return;
+      const existingIndex = level2Frames.findIndex((candidate) => candidate.path === frame.path);
+      if (existingIndex >= 0) {
+        level2Frames[existingIndex] = frame;
+      } else {
+        level2Frames.push(frame);
+      }
+      level2Frames.sort((a, b) => {
+        const aTime = Number.isFinite(a.validTimeDate?.getTime?.()) ? a.validTimeDate.getTime() : 0;
+        const bTime = Number.isFinite(b.validTimeDate?.getTime?.()) ? b.validTimeDate.getTime() : 0;
+        return aTime - bTime;
+      });
+    }
+
+    function updatePlaybackButton() {
+      playPauseButton.textContent = isPlaying ? "Pause" : "Play";
+      playPauseButton.setAttribute("aria-pressed", String(isPlaying));
+    }
+
+    function updateFrameInfoRow() {
+      if (!level2Frames.length) {
+        frameInfoRow.textContent = "Frame: none";
+        return;
+      }
+      const frame = level2Frames[currentFrameIndex];
+      const validText = frame?.validTime ? new Date(frame.validTime).toLocaleString() : "Unknown";
+      if (level2Frames.length === 1) {
+        frameInfoRow.textContent = `Frame 1/1 · waiting for more frames · ${validText}`;
+        return;
+      }
+      frameInfoRow.textContent = `Frame ${currentFrameIndex + 1}/${level2Frames.length} · ${validText}`;
+    }
+
+    function clearPlaybackTimer() {
+      if (playbackTimer !== null) {
+        window.clearTimeout(playbackTimer);
+        playbackTimer = null;
+      }
+    }
+
     function lockOrientation() {
       if (!map) return;
       if (Math.abs(map.getPitch()) > 0.01) map.setPitch(0);
@@ -323,24 +418,26 @@
       return 1;
     }
 
-    async function resolveLevel2Target() {
-      try {
-        const response = await fetch(LEVEL2_META_URL, { cache: "no-store" });
-        if (!response.ok) throw new Error(`metadata fetch failed (${response.status})`);
-        const meta = await response.json();
-        const b = meta?.bounds;
-        if (b && Number.isFinite(b.west) && Number.isFinite(b.south) && Number.isFinite(b.east) && Number.isFinite(b.north)) {
-          radarBounds = [[b.south, b.west], [b.north, b.east]];
-        }
-        if (meta?.validTime) validTimeRow.textContent = `Valid time: ${meta.validTime}`;
-        if (meta?.path) return meta.path;
-      } catch (_error) {
-        // Use fallback file path.
-      }
-      return FALLBACK_LEVEL2_TIF;
+    async function fetchLatestLevel2Frame() {
+      const response = await fetch(LEVEL2_META_URL, { cache: "no-store" });
+      if (!response.ok) throw new Error(`metadata fetch failed (${response.status})`);
+      const meta = await response.json();
+      return normalizeLevel2Frame(meta);
     }
 
-    async function renderLevel2Dbz() {
+    async function fetchLevel2FramesCatalog() {
+      const response = await fetch(LEVEL2_FRAMES_URL, { cache: "no-store" });
+      if (!response.ok) throw new Error(`frames catalog fetch failed (${response.status})`);
+      const payload = await response.json();
+      const rawFrames = Array.isArray(payload?.frames) ? payload.frames : [];
+      return rawFrames.map(normalizeLevel2Frame).filter(Boolean);
+    }
+
+    function currentFrame() {
+      return level2Frames[currentFrameIndex] || null;
+    }
+
+    async function renderLevel2Dbz(frame = currentFrame()) {
       try {
         try {
           RADAR_DBZ_PALETTE_NORMALIZED = normalizeRadarPalette(RADAR_DBZ_PALETTE);
@@ -361,8 +458,14 @@
           colorizerSmokeLogged = true;
         }
 
-        const tifPath = await resolveLevel2Target();
-        sourceRow.textContent = `Radar source: ${tifPath}`;
+        const tifPath = frame?.path || FALLBACK_LEVEL2_TIF;
+        if (frame?.bounds) {
+          radarBounds = frame.bounds;
+        }
+        validTimeRow.textContent = `Valid time: ${frame?.validTime || "Unknown"}`;
+        updateFrameInfoRow();
+        sourceRow.textContent = "Radar source: latest Level II GeoTIFF";
+        sourceRow.title = tifPath;
 
         const response = await fetch(tifPath, { cache: "no-store" });
         if (!response.ok) throw new Error(`GeoTIFF fetch failed: ${response.status} ${response.statusText}`);
@@ -497,6 +600,105 @@
         console.error("Level II render failed", error);
         throw error;
       }
+    }
+
+    async function refreshLevel2Frames() {
+      const wasAtLatest = currentFrameIndex === Math.max(0, level2Frames.length - 1);
+      const previousLatestPath = level2Frames[level2Frames.length - 1]?.path || "";
+      try {
+        const catalogFrames = await fetchLevel2FramesCatalog();
+        if (catalogFrames.length > 0) {
+          level2Frames = catalogFrames.sort((a, b) => {
+            const aTime = Number.isFinite(a.validTimeDate?.getTime?.()) ? a.validTimeDate.getTime() : 0;
+            const bTime = Number.isFinite(b.validTimeDate?.getTime?.()) ? b.validTimeDate.getTime() : 0;
+            return aTime - bTime;
+          });
+        } else {
+          const latestFrame = await fetchLatestLevel2Frame();
+          if (latestFrame) upsertLevel2Frame(latestFrame);
+        }
+      } catch (_error) {
+        try {
+          const latestFrame = await fetchLatestLevel2Frame();
+          if (latestFrame) upsertLevel2Frame(latestFrame);
+        } catch (_latestError) {
+          if (level2Frames.length === 0) {
+            upsertLevel2Frame({
+              path: FALLBACK_LEVEL2_TIF,
+              validTime: "",
+              validTimeDate: new Date(""),
+              bounds: radarBounds
+            });
+          }
+        }
+      }
+      if (level2Frames.length === 0) return false;
+
+      if (wasAtLatest) {
+        currentFrameIndex = level2Frames.length - 1;
+      } else {
+        currentFrameIndex = Math.max(0, Math.min(currentFrameIndex, level2Frames.length - 1));
+      }
+      updateFrameInfoRow();
+      return previousLatestPath !== (level2Frames[level2Frames.length - 1]?.path || "");
+    }
+
+    async function renderCurrentFrame() {
+      const frame = currentFrame();
+      if (!frame) return;
+      await renderLevel2Dbz(frame);
+    }
+
+    async function stepFrame(direction) {
+      if (!level2Frames.length) return;
+      currentFrameIndex = (currentFrameIndex + direction + level2Frames.length) % level2Frames.length;
+      await renderCurrentFrame();
+    }
+
+    function stopPlayback() {
+      clearPlaybackTimer();
+      isPlaying = false;
+      updatePlaybackButton();
+    }
+
+    async function playbackTick() {
+      if (!isPlaying) return;
+      if (level2Frames.length > 1) {
+        await stepFrame(1);
+      }
+      if (!isPlaying) return;
+      playbackTimer = window.setTimeout(playbackTick, PLAYBACK_INTERVAL_MS);
+    }
+
+    function startPlayback() {
+      if (isPlaying || level2Frames.length < 2) return;
+      isPlaying = true;
+      updatePlaybackButton();
+      clearPlaybackTimer();
+      playbackTimer = window.setTimeout(playbackTick, PLAYBACK_INTERVAL_MS);
+    }
+
+    function togglePlayback() {
+      if (isPlaying) {
+        stopPlayback();
+      } else {
+        startPlayback();
+      }
+    }
+
+    function startFrameRefresh() {
+      if (frameRefreshTimer !== null) {
+        window.clearInterval(frameRefreshTimer);
+      }
+      frameRefreshTimer = window.setInterval(async () => {
+        const latestChanged = await refreshLevel2Frames();
+        if (latestChanged && currentFrameIndex === level2Frames.length - 1) {
+          await renderCurrentFrame();
+        }
+        if (!isPlaying && level2Frames.length >= 2) {
+          startPlayback();
+        }
+      }, FRAME_REFRESH_MS);
     }
 
     function redrawRadarOverlay() {
@@ -758,7 +960,14 @@
         try {
           addAlertLayers();
           addRadarSiteLabels();
-          await Promise.all([renderLevel2Dbz(), loadAlerts()]);
+          setStatusText("loading frame list");
+          await refreshLevel2Frames();
+          currentFrameIndex = Math.max(0, level2Frames.length - 1);
+          await Promise.all([renderCurrentFrame(), loadAlerts()]);
+          startFrameRefresh();
+          if (level2Frames.length >= 2) {
+            startPlayback();
+          }
         } catch (error) {
           const message = error?.message || "error";
           statusRow.textContent = `Renderer status: failed: ${message}`;
@@ -768,8 +977,23 @@
       });
     }
 
+    function setStatusText(text) {
+      statusRow.textContent = `Renderer status: ${text}`;
+    }
+
+    previousFrameButton.addEventListener("click", async () => {
+      stopPlayback();
+      await stepFrame(-1);
+    });
+    nextFrameButton.addEventListener("click", async () => {
+      stopPlayback();
+      await stepFrame(1);
+    });
+    playPauseButton.addEventListener("click", togglePlayback);
     opacitySlider.addEventListener("input", updateOpacity);
     updateOpacity();
+    updatePlaybackButton();
+    updateFrameInfoRow();
     initializeMap();
   </script>
 </body>

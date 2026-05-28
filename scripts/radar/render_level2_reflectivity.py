@@ -34,9 +34,14 @@ REPO_ROOT = SCRIPT_DIR.parents[1]
 LEVEL2_ROOT = REPO_ROOT / "radar" / "source" / "level2" / "KFCX"
 OUTPUT_ROOT = REPO_ROOT / "radar" / "tilesets" / "test" / "KFCX" / "LEVEL2" / "REF0"
 FRAMES_JSON = REPO_ROOT / "radar" / "frames.json"
+LEVEL2_FRAMES_MANIFEST = OUTPUT_ROOT / "frames.json"
 NODATA = -9999.0
 OUTPUT_SIZE = 4096
+MAX_LEVEL2_FRAMES = 12
 KEY_RE = re.compile(r"(?P<site>K[A-Z0-9]{3})(?P<ts>\d{8}_\d{6})")
+PROJECTED_NAME_RE = re.compile(
+    r"^(?P<site>[A-Z0-9]{4})_(?P<date>\d{8})_(?P<time>\d{6})_projected_dbz\.tif$"
+)
 
 
 @dataclass
@@ -56,9 +61,95 @@ def infer_valid_time_from_name(path: Path) -> str | None:
         return None
     try:
         dt = datetime.strptime(match.group("ts"), "%Y%m%d_%H%M%S").replace(tzinfo=UTC)
-        return dt.isoformat()
+        return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
     except ValueError:
         return None
+
+
+def format_utc_iso(value: datetime | str | None) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        value = value.strip()
+        if not value:
+            return ""
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            return format_utc_iso(parsed)
+        except ValueError:
+            return value
+    dt = value
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=UTC)
+    else:
+        dt = dt.astimezone(UTC)
+    return dt.replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def valid_time_from_projected_filename(path: Path) -> str:
+    match = PROJECTED_NAME_RE.match(path.name)
+    if not match:
+        return ""
+    try:
+        dt = datetime.strptime(
+            f"{match.group('date')}{match.group('time')}",
+            "%Y%m%d%H%M%S",
+        )
+    except ValueError:
+        return ""
+    return format_utc_iso(dt)
+
+
+def prune_level2_output_frames(output_root: Path, keep: int) -> None:
+    frame_files = sorted(
+        output_root.glob("*_projected_dbz.tif"),
+        key=lambda file_path: file_path.stat().st_mtime,
+        reverse=True,
+    )
+    for stale_file in frame_files[keep:]:
+        stale_file.unlink(missing_ok=True)
+
+
+def build_level2_frames_manifest(
+    output_root: Path,
+    site: str,
+    product: str,
+    bounds: tuple[float, float, float, float],
+    latest_frame_name: str | None = None,
+    latest_valid_time: str | None = None,
+) -> dict:
+    west, south, east, north = bounds
+    frame_files = sorted(
+        output_root.glob("*_projected_dbz.tif"),
+        key=lambda file_path: file_path.stat().st_mtime,
+    )
+    frames = []
+    for frame_file in frame_files:
+        valid_time = ""
+        if latest_frame_name and latest_valid_time and frame_file.name == latest_frame_name:
+            valid_time = format_utc_iso(latest_valid_time)
+        if not valid_time:
+            valid_time = valid_time_from_projected_filename(frame_file)
+        if not valid_time:
+            valid_time = infer_valid_time_from_name(frame_file) or ""
+        frames.append(
+            {
+                "path": f"/radar/tilesets/test/KFCX/LEVEL2/REF0/{frame_file.name}",
+                "validTime": valid_time,
+                "bounds": {
+                    "west": west,
+                    "south": south,
+                    "east": east,
+                    "north": north,
+                },
+            }
+        )
+    return {
+        "site": site,
+        "product": product,
+        "updatedAt": datetime.now(tz=UTC).isoformat(),
+        "frames": frames,
+    }
 
 
 def latest_level2_file(input_root: Path) -> Path:
@@ -268,8 +359,14 @@ def main() -> int:
         level2 = Level2File(handle)
 
     sweep = extract_lowest_reflectivity_sweep(level2)
-    valid_time = level2.dt.isoformat() if getattr(level2, "dt", None) else infer_valid_time_from_name(source_path)
-    valid_time = valid_time or "unknown"
+    valid_time = (
+        format_utc_iso(level2.dt) if getattr(level2, "dt", None)
+        else infer_valid_time_from_name(source_path) or ""
+    )
+    if not valid_time:
+        valid_time = valid_time_from_projected_filename(
+            Path(f"{source_path.stem}_projected_dbz.tif")
+        ) or "unknown"
 
     bounds = load_bounds_from_frames_json()
     grid = build_projected_dbz_grid(
@@ -289,6 +386,7 @@ def main() -> int:
 
     output_path = OUTPUT_ROOT / f"{slug_base}_projected_dbz.tif"
     write_geotiff(path=output_path, grid=grid, bounds=bounds, nodata=args.nodata)
+    prune_level2_output_frames(OUTPUT_ROOT, MAX_LEVEL2_FRAMES)
 
     valid_mask = np.isfinite(grid) & (grid != args.nodata)
     valid_count = int(valid_mask.sum())
@@ -318,6 +416,19 @@ def main() -> int:
             },
             indent=2,
         ),
+        encoding="utf-8",
+    )
+
+    frames_manifest = build_level2_frames_manifest(
+        output_root=OUTPUT_ROOT,
+        site=site,
+        product="LEVEL2_REF0",
+        bounds=bounds,
+        latest_frame_name=output_path.name,
+        latest_valid_time=valid_time,
+    )
+    LEVEL2_FRAMES_MANIFEST.write_text(
+        json.dumps(frames_manifest, indent=2),
         encoding="utf-8",
     )
 
