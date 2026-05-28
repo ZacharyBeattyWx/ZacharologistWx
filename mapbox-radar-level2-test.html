@@ -12,6 +12,7 @@
     html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #061025; color: #f8fafc; font-family: Arial, sans-serif; }
     #map { position: fixed; inset: 0; }
     #radarOverlayCanvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+    #alertOverlayCanvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 6; }
     #radarCanvas { display: none; }
     .panel {
       position: fixed; top: 16px; right: 16px; z-index: 20; width: min(340px, calc(100vw - 32px));
@@ -35,6 +36,7 @@
 <body>
   <div id="map"></div>
   <canvas id="radarOverlayCanvas"></canvas>
+  <canvas id="alertOverlayCanvas"></canvas>
   <canvas id="radarCanvas"></canvas>
 
   <div class="panel">
@@ -72,7 +74,6 @@
     const PALETTE_SOURCE_FILE = "scripts/radar/radar_config.json";
 
     const ALERT_SOURCE_ID = "nws-alert-polygons";
-    const ALERT_FILL_LAYER_ID = "nws-alert-polygons-fill";
     const ALERT_LINE_LAYER_ID = "nws-alert-polygons-line";
     const ALERT_STATES = ["NC", "SC", "VA", "GA"];
 
@@ -135,6 +136,8 @@
 
     const radarOverlayCanvas = document.getElementById("radarOverlayCanvas");
     const radarOverlayContext = radarOverlayCanvas.getContext("2d");
+    const alertOverlayCanvas = document.getElementById("alertOverlayCanvas");
+    const alertOverlayContext = alertOverlayCanvas.getContext("2d");
     const radarCanvas = document.getElementById("radarCanvas");
     const radarContext = radarCanvas.getContext("2d", { willReadFrequently: true });
 
@@ -148,6 +151,7 @@
     let map;
     let popup;
     let radarBounds = [[32.2, -86.6], [42.2, -73.4]];
+    let activeAlertFeatures = [];
     let paletteLogPrinted = false;
     let colorizerSmokeLogged = false;
 
@@ -541,23 +545,98 @@
       radarOverlayContext.globalAlpha = 1;
     }
 
-    function alertColorExpression() {
-      return [
-        "match", ["coalesce", ["get", "event"], ""],
-        "Tornado Warning", "#ff3b30",
-        "Severe Thunderstorm Warning", "#ff8c00",
-        "Flash Flood Warning", "#2ecc71",
-        "Flood Warning", "#22c55e",
-        "Tornado Watch", "#ffd700",
-        "Severe Thunderstorm Watch", "#ffd700",
-        "#9ca3af"
-      ];
+    function drawAlertOverlay() {
+      if (!map) return;
+
+      const dpr = window.devicePixelRatio || 1;
+      const container = map.getContainer();
+      const width = Math.max(1, Math.round(container.clientWidth * dpr));
+      const height = Math.max(1, Math.round(container.clientHeight * dpr));
+
+      if (alertOverlayCanvas.width !== width || alertOverlayCanvas.height !== height) {
+        alertOverlayCanvas.width = width;
+        alertOverlayCanvas.height = height;
+      }
+
+      alertOverlayContext.clearRect(0, 0, width, height);
+      if (!activeAlertFeatures.length) return;
+
+      const strokeWidth = Math.max(2.5, Math.min(3.5, 3.0)) * dpr;
+      alertOverlayContext.lineJoin = "round";
+      alertOverlayContext.lineCap = "round";
+      alertOverlayContext.lineWidth = strokeWidth;
+
+      const drawRing = (ring) => {
+        if (!Array.isArray(ring) || ring.length < 2) return;
+        ring.forEach((coord, index) => {
+          if (!Array.isArray(coord) || coord.length < 2) return;
+          const point = map.project([coord[0], coord[1]]);
+          const x = point.x * dpr;
+          const y = point.y * dpr;
+          if (index === 0) {
+            alertOverlayContext.moveTo(x, y);
+          } else {
+            alertOverlayContext.lineTo(x, y);
+          }
+        });
+        alertOverlayContext.closePath();
+      };
+
+      const drawPolygon = (polygonCoordinates) => {
+        if (!Array.isArray(polygonCoordinates) || !polygonCoordinates.length) return;
+        alertOverlayContext.beginPath();
+        polygonCoordinates.forEach(drawRing);
+        alertOverlayContext.stroke();
+      };
+
+      activeAlertFeatures.forEach((feature) => {
+        const properties = feature.properties || {};
+        if (properties._visibleStormPolygon !== true) return;
+        alertOverlayContext.strokeStyle = properties._alertColor || "#58b7ff";
+
+        const geometry = feature.geometry;
+        if (geometry?.type === "Polygon") {
+          drawPolygon(geometry.coordinates);
+        } else if (geometry?.type === "MultiPolygon") {
+          geometry.coordinates.forEach(drawPolygon);
+        }
+      });
+    }
+
+    function alertColor(eventName) {
+      const event = String(eventName || "");
+      if (event === "Tornado Warning") return "#ff3b3b";
+      if (event === "Severe Thunderstorm Warning") return "#ffb21c";
+      if (event === "Flash Flood Warning") return "#00c4a7";
+      if (event === "Special Marine Warning") return "#58b7ff";
+      return "#58b7ff";
+    }
+
+    function isVisibleStormPolygon(eventName) {
+      const event = String(eventName || "");
+      return (
+        event === "Tornado Warning" ||
+        event === "Severe Thunderstorm Warning" ||
+        event === "Flash Flood Warning" ||
+        event === "Special Marine Warning"
+      );
     }
 
     function addAlertLayers() {
       map.addSource(ALERT_SOURCE_ID, { type: "geojson", data: { type: "FeatureCollection", features: [] } });
-      map.addLayer({ id: ALERT_FILL_LAYER_ID, type: "fill", source: ALERT_SOURCE_ID, paint: { "fill-color": alertColorExpression(), "fill-opacity": 0.17 } });
-      map.addLayer({ id: ALERT_LINE_LAYER_ID, type: "line", source: ALERT_SOURCE_ID, paint: { "line-color": alertColorExpression(), "line-width": 2, "line-opacity": 0.95 } });
+      // Alert fill layers are intentionally not used because they created black artifacts.
+      map.addLayer({
+        id: ALERT_LINE_LAYER_ID,
+        type: "line",
+        source: ALERT_SOURCE_ID,
+        filter: ["==", ["get", "_visibleStormPolygon"], true],
+        paint: {
+          "line-color": ["to-color", ["coalesce", ["get", "_alertColor"], "#58b7ff"]],
+          "line-opacity": 0,
+          "line-width": ["interpolate", ["linear"], ["zoom"], 4, 1.5, 8, 2.8]
+        }
+      });
+      map.moveLayer(ALERT_LINE_LAYER_ID);
 
       const onInteract = (event) => {
         const feature = event?.features?.[0];
@@ -568,9 +647,7 @@
         if (popup) popup.remove();
         popup = new mapboxgl.Popup({ closeButton: true, closeOnClick: true }).setLngLat(event.lngLat).setHTML(html).addTo(map);
       };
-      map.on("click", ALERT_FILL_LAYER_ID, onInteract);
       map.on("click", ALERT_LINE_LAYER_ID, onInteract);
-      map.on("touchstart", ALERT_FILL_LAYER_ID, onInteract);
       map.on("touchstart", ALERT_LINE_LAYER_ID, onInteract);
     }
 
@@ -622,14 +699,19 @@
                 headline: props.headline || "",
                 areaDesc: props.areaDesc || "",
                 expires: props.expires || "",
-                instruction: props.instruction || ""
+                instruction: props.instruction || "",
+                _alertColor: alertColor(props.event || ""),
+                _visibleStormPolygon: isVisibleStormPolygon(props.event || "")
               }
             });
           }
         });
       });
 
-      map.getSource(ALERT_SOURCE_ID).setData({ type: "FeatureCollection", features: Array.from(deduped.values()) });
+      activeAlertFeatures = Array.from(deduped.values());
+      map.getSource(ALERT_SOURCE_ID).setData({ type: "FeatureCollection", features: activeAlertFeatures });
+      map.moveLayer(ALERT_LINE_LAYER_ID);
+      drawAlertOverlay();
     }
 
     function initializeMap() {
@@ -659,9 +741,18 @@
       if (map.setMaxPitch) map.setMaxPitch(0);
       map.on("rotate", lockOrientation);
       map.on("pitch", lockOrientation);
-      map.on("move", redrawRadarOverlay);
-      map.on("zoom", redrawRadarOverlay);
-      map.on("resize", redrawRadarOverlay);
+      map.on("move", () => {
+        redrawRadarOverlay();
+        drawAlertOverlay();
+      });
+      map.on("zoom", () => {
+        redrawRadarOverlay();
+        drawAlertOverlay();
+      });
+      map.on("resize", () => {
+        redrawRadarOverlay();
+        drawAlertOverlay();
+      });
 
       map.on("load", async () => {
         try {
