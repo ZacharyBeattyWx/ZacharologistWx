@@ -533,7 +533,7 @@
       </div>
       <div id="mobileRadarOptionsPanel">
         <label class="toolbar-field">Site
-          <select id="siteSelect"><option value="KFCX">KFCX</option></select>
+          <select id="siteSelect"><option value="KFCX">KFCX</option><option value="KRAX">KRAX</option><option value="KGSP">KGSP</option><option value="KLTX">KLTX</option><option value="KMHX">KMHX</option><option value="KAKQ">KAKQ</option><option value="KCAE">KCAE</option><option value="KCLX">KCLX</option></select>
         </label>
         <div class="select-row">
           <label class="toolbar-field">Frame
@@ -562,11 +562,13 @@
   <script>
     const MAPBOX_TOKEN = window.MAPBOX_PUBLIC_TOKEN;
     const MAPBOX_STYLE = "mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
-
-    const LEVEL2_META_URL = "/radar/tilesets/test/KFCX/LEVEL2/REF0/latest.json";
-    const LEVEL2_FRAMES_URL = "/radar/tilesets/test/KFCX/LEVEL2/REF0/frames.json";
+    const LEVEL2_SUPPORTED_SITES = ["KFCX", "KRAX", "KGSP", "KLTX", "KMHX", "KAKQ", "KCAE", "KCLX"];
+    const DEFAULT_LEVEL2_SITE = "KFCX";
+    const LEVEL2_PRODUCT = "LEVEL2_REF0";
+    const LEVEL2_REMOTE_BASE_URL = "https://radar.zacharologistwx.com";
     const FALLBACK_LEVEL2_TIF = "/radar/tilesets/test/KFCX/LEVEL2/REF0/KFCX_20260527_153300_projected_dbz.tif";
     const FRAME_REFRESH_MS = 60000;
+    const ALERT_REFRESH_MS = 60000;
     const PLAYBACK_INTERVAL_MS = 900;
     const MOBILE_LEVEL2_RASTER_SCALE = 0.25;
     const MOBILE_LEVEL2_RENDER_CACHE_LIMIT = 25;
@@ -597,6 +599,40 @@
     function cacheBustUrl(url) {
       const separator = url.includes("?") ? "&" : "?";
       return `${url}${separator}v=${Date.now()}`;
+    }
+
+    function sanitizeLevel2Site(site) {
+      const normalized = String(site || DEFAULT_LEVEL2_SITE).trim().toUpperCase();
+      return LEVEL2_SUPPORTED_SITES.includes(normalized) ? normalized : DEFAULT_LEVEL2_SITE;
+    }
+
+    function selectedLevel2Site() {
+      return sanitizeLevel2Site(siteSelect?.value || DEFAULT_LEVEL2_SITE);
+    }
+
+    function level2DataBaseUrl() {
+      const params = new URLSearchParams(window.location.search);
+      const mode = String(params.get("level2Data") || "").trim().toLowerCase();
+
+      if (mode === "local") return "";
+      if (mode === "remote") return LEVEL2_REMOTE_BASE_URL;
+
+      const host = window.location.hostname;
+      const isLocalHost = host === "localhost" || host === "127.0.0.1" || host === "";
+      return isLocalHost ? "" : LEVEL2_REMOTE_BASE_URL;
+    }
+
+    function level2DataUrl(path) {
+      const base = level2DataBaseUrl().replace(/\/$/, "");
+      return `${base}${path}`;
+    }
+
+    function level2MetaUrl(site = selectedLevel2Site()) {
+      return level2DataUrl(`/radar/tilesets/test/${sanitizeLevel2Site(site)}/LEVEL2/REF0/latest.json`);
+    }
+
+    function level2FramesUrl(site = selectedLevel2Site()) {
+      return level2DataUrl(`/radar/tilesets/test/${sanitizeLevel2Site(site)}/LEVEL2/REF0/frames.json`);
     }
 
     // Copied from ZacharologistWx main radar renderer color table
@@ -696,6 +732,7 @@
     let isAlertOverlayVisible = true;
     let alertOverlayOpacity = 0.75;
     let frameRefreshTimer = null;
+    let alertRefreshTimer = null;
     let paletteLogPrinted = false;
     let colorizerSmokeLogged = false;
 
@@ -866,10 +903,10 @@
       const frame = level2Frames[currentFrameIndex];
       const validText = frame?.validTime ? new Date(frame.validTime).toLocaleString() : "Unknown";
       if (level2Frames.length === 1) {
-        frameReadout.textContent = `Frame 1/1 · waiting for more frames · ${validText}`;
+        frameReadout.textContent = `Frame 1/1 Â· waiting for more frames Â· ${validText}`;
         return;
       }
-      frameReadout.textContent = `Frame ${currentFrameIndex + 1}/${level2Frames.length} · ${validText}`;
+      frameReadout.textContent = `Frame ${currentFrameIndex + 1}/${level2Frames.length} Â· ${validText}`;
       frameSelect.value = String(currentFrameIndex);
     }
     function syncFrameSelect() {
@@ -965,14 +1002,14 @@
     }
 
     async function fetchLatestLevel2Frame() {
-      const response = await fetch(cacheBustUrl(LEVEL2_META_URL), { cache: "no-store" });
+      const response = await fetch(cacheBustUrl(level2MetaUrl()), { cache: "no-store" });
       if (!response.ok) throw new Error(`metadata fetch failed (${response.status})`);
       const meta = await response.json();
       return normalizeLevel2Frame(meta);
     }
 
     async function fetchLevel2FramesCatalog() {
-      const response = await fetch(cacheBustUrl(LEVEL2_FRAMES_URL), { cache: "no-store" });
+      const response = await fetch(cacheBustUrl(level2FramesUrl()), { cache: "no-store" });
       if (!response.ok) throw new Error(`frames catalog fetch failed (${response.status})`);
       const payload = await response.json();
       const rawFrames = Array.isArray(payload?.frames) ? payload.frames : [];
@@ -1196,7 +1233,7 @@
         if (typeof sourceRow !== "undefined" && sourceRow) {
           sourceRow.textContent = `Radar source: ${frame?.path || surface.path}`;
         }
-        statusText.textContent = "Radar frame loaded: KFCX LEVEL2_REF0";
+        statusText.textContent = `Radar frame loaded: ${selectedLevel2Site()} ${LEVEL2_PRODUCT}`;
 
         updateFrameInfoRow();
         syncFrameSelect();
@@ -1476,6 +1513,36 @@
       }
     }
 
+    async function changeLevel2Site(site) {
+      const nextSite = sanitizeLevel2Site(site);
+      if (siteSelect) siteSelect.value = nextSite;
+      stopPlayback();
+      renderedFrameCache.clear();
+      level2Frames = [];
+      currentFrameIndex = 0;
+      syncFrameSelect();
+      updateFrameInfoRow();
+
+      if (radarCanvas.width && radarCanvas.height) {
+        radarContext.clearRect(0, 0, radarCanvas.width, radarCanvas.height);
+      }
+      radarOverlayContext.clearRect(0, 0, radarOverlayCanvas.width, radarOverlayCanvas.height);
+
+      setStatusText(`loading ${nextSite} frame list`);
+      try {
+        await refreshLevel2Frames();
+        currentFrameIndex = Math.max(0, level2Frames.length - 1);
+        await renderCurrentFrame();
+        setStatusText(`loaded ${nextSite} ${LEVEL2_PRODUCT}`);
+      } catch (error) {
+        const message = error?.message || "error";
+        console.error("Level II site change failed", error);
+        setStatusText(`failed loading ${nextSite}: ${message}`);
+        errorPanel.style.display = "block";
+        errorPanel.textContent = `Level II ${nextSite} failed: ${message}`;
+      }
+    }
+
     function startFrameRefresh() {
       if (frameRefreshTimer !== null) {
         window.clearInterval(frameRefreshTimer);
@@ -1487,6 +1554,20 @@
         }
         // Manual playback only: do not auto-start after refresh.
       }, FRAME_REFRESH_MS);
+    }
+
+    function startAlertRefresh() {
+      if (alertRefreshTimer !== null) {
+        window.clearInterval(alertRefreshTimer);
+      }
+      alertRefreshTimer = window.setInterval(async () => {
+        try {
+          await loadAlerts();
+        } catch (error) {
+          console.warn("Alert refresh failed", error);
+          alertsStatusRow.textContent = "Alerts: refresh failed";
+        }
+      }, ALERT_REFRESH_MS);
     }
 
     function redrawRadarOverlay() {
@@ -1781,7 +1862,7 @@
           if (!detailCard) return;
           const open = detailCard.classList.toggle("is-open");
           detailsButton.setAttribute("aria-expanded", String(open));
-          detailsButton.textContent = open ? "×" : ">";
+          detailsButton.textContent = open ? "Ã—" : ">";
         });
       };
       map.on("mouseenter", ALERT_FILL_LAYER_ID, () => {
@@ -1809,6 +1890,8 @@
           { type: "Feature", properties: { id: "KFCX" }, geometry: { type: "Point", coordinates: [-80.273, 37.024] } },
           { type: "Feature", properties: { id: "KRAX" }, geometry: { type: "Point", coordinates: [-78.49, 35.665] } },
           { type: "Feature", properties: { id: "KGSP" }, geometry: { type: "Point", coordinates: [-82.22, 34.883] } },
+          { type: "Feature", properties: { id: "KCAE" }, geometry: { type: "Point", coordinates: [-81.118, 33.949] } },
+          { type: "Feature", properties: { id: "KCLX" }, geometry: { type: "Point", coordinates: [-81.042, 32.656] } },
           { type: "Feature", properties: { id: "KLTX" }, geometry: { type: "Point", coordinates: [-78.429, 33.989] } },
           { type: "Feature", properties: { id: "KMHX" }, geometry: { type: "Point", coordinates: [-76.877, 34.775] } },
           { type: "Feature", properties: { id: "KAKQ" }, geometry: { type: "Point", coordinates: [-77.007, 36.983] } }
@@ -1969,7 +2052,7 @@
       drawAlertOverlay();
       const stormCount = activeAlertFeatures.filter((feature) => feature.properties?._visibleStormPolygon === true).length;
       const fallbackCount = activeAlertFeatures.filter((feature) => feature.properties?._fallbackGeometry === true).length;
-      alertsStatusRow.textContent = `Alerts: ${fetchedFeatures.length} active · ${stormCount} storm polygons · ${fallbackCount} zone fallback · ${activeAlertsWithoutGeometry.length} listed only`;
+      alertsStatusRow.textContent = `Alerts: ${fetchedFeatures.length} active Â· ${stormCount} storm polygons Â· ${fallbackCount} zone fallback Â· ${activeAlertsWithoutGeometry.length} listed only`;
     }
 
     function initializeMap() {
@@ -2021,6 +2104,7 @@
           currentFrameIndex = Math.max(0, level2Frames.length - 1);
           await Promise.all([renderCurrentFrame(), loadAlerts()]);
           startFrameRefresh();
+          startAlertRefresh();
           // Manual playback only: show latest frame and wait for Play.
         } catch (error) {
           const message = error?.message || "error";
@@ -2069,9 +2153,8 @@
         playbackTimer = window.setTimeout(playbackTick, playbackIntervalMs);
       }
     });
-    siteSelect?.addEventListener("change", () => {
-      siteSelect.value = "KFCX";
-      setStatusText("Site fixed to KFCX for Level II test");
+    siteSelect?.addEventListener("change", async () => {
+      await changeLevel2Site(siteSelect.value);
     });
     productSelect?.addEventListener("change", () => {
       productSelect.value = "LEVEL2_REF0";

@@ -1,5 +1,5 @@
-﻿#!/usr/bin/env python3
-"""Experimental projected Level II reflectivity (dBZ) GeoTIFF renderer for KFCX."""
+#!/usr/bin/env python3
+"""Experimental projected Level II reflectivity (dBZ) GeoTIFF renderer for regional radar sites."""
 
 from __future__ import annotations
 
@@ -34,10 +34,11 @@ except Exception as exc:  # pragma: no cover
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parents[1]
-LEVEL2_ROOT = REPO_ROOT / "radar" / "source" / "level2" / "KFCX"
-OUTPUT_ROOT = REPO_ROOT / "radar" / "tilesets" / "test" / "KFCX" / "LEVEL2" / "REF0"
+LEVEL2_SOURCE_BASE = REPO_ROOT / "radar" / "source" / "level2"
+LEVEL2_OUTPUT_BASE = REPO_ROOT / "radar" / "tilesets" / "test"
 FRAMES_JSON = REPO_ROOT / "radar" / "frames.json"
-LEVEL2_FRAMES_MANIFEST = OUTPUT_ROOT / "frames.json"
+DEFAULT_SITE = "KFCX"
+LEVEL2_PRODUCT = "LEVEL2_REF0"
 NODATA = -9999.0
 OUTPUT_SIZE = 4096
 MAX_LEVEL2_FRAMES = 25
@@ -48,6 +49,35 @@ PROJECTED_NAME_RE = re.compile(
 RAW_VOLUME_NAME_RE = re.compile(r"^(?P<site>K[A-Z0-9]{3})(?P<ts>\d{8}_\d{6})_V\d{2}(?:\.gz)?$")
 S3_XML_NS = {"s3": "http://s3.amazonaws.com/doc/2006-03-01/"}
 DEFAULT_SOURCE_BUCKET = "unidata-nexrad-level2"
+
+SITE_COORDS = {
+    "KFCX": (-80.273, 37.024),
+    "KRAX": (-78.490, 35.665),
+    "KGSP": (-82.220, 34.883),
+    "KCAE": (-81.118, 33.949),
+    "KCLX": (-81.042, 32.656),
+    "KLTX": (-78.429, 33.989),
+    "KMHX": (-76.877, 34.776),
+    "KAKQ": (-77.007, 36.983),
+}
+
+SITE_LON_HALF_DEG = 5.176
+SITE_LAT_HALF_DEG = 4.132
+
+
+def fallback_bounds_for_site(site: str) -> tuple[float, float, float, float]:
+    """Return a broad Level II display box as west/south/east/north."""
+    center = SITE_COORDS.get(str(site or "").upper())
+    if center is None:
+        return (-86.6, 32.2, -73.4, 42.2)
+    lon, lat = center
+    return (
+        lon - SITE_LON_HALF_DEG,
+        lat - SITE_LAT_HALF_DEG,
+        lon + SITE_LON_HALF_DEG,
+        lat + SITE_LAT_HALF_DEG,
+    )
+
 
 
 @dataclass
@@ -253,7 +283,7 @@ def build_level2_frames_manifest(
             valid_time = infer_valid_time_from_name(frame_file) or ""
         frames.append(
             {
-                "path": f"/radar/tilesets/test/KFCX/LEVEL2/REF0/{frame_file.name}",
+                "path": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{frame_file.name}",
                 "validTime": valid_time,
                 "bounds": {
                     "west": west,
@@ -289,13 +319,13 @@ def recent_level2_files(input_root: Path, max_count: int) -> list[Path]:
     return files[-max_count:]
 
 
-def load_bounds_from_frames_json() -> tuple[float, float, float, float]:
-    fallback = (-86.6, 32.2, -73.4, 42.2)  # west, south, east, north
+def load_bounds_from_frames_json(site: str = DEFAULT_SITE) -> tuple[float, float, float, float]:
+    fallback = fallback_bounds_for_site(site)
     if not FRAMES_JSON.exists():
         return fallback
 
     data = json.loads(FRAMES_JSON.read_text(encoding="utf-8"))
-    frames = data.get("frames", {}).get("KFCX", {}).get("N0B", [])
+    frames = data.get("frames", {}).get(site, {}).get("N0B", [])
     if not isinstance(frames, list) or not frames:
         return fallback
 
@@ -472,13 +502,13 @@ def write_geotiff(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Render experimental Level II projected dBZ GeoTIFF.")
-    parser.add_argument("--site", default="KFCX")
+    parser.add_argument("--site", default=DEFAULT_SITE)
     parser.add_argument("--input", type=Path, default=None, help="Optional explicit Level II input file")
     parser.add_argument(
         "--input-dir",
         type=Path,
-        default=LEVEL2_ROOT,
-        help="Directory containing Level II source files (default: radar/source/level2/KFCX).",
+        default=None,
+        help="Directory containing Level II source files (default: radar/source/level2/{site}).",
     )
     parser.add_argument(
         "--max-sources",
@@ -517,12 +547,16 @@ def main() -> int:
     args = parser.parse_args()
 
     site = args.site.strip().upper()
-    if site != "KFCX":
-        raise SystemExit("This experimental renderer currently supports KFCX only.")
+    if not re.fullmatch(r"K[A-Z0-9]{3}", site):
+        raise SystemExit(f"Unsupported Level II radar site ID: {site}")
+
+    input_dir = args.input_dir or (LEVEL2_SOURCE_BASE / site)
+    output_root = LEVEL2_OUTPUT_BASE / site / "LEVEL2" / "REF0"
+    level2_frames_manifest = output_root / "frames.json"
 
     if args.fetch_latest:
         fetch_latest_source_scans(
-            source_dir=args.input_dir,
+            source_dir=input_dir,
             site=site,
             bucket=args.source_bucket.strip(),
             source_count=max(1, args.source_count),
@@ -533,8 +567,8 @@ def main() -> int:
     # Input scan selection:
     # - --input renders one explicit file.
     # - Otherwise, render recent files from --input-dir (newest N), enabling multi-frame loops.
-    source_paths = [args.input] if args.input else recent_level2_files(args.input_dir, max(1, args.max_sources))
-    bounds = load_bounds_from_frames_json()
+    source_paths = [args.input] if args.input else recent_level2_files(input_dir, max(1, args.max_sources))
+    bounds = load_bounds_from_frames_json(site)
     latest_output_path: Path | None = None
     latest_valid_time = ""
     latest_source_name = ""
@@ -544,7 +578,7 @@ def main() -> int:
         match = KEY_RE.search(source_path.name)
         if match:
             slug_base = f"{match.group('site')}_{match.group('ts')}"
-        output_path = OUTPUT_ROOT / f"{slug_base}_projected_dbz.tif"
+        output_path = output_root / f"{slug_base}_projected_dbz.tif"
 
         with source_path.open("rb") as handle:
             level2 = Level2File(handle)
@@ -598,14 +632,14 @@ def main() -> int:
     if latest_output_path is None:
         raise RuntimeError("No Level II source files selected for rendering.")
 
-    prune_level2_output_frames(OUTPUT_ROOT, MAX_LEVEL2_FRAMES)
+    prune_level2_output_frames(output_root, MAX_LEVEL2_FRAMES)
 
-    latest_json = OUTPUT_ROOT / "latest.json"
+    latest_json = output_root / "latest.json"
     latest_json.write_text(
         json.dumps(
             {
                 "site": site,
-                "product": "LEVEL2_REF0",
+                "product": LEVEL2_PRODUCT,
                 "sourceFile": str(latest_source_name),
                 "validTime": latest_valid_time,
                 "bounds": {
@@ -614,7 +648,7 @@ def main() -> int:
                     "east": bounds[2],
                     "north": bounds[3],
                 },
-                "path": f"/radar/tilesets/test/KFCX/LEVEL2/REF0/{latest_output_path.name}",
+                "path": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{latest_output_path.name}",
                 "width": int(args.output_size),
                 "height": int(args.output_size),
                 "nodata": args.nodata,
@@ -625,14 +659,14 @@ def main() -> int:
     )
 
     frames_manifest = build_level2_frames_manifest(
-        output_root=OUTPUT_ROOT,
+        output_root=output_root,
         site=site,
-        product="LEVEL2_REF0",
+        product=LEVEL2_PRODUCT,
         bounds=bounds,
         latest_frame_name=latest_output_path.name,
         latest_valid_time=latest_valid_time,
     )
-    LEVEL2_FRAMES_MANIFEST.write_text(
+    level2_frames_manifest.write_text(
         json.dumps(frames_manifest, indent=2),
         encoding="utf-8",
     )

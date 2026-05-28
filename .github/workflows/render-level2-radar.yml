@@ -1,0 +1,161 @@
+﻿name: Render Level II Radar
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+    inputs:
+      site:
+        description: "Optional single radar site, ex: KFCX or KRAX"
+        required: false
+        default: ""
+      source_count:
+        description: "Number of latest Level II scans to fetch"
+        required: false
+        default: "25"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: level2-radar
+  cancel-in-progress: true
+
+jobs:
+  prepare-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      sites: ${{ steps.sites.outputs.sites }}
+      source_count: ${{ steps.sites.outputs.source_count }}
+
+    steps:
+      - name: Build Level II site matrix
+        id: sites
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SITE_INPUT="${{ github.event.inputs.site || '' }}"
+          SOURCE_COUNT="${{ github.event.inputs.source_count || '25' }}"
+
+          python - <<'PY'
+          import json
+          import os
+          import re
+          from pathlib import Path
+
+          default_sites = ["KFCX", "KRAX", "KGSP", "KLTX", "KMHX", "KAKQ", "KCAE", "KCLX"]
+
+          site_input = os.environ.get("SITE_INPUT", "").strip().upper()
+          source_count = os.environ.get("SOURCE_COUNT", "25").strip() or "25"
+
+          if site_input:
+              if re.fullmatch(r"[A-Z0-9]{3}", site_input):
+                  site_input = "K" + site_input
+              if not re.fullmatch(r"K[A-Z0-9]{3}", site_input):
+                  raise SystemExit(f"Unsupported radar site: {site_input}")
+              sites = [site_input]
+          else:
+              sites = default_sites
+
+          try:
+              count = max(1, int(source_count))
+          except ValueError:
+              count = 25
+
+          print(f"Level II sites: {sites}")
+          print(f"Level II source_count: {count}")
+
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as output:
+              print(f"sites={json.dumps(sites)}", file=output)
+              print(f"source_count={count}", file=output)
+          PY
+
+  render-level2:
+    needs: prepare-matrix
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        site: ${{ fromJSON(needs.prepare-matrix.outputs.sites) }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Level II renderer dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r scripts/radar/requirements.txt
+
+      - name: Render latest Level II frames
+        run: |
+          python scripts/radar/render_level2_reflectivity.py \
+            --site "${{ matrix.site }}" \
+            --fetch-latest \
+            --source-count "${{ needs.prepare-matrix.outputs.source_count }}" \
+            --max-sources "${{ needs.prepare-matrix.outputs.source_count }}"
+
+      - name: Show generated Level II files
+        run: |
+          find "radar/tilesets/test/${{ matrix.site }}/LEVEL2/REF0" -maxdepth 1 -type f | sort
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          site = "${{ matrix.site }}"
+          manifest = Path(f"radar/tilesets/test/{site}/LEVEL2/REF0/frames.json")
+          latest = Path(f"radar/tilesets/test/{site}/LEVEL2/REF0/latest.json")
+
+          frames = json.loads(manifest.read_text(encoding="utf-8"))
+          latest_payload = json.loads(latest.read_text(encoding="utf-8"))
+
+          print(f"site={site}")
+          print(f"framesCount={len(frames.get('frames') or [])}")
+          print(f"latestValidTime={latest_payload.get('validTime')}")
+          PY
+
+      - name: Upload Level II radar to Cloudflare R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_EC2_METADATA_DISABLED: true
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          R2_ENDPOINT="https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com"
+          SITE="${{ matrix.site }}"
+          LOCAL_DIR="radar/tilesets/test/${SITE}/LEVEL2/REF0"
+          REMOTE_DIR="s3://${{ secrets.R2_BUCKET }}/radar/tilesets/test/${SITE}/LEVEL2/REF0"
+
+          aws s3 sync "$LOCAL_DIR" "$REMOTE_DIR" \
+            --exclude "*" \
+            --include "*.tif" \
+            --include "*.json" \
+            --delete \
+            --endpoint-url "$R2_ENDPOINT"
+
+          aws s3 cp "$REMOTE_DIR/frames.json" "/tmp/${SITE}-frames.json" --endpoint-url "$R2_ENDPOINT"
+          aws s3 cp "$REMOTE_DIR/latest.json" "/tmp/${SITE}-latest.json" --endpoint-url "$R2_ENDPOINT"
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          site = "${{ matrix.site }}"
+          frames = json.loads(Path(f"/tmp/{site}-frames.json").read_text(encoding="utf-8"))
+          latest = json.loads(Path(f"/tmp/{site}-latest.json").read_text(encoding="utf-8"))
+
+          print(f"Uploaded Level II site: {site}")
+          print(f"Uploaded frame count: {len(frames.get('frames') or [])}")
+          print(f"Uploaded latest validTime: {latest.get('validTime')}")
+          PY
