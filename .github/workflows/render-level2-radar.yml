@@ -96,12 +96,18 @@ jobs:
           python -m pip install -r scripts/radar/requirements.txt
 
       - name: Render latest Level II frames
+        shell: bash
         run: |
+          set +e
           python scripts/radar/render_level2_reflectivity.py \
             --site "${{ matrix.site }}" \
             --fetch-latest \
             --source-count "${{ needs.prepare-matrix.outputs.source_count }}" \
-            --max-sources "${{ needs.prepare-matrix.outputs.source_count }}"
+            --max-sources "${{ needs.prepare-matrix.outputs.source_count }}" \
+            2>&1 | grep -v '^Unknown message: 32$'
+          status=${PIPESTATUS[0]}
+          set -e
+          exit "$status"
 
       - name: Show generated Level II files
         run: |
