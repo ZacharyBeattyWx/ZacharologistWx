@@ -161,6 +161,15 @@ def latest_level2_file(input_root: Path) -> Path:
     return files[-1]
 
 
+def recent_level2_files(input_root: Path, max_count: int) -> list[Path]:
+    if not input_root.exists():
+        raise FileNotFoundError(f"Level II input directory missing: {input_root}")
+    files = sorted(p for p in input_root.iterdir() if p.is_file())
+    if not files:
+        raise FileNotFoundError(f"No Level II files in: {input_root}")
+    return files[-max_count:]
+
+
 def load_bounds_from_frames_json() -> tuple[float, float, float, float]:
     fallback = (-86.6, 32.2, -73.4, 42.2)  # west, south, east, north
     if not FRAMES_JSON.exists():
@@ -346,6 +355,23 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Render experimental Level II projected dBZ GeoTIFF.")
     parser.add_argument("--site", default="KFCX")
     parser.add_argument("--input", type=Path, default=None, help="Optional explicit Level II input file")
+    parser.add_argument(
+        "--input-dir",
+        type=Path,
+        default=LEVEL2_ROOT,
+        help="Directory containing Level II source files (default: radar/source/level2/KFCX).",
+    )
+    parser.add_argument(
+        "--max-sources",
+        type=int,
+        default=MAX_LEVEL2_FRAMES,
+        help=f"Maximum number of recent Level II source files to process (default: {MAX_LEVEL2_FRAMES}).",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Re-render outputs even when projected GeoTIFF already exists.",
+    )
     parser.add_argument("--output-size", type=int, default=OUTPUT_SIZE)
     parser.add_argument("--nodata", type=float, default=NODATA)
     args = parser.parse_args()
@@ -354,46 +380,75 @@ def main() -> int:
     if site != "KFCX":
         raise SystemExit("This experimental renderer currently supports KFCX only.")
 
-    source_path = args.input if args.input else latest_level2_file(LEVEL2_ROOT)
-    with source_path.open("rb") as handle:
-        level2 = Level2File(handle)
-
-    sweep = extract_lowest_reflectivity_sweep(level2)
-    valid_time = (
-        format_utc_iso(level2.dt) if getattr(level2, "dt", None)
-        else infer_valid_time_from_name(source_path) or ""
-    )
-    if not valid_time:
-        valid_time = valid_time_from_projected_filename(
-            Path(f"{source_path.stem}_projected_dbz.tif")
-        ) or "unknown"
-
+    # Input scan selection:
+    # - --input renders one explicit file.
+    # - Otherwise, render recent files from --input-dir (newest N), enabling multi-frame loops.
+    source_paths = [args.input] if args.input else recent_level2_files(args.input_dir, max(1, args.max_sources))
     bounds = load_bounds_from_frames_json()
-    grid = build_projected_dbz_grid(
-        sweep=sweep,
-        bounds=bounds,
-        output_size=args.output_size,
-        nodata=args.nodata,
-    )
+    latest_output_path: Path | None = None
+    latest_valid_time = ""
+    latest_source_name = ""
 
-    if grid.shape != (args.output_size, args.output_size):
-        raise RuntimeError(f"Projected grid shape mismatch: {grid.shape}")
+    for source_path in source_paths:
+        slug_base = source_path.name
+        match = KEY_RE.search(source_path.name)
+        if match:
+            slug_base = f"{match.group('site')}_{match.group('ts')}"
+        output_path = OUTPUT_ROOT / f"{slug_base}_projected_dbz.tif"
 
-    slug_base = source_path.name
-    match = KEY_RE.search(source_path.name)
-    if match:
-        slug_base = f"{match.group('site')}_{match.group('ts')}"
+        with source_path.open("rb") as handle:
+            level2 = Level2File(handle)
 
-    output_path = OUTPUT_ROOT / f"{slug_base}_projected_dbz.tif"
-    write_geotiff(path=output_path, grid=grid, bounds=bounds, nodata=args.nodata)
+        valid_time = (
+            format_utc_iso(level2.dt) if getattr(level2, "dt", None)
+            else infer_valid_time_from_name(source_path) or ""
+        )
+        if not valid_time:
+            valid_time = valid_time_from_projected_filename(output_path) or "unknown"
+
+        latest_output_path = output_path
+        latest_valid_time = valid_time
+        latest_source_name = source_path.name
+
+        if output_path.exists() and not args.force:
+            print(f"skipExistingOutput={output_path}")
+            continue
+
+        sweep = extract_lowest_reflectivity_sweep(level2)
+        grid = build_projected_dbz_grid(
+            sweep=sweep,
+            bounds=bounds,
+            output_size=args.output_size,
+            nodata=args.nodata,
+        )
+
+        if grid.shape != (args.output_size, args.output_size):
+            raise RuntimeError(f"Projected grid shape mismatch: {grid.shape}")
+
+        write_geotiff(path=output_path, grid=grid, bounds=bounds, nodata=args.nodata)
+
+        valid_mask = np.isfinite(grid) & (grid != args.nodata)
+        valid_count = int(valid_mask.sum())
+        nodata_count = int(grid.size - valid_count)
+        finite_vals = grid[valid_mask]
+        min_dbz = float(np.min(finite_vals)) if valid_count else math.nan
+        max_dbz = float(np.max(finite_vals)) if valid_count else math.nan
+
+        print(f"radarSite={site}")
+        print(f"validTime={valid_time}")
+        print(f"sweepElevationDeg={sweep.elevation_deg:.3f}")
+        print(f"sourceShape={sweep.reflectivity.shape[0]}x{sweep.reflectivity.shape[1]}")
+        print(f"outputShape={grid.shape[0]}x{grid.shape[1]}")
+        print(f"finiteMinDbz={min_dbz if np.isfinite(min_dbz) else 'nan'}")
+        print(f"finiteMaxDbz={max_dbz if np.isfinite(max_dbz) else 'nan'}")
+        print(f"validPixels={valid_count}")
+        print(f"nodataPixels={nodata_count}")
+        print(f"outputPath={output_path}")
+
+    if latest_output_path is None:
+        raise RuntimeError("No Level II source files selected for rendering.")
+
     prune_level2_output_frames(OUTPUT_ROOT, MAX_LEVEL2_FRAMES)
-
-    valid_mask = np.isfinite(grid) & (grid != args.nodata)
-    valid_count = int(valid_mask.sum())
-    nodata_count = int(grid.size - valid_count)
-    finite_vals = grid[valid_mask]
-    min_dbz = float(np.min(finite_vals)) if valid_count else math.nan
-    max_dbz = float(np.max(finite_vals)) if valid_count else math.nan
 
     latest_json = OUTPUT_ROOT / "latest.json"
     latest_json.write_text(
@@ -401,17 +456,17 @@ def main() -> int:
             {
                 "site": site,
                 "product": "LEVEL2_REF0",
-                "sourceFile": str(source_path.name),
-                "validTime": valid_time,
+                "sourceFile": str(latest_source_name),
+                "validTime": latest_valid_time,
                 "bounds": {
                     "west": bounds[0],
                     "south": bounds[1],
                     "east": bounds[2],
                     "north": bounds[3],
                 },
-                "path": f"/radar/tilesets/test/KFCX/LEVEL2/REF0/{output_path.name}",
-                "width": int(grid.shape[1]),
-                "height": int(grid.shape[0]),
+                "path": f"/radar/tilesets/test/KFCX/LEVEL2/REF0/{latest_output_path.name}",
+                "width": int(args.output_size),
+                "height": int(args.output_size),
                 "nodata": args.nodata,
             },
             indent=2,
@@ -424,24 +479,13 @@ def main() -> int:
         site=site,
         product="LEVEL2_REF0",
         bounds=bounds,
-        latest_frame_name=output_path.name,
-        latest_valid_time=valid_time,
+        latest_frame_name=latest_output_path.name,
+        latest_valid_time=latest_valid_time,
     )
     LEVEL2_FRAMES_MANIFEST.write_text(
         json.dumps(frames_manifest, indent=2),
         encoding="utf-8",
     )
-
-    print(f"radarSite={site}")
-    print(f"validTime={valid_time}")
-    print(f"sweepElevationDeg={sweep.elevation_deg:.3f}")
-    print(f"sourceShape={sweep.reflectivity.shape[0]}x{sweep.reflectivity.shape[1]}")
-    print(f"outputShape={grid.shape[0]}x{grid.shape[1]}")
-    print(f"finiteMinDbz={min_dbz if np.isfinite(min_dbz) else 'nan'}")
-    print(f"finiteMaxDbz={max_dbz if np.isfinite(max_dbz) else 'nan'}")
-    print(f"validPixels={valid_count}")
-    print(f"nodataPixels={nodata_count}")
-    print(f"outputPath={output_path}")
 
     return 0
 
