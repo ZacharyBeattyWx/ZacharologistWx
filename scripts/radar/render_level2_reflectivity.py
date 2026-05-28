@@ -37,7 +37,7 @@ FRAMES_JSON = REPO_ROOT / "radar" / "frames.json"
 LEVEL2_FRAMES_MANIFEST = OUTPUT_ROOT / "frames.json"
 NODATA = -9999.0
 OUTPUT_SIZE = 4096
-MAX_LEVEL2_FRAMES = 12
+MAX_LEVEL2_FRAMES = 25
 KEY_RE = re.compile(r"(?P<site>K[A-Z0-9]{3})(?P<ts>\d{8}_\d{6})")
 PROJECTED_NAME_RE = re.compile(
     r"^(?P<site>[A-Z0-9]{4})_(?P<date>\d{8})_(?P<time>\d{6})_projected_dbz\.tif$"
