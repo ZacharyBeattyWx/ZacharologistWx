@@ -1,4 +1,4 @@
-ï»¿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -361,6 +361,10 @@
     const FALLBACK_LEVEL2_TIF = "/radar/tilesets/test/KFCX/LEVEL2/REF0/KFCX_20260527_153300_projected_dbz.tif";
     const FRAME_REFRESH_MS = 60000;
     const PLAYBACK_INTERVAL_MS = 900;
+    const MOBILE_LEVEL2_RASTER_SCALE = 0.25;
+    const MOBILE_LEVEL2_RENDER_CACHE_LIMIT = 25;
+    const DESKTOP_LEVEL2_RENDER_CACHE_LIMIT = 6;
+    const MOBILE_UNCACHED_FRAME_MIN_INTERVAL_MS = 1600;
     const DISPLAY_MIN_DBZ = -32;
     const FORCE_DEBUG_RADAR_COLORS = false;
     const ENABLE_WEAK_DESPECKLE = false;
@@ -474,8 +478,13 @@
     let level2Frames = [];
     let currentFrameIndex = 0;
     let isPlaying = false;
+    let playbackWasUserRequested = false;
     let playbackTimer = null;
     let playbackIntervalMs = 900;
+    const renderedFrameCache = new Map();
+    let level2WarmupTimer = null;
+    let level2WarmupToken = 0;
+    let level2WarmupBusy = false;
     let isAlertOverlayVisible = true;
     let alertOverlayOpacity = 0.75;
     let frameRefreshTimer = null;
@@ -649,10 +658,10 @@
       const frame = level2Frames[currentFrameIndex];
       const validText = frame?.validTime ? new Date(frame.validTime).toLocaleString() : "Unknown";
       if (level2Frames.length === 1) {
-        frameReadout.textContent = `Frame 1/1 Â· waiting for more frames Â· ${validText}`;
+        frameReadout.textContent = `Frame 1/1 · waiting for more frames · ${validText}`;
         return;
       }
-      frameReadout.textContent = `Frame ${currentFrameIndex + 1}/${level2Frames.length} Â· ${validText}`;
+      frameReadout.textContent = `Frame ${currentFrameIndex + 1}/${level2Frames.length} · ${validText}`;
       frameSelect.value = String(currentFrameIndex);
     }
     function syncFrameSelect() {
@@ -766,18 +775,22 @@
       return level2Frames[currentFrameIndex] || null;
     }
 
-    async function renderLevel2Dbz(frame = currentFrame()) {
+    async function buildLevel2RenderedSurface(frame = currentFrame(), options = {}) {
       try {
         try {
           RADAR_DBZ_PALETTE_NORMALIZED = normalizeRadarPalette(RADAR_DBZ_PALETTE);
         } catch (error) {
           throw new Error(`Palette normalization failed: ${error?.message || "unknown error"}`);
         }
-        if (!paletteLogPrinted) {
+
+        const shouldLog = options.logDiagnostics !== false;
+
+        if (shouldLog && !paletteLogPrinted) {
           console.log("Normalized Level II palette:", RADAR_DBZ_PALETTE_NORMALIZED);
           paletteLogPrinted = true;
         }
-        if (!colorizerSmokeLogged) {
+
+        if (shouldLog && !colorizerSmokeLogged) {
           console.log("Colorizer smoke test:", {
             minus10: colorForDbz(-10),
             zero: colorForDbz(0),
@@ -788,33 +801,46 @@
         }
 
         const tifPath = frame?.path || FALLBACK_LEVEL2_TIF;
-        if (frame?.bounds) {
-          radarBounds = frame.bounds;
-        }
-        frameReadout.textContent = `Radar: updated ${frame?.validTime || "Unknown"}`;
-        updateFrameInfoRow();
-
-        const response = await fetch(tifPath, { cache: "no-store" });
+        const response = await fetch(tifPath, { cache: "force-cache" });
         if (!response.ok) throw new Error(`GeoTIFF fetch failed: ${response.status} ${response.statusText}`);
+
         const buffer = await response.arrayBuffer();
         const tiff = await GeoTIFF.fromArrayBuffer(buffer);
         const image = await tiff.getImage();
-        const width = image.getWidth();
-        const height = image.getHeight();
+
+        const sourceWidth = image.getWidth();
+        const sourceHeight = image.getHeight();
+        const scale = isMobileLevel2Mode() ? MOBILE_LEVEL2_RASTER_SCALE : 1;
+        const width = Math.max(1, Math.round(sourceWidth * scale));
+        const height = Math.max(1, Math.round(sourceHeight * scale));
+
         const nodataRaw = image.getGDALNoData();
         const nodata = Number.isFinite(Number(nodataRaw)) ? Number(nodataRaw) : NODATA_DEFAULT;
-        const dbz = await image.readRasters({ samples: [0], interleave: true });
+
+        const dbz = await image.readRasters({
+          samples: [0],
+          interleave: true,
+          width,
+          height
+        });
+
         if (!dbz || dbz.length !== width * height) {
           throw new Error(`invalid raster length (${dbz ? dbz.length : "none"}), expected ${width * height}`);
         }
 
-        radarCanvas.width = width;
-        radarCanvas.height = height;
-        const imageData = radarContext.createImageData(width, height);
+        const targetCanvas = options.canvas || document.createElement("canvas");
+        const targetContext = options.context || targetCanvas.getContext("2d", { willReadFrequently: true });
+
+        targetCanvas.width = width;
+        targetCanvas.height = height;
+
+        const imageData = targetContext.createImageData(width, height);
         const data = imageData.data;
         data.fill(0);
+
         const weakMask = new Uint8Array(width * height);
         const validMask = new Uint8Array(width * height);
+
         let belowDisplayMin = 0;
         let negativeVisible = 0;
         let zeroToFive = 0;
@@ -827,62 +853,68 @@
         for (let i = 0, p = 0; i < dbz.length; i += 1, p += 4) {
           const value = dbz[i];
           const isNoData = !Number.isFinite(value) || value === nodata;
-          if (isNoData) {
-            data[p] = 0; data[p + 1] = 0; data[p + 2] = 0; data[p + 3] = 0;
+
+          if (isNoData || value < DISPLAY_MIN_DBZ) {
+            if (!isNoData) belowDisplayMin += 1;
+            data[p] = 0;
+            data[p + 1] = 0;
+            data[p + 2] = 0;
+            data[p + 3] = 0;
             transparent += 1;
             continue;
           }
-          if (value < DISPLAY_MIN_DBZ) {
-            belowDisplayMin += 1;
-            data[p] = 0; data[p + 1] = 0; data[p + 2] = 0; data[p + 3] = 0;
-            transparent += 1;
-            continue;
-          }
+
           validMask[i] = 1;
           if (ENABLE_WEAK_DESPECKLE && value >= 0 && value < 8) weakMask[i] = 1;
+
           if (value < 0) negativeVisible += 1;
           else if (value < 5) zeroToFive += 1;
           else if (value < 15) fiveToFifteen += 1;
           else if (value < 30) fifteenToThirty += 1;
           else thirtyPlus += 1;
+
           const color = colorForDbz(value);
           const baseAlpha = color.a;
           const taperOpacity = opacityMultiplierForDbz(value);
           const finalAlpha = Math.max(0, Math.min(255, Math.round(baseAlpha * taperOpacity)));
+
           data[p] = color.r;
           data[p + 1] = color.g;
           data[p + 2] = color.b;
           data[p + 3] = finalAlpha;
+
           if (finalAlpha > 0) colored += 1;
           else transparent += 1;
         }
 
         if (ENABLE_WEAK_DESPECKLE) {
-        for (let y = 1; y < height - 1; y += 1) {
-          for (let x = 1; x < width - 1; x += 1) {
-            const idx = y * width + x;
-            if (!weakMask[idx]) continue;
-            let neighbors = 0;
-            for (let oy = -1; oy <= 1; oy += 1) {
-              for (let ox = -1; ox <= 1; ox += 1) {
-                if (ox === 0 && oy === 0) continue;
-                const nIdx = (y + oy) * width + (x + ox);
-                if (validMask[nIdx]) neighbors += 1;
+          for (let y = 1; y < height - 1; y += 1) {
+            for (let x = 1; x < width - 1; x += 1) {
+              const idx = y * width + x;
+              if (!weakMask[idx]) continue;
+
+              let neighbors = 0;
+              for (let oy = -1; oy <= 1; oy += 1) {
+                for (let ox = -1; ox <= 1; ox += 1) {
+                  if (ox === 0 && oy === 0) continue;
+                  const nIdx = (y + oy) * width + (x + ox);
+                  if (validMask[nIdx]) neighbors += 1;
+                }
               }
-            }
-            if (neighbors === 0) {
-              const p = idx * 4;
-              if (data[p + 3] > 0) {
-                data[p] = 0;
-                data[p + 1] = 0;
-                data[p + 2] = 0;
-                data[p + 3] = 0;
-                colored = Math.max(0, colored - 1);
-                transparent += 1;
+
+              if (neighbors === 0) {
+                const p = idx * 4;
+                if (data[p + 3] > 0) {
+                  data[p] = 0;
+                  data[p + 1] = 0;
+                  data[p + 2] = 0;
+                  data[p + 3] = 0;
+                  colored = Math.max(0, colored - 1);
+                  transparent += 1;
+                }
               }
             }
           }
-        }
         }
 
         let blackPixelsClearedBySafetyPass = 0;
@@ -895,38 +927,249 @@
           }
         }
 
-        radarContext.putImageData(imageData, 0, 0);
-        const readback = radarContext.getImageData(0, 0, width, height).data;
-        let blackNonTransparentPixelsAfterCleanup = 0;
-        for (let i = 0; i < readback.length; i += 4) {
-          const r = readback[i];
-          const g = readback[i + 1];
-          const b = readback[i + 2];
-          const alphaReadback = readback[i + 3];
-          if (alphaReadback > 0 && r === 0 && g === 0 && b === 0) blackNonTransparentPixelsAfterCleanup += 1;
+        targetContext.putImageData(imageData, 0, 0);
+
+        if (shouldLog) {
+          console.log("Level II dBZ renderer diagnostics:", {
+            paletteSourceFileFound: PALETTE_SOURCE_FILE,
+            displayMinDbz: DISPLAY_MIN_DBZ,
+            sourceWidth,
+            sourceHeight,
+            renderedWidth: width,
+            renderedHeight: height,
+            mobileScale: scale,
+            belowDisplayMin,
+            negativeVisible,
+            zeroToFive,
+            fiveToFifteen,
+            fifteenToThirty,
+            thirtyPlus,
+            colored,
+            transparent,
+            blackPixelsClearedBySafetyPass
+          });
         }
-        if (blackNonTransparentPixelsAfterCleanup > 0) {
-          console.warn("Black radar pixels still remain after cleanup", blackNonTransparentPixelsAfterCleanup);
+
+        return {
+          canvas: targetCanvas,
+          width,
+          height,
+          bounds: frame?.bounds || radarBounds,
+          path: tifPath,
+          validTime: frame?.validTime || ""
+        };
+      } catch (error) {
+        console.error("Level II surface build failed", error);
+        throw error;
+      }
+    }
+
+    async function renderLevel2DbzUncached(frame = currentFrame()) {
+      try {
+        if (frame?.bounds) {
+          radarBounds = frame.bounds;
         }
-        console.log("Level II dBZ renderer diagnostics:", {
-          paletteSourceFileFound: PALETTE_SOURCE_FILE,
-          displayMinDbz: DISPLAY_MIN_DBZ,
-          belowDisplayMin,
-          negativeVisible,
-          zeroToFive,
-          fiveToFifteen,
-          fifteenToThirty,
-          thirtyPlus,
-          colored,
-          transparent,
-          blackNonTransparentPixelsAfterCleanup
+
+        frameReadout.textContent = `Radar: updated ${frame?.validTime || "Unknown"}`;
+        updateFrameInfoRow();
+
+        const surface = await buildLevel2RenderedSurface(frame, {
+          canvas: radarCanvas,
+          context: radarContext,
+          logDiagnostics: true
         });
-        redrawRadarOverlay();
+
+        radarBounds = surface.bounds || radarBounds;
+
+        const validText = frame?.validTime ? new Date(frame.validTime).toLocaleString() : "unknown";
+        if (typeof validTimeRow !== "undefined" && validTimeRow) {
+          validTimeRow.textContent = `Valid time: ${validText}`;
+        }
+        if (typeof sourceRow !== "undefined" && sourceRow) {
+          sourceRow.textContent = `Radar source: ${frame?.path || surface.path}`;
+        }
         statusText.textContent = "Radar frame loaded: KFCX LEVEL2_REF0";
+
+        updateFrameInfoRow();
+        syncFrameSelect();
+        redrawRadarOverlay();
       } catch (error) {
         console.error("Level II render failed", error);
         throw error;
       }
+    }
+
+    function isMobileLevel2Mode() {
+      return window.matchMedia("(max-width: 760px)").matches;
+    }
+
+    function level2RenderCacheLimit() {
+      return isMobileLevel2Mode() ? MOBILE_LEVEL2_RENDER_CACHE_LIMIT : DESKTOP_LEVEL2_RENDER_CACHE_LIMIT;
+    }
+
+    function level2FrameCacheKey(frame) {
+      return frame?.path || "";
+    }
+
+    function pruneRenderedFrameCache() {
+      const limit = level2RenderCacheLimit();
+      const validPaths = new Set(level2Frames.map((frame) => frame.path).filter(Boolean));
+      const currentKey = level2FrameCacheKey(currentFrame());
+
+      for (const key of Array.from(renderedFrameCache.keys())) {
+        if (!validPaths.has(key)) renderedFrameCache.delete(key);
+      }
+
+      for (const key of Array.from(renderedFrameCache.keys())) {
+        if (renderedFrameCache.size <= limit) break;
+        if (key !== currentKey) renderedFrameCache.delete(key);
+      }
+    }
+
+    function applyRenderedFrameCache(frame, cachedFrame) {
+      if (!frame || !cachedFrame?.canvas) return false;
+
+      radarCanvas.width = cachedFrame.width;
+      radarCanvas.height = cachedFrame.height;
+      radarContext.clearRect(0, 0, radarCanvas.width, radarCanvas.height);
+      radarContext.drawImage(cachedFrame.canvas, 0, 0);
+
+      radarBounds = cachedFrame.bounds || frame.bounds || radarBounds;
+
+      const validText = frame.validTime ? new Date(frame.validTime).toLocaleString() : "unknown";
+      if (typeof validTimeRow !== "undefined" && validTimeRow) {
+        validTimeRow.textContent = `Valid time: ${validText}`;
+      }
+      if (typeof sourceRow !== "undefined" && sourceRow) {
+        sourceRow.textContent = `Radar source: ${frame.path}`;
+      }
+      setStatusText("cached frame loaded");
+      updateFrameInfoRow();
+      syncFrameSelect();
+      redrawRadarOverlay();
+
+      return true;
+    }
+
+    async function renderLevel2Dbz(frame = currentFrame()) {
+      const cacheKey = level2FrameCacheKey(frame);
+
+      if (cacheKey && renderedFrameCache.has(cacheKey)) {
+        const cachedFrame = renderedFrameCache.get(cacheKey);
+        renderedFrameCache.delete(cacheKey);
+        renderedFrameCache.set(cacheKey, cachedFrame);
+        applyRenderedFrameCache(frame, cachedFrame);
+        return "cache";
+      }
+
+      await renderLevel2DbzUncached(frame);
+
+      if (cacheKey && radarCanvas.width > 0 && radarCanvas.height > 0) {
+        const cachedCanvas = document.createElement("canvas");
+        cachedCanvas.width = radarCanvas.width;
+        cachedCanvas.height = radarCanvas.height;
+
+        const cachedContext = cachedCanvas.getContext("2d");
+        cachedContext.drawImage(radarCanvas, 0, 0);
+
+        renderedFrameCache.set(cacheKey, {
+          canvas: cachedCanvas,
+          width: radarCanvas.width,
+          height: radarCanvas.height,
+          bounds: frame.bounds || radarBounds
+        });
+
+        pruneRenderedFrameCache();
+      }
+
+      updateFrameInfoRow();
+      syncFrameSelect();
+      return "rendered";
+    }
+
+
+    function storeRenderedFrameSurface(frame, surface) {
+      const cacheKey = level2FrameCacheKey(frame);
+      if (!cacheKey || !surface?.canvas) return;
+
+      renderedFrameCache.set(cacheKey, {
+        canvas: surface.canvas,
+        width: surface.width,
+        height: surface.height,
+        bounds: surface.bounds || frame.bounds || radarBounds
+      });
+
+      pruneRenderedFrameCache();
+    }
+
+    function buildLevel2WarmOrder(startIndex = currentFrameIndex) {
+      const order = [];
+      if (!level2Frames.length) return order;
+
+      for (let offset = 1; offset < level2Frames.length; offset += 1) {
+        order.push((startIndex + offset) % level2Frames.length);
+      }
+
+      return order;
+    }
+
+    function scheduleLevel2FrameWarmup(options = {}) {
+      if (!level2Frames.length) return;
+
+      if (level2WarmupTimer !== null) {
+        window.clearTimeout(level2WarmupTimer);
+        level2WarmupTimer = null;
+      }
+
+      const startIndex = Number.isFinite(options.aroundIndex) ? options.aroundIndex : currentFrameIndex;
+      const delayMs = Number.isFinite(options.delayMs) ? options.delayMs : 700;
+      const token = ++level2WarmupToken;
+      const order = buildLevel2WarmOrder(startIndex);
+      let cursor = 0;
+
+      const tick = async () => {
+        if (token !== level2WarmupToken) return;
+
+        while (cursor < order.length) {
+          const frame = level2Frames[order[cursor]];
+          const key = level2FrameCacheKey(frame);
+
+          if (key && !renderedFrameCache.has(key)) break;
+          cursor += 1;
+        }
+
+        if (cursor >= order.length) return;
+
+        if (level2WarmupBusy) {
+          level2WarmupTimer = window.setTimeout(tick, 450);
+          return;
+        }
+
+        const frameIndex = order[cursor];
+        const frame = level2Frames[frameIndex];
+        cursor += 1;
+
+        try {
+          level2WarmupBusy = true;
+          const surface = await buildLevel2RenderedSurface(frame, { logDiagnostics: false });
+
+          if (token === level2WarmupToken) {
+            storeRenderedFrameSurface(frame, surface);
+            setStatusText(`warming frame cache ${renderedFrameCache.size}/${level2Frames.length}`);
+          }
+        } catch (error) {
+          console.warn("Level II warm cache failed", error);
+        } finally {
+          level2WarmupBusy = false;
+        }
+
+        if (token !== level2WarmupToken) return;
+
+        const nextDelay = isMobileLevel2Mode() ? 850 : 220;
+        level2WarmupTimer = window.setTimeout(tick, nextDelay);
+      };
+
+      level2WarmupTimer = window.setTimeout(tick, delayMs);
     }
 
     async function refreshLevel2Frames() {
@@ -973,8 +1216,16 @@
 
     async function renderCurrentFrame() {
       const frame = currentFrame();
-      if (!frame) return;
-      await renderLevel2Dbz(frame);
+      if (!frame) return null;
+
+      const renderMode = await renderLevel2Dbz(frame);
+
+      scheduleLevel2FrameWarmup({
+        aroundIndex: currentFrameIndex,
+        delayMs: isPlaying ? 1200 : 650
+      });
+
+      return renderMode;
     }
 
     async function stepFrame(direction) {
@@ -998,8 +1249,11 @@
       playbackTimer = window.setTimeout(playbackTick, playbackIntervalMs);
     }
 
-    function startPlayback() {
+    function startPlayback(options = {}) {
+      const userRequested = options && options.userRequested === true;
+      if (!userRequested && !playbackWasUserRequested) return;
       if (isPlaying || level2Frames.length < 2) return;
+      playbackWasUserRequested = true;
       isPlaying = true;
       updatePlaybackButton();
       clearPlaybackTimer();
@@ -1010,7 +1264,7 @@
       if (isPlaying) {
         stopPlayback();
       } else {
-        startPlayback();
+        startPlayback({ userRequested: true });
       }
     }
 
@@ -1023,9 +1277,7 @@
         if (latestChanged && currentFrameIndex === level2Frames.length - 1) {
           await renderCurrentFrame();
         }
-        if (!isPlaying && level2Frames.length >= 2) {
-          startPlayback();
-        }
+        // Manual playback only: do not auto-start after refresh.
       }, FRAME_REFRESH_MS);
     }
 
@@ -1321,7 +1573,7 @@
           if (!detailCard) return;
           const open = detailCard.classList.toggle("is-open");
           detailsButton.setAttribute("aria-expanded", String(open));
-          detailsButton.textContent = open ? "Ã—" : ">";
+          detailsButton.textContent = open ? "×" : ">";
         });
       };
       map.on("mouseenter", ALERT_FILL_LAYER_ID, () => {
@@ -1509,7 +1761,7 @@
       drawAlertOverlay();
       const stormCount = activeAlertFeatures.filter((feature) => feature.properties?._visibleStormPolygon === true).length;
       const fallbackCount = activeAlertFeatures.filter((feature) => feature.properties?._fallbackGeometry === true).length;
-      alertsStatusRow.textContent = `Alerts: ${fetchedFeatures.length} active Â· ${stormCount} storm polygons Â· ${fallbackCount} zone fallback Â· ${activeAlertsWithoutGeometry.length} listed only`;
+      alertsStatusRow.textContent = `Alerts: ${fetchedFeatures.length} active · ${stormCount} storm polygons · ${fallbackCount} zone fallback · ${activeAlertsWithoutGeometry.length} listed only`;
     }
 
     function initializeMap() {
@@ -1561,9 +1813,7 @@
           currentFrameIndex = Math.max(0, level2Frames.length - 1);
           await Promise.all([renderCurrentFrame(), loadAlerts()]);
           startFrameRefresh();
-          if (level2Frames.length >= 2) {
-            startPlayback();
-          }
+          // Manual playback only: show latest frame and wait for Play.
         } catch (error) {
           const message = error?.message || "error";
           statusText.textContent = `Renderer status: failed: ${message}`;
