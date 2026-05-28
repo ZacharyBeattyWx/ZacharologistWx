@@ -623,8 +623,11 @@
     }
 
     function level2DataUrl(path) {
+      const rawPath = String(path || "");
+      if (/^https?:\/\//i.test(rawPath)) return rawPath;
+      const normalizedPath = rawPath.startsWith("/") ? rawPath : `/${rawPath}`;
       const base = level2DataBaseUrl().replace(/\/$/, "");
-      return `${base}${path}`;
+      return `${base}${normalizedPath}`;
     }
 
     function level2MetaUrl(site = selectedLevel2Site()) {
@@ -868,7 +871,7 @@
         Number.isFinite(bounds.north);
       const validTimeDate = new Date(meta.validTime || "");
       return {
-        path: meta.path,
+        path: level2DataUrl(meta.path),
         validTime: meta.validTime || "",
         validTimeDate,
         bounds: hasBounds ? [[bounds.south, bounds.west], [bounds.north, bounds.east]] : null
