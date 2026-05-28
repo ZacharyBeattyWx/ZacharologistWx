@@ -7,8 +7,11 @@ import argparse
 import json
 import math
 import re
+import urllib.parse
+import urllib.request
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import numpy as np
@@ -42,6 +45,9 @@ KEY_RE = re.compile(r"(?P<site>K[A-Z0-9]{3})(?P<ts>\d{8}_\d{6})")
 PROJECTED_NAME_RE = re.compile(
     r"^(?P<site>[A-Z0-9]{4})_(?P<date>\d{8})_(?P<time>\d{6})_projected_dbz\.tif$"
 )
+RAW_VOLUME_NAME_RE = re.compile(r"^(?P<site>K[A-Z0-9]{3})(?P<ts>\d{8}_\d{6})_V\d{2}(?:\.gz)?$")
+S3_XML_NS = {"s3": "http://s3.amazonaws.com/doc/2006-03-01/"}
+DEFAULT_SOURCE_BUCKET = "unidata-nexrad-level2"
 
 
 @dataclass
@@ -108,6 +114,119 @@ def prune_level2_output_frames(output_root: Path, keep: int) -> None:
     )
     for stale_file in frame_files[keep:]:
         stale_file.unlink(missing_ok=True)
+
+
+def prune_level2_source_files(source_root: Path, keep: int) -> None:
+    source_files = sorted(
+        [path for path in source_root.iterdir() if path.is_file() and RAW_VOLUME_NAME_RE.match(path.name)],
+        key=lambda file_path: file_path.stat().st_mtime,
+        reverse=True,
+    )
+    for stale_file in source_files[keep:]:
+        stale_file.unlink(missing_ok=True)
+
+
+def parse_source_date(value: str) -> datetime:
+    value = value.strip()
+    for fmt in ("%Y/%m/%d", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(value, fmt).replace(tzinfo=UTC)
+        except ValueError:
+            continue
+    raise ValueError(f"Invalid --source-date '{value}'. Expected YYYY/MM/DD or YYYY-MM-DD.")
+
+
+def list_s3_prefix_keys(bucket: str, prefix: str) -> list[str]:
+    encoded_prefix = urllib.parse.quote(prefix, safe="/")
+    continuation_token = ""
+    keys: list[str] = []
+    while True:
+        token_part = f"&continuation-token={urllib.parse.quote(continuation_token)}" if continuation_token else ""
+        url = (
+            f"https://{bucket}.s3.amazonaws.com/"
+            f"?list-type=2&prefix={encoded_prefix}{token_part}"
+        )
+        with urllib.request.urlopen(url, timeout=60) as response:
+            xml_payload = response.read()
+        root = ET.fromstring(xml_payload)
+        for contents in root.findall("s3:Contents", S3_XML_NS):
+            key_element = contents.find("s3:Key", S3_XML_NS)
+            if key_element is not None and key_element.text:
+                keys.append(key_element.text)
+        next_token_element = root.find("s3:NextContinuationToken", S3_XML_NS)
+        continuation_token = next_token_element.text if next_token_element is not None and next_token_element.text else ""
+        if not continuation_token:
+            break
+    return keys
+
+
+def key_sort_ts(name: str) -> str:
+    match = RAW_VOLUME_NAME_RE.match(name)
+    return match.group("ts") if match else ""
+
+
+def fetch_latest_source_scans(
+    source_dir: Path,
+    site: str,
+    bucket: str,
+    source_count: int,
+    source_date: str | None,
+    force: bool,
+) -> None:
+    source_dir.mkdir(parents=True, exist_ok=True)
+    anchor_day = parse_source_date(source_date) if source_date else datetime.now(UTC)
+
+    print(f"fetchBucket={bucket}")
+    print(f"fetchSite={site}")
+    print(f"fetchTargetCount={source_count}")
+    if source_date:
+        print(f"fetchAnchorDate={anchor_day.strftime('%Y-%m-%d')}")
+
+    candidate_keys: list[str] = []
+    scanned_days = 0
+    while len(candidate_keys) < source_count and scanned_days < 7:
+        day = anchor_day - timedelta(days=scanned_days)
+        prefix = f"{day:%Y/%m/%d}/{site}/"
+        day_keys = list_s3_prefix_keys(bucket=bucket, prefix=prefix)
+        valid_day_keys = []
+        for key in day_keys:
+            filename = Path(key).name
+            if filename.endswith(".md5") or "_MDM" in filename:
+                continue
+            if RAW_VOLUME_NAME_RE.match(filename):
+                valid_day_keys.append(key)
+        if valid_day_keys:
+            valid_day_keys.sort(key=lambda k: key_sort_ts(Path(k).name))
+            candidate_keys.extend(valid_day_keys)
+        scanned_days += 1
+
+    if not candidate_keys:
+        print("fetchFound=0")
+        return
+
+    # Keep only newest N across all scanned days.
+    candidate_keys.sort(key=lambda k: key_sort_ts(Path(k).name))
+    selected_keys = candidate_keys[-source_count:]
+    print(f"fetchFound={len(selected_keys)}")
+
+    downloaded = 0
+    skipped = 0
+    for key in selected_keys:
+        filename = Path(key).name
+        output_path = source_dir / filename
+        if output_path.exists() and not force:
+            skipped += 1
+            print(f"sourceSkipExisting={output_path.name}")
+            continue
+        file_url = f"https://{bucket}.s3.amazonaws.com/{urllib.parse.quote(key)}"
+        with urllib.request.urlopen(file_url, timeout=120) as response:
+            output_path.write_bytes(response.read())
+        downloaded += 1
+        print(f"sourceDownloaded={output_path.name}")
+
+    prune_level2_source_files(source_dir, keep=source_count)
+    print(f"sourceDownloadedCount={downloaded}")
+    print(f"sourceSkippedCount={skipped}")
 
 
 def build_level2_frames_manifest(
@@ -372,6 +491,27 @@ def main() -> int:
         action="store_true",
         help="Re-render outputs even when projected GeoTIFF already exists.",
     )
+    parser.add_argument(
+        "--fetch-latest",
+        action="store_true",
+        help="Fetch latest raw Level II source scans from the public NEXRAD archive before rendering.",
+    )
+    parser.add_argument(
+        "--source-count",
+        type=int,
+        default=MAX_LEVEL2_FRAMES,
+        help=f"How many latest raw Level II source scans to keep/fetch (default: {MAX_LEVEL2_FRAMES}).",
+    )
+    parser.add_argument(
+        "--source-bucket",
+        default=DEFAULT_SOURCE_BUCKET,
+        help=f"Public S3 bucket name for Level II source scans (default: {DEFAULT_SOURCE_BUCKET}).",
+    )
+    parser.add_argument(
+        "--source-date",
+        default=None,
+        help="Optional anchor UTC date for fetch listing (YYYY/MM/DD or YYYY-MM-DD).",
+    )
     parser.add_argument("--output-size", type=int, default=OUTPUT_SIZE)
     parser.add_argument("--nodata", type=float, default=NODATA)
     args = parser.parse_args()
@@ -379,6 +519,16 @@ def main() -> int:
     site = args.site.strip().upper()
     if site != "KFCX":
         raise SystemExit("This experimental renderer currently supports KFCX only.")
+
+    if args.fetch_latest:
+        fetch_latest_source_scans(
+            source_dir=args.input_dir,
+            site=site,
+            bucket=args.source_bucket.strip(),
+            source_count=max(1, args.source_count),
+            source_date=args.source_date,
+            force=args.force,
+        )
 
     # Input scan selection:
     # - --input renders one explicit file.
@@ -486,6 +636,7 @@ def main() -> int:
         json.dumps(frames_manifest, indent=2),
         encoding="utf-8",
     )
+    print(f"framesCount={len(frames_manifest.get('frames', []))}")
 
     return 0
 
