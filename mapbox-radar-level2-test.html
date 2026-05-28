@@ -15,20 +15,62 @@
     #alertOverlayCanvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 6; }
     #radarCanvas { display: none; }
     .panel {
-      position: fixed; top: 16px; right: 16px; z-index: 20; width: min(340px, calc(100vw - 32px));
-      max-width: min(420px, calc(100vw - 24px));
-      padding: 12px; border-radius: 12px; border: 1px solid rgba(148, 163, 184, 0.36);
-      background: rgba(8, 16, 32, 0.9); box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
-      box-sizing: border-box; overflow: hidden;
-      backdrop-filter: blur(8px); display: grid; gap: 10px;
+      position: fixed;
+      z-index: 20;
+      background: rgba(5, 10, 22, 0.88);
+      border: 1px solid rgba(148, 163, 184, 0.34);
+      border-radius: 12px;
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.34);
+      backdrop-filter: blur(10px);
     }
-    .title { margin: 0; font-size: 0.96rem; font-weight: 700; }
-    .meta { display: grid; gap: 3px; font-size: 0.78rem; color: #cbd5e1; line-height: 1.3; }
-    .meta, #sourceRow, #statusRow, #frameInfoRow {
-      min-width: 0;
-      max-width: 100%;
-      overflow-wrap: anywhere;
-      word-break: break-word;
+    .right-ui-rail {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 21;
+      width: clamp(340px, 26vw, 430px);
+      max-height: calc(100vh - 32px);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      pointer-events: none;
+    }
+    .right-ui-rail > .panel {
+      position: relative;
+      width: 100%;
+      pointer-events: auto;
+    }
+    .control-card {
+      max-height: min(52vh, 440px);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 10px;
+      overflow-y: auto;
+    }
+    .card-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+    }
+    .card-title { margin: 0; color: #fff; font-size: 0.92rem; font-weight: 700; line-height: 1.2; }
+    .status { color: #cbd5e1; font-size: 0.78rem; line-height: 1.35; min-height: 1.35em; overflow-wrap: anywhere; }
+    .readout { color: #e2e8f0; font-size: 0.76rem; line-height: 1.35; overflow-wrap: anywhere; }
+    .alert-readout { color: #bfdbfe; }
+    .toolbar-field { min-width: 0; }
+    .primary-controls-row, .select-row { display: grid; grid-template-columns: minmax(120px, 1fr) auto; gap: 8px; align-items: end; }
+    .select-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .speed-toolbar, .opacity-toolbar, .alert-opacity-toolbar {
+      display: grid; gap: 6px; align-items: center; min-width: 0;
+    }
+    .speed-toolbar, .opacity-toolbar { grid-template-columns: auto minmax(90px, 1fr) auto; }
+    .alert-opacity-toolbar { grid-template-columns: auto auto minmax(80px, 1fr) auto; }
+    .speed-toolbar span, .opacity-toolbar span, .alert-opacity-toolbar span {
+      color: #93c5fd; font-size: 0.72rem; font-weight: 800; white-space: nowrap;
+    }
+    .speed-toolbar output, .opacity-toolbar output, .alert-opacity-toolbar output {
+      color: #fff; font-size: 0.78rem; text-align: right; font-variant-numeric: tabular-nums;
     }
     label { display: grid; gap: 5px; font-size: 0.76rem; color: #93c5fd; font-weight: 700; }
     .row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
@@ -40,17 +82,8 @@
       color: #fee2e2; font-size: 0.78rem; line-height: 1.3;
     }
     .mapboxgl-popup { z-index: 12; }
-    .playback-controls {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 8px;
-      margin-top: 10px;
-    }
-    .playback-controls button {
-      width: 100%;
-      min-width: 0;
-      min-height: 32px;
-    }
+    .playback-controls { display: inline-flex; gap: 6px; align-items: center; }
+    .playback-controls button { min-width: 56px; padding: 7px 8px; }
     .level2-alert-popup .mapboxgl-popup-content {
       width: 340px;
       max-width: calc(100vw - 28px);
@@ -60,6 +93,7 @@
       border-radius: 10px;
       color: #f8fafc;
       box-shadow: none;
+      overflow: visible;
     }
     .level2-alert-popup .mapboxgl-popup-tip { display: none; }
     .level2-alert-popup .mapboxgl-popup-close-button {
@@ -78,9 +112,11 @@
     .level2-alert-popup .mapboxgl-popup-close-button:hover { background: rgba(0, 0, 0, 0.34); color: #ffffff; }
     .level2-alert-popup-wrap {
       position: relative;
-      width: min(340px, calc(100vw - 24px));
+      width: 360px;
+      max-width: calc(100vw - 32px);
       min-width: 0;
       overflow-wrap: anywhere;
+      overflow: visible;
     }
     .level2-alert-popup .omega-alert-popup {
       position: relative;
@@ -92,7 +128,7 @@
       border-radius: 8px;
       box-shadow: 0 10px 22px rgba(0, 0, 0, 0.42);
       pointer-events: auto;
-      z-index: 2;
+      z-index: 3;
       transform: none;
     }
     .level2-alert-popup .omega-alert-stack { display: grid; background: #303236; }
@@ -173,23 +209,37 @@
       cursor: pointer;
     }
     .level2-alert-popup .omega-alert-icon-btn:hover { border-color: var(--alert-color, #7c4dff); background: #1b1d21; }
-    .level2-alert-popup .level2-popup-details {
+    .level2-alert-popup .level2-alert-detail-panel {
       position: absolute;
       bottom: calc(100% + 10px);
       left: 0;
-      width: min(520px, calc(100vw - 36px));
-      max-height: min(620px, 72vh);
-      overflow: auto;
-      z-index: 3;
+      width: min(520px, calc(100vw - 40px));
+      max-height: min(420px, 48vh);
+      overflow-y: auto;
+      overflow-x: hidden;
+      z-index: 4;
       display: none;
       border: 1px solid rgba(148, 163, 184, 0.16);
       border-radius: 12px;
       background: rgba(3, 7, 18, 0.96);
       box-shadow: 0 18px 42px rgba(0, 0, 0, 0.42);
       padding: 12px;
+      overscroll-behavior: contain;
     }
-    .level2-alert-popup .level2-popup-details.is-open { display: block; }
+    .level2-alert-popup .level2-alert-detail-panel.is-open { display: block; }
+    .level2-alert-popup .level2-alert-detail-panel::-webkit-scrollbar { width: 10px; }
+    .level2-alert-popup .level2-alert-detail-panel::-webkit-scrollbar-track {
+      background: rgba(2, 6, 23, 0.62);
+      border-radius: 999px;
+    }
+    .level2-alert-popup .level2-alert-detail-panel::-webkit-scrollbar-thumb {
+      background: rgba(100, 116, 139, 0.72);
+      border: 2px solid rgba(2, 6, 23, 0.62);
+      border-radius: 999px;
+    }
+    .level2-alert-popup .level2-alert-detail-panel::-webkit-scrollbar-thumb:hover { background: rgba(129, 140, 155, 0.82); }
     .level2-alert-popup .alert-detail-card { display: grid; gap: 12px; }
+    .level2-alert-popup .alert-detail-hero { display: grid; gap: 8px; }
     .level2-alert-popup .alert-detail-headline {
       padding: 10px 12px;
       border: 1px solid rgba(148, 163, 184, 0.18);
@@ -242,7 +292,10 @@
     }
     @media (max-width: 720px) {
       .level2-alert-popup-wrap { width: min(340px, calc(100vw - 24px)); }
-      .level2-alert-popup .level2-popup-details { width: min(340px, calc(100vw - 24px)); max-height: 55vh; }
+      .level2-alert-popup .level2-alert-detail-panel {
+        width: min(340px, calc(100vw - 24px));
+        max-height: min(360px, 44vh);
+      }
       .level2-alert-popup .alert-detail-metrics { grid-template-columns: 1fr; }
     }
   </style>
@@ -253,31 +306,50 @@
   <canvas id="alertOverlayCanvas"></canvas>
   <canvas id="radarCanvas"></canvas>
 
-  <div class="panel">
-    <p class="title">ZacharologistWx Level II Radar Test</p>
-    <div class="meta">
-      <div>Site: KFCX</div>
-      <div>Product: Level II Reflectivity</div>
-      <div>Renderer: projected dBZ GeoTIFF + external canvas</div>
-      <div id="validTimeRow">Valid time: loading...</div>
-      <div id="sourceRow">Radar source: loading...</div>
-      <div id="alertsStatusRow">Alerts: loading...</div>
-      <div id="statusRow">Renderer status: loading...</div>
-    </div>
-    <div id="errorPanel" class="error-panel"></div>
-    <label for="opacitySlider">
-      Opacity
-      <div class="row">
-        <input id="opacitySlider" type="range" min="0" max="1" step="0.01" value="1">
+  <div class="right-ui-rail">
+    <section class="panel control-card" aria-label="Radar controls">
+      <div class="card-header">
+        <h1 class="card-title">Mapbox Radar + Alerts</h1>
+      </div>
+      <div class="speed-toolbar">
+        <span>Playback speed</span>
+        <input id="playbackSpeedSlider" type="range" min="0.5" max="6" step="0.25" value="1" aria-label="Playback speed">
+        <output id="playbackSpeedValue">1x</output>
+      </div>
+      <div class="primary-controls-row">
+        <label class="toolbar-field">Site
+          <select id="siteSelect"><option value="KFCX">KFCX</option></select>
+        </label>
+        <div class="playback-controls" aria-label="Radar playback controls">
+          <button id="previousFrameButton" type="button">Prev</button>
+          <button id="playPauseButton" type="button" aria-pressed="false">Play</button>
+          <button id="nextFrameButton" type="button">Next</button>
+        </div>
+      </div>
+      <div class="select-row">
+        <label class="toolbar-field">Product
+          <select id="productSelect"><option value="LEVEL2_REF0">LEVEL2_REF0</option></select>
+        </label>
+        <label class="toolbar-field">Frame
+          <select id="frameSelect"></select>
+        </label>
+      </div>
+      <div class="opacity-toolbar">
+        <span>Radar opacity</span>
+        <input id="opacityRange" type="range" min="0" max="1" step="0.01" value="1">
         <output id="opacityValue">100%</output>
       </div>
-    </label>
-    <div class="playback-controls">
-      <button id="previousFrameButton" type="button">Prev</button>
-      <button id="playPauseButton" type="button" aria-pressed="false">Play</button>
-      <button id="nextFrameButton" type="button">Next</button>
-    </div>
-    <div id="frameInfoRow" class="meta">Frame: loading...</div>
+      <div class="alert-opacity-toolbar">
+        <span>Alerts</span>
+        <button id="toggleAlertOverlayButton" type="button" aria-pressed="true">Alerts On</button>
+        <input id="alertOpacityRange" type="range" min="0" max="1" step="0.05" value="0.75">
+        <output id="alertOpacityValue">75%</output>
+      </div>
+      <div class="status" id="statusText">Loading map...</div>
+      <div class="readout" id="frameReadout">Frame time unavailable</div>
+      <div class="readout alert-readout" id="alertsStatusRow">Alerts: loading...</div>
+      <div id="errorPanel" class="error-panel"></div>
+    </section>
   </div>
 
   <script>
@@ -376,17 +448,23 @@
     const radarCanvas = document.getElementById("radarCanvas");
     const radarContext = radarCanvas.getContext("2d", { willReadFrequently: true });
 
-    const opacitySlider = document.getElementById("opacitySlider");
+    const opacitySlider = document.getElementById("opacityRange");
     const opacityValue = document.getElementById("opacityValue");
-    const validTimeRow = document.getElementById("validTimeRow");
-    const sourceRow = document.getElementById("sourceRow");
+    const playbackSpeedSlider = document.getElementById("playbackSpeedSlider");
+    const playbackSpeedValue = document.getElementById("playbackSpeedValue");
+    const siteSelect = document.getElementById("siteSelect");
+    const productSelect = document.getElementById("productSelect");
+    const frameSelect = document.getElementById("frameSelect");
+    const toggleAlertOverlayButton = document.getElementById("toggleAlertOverlayButton");
+    const alertOpacityRange = document.getElementById("alertOpacityRange");
+    const alertOpacityValue = document.getElementById("alertOpacityValue");
+    const statusText = document.getElementById("statusText");
+    const frameReadout = document.getElementById("frameReadout");
     const alertsStatusRow = document.getElementById("alertsStatusRow");
-    const statusRow = document.getElementById("statusRow");
     const errorPanel = document.getElementById("errorPanel");
     const previousFrameButton = document.getElementById("previousFrameButton");
     const playPauseButton = document.getElementById("playPauseButton");
     const nextFrameButton = document.getElementById("nextFrameButton");
-    const frameInfoRow = document.getElementById("frameInfoRow");
 
     let map;
     let popup;
@@ -397,6 +475,9 @@
     let currentFrameIndex = 0;
     let isPlaying = false;
     let playbackTimer = null;
+    let playbackIntervalMs = 900;
+    let isAlertOverlayVisible = true;
+    let alertOverlayOpacity = 0.75;
     let frameRefreshTimer = null;
     let paletteLogPrinted = false;
     let colorizerSmokeLogged = false;
@@ -496,6 +577,32 @@
       opacityValue.textContent = `${Math.round(value * 100)}%`;
       redrawRadarOverlay();
     }
+    function updatePlaybackSpeedDisplay() {
+      const speed = Math.max(0.5, Math.min(6, Number(playbackSpeedSlider?.value) || 1));
+      if (playbackSpeedSlider) playbackSpeedSlider.value = String(speed);
+      if (playbackSpeedValue) playbackSpeedValue.textContent = `${speed.toFixed(speed % 1 === 0 ? 0 : 2)}x`;
+      playbackIntervalMs = Math.max(80, Math.round(900 / speed));
+    }
+    function updateAlertOverlayControls() {
+      if (toggleAlertOverlayButton) {
+        toggleAlertOverlayButton.textContent = isAlertOverlayVisible ? "Alerts On" : "Alerts Off";
+        toggleAlertOverlayButton.setAttribute("aria-pressed", String(isAlertOverlayVisible));
+      }
+      if (alertOpacityValue) {
+        alertOpacityValue.textContent = `${Math.round(alertOverlayOpacity * 100)}%`;
+      }
+    }
+    function updateAlertOverlayVisibility() {
+      alertOverlayOpacity = Math.min(1, Math.max(0, Number(alertOpacityRange?.value ?? alertOverlayOpacity)));
+      if (alertOpacityRange) alertOpacityRange.value = alertOverlayOpacity.toFixed(2);
+      updateAlertOverlayControls();
+      drawAlertOverlay();
+    }
+    function toggleAlertOverlayVisibility() {
+      isAlertOverlayVisible = !isAlertOverlayVisible;
+      updateAlertOverlayControls();
+      drawAlertOverlay();
+    }
 
     function normalizeLevel2Frame(meta) {
       if (!meta?.path) return null;
@@ -536,16 +643,29 @@
 
     function updateFrameInfoRow() {
       if (!level2Frames.length) {
-        frameInfoRow.textContent = "Frame: none";
+        frameReadout.textContent = "Frame: none";
         return;
       }
       const frame = level2Frames[currentFrameIndex];
       const validText = frame?.validTime ? new Date(frame.validTime).toLocaleString() : "Unknown";
       if (level2Frames.length === 1) {
-        frameInfoRow.textContent = `Frame 1/1 · waiting for more frames · ${validText}`;
+        frameReadout.textContent = `Frame 1/1 · waiting for more frames · ${validText}`;
         return;
       }
-      frameInfoRow.textContent = `Frame ${currentFrameIndex + 1}/${level2Frames.length} · ${validText}`;
+      frameReadout.textContent = `Frame ${currentFrameIndex + 1}/${level2Frames.length} · ${validText}`;
+      frameSelect.value = String(currentFrameIndex);
+    }
+    function syncFrameSelect() {
+      if (!frameSelect) return;
+      const options = level2Frames.map((frame, index) => {
+        const option = document.createElement("option");
+        option.value = String(index);
+        const t = frame?.validTime ? new Date(frame.validTime).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : `#${index + 1}`;
+        option.textContent = `${index + 1}. ${t}`;
+        return option;
+      });
+      frameSelect.replaceChildren(...options);
+      frameSelect.value = String(currentFrameIndex);
     }
 
     function clearPlaybackTimer() {
@@ -671,10 +791,8 @@
         if (frame?.bounds) {
           radarBounds = frame.bounds;
         }
-        validTimeRow.textContent = `Valid time: ${frame?.validTime || "Unknown"}`;
+        frameReadout.textContent = `Radar: updated ${frame?.validTime || "Unknown"}`;
         updateFrameInfoRow();
-        sourceRow.textContent = "Radar source: latest Level II GeoTIFF";
-        sourceRow.title = tifPath;
 
         const response = await fetch(tifPath, { cache: "no-store" });
         if (!response.ok) throw new Error(`GeoTIFF fetch failed: ${response.status} ${response.statusText}`);
@@ -804,7 +922,7 @@
           blackNonTransparentPixelsAfterCleanup
         });
         redrawRadarOverlay();
-        statusRow.textContent = "Renderer status: success";
+        statusText.textContent = "Radar frame loaded: KFCX LEVEL2_REF0";
       } catch (error) {
         console.error("Level II render failed", error);
         throw error;
@@ -848,6 +966,7 @@
       } else {
         currentFrameIndex = Math.max(0, Math.min(currentFrameIndex, level2Frames.length - 1));
       }
+      syncFrameSelect();
       updateFrameInfoRow();
       return previousLatestPath !== (level2Frames[level2Frames.length - 1]?.path || "");
     }
@@ -876,7 +995,7 @@
         await stepFrame(1);
       }
       if (!isPlaying) return;
-      playbackTimer = window.setTimeout(playbackTick, PLAYBACK_INTERVAL_MS);
+      playbackTimer = window.setTimeout(playbackTick, playbackIntervalMs);
     }
 
     function startPlayback() {
@@ -884,7 +1003,7 @@
       isPlaying = true;
       updatePlaybackButton();
       clearPlaybackTimer();
-      playbackTimer = window.setTimeout(playbackTick, PLAYBACK_INTERVAL_MS);
+      playbackTimer = window.setTimeout(playbackTick, playbackIntervalMs);
     }
 
     function togglePlayback() {
@@ -970,7 +1089,7 @@
       }
 
       alertOverlayContext.clearRect(0, 0, width, height);
-      if (!activeAlertFeatures.length) return;
+      if (!activeAlertFeatures.length || !isAlertOverlayVisible) return;
 
       alertOverlayContext.lineJoin = "round";
       alertOverlayContext.lineCap = "round";
@@ -1002,7 +1121,7 @@
         const properties = feature.properties || {};
         const isFallback = properties._fallbackGeometry === true;
         const visibleStorm = properties._visibleStormPolygon === true;
-        const lineOpacity = visibleStorm ? 1 : (isFallback ? 0.42 : 0.55);
+        const lineOpacity = (visibleStorm ? 1 : (isFallback ? 0.42 : 0.55)) * alertOverlayOpacity;
         const lineWidth = visibleStorm ? 3.1 : (isFallback ? 1.35 : 1.7);
         alertOverlayContext.strokeStyle = properties._alertColor || "#58b7ff";
         alertOverlayContext.globalAlpha = lineOpacity;
@@ -1116,33 +1235,48 @@
         const eventName = props.event || "Unknown Event";
         const alertHex = props._alertColor || alertColor(eventName);
         const expires = formatPopupExpires(props.expires || props.ends);
+        const effective = formatPopupExpires(props.effective);
         const summary = compactAlertSummary(props);
         const html = `
           <div class="level2-alert-popup-wrap" style="--alert-color:${escapeHtml(alertHex)};">
-            <div class="level2-popup-details">
+            <div class="level2-alert-detail-panel">
               <div class="alert-detail-card">
-                <div class="alert-detail-headline">${escapeHtml(alertValue(props.headline || summary))}</div>
-                <div class="alert-detail-metrics">
-                  <div class="alert-detail-metric">
-                    <div class="alert-detail-metric-label">Event</div>
-                    <div class="alert-detail-metric-value">${escapeHtml(alertValue(eventName))}</div>
-                  </div>
-                  <div class="alert-detail-metric">
-                    <div class="alert-detail-metric-label">Severity</div>
-                    <div class="alert-detail-metric-value">${escapeHtml(alertValue(props.severity))}</div>
-                  </div>
-                  <div class="alert-detail-metric">
-                    <div class="alert-detail-metric-label">Source</div>
-                    <div class="alert-detail-metric-value">${escapeHtml(alertValue(props.senderName || "National Weather Service"))}</div>
-                  </div>
-                  <div class="alert-detail-metric">
-                    <div class="alert-detail-metric-label">Expires</div>
-                    <div class="alert-detail-metric-value">${escapeHtml(alertValue(expires))}</div>
+                <div class="alert-detail-hero">
+                  <div class="alert-detail-headline">${escapeHtml(alertValue(props.headline || summary))}</div>
+                  <div class="alert-detail-metrics">
+                    <div class="alert-detail-metric">
+                      <div class="alert-detail-metric-label">Event</div>
+                      <div class="alert-detail-metric-value">${escapeHtml(alertValue(eventName))}</div>
+                    </div>
+                    <div class="alert-detail-metric">
+                      <div class="alert-detail-metric-label">Severity</div>
+                      <div class="alert-detail-metric-value">${escapeHtml(alertValue(props.severity))}</div>
+                    </div>
+                    <div class="alert-detail-metric">
+                      <div class="alert-detail-metric-label">Urgency</div>
+                      <div class="alert-detail-metric-value">${escapeHtml(alertValue(props.urgency))}</div>
+                    </div>
+                    <div class="alert-detail-metric">
+                      <div class="alert-detail-metric-label">Certainty</div>
+                      <div class="alert-detail-metric-value">${escapeHtml(alertValue(props.certainty))}</div>
+                    </div>
+                    <div class="alert-detail-metric">
+                      <div class="alert-detail-metric-label">Effective</div>
+                      <div class="alert-detail-metric-value">${escapeHtml(alertValue(effective))}</div>
+                    </div>
+                    <div class="alert-detail-metric">
+                      <div class="alert-detail-metric-label">Expires</div>
+                      <div class="alert-detail-metric-value">${escapeHtml(alertValue(expires))}</div>
+                    </div>
                   </div>
                 </div>
                 <section class="alert-detail-section">
                   <div class="alert-detail-section-title">Area</div>
                   <div class="alert-detail-text">${escapeHtml(alertValue(props.areaDesc))}</div>
+                </section>
+                <section class="alert-detail-section">
+                  <div class="alert-detail-section-title">Source</div>
+                  <div class="alert-detail-text">${escapeHtml(alertValue(props.senderName || "National Weather Service"))}</div>
                 </section>
                 <section class="alert-detail-section">
                   <div class="alert-detail-section-title">Description</div>
@@ -1174,13 +1308,13 @@
           </div>
         `;
         if (popup) popup.remove();
-        popup = new mapboxgl.Popup({ className: "level2-alert-popup", closeButton: true, closeOnClick: true, maxWidth: "360px" })
+        popup = new mapboxgl.Popup({ className: "level2-alert-popup", closeButton: true, closeOnClick: true, maxWidth: "none" })
           .setLngLat(event.lngLat)
           .setHTML(html)
           .addTo(map);
         const popupEl = popup.getElement();
         const detailsButton = popupEl?.querySelector(".omega-alert-details-btn");
-        const detailCard = popupEl?.querySelector(".level2-popup-details");
+        const detailCard = popupEl?.querySelector(".level2-alert-detail-panel");
         detailsButton?.addEventListener("click", (clickEvent) => {
           clickEvent.preventDefault();
           clickEvent.stopPropagation();
@@ -1380,7 +1514,7 @@
 
     function initializeMap() {
       if (!MAPBOX_TOKEN || !String(MAPBOX_TOKEN).startsWith("pk.")) {
-        statusRow.textContent = "Renderer status: missing Mapbox token";
+        statusText.textContent = "Renderer status: missing Mapbox token";
         return;
       }
 
@@ -1432,7 +1566,7 @@
           }
         } catch (error) {
           const message = error?.message || "error";
-          statusRow.textContent = `Renderer status: failed: ${message}`;
+          statusText.textContent = `Renderer status: failed: ${message}`;
           errorPanel.style.display = "block";
           errorPanel.textContent = `Level II renderer failed: ${message}`;
         }
@@ -1440,7 +1574,7 @@
     }
 
     function setStatusText(text) {
-      statusRow.textContent = `Renderer status: ${text}`;
+      statusText.textContent = `Renderer status: ${text}`;
     }
 
     previousFrameButton.addEventListener("click", async () => {
@@ -1452,8 +1586,32 @@
       await stepFrame(1);
     });
     playPauseButton.addEventListener("click", togglePlayback);
+    frameSelect?.addEventListener("change", async () => {
+      stopPlayback();
+      currentFrameIndex = Math.max(0, Math.min(level2Frames.length - 1, Number(frameSelect.value) || 0));
+      await renderCurrentFrame();
+    });
+    playbackSpeedSlider?.addEventListener("input", () => {
+      updatePlaybackSpeedDisplay();
+      if (isPlaying) {
+        clearPlaybackTimer();
+        playbackTimer = window.setTimeout(playbackTick, playbackIntervalMs);
+      }
+    });
+    siteSelect?.addEventListener("change", () => {
+      siteSelect.value = "KFCX";
+      setStatusText("Site fixed to KFCX for Level II test");
+    });
+    productSelect?.addEventListener("change", () => {
+      productSelect.value = "LEVEL2_REF0";
+      setStatusText("Product fixed to LEVEL2_REF0");
+    });
     opacitySlider.addEventListener("input", updateOpacity);
+    alertOpacityRange?.addEventListener("input", updateAlertOverlayVisibility);
+    toggleAlertOverlayButton?.addEventListener("click", toggleAlertOverlayVisibility);
     updateOpacity();
+    updatePlaybackSpeedDisplay();
+    updateAlertOverlayControls();
     updatePlaybackButton();
     updateFrameInfoRow();
     initializeMap();
