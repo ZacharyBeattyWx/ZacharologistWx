@@ -39,6 +39,7 @@
       border: 1px solid rgba(248, 113, 113, 0.9); background: rgba(127, 29, 29, 0.82);
       color: #fee2e2; font-size: 0.78rem; line-height: 1.3;
     }
+    .mapboxgl-popup { z-index: 12; }
     .playback-controls {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -49,6 +50,200 @@
       width: 100%;
       min-width: 0;
       min-height: 32px;
+    }
+    .level2-alert-popup .mapboxgl-popup-content {
+      width: 340px;
+      max-width: calc(100vw - 28px);
+      padding: 0;
+      background: transparent;
+      border: 0;
+      border-radius: 10px;
+      color: #f8fafc;
+      box-shadow: none;
+    }
+    .level2-alert-popup .mapboxgl-popup-tip { display: none; }
+    .level2-alert-popup .mapboxgl-popup-close-button {
+      top: 4px;
+      right: 5px;
+      width: 19px;
+      height: 19px;
+      padding: 0;
+      border: 0;
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.2);
+      color: rgba(255, 255, 255, 0.88);
+      font-size: 15px;
+      line-height: 17px;
+    }
+    .level2-alert-popup .mapboxgl-popup-close-button:hover { background: rgba(0, 0, 0, 0.34); color: #ffffff; }
+    .level2-alert-popup-wrap {
+      position: relative;
+      width: min(340px, calc(100vw - 24px));
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+    .level2-alert-popup .omega-alert-popup {
+      position: relative;
+      width: 100%;
+      max-width: 100%;
+      overflow: hidden;
+      background: #303236;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      box-shadow: 0 10px 22px rgba(0, 0, 0, 0.42);
+      pointer-events: auto;
+      z-index: 2;
+      transform: none;
+    }
+    .level2-alert-popup .omega-alert-stack { display: grid; background: #303236; }
+    .level2-alert-popup .omega-alert-card { background: #303236; }
+    .level2-alert-popup .omega-alert-header {
+      position: relative;
+      min-height: 28px;
+      padding: 0 22px 0 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--alert-color, #7c4dff);
+      color: #ffffff;
+      font-size: 0.64rem;
+      font-weight: 800;
+      line-height: 1;
+      text-align: center;
+      text-transform: uppercase;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.42);
+      overflow-wrap: anywhere;
+    }
+    .level2-alert-popup .omega-alert-title {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .level2-alert-popup .omega-alert-body { display: grid; background: #303236; }
+    .level2-alert-popup .omega-alert-summary-row {
+      min-height: 38px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      padding: 8px 8px 8px 10px;
+    }
+    .level2-alert-popup .omega-alert-headline {
+      color: #f8fafc;
+      font-size: 0.7rem;
+      font-weight: 700;
+      line-height: 1.25;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .level2-alert-popup .omega-alert-expires {
+      min-height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-top: 1px solid rgba(255, 255, 255, 0.12);
+      color: #f8fafc;
+      font-size: 0.7rem;
+      font-weight: 800;
+      line-height: 1.25;
+      text-align: center;
+    }
+    .level2-alert-popup .omega-alert-actions {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      justify-content: flex-end;
+    }
+    .level2-alert-popup .omega-alert-icon-btn {
+      width: 26px;
+      height: 26px;
+      min-height: 26px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.14);
+      color: #ffffff;
+      font-size: 0.72rem;
+      font-weight: 800;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .level2-alert-popup .omega-alert-icon-btn:hover { border-color: var(--alert-color, #7c4dff); background: #1b1d21; }
+    .level2-alert-popup .level2-popup-details {
+      position: absolute;
+      bottom: calc(100% + 10px);
+      left: 0;
+      width: min(520px, calc(100vw - 36px));
+      max-height: min(620px, 72vh);
+      overflow: auto;
+      z-index: 3;
+      display: none;
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      border-radius: 12px;
+      background: rgba(3, 7, 18, 0.96);
+      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.42);
+      padding: 12px;
+    }
+    .level2-alert-popup .level2-popup-details.is-open { display: block; }
+    .level2-alert-popup .alert-detail-card { display: grid; gap: 12px; }
+    .level2-alert-popup .alert-detail-headline {
+      padding: 10px 12px;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-left: 4px solid color-mix(in srgb, var(--alert-color, #7c4dff) 65%, transparent);
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.82);
+      color: #ffffff;
+      font-weight: 800;
+      line-height: 1.38;
+      overflow-wrap: anywhere;
+    }
+    .level2-alert-popup .alert-detail-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .level2-alert-popup .alert-detail-metric {
+      min-width: 0;
+      padding: 9px 10px;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 12px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent), rgba(15, 23, 42, 0.72);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+    }
+    .level2-alert-popup .alert-detail-metric-label,
+    .level2-alert-popup .alert-detail-section-title {
+      color: #93c5fd;
+      font-size: 0.68rem;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .level2-alert-popup .alert-detail-metric-value {
+      margin-top: 4px;
+      color: #ffffff;
+      font-size: 0.8rem;
+      font-weight: 750;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+    .level2-alert-popup .alert-detail-section {
+      padding: 11px 12px;
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      border-radius: 12px;
+      background: rgba(2, 6, 23, 0.55);
+    }
+    .level2-alert-popup .alert-detail-text {
+      margin-top: 7px;
+      color: #e5edf8;
+      line-height: 1.48;
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+      font-size: 0.84rem;
+    }
+    @media (max-width: 720px) {
+      .level2-alert-popup-wrap { width: min(340px, calc(100vw - 24px)); }
+      .level2-alert-popup .level2-popup-details { width: min(340px, calc(100vw - 24px)); max-height: 55vh; }
+      .level2-alert-popup .alert-detail-metrics { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -66,6 +261,7 @@
       <div>Renderer: projected dBZ GeoTIFF + external canvas</div>
       <div id="validTimeRow">Valid time: loading...</div>
       <div id="sourceRow">Radar source: loading...</div>
+      <div id="alertsStatusRow">Alerts: loading...</div>
       <div id="statusRow">Renderer status: loading...</div>
     </div>
     <div id="errorPanel" class="error-panel"></div>
@@ -102,12 +298,23 @@
     const PALETTE_SOURCE_FILE = "scripts/radar/radar_config.json";
 
     const ALERT_SOURCE_ID = "nws-alert-polygons";
+    const ALERT_FILL_LAYER_ID = "nws-alert-polygons-fill-hitbox";
     const ALERT_LINE_LAYER_ID = "nws-alert-polygons-line";
-    const ALERT_STATES = ["NC", "SC", "VA", "GA"];
+    const NWS_ALERT_AREAS = [
+      "AL", "AR", "DC", "DE", "FL", "GA",
+      "IN", "KY", "LA", "MD", "MO", "MS",
+      "NC", "NJ", "NY", "OH", "PA", "SC",
+      "TN", "VA", "WV"
+    ];
 
     const SITE_SOURCE_ID = "weatherwise-radar-sites";
     const SITE_CIRCLE_LAYER_ID = "weatherwise-radar-sites-circle";
     const SITE_LABEL_LAYER_ID = "weatherwise-radar-sites-label";
+
+    function cacheBustUrl(url) {
+      const separator = url.includes("?") ? "&" : "?";
+      return `${url}${separator}v=${Date.now()}`;
+    }
 
     // Copied from ZacharologistWx main radar renderer color table
     const RADAR_DBZ_PALETTE = [
@@ -173,6 +380,7 @@
     const opacityValue = document.getElementById("opacityValue");
     const validTimeRow = document.getElementById("validTimeRow");
     const sourceRow = document.getElementById("sourceRow");
+    const alertsStatusRow = document.getElementById("alertsStatusRow");
     const statusRow = document.getElementById("statusRow");
     const errorPanel = document.getElementById("errorPanel");
     const previousFrameButton = document.getElementById("previousFrameButton");
@@ -184,6 +392,7 @@
     let popup;
     let radarBounds = [[32.2, -86.6], [42.2, -73.4]];
     let activeAlertFeatures = [];
+    let activeAlertsWithoutGeometry = [];
     let level2Frames = [];
     let currentFrameIndex = 0;
     let isPlaying = false;
@@ -419,14 +628,14 @@
     }
 
     async function fetchLatestLevel2Frame() {
-      const response = await fetch(LEVEL2_META_URL, { cache: "no-store" });
+      const response = await fetch(cacheBustUrl(LEVEL2_META_URL), { cache: "no-store" });
       if (!response.ok) throw new Error(`metadata fetch failed (${response.status})`);
       const meta = await response.json();
       return normalizeLevel2Frame(meta);
     }
 
     async function fetchLevel2FramesCatalog() {
-      const response = await fetch(LEVEL2_FRAMES_URL, { cache: "no-store" });
+      const response = await fetch(cacheBustUrl(LEVEL2_FRAMES_URL), { cache: "no-store" });
       if (!response.ok) throw new Error(`frames catalog fetch failed (${response.status})`);
       const payload = await response.json();
       const rawFrames = Array.isArray(payload?.frames) ? payload.frames : [];
@@ -763,10 +972,8 @@
       alertOverlayContext.clearRect(0, 0, width, height);
       if (!activeAlertFeatures.length) return;
 
-      const strokeWidth = Math.max(2.5, Math.min(3.5, 3.0)) * dpr;
       alertOverlayContext.lineJoin = "round";
       alertOverlayContext.lineCap = "round";
-      alertOverlayContext.lineWidth = strokeWidth;
 
       const drawRing = (ring) => {
         if (!Array.isArray(ring) || ring.length < 2) return;
@@ -793,8 +1000,18 @@
 
       activeAlertFeatures.forEach((feature) => {
         const properties = feature.properties || {};
-        if (properties._visibleStormPolygon !== true) return;
+        const isFallback = properties._fallbackGeometry === true;
+        const visibleStorm = properties._visibleStormPolygon === true;
+        const lineOpacity = visibleStorm ? 1 : (isFallback ? 0.42 : 0.55);
+        const lineWidth = visibleStorm ? 3.1 : (isFallback ? 1.35 : 1.7);
         alertOverlayContext.strokeStyle = properties._alertColor || "#58b7ff";
+        alertOverlayContext.globalAlpha = lineOpacity;
+        alertOverlayContext.lineWidth = lineWidth * dpr;
+        if (isFallback) {
+          alertOverlayContext.setLineDash([4 * dpr, 3 * dpr]);
+        } else {
+          alertOverlayContext.setLineDash([]);
+        }
 
         const geometry = feature.geometry;
         if (geometry?.type === "Polygon") {
@@ -803,15 +1020,57 @@
           geometry.coordinates.forEach(drawPolygon);
         }
       });
+      alertOverlayContext.setLineDash([]);
+      alertOverlayContext.globalAlpha = 1;
     }
 
+    // Homepage source-of-truth event color mapping (index.html getAlertColor).
     function alertColor(eventName) {
       const event = String(eventName || "");
-      if (event === "Tornado Warning") return "#ff3b3b";
-      if (event === "Severe Thunderstorm Warning") return "#ffb21c";
-      if (event === "Flash Flood Warning") return "#00c4a7";
-      if (event === "Special Marine Warning") return "#58b7ff";
+      if (!event) return "#58b7ff";
+      if (event.includes("Tornado Emergency")) return "#ff00ff";
+      if (event.includes("Tornado Watch")) return "#f000ff";
+      if (event.includes("Severe Thunderstorm Watch")) return "#bd8bff";
+      if (event.includes("Tornado Warning") || event.includes("Particularly Dangerous Situation")) return "#ff3b3b";
+      if (event.includes("Severe Thunderstorm")) return "#ffb21c";
+      if (event.includes("Flash Flood")) return "#00c4a7";
+      if (event.includes("Flood")) return "#00aa08";
+      if (event.includes("Winter Storm")) return "#df74d7";
+      if (event.includes("Winter Weather")) return "#ab7cff";
+      if (event.includes("Freeze")) return "#6edce4";
+      if (event.includes("Frost")) return "#4e8de6";
+      if (event.includes("Blizzard")) return "#748cff";
+      if (event.includes("Red Flag") || event.includes("Fire Weather")) return "#ff5d00";
       return "#58b7ff";
+    }
+
+    function compactAlertSummary(props) {
+      const eventName = String(props?.event || "");
+      if (eventName.includes("Flash Flood")) return "Flash flooding possible.";
+      if (eventName.includes("Tornado")) return "Take shelter immediately.";
+      if (eventName.includes("Severe Thunderstorm")) return "Damaging winds and hail possible.";
+      if (eventName.includes("Special Marine")) return "Hazardous marine conditions possible.";
+      const headline = String(props?.headline || "").trim();
+      if (!headline) return "Active weather alert.";
+      return headline.length > 84 ? `${headline.slice(0, 84).trim()}...` : headline;
+    }
+    function escapeHtml(value) {
+      return String(value || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll("\"", "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+    function formatPopupExpires(value) {
+      if (!value) return "Unknown";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return String(value);
+      return date.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+    }
+    function alertValue(value) {
+      const text = String(value || "").trim();
+      return text || "N/A";
     }
 
     function isVisibleStormPolygon(eventName) {
@@ -826,7 +1085,16 @@
 
     function addAlertLayers() {
       map.addSource(ALERT_SOURCE_ID, { type: "geojson", data: { type: "FeatureCollection", features: [] } });
-      // Alert fill layers are intentionally not used because they created black artifacts.
+      // Transparent fill hitbox keeps polygon interiors clickable while visible outlines are drawn on alertOverlayCanvas.
+      map.addLayer({
+        id: ALERT_FILL_LAYER_ID,
+        type: "fill",
+        source: ALERT_SOURCE_ID,
+        paint: {
+          "fill-color": ["to-color", ["coalesce", ["get", "_alertColor"], "#58b7ff"]],
+          "fill-opacity": 0
+        }
+      });
       map.addLayer({
         id: ALERT_LINE_LAYER_ID,
         type: "line",
@@ -838,18 +1106,105 @@
           "line-width": ["interpolate", ["linear"], ["zoom"], 4, 1.5, 8, 2.8]
         }
       });
+      map.moveLayer(ALERT_FILL_LAYER_ID);
       map.moveLayer(ALERT_LINE_LAYER_ID);
 
       const onInteract = (event) => {
         const feature = event?.features?.[0];
         if (!feature) return;
         const props = feature.properties || {};
-        const instruction = props.instruction ? `<p><strong>Instruction:</strong> ${props.instruction}</p>` : "";
-        const html = `<div style="min-width:220px;max-width:320px;"><p><strong>${props.event || "Unknown Event"}</strong></p><p><strong>Headline:</strong> ${props.headline || "No headline"}</p><p><strong>Area:</strong> ${props.areaDesc || "Unknown"}</p><p><strong>Expires:</strong> ${props.expires ? new Date(props.expires).toLocaleString() : "Unknown"}</p>${instruction}</div>`;
+        const eventName = props.event || "Unknown Event";
+        const alertHex = props._alertColor || alertColor(eventName);
+        const expires = formatPopupExpires(props.expires || props.ends);
+        const summary = compactAlertSummary(props);
+        const html = `
+          <div class="level2-alert-popup-wrap" style="--alert-color:${escapeHtml(alertHex)};">
+            <div class="level2-popup-details">
+              <div class="alert-detail-card">
+                <div class="alert-detail-headline">${escapeHtml(alertValue(props.headline || summary))}</div>
+                <div class="alert-detail-metrics">
+                  <div class="alert-detail-metric">
+                    <div class="alert-detail-metric-label">Event</div>
+                    <div class="alert-detail-metric-value">${escapeHtml(alertValue(eventName))}</div>
+                  </div>
+                  <div class="alert-detail-metric">
+                    <div class="alert-detail-metric-label">Severity</div>
+                    <div class="alert-detail-metric-value">${escapeHtml(alertValue(props.severity))}</div>
+                  </div>
+                  <div class="alert-detail-metric">
+                    <div class="alert-detail-metric-label">Source</div>
+                    <div class="alert-detail-metric-value">${escapeHtml(alertValue(props.senderName || "National Weather Service"))}</div>
+                  </div>
+                  <div class="alert-detail-metric">
+                    <div class="alert-detail-metric-label">Expires</div>
+                    <div class="alert-detail-metric-value">${escapeHtml(alertValue(expires))}</div>
+                  </div>
+                </div>
+                <section class="alert-detail-section">
+                  <div class="alert-detail-section-title">Area</div>
+                  <div class="alert-detail-text">${escapeHtml(alertValue(props.areaDesc))}</div>
+                </section>
+                <section class="alert-detail-section">
+                  <div class="alert-detail-section-title">Description</div>
+                  <div class="alert-detail-text">${escapeHtml(alertValue(props.description || summary))}</div>
+                </section>
+                ${props.instruction ? `
+                <section class="alert-detail-section">
+                  <div class="alert-detail-section-title">Instruction</div>
+                  <div class="alert-detail-text">${escapeHtml(props.instruction)}</div>
+                </section>` : ""}
+              </div>
+            </div>
+            <div class="omega-alert-popup">
+              <div class="omega-alert-stack">
+                <div class="omega-alert-card">
+                  <div class="omega-alert-header"><span class="omega-alert-title">${escapeHtml(eventName)}</span></div>
+                  <div class="omega-alert-body">
+                    <div class="omega-alert-summary-row">
+                      <div class="omega-alert-headline">${escapeHtml(summary)}</div>
+                      <div class="omega-alert-actions">
+                        <button class="omega-alert-icon-btn omega-alert-details-btn" type="button" aria-expanded="false" title="Details">></button>
+                      </div>
+                    </div>
+                    <div class="omega-alert-expires">Expires: ${escapeHtml(expires)}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
         if (popup) popup.remove();
-        popup = new mapboxgl.Popup({ closeButton: true, closeOnClick: true }).setLngLat(event.lngLat).setHTML(html).addTo(map);
+        popup = new mapboxgl.Popup({ className: "level2-alert-popup", closeButton: true, closeOnClick: true, maxWidth: "360px" })
+          .setLngLat(event.lngLat)
+          .setHTML(html)
+          .addTo(map);
+        const popupEl = popup.getElement();
+        const detailsButton = popupEl?.querySelector(".omega-alert-details-btn");
+        const detailCard = popupEl?.querySelector(".level2-popup-details");
+        detailsButton?.addEventListener("click", (clickEvent) => {
+          clickEvent.preventDefault();
+          clickEvent.stopPropagation();
+          if (!detailCard) return;
+          const open = detailCard.classList.toggle("is-open");
+          detailsButton.setAttribute("aria-expanded", String(open));
+          detailsButton.textContent = open ? "×" : ">";
+        });
       };
+      map.on("mouseenter", ALERT_FILL_LAYER_ID, () => {
+        map.getCanvas().style.cursor = "pointer";
+      });
+      map.on("mouseleave", ALERT_FILL_LAYER_ID, () => {
+        map.getCanvas().style.cursor = "";
+      });
+      map.on("mouseenter", ALERT_LINE_LAYER_ID, () => {
+        map.getCanvas().style.cursor = "pointer";
+      });
+      map.on("mouseleave", ALERT_LINE_LAYER_ID, () => {
+        map.getCanvas().style.cursor = "";
+      });
+      map.on("click", ALERT_FILL_LAYER_ID, onInteract);
       map.on("click", ALERT_LINE_LAYER_ID, onInteract);
+      map.on("touchstart", ALERT_FILL_LAYER_ID, onInteract);
       map.on("touchstart", ALERT_LINE_LAYER_ID, onInteract);
     }
 
@@ -878,42 +1233,149 @@
       return false;
     }
 
-    async function loadAlerts() {
-      const responses = await Promise.all(ALERT_STATES.map((state) => fetch(`https://api.weather.gov/alerts/active?area=${encodeURIComponent(state)}`, { headers: { Accept: "application/geo+json" } })));
-      const payloads = await Promise.all(responses.map((response) => {
-        if (!response.ok) throw new Error(`NWS request failed (${response.status})`);
-        return response.json();
-      }));
+    function normalizeAlertFeature(feature, index) {
+      const properties = feature.properties || {};
+      const alertId = String(feature.id || properties.id || `${properties.event || "alert"}-${index}`);
+      return {
+        ...feature,
+        id: alertId,
+        properties: {
+          ...properties,
+          _alertId: alertId,
+          _alertColor: alertColor(properties.event || ""),
+          _visibleStormPolygon: isVisibleStormPolygon(properties.event || "")
+        }
+      };
+    }
 
-      const deduped = new Map();
-      payloads.forEach((geojson) => {
-        const features = Array.isArray(geojson?.features) ? geojson.features : [];
-        features.forEach((feature) => {
-          if (!isValidGeometry(feature.geometry)) return;
-          const props = feature.properties || {};
-          const key = props.id || `${props.event || ""}|${props.areaDesc || ""}`;
-          if (!deduped.has(key)) {
-            deduped.set(key, {
-              type: "Feature",
-              geometry: feature.geometry,
-              properties: {
-                event: props.event || "",
-                headline: props.headline || "",
-                areaDesc: props.areaDesc || "",
-                expires: props.expires || "",
-                instruction: props.instruction || "",
-                _alertColor: alertColor(props.event || ""),
-                _visibleStormPolygon: isVisibleStormPolygon(props.event || "")
-              }
-            });
-          }
-        });
+    function dedupeAlertFeaturesById(features) {
+      const seen = new Set();
+      return features.filter((feature) => {
+        const alertId = feature.properties?._alertId || feature.id;
+        if (!alertId || seen.has(alertId)) return false;
+        seen.add(alertId);
+        return true;
       });
+    }
 
-      activeAlertFeatures = Array.from(deduped.values());
+    function polygonCoordinatesFromGeometry(geometry) {
+      if (geometry?.type === "Polygon" && Array.isArray(geometry.coordinates)) return [geometry.coordinates];
+      if (geometry?.type === "MultiPolygon" && Array.isArray(geometry.coordinates)) return geometry.coordinates;
+      return [];
+    }
+
+    async function fetchAffectedZoneGeometry(zoneUrl) {
+      try {
+        const response = await fetch(zoneUrl, { headers: { Accept: "application/geo+json" }, cache: "no-cache" });
+        if (!response.ok) {
+          return { zoneUrl, ok: false, status: response.status, geometry: null };
+        }
+        const zone = await response.json();
+        return { zoneUrl, ok: true, status: response.status, geometry: zone?.geometry || null };
+      } catch (_error) {
+        return { zoneUrl, ok: false, status: "", geometry: null };
+      }
+    }
+
+    async function fallbackFeaturesFromAffectedZones(feature) {
+      const affectedZones = Array.isArray(feature.properties?.affectedZones) ? feature.properties.affectedZones : [];
+      const zoneUrls = [...new Set(affectedZones.filter(Boolean))];
+      if (!zoneUrls.length) return { fallbackFeatures: [] };
+
+      const zoneResults = await Promise.allSettled(zoneUrls.map(fetchAffectedZoneGeometry));
+      const zoneFetches = zoneResults.map((result, index) => result.status === "fulfilled"
+        ? result.value
+        : { zoneUrl: zoneUrls[index], ok: false, status: "", geometry: null });
+      const seenZoneGeometry = new Set();
+      const fallbackFeatures = zoneFetches
+        .filter((zoneResult) => zoneResult.ok && polygonCoordinatesFromGeometry(zoneResult.geometry).length)
+        .filter((zoneResult) => {
+          const key = JSON.stringify(zoneResult.geometry);
+          if (seenZoneGeometry.has(key)) return false;
+          seenZoneGeometry.add(key);
+          return true;
+        })
+        .map((zoneResult, index) => ({
+          ...feature,
+          id: `${feature.id}-zone-fallback-${index}`,
+          geometry: zoneResult.geometry,
+          properties: {
+            ...feature.properties,
+            _fallbackGeometry: true,
+            _fallbackZoneUrl: zoneResult.zoneUrl
+          }
+        }));
+
+      return { fallbackFeatures };
+    }
+
+    async function resolveFallbackAlertGeometries(featuresWithoutGeometry) {
+      const results = await Promise.all(
+        featuresWithoutGeometry.map(async (feature) => {
+          const result = await fallbackFeaturesFromAffectedZones(feature).catch(() => ({ fallbackFeatures: [] }));
+          return { original: feature, ...result };
+        })
+      );
+      return {
+        fallbackFeatures: results.flatMap((result) => result.fallbackFeatures),
+        listedOnlyFeatures: results.filter((result) => !result.fallbackFeatures.length).map((result) => result.original)
+      };
+    }
+
+    function nwsAlertsUrlForArea(area) {
+      return `https://api.weather.gov/alerts/active?area=${encodeURIComponent(area)}`;
+    }
+
+    async function fetchNwsAlertsForAreas() {
+      const areaResults = await Promise.allSettled(
+        NWS_ALERT_AREAS.map(async (area) => {
+          const response = await fetch(nwsAlertsUrlForArea(area), { headers: { Accept: "application/geo+json" }, cache: "no-cache" });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const collection = await response.json();
+          return Array.isArray(collection.features) ? collection.features : [];
+        })
+      );
+      const allFeatures = [];
+      areaResults.forEach((result) => {
+        if (result.status === "fulfilled") allFeatures.push(...result.value);
+      });
+      const seenAlertIds = new Set();
+      const deduped = [];
+      allFeatures.forEach((feature, index) => {
+        const alertId = String(feature?.id || feature?.properties?.id || `unknown-alert-${index}`);
+        if (seenAlertIds.has(alertId)) return;
+        seenAlertIds.add(alertId);
+        deduped.push(feature);
+      });
+      return deduped;
+    }
+
+    async function loadAlerts() {
+      const fetchedFeatures = await fetchNwsAlertsForAreas();
+      const normalizedFetchedFeatures = fetchedFeatures.map(normalizeAlertFeature);
+      const featuresWithGeometry = dedupeAlertFeaturesById(
+        normalizedFetchedFeatures.filter((feature) => isValidGeometry(feature.geometry))
+      );
+      const directGeometryAlertIds = new Set(
+        featuresWithGeometry.map((feature) => feature.properties?._alertId)
+      );
+      const normalizedFeaturesWithoutGeometry = dedupeAlertFeaturesById(
+        normalizedFetchedFeatures.filter((feature) =>
+          !isValidGeometry(feature.geometry) &&
+          !directGeometryAlertIds.has(feature.properties?._alertId)
+        )
+      );
+      const { fallbackFeatures, listedOnlyFeatures } = await resolveFallbackAlertGeometries(normalizedFeaturesWithoutGeometry);
+
+      activeAlertFeatures = [...featuresWithGeometry, ...fallbackFeatures];
+      activeAlertsWithoutGeometry = listedOnlyFeatures;
       map.getSource(ALERT_SOURCE_ID).setData({ type: "FeatureCollection", features: activeAlertFeatures });
+      map.moveLayer(ALERT_FILL_LAYER_ID);
       map.moveLayer(ALERT_LINE_LAYER_ID);
       drawAlertOverlay();
+      const stormCount = activeAlertFeatures.filter((feature) => feature.properties?._visibleStormPolygon === true).length;
+      const fallbackCount = activeAlertFeatures.filter((feature) => feature.properties?._fallbackGeometry === true).length;
+      alertsStatusRow.textContent = `Alerts: ${fetchedFeatures.length} active · ${stormCount} storm polygons · ${fallbackCount} zone fallback · ${activeAlertsWithoutGeometry.length} listed only`;
     }
 
     function initializeMap() {
