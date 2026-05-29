@@ -1,8 +1,8 @@
-﻿name: Render Level II Radar
+name: Render Level II Radar
 
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "7,17,27,37,47,57 * * * *"
   workflow_dispatch:
     inputs:
       site:
@@ -19,7 +19,7 @@ permissions:
 
 concurrency:
   group: level2-radar
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   prepare-matrix:

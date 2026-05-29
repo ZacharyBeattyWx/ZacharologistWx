@@ -566,7 +566,7 @@
     const DEFAULT_LEVEL2_SITE = "KFCX";
     const LEVEL2_PRODUCT = "LEVEL2_REF0";
     const LEVEL2_REMOTE_BASE_URL = "https://radar.zacharologistwx.com";
-    const FALLBACK_LEVEL2_TIF = "/radar/tilesets/test/KFCX/LEVEL2/REF0/KFCX_20260527_153300_projected_dbz.tif";
+    const FALLBACK_LEVEL2_TIF = "/radar/tilesets/test/KFCX/LEVEL2/REF0/KFCX_20260528_191913_projected_dbz.tif";
     const FRAME_REFRESH_MS = 60000;
     const ALERT_REFRESH_MS = 60000;
     const PLAYBACK_INTERVAL_MS = 900;
@@ -906,10 +906,10 @@
       const frame = level2Frames[currentFrameIndex];
       const validText = frame?.validTime ? new Date(frame.validTime).toLocaleString() : "Unknown";
       if (level2Frames.length === 1) {
-        frameReadout.textContent = `Frame 1/1 · waiting for more frames · ${validText}`;
+        frameReadout.textContent = `Frame 1/1 - waiting for more frames - ${validText}`;
         return;
       }
-      frameReadout.textContent = `Frame ${currentFrameIndex + 1}/${level2Frames.length} · ${validText}`;
+      frameReadout.textContent = `Frame ${currentFrameIndex + 1}/${level2Frames.length} - ${validText}`;
       frameSelect.value = String(currentFrameIndex);
     }
     function syncFrameSelect() {
@@ -1048,7 +1048,7 @@
           colorizerSmokeLogged = true;
         }
 
-        const tifPath = frame?.path || FALLBACK_LEVEL2_TIF;
+        const tifPath = frame?.path || level2DataUrl(FALLBACK_LEVEL2_TIF);
         const response = await fetch(tifPath, { cache: "force-cache" });
         if (!response.ok) throw new Error(`GeoTIFF fetch failed: ${response.status} ${response.statusText}`);
 
@@ -1442,7 +1442,7 @@
         } catch (_latestError) {
           if (level2Frames.length === 0) {
             upsertLevel2Frame({
-              path: FALLBACK_LEVEL2_TIF,
+              path: level2DataUrl(FALLBACK_LEVEL2_TIF),
               validTime: "",
               validTimeDate: new Date(""),
               bounds: radarBounds
@@ -1865,7 +1865,7 @@
           if (!detailCard) return;
           const open = detailCard.classList.toggle("is-open");
           detailsButton.setAttribute("aria-expanded", String(open));
-          detailsButton.textContent = open ? "×" : ">";
+          detailsButton.textContent = open ? "X" : ">";
         });
       };
       map.on("mouseenter", ALERT_FILL_LAYER_ID, () => {
@@ -2055,7 +2055,7 @@
       drawAlertOverlay();
       const stormCount = activeAlertFeatures.filter((feature) => feature.properties?._visibleStormPolygon === true).length;
       const fallbackCount = activeAlertFeatures.filter((feature) => feature.properties?._fallbackGeometry === true).length;
-      alertsStatusRow.textContent = `Alerts: ${fetchedFeatures.length} active · ${stormCount} storm polygons · ${fallbackCount} zone fallback · ${activeAlertsWithoutGeometry.length} listed only`;
+      alertsStatusRow.textContent = `Alerts: ${fetchedFeatures.length} active - ${stormCount} storm polygons - ${fallbackCount} zone fallback - ${activeAlertsWithoutGeometry.length} listed only`;
     }
 
     function initializeMap() {
