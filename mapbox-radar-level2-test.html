@@ -739,6 +739,7 @@
     let playbackTimer = null;
     let playbackIntervalMs = 900;
     const renderedFrameCache = new Map();
+    const warmupMissingFrameWarned = new Set();
     let level2WarmupTimer = null;
     let level2WarmupToken = 0;
     let level2WarmupBusy = false;
@@ -1062,7 +1063,12 @@
         const tifFetchUrl = new URL(tifPath, window.location.href);
         tifFetchUrl.searchParams.set("cb", String(Date.now()));
         const response = await fetch(tifFetchUrl.toString(), { cache: "no-store" });
-        if (!response.ok) throw new Error(`GeoTIFF fetch failed: ${response.status} ${response.statusText}`);
+        if (!response.ok) {
+          const error = new Error(`GeoTIFF fetch failed: ${response.status} ${response.statusText} (${tifPath})`);
+          error.status = response.status;
+          error.path = tifPath;
+          throw error;
+        }
 
         const buffer = await response.arrayBuffer();
         const tiff = await GeoTIFF.fromArrayBuffer(buffer);
@@ -1219,7 +1225,6 @@
           validTime: frame?.validTime || ""
         };
       } catch (error) {
-        console.error("Level II surface build failed", error);
         throw error;
       }
     }
@@ -1253,8 +1258,11 @@
         updateFrameInfoRow();
         syncFrameSelect();
         redrawRadarOverlay();
+        return frame;
       } catch (error) {
-        console.error("Level II render failed", error);
+        if (error?.status !== 404) {
+          console.error("Level II render failed", error);
+        }
         throw error;
       }
     }
@@ -1269,6 +1277,14 @@
 
     function level2FrameCacheKey(frame) {
       return frame?.path || "";
+    }
+
+    function clampCurrentFrameIndex() {
+      if (!level2Frames.length) {
+        currentFrameIndex = 0;
+        return;
+      }
+      currentFrameIndex = Math.max(0, Math.min(currentFrameIndex, level2Frames.length - 1));
     }
 
     function pruneRenderedFrameCache() {
@@ -1312,17 +1328,41 @@
     }
 
     async function renderLevel2Dbz(frame = currentFrame()) {
-      const cacheKey = level2FrameCacheKey(frame);
+      let selectedFrame = frame;
+      let cacheKey = level2FrameCacheKey(selectedFrame);
 
       if (cacheKey && renderedFrameCache.has(cacheKey)) {
         const cachedFrame = renderedFrameCache.get(cacheKey);
         renderedFrameCache.delete(cacheKey);
         renderedFrameCache.set(cacheKey, cachedFrame);
-        applyRenderedFrameCache(frame, cachedFrame);
+        applyRenderedFrameCache(selectedFrame, cachedFrame);
         return "cache";
       }
 
-      await renderLevel2DbzUncached(frame);
+      for (;;) {
+        try {
+          selectedFrame = await renderLevel2DbzUncached(selectedFrame);
+          cacheKey = level2FrameCacheKey(selectedFrame);
+          break;
+        } catch (error) {
+          if (error?.status === 404) {
+            const stalePath = error.path || selectedFrame?.path || "";
+            const pruneResult = pruneStaleLevel2Frame(stalePath, { allowRemoveCurrent: true });
+            if (pruneResult.removed && level2Frames.length > 0) {
+              setStatusText("stale frame pruned after 404; rendering nearest available frame");
+              selectedFrame = currentFrame();
+              cacheKey = level2FrameCacheKey(selectedFrame);
+              continue;
+            }
+            if (level2Frames.length === 0) {
+              errorPanel.style.display = "block";
+              errorPanel.textContent = "Level II renderer failed: no frames remain after removing stale frame(s).";
+              throw new Error("No Level II frames remain after removing stale frame(s).");
+            }
+          }
+          throw error;
+        }
+      }
 
       if (cacheKey && radarCanvas.width > 0 && radarCanvas.height > 0) {
         const cachedCanvas = document.createElement("canvas");
@@ -1336,7 +1376,7 @@
           canvas: cachedCanvas,
           width: radarCanvas.width,
           height: radarCanvas.height,
-          bounds: frame.bounds || radarBounds
+          bounds: selectedFrame?.bounds || radarBounds
         });
 
         pruneRenderedFrameCache();
@@ -1418,7 +1458,16 @@
             setStatusText(`warming frame cache ${renderedFrameCache.size}/${level2Frames.length}`);
           }
         } catch (error) {
-          console.warn("Level II warm cache failed", error);
+          if (error?.status === 404) {
+            const missingPath = error.path || frame?.path || "";
+            if (missingPath && !warmupMissingFrameWarned.has(missingPath)) {
+              warmupMissingFrameWarned.add(missingPath);
+              console.warn(`Level II warm cache missing frame (404): ${missingPath}`);
+            }
+            pruneStaleLevel2Frame(missingPath, { allowRemoveCurrent: false });
+          } else {
+            console.warn("Level II warm cache failed", error);
+          }
         } finally {
           level2WarmupBusy = false;
         }
@@ -1593,6 +1642,46 @@
       if (map.getSource(LEVEL2_RADAR_SOURCE_ID)) {
         map.removeSource(LEVEL2_RADAR_SOURCE_ID);
       }
+    }
+
+    function pruneStaleLevel2Frame(stalePath, options = {}) {
+      if (!stalePath) return { removed: false, removedCurrent: false };
+
+      const staleIndex = level2Frames.findIndex((frame) => frame?.path === stalePath);
+      renderedFrameCache.delete(stalePath);
+      if (staleIndex < 0) return { removed: false, removedCurrent: false };
+
+      const allowRemoveCurrent = options.allowRemoveCurrent !== false;
+      const currentPath = currentFrame()?.path || "";
+      const removedCurrent = currentPath === stalePath;
+      if (removedCurrent && !allowRemoveCurrent) {
+        return { removed: false, removedCurrent: true };
+      }
+
+      const wasAtLatest = currentFrameIndex === Math.max(0, level2Frames.length - 1);
+      level2Frames.splice(staleIndex, 1);
+
+      if (level2Frames.length === 0) {
+        currentFrameIndex = 0;
+        syncFrameSelect();
+        updateFrameInfoRow();
+        return { removed: true, removedCurrent };
+      }
+
+      if (wasAtLatest) {
+        currentFrameIndex = level2Frames.length - 1;
+      } else if (!removedCurrent && currentPath) {
+        const currentPathIndex = level2Frames.findIndex((frame) => frame?.path === currentPath);
+        currentFrameIndex = currentPathIndex >= 0 ? currentPathIndex : Math.min(staleIndex, level2Frames.length - 1);
+      } else {
+        currentFrameIndex = Math.min(staleIndex, level2Frames.length - 1);
+      }
+
+      clampCurrentFrameIndex();
+      pruneRenderedFrameCache();
+      syncFrameSelect();
+      updateFrameInfoRow();
+      return { removed: true, removedCurrent };
     }
 
     function redrawRadarOverlay() {
