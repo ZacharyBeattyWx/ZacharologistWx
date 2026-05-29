@@ -131,7 +131,6 @@ jobs:
             --fetch-latest \
             --source-count "${{ needs.prepare-matrix.outputs.source_count }}" \
             --max-sources "${{ needs.prepare-matrix.outputs.source_count }}" \
-            --force \
             2>&1 | grep -v '^Unknown message: 32$'
           status=${PIPESTATUS[0]}
           set -e

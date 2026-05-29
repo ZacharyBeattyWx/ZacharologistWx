@@ -580,23 +580,26 @@ def main() -> int:
             slug_base = f"{match.group('site')}_{match.group('ts')}"
         output_path = output_root / f"{slug_base}_projected_dbz.tif"
 
+        valid_time = infer_valid_time_from_name(source_path) or valid_time_from_projected_filename(output_path) or ""
+
+        if output_path.exists() and not args.force:
+            latest_output_path = output_path
+            latest_valid_time = valid_time or "unknown"
+            latest_source_name = source_path.name
+            print(f"skipExistingOutput={output_path}")
+            continue
+
         with source_path.open("rb") as handle:
             level2 = Level2File(handle)
 
-        valid_time = (
-            format_utc_iso(level2.dt) if getattr(level2, "dt", None)
-            else infer_valid_time_from_name(source_path) or ""
-        )
+        if getattr(level2, "dt", None):
+            valid_time = format_utc_iso(level2.dt)
         if not valid_time:
             valid_time = valid_time_from_projected_filename(output_path) or "unknown"
 
         latest_output_path = output_path
         latest_valid_time = valid_time
         latest_source_name = source_path.name
-
-        if output_path.exists() and not args.force:
-            print(f"skipExistingOutput={output_path}")
-            continue
 
         sweep = extract_lowest_reflectivity_sweep(level2)
         grid = build_projected_dbz_grid(
