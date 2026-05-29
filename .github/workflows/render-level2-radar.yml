@@ -3,6 +3,8 @@ name: Render Level II Radar
 on:
   schedule:
     - cron: "7,17,27,37,47,57 * * * *"
+  repository_dispatch:
+    types: [radar_level2_cron]
   workflow_dispatch:
     inputs:
       site:
@@ -35,8 +37,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          SITE_INPUT="${{ github.event.inputs.site || '' }}"
-          SOURCE_COUNT="${{ github.event.inputs.source_count || '25' }}"
+          SITE_INPUT="${{ github.event.inputs.site || github.event.client_payload.site || '' }}"
+          SOURCE_COUNT="${{ github.event.inputs.source_count || github.event.client_payload.source_count || '25' }}"
 
           python - <<'PY'
           import json
