@@ -611,6 +611,12 @@
       return `${url}${separator}v=${Date.now()}`;
     }
 
+    function minuteCacheBustUrl(url) {
+      const separator = url.includes("?") ? "&" : "?";
+      const minuteTick = Math.floor(Date.now() / 60000);
+      return `${url}${separator}v=${minuteTick}`;
+    }
+
     function sanitizeLevel2Site(site) {
       const normalized = String(site || DEFAULT_LEVEL2_SITE).trim().toUpperCase();
       return LEVEL2_SUPPORTED_SITES.includes(normalized) ? normalized : DEFAULT_LEVEL2_SITE;
@@ -760,12 +766,6 @@
     function overlayDevicePixelRatio() {
       const dpr = window.devicePixelRatio || 1;
       return Math.min(1.5, Math.max(1, dpr));
-    }
-
-    function firstMapSymbolLayerId() {
-      const layers = map?.getStyle?.()?.layers || [];
-      const symbolLayer = layers.find((layer) => layer.type === "symbol");
-      return symbolLayer?.id || undefined;
     }
 
     function parseHexColor(hex) {
@@ -1030,14 +1030,14 @@
     }
 
     async function fetchLatestLevel2Frame() {
-      const response = await fetch(cacheBustUrl(level2MetaUrl()), { cache: "no-store" });
+      const response = await fetch(level2MetaUrl(), { cache: "no-store" });
       if (!response.ok) throw new Error(`metadata fetch failed (${response.status})`);
       const meta = await response.json();
       return normalizeLevel2Frame(meta);
     }
 
     async function fetchLevel2FramesCatalog() {
-      const response = await fetch(cacheBustUrl(level2FramesUrl()), { cache: "no-store" });
+      const response = await fetch(minuteCacheBustUrl(level2FramesUrl()), { cache: "no-store" });
       if (!response.ok) throw new Error(`frames catalog fetch failed (${response.status})`);
       const payload = await response.json();
       const rawFrames = Array.isArray(payload?.frames) ? payload.frames : [];
@@ -1669,57 +1669,12 @@
     }
 
     function syncLevel2RadarMapLayer() {
-      if (!map || radarCanvas.width === 0 || radarCanvas.height === 0 || !radarBounds) return;
-
-      const coordinates = level2RadarImageCoordinates(radarBounds);
-      if (!coordinates) return;
-
-      const opacity = Math.min(1, Math.max(0, Number(opacitySlider.value)));
-      const source = map.getSource(LEVEL2_RADAR_SOURCE_ID);
-      const sizeKey = `${radarCanvas.width}x${radarCanvas.height}`;
-      const imageChanged = syncedRadarImageRevision !== radarImageRevision || syncedRadarImageSizeKey !== sizeKey;
-
-      if (!source) {
-        const radarImageUrl = radarCanvas.toDataURL("image/png");
-        map.addSource(LEVEL2_RADAR_SOURCE_ID, {
-          type: "image",
-          url: radarImageUrl,
-          coordinates
-        });
-        syncedRadarImageRevision = radarImageRevision;
-        syncedRadarImageSizeKey = sizeKey;
-      } else if (imageChanged) {
-        const radarImageUrl = radarCanvas.toDataURL("image/png");
-        source.updateImage({
-          url: radarImageUrl,
-          coordinates
-        });
-        syncedRadarImageRevision = radarImageRevision;
-        syncedRadarImageSizeKey = sizeKey;
-      } else {
-        source.setCoordinates(coordinates);
+      if (!map) return;
+      if (map.getLayer(LEVEL2_RADAR_LAYER_ID)) {
+        map.removeLayer(LEVEL2_RADAR_LAYER_ID);
       }
-
-      if (!map.getLayer(LEVEL2_RADAR_LAYER_ID)) {
-        const layer = {
-          id: LEVEL2_RADAR_LAYER_ID,
-          type: "raster",
-          source: LEVEL2_RADAR_SOURCE_ID,
-          paint: {
-            "raster-opacity": opacity,
-            "raster-resampling": "nearest"
-          }
-        };
-        const beforeId = map.getLayer(ALERT_FILL_LAYER_ID)
-          ? ALERT_FILL_LAYER_ID
-          : (firstMapSymbolLayerId() || undefined);
-        if (beforeId) {
-          map.addLayer(layer, beforeId);
-        } else {
-          map.addLayer(layer);
-        }
-      } else {
-        map.setPaintProperty(LEVEL2_RADAR_LAYER_ID, "raster-opacity", opacity);
+      if (map.getSource(LEVEL2_RADAR_SOURCE_ID)) {
+        map.removeSource(LEVEL2_RADAR_SOURCE_ID);
       }
     }
 
@@ -1765,7 +1720,51 @@
 
     function redrawRadarOverlay() {
       syncLevel2RadarMapLayer();
-      radarOverlayContext.clearRect(0, 0, radarOverlayCanvas.width, radarOverlayCanvas.height);
+
+      if (!map || radarCanvas.width === 0 || radarCanvas.height === 0 || !radarBounds) return;
+
+      const dpr = overlayDevicePixelRatio();
+      const container = map.getContainer();
+      const width = Math.max(1, Math.round(container.clientWidth * dpr));
+      const height = Math.max(1, Math.round(container.clientHeight * dpr));
+
+      if (radarOverlayCanvas.width !== width || radarOverlayCanvas.height !== height) {
+        radarOverlayCanvas.width = width;
+        radarOverlayCanvas.height = height;
+      }
+
+      radarOverlayContext.clearRect(0, 0, width, height);
+      radarOverlayContext.globalAlpha = Number(opacitySlider.value);
+      radarOverlayContext.imageSmoothingEnabled = false;
+
+      const west = radarBounds[0][1];
+      const south = radarBounds[0][0];
+      const east = radarBounds[1][1];
+      const north = radarBounds[1][0];
+      const latSpan = north - south;
+
+      for (let strip = 0; strip < RADAR_OVERLAY_VERTICAL_STRIPS; strip += 1) {
+        const t0 = strip / RADAR_OVERLAY_VERTICAL_STRIPS;
+        const t1 = (strip + 1) / RADAR_OVERLAY_VERTICAL_STRIPS;
+        const srcY = t0 * radarCanvas.height;
+        const srcH = (t1 - t0) * radarCanvas.height;
+
+        const stripNorth = north - t0 * latSpan;
+        const stripSouth = north - t1 * latSpan;
+        const nw = map.project([west, stripNorth]);
+        const se = map.project([east, stripSouth]);
+
+        radarOverlayContext.drawImage(
+          radarCanvas,
+          0, srcY, radarCanvas.width, srcH,
+          nw.x * dpr,
+          nw.y * dpr,
+          (se.x - nw.x) * dpr,
+          (se.y - nw.y) * dpr
+        );
+      }
+
+      radarOverlayContext.globalAlpha = 1;
     }
 
     function drawAlertOverlay() {
