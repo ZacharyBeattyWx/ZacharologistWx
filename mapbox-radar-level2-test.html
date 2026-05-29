@@ -580,6 +580,8 @@
     const USE_STEPPED_REFLECTIVITY_PALETTE = false;
     const NODATA_DEFAULT = -9999;
     const RADAR_OVERLAY_VERTICAL_STRIPS = 96;
+    const LEVEL2_RADAR_SOURCE_ID = "level2-radar-canvas-source";
+    const LEVEL2_RADAR_LAYER_ID = "level2-radar-canvas-layer";
     const PALETTE_SOURCE_FILE = "scripts/radar/radar_config.json";
 
     const ALERT_SOURCE_ID = "nws-alert-polygons";
@@ -1049,7 +1051,9 @@
         }
 
         const tifPath = frame?.path || level2DataUrl(FALLBACK_LEVEL2_TIF);
-        const response = await fetch(tifPath, { cache: "force-cache" });
+        const tifFetchUrl = new URL(tifPath, window.location.href);
+        tifFetchUrl.searchParams.set("cb", String(Date.now()));
+        const response = await fetch(tifFetchUrl.toString(), { cache: "no-store" });
         if (!response.ok) throw new Error(`GeoTIFF fetch failed: ${response.status} ${response.statusText}`);
 
         const buffer = await response.arrayBuffer();
@@ -1573,50 +1577,78 @@
       }, ALERT_REFRESH_MS);
     }
 
+       function level2RadarCanvasCoordinates(bounds = radarBounds) {
+      if (!bounds) return null;
+
+      const west = bounds[0][1];
+      const south = bounds[0][0];
+      const east = bounds[1][1];
+      const north = bounds[1][0];
+
+      return [
+        [west, north],
+        [east, north],
+        [east, south],
+        [west, south]
+      ];
+    }
+
+    function firstMapSymbolLayerId() {
+      const layers = map?.getStyle()?.layers || [];
+      const symbolLayer = layers.find((layer) => layer.type === "symbol");
+      return symbolLayer?.id || undefined;
+    }
+
+    function syncLevel2RadarMapLayer() {
+      if (!map || !radarCanvas.width || !radarCanvas.height || !radarBounds) {
+        return;
+      }
+
+      const coordinates = level2RadarCanvasCoordinates(radarBounds);
+      if (!coordinates) {
+        return;
+      }
+
+      const opacity = Math.min(1, Math.max(0, Number(opacitySlider.value)));
+
+      if (!map.getSource(LEVEL2_RADAR_SOURCE_ID)) {
+        map.addSource(LEVEL2_RADAR_SOURCE_ID, {
+          type: "canvas",
+          canvas: "radarCanvas",
+          coordinates,
+          animate: true
+        });
+      } else {
+        map.getSource(LEVEL2_RADAR_SOURCE_ID).setCoordinates(coordinates);
+      }
+
+      if (!map.getLayer(LEVEL2_RADAR_LAYER_ID)) {
+        const layer = {
+          id: LEVEL2_RADAR_LAYER_ID,
+          type: "raster",
+          source: LEVEL2_RADAR_SOURCE_ID,
+          paint: {
+            "raster-opacity": opacity,
+            "raster-resampling": "nearest"
+          }
+        };
+
+        const beforeId = firstMapSymbolLayerId();
+        if (beforeId) {
+          map.addLayer(layer, beforeId);
+        } else {
+          map.addLayer(layer);
+        }
+      } else {
+        map.setPaintProperty(LEVEL2_RADAR_LAYER_ID, "raster-opacity", opacity);
+      }
+
+      map.triggerRepaint();
+    }
+
     function redrawRadarOverlay() {
-      if (!map || radarCanvas.width === 0 || radarCanvas.height === 0 || !radarBounds) return;
-
-      const dpr = window.devicePixelRatio || 1;
-      const container = map.getContainer();
-      const width = Math.max(1, Math.round(container.clientWidth * dpr));
-      const height = Math.max(1, Math.round(container.clientHeight * dpr));
-
-      if (radarOverlayCanvas.width !== width || radarOverlayCanvas.height !== height) {
-        radarOverlayCanvas.width = width;
-        radarOverlayCanvas.height = height;
-      }
-
-      radarOverlayContext.clearRect(0, 0, width, height);
-      radarOverlayContext.globalAlpha = Number(opacitySlider.value);
-      radarOverlayContext.imageSmoothingEnabled = false;
-
-      const west = radarBounds[0][1];
-      const south = radarBounds[0][0];
-      const east = radarBounds[1][1];
-      const north = radarBounds[1][0];
-      const latSpan = north - south;
-
-      for (let strip = 0; strip < RADAR_OVERLAY_VERTICAL_STRIPS; strip += 1) {
-        const t0 = strip / RADAR_OVERLAY_VERTICAL_STRIPS;
-        const t1 = (strip + 1) / RADAR_OVERLAY_VERTICAL_STRIPS;
-        const srcY = t0 * radarCanvas.height;
-        const srcH = (t1 - t0) * radarCanvas.height;
-
-        const stripNorth = north - t0 * latSpan;
-        const stripSouth = north - t1 * latSpan;
-        const nw = map.project([west, stripNorth]);
-        const se = map.project([east, stripSouth]);
-
-        radarOverlayContext.drawImage(
-          radarCanvas,
-          0, srcY, radarCanvas.width, srcH,
-          nw.x * dpr,
-          nw.y * dpr,
-          (se.x - nw.x) * dpr,
-          (se.y - nw.y) * dpr
-        );
-      }
-      radarOverlayContext.globalAlpha = 1;
+      radarOverlayContext.clearRect(0, 0, radarOverlayCanvas.width, radarOverlayCanvas.height);
+      syncLevel2RadarMapLayer();
     }
 
     function drawAlertOverlay() {
