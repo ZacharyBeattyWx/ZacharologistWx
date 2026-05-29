@@ -749,8 +749,6 @@
     let alertRefreshTimer = null;
     let paletteLogPrinted = false;
     let colorizerSmokeLogged = false;
-    let radarOverlayRafId = null;
-    let alertOverlayRafId = null;
 
     function clamp255(value) {
       return Math.max(0, Math.min(255, Math.round(value)));
@@ -758,7 +756,6 @@
 
     function overlayDevicePixelRatio() {
       const dpr = window.devicePixelRatio || 1;
-      if (isMobileLevel2Mode()) return 1;
       return Math.min(1.5, Math.max(1, dpr));
     }
 
@@ -851,7 +848,7 @@
     function updateOpacity() {
       const value = Number(opacitySlider.value);
       opacityValue.textContent = `${Math.round(value * 100)}%`;
-      scheduleRadarOverlayRedraw();
+      redrawRadarOverlay();
     }
     function updatePlaybackSpeedDisplay() {
       const speed = Math.max(0.5, Math.min(6, Number(playbackSpeedSlider?.value) || 1));
@@ -872,12 +869,12 @@
       alertOverlayOpacity = Math.min(1, Math.max(0, Number(alertOpacityRange?.value ?? alertOverlayOpacity)));
       if (alertOpacityRange) alertOpacityRange.value = alertOverlayOpacity.toFixed(2);
       updateAlertOverlayControls();
-      scheduleAlertOverlayRedraw();
+      drawAlertOverlay();
     }
     function toggleAlertOverlayVisibility() {
       isAlertOverlayVisible = !isAlertOverlayVisible;
       updateAlertOverlayControls();
-      scheduleAlertOverlayRedraw();
+      drawAlertOverlay();
     }
 
     function normalizeLevel2Frame(meta) {
@@ -1265,7 +1262,7 @@
 
         updateFrameInfoRow();
         syncFrameSelect();
-        scheduleRadarOverlayRedraw();
+        redrawRadarOverlay();
         return frame;
       } catch (error) {
         if (error?.status !== 404) {
@@ -1330,7 +1327,7 @@
       setStatusText("cached frame loaded");
       updateFrameInfoRow();
       syncFrameSelect();
-      scheduleRadarOverlayRedraw();
+      redrawRadarOverlay();
 
       return true;
     }
@@ -1563,6 +1560,7 @@
         await stepFrame(1);
       }
       if (!isPlaying) return;
+      clearPlaybackTimer();
       playbackTimer = window.setTimeout(playbackTick, playbackIntervalMs);
     }
 
@@ -1692,22 +1690,6 @@
       return { removed: true, removedCurrent };
     }
 
-    function scheduleRadarOverlayRedraw() {
-      if (radarOverlayRafId !== null) return;
-      radarOverlayRafId = window.requestAnimationFrame(() => {
-        radarOverlayRafId = null;
-        redrawRadarOverlay();
-      });
-    }
-
-    function scheduleAlertOverlayRedraw() {
-      if (alertOverlayRafId !== null) return;
-      alertOverlayRafId = window.requestAnimationFrame(() => {
-        alertOverlayRafId = null;
-        drawAlertOverlay();
-      });
-    }
-
     function redrawRadarOverlay() {
       syncLevel2RadarMapLayer();
 
@@ -1796,10 +1778,44 @@
         if (!Array.isArray(polygonCoordinates) || !polygonCoordinates.length) return;
         alertOverlayContext.beginPath();
         polygonCoordinates.forEach(drawRing);
-        alertOverlayContext.stroke();
       };
 
+      const bucketFallback = [];
+      const bucketOther = [];
+      const bucketStorm = [];
       activeAlertFeatures.forEach((feature) => {
+        const properties = feature?.properties || {};
+        const isFallback = properties._fallbackGeometry === true;
+        const visibleStorm = properties._visibleStormPolygon === true;
+        if (visibleStorm) bucketStorm.push(feature);
+        else if (isFallback) bucketFallback.push(feature);
+        else bucketOther.push(feature);
+      });
+
+      const drawFeatureFill = (feature) => {
+        const properties = feature?.properties || {};
+        const isFallback = properties._fallbackGeometry === true;
+        const visibleStorm = properties._visibleStormPolygon === true;
+        const fillOpacity = (visibleStorm ? 0.22 : (isFallback ? 0.08 : 0.12)) * alertOverlayOpacity;
+        const geometry = feature?.geometry;
+        if (!geometry) return;
+
+        alertOverlayContext.fillStyle = properties._alertColor || "#58b7ff";
+        alertOverlayContext.globalAlpha = fillOpacity;
+        alertOverlayContext.setLineDash([]);
+
+        if (geometry.type === "Polygon") {
+          drawPolygon(geometry.coordinates);
+          alertOverlayContext.fill("evenodd");
+        } else if (geometry.type === "MultiPolygon") {
+          geometry.coordinates.forEach((polygon) => {
+            drawPolygon(polygon);
+            alertOverlayContext.fill("evenodd");
+          });
+        }
+      };
+
+      const drawFeatureStroke = (feature) => {
         const properties = feature.properties || {};
         const isFallback = properties._fallbackGeometry === true;
         const visibleStorm = properties._visibleStormPolygon === true;
@@ -1817,10 +1833,25 @@
         const geometry = feature.geometry;
         if (geometry?.type === "Polygon") {
           drawPolygon(geometry.coordinates);
+          alertOverlayContext.stroke();
         } else if (geometry?.type === "MultiPolygon") {
-          geometry.coordinates.forEach(drawPolygon);
+          geometry.coordinates.forEach((polygon) => {
+            drawPolygon(polygon);
+            alertOverlayContext.stroke();
+          });
         }
-      });
+      };
+
+      // Fill pass: fallback below storm polygons.
+      bucketFallback.forEach(drawFeatureFill);
+      bucketOther.forEach(drawFeatureFill);
+      bucketStorm.forEach(drawFeatureFill);
+
+      // Outline pass above fills, with storm outlines on top.
+      bucketFallback.forEach(drawFeatureStroke);
+      bucketOther.forEach(drawFeatureStroke);
+      bucketStorm.forEach(drawFeatureStroke);
+
       alertOverlayContext.setLineDash([]);
       alertOverlayContext.globalAlpha = 1;
     }
@@ -2190,7 +2221,7 @@
       map.getSource(ALERT_SOURCE_ID).setData({ type: "FeatureCollection", features: activeAlertFeatures });
       map.moveLayer(ALERT_FILL_LAYER_ID);
       map.moveLayer(ALERT_LINE_LAYER_ID);
-      scheduleAlertOverlayRedraw();
+      drawAlertOverlay();
       const stormCount = activeAlertFeatures.filter((feature) => feature.properties?._visibleStormPolygon === true).length;
       const fallbackCount = activeAlertFeatures.filter((feature) => feature.properties?._fallbackGeometry === true).length;
       alertsStatusRow.textContent = `Alerts: ${fetchedFeatures.length} active - ${stormCount} storm polygons - ${fallbackCount} zone fallback - ${activeAlertsWithoutGeometry.length} listed only`;
@@ -2224,22 +2255,16 @@
       map.on("rotate", lockOrientation);
       map.on("pitch", lockOrientation);
       map.on("move", () => {
-        scheduleRadarOverlayRedraw();
+        redrawRadarOverlay();
+        drawAlertOverlay();
       });
       map.on("zoom", () => {
-        scheduleRadarOverlayRedraw();
-      });
-      map.on("moveend", () => {
-        scheduleRadarOverlayRedraw();
-        scheduleAlertOverlayRedraw();
-      });
-      map.on("zoomend", () => {
-        scheduleRadarOverlayRedraw();
-        scheduleAlertOverlayRedraw();
+        redrawRadarOverlay();
+        drawAlertOverlay();
       });
       map.on("resize", () => {
-        scheduleRadarOverlayRedraw();
-        scheduleAlertOverlayRedraw();
+        redrawRadarOverlay();
+        drawAlertOverlay();
       });
 
       map.on("load", async () => {
