@@ -749,9 +749,17 @@
     let alertRefreshTimer = null;
     let paletteLogPrinted = false;
     let colorizerSmokeLogged = false;
+    let radarOverlayRafId = null;
+    let alertOverlayRafId = null;
 
     function clamp255(value) {
       return Math.max(0, Math.min(255, Math.round(value)));
+    }
+
+    function overlayDevicePixelRatio() {
+      const dpr = window.devicePixelRatio || 1;
+      if (isMobileLevel2Mode()) return 1;
+      return Math.min(1.5, Math.max(1, dpr));
     }
 
     function parseHexColor(hex) {
@@ -843,7 +851,7 @@
     function updateOpacity() {
       const value = Number(opacitySlider.value);
       opacityValue.textContent = `${Math.round(value * 100)}%`;
-      redrawRadarOverlay();
+      scheduleRadarOverlayRedraw();
     }
     function updatePlaybackSpeedDisplay() {
       const speed = Math.max(0.5, Math.min(6, Number(playbackSpeedSlider?.value) || 1));
@@ -864,12 +872,12 @@
       alertOverlayOpacity = Math.min(1, Math.max(0, Number(alertOpacityRange?.value ?? alertOverlayOpacity)));
       if (alertOpacityRange) alertOpacityRange.value = alertOverlayOpacity.toFixed(2);
       updateAlertOverlayControls();
-      drawAlertOverlay();
+      scheduleAlertOverlayRedraw();
     }
     function toggleAlertOverlayVisibility() {
       isAlertOverlayVisible = !isAlertOverlayVisible;
       updateAlertOverlayControls();
-      drawAlertOverlay();
+      scheduleAlertOverlayRedraw();
     }
 
     function normalizeLevel2Frame(meta) {
@@ -1257,7 +1265,7 @@
 
         updateFrameInfoRow();
         syncFrameSelect();
-        redrawRadarOverlay();
+        scheduleRadarOverlayRedraw();
         return frame;
       } catch (error) {
         if (error?.status !== 404) {
@@ -1322,7 +1330,7 @@
       setStatusText("cached frame loaded");
       updateFrameInfoRow();
       syncFrameSelect();
-      redrawRadarOverlay();
+      scheduleRadarOverlayRedraw();
 
       return true;
     }
@@ -1684,12 +1692,28 @@
       return { removed: true, removedCurrent };
     }
 
+    function scheduleRadarOverlayRedraw() {
+      if (radarOverlayRafId !== null) return;
+      radarOverlayRafId = window.requestAnimationFrame(() => {
+        radarOverlayRafId = null;
+        redrawRadarOverlay();
+      });
+    }
+
+    function scheduleAlertOverlayRedraw() {
+      if (alertOverlayRafId !== null) return;
+      alertOverlayRafId = window.requestAnimationFrame(() => {
+        alertOverlayRafId = null;
+        drawAlertOverlay();
+      });
+    }
+
     function redrawRadarOverlay() {
       syncLevel2RadarMapLayer();
 
       if (!map || radarCanvas.width === 0 || radarCanvas.height === 0 || !radarBounds) return;
 
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = overlayDevicePixelRatio();
       const container = map.getContainer();
       const width = Math.max(1, Math.round(container.clientWidth * dpr));
       const height = Math.max(1, Math.round(container.clientHeight * dpr));
@@ -1736,7 +1760,7 @@
     function drawAlertOverlay() {
       if (!map) return;
 
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = overlayDevicePixelRatio();
       const container = map.getContainer();
       const width = Math.max(1, Math.round(container.clientWidth * dpr));
       const height = Math.max(1, Math.round(container.clientHeight * dpr));
@@ -2166,7 +2190,7 @@
       map.getSource(ALERT_SOURCE_ID).setData({ type: "FeatureCollection", features: activeAlertFeatures });
       map.moveLayer(ALERT_FILL_LAYER_ID);
       map.moveLayer(ALERT_LINE_LAYER_ID);
-      drawAlertOverlay();
+      scheduleAlertOverlayRedraw();
       const stormCount = activeAlertFeatures.filter((feature) => feature.properties?._visibleStormPolygon === true).length;
       const fallbackCount = activeAlertFeatures.filter((feature) => feature.properties?._fallbackGeometry === true).length;
       alertsStatusRow.textContent = `Alerts: ${fetchedFeatures.length} active - ${stormCount} storm polygons - ${fallbackCount} zone fallback - ${activeAlertsWithoutGeometry.length} listed only`;
@@ -2200,16 +2224,22 @@
       map.on("rotate", lockOrientation);
       map.on("pitch", lockOrientation);
       map.on("move", () => {
-        redrawRadarOverlay();
-        drawAlertOverlay();
+        scheduleRadarOverlayRedraw();
       });
       map.on("zoom", () => {
-        redrawRadarOverlay();
-        drawAlertOverlay();
+        scheduleRadarOverlayRedraw();
+      });
+      map.on("moveend", () => {
+        scheduleRadarOverlayRedraw();
+        scheduleAlertOverlayRedraw();
+      });
+      map.on("zoomend", () => {
+        scheduleRadarOverlayRedraw();
+        scheduleAlertOverlayRedraw();
       });
       map.on("resize", () => {
-        redrawRadarOverlay();
-        drawAlertOverlay();
+        scheduleRadarOverlayRedraw();
+        scheduleAlertOverlayRedraw();
       });
 
       map.on("load", async () => {
