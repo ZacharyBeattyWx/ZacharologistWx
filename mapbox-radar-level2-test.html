@@ -2178,7 +2178,12 @@
         const cardsHtml = sortedFeatures.map((feature, index) => {
           const props = feature.properties || {};
           const eventName = props.event || "Unknown Event";
-          const alertHex = props._alertColor || alertColor(eventName);
+          const popupFallbackStyle = alertFallbackStyle(eventName);
+          const popupFillColor = props._alertFillColor || props._alertFallbackFillColor || popupFallbackStyle.fill;
+          const popupLineColor = props._alertFallbackLineColor || props._alertColor || alertColor(eventName);
+          const alertHex = (props._fallbackGeometry === true || props._visibleStormPolygon !== true)
+            ? (popupFillColor || popupLineColor)
+            : popupLineColor;
           const expires = formatPopupExpires(props.expires || props.ends);
           const effective = formatPopupExpires(props.effective);
           const summary = compactAlertSummary(props);
@@ -2235,8 +2240,8 @@
                   </section>` : ""}
                 </div>
               </div>
-              <div class="omega-alert-card">
-                <div class="omega-alert-header"><span class="omega-alert-title">${escapeHtml(eventName)}</span></div>
+              <div class="omega-alert-card" style="--alert-color: ${escapeHtml(alertHex)};">
+                <div class="omega-alert-header" style="background: ${escapeHtml(alertHex)};"><span class="omega-alert-title">${escapeHtml(eventName)}</span></div>
                 <div class="omega-alert-body">
                   <div class="omega-alert-expires">${escapeHtml(expiresIn)}</div>
                   <div class="omega-alert-actions">
