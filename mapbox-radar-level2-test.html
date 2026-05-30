@@ -141,7 +141,7 @@
       display: contents;
     }
     .level2-alert-popup .mapboxgl-popup-content {
-      width: 340px;
+      width: 300px;
       max-width: calc(100vw - 28px);
       padding: 0;
       background: transparent;
@@ -168,8 +168,8 @@
     .level2-alert-popup .mapboxgl-popup-close-button:hover { background: rgba(0, 0, 0, 0.34); color: #ffffff; }
     .level2-alert-popup-wrap {
       position: relative;
-      width: 360px;
-      max-width: calc(100vw - 32px);
+      width: 300px;
+      max-width: calc(100vw - 28px);
       min-width: 0;
       overflow-wrap: anywhere;
       overflow: visible;
@@ -179,84 +179,88 @@
       width: 100%;
       max-width: 100%;
       overflow: hidden;
-      background: #303236;
+      background: rgba(8, 14, 28, 0.84);
       border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 8px;
+      border-radius: 12px;
       box-shadow: 0 10px 22px rgba(0, 0, 0, 0.42);
       pointer-events: auto;
       z-index: 3;
       transform: none;
     }
-    .level2-alert-popup .omega-alert-stack { display: grid; background: #303236; }
-    .level2-alert-popup .omega-alert-card { background: #303236; }
+    .level2-alert-popup .omega-alert-stack { display: grid; background: transparent; }
+    .level2-alert-popup .omega-alert-card { background: transparent; }
     .level2-alert-popup .omega-alert-header {
       position: relative;
-      min-height: 28px;
-      padding: 0 22px 0 10px;
+      height: 30px;
+      padding: 0 10px;
       display: flex;
       align-items: center;
       justify-content: center;
       background: var(--alert-color, #7c4dff);
       color: #ffffff;
-      font-size: 0.64rem;
+      font-size: 0.78rem;
       font-weight: 800;
       line-height: 1;
       text-align: center;
       text-transform: uppercase;
       text-shadow: 0 1px 2px rgba(0, 0, 0, 0.42);
       overflow-wrap: anywhere;
+      border-radius: 12px 12px 0 0;
     }
     .level2-alert-popup .omega-alert-title {
       min-width: 0;
+      max-width: 100%;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    .level2-alert-popup .omega-alert-body { display: grid; background: #303236; }
-    .level2-alert-popup .omega-alert-summary-row {
-      min-height: 38px;
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 10px;
-      align-items: center;
-      padding: 8px 8px 8px 10px;
-    }
-    .level2-alert-popup .omega-alert-headline {
-      color: #f8fafc;
-      font-size: 0.7rem;
-      font-weight: 700;
-      line-height: 1.25;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .level2-alert-popup .omega-alert-expires {
-      min-height: 30px;
+    .level2-alert-popup .omega-alert-body {
+      height: 48px;
+      position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
-      border-top: 1px solid rgba(255, 255, 255, 0.12);
+      gap: 8px;
+      padding: 0 10px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent), rgba(7, 12, 24, 0.72);
+      backdrop-filter: blur(5px);
+      border-radius: 0 0 12px 12px;
+    }
+    .level2-alert-popup .omega-alert-expires {
       color: #f8fafc;
-      font-size: 0.7rem;
-      font-weight: 800;
+      font-size: 0.78rem;
+      font-weight: 700;
       line-height: 1.25;
+      width: 100%;
       text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
+      flex: 0 1 auto;
+      padding-right: 44px;
     }
     .level2-alert-popup .omega-alert-actions {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
       display: flex;
       gap: 6px;
       align-items: center;
       justify-content: flex-end;
+      flex: 0 0 auto;
     }
     .level2-alert-popup .omega-alert-icon-btn {
-      width: 26px;
-      height: 26px;
-      min-height: 26px;
+      width: 32px;
+      height: 32px;
+      min-height: 32px;
       display: grid;
       place-items: center;
       padding: 0;
       border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 5px;
+      border-radius: 999px;
       background: rgba(255, 255, 255, 0.14);
       color: #ffffff;
       font-size: 0.72rem;
@@ -455,7 +459,7 @@
       body.mobile-radar-options-open .control-card #errorPanel {
         display: block;
       }
-      .level2-alert-popup-wrap { width: min(340px, calc(100vw - 24px)); }
+      .level2-alert-popup-wrap { width: min(300px, calc(100vw - 24px)); }
       .level2-alert-popup .level2-alert-detail-panel {
         width: min(340px, calc(100vw - 24px));
         max-height: min(360px, 44vh);
@@ -492,22 +496,18 @@
         min-width: 34px !important;
       }
       .level2-alert-popup .omega-alert-header {
-        min-height: 24px;
-        padding: 0 18px 0 8px;
-        font-size: 0.6rem;
-      }
-      .level2-alert-popup .omega-alert-headline {
-        font-size: 0.64rem;
+        height: 28px;
+        padding: 0 8px;
+        font-size: 0.72rem;
       }
       .level2-alert-popup .omega-alert-expires {
-        min-height: 28px;
-        font-size: 0.64rem;
+        font-size: 0.72rem;
       }
       .level2-alert-popup .omega-alert-icon-btn {
-        width: 22px;
-        height: 22px;
-        min-height: 22px;
-        font-size: 0.62rem;
+        width: 30px;
+        height: 30px;
+        min-height: 30px;
+        font-size: 0.72rem;
       }
     }
   </style>
@@ -1828,7 +1828,8 @@
         const geometry = feature?.geometry;
         if (!geometry) return;
 
-        alertOverlayContext.fillStyle = properties._alertColor || "#58b7ff";
+        const featureColor = properties._alertColor || alertColor(properties.event || "");
+        alertOverlayContext.fillStyle = featureColor;
         alertOverlayContext.globalAlpha = fillOpacity;
         alertOverlayContext.setLineDash([]);
 
@@ -1847,9 +1848,11 @@
         const properties = feature.properties || {};
         const isFallback = properties._fallbackGeometry === true;
         const visibleStorm = properties._visibleStormPolygon === true;
+        const isFlashFloodWarning = String(properties.event || "").includes("Flash Flood Warning");
         const lineOpacity = (visibleStorm ? 1 : (isFallback ? 0.42 : 0.55)) * alertOverlayOpacity;
-        const lineWidth = visibleStorm ? 3.1 : (isFallback ? 1.35 : 1.7);
-        alertOverlayContext.strokeStyle = properties._alertColor || "#58b7ff";
+        const lineWidth = visibleStorm ? (isFlashFloodWarning ? 3.8 : 3.1) : (isFallback ? 1.35 : 1.7);
+        const featureColor = properties._alertColor || alertColor(properties.event || "");
+        alertOverlayContext.strokeStyle = featureColor;
         alertOverlayContext.globalAlpha = lineOpacity;
         alertOverlayContext.lineWidth = lineWidth * dpr;
         if (isFallback) {
@@ -1893,7 +1896,12 @@
       if (event.includes("Severe Thunderstorm Watch")) return "#bd8bff";
       if (event.includes("Tornado Warning") || event.includes("Particularly Dangerous Situation")) return "#ff3b3b";
       if (event.includes("Severe Thunderstorm")) return "#ffb21c";
-      if (event.includes("Flash Flood")) return "#00c4a7";
+      if (event.includes("Flash Flood Warning")) return "#39ff14";
+      if (event.includes("Flash Flood Watch")) return "#16a34a";
+      if (event.includes("Flood Warning")) return "#22c55e";
+      if (event.includes("Flood Watch")) return "#00aa08";
+      if (event.includes("Flood Advisory")) return "#15803d";
+      if (event.includes("Flash Flood")) return "#16a34a";
       if (event.includes("Flood")) return "#00aa08";
       if (event.includes("Winter Storm")) return "#df74d7";
       if (event.includes("Winter Weather")) return "#ab7cff";
@@ -1928,6 +1936,18 @@
       if (Number.isNaN(date.getTime())) return String(value);
       return date.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
     }
+    function formatPopupExpiresIn(value) {
+      if (!value) return "Expires in Unknown.";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return `Expires in ${String(value)}.`;
+      const deltaMs = date.getTime() - Date.now();
+      if (deltaMs <= 0) return "Expired.";
+      const totalMinutes = Math.max(1, Math.round(deltaMs / 60000));
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+      if (hours <= 0) return `Expires in ${minutes} min${minutes === 1 ? "" : "s"}.`;
+      return `Expires in ${hours} hr${hours === 1 ? "" : "s"}, ${minutes} min${minutes === 1 ? "" : "s"}.`;
+    }
     function alertValue(value) {
       const text = String(value || "").trim();
       return text || "N/A";
@@ -1951,7 +1971,7 @@
         type: "fill",
         source: ALERT_SOURCE_ID,
         paint: {
-          "fill-color": ["to-color", ["coalesce", ["get", "_alertColor"], "#58b7ff"]],
+          "fill-color": ["to-color", ["coalesce", ["get", "_alertColor"], ["literal", "#ffffff"]]],
           "fill-opacity": 0
         }
       });
@@ -1961,7 +1981,7 @@
         source: ALERT_SOURCE_ID,
         filter: ["==", ["get", "_visibleStormPolygon"], true],
         paint: {
-          "line-color": ["to-color", ["coalesce", ["get", "_alertColor"], "#58b7ff"]],
+          "line-color": ["to-color", ["coalesce", ["get", "_alertColor"], ["literal", "#ffffff"]]],
           "line-opacity": 0,
           "line-width": ["interpolate", ["linear"], ["zoom"], 4, 1.5, 8, 2.8]
         }
@@ -1978,6 +1998,7 @@
         const expires = formatPopupExpires(props.expires || props.ends);
         const effective = formatPopupExpires(props.effective);
         const summary = compactAlertSummary(props);
+        const expiresIn = formatPopupExpiresIn(props.expires || props.ends);
         const html = `
           <div class="level2-alert-popup-wrap" style="--alert-color:${escapeHtml(alertHex)};">
             <div class="level2-alert-detail-panel">
@@ -2035,13 +2056,10 @@
                 <div class="omega-alert-card">
                   <div class="omega-alert-header"><span class="omega-alert-title">${escapeHtml(eventName)}</span></div>
                   <div class="omega-alert-body">
-                    <div class="omega-alert-summary-row">
-                      <div class="omega-alert-headline">${escapeHtml(summary)}</div>
-                      <div class="omega-alert-actions">
-                        <button class="omega-alert-icon-btn omega-alert-details-btn" type="button" aria-expanded="false" title="Details">></button>
-                      </div>
+                    <div class="omega-alert-expires">${escapeHtml(expiresIn)}</div>
+                    <div class="omega-alert-actions">
+                      <button class="omega-alert-icon-btn omega-alert-details-btn" type="button" aria-expanded="false" title="Details">></button>
                     </div>
-                    <div class="omega-alert-expires">Expires: ${escapeHtml(expires)}</div>
                   </div>
                 </div>
               </div>
@@ -2178,6 +2196,7 @@
           geometry: zoneResult.geometry,
           properties: {
             ...feature.properties,
+            _alertColor: feature.properties?._alertColor || alertColor(feature.properties?.event || ""),
             _fallbackGeometry: true,
             _fallbackZoneUrl: zoneResult.zoneUrl
           }
