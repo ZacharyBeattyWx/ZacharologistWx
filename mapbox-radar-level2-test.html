@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -1888,7 +1888,7 @@
           hydroVisual ? (hydroVisual.lineOpacity ?? 0.58) :
           0.55
         ) * alertOverlayOpacity;
-        const lineWidth = directAlertPolygon ? 3.1 : ((isFallback || hydroVisual) ? hydroLineWidth : 1.7);
+        const lineWidth = directAlertPolygon ? 2.4 : ((isFallback || hydroVisual) ? hydroLineWidth : 1.7);
         const parentAlertColor = properties._alertColor || alertColor(properties.event || "");
         alertOverlayContext.strokeStyle = parentAlertColor;
         alertOverlayContext.globalAlpha = lineOpacity;
@@ -2849,6 +2849,8 @@
   </script>
 </body>
 </html>
+
+
 
 
 
