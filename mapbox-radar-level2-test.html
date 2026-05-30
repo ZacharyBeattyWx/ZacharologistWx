@@ -1840,8 +1840,9 @@
         const visibleStorm = properties._visibleStormPolygon === true;
         const hydroVisual = isHydroAlert(properties.event || "") ? alertFallbackStyle(properties.event || "") : null;
         const fallbackVisual = isFallback ? alertFallbackStyle(properties.event || "") : null;
+        const directAlertPolygon = !isFallback && isStormStyleAlertPolygonEvent(properties.event || "");
         const fillOpacity = (
-          visibleStorm ? 0.22 :
+          directAlertPolygon ? 0.22 :
           isFallback ? (fallbackVisual?.fillOpacity ?? 0.2) :
           hydroVisual ? (hydroVisual.fillOpacity ?? 0.18) :
           0.12
@@ -1849,12 +1850,8 @@
         const geometry = feature?.geometry;
         if (!geometry) return;
 
-        const featureFillColor = isFallback
-          ? (fallbackVisual?.fill || properties._alertFillColor || properties._alertColor || alertColor(properties.event || ""))
-          : hydroVisual
-            ? (hydroVisual.fill || properties._alertFillColor || properties._alertColor || alertColor(properties.event || ""))
-          : (properties._alertColor || alertColor(properties.event || ""));
-        alertOverlayContext.fillStyle = featureFillColor;
+        const parentAlertColor = properties._alertColor || alertColor(properties.event || "");
+        alertOverlayContext.fillStyle = parentAlertColor;
         alertOverlayContext.globalAlpha = fillOpacity;
         alertOverlayContext.setLineDash([]);
 
@@ -1884,19 +1881,16 @@
           visualMinWidth,
           Math.min(visualMaxWidth, visualMinWidth + ((zoom - 4) / 7) * (visualMaxWidth - visualMinWidth))
         );
+        const directAlertPolygon = !isFallback && isStormStyleAlertPolygonEvent(properties.event || "");
         const lineOpacity = (
-          visibleStorm ? 1 :
+          directAlertPolygon ? 1 :
           isFallback ? (fallbackVisual?.lineOpacity ?? 0.52) :
           hydroVisual ? (hydroVisual.lineOpacity ?? 0.58) :
           0.55
         ) * alertOverlayOpacity;
-        const lineWidth = visibleStorm ? (isFlashFloodWarning ? 3.8 : 3.1) : ((isFallback || hydroVisual) ? hydroLineWidth : 1.7);
-        const featureStrokeColor = isFallback
-          ? (properties._alertFallbackLineColor || properties._alertColor || alertColor(properties.event || ""))
-          : hydroVisual
-            ? (hydroVisual.outline || properties._alertFallbackLineColor || properties._alertColor || alertColor(properties.event || ""))
-          : (properties._alertColor || alertColor(properties.event || ""));
-        alertOverlayContext.strokeStyle = featureStrokeColor;
+        const lineWidth = directAlertPolygon ? 3.1 : ((isFallback || hydroVisual) ? hydroLineWidth : 1.7);
+        const parentAlertColor = properties._alertColor || alertColor(properties.event || "");
+        alertOverlayContext.strokeStyle = parentAlertColor;
         alertOverlayContext.globalAlpha = lineOpacity;
         alertOverlayContext.lineWidth = lineWidth * dpr;
         if (isFallback) {
@@ -1935,42 +1929,72 @@
     function alertColor(eventName) {
       const event = String(eventName || "");
       if (!event) return "#58b7ff";
+
       if (event.includes("Tornado Emergency")) return "#ff00ff";
       if (event.includes("Tornado Watch")) return "#f000ff";
-      if (event.includes("Severe Thunderstorm Watch")) return "#bd8bff";
-      if (event.includes("Tornado Warning") || event.includes("Particularly Dangerous Situation")) return "#ff3b3b";
-      if (event.includes("Severe Thunderstorm")) return "#ffb21c";
-      if (event.includes("Flash Flood Warning")) return "#66ff00";
-      if (event.includes("Flash Flood Watch")) return "#4f8f5f";
-      if (event.includes("Flash Flood Discussion")) return "#4f8f5f";
-      if (event.includes("Flood Warning")) return "#00c853";
-      if (event.includes("Flood Advisory")) return "#0DD36F";
-      if (event.includes("Flood Watch")) return "#4f8f5f";
-      if (event.includes("Flash Flood")) return "#4f8f5f";
-      if (event.includes("Flood")) return "#4f8f5f";
+      if (event.includes("Severe Thunderstorm Watch")) return "#FFBB00";
+
+      if (
+        event.includes("Tornado Warning") ||
+        event.includes("Particularly Dangerous Situation")
+      ) {
+        return "#ff3b3b";
+      }
+
+      if (event.includes("Severe Thunderstorm")) return "#FFD900";
+      if (event.includes("Flash Flood")) return "#00c4a7";
+      if (event.includes("Flood")) return "#00aa08";
+
       if (event.includes("Winter Storm")) return "#df74d7";
       if (event.includes("Winter Weather")) return "#ab7cff";
       if (event.includes("Freeze")) return "#6edce4";
       if (event.includes("Frost")) return "#4e8de6";
       if (event.includes("Blizzard")) return "#748cff";
+
       if (event.includes("Red Flag") || event.includes("Fire Weather")) return "#ff5d00";
+
       return "#58b7ff";
     }
 
     function alertFallbackStyle(eventName) {
       const event = String(eventName || "");
-      if (event.includes("Flash Flood Warning")) return { fill: "#39ff14", outline: "#66ff00", fillOpacity: 0.42, lineOpacity: 0.92, minWidth: 1.7, maxWidth: 2.4 };
-      if (event.includes("Flood Warning")) return { fill: "#00b050", outline: "#00ff66", fillOpacity: 0.46, lineOpacity: 0.92, minWidth: 1.8, maxWidth: 3.0 };
-      if (event.includes("Flood Advisory")) return { fill: "#0DD36F", outline: "#20d878", fillOpacity: 0.4, lineOpacity: 0.9, minWidth: 1.6, maxWidth: 2.7 };
-      if (event.includes("Flood Watch")) return { fill: "#006400", outline: "#4caf50", fillOpacity: 0.28, lineOpacity: 0.94, minWidth: 2.0, maxWidth: 3.2 };
-      if (event.includes("Flash Flood Discussion")) return { fill: "#006400", outline: "#4caf50", fillOpacity: 0.46, lineOpacity: 0.62, minWidth: 0.8, maxWidth: 1.2 };
-      if (event.includes("Flash Flood")) return { fill: "#006400", outline: "#4caf50", fillOpacity: 0.46, lineOpacity: 0.62, minWidth: 0.9, maxWidth: 1.4 };
-      if (event.includes("Flood")) return { fill: "#006400", outline: "#4caf50", fillOpacity: 0.46, lineOpacity: 0.62, minWidth: 0.8, maxWidth: 1.3 };
       const base = alertColor(event);
-      if (event.includes("Beach Hazards Statement")) {
-        return { fill: base, outline: base, fillOpacity: 0.30, lineOpacity: 0.62, minWidth: 0.8, maxWidth: 1.4 };
+
+      let fillOpacity = 0.24;
+      let lineOpacity = 0.72;
+      let minWidth = 0.9;
+      let maxWidth = 1.6;
+
+      if (event.includes("Warning")) {
+        fillOpacity = 0.30;
+        lineOpacity = 0.86;
+        minWidth = 1.4;
+        maxWidth = 2.4;
+      } else if (event.includes("Watch")) {
+        fillOpacity = 0.20;
+        lineOpacity = 0.68;
+        minWidth = 1.0;
+        maxWidth = 1.8;
+      } else if (event.includes("Advisory")) {
+        fillOpacity = 0.24;
+        lineOpacity = 0.74;
+        minWidth = 1.0;
+        maxWidth = 1.8;
+      } else if (event.includes("Statement")) {
+        fillOpacity = 0.20;
+        lineOpacity = 0.62;
+        minWidth = 0.8;
+        maxWidth = 1.4;
       }
-      return { fill: "#006400", outline: base, fillOpacity: 0.46, lineOpacity: 0.62, minWidth: 0.8, maxWidth: 1.4 };
+
+      return {
+        fill: base,
+        outline: base,
+        fillOpacity,
+        lineOpacity,
+        minWidth,
+        maxWidth
+      };
     }
 
     function alertDrawRank(eventName) {
@@ -2044,6 +2068,18 @@
         event === "Severe Thunderstorm Warning" ||
         event === "Flash Flood Warning" ||
         event === "Special Marine Warning"
+      );
+    }
+
+    function isStormStyleAlertPolygonEvent(eventName) {
+      const event = String(eventName || "");
+      return (
+        event === "Tornado Warning" ||
+        event === "Severe Thunderstorm Warning" ||
+        event === "Flash Flood Warning" ||
+        event === "Special Marine Warning" ||
+        event === "Special Weather Statement" ||
+        event === "Marine Weather Statement"
       );
     }
 
@@ -2183,12 +2219,7 @@
         const cardsHtml = sortedFeatures.map((feature, index) => {
           const props = feature.properties || {};
           const eventName = props.event || "Unknown Event";
-          const popupFallbackStyle = alertFallbackStyle(eventName);
-          const popupFillColor = props._alertFillColor || props._alertFallbackFillColor || popupFallbackStyle.fill;
-          const popupLineColor = props._alertFallbackLineColor || props._alertColor || alertColor(eventName);
-          const alertHex = (props._fallbackGeometry === true || props._visibleStormPolygon !== true)
-            ? (popupFillColor || popupLineColor)
-            : popupLineColor;
+          const alertHex = props._alertColor || alertColor(eventName);
           const expires = formatPopupExpires(props.expires || props.ends);
           const effective = formatPopupExpires(props.effective);
           const summary = compactAlertSummary(props);
