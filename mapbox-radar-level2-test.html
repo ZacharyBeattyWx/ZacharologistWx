@@ -178,7 +178,7 @@
       position: relative;
       width: 100%;
       max-width: 100%;
-      overflow: hidden;
+      overflow: visible;
       background: rgba(8, 14, 28, 0.84);
       border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 12px;
@@ -187,7 +187,8 @@
       z-index: 3;
       transform: none;
     }
-    .level2-alert-popup .omega-alert-stack { display: grid; background: transparent; }
+    .level2-alert-popup .omega-alert-stack { display: grid; gap: 8px; background: transparent; }
+    .level2-alert-popup .omega-alert-item { position: relative; }
     .level2-alert-popup .omega-alert-card { background: transparent; }
     .level2-alert-popup .omega-alert-header {
       position: relative;
@@ -583,6 +584,8 @@
     const DESKTOP_LEVEL2_RENDER_CACHE_LIMIT = 6;
     const MOBILE_UNCACHED_FRAME_MIN_INTERVAL_MS = 1600;
     const DISPLAY_MIN_DBZ = -32;
+    const DEBUG_ALERT_STACKING = false;
+    const ALERT_SCREEN_HIT_TOLERANCE_PX = 12;
     const FORCE_DEBUG_RADAR_COLORS = false;
     const ENABLE_WEAK_DESPECKLE = false;
     const USE_STEPPED_REFLECTIVITY_PALETTE = false;
@@ -594,6 +597,7 @@
 
     const ALERT_SOURCE_ID = "nws-alert-polygons";
     const ALERT_FILL_LAYER_ID = "nws-alert-polygons-fill-hitbox";
+    const ALERT_STORM_HITBOX_LAYER_ID = "nws-alert-polygons-storm-hitbox";
     const ALERT_LINE_LAYER_ID = "nws-alert-polygons-line";
     const NWS_ALERT_AREAS = [
       "AL", "AR", "DC", "DE", "FL", "GA",
@@ -1976,6 +1980,16 @@
         }
       });
       map.addLayer({
+        id: ALERT_STORM_HITBOX_LAYER_ID,
+        type: "fill",
+        source: ALERT_SOURCE_ID,
+        filter: ["==", ["get", "_visibleStormPolygon"], true],
+        paint: {
+          "fill-color": ["to-color", ["coalesce", ["get", "_alertColor"], ["literal", "#ffffff"]]],
+          "fill-opacity": 0.001
+        }
+      });
+      map.addLayer({
         id: ALERT_LINE_LAYER_ID,
         type: "line",
         source: ALERT_SOURCE_ID,
@@ -1987,81 +2001,171 @@
         }
       });
       map.moveLayer(ALERT_FILL_LAYER_ID);
+      map.moveLayer(ALERT_STORM_HITBOX_LAYER_ID);
       map.moveLayer(ALERT_LINE_LAYER_ID);
 
       const onInteract = (event) => {
-        const feature = event?.features?.[0];
-        if (!feature) return;
-        const props = feature.properties || {};
-        const eventName = props.event || "Unknown Event";
-        const alertHex = props._alertColor || alertColor(eventName);
-        const expires = formatPopupExpires(props.expires || props.ends);
-        const effective = formatPopupExpires(props.effective);
-        const summary = compactAlertSummary(props);
-        const expiresIn = formatPopupExpiresIn(props.expires || props.ends);
-        const html = `
-          <div class="level2-alert-popup-wrap" style="--alert-color:${escapeHtml(alertHex)};">
-            <div class="level2-alert-detail-panel">
-              <div class="alert-detail-card">
-                <div class="alert-detail-hero">
-                  <div class="alert-detail-headline">${escapeHtml(alertValue(props.headline || summary))}</div>
-                  <div class="alert-detail-metrics">
-                    <div class="alert-detail-metric">
-                      <div class="alert-detail-metric-label">Event</div>
-                      <div class="alert-detail-metric-value">${escapeHtml(alertValue(eventName))}</div>
-                    </div>
-                    <div class="alert-detail-metric">
-                      <div class="alert-detail-metric-label">Severity</div>
-                      <div class="alert-detail-metric-value">${escapeHtml(alertValue(props.severity))}</div>
-                    </div>
-                    <div class="alert-detail-metric">
-                      <div class="alert-detail-metric-label">Urgency</div>
-                      <div class="alert-detail-metric-value">${escapeHtml(alertValue(props.urgency))}</div>
-                    </div>
-                    <div class="alert-detail-metric">
-                      <div class="alert-detail-metric-label">Certainty</div>
-                      <div class="alert-detail-metric-value">${escapeHtml(alertValue(props.certainty))}</div>
-                    </div>
-                    <div class="alert-detail-metric">
-                      <div class="alert-detail-metric-label">Effective</div>
-                      <div class="alert-detail-metric-value">${escapeHtml(alertValue(effective))}</div>
-                    </div>
-                    <div class="alert-detail-metric">
-                      <div class="alert-detail-metric-label">Expires</div>
-                      <div class="alert-detail-metric-value">${escapeHtml(alertValue(expires))}</div>
+        const alertLayerIds = (map.getStyle()?.layers || [])
+          .filter((layer) => layer?.source === ALERT_SOURCE_ID)
+          .map((layer) => layer.id)
+          .filter(Boolean);
+        const renderedFeatures = map.queryRenderedFeatures(event.point, {
+          layers: alertLayerIds
+        });
+        const clickPoint = [event?.lngLat?.lng, event?.lngLat?.lat];
+        const useFallbackPasses = renderedFeatures.length === 0;
+        const geometryContainedFeatures = useFallbackPasses
+          ? (Array.isArray(activeAlertFeatures) ? activeAlertFeatures : [])
+            .filter((feature) => pointInFeatureGeometry(clickPoint, feature?.geometry))
+          : [];
+        const screenSpaceHits = useFallbackPasses
+          ? (Array.isArray(activeAlertFeatures) ? activeAlertFeatures : [])
+            .filter((feature) => {
+              const props = feature?.properties || {};
+              if (props._visibleStormPolygon !== true) return false;
+              return screenFeatureHitTest([event.point.x, event.point.y], feature?.geometry, ALERT_SCREEN_HIT_TOLERANCE_PX);
+            })
+          : [];
+        const sourceDataFeatures = useFallbackPasses
+          ? (() => {
+            const source = map.getSource(ALERT_SOURCE_ID);
+            const sourceData = source?._data;
+            if (!sourceData || !Array.isArray(sourceData.features)) return [];
+            return sourceData.features.filter((feature) => pointInFeatureGeometry(clickPoint, feature?.geometry));
+          })()
+          : [];
+        const clickedFeatures = useFallbackPasses
+          ? [...geometryContainedFeatures, ...sourceDataFeatures, ...screenSpaceHits]
+          : renderedFeatures;
+        if (!clickedFeatures.length) return;
+
+        const dedupedByAlert = [];
+        const seenAlertKeys = new Set();
+        clickedFeatures.forEach((feature, index) => {
+          const props = feature?.properties || {};
+          const dedupeKey = String(
+            props._alertId ||
+            props.id ||
+            `${props.event || "alert"}|${props.effective || ""}|${props.expires || props.ends || ""}`
+          );
+          if (seenAlertKeys.has(dedupeKey)) return;
+          seenAlertKeys.add(dedupeKey);
+          dedupedByAlert.push(feature);
+        });
+        if (!dedupedByAlert.length) return;
+        const eventPriority = (eventName) => {
+          const value = String(eventName || "");
+          if (value.includes("Tornado Warning")) return 0;
+          if (value.includes("Severe Thunderstorm Warning")) return 1;
+          if (value.includes("Flash Flood Warning")) return 2;
+          if (value.includes("Special Marine Warning")) return 3;
+          if (value.includes("Warning")) return 4;
+          if (value.includes("Watch")) return 5;
+          if (value.includes("Advisory")) return 6;
+          return 7;
+        };
+
+        const sortedFeatures = dedupedByAlert.slice().sort((a, b) => {
+          const aProps = a?.properties || {};
+          const bProps = b?.properties || {};
+          const priorityDiff = eventPriority(aProps.event) - eventPriority(bProps.event);
+          if (priorityDiff !== 0) return priorityDiff;
+          if (aProps._fallbackGeometry === true && bProps._fallbackGeometry !== true) return 1;
+          if (bProps._fallbackGeometry === true && aProps._fallbackGeometry !== true) return -1;
+          return String(aProps.event || "").localeCompare(String(bProps.event || ""));
+        });
+        if (DEBUG_ALERT_STACKING) {
+          console.log("[AlertStacking]", {
+            alertLayerIds,
+            usedFallbackPasses: useFallbackPasses,
+            renderedCount: renderedFeatures.length,
+            renderedEvents: renderedFeatures.map((feature) => feature?.properties?.event || "Unknown Event"),
+            activeContainedCount: geometryContainedFeatures.length,
+            sourceContainedCount: sourceDataFeatures.length,
+            screenHitCount: screenSpaceHits.length,
+            dedupedEvents: dedupedByAlert.map((feature) => feature?.properties?.event || "Unknown Event"),
+            sortedEvents: sortedFeatures.map((feature) => feature?.properties?.event || "Unknown Event")
+          });
+        }
+
+        const cardsHtml = sortedFeatures.map((feature, index) => {
+          const props = feature.properties || {};
+          const eventName = props.event || "Unknown Event";
+          const alertHex = props._alertColor || alertColor(eventName);
+          const expires = formatPopupExpires(props.expires || props.ends);
+          const effective = formatPopupExpires(props.effective);
+          const summary = compactAlertSummary(props);
+          const expiresIn = formatPopupExpiresIn(props.expires || props.ends);
+          return `
+            <div class="omega-alert-item" style="--alert-color:${escapeHtml(alertHex)};">
+              <div class="level2-alert-detail-panel" data-alert-detail-index="${index}">
+                <div class="alert-detail-card">
+                  <div class="alert-detail-hero">
+                    <div class="alert-detail-headline">${escapeHtml(alertValue(props.headline || summary))}</div>
+                    <div class="alert-detail-metrics">
+                      <div class="alert-detail-metric">
+                        <div class="alert-detail-metric-label">Event</div>
+                        <div class="alert-detail-metric-value">${escapeHtml(alertValue(eventName))}</div>
+                      </div>
+                      <div class="alert-detail-metric">
+                        <div class="alert-detail-metric-label">Severity</div>
+                        <div class="alert-detail-metric-value">${escapeHtml(alertValue(props.severity))}</div>
+                      </div>
+                      <div class="alert-detail-metric">
+                        <div class="alert-detail-metric-label">Urgency</div>
+                        <div class="alert-detail-metric-value">${escapeHtml(alertValue(props.urgency))}</div>
+                      </div>
+                      <div class="alert-detail-metric">
+                        <div class="alert-detail-metric-label">Certainty</div>
+                        <div class="alert-detail-metric-value">${escapeHtml(alertValue(props.certainty))}</div>
+                      </div>
+                      <div class="alert-detail-metric">
+                        <div class="alert-detail-metric-label">Effective</div>
+                        <div class="alert-detail-metric-value">${escapeHtml(alertValue(effective))}</div>
+                      </div>
+                      <div class="alert-detail-metric">
+                        <div class="alert-detail-metric-label">Expires</div>
+                        <div class="alert-detail-metric-value">${escapeHtml(alertValue(expires))}</div>
+                      </div>
                     </div>
                   </div>
+                  <section class="alert-detail-section">
+                    <div class="alert-detail-section-title">Area</div>
+                    <div class="alert-detail-text">${escapeHtml(alertValue(props.areaDesc))}</div>
+                  </section>
+                  <section class="alert-detail-section">
+                    <div class="alert-detail-section-title">Source</div>
+                    <div class="alert-detail-text">${escapeHtml(alertValue(props.senderName || "National Weather Service"))}</div>
+                  </section>
+                  <section class="alert-detail-section">
+                    <div class="alert-detail-section-title">Description</div>
+                    <div class="alert-detail-text">${escapeHtml(alertValue(props.description || summary))}</div>
+                  </section>
+                  ${props.instruction ? `
+                  <section class="alert-detail-section">
+                    <div class="alert-detail-section-title">Instruction</div>
+                    <div class="alert-detail-text">${escapeHtml(props.instruction)}</div>
+                  </section>` : ""}
                 </div>
-                <section class="alert-detail-section">
-                  <div class="alert-detail-section-title">Area</div>
-                  <div class="alert-detail-text">${escapeHtml(alertValue(props.areaDesc))}</div>
-                </section>
-                <section class="alert-detail-section">
-                  <div class="alert-detail-section-title">Source</div>
-                  <div class="alert-detail-text">${escapeHtml(alertValue(props.senderName || "National Weather Service"))}</div>
-                </section>
-                <section class="alert-detail-section">
-                  <div class="alert-detail-section-title">Description</div>
-                  <div class="alert-detail-text">${escapeHtml(alertValue(props.description || summary))}</div>
-                </section>
-                ${props.instruction ? `
-                <section class="alert-detail-section">
-                  <div class="alert-detail-section-title">Instruction</div>
-                  <div class="alert-detail-text">${escapeHtml(props.instruction)}</div>
-                </section>` : ""}
+              </div>
+              <div class="omega-alert-card">
+                <div class="omega-alert-header"><span class="omega-alert-title">${escapeHtml(eventName)}</span></div>
+                <div class="omega-alert-body">
+                  <div class="omega-alert-expires">${escapeHtml(expiresIn)}</div>
+                  <div class="omega-alert-actions">
+                    <button class="omega-alert-icon-btn omega-alert-details-btn" type="button" aria-expanded="false" title="Details" data-alert-detail-index="${index}">></button>
+                  </div>
+                </div>
               </div>
             </div>
+          `;
+        }).join("");
+
+        const html = `
+          <div class="level2-alert-popup-wrap">
             <div class="omega-alert-popup">
               <div class="omega-alert-stack">
-                <div class="omega-alert-card">
-                  <div class="omega-alert-header"><span class="omega-alert-title">${escapeHtml(eventName)}</span></div>
-                  <div class="omega-alert-body">
-                    <div class="omega-alert-expires">${escapeHtml(expiresIn)}</div>
-                    <div class="omega-alert-actions">
-                      <button class="omega-alert-icon-btn omega-alert-details-btn" type="button" aria-expanded="false" title="Details">></button>
-                    </div>
-                  </div>
-                </div>
+                ${cardsHtml}
               </div>
             </div>
           </div>
@@ -2072,21 +2176,31 @@
           .setHTML(html)
           .addTo(map);
         const popupEl = popup.getElement();
-        const detailsButton = popupEl?.querySelector(".omega-alert-details-btn");
-        const detailCard = popupEl?.querySelector(".level2-alert-detail-panel");
-        detailsButton?.addEventListener("click", (clickEvent) => {
-          clickEvent.preventDefault();
-          clickEvent.stopPropagation();
-          if (!detailCard) return;
-          const open = detailCard.classList.toggle("is-open");
-          detailsButton.setAttribute("aria-expanded", String(open));
-          detailsButton.textContent = open ? "X" : ">";
+        const detailsButtons = popupEl?.querySelectorAll(".omega-alert-details-btn") || [];
+        detailsButtons.forEach((detailsButton) => {
+          detailsButton.addEventListener("click", (clickEvent) => {
+            clickEvent.preventDefault();
+            clickEvent.stopPropagation();
+            const detailIndex = detailsButton.getAttribute("data-alert-detail-index");
+            if (!detailIndex) return;
+            const detailCard = popupEl?.querySelector(`.level2-alert-detail-panel[data-alert-detail-index="${detailIndex}"]`);
+            if (!detailCard) return;
+            const open = detailCard.classList.toggle("is-open");
+            detailsButton.setAttribute("aria-expanded", String(open));
+            detailsButton.textContent = open ? "X" : ">";
+          });
         });
       };
       map.on("mouseenter", ALERT_FILL_LAYER_ID, () => {
         map.getCanvas().style.cursor = "pointer";
       });
       map.on("mouseleave", ALERT_FILL_LAYER_ID, () => {
+        map.getCanvas().style.cursor = "";
+      });
+      map.on("mouseenter", ALERT_STORM_HITBOX_LAYER_ID, () => {
+        map.getCanvas().style.cursor = "pointer";
+      });
+      map.on("mouseleave", ALERT_STORM_HITBOX_LAYER_ID, () => {
         map.getCanvas().style.cursor = "";
       });
       map.on("mouseenter", ALERT_LINE_LAYER_ID, () => {
@@ -2096,8 +2210,10 @@
         map.getCanvas().style.cursor = "";
       });
       map.on("click", ALERT_FILL_LAYER_ID, onInteract);
+      map.on("click", ALERT_STORM_HITBOX_LAYER_ID, onInteract);
       map.on("click", ALERT_LINE_LAYER_ID, onInteract);
       map.on("touchstart", ALERT_FILL_LAYER_ID, onInteract);
+      map.on("touchstart", ALERT_STORM_HITBOX_LAYER_ID, onInteract);
       map.on("touchstart", ALERT_LINE_LAYER_ID, onInteract);
     }
 
@@ -2157,6 +2273,124 @@
       if (geometry?.type === "Polygon" && Array.isArray(geometry.coordinates)) return [geometry.coordinates];
       if (geometry?.type === "MultiPolygon" && Array.isArray(geometry.coordinates)) return geometry.coordinates;
       return [];
+    }
+
+    function pointOnSegment(point, a, b) {
+      const [px, py] = point;
+      const [ax, ay] = a;
+      const [bx, by] = b;
+      const cross = (px - ax) * (by - ay) - (py - ay) * (bx - ax);
+      if (Math.abs(cross) > 1e-12) return false;
+      const dot = (px - ax) * (bx - ax) + (py - ay) * (by - ay);
+      if (dot < 0) return false;
+      const lenSq = (bx - ax) * (bx - ax) + (by - ay) * (by - ay);
+      return dot <= lenSq;
+    }
+
+    function pointInRing(point, ring) {
+      if (!Array.isArray(ring) || ring.length < 3) return false;
+      let inside = false;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const a = ring[i];
+        const b = ring[j];
+        if (!Array.isArray(a) || !Array.isArray(b) || a.length < 2 || b.length < 2) continue;
+        if (pointOnSegment(point, [a[0], a[1]], [b[0], b[1]])) return true;
+        const yi = a[1];
+        const yj = b[1];
+        const xi = a[0];
+        const xj = b[0];
+        const intersects = ((yi > point[1]) !== (yj > point[1])) &&
+          (point[0] < ((xj - xi) * (point[1] - yi)) / ((yj - yi) || Number.EPSILON) + xi);
+        if (intersects) inside = !inside;
+      }
+      return inside;
+    }
+
+    function pointInPolygon(point, polygonCoordinates) {
+      if (!Array.isArray(polygonCoordinates) || !polygonCoordinates.length) return false;
+      if (!pointInRing(point, polygonCoordinates[0])) return false;
+      for (let i = 1; i < polygonCoordinates.length; i++) {
+        if (pointInRing(point, polygonCoordinates[i])) return false;
+      }
+      return true;
+    }
+
+    function pointInFeatureGeometry(point, geometry) {
+      if (!Array.isArray(point) || point.length < 2 || !geometry || typeof geometry !== "object") return false;
+      if (geometry.type === "Polygon") return pointInPolygon(point, geometry.coordinates);
+      if (geometry.type === "MultiPolygon") {
+        return Array.isArray(geometry.coordinates) && geometry.coordinates.some((polygon) => pointInPolygon(point, polygon));
+      }
+      return false;
+    }
+
+    function distancePointToSegmentPx(point, a, b) {
+      const [px, py] = point;
+      const [ax, ay] = a;
+      const [bx, by] = b;
+      const abx = bx - ax;
+      const aby = by - ay;
+      const abLenSq = abx * abx + aby * aby;
+      if (abLenSq <= 1e-12) return Math.hypot(px - ax, py - ay);
+      let t = ((px - ax) * abx + (py - ay) * aby) / abLenSq;
+      t = Math.max(0, Math.min(1, t));
+      const cx = ax + t * abx;
+      const cy = ay + t * aby;
+      return Math.hypot(px - cx, py - cy);
+    }
+
+    function pointInScreenRing(point, ringPoints) {
+      if (!Array.isArray(ringPoints) || ringPoints.length < 3) return false;
+      let inside = false;
+      for (let i = 0, j = ringPoints.length - 1; i < ringPoints.length; j = i++) {
+        const a = ringPoints[i];
+        const b = ringPoints[j];
+        const intersects = ((a[1] > point[1]) !== (b[1] > point[1])) &&
+          (point[0] < ((b[0] - a[0]) * (point[1] - a[1])) / ((b[1] - a[1]) || Number.EPSILON) + a[0]);
+        if (intersects) inside = !inside;
+      }
+      return inside;
+    }
+
+    function screenFeatureHitTest(point, geometry, tolerancePx) {
+      if (!map || !geometry || typeof geometry !== "object") return false;
+      const screenHitPolygon = (polygonCoordinates) => {
+        if (!Array.isArray(polygonCoordinates) || !polygonCoordinates.length) return false;
+        const projectedRings = polygonCoordinates
+          .map((ring) => Array.isArray(ring)
+            ? ring
+              .filter((coord) => Array.isArray(coord) && coord.length >= 2)
+              .map((coord) => {
+                const projected = map.project([coord[0], coord[1]]);
+                return [projected.x, projected.y];
+              })
+            : [])
+          .filter((ring) => ring.length >= 3);
+        if (!projectedRings.length) return false;
+
+        const inOuter = pointInScreenRing(point, projectedRings[0]);
+        let inHole = false;
+        for (let i = 1; i < projectedRings.length; i++) {
+          if (pointInScreenRing(point, projectedRings[i])) {
+            inHole = true;
+            break;
+          }
+        }
+        if (inOuter && !inHole) return true;
+
+        for (const ring of projectedRings) {
+          for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+            if (distancePointToSegmentPx(point, ring[j], ring[i]) <= tolerancePx) return true;
+          }
+        }
+        return false;
+      };
+
+      if (geometry.type === "Polygon") return screenHitPolygon(geometry.coordinates);
+      if (geometry.type === "MultiPolygon") {
+        return Array.isArray(geometry.coordinates) && geometry.coordinates.some((polygon) => screenHitPolygon(polygon));
+      }
+      return false;
     }
 
     async function fetchAffectedZoneGeometry(zoneUrl) {
@@ -2267,6 +2501,7 @@
       activeAlertsWithoutGeometry = listedOnlyFeatures;
       map.getSource(ALERT_SOURCE_ID).setData({ type: "FeatureCollection", features: activeAlertFeatures });
       map.moveLayer(ALERT_FILL_LAYER_ID);
+      map.moveLayer(ALERT_STORM_HITBOX_LAYER_ID);
       map.moveLayer(ALERT_LINE_LAYER_ID);
       drawAlertOverlay();
       const stormCount = activeAlertFeatures.filter((feature) => feature.properties?._visibleStormPolygon === true).length;
