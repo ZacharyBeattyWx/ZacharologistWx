@@ -2251,7 +2251,7 @@
           </div>
         `;
         if (popup) popup.remove();
-        popup = new mapboxgl.Popup({ className: "level2-alert-popup", closeButton: true, closeOnClick: true, maxWidth: "none" })
+        popup = new mapboxgl.Popup({ className: "level2-alert-popup", closeButton: true, closeOnClick: true, maxWidth: "none", anchor: "bottom", offset: [0, -24] })
           .setLngLat(event.lngLat)
           .setHTML(html)
           .addTo(map);
