@@ -2334,7 +2334,32 @@
       return false;
     }
 
+    function isTestOrExerciseAlertFeature(feature) {
+      const properties = feature?.properties || {};
+      const status = String(properties.status || "").trim().toLowerCase();
+      if (status === "test" || status === "exercise" || status === "draft") return true;
+
+      const messageType = String(
+        properties.messageType ||
+        properties.message_type ||
+        properties.msgType ||
+        ""
+      ).trim().toLowerCase();
+      if (messageType === "test") return true;
+
+      const eventText = String(properties.event || "").toLowerCase();
+      const headlineText = String(properties.headline || "").toLowerCase();
+      const hasTestText = (text) =>
+        text.includes("test message") ||
+        text.includes("required weekly test") ||
+        text.includes("required monthly test");
+      return hasTestText(eventText) || hasTestText(headlineText);
+    }
+
     function normalizeAlertFeature(feature, index) {
+      if (isTestOrExerciseAlertFeature(feature)) {
+        return null;
+      }
       const properties = feature.properties || {};
       const alertId = String(feature.id || properties.id || `${properties.event || "alert"}-${index}`);
       const fallbackStyle = alertFallbackStyle(properties.event || "");
@@ -2590,7 +2615,7 @@
 
     async function loadAlerts() {
       const fetchedFeatures = await fetchNwsAlertsForAreas();
-      const normalizedFetchedFeatures = fetchedFeatures.map(normalizeAlertFeature);
+      const normalizedFetchedFeatures = fetchedFeatures.map(normalizeAlertFeature).filter(Boolean);
       const featuresWithGeometry = dedupeAlertFeaturesById(
         normalizedFetchedFeatures.filter((feature) => isValidGeometry(feature.geometry))
       );
