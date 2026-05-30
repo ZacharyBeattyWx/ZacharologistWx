@@ -607,11 +607,13 @@
     const ALERT_FILL_LAYER_ID = "nws-alert-polygons-fill-hitbox";
     const ALERT_STORM_HITBOX_LAYER_ID = "nws-alert-polygons-storm-hitbox";
     const ALERT_LINE_LAYER_ID = "nws-alert-polygons-line";
+    // Match the homepage Active Weather Alerts fetch scope.
     const NWS_ALERT_AREAS = [
-      "AL", "AR", "DC", "DE", "FL", "GA",
-      "IN", "KY", "LA", "MD", "MO", "MS",
-      "NC", "NJ", "NY", "OH", "PA", "SC",
-      "TN", "VA", "WV"
+      "TX", "OK", "KS", "CO", "NE", "SD", "ND", "MN",
+      "IA", "MO", "AR", "LA", "WI", "IL", "IN", "MI",
+      "OH", "KY", "TN", "MS", "AL", "GA", "FL", "SC",
+      "NC", "VA", "WV", "PA", "NY", "VT", "NH", "ME",
+      "MD", "DE", "NJ", "CT", "RI", "MA"
     ];
 
     const SITE_SOURCE_ID = "weatherwise-radar-sites";
@@ -2364,6 +2366,54 @@
       return hasTestText(eventText) || hasTestText(headlineText);
     }
 
+    // Alerts shown on the radar should match the homepage Active Weather Alerts categories.
+    // Do not show random NWS products here just because they have county/zone geometry.
+    const HOMEPAGE_RADAR_ALERT_EVENTS = new Set([
+      "Tornado Warning",
+      "Severe Thunderstorm Warning",
+      "Flash Flood Warning",
+      "Flash Flood Watch",
+      "Tornado Watch",
+      "Severe Thunderstorm Watch",
+      "Special Marine Warning",
+      "Marine Weather Statement",
+      "Flash Flood Statement",
+
+      "Hurricane Warning",
+      "Tropical Storm Warning",
+      "Storm Surge Warning",
+
+      "Winter Storm Warning",
+      "Blizzard Warning",
+      "Ice Storm Warning",
+      "Winter Weather Advisory",
+      "Freeze Warning",
+      "Frost Advisory",
+
+      "Flood Warning",
+      "Flood Watch",
+      "Coastal Flood Warning",
+      "Flood Advisory",
+      "Areal Flood Warning",
+      "Areal Flood Watch",
+
+      "Red Flag Warning",
+      "Fire Weather Watch"
+    ]);
+
+    function isHomepageVisibleRadarAlertFeature(feature) {
+      const event = feature?.properties?.event;
+      if (!event) return false;
+
+      // Homepage only treats Special Weather Statement as storm-category
+      // when it has a real storm-based polygon.
+      if (event === "Special Weather Statement") {
+        return isValidGeometry(feature.geometry);
+      }
+
+      return HOMEPAGE_RADAR_ALERT_EVENTS.has(event);
+    }
+
     function normalizeAlertFeature(feature, index) {
       if (isTestOrExerciseAlertFeature(feature)) {
         return null;
@@ -2623,7 +2673,8 @@
 
     async function loadAlerts() {
       const fetchedFeatures = await fetchNwsAlertsForAreas();
-      const normalizedFetchedFeatures = fetchedFeatures.map(normalizeAlertFeature).filter(Boolean);
+      const homepageVisibleFeatures = fetchedFeatures.filter(isHomepageVisibleRadarAlertFeature);
+      const normalizedFetchedFeatures = homepageVisibleFeatures.map(normalizeAlertFeature).filter(Boolean);
       const featuresWithGeometry = dedupeAlertFeaturesById(
         normalizedFetchedFeatures.filter((feature) => isValidGeometry(feature.geometry))
       );
@@ -2647,7 +2698,7 @@
       drawAlertOverlay();
       const stormCount = activeAlertFeatures.filter((feature) => feature.properties?._visibleStormPolygon === true).length;
       const fallbackCount = activeAlertFeatures.filter((feature) => feature.properties?._fallbackGeometry === true).length;
-      alertsStatusRow.textContent = `Alerts: ${fetchedFeatures.length} active - ${stormCount} storm polygons - ${fallbackCount} zone fallback - ${activeAlertsWithoutGeometry.length} listed only`;
+      alertsStatusRow.textContent = `Homepage radar alerts: ${homepageVisibleFeatures.length} active - ${stormCount} storm polygons - ${fallbackCount} zone fallback - ${activeAlertsWithoutGeometry.length} listed only`;
     }
 
     function initializeMap() {
