@@ -124,6 +124,14 @@
       color: #fee2e2; font-size: 0.78rem; line-height: 1.3;
     }
     .mapboxgl-popup { z-index: 12; }
+    .mapboxgl-popup.level2-alert-popup {
+      z-index: 5000 !important;
+    }
+    .mapboxgl-popup.level2-alert-popup .mapboxgl-popup-content,
+    .mapboxgl-popup.level2-alert-popup .mapboxgl-popup-tip {
+      position: relative;
+      z-index: 5001;
+    }
     .playback-controls { display: inline-flex; gap: 6px; align-items: center; }
     .playback-controls button { min-width: 56px; padding: 7px 8px; }
     .mobile-radar-options-toggle {
@@ -2024,50 +2032,6 @@
       const text = String(value || "").trim();
       return text || "N/A";
     }
-    function alertPopupAnchorLngLat(feature, fallbackLngLat) {
-      const geometry = feature?.geometry;
-      if (!geometry || !map) return fallbackLngLat;
-
-      const points = [];
-
-      function collectCoords(coords) {
-        if (!Array.isArray(coords)) return;
-
-        if (
-          coords.length >= 2 &&
-          typeof coords[0] === "number" &&
-          typeof coords[1] === "number"
-        ) {
-          const projected = map.project([coords[0], coords[1]]);
-          points.push(projected);
-          return;
-        }
-
-        coords.forEach(collectCoords);
-      }
-
-      collectCoords(geometry.coordinates);
-
-      if (!points.length) return fallbackLngLat;
-
-      let minX = Infinity;
-      let maxX = -Infinity;
-      let minY = Infinity;
-
-      points.forEach((point) => {
-        minX = Math.min(minX, point.x);
-        maxX = Math.max(maxX, point.x);
-        minY = Math.min(minY, point.y);
-      });
-
-      const anchorPoint = {
-        x: (minX + maxX) / 2,
-        y: minY - 12
-      };
-
-      return map.unproject(anchorPoint);
-    }
-
     function isVisibleStormPolygon(eventName) {
       const event = String(eventName || "");
       return (
@@ -2294,12 +2258,14 @@
           </div>
         `;
         if (popup) popup.remove();
-        const popupAnchorLngLat = alertPopupAnchorLngLat(sortedFeatures[0], event.lngLat);
         popup = new mapboxgl.Popup({ className: "level2-alert-popup", closeButton: true, closeOnClick: true, maxWidth: "none", anchor: "bottom", offset: [0, -24] })
-          .setLngLat(popupAnchorLngLat)
+          .setLngLat(event.lngLat)
           .setHTML(html)
           .addTo(map);
         const popupEl = popup.getElement();
+        if (popupEl && popupEl.parentElement !== document.body) {
+          document.body.appendChild(popupEl);
+        }
         const detailsButtons = popupEl?.querySelectorAll(".omega-alert-details-btn") || [];
         detailsButtons.forEach((detailsButton) => {
           detailsButton.addEventListener("click", (clickEvent) => {
