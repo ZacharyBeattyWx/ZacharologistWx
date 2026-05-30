@@ -79,7 +79,7 @@ jobs:
 
     strategy:
       fail-fast: false
-      max-parallel:10
+      max-parallel: 10
       matrix:
         site: ${{ fromJSON(needs.prepare-matrix.outputs.sites) }}
 
