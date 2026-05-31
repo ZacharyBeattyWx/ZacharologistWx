@@ -18,6 +18,14 @@ import numpy as np
 from metpy.io import Level2File
 
 try:
+    from PIL import Image
+except Exception as exc:  # pragma: no cover
+    raise SystemExit(
+        "Pillow is required for mobile WebP output. Install with: pip install pillow"
+    ) from exc
+
+
+try:
     import rasterio
     from rasterio.transform import from_bounds
 except Exception as exc:  # pragma: no cover
@@ -42,6 +50,62 @@ LEVEL2_PRODUCT = "LEVEL2_REF0"
 NODATA = -9999.0
 OUTPUT_SIZE = 5120
 MAX_LEVEL2_FRAMES = 25
+MOBILE_WEBP_DIR = "mobile"
+MOBILE_WEBP_MAX_SIZE = 2048
+MOBILE_WEBP_QUALITY = 84
+DISPLAY_MIN_DBZ = -32.0
+
+RADAR_DBZ_PALETTE = [
+    (-32, 88, 54, 128, 8),
+    (-30, 96, 62, 138, 10),
+    (-28, 105, 72, 145, 12),
+    (-26, 116, 85, 150, 15),
+    (-24, 128, 99, 153, 18),
+    (-22, 139, 113, 153, 22),
+    (-20, 148, 128, 150, 28),
+    (-18, 155, 140, 145, 34),
+    (-16, 160, 150, 138, 42),
+    (-14, 163, 157, 130, 52),
+    (-12, 160, 158, 123, 62),
+    (-10, 156, 155, 119, 72),
+    (-8, 167, 167, 136, 80),
+    (-6, 175, 176, 150, 88),
+    (-4, 158, 163, 150, 98),
+    (-2, 135, 144, 145, 108),
+    (0, 115, 128, 142, 120),
+    (2, 92, 109, 137, 132),
+    (4, 73, 93, 133, 144),
+    (6, 55, 81, 132, 156),
+    (8, 63, 97, 141, 168),
+    (10, 73, 117, 152, 180),
+    (15, 76, 165, 142, 205),
+    (20, 18, 118, 24, 230),
+    (25, 203, 222, 1, 245),
+    (30, 215, 203, 0, 255),
+    (35, 227, 129, 3, 255),
+    (40, 185, 95, 10, 255),
+    (45, 192, 37, 20, 255),
+    (50, 202, 153, 180, 255),
+    (55, 196, 74, 138, 255),
+    (60, 139, 32, 210, 255),
+    (65, 86, 20, 162, 255),
+    (70, 111, 210, 219, 255),
+    (75, 74, 132, 154, 255),
+    (80, 115, 10, 1, 255),
+    (85, 235, 190, 255, 255),
+    (90, 255, 230, 245, 255),
+    (95, 255, 255, 255, 255),
+]
+
+LOW_DBZ_OPACITY_TAPER = [
+    (-32, 0.0),
+    (-20, 0.01),
+    (-10, 0.04),
+    (0, 0.12),
+    (5, 0.32),
+    (10, 0.7),
+    (15, 1.0),
+]
 KEY_RE = re.compile(r"(?P<site>K[A-Z0-9]{3})(?P<ts>\d{8}_\d{6})")
 PROJECTED_NAME_RE = re.compile(
     r"^(?P<site>[A-Z0-9]{4})_(?P<date>\d{8})_(?P<time>\d{6})_projected_dbz\.tif$"
@@ -284,6 +348,7 @@ def build_level2_frames_manifest(
         frames.append(
             {
                 "path": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{frame_file.name}",
+                "imagePath": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{MOBILE_WEBP_DIR}/{frame_file.stem}.webp",
                 "validTime": valid_time,
                 "bounds": {
                     "west": west,
@@ -500,6 +565,92 @@ def write_geotiff(
         dst.write(grid, 1)
 
 
+def mobile_webp_path_for_geotiff(output_root: Path, geotiff_path: Path) -> Path:
+    return output_root / MOBILE_WEBP_DIR / f"{geotiff_path.stem}.webp"
+
+
+def downsample_grid_nearest(grid: np.ndarray, max_size: int = MOBILE_WEBP_MAX_SIZE) -> np.ndarray:
+    height, width = grid.shape
+    largest = max(height, width)
+    if largest <= max_size:
+        return grid
+
+    scale = max_size / float(largest)
+    out_width = max(1, int(round(width * scale)))
+    out_height = max(1, int(round(height * scale)))
+
+    y_idx = np.linspace(0, height - 1, out_height).round().astype(np.int32)
+    x_idx = np.linspace(0, width - 1, out_width).round().astype(np.int32)
+    return grid[np.ix_(y_idx, x_idx)]
+
+
+def colorize_dbz_grid(grid: np.ndarray, nodata: float) -> np.ndarray:
+    sampled = np.asarray(grid, dtype=np.float32)
+    rgba = np.zeros((sampled.shape[0], sampled.shape[1], 4), dtype=np.uint8)
+
+    valid = np.isfinite(sampled) & (sampled != nodata) & (sampled >= DISPLAY_MIN_DBZ)
+    if not np.any(valid):
+        return rgba
+
+    values = sampled[valid].astype(np.float32)
+
+    stops = np.asarray([stop[0] for stop in RADAR_DBZ_PALETTE], dtype=np.float32)
+    red = np.asarray([stop[1] for stop in RADAR_DBZ_PALETTE], dtype=np.float32)
+    green = np.asarray([stop[2] for stop in RADAR_DBZ_PALETTE], dtype=np.float32)
+    blue = np.asarray([stop[3] for stop in RADAR_DBZ_PALETTE], dtype=np.float32)
+    alpha = np.asarray([stop[4] for stop in RADAR_DBZ_PALETTE], dtype=np.float32)
+
+    taper_stops = np.asarray([stop[0] for stop in LOW_DBZ_OPACITY_TAPER], dtype=np.float32)
+    taper_values = np.asarray([stop[1] for stop in LOW_DBZ_OPACITY_TAPER], dtype=np.float32)
+
+    rgba[..., 0][valid] = np.clip(np.interp(values, stops, red), 0, 255).astype(np.uint8)
+    rgba[..., 1][valid] = np.clip(np.interp(values, stops, green), 0, 255).astype(np.uint8)
+    rgba[..., 2][valid] = np.clip(np.interp(values, stops, blue), 0, 255).astype(np.uint8)
+
+    base_alpha = np.interp(values, stops, alpha)
+    taper_alpha = np.interp(values, taper_stops, taper_values)
+    rgba[..., 3][valid] = np.clip(base_alpha * taper_alpha, 0, 255).astype(np.uint8)
+
+    black_with_alpha = (
+        (rgba[..., 0] == 0)
+        & (rgba[..., 1] == 0)
+        & (rgba[..., 2] == 0)
+        & (rgba[..., 3] > 0)
+    )
+    rgba[..., 3][black_with_alpha] = 0
+
+    return rgba
+
+
+def write_mobile_webp(path: Path, grid: np.ndarray, nodata: float) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    sampled = downsample_grid_nearest(grid)
+    rgba = colorize_dbz_grid(sampled, nodata)
+    image = Image.fromarray(rgba, mode="RGBA")
+    image.save(path, format="WEBP", quality=MOBILE_WEBP_QUALITY, method=4)
+
+
+def ensure_mobile_webps(output_root: Path, nodata: float) -> None:
+    for geotiff_path in sorted(output_root.glob("*_projected_dbz.tif")):
+        webp_path = mobile_webp_path_for_geotiff(output_root, geotiff_path)
+        if webp_path.exists():
+            continue
+        with rasterio.open(geotiff_path) as src:
+            grid = src.read(1).astype(np.float32)
+            source_nodata = src.nodata if src.nodata is not None else nodata
+        write_mobile_webp(webp_path, grid, float(source_nodata))
+
+
+def prune_orphan_mobile_webps(output_root: Path) -> None:
+    mobile_root = output_root / MOBILE_WEBP_DIR
+    if not mobile_root.exists():
+        return
+    valid_stems = {frame_file.stem for frame_file in output_root.glob("*_projected_dbz.tif")}
+    for webp_path in mobile_root.glob("*.webp"):
+        if webp_path.stem not in valid_stems:
+            webp_path.unlink(missing_ok=True)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Render experimental Level II projected dBZ GeoTIFF.")
     parser.add_argument("--site", default=DEFAULT_SITE)
@@ -613,6 +764,7 @@ def main() -> int:
             raise RuntimeError(f"Projected grid shape mismatch: {grid.shape}")
 
         write_geotiff(path=output_path, grid=grid, bounds=bounds, nodata=args.nodata)
+        write_mobile_webp(mobile_webp_path_for_geotiff(output_root, output_path), grid, args.nodata)
 
         valid_mask = np.isfinite(grid) & (grid != args.nodata)
         valid_count = int(valid_mask.sum())
@@ -636,6 +788,8 @@ def main() -> int:
         raise RuntimeError("No Level II source files selected for rendering.")
 
     prune_level2_output_frames(output_root, MAX_LEVEL2_FRAMES)
+    ensure_mobile_webps(output_root, args.nodata)
+    prune_orphan_mobile_webps(output_root)
 
     latest_json = output_root / "latest.json"
     latest_json.write_text(
@@ -652,6 +806,7 @@ def main() -> int:
                     "north": bounds[3],
                 },
                 "path": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{latest_output_path.name}",
+                "imagePath": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{MOBILE_WEBP_DIR}/{latest_output_path.stem}.webp",
                 "width": int(args.output_size),
                 "height": int(args.output_size),
                 "nodata": args.nodata,
