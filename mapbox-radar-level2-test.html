@@ -581,6 +581,7 @@
   <script>
     const MAPBOX_TOKEN = window.MAPBOX_PUBLIC_TOKEN;
     const MAPBOX_STYLE = "mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
+    const MOBILE_MAPBOX_STYLE = "mapbox://styles/mapbox/dark-v11";
     const LEVEL2_SUPPORTED_SITES = ["KFCX", "KRAX", "KGSP", "KLTX", "KMHX", "KAKQ", "KCAE", "KCLX"];
     const DEFAULT_LEVEL2_SITE = "KFCX";
     const LEVEL2_PRODUCT = "LEVEL2_REF0";
@@ -1479,6 +1480,10 @@
         }
         throw error;
       }
+    }
+
+    function selectedMapboxStyle() {
+      return isMobileLevel2Mode() ? MOBILE_MAPBOX_STYLE : MAPBOX_STYLE;
     }
 
     function isMobileLevel2Mode() {
