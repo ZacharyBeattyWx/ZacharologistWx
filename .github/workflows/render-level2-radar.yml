@@ -1,4 +1,4 @@
-name: Render Level II Radar
+﻿name: Render Level II Radar
 
 on:
   schedule:
@@ -140,7 +140,7 @@ jobs:
 
       - name: Show generated Level II files
         run: |
-          find "radar/tilesets/test/${{ matrix.site }}/LEVEL2/REF0" -maxdepth 1 -type f | sort
+          find "radar/tilesets/test/${{ matrix.site }}/LEVEL2/REF0" -maxdepth 2 -type f | sort
           python - <<'PY'
           import json
           from pathlib import Path
