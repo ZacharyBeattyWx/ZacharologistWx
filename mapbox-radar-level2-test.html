@@ -763,6 +763,7 @@
     let level2WarmupTimer = null;
     let level2WarmupToken = 0;
     let level2WarmupBusy = false;
+    let isMapInteracting = false;
     let isAlertOverlayVisible = true;
     let alertOverlayOpacity = 0.75;
     let frameRefreshTimer = null;
@@ -779,7 +780,7 @@
 
     function overlayDevicePixelRatio() {
       const dpr = window.devicePixelRatio || 1;
-      return Math.min(2, Math.max(1, dpr));
+      return Math.min(1.75, Math.max(1, dpr));
     }
 
     function parseHexColor(hex) {
@@ -1481,8 +1482,8 @@
 
         if (cursor >= order.length) return;
 
-        if (level2WarmupBusy) {
-          level2WarmupTimer = window.setTimeout(tick, 450);
+        if (level2WarmupBusy || (isMobileLevel2Mode() && isMapInteracting)) {
+          level2WarmupTimer = window.setTimeout(tick, 650);
           return;
         }
 
@@ -2777,6 +2778,20 @@
       if (map.setMaxPitch) map.setMaxPitch(0);
       map.on("rotate", lockOrientation);
       map.on("pitch", lockOrientation);
+      map.on("movestart", () => {
+        isMapInteracting = true;
+      });
+      map.on("zoomstart", () => {
+        isMapInteracting = true;
+      });
+      map.on("moveend", () => {
+        isMapInteracting = false;
+        scheduleLevel2FrameWarmup({ aroundIndex: currentFrameIndex, delayMs: 900 });
+      });
+      map.on("zoomend", () => {
+        isMapInteracting = false;
+        scheduleLevel2FrameWarmup({ aroundIndex: currentFrameIndex, delayMs: 900 });
+      });
       map.on("move", () => {
         redrawRadarOverlay();
         drawAlertOverlay();
