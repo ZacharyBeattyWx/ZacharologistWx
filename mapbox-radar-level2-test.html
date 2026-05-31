@@ -1435,6 +1435,17 @@
       const order = [];
       if (!level2Frames.length) return order;
 
+      if (isMobileLevel2Mode()) {
+        const mobileOffsets = [1, -1, 2, -2];
+        for (const offset of mobileOffsets) {
+          const index = (startIndex + offset + level2Frames.length) % level2Frames.length;
+          if (!order.includes(index) && index !== startIndex) {
+            order.push(index);
+          }
+        }
+        return order;
+      }
+
       for (let offset = 1; offset < level2Frames.length; offset += 1) {
         order.push((startIndex + offset) % level2Frames.length);
       }
@@ -1521,6 +1532,9 @@
             const bTime = Number.isFinite(b.validTimeDate?.getTime?.()) ? b.validTimeDate.getTime() : 0;
             return aTime - bTime;
           });
+          if (isMobileLevel2Mode() && level2Frames.length > 15) {
+            level2Frames = level2Frames.slice(-15);
+          }
         } else {
           const latestFrame = await fetchLatestLevel2Frame();
           if (latestFrame) upsertLevel2Frame(latestFrame);
@@ -2758,18 +2772,23 @@
       if (map.setMaxPitch) map.setMaxPitch(0);
       map.on("rotate", lockOrientation);
       map.on("pitch", lockOrientation);
-      map.on("move", () => {
+      function redrawOverlaysForMapInteraction() {
+        if (!isMobileLevel2Mode()) {
+          redrawRadarOverlay();
+        }
+        drawAlertOverlay();
+      }
+
+      function redrawOverlaysAfterMapInteraction() {
         redrawRadarOverlay();
         drawAlertOverlay();
-      });
-      map.on("zoom", () => {
-        redrawRadarOverlay();
-        drawAlertOverlay();
-      });
-      map.on("resize", () => {
-        redrawRadarOverlay();
-        drawAlertOverlay();
-      });
+      }
+
+      map.on("move", redrawOverlaysForMapInteraction);
+      map.on("zoom", redrawOverlaysForMapInteraction);
+      map.on("moveend", redrawOverlaysAfterMapInteraction);
+      map.on("zoomend", redrawOverlaysAfterMapInteraction);
+      map.on("resize", redrawOverlaysAfterMapInteraction);
 
       map.on("load", async () => {
         try {
