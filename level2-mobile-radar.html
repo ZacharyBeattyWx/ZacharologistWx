@@ -1069,7 +1069,7 @@
         const image = new Image();
         image.onload = () => resolve(image);
         image.onerror = () => reject(new Error(`radar image failed to load: ${url}`));
-        image.src = url;
+        image.src = cacheBustUrl(url);
       });
     }
 
