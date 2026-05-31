@@ -2772,23 +2772,18 @@
       if (map.setMaxPitch) map.setMaxPitch(0);
       map.on("rotate", lockOrientation);
       map.on("pitch", lockOrientation);
-      function redrawOverlaysForMapInteraction() {
-        if (!isMobileLevel2Mode()) {
-          redrawRadarOverlay();
-        }
-        drawAlertOverlay();
-      }
-
-      function redrawOverlaysAfterMapInteraction() {
+      map.on("move", () => {
         redrawRadarOverlay();
         drawAlertOverlay();
-      }
-
-      map.on("move", redrawOverlaysForMapInteraction);
-      map.on("zoom", redrawOverlaysForMapInteraction);
-      map.on("moveend", redrawOverlaysAfterMapInteraction);
-      map.on("zoomend", redrawOverlaysAfterMapInteraction);
-      map.on("resize", redrawOverlaysAfterMapInteraction);
+      });
+      map.on("zoom", () => {
+        redrawRadarOverlay();
+        drawAlertOverlay();
+      });
+      map.on("resize", () => {
+        redrawRadarOverlay();
+        drawAlertOverlay();
+      });
 
       map.on("load", async () => {
         try {
