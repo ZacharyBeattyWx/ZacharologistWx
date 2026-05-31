@@ -778,7 +778,8 @@
     }
 
     function overlayDevicePixelRatio() {
-      return Math.max(1, window.devicePixelRatio || 1);
+      const dpr = window.devicePixelRatio || 1;
+      return Math.min(2, Math.max(1, dpr));
     }
 
     function parseHexColor(hex) {
