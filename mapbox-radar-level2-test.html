@@ -2758,6 +2758,10 @@
         mapboxgl.prewarm();
       }
 
+      if (mapboxgl.prewarm) {
+        mapboxgl.prewarm();
+      }
+
       map = new mapboxgl.Map({
         container: "map",
         style: MAPBOX_STYLE,
