@@ -1,0 +1,534 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>ZacharologistWx Mobile Level II Radar</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/geotiff/dist-browser/geotiff.js"></script>
+
+  <style>
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #061025;
+      color: #f8fafc;
+      font-family: Arial, sans-serif;
+    }
+
+    #map {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100dvh;
+      background: #061025;
+    }
+
+    #radarCanvas {
+      position: fixed;
+      left: -99999px;
+      top: -99999px;
+      width: 1024px;
+      height: 1024px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .mobile-control-card {
+      position: fixed;
+      left: 50%;
+      bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+      transform: translateX(-50%);
+      z-index: 1000;
+      width: min(92vw, 390px);
+      box-sizing: border-box;
+      padding: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.24);
+      border-radius: 16px;
+      background: rgba(7, 13, 28, 0.9);
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.42);
+      backdrop-filter: blur(8px);
+    }
+
+    .speed-row {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 10px;
+      color: #bfdbfe;
+      font-weight: 700;
+      font-size: 0.92rem;
+    }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: 78px 1fr 1fr 1fr;
+      gap: 8px;
+      align-items: center;
+    }
+
+    button, select {
+      min-height: 38px;
+      border-radius: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      background: rgba(15, 23, 42, 0.92);
+      color: #e5f0ff;
+      font-size: 0.92rem;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    input[type="range"] {
+      width: 100%;
+    }
+
+    #statusText {
+      margin-top: 9px;
+      color: #94a3b8;
+      font-size: 0.78rem;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .leaflet-control-zoom {
+      margin-top: calc(env(safe-area-inset-top, 0px) + 12px) !important;
+    }
+
+    .leaflet-container {
+      background: #061025;
+      touch-action: pan-x pan-y;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <canvas id="radarCanvas"></canvas>
+
+  <section class="mobile-control-card">
+    <div class="speed-row">
+      <span>Playback speed</span>
+      <input id="speedRange" type="range" min="0.5" max="4" step="0.25" value="1" />
+      <output id="speedValue">1x</output>
+    </div>
+
+    <div class="button-row">
+      <select id="siteSelect">
+        <option value="KFCX">KFCX</option>
+        <option value="KRAX">KRAX</option>
+        <option value="KGSP">KGSP</option>
+        <option value="KLTX">KLTX</option>
+        <option value="KMHX">KMHX</option>
+        <option value="KAKQ">KAKQ</option>
+        <option value="KCAE">KCAE</option>
+        <option value="KCLX">KCLX</option>
+      </select>
+      <button id="prevButton" type="button">Prev</button>
+      <button id="playButton" type="button">Play</button>
+      <button id="nextButton" type="button">Next</button>
+    </div>
+
+    <div id="statusText">Loading radar...</div>
+  </section>
+
+  <script>
+    const LEVEL2_REMOTE_BASE_URL = "https://radar.zacharologistwx.com";
+    const PRODUCT = "LEVEL2_REF0";
+    const MAX_MOBILE_FRAMES = 15;
+    const MOBILE_RASTER_SCALE = 0.5;
+    const NODATA_DEFAULT = -9999;
+    const DISPLAY_MIN_DBZ = -32;
+
+    const RADAR_DBZ_PALETTE = [
+      { v: -32, r: 88, g: 54, b: 128, a: 8 },
+      { v: -30, r: 96, g: 62, b: 138, a: 10 },
+      { v: -28, r: 105, g: 72, b: 145, a: 12 },
+      { v: -26, r: 116, g: 85, b: 150, a: 15 },
+      { v: -24, r: 127, g: 99, b: 154, a: 18 },
+      { v: -22, r: 139, g: 115, b: 158, a: 21 },
+      { v: -20, r: 150, g: 130, b: 160, a: 24 },
+      { v: -18, r: 126, g: 142, b: 170, a: 30 },
+      { v: -16, r: 105, g: 154, b: 182, a: 36 },
+      { v: -14, r: 84, g: 166, b: 190, a: 42 },
+      { v: -12, r: 69, g: 176, b: 188, a: 50 },
+      { v: -10, r: 62, g: 184, b: 178, a: 58 },
+      { v: -8, r: 59, g: 190, b: 162, a: 68 },
+      { v: -6, r: 57, g: 190, b: 143, a: 78 },
+      { v: -4, r: 57, g: 184, b: 122, a: 88 },
+      { v: -2, r: 59, g: 174, b: 100, a: 100 },
+      { v: 0, r: 64, g: 162, b: 84, a: 115 },
+      { v: 5, r: 68, g: 154, b: 93, a: 150 },
+      { v: 10, r: 70, g: 151, b: 119, a: 185 },
+      { v: 15, r: 76, g: 165, b: 142, a: 205 },
+      { v: 20, r: 18, g: 118, b: 24, a: 230 },
+      { v: 25, r: 203, g: 222, b: 1, a: 245 },
+      { v: 30, r: 215, g: 203, b: 0, a: 255 },
+      { v: 35, r: 227, g: 129, b: 3, a: 255 },
+      { v: 40, r: 185, g: 95, b: 10, a: 255 },
+      { v: 45, r: 192, g: 37, b: 20, a: 255 },
+      { v: 50, r: 202, g: 153, b: 180, a: 255 },
+      { v: 55, r: 196, g: 74, b: 138, a: 255 },
+      { v: 60, r: 139, g: 32, b: 210, a: 255 },
+      { v: 65, r: 86, g: 20, b: 162, a: 255 },
+      { v: 70, r: 111, g: 210, b: 219, a: 255 },
+      { v: 75, r: 74, g: 132, b: 154, a: 255 },
+      { v: 80, r: 115, g: 10, b: 1, a: 255 },
+      { v: 85, r: 235, g: 190, b: 255, a: 255 },
+      { v: 90, r: 255, g: 230, b: 245, a: 255 },
+      { v: 95, r: 255, g: 255, b: 255, a: 255 }
+    ];
+
+    const LOW_DBZ_OPACITY_TAPER = [
+      { dbz: -32, opacity: 0.0 },
+      { dbz: -20, opacity: 0.01 },
+      { dbz: -10, opacity: 0.04 },
+      { dbz: 0, opacity: 0.12 },
+      { dbz: 5, opacity: 0.32 },
+      { dbz: 10, opacity: 0.7 },
+      { dbz: 15, opacity: 1.0 }
+    ];
+
+    const map = L.map("map", {
+      zoomControl: true,
+      preferCanvas: true,
+      inertia: true,
+      inertiaDeceleration: 2600,
+      inertiaMaxSpeed: 1400,
+      zoomSnap: 0.25,
+      zoomDelta: 0.5,
+      wheelPxPerZoomLevel: 160,
+      markerZoomAnimation: false,
+      fadeAnimation: false,
+      zoomAnimation: true
+    }).setView([35.6, -80.2], 6);
+
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+      subdomains: "abcd",
+      maxZoom: 19,
+      updateWhenIdle: false,
+      updateWhenZooming: false,
+      keepBuffer: 6,
+      attribution: "&copy; OpenStreetMap contributors &copy; CARTO"
+    }).addTo(map);
+
+    const radarCanvas = document.getElementById("radarCanvas");
+    const radarContext = radarCanvas.getContext("2d", { willReadFrequently: true });
+    const statusText = document.getElementById("statusText");
+    const siteSelect = document.getElementById("siteSelect");
+    const playButton = document.getElementById("playButton");
+    const prevButton = document.getElementById("prevButton");
+    const nextButton = document.getElementById("nextButton");
+    const speedRange = document.getElementById("speedRange");
+    const speedValue = document.getElementById("speedValue");
+
+    let frames = [];
+    let currentFrameIndex = 0;
+    let radarOverlay = null;
+    let isPlaying = false;
+    let playbackTimer = null;
+    let playbackIntervalMs = 900;
+    let objectUrlToRevoke = null;
+    const renderedCache = new Map();
+
+    function setStatus(message) {
+      statusText.textContent = message;
+    }
+
+    function selectedSite() {
+      return siteSelect.value || "KFCX";
+    }
+
+    function level2DataUrl(path) {
+      const normalizedPath = String(path || "").startsWith("/") ? path : `/${path}`;
+      return `${LEVEL2_REMOTE_BASE_URL}${normalizedPath}`;
+    }
+
+    function framesUrl(site = selectedSite()) {
+      return level2DataUrl(`/radar/tilesets/test/${site}/LEVEL2/REF0/frames.json`);
+    }
+
+    function cacheBustUrl(url) {
+      const parsed = new URL(url, window.location.href);
+      parsed.searchParams.set("cb", String(Math.floor(Date.now() / 60000)));
+      return parsed.toString();
+    }
+
+    function normalizeFrame(frame) {
+      if (!frame || !frame.path) return null;
+      const bounds = frame.bounds || frame.geographicBounds || null;
+      const west = Number(bounds?.west ?? frame.west);
+      const south = Number(bounds?.south ?? frame.south);
+      const east = Number(bounds?.east ?? frame.east);
+      const north = Number(bounds?.north ?? frame.north);
+      if (![west, south, east, north].every(Number.isFinite)) return null;
+
+      const validTime = frame.validTime || frame.time || frame.scanTime || "";
+      const validTimeDate = validTime ? new Date(validTime) : new Date("");
+
+      return {
+        path: level2DataUrl(frame.path),
+        validTime,
+        validTimeDate,
+        leafletBounds: [[south, west], [north, east]]
+      };
+    }
+
+    async function fetchFrames() {
+      setStatus(`Loading ${selectedSite()} frames...`);
+      const response = await fetch(cacheBustUrl(framesUrl()), { cache: "no-store" });
+      if (!response.ok) throw new Error(`frames fetch failed: ${response.status}`);
+      const payload = await response.json();
+      const rawFrames = Array.isArray(payload.frames) ? payload.frames : [];
+      frames = rawFrames
+        .map(normalizeFrame)
+        .filter(Boolean)
+        .sort((a, b) => {
+          const at = Number.isFinite(a.validTimeDate.getTime()) ? a.validTimeDate.getTime() : 0;
+          const bt = Number.isFinite(b.validTimeDate.getTime()) ? b.validTimeDate.getTime() : 0;
+          return at - bt;
+        })
+        .slice(-MAX_MOBILE_FRAMES);
+
+      currentFrameIndex = Math.max(0, frames.length - 1);
+      setStatus(`Loaded ${frames.length} frames`);
+    }
+
+    function clamp255(value) {
+      return Math.max(0, Math.min(255, Math.round(value)));
+    }
+
+    function interpolateOpacity(dbz) {
+      if (dbz <= LOW_DBZ_OPACITY_TAPER[0].dbz) return LOW_DBZ_OPACITY_TAPER[0].opacity;
+      for (let i = 1; i < LOW_DBZ_OPACITY_TAPER.length; i += 1) {
+        const prev = LOW_DBZ_OPACITY_TAPER[i - 1];
+        const next = LOW_DBZ_OPACITY_TAPER[i];
+        if (dbz <= next.dbz) {
+          const t = (dbz - prev.dbz) / (next.dbz - prev.dbz);
+          return prev.opacity + (next.opacity - prev.opacity) * t;
+        }
+      }
+      return 1;
+    }
+
+    function colorForDbz(dbz) {
+      if (!Number.isFinite(dbz) || dbz < DISPLAY_MIN_DBZ) return [0, 0, 0, 0];
+
+      let lower = RADAR_DBZ_PALETTE[0];
+      let upper = RADAR_DBZ_PALETTE[RADAR_DBZ_PALETTE.length - 1];
+
+      for (let i = 1; i < RADAR_DBZ_PALETTE.length; i += 1) {
+        if (dbz <= RADAR_DBZ_PALETTE[i].v) {
+          lower = RADAR_DBZ_PALETTE[i - 1];
+          upper = RADAR_DBZ_PALETTE[i];
+          break;
+        }
+      }
+
+      const span = upper.v - lower.v || 1;
+      const t = Math.max(0, Math.min(1, (dbz - lower.v) / span));
+      const r = lower.r + (upper.r - lower.r) * t;
+      const g = lower.g + (upper.g - lower.g) * t;
+      const b = lower.b + (upper.b - lower.b) * t;
+      const baseA = lower.a + (upper.a - lower.a) * t;
+      const taper = interpolateOpacity(dbz);
+
+      return [clamp255(r), clamp255(g), clamp255(b), clamp255(baseA * taper)];
+    }
+
+    async function renderFrame(frame) {
+      const cacheKey = frame.path;
+      if (renderedCache.has(cacheKey)) return renderedCache.get(cacheKey);
+
+      setStatus(`Rendering ${selectedSite()} ${currentFrameIndex + 1}/${frames.length}...`);
+
+      const tifFetchUrl = new URL(frame.path, window.location.href);
+      tifFetchUrl.searchParams.set("cb", String(Date.now()));
+      const response = await fetch(tifFetchUrl.toString(), { cache: "no-store" });
+      if (!response.ok) throw new Error(`GeoTIFF fetch failed: ${response.status}`);
+
+      const buffer = await response.arrayBuffer();
+      const tiff = await GeoTIFF.fromArrayBuffer(buffer);
+      const image = await tiff.getImage();
+
+      const sourceWidth = image.getWidth();
+      const sourceHeight = image.getHeight();
+      const width = Math.max(1, Math.round(sourceWidth * MOBILE_RASTER_SCALE));
+      const height = Math.max(1, Math.round(sourceHeight * MOBILE_RASTER_SCALE));
+      const nodataRaw = image.getGDALNoData();
+      const nodata = Number.isFinite(Number(nodataRaw)) ? Number(nodataRaw) : NODATA_DEFAULT;
+
+      const dbz = await image.readRasters({
+        samples: [0],
+        interleave: true,
+        width,
+        height
+      });
+
+      radarCanvas.width = width;
+      radarCanvas.height = height;
+
+      const imageData = radarContext.createImageData(width, height);
+      const data = imageData.data;
+
+      for (let i = 0; i < dbz.length; i += 1) {
+        const value = Number(dbz[i]);
+        const offset = i * 4;
+
+        if (!Number.isFinite(value) || value === nodata || value < DISPLAY_MIN_DBZ) {
+          data[offset + 0] = 0;
+          data[offset + 1] = 0;
+          data[offset + 2] = 0;
+          data[offset + 3] = 0;
+          continue;
+        }
+
+        const color = colorForDbz(value);
+        data[offset + 0] = color[0];
+        data[offset + 1] = color[1];
+        data[offset + 2] = color[2];
+        data[offset + 3] = color[3];
+      }
+
+      radarContext.putImageData(imageData, 0, 0);
+
+      const blob = await new Promise((resolve) => radarCanvas.toBlob(resolve, "image/png"));
+      if (!blob) throw new Error("failed to create radar image blob");
+
+      const url = URL.createObjectURL(blob);
+      const rendered = {
+        url,
+        bounds: frame.leafletBounds,
+        validTime: frame.validTime,
+        path: frame.path
+      };
+
+      renderedCache.set(cacheKey, rendered);
+
+      while (renderedCache.size > 4) {
+        const firstKey = renderedCache.keys().next().value;
+        const old = renderedCache.get(firstKey);
+        if (old?.url) URL.revokeObjectURL(old.url);
+        renderedCache.delete(firstKey);
+      }
+
+      return rendered;
+    }
+
+    async function showFrame(index) {
+      if (!frames.length) return;
+      currentFrameIndex = (index + frames.length) % frames.length;
+      const frame = frames[currentFrameIndex];
+      const rendered = await renderFrame(frame);
+
+      if (radarOverlay) {
+        map.removeLayer(radarOverlay);
+      }
+
+      radarOverlay = L.imageOverlay(rendered.url, rendered.bounds, {
+        opacity: 0.78,
+        interactive: false,
+        crossOrigin: false
+      }).addTo(map);
+
+      const valid = rendered.validTime ? new Date(rendered.validTime).toLocaleString() : "unknown";
+      setStatus(`${selectedSite()} ${currentFrameIndex + 1}/${frames.length} • ${valid}`);
+
+      warmNearbyFrames();
+    }
+
+    function warmNearbyFrames() {
+      const offsets = [1, -1, 2, -2];
+      offsets.forEach((offset, i) => {
+        window.setTimeout(() => {
+          const index = (currentFrameIndex + offset + frames.length) % frames.length;
+          const frame = frames[index];
+          if (frame) renderFrame(frame).catch(() => {});
+        }, 600 + i * 650);
+      });
+    }
+
+    function stopPlayback() {
+      isPlaying = false;
+      playButton.textContent = "Play";
+      if (playbackTimer) {
+        window.clearTimeout(playbackTimer);
+        playbackTimer = null;
+      }
+    }
+
+    async function playbackTick() {
+      if (!isPlaying) return;
+      await showFrame(currentFrameIndex + 1).catch((error) => {
+        console.error(error);
+        setStatus(error.message || "Playback error");
+      });
+      if (isPlaying) {
+        playbackTimer = window.setTimeout(playbackTick, playbackIntervalMs);
+      }
+    }
+
+    function startPlayback() {
+      if (!frames.length) return;
+      isPlaying = true;
+      playButton.textContent = "Pause";
+      playbackTick();
+    }
+
+    async function loadSite() {
+      stopPlayback();
+
+      if (radarOverlay) {
+        map.removeLayer(radarOverlay);
+        radarOverlay = null;
+      }
+
+      for (const item of renderedCache.values()) {
+        if (item?.url) URL.revokeObjectURL(item.url);
+      }
+      renderedCache.clear();
+
+      await fetchFrames();
+      await showFrame(currentFrameIndex);
+
+      const latest = frames[currentFrameIndex];
+      if (latest?.leafletBounds) {
+        map.fitBounds(latest.leafletBounds, { padding: [16, 16], maxZoom: 8 });
+      }
+    }
+
+    prevButton.addEventListener("click", () => showFrame(currentFrameIndex - 1).catch(console.error));
+    nextButton.addEventListener("click", () => showFrame(currentFrameIndex + 1).catch(console.error));
+    playButton.addEventListener("click", () => {
+      if (isPlaying) stopPlayback();
+      else startPlayback();
+    });
+
+    siteSelect.addEventListener("change", () => {
+      loadSite().catch((error) => {
+        console.error(error);
+        setStatus(error.message || "Site load failed");
+      });
+    });
+
+    speedRange.addEventListener("input", () => {
+      const speed = Math.max(0.5, Math.min(4, Number(speedRange.value) || 1));
+      speedRange.value = String(speed);
+      speedValue.textContent = `${speed.toFixed(speed % 1 === 0 ? 0 : 2)}x`;
+      playbackIntervalMs = Math.max(120, Math.round(900 / speed));
+    });
+
+    loadSite().catch((error) => {
+      console.error(error);
+      setStatus(error.message || "Radar load failed");
+    });
+  </script>
+</body>
+</html>
