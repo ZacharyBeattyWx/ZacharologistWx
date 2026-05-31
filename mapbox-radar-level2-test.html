@@ -737,7 +737,7 @@
     const alertOverlayContext = alertOverlayCanvas.getContext("2d");
     const radarCanvas = document.getElementById("radarCanvas");
     const radarContext = radarCanvas.getContext("2d", { willReadFrequently: true });
-    const USE_WEBGL_RADAR_OVERLAY = false;
+    const USE_WEBGL_RADAR_OVERLAY = true;
     const radarWebglState = {
       initialized: false,
       program: null,
