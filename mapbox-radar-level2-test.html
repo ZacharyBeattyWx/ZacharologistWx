@@ -895,6 +895,77 @@
         radarWebglCanvas.height = height;
       }
     }
+    function drawRadarWebglOverlay(width, height, dpr) {
+      if (!USE_WEBGL_RADAR_OVERLAY) return false;
+      if (!map || !radarBounds || !syncRadarWebglTexture()) return false;
+
+      const gl = radarWebglContext;
+      resizeRadarWebglCanvas(width, height);
+
+      const west = radarBounds[0][1];
+      const south = radarBounds[0][0];
+      const east = radarBounds[1][1];
+      const north = radarBounds[1][0];
+
+      const nw = map.project([west, north]);
+      const ne = map.project([east, north]);
+      const sw = map.project([west, south]);
+      const se = map.project([east, south]);
+
+      const toClip = (point) => [
+        (point.x * dpr / width) * 2 - 1,
+        1 - (point.y * dpr / height) * 2
+      ];
+
+      const pNW = toClip(nw);
+      const pNE = toClip(ne);
+      const pSW = toClip(sw);
+      const pSE = toClip(se);
+
+      const positions = new Float32Array([
+        pNW[0], pNW[1],
+        pSW[0], pSW[1],
+        pNE[0], pNE[1],
+        pNE[0], pNE[1],
+        pSW[0], pSW[1],
+        pSE[0], pSE[1]
+      ]);
+
+      const texCoords = new Float32Array([
+        0, 0,
+        0, 1,
+        1, 0,
+        1, 0,
+        0, 1,
+        1, 1
+      ]);
+
+      gl.viewport(0, 0, width, height);
+      gl.clearColor(0, 0, 0, 0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+      gl.useProgram(radarWebglState.program);
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, radarWebglState.positionBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, positions, gl.DYNAMIC_DRAW);
+      gl.enableVertexAttribArray(radarWebglState.positionLocation);
+      gl.vertexAttribPointer(radarWebglState.positionLocation, 2, gl.FLOAT, false, 0, 0);
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, radarWebglState.texCoordBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, texCoords, gl.STATIC_DRAW);
+      gl.enableVertexAttribArray(radarWebglState.texCoordLocation);
+      gl.vertexAttribPointer(radarWebglState.texCoordLocation, 2, gl.FLOAT, false, 0, 0);
+
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, radarWebglState.texture);
+      gl.uniform1i(radarWebglState.textureLocation, 0);
+      gl.uniform1f(radarWebglState.opacityLocation, Number(opacitySlider.value));
+
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      return true;
+    }
 
     function parseHexColor(hex) {
       if (typeof hex !== "string") {
