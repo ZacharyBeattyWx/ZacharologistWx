@@ -119,6 +119,7 @@ jobs:
               --exclude "*" \
               --include "*.tif" \
               --include "*.json" \
+              --include "mobile/*.webp" \
               --endpoint-url "$R2_ENDPOINT"
           else
             echo "No existing Level II R2 output for ${SITE}; rendering fresh."
@@ -176,6 +177,7 @@ jobs:
             --exclude "*" \
             --include "*.tif" \
             --include "*.json" \
+            --include "mobile/*.webp" \
             --delete \
             --endpoint-url "$R2_ENDPOINT"
 
