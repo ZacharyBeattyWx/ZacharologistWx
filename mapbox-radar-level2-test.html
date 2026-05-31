@@ -805,6 +805,96 @@
       const dpr = window.devicePixelRatio || 1;
       return Math.min(1.5, Math.max(1, dpr));
     }
+    function compileRadarWebglShader(gl, type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        const message = gl.getShaderInfoLog(shader) || "unknown shader compile error";
+        gl.deleteShader(shader);
+        throw new Error(message);
+      }
+      return shader;
+    }
+
+    function initRadarWebglOverlay() {
+      const gl = radarWebglContext;
+      if (!gl || radarWebglState.initialized) return Boolean(gl && radarWebglState.initialized);
+
+      const vertexShader = compileRadarWebglShader(gl, gl.VERTEX_SHADER, `
+        attribute vec2 a_position;
+        attribute vec2 a_texCoord;
+        varying vec2 v_texCoord;
+        void main() {
+          gl_Position = vec4(a_position, 0.0, 1.0);
+          v_texCoord = a_texCoord;
+        }
+      `);
+
+      const fragmentShader = compileRadarWebglShader(gl, gl.FRAGMENT_SHADER, `
+        precision mediump float;
+        uniform sampler2D u_texture;
+        uniform float u_opacity;
+        varying vec2 v_texCoord;
+        void main() {
+          vec4 color = texture2D(u_texture, v_texCoord);
+          gl_FragColor = vec4(color.rgb, color.a * u_opacity);
+        }
+      `);
+
+      const program = gl.createProgram();
+      gl.attachShader(program, vertexShader);
+      gl.attachShader(program, fragmentShader);
+      gl.linkProgram(program);
+
+      gl.deleteShader(vertexShader);
+      gl.deleteShader(fragmentShader);
+
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        const message = gl.getProgramInfoLog(program) || "unknown WebGL program link error";
+        gl.deleteProgram(program);
+        throw new Error(message);
+      }
+
+      radarWebglState.program = program;
+      radarWebglState.positionLocation = gl.getAttribLocation(program, "a_position");
+      radarWebglState.texCoordLocation = gl.getAttribLocation(program, "a_texCoord");
+      radarWebglState.opacityLocation = gl.getUniformLocation(program, "u_opacity");
+      radarWebglState.textureLocation = gl.getUniformLocation(program, "u_texture");
+      radarWebglState.positionBuffer = gl.createBuffer();
+      radarWebglState.texCoordBuffer = gl.createBuffer();
+      radarWebglState.texture = gl.createTexture();
+
+      gl.bindTexture(gl.TEXTURE_2D, radarWebglState.texture);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+      radarWebglState.initialized = true;
+      return true;
+    }
+    function syncRadarWebglTexture() {
+      if (!USE_WEBGL_RADAR_OVERLAY) return false;
+      if (!radarCanvas.width || !radarCanvas.height) return false;
+      if (!initRadarWebglOverlay()) return false;
+      if (radarWebglState.textureRevision === radarImageRevision) return true;
+
+      const gl = radarWebglContext;
+      gl.bindTexture(gl.TEXTURE_2D, radarWebglState.texture);
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, radarCanvas);
+
+      radarWebglState.textureRevision = radarImageRevision;
+      return true;
+    }
+
+    function resizeRadarWebglCanvas(width, height) {
+      if (radarWebglCanvas.width !== width || radarWebglCanvas.height !== height) {
+        radarWebglCanvas.width = width;
+        radarWebglCanvas.height = height;
+      }
+    }
 
     function parseHexColor(hex) {
       if (typeof hex !== "string") {
