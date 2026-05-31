@@ -1941,6 +1941,16 @@
       const width = Math.max(1, Math.round(container.clientWidth * dpr));
       const height = Math.max(1, Math.round(container.clientHeight * dpr));
 
+
+      if (drawRadarWebglOverlay(width, height, dpr)) {
+        radarOverlayCanvas.style.display = "none";
+        radarWebglCanvas.style.display = "block";
+        return;
+      }
+
+      radarWebglCanvas.style.display = "none";
+      radarOverlayCanvas.style.display = "block";
+
       if (radarOverlayCanvas.width !== width || radarOverlayCanvas.height !== height) {
         radarOverlayCanvas.width = width;
         radarOverlayCanvas.height = height;
@@ -1987,6 +1997,7 @@
       const container = map.getContainer();
       const width = Math.max(1, Math.round(container.clientWidth * dpr));
       const height = Math.max(1, Math.round(container.clientHeight * dpr));
+
 
       if (alertOverlayCanvas.width !== width || alertOverlayCanvas.height !== height) {
         alertOverlayCanvas.width = width;
