@@ -2988,10 +2988,10 @@
         scheduleLevel2FrameWarmup({ aroundIndex: currentFrameIndex, delayMs: 900 });
       });
       map.on("move", () => {
-        redrawRadarOverlay();
+        // Diagnostic: skip overlay redraw during movement.
       });
       map.on("zoom", () => {
-        redrawRadarOverlay();
+        // Diagnostic: skip overlay redraw during zoom.
       });
       map.on("resize", () => {
         redrawRadarOverlay();
