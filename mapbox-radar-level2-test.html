@@ -520,6 +520,25 @@
       }
     }
   </style>
+  <script>
+    (function () {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("forceDesktop") === "1") return;
+
+      const isSmallScreen = window.matchMedia("(max-width: 760px)").matches;
+      const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
+      if (!isSmallScreen && !isMobileDevice) return;
+
+      const target = new URL("level2-mobile-radar.html", window.location.href);
+      target.searchParams.set("level2Data", params.get("level2Data") || "remote");
+
+      const site = params.get("site");
+      if (site) target.searchParams.set("site", site);
+
+      target.searchParams.set("mobile", "1");
+      window.location.replace(target.toString());
+    })();
+  </script>
 </head>
 <body>
   <div id="map"></div>
