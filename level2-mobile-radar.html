@@ -809,7 +809,6 @@
     let level2WarmupBusy = false;
     let level2PlaybackLoopPrimed = false;
     let level2LoopLoadInProgress = false;
-    let playbackPausedForMapInteraction = false;
     let isMapInteracting = false;
     let isAlertOverlayVisible = true;
     let alertOverlayOpacity = 0.75;
@@ -1755,23 +1754,8 @@
       }
     }
 
-    function pausePlaybackForMapInteraction() {
-      if (!isMobileLevel2Mode() || !isPlaying) return;
-      playbackPausedForMapInteraction = true;
-      clearPlaybackTimer();
-    }
-
-    function resumePlaybackAfterMapInteraction() {
-      if (!isMobileLevel2Mode() || !playbackPausedForMapInteraction) return;
-      playbackPausedForMapInteraction = false;
-      if (!isPlaying) return;
-      clearPlaybackTimer();
-      playbackTimer = window.setTimeout(playbackTick, 160);
-    }
-
     function stopPlayback() {
       clearPlaybackTimer();
-      playbackPausedForMapInteraction = false;
       isPlaying = false;
       updatePlaybackButton();
     }
@@ -1805,7 +1789,6 @@
       }
 
       if (isPlaying || level2Frames.length < 2) return;
-      playbackPausedForMapInteraction = false;
       isPlaying = true;
       updatePlaybackButton();
       clearPlaybackTimer();
@@ -2991,26 +2974,18 @@
       map.on("pitch", lockOrientation);
       map.on("movestart", () => {
         isMapInteracting = true;
-        pausePlaybackForMapInteraction();
       });
       map.on("zoomstart", () => {
         isMapInteracting = true;
-        pausePlaybackForMapInteraction();
       });
       map.on("moveend", () => {
         isMapInteracting = false;
-        redrawRadarOverlay();
-        drawAlertOverlay();
-        resumePlaybackAfterMapInteraction();
         if (!isMobileLevel2Mode() || playbackWasUserRequested) {
           scheduleLevel2FrameWarmup({ aroundIndex: currentFrameIndex, delayMs: 900 });
         }
       });
       map.on("zoomend", () => {
         isMapInteracting = false;
-        redrawRadarOverlay();
-        drawAlertOverlay();
-        resumePlaybackAfterMapInteraction();
         if (!isMobileLevel2Mode() || playbackWasUserRequested) {
           scheduleLevel2FrameWarmup({ aroundIndex: currentFrameIndex, delayMs: 900 });
         }
