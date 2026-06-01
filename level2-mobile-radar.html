@@ -620,9 +620,9 @@
     const FRAME_REFRESH_MS = 60000;
     const ALERT_REFRESH_MS = 60000;
     const PLAYBACK_INTERVAL_MS = 900;
-    const USE_MOBILE_MAPBOX_RADAR_LAYER = true;
+    const USE_MOBILE_MAPBOX_RADAR_LAYER = false;
     const MOBILE_LEVEL2_RASTER_SCALE = 0.5;
-    const MOBILE_LEVEL2_RENDER_CACHE_LIMIT = 15;
+    const MOBILE_LEVEL2_RENDER_CACHE_LIMIT = 12;
     const DESKTOP_LEVEL2_RENDER_CACHE_LIMIT = 6;
     const MOBILE_UNCACHED_FRAME_MIN_INTERVAL_MS = 1800;
     const DISPLAY_MIN_DBZ = -32;
@@ -998,7 +998,7 @@
       mobileLoopLoadInProgress = false;
       mobileLoopLoadToken += 1;
       mobileLoopLoadedPaths = new Set();
-      mobileLoopTotalCount = Math.min(15, level2Frames.length || 0);
+      mobileLoopTotalCount = Math.min(12, level2Frames.length || 0);
       const latestPath = currentFrame()?.path;
       if (latestPath) mobileLoopLoadedPaths.add(latestPath);
       updateLoopLoadProgressUi();
@@ -1693,7 +1693,7 @@
 
       if (isMobileLevel2Mode()) {
         if (frame?.path) mobileLoopLoadedPaths.add(frame.path);
-        mobileLoopTotalCount = Math.min(15, level2Frames.length || 0);
+        mobileLoopTotalCount = Math.min(12, level2Frames.length || 0);
         updateLoopLoadProgressUi();
       } else {
         scheduleLevel2FrameWarmup({
@@ -1719,7 +1719,7 @@
 
     async function startMobileLoopLoadAfterPlay() {
       if (!isMobileLevel2Mode() || !mobileLoopLoadRequested || mobileLoopLoadInProgress) return;
-      mobileLoopTotalCount = Math.min(15, level2Frames.length || 0);
+      mobileLoopTotalCount = Math.min(12, level2Frames.length || 0);
       if (mobileLoopTotalCount <= 1) return;
 
       const token = ++mobileLoopLoadToken;
@@ -3127,5 +3127,4 @@
   </script>
 </body>
 </html>
-
 
