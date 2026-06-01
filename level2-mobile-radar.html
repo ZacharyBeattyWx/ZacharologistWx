@@ -1778,6 +1778,14 @@
 
     async function playbackTick() {
       if (!isPlaying) return;
+
+      if (isMobileLevel2Mode() && isMapInteracting) {
+        // Mobile smoothness: playback paused while map is moving.
+        clearPlaybackTimer();
+        playbackTimer = window.setTimeout(playbackTick, 220);
+        return;
+      }
+
       if (level2Frames.length > 1) {
         await stepFrame(1);
       }
@@ -2989,40 +2997,42 @@
       if (map.setMaxPitch) map.setMaxPitch(0);
       map.on("rotate", lockOrientation);
       map.on("pitch", lockOrientation);
-      map.on("movestart", () => {
+      const beginLevel2MapInteraction = () => {
         isMapInteracting = true;
         pausePlaybackForMapInteraction();
-      });
-      map.on("zoomstart", () => {
-        isMapInteracting = true;
-        pausePlaybackForMapInteraction();
-      });
-      map.on("moveend", () => {
+      };
+
+      const endLevel2MapInteraction = () => {
         isMapInteracting = false;
         redrawRadarOverlay();
         drawAlertOverlay();
         resumePlaybackAfterMapInteraction();
+
         if (!isMobileLevel2Mode() || playbackWasUserRequested) {
           scheduleLevel2FrameWarmup({ aroundIndex: currentFrameIndex, delayMs: 900 });
         }
-      });
-      map.on("zoomend", () => {
-        isMapInteracting = false;
-        redrawRadarOverlay();
-        drawAlertOverlay();
-        resumePlaybackAfterMapInteraction();
-        if (!isMobileLevel2Mode() || playbackWasUserRequested) {
-          scheduleLevel2FrameWarmup({ aroundIndex: currentFrameIndex, delayMs: 900 });
-        }
-      });
+      };
+
+      map.on("movestart", beginLevel2MapInteraction);
+      map.on("dragstart", beginLevel2MapInteraction);
+      map.on("zoomstart", beginLevel2MapInteraction);
+
+      map.on("moveend", endLevel2MapInteraction);
+      map.on("dragend", endLevel2MapInteraction);
+      map.on("zoomend", endLevel2MapInteraction);
+
       map.on("move", () => {
+        if (isMobileLevel2Mode() && isMapInteracting) return;
         redrawRadarOverlay();
         drawAlertOverlay();
       });
+
       map.on("zoom", () => {
+        if (isMobileLevel2Mode() && isMapInteracting) return;
         redrawRadarOverlay();
         drawAlertOverlay();
       });
+
       map.on("resize", () => {
         redrawRadarOverlay();
         drawAlertOverlay();
