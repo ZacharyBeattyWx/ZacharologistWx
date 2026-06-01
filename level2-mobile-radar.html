@@ -810,6 +810,7 @@
     let level2PlaybackLoopPrimed = false;
     let level2LoopLoadInProgress = false;
     let playbackPausedForMapInteraction = false;
+    let mobileOverlayTransformAnchor = null;
     let isMapInteracting = false;
     let isAlertOverlayVisible = true;
     let alertOverlayOpacity = 0.75;
@@ -1753,6 +1754,49 @@
       } finally {
         level2LoopLoadInProgress = false;
       }
+    }
+
+    function setMobileOverlayTransformStyle(transform, origin = "") {
+      if (!isMobileLevel2Mode()) return;
+      radarOverlayCanvas.style.transformOrigin = origin;
+      alertOverlayCanvas.style.transformOrigin = origin;
+      radarOverlayCanvas.style.transform = transform;
+      alertOverlayCanvas.style.transform = transform;
+    }
+
+    function prepareMobileOverlayTransform() {
+      if (!isMobileLevel2Mode() || !map) return;
+      const center = map.getCenter();
+      const point = map.project(center);
+      mobileOverlayTransformAnchor = {
+        lngLat: center,
+        point,
+        zoom: map.getZoom()
+      };
+      radarOverlayCanvas.style.willChange = "transform";
+      alertOverlayCanvas.style.willChange = "transform";
+    }
+
+    function updateMobileOverlayTransform() {
+      if (!isMobileLevel2Mode() || !map || !mobileOverlayTransformAnchor) return false;
+
+      const point = map.project(mobileOverlayTransformAnchor.lngLat);
+      const dx = point.x - mobileOverlayTransformAnchor.point.x;
+      const dy = point.y - mobileOverlayTransformAnchor.point.y;
+      const zoomDelta = map.getZoom() - mobileOverlayTransformAnchor.zoom;
+      const scale = Math.pow(2, zoomDelta);
+      const origin = `${mobileOverlayTransformAnchor.point.x}px ${mobileOverlayTransformAnchor.point.y}px`;
+
+      setMobileOverlayTransformStyle(`translate(${dx}px, ${dy}px) scale(${scale})`, origin);
+      return true;
+    }
+
+    function finishMobileOverlayTransform() {
+      if (!isMobileLevel2Mode()) return;
+      mobileOverlayTransformAnchor = null;
+      radarOverlayCanvas.style.willChange = "";
+      alertOverlayCanvas.style.willChange = "";
+      setMobileOverlayTransformStyle("", "");
     }
 
     function pausePlaybackForMapInteraction() {
@@ -2998,12 +3042,16 @@
       map.on("rotate", lockOrientation);
       map.on("pitch", lockOrientation);
       const beginLevel2MapInteraction = () => {
+        if (isMapInteracting) return;
         isMapInteracting = true;
+        prepareMobileOverlayTransform();
         pausePlaybackForMapInteraction();
       };
 
       const endLevel2MapInteraction = () => {
+        if (!isMapInteracting) return;
         isMapInteracting = false;
+        finishMobileOverlayTransform();
         redrawRadarOverlay();
         drawAlertOverlay();
         resumePlaybackAfterMapInteraction();
@@ -3022,13 +3070,19 @@
       map.on("zoomend", endLevel2MapInteraction);
 
       map.on("move", () => {
-        if (isMobileLevel2Mode() && isMapInteracting) return;
+        if (isMobileLevel2Mode() && isMapInteracting) {
+          updateMobileOverlayTransform();
+          return;
+        }
         redrawRadarOverlay();
         drawAlertOverlay();
       });
 
       map.on("zoom", () => {
-        if (isMobileLevel2Mode() && isMapInteracting) return;
+        if (isMobileLevel2Mode() && isMapInteracting) {
+          updateMobileOverlayTransform();
+          return;
+        }
         redrawRadarOverlay();
         drawAlertOverlay();
       });
