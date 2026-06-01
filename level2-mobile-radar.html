@@ -69,6 +69,37 @@
     }
     .card-title { margin: 0; color: #fff; font-size: 0.92rem; font-weight: 700; line-height: 1.2; }
     .status { color: #cbd5e1; font-size: 0.78rem; line-height: 1.35; min-height: 1.35em; overflow-wrap: anywhere; }
+    .loop-load-progress {
+      display: grid;
+      gap: 4px;
+      padding: 6px 8px;
+      border: 1px solid rgba(56, 189, 248, 0.28);
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.72);
+      color: #bfdbfe;
+      font-size: 0.72rem;
+      font-weight: 800;
+    }
+    .loop-load-progress[hidden] { display: none !important; }
+    .loop-load-progress-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      white-space: nowrap;
+    }
+    .loop-load-progress-track {
+      height: 5px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(30, 41, 59, 0.92);
+    }
+    .loop-load-progress-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: 999px;
+      background: #38bdf8;
+      transition: width 120ms linear;
+    }
     .readout { color: #e2e8f0; font-size: 0.76rem; line-height: 1.35; overflow-wrap: anywhere; }
     .alert-readout { color: #bfdbfe; }
     .toolbar-field { min-width: 0; }
@@ -532,6 +563,15 @@
       <div class="card-header">
         <h1 class="card-title">Mobile Radar + Alerts</h1>
       </div>
+      <div id="loopLoadProgress" class="loop-load-progress" hidden>
+        <div class="loop-load-progress-row">
+          <span id="loopLoadProgressText">Loading radar loop</span>
+          <span id="loopLoadProgressCount">0/0</span>
+        </div>
+        <div class="loop-load-progress-track">
+          <div id="loopLoadProgressBar" class="loop-load-progress-fill"></div>
+        </div>
+      </div>
       <div class="speed-toolbar">
         <span>Playback speed</span>
         <input id="playbackSpeedSlider" type="range" min="0.5" max="6" step="0.25" value="1" aria-label="Playback speed">
@@ -746,6 +786,10 @@
     const playPauseButton = document.getElementById("playPauseButton");
     const nextFrameButton = document.getElementById("nextFrameButton");
     const mobileRadarOptionsButton = document.getElementById("mobileRadarOptionsButton");
+    const loopLoadProgress = document.getElementById("loopLoadProgress");
+    const loopLoadProgressText = document.getElementById("loopLoadProgressText");
+    const loopLoadProgressCount = document.getElementById("loopLoadProgressCount");
+    const loopLoadProgressBar = document.getElementById("loopLoadProgressBar");
 
     let map;
     let popup;
@@ -763,6 +807,8 @@
     let level2WarmupTimer = null;
     let level2WarmupToken = 0;
     let level2WarmupBusy = false;
+    let level2PlaybackLoopPrimed = false;
+    let level2LoopLoadInProgress = false;
     let isMapInteracting = false;
     let isAlertOverlayVisible = true;
     let alertOverlayOpacity = 0.75;
@@ -937,6 +983,25 @@
     function updatePlaybackButton() {
       playPauseButton.textContent = isPlaying ? "Pause" : "Play";
       playPauseButton.setAttribute("aria-pressed", String(isPlaying));
+    }
+
+    function setLoopLoadProgress(loaded, total, text = "Loading radar loop") {
+      if (!loopLoadProgress) return;
+      const safeTotal = Math.max(1, Number(total) || 1);
+      const safeLoaded = Math.max(0, Math.min(safeTotal, Number(loaded) || 0));
+      loopLoadProgress.hidden = false;
+      if (loopLoadProgressText) loopLoadProgressText.textContent = text;
+      if (loopLoadProgressCount) loopLoadProgressCount.textContent = `${safeLoaded}/${safeTotal}`;
+      if (loopLoadProgressBar) loopLoadProgressBar.style.width = `${Math.round((safeLoaded / safeTotal) * 100)}%`;
+    }
+
+    function hideLoopLoadProgress() {
+      if (loopLoadProgress) loopLoadProgress.hidden = true;
+      if (loopLoadProgressBar) loopLoadProgressBar.style.width = "0%";
+    }
+
+    function yieldToBrowser() {
+      return new Promise((resolve) => window.setTimeout(resolve, 0));
     }
 
     function updateFrameInfoRow() {
@@ -1614,10 +1679,12 @@
 
       const renderMode = await renderLevel2Dbz(frame);
 
-      scheduleLevel2FrameWarmup({
-        aroundIndex: currentFrameIndex,
-        delayMs: isPlaying ? 1200 : 650
-      });
+      if (!isMobileLevel2Mode() || playbackWasUserRequested) {
+        scheduleLevel2FrameWarmup({
+          aroundIndex: currentFrameIndex,
+          delayMs: isPlaying ? 1200 : 650
+        });
+      }
 
       return renderMode;
     }
@@ -1626,6 +1693,65 @@
       if (!level2Frames.length) return;
       currentFrameIndex = (currentFrameIndex + direction + level2Frames.length) % level2Frames.length;
       await renderCurrentFrame();
+    }
+
+    function buildLevel2PlaybackPreloadOrder() {
+      const order = [];
+      if (!level2Frames.length) return order;
+      for (let offset = 0; offset < level2Frames.length; offset += 1) {
+        order.push((currentFrameIndex + offset) % level2Frames.length);
+      }
+      return order;
+    }
+
+    async function preloadLevel2PlaybackLoop() {
+      if (!level2Frames.length) return false;
+      if (level2PlaybackLoopPrimed && renderedFrameCache.size >= Math.min(level2Frames.length, level2RenderCacheLimit())) {
+        return true;
+      }
+      if (level2LoopLoadInProgress) return false;
+
+      level2LoopLoadInProgress = true;
+      level2WarmupToken += 1;
+      if (level2WarmupTimer !== null) {
+        window.clearTimeout(level2WarmupTimer);
+        level2WarmupTimer = null;
+      }
+
+      const order = buildLevel2PlaybackPreloadOrder();
+      const total = order.length;
+      let loaded = 0;
+
+      try {
+        setLoopLoadProgress(loaded, total, "Loading radar loop");
+        setStatusText(`loading radar loop ${loaded}/${total}`);
+
+        for (const frameIndex of order) {
+          const frame = level2Frames[frameIndex];
+          const key = level2FrameCacheKey(frame);
+
+          if (key && renderedFrameCache.has(key)) {
+            loaded += 1;
+            setLoopLoadProgress(loaded, total, "Loading radar loop");
+            continue;
+          }
+
+          const surface = await buildLevel2RenderedSurface(frame, { logDiagnostics: false });
+          storeRenderedFrameSurface(frame, surface);
+          loaded += 1;
+          setLoopLoadProgress(loaded, total, "Loading radar loop");
+          setStatusText(`loading radar loop ${loaded}/${total}`);
+          await yieldToBrowser();
+        }
+
+        level2PlaybackLoopPrimed = true;
+        setLoopLoadProgress(total, total, "Radar loop ready");
+        setStatusText("radar loop ready");
+        window.setTimeout(hideLoopLoadProgress, 650);
+        return true;
+      } finally {
+        level2LoopLoadInProgress = false;
+      }
     }
 
     function stopPlayback() {
@@ -1644,22 +1770,36 @@
       playbackTimer = window.setTimeout(playbackTick, playbackIntervalMs);
     }
 
-    function startPlayback(options = {}) {
+    async function startPlayback(options = {}) {
       const userRequested = options && options.userRequested === true;
       if (!userRequested && !playbackWasUserRequested) return;
       if (isPlaying || level2Frames.length < 2) return;
+
       playbackWasUserRequested = true;
+
+      if (isMobileLevel2Mode() && !level2PlaybackLoopPrimed) {
+        playPauseButton.disabled = true;
+        playPauseButton.textContent = "Loading";
+        try {
+          await preloadLevel2PlaybackLoop();
+        } finally {
+          playPauseButton.disabled = false;
+          updatePlaybackButton();
+        }
+      }
+
+      if (isPlaying || level2Frames.length < 2) return;
       isPlaying = true;
       updatePlaybackButton();
       clearPlaybackTimer();
-      playbackTimer = window.setTimeout(playbackTick, playbackIntervalMs);
+      playbackTimer = window.setTimeout(playbackTick, 80);
     }
 
-    function togglePlayback() {
+    async function togglePlayback() {
       if (isPlaying) {
         stopPlayback();
       } else {
-        startPlayback({ userRequested: true });
+        await startPlayback({ userRequested: true });
       }
     }
 
@@ -1667,6 +1807,8 @@
       const nextSite = sanitizeLevel2Site(site);
       if (siteSelect) siteSelect.value = nextSite;
       stopPlayback();
+      level2PlaybackLoopPrimed = false;
+      hideLoopLoadProgress();
       renderedFrameCache.clear();
       level2Frames = [];
       currentFrameIndex = 0;
@@ -2838,11 +2980,15 @@
       });
       map.on("moveend", () => {
         isMapInteracting = false;
-        scheduleLevel2FrameWarmup({ aroundIndex: currentFrameIndex, delayMs: 900 });
+        if (!isMobileLevel2Mode() || playbackWasUserRequested) {
+          scheduleLevel2FrameWarmup({ aroundIndex: currentFrameIndex, delayMs: 900 });
+        }
       });
       map.on("zoomend", () => {
         isMapInteracting = false;
-        scheduleLevel2FrameWarmup({ aroundIndex: currentFrameIndex, delayMs: 900 });
+        if (!isMobileLevel2Mode() || playbackWasUserRequested) {
+          scheduleLevel2FrameWarmup({ aroundIndex: currentFrameIndex, delayMs: 900 });
+        }
       });
       map.on("move", () => {
         redrawRadarOverlay();
