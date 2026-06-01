@@ -3024,13 +3024,11 @@
       map.on("zoomend", endLevel2MapInteraction);
 
       map.on("move", () => {
-        if (isMobileLevel2Mode() && isMapInteracting) return;
         redrawRadarOverlay();
         drawAlertOverlay();
       });
 
       map.on("zoom", () => {
-        if (isMobileLevel2Mode() && isMapInteracting) return;
         redrawRadarOverlay();
         drawAlertOverlay();
       });
