@@ -2,7 +2,7 @@
 
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "2-59/7 * * * *"
   repository_dispatch:
     types: [radar_level2_cron]
   workflow_dispatch:
