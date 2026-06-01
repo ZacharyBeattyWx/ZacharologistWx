@@ -10948,6 +10948,7 @@ const currentDewpoint = document.getElementById("currentDewpoint");
 const currentHumidity = document.getElementById("currentHumidity");
 const currentPressure = document.getElementById("currentPressure");
 const conditionsLabel = document.getElementById("conditionsLabel");
+const LIVE_CONDITIONS_CACHE_KEY = "zach_live_conditions_cache";
 
 function cToF(value) {
   if (value === null || value === undefined) return null;
@@ -10968,6 +10969,114 @@ function updateConditionsStatus(message) {
   if (currentCondition) currentCondition.textContent = message;
 }
 
+function getCacheNoteElement() {
+  let noteEl = document.getElementById("liveConditionsCacheNote");
+  if (!noteEl && currentCondition && currentCondition.parentElement) {
+    noteEl = document.createElement("span");
+    noteEl.id = "liveConditionsCacheNote";
+    noteEl.style.display = "block";
+    noteEl.style.fontSize = "0.72rem";
+    noteEl.style.opacity = "0.75";
+    noteEl.style.marginTop = "0.2rem";
+    currentCondition.parentElement.appendChild(noteEl);
+  }
+  return noteEl;
+}
+
+function formatLastUpdated(timestamp) {
+  if (!timestamp) return "";
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
+}
+
+function setCacheNote(message) {
+  const noteEl = getCacheNoteElement();
+  if (!noteEl) return;
+  noteEl.textContent = message || "";
+}
+
+function clearCacheNote() {
+  setCacheNote("");
+}
+
+function buildLiveConditionsCache(payload) {
+  return {
+    latitude: Number(payload.latitude.toFixed(4)),
+    longitude: Number(payload.longitude.toFixed(4)),
+    locationName: payload.locationName || "Your Location",
+    tempText: payload.tempText || "--°",
+    conditionText: payload.conditionText || "Current conditions",
+    windText: payload.windText || "-- mph",
+    dewpointText: payload.dewpointText || "--°",
+    humidityText: payload.humidityText || "--%",
+    pressureText: payload.pressureText || "-- in",
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function saveLiveConditionsCache(cacheData) {
+  try {
+    localStorage.setItem(
+      LIVE_CONDITIONS_CACHE_KEY,
+      JSON.stringify(buildLiveConditionsCache(cacheData))
+    );
+  } catch (error) {
+    console.error("Unable to save live conditions cache:", error);
+  }
+}
+
+function readLiveConditionsCache() {
+  try {
+    const raw = localStorage.getItem(LIVE_CONDITIONS_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (
+      typeof parsed !== "object" ||
+      parsed === null ||
+      typeof parsed.latitude !== "number" ||
+      typeof parsed.longitude !== "number"
+    ) {
+      return null;
+    }
+    return parsed;
+  } catch (error) {
+    console.error("Unable to read live conditions cache:", error);
+    return null;
+  }
+}
+
+function renderLiveConditionsFromCache(cacheData, showSavedNote = false) {
+  if (!cacheData) return false;
+
+  conditionsLabel.textContent = "Live Conditions Near You";
+  currentLocation.textContent = cacheData.locationName || "Your Location";
+  currentTemp.textContent = cacheData.tempText || "--°";
+  currentCondition.textContent = cacheData.conditionText || "Current conditions";
+  currentWind.textContent = cacheData.windText || "-- mph";
+  currentDewpoint.textContent = cacheData.dewpointText || "--°";
+  currentHumidity.textContent = cacheData.humidityText || "--%";
+  currentPressure.textContent = cacheData.pressureText || "-- in";
+
+  if (showSavedNote) {
+    const updatedLabel = formatLastUpdated(cacheData.updatedAt);
+    const note = updatedLabel
+      ? `Showing last saved conditions • Last updated ${updatedLabel}`
+      : "Showing last saved conditions";
+    setCacheNote(note);
+  } else {
+    clearCacheNote();
+  }
+
+  setLocationButtonState("active");
+  return true;
+}
+
 async function fetchJson(url) {
   const response = await fetch(url, {
     headers: {
@@ -10980,68 +11089,6 @@ async function fetchJson(url) {
   }
 
   return response.json();
-}
-
-async function loadConditionsFromLocation(lat, lon) {
-  try {
-    updateConditionsStatus("Locating...");
-
-    const pointData = await fetchJson(
-      `https://api.weather.gov/points/${lat.toFixed(4)},${lon.toFixed(4)}`
-    );
-
-    const city = pointData.properties?.relativeLocation?.properties?.city;
-    const state = pointData.properties?.relativeLocation?.properties?.state;
-    const stationUrl = pointData.properties?.observationStations;
-
-    if (!stationUrl) {
-      throw new Error("No observation station URL found.");
-    }
-
-    currentLocation.textContent =
-      city && state ? `${city}, ${state}` : "Your Location";
-
-    conditionsLabel.textContent = "Live Conditions Near You";
-
-    const stationsData = await fetchJson(stationUrl);
-    const firstStation = stationsData.features?.[0];
-
-    if (!firstStation?.id) {
-      throw new Error("No nearby observation station found.");
-    }
-
-    const observationData = await fetchJson(
-      `${firstStation.id}/observations/latest`
-    );
-
-    const props = observationData.properties || {};
-
-    const tempF = cToF(props.temperature?.value);
-    const dewF = cToF(props.dewpoint?.value);
-    const windMph = msToMph(props.windSpeed?.value);
-    const pressureIn = paToInHg(props.barometricPressure?.value);
-    const humidity = props.relativeHumidity?.value;
-
-    currentTemp.textContent = tempF !== null ? `${tempF}°` : "--°";
-    currentCondition.textContent = props.textDescription || "Current conditions";
-    currentWind.textContent = windMph !== null ? `${windMph} mph` : "-- mph";
-    currentDewpoint.textContent = dewF !== null ? `${dewF}°` : "--°";
-    currentHumidity.textContent =
-      humidity !== null && humidity !== undefined
-        ? `${Math.round(humidity)}%`
-        : "--%";
-    currentPressure.textContent =
-      pressureIn !== null ? `${pressureIn} in` : "-- in";
-
-    setLocationButtonState("active");
-  } catch (error) {
-    console.error(error);
-
-    conditionsLabel.textContent = "Live Conditions";
-    currentLocation.textContent = "Greensboro, NC";
-    currentCondition.textContent = "Unable to load local conditions";
-    setLocationButtonState("error");
-  }
 }
 
 function setLocationButtonState(state) {
@@ -11076,7 +11123,12 @@ function setLocationButtonState(state) {
 }
 
 function requestUserLocation() {
+  const existingCache = readLiveConditionsCache();
+
   if (!navigator.geolocation) {
+    if (existingCache && renderLiveConditionsFromCache(existingCache, true)) {
+      return;
+    }
     updateConditionsStatus("Geolocation unavailable");
     return;
   }
@@ -11091,7 +11143,12 @@ function requestUserLocation() {
       );
     },
     () => {
+      if (existingCache && renderLiveConditionsFromCache(existingCache, true)) {
+        setLocationButtonState("error");
+        return;
+      }
       currentCondition.textContent = "Location permission denied";
+      clearCacheNote();
       setLocationButtonState("error");
     },
     {
@@ -11102,11 +11159,102 @@ function requestUserLocation() {
   );
 }
 
+async function loadConditionsFromLocation(lat, lon) {
+  const existingCache = readLiveConditionsCache();
+  try {
+    updateConditionsStatus("Locating...");
+
+    const pointData = await fetchJson(
+      `https://api.weather.gov/points/${lat.toFixed(4)},${lon.toFixed(4)}`
+    );
+
+    const city = pointData.properties?.relativeLocation?.properties?.city;
+    const state = pointData.properties?.relativeLocation?.properties?.state;
+    const stationUrl = pointData.properties?.observationStations;
+
+    if (!stationUrl) {
+      throw new Error("No observation station URL found.");
+    }
+
+    currentLocation.textContent =
+      city && state ? `${city}, ${state}` : "Your Location";
+    conditionsLabel.textContent = "Live Conditions Near You";
+
+    const stationsData = await fetchJson(stationUrl);
+    const firstStation = stationsData.features?.[0];
+    if (!firstStation?.id) {
+      throw new Error("No nearby observation station found.");
+    }
+
+    const observationData = await fetchJson(
+      `${firstStation.id}/observations/latest`
+    );
+
+    const props = observationData.properties || {};
+    const tempF = cToF(props.temperature?.value);
+    const dewF = cToF(props.dewpoint?.value);
+    const windMph = msToMph(props.windSpeed?.value);
+    const pressureIn = paToInHg(props.barometricPressure?.value);
+    const humidity = props.relativeHumidity?.value;
+
+    const tempText = tempF !== null ? `${tempF}°` : "--°";
+    const conditionText = props.textDescription || "Current conditions";
+    const windText = windMph !== null ? `${windMph} mph` : "-- mph";
+    const dewpointText = dewF !== null ? `${dewF}°` : "--°";
+    const humidityText =
+      humidity !== null && humidity !== undefined
+        ? `${Math.round(humidity)}%`
+        : "--%";
+    const pressureText = pressureIn !== null ? `${pressureIn} in` : "-- in";
+
+    currentTemp.textContent = tempText;
+    currentCondition.textContent = conditionText;
+    currentWind.textContent = windText;
+    currentDewpoint.textContent = dewpointText;
+    currentHumidity.textContent = humidityText;
+    currentPressure.textContent = pressureText;
+    clearCacheNote();
+
+    saveLiveConditionsCache({
+      latitude: lat,
+      longitude: lon,
+      locationName: city && state ? `${city}, ${state}` : "Your Location",
+      tempText,
+      conditionText,
+      windText,
+      dewpointText,
+      humidityText,
+      pressureText
+    });
+
+    setLocationButtonState("active");
+  } catch (error) {
+    console.error(error);
+    if (existingCache && renderLiveConditionsFromCache(existingCache, true)) {
+      setLocationButtonState("error");
+      return;
+    }
+
+    conditionsLabel.textContent = "Live Conditions";
+    currentLocation.textContent = "Greensboro, NC";
+    currentCondition.textContent = "Unable to load local conditions";
+    clearCacheNote();
+    setLocationButtonState("error");
+  }
+}
+
 setLocationButtonState("ready");
+
+const cachedLiveConditions = readLiveConditionsCache();
+if (cachedLiveConditions) {
+  renderLiveConditionsFromCache(cachedLiveConditions, true);
+}
 
 if (useLocationBtn) {
   useLocationBtn.addEventListener("click", requestUserLocation);
 }
+
+requestUserLocation();
 
 console.log("BOTTOM OF HOMEPAGE SCRIPT REACHED");
 
@@ -11120,4 +11268,6 @@ setInterval(loadSPCImages, 10 * 60 * 1000);
 
 </body>
 </html>
+
+
 
