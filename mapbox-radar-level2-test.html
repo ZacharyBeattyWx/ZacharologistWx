@@ -530,12 +530,16 @@
       if (!isSmallScreen && !isMobileDevice) return;
 
       const target = new URL("level2-mobile-radar.html", window.location.href);
-      target.searchParams.set("level2Data", params.get("level2Data") || "remote");
+      params.forEach((value, key) => {
+        if (key !== "forceDesktop") target.searchParams.set(key, value);
+      });
 
-      const site = params.get("site");
-      if (site) target.searchParams.set("site", site);
+      if (!target.searchParams.has("level2Data")) {
+        target.searchParams.set("level2Data", "remote");
+      }
 
       target.searchParams.set("mobile", "1");
+      target.searchParams.set("routedAt", String(Date.now()));
       window.location.replace(target.toString());
     })();
   </script>
