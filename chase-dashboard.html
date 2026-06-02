@@ -8,18 +8,17 @@
   <style>
     :root {
       --bg: #03070b;
-      --panel: rgba(7, 12, 18, 0.86);
-      --line: rgba(170, 185, 205, 0.22);
+      --panel: rgba(7, 12, 18, 0.88);
+      --line: rgba(170, 185, 205, 0.24);
       --text: #f8fafc;
-      --muted: #c7d0dc;
       --orange: #ff8a24;
       --green: #38d96f;
-      --red: #ff3434;
     }
 
     * { box-sizing: border-box; }
 
-    html, body {
+    html,
+    body {
       width: 100%;
       min-height: 100%;
       margin: 0;
@@ -36,7 +35,9 @@
         linear-gradient(180deg, #010407 0%, #05090f 54%, #02050a 100%);
     }
 
-    button, a { font: inherit; }
+    button,
+    a { font: inherit; }
+
     button { border: 0; }
 
     .page-shell {
@@ -61,7 +62,7 @@
       align-items: center;
       justify-content: space-between;
       gap: 28px;
-      background: rgba(0, 0, 0, 0.86);
+      background: rgba(0, 0, 0, 0.88);
       border-bottom: 1px solid rgba(255, 255, 255, 0.12);
       position: relative;
       z-index: 20;
@@ -125,12 +126,17 @@
     }
 
     .site-nav a span { display: none; }
-    .site-nav a:hover, .site-nav a.active { color: var(--orange); border-bottom-color: var(--orange); }
+
+    .site-nav a:hover,
+    .site-nav a.active {
+      color: var(--orange);
+      border-bottom-color: var(--orange);
+    }
 
     .hero {
       position: relative;
-      min-height: 735px;
-      padding: 64px 48px 260px;
+      min-height: 760px;
+      padding: 50px 48px 252px;
       display: flex;
       align-items: flex-start;
       overflow: hidden;
@@ -150,7 +156,7 @@
         linear-gradient(180deg, #87919b 0%, #56606b 32%, #171b20 65%, #05070a 100%);
       background-size: cover;
       background-position: center 46%;
-      filter: saturate(0.92) contrast(1.08) brightness(0.82);
+      filter: saturate(0.94) contrast(1.08) brightness(0.86);
       transform: scale(1.035);
     }
 
@@ -160,53 +166,56 @@
       inset: 0;
       z-index: -2;
       background:
-        linear-gradient(90deg, rgba(0, 0, 0, 0.76) 0%, rgba(0, 0, 0, 0.48) 32%, rgba(0, 0, 0, 0.14) 60%, rgba(0, 0, 0, 0.42) 100%),
-        linear-gradient(180deg, rgba(0, 0, 0, 0.03) 0%, rgba(0, 0, 0, 0.10) 54%, rgba(0, 0, 0, 0.84) 100%);
+        linear-gradient(90deg, rgba(0, 0, 0, 0.76) 0%, rgba(0, 0, 0, 0.48) 30%, rgba(0, 0, 0, 0.14) 58%, rgba(0, 0, 0, 0.42) 100%),
+        linear-gradient(180deg, rgba(0, 0, 0, 0.02) 0%, rgba(0, 0, 0, 0.08) 54%, rgba(0, 0, 0, 0.84) 100%);
     }
 
     .hero-content {
       width: min(440px, 100%);
       position: relative;
-      z-index: 2;
+      z-index: 6;
     }
 
     .hero-title {
-      margin: 0 0 22px;
+      margin: 0 0 18px;
       color: white;
-      font-size: clamp(2.75rem, 4.25vw, 4.45rem);
-      line-height: 0.92;
+      font-size: clamp(2.45rem, 3.45vw, 3.75rem);
+      line-height: 0.96;
       font-weight: 1000;
       text-transform: uppercase;
-      letter-spacing: 0.07em;
+      letter-spacing: 0.09em;
       text-shadow: 0 4px 18px rgba(0, 0, 0, 0.9);
     }
 
     .mission-overview {
       width: 100%;
-      max-width: 330px;
+      max-width: 345px;
       padding: 0;
       background: transparent;
       border: 0;
       box-shadow: none;
     }
 
-    .section-kicker, .mission-label, .card-title, .status-label {
+    .section-kicker,
+    .mission-label,
+    .card-title,
+    .status-label {
       font-weight: 950;
       text-transform: uppercase;
       letter-spacing: 0.14em;
     }
 
     .section-kicker {
-      margin-bottom: 18px;
+      margin-bottom: 14px;
       font-size: 0.95rem;
       color: #f5f7fb;
     }
 
-    .mission-item { margin-bottom: 14px; }
+    .mission-item { margin-bottom: 10px; }
 
     .mission-label {
       display: block;
-      margin-bottom: 4px;
+      margin-bottom: 3px;
       color: #f1f5fb;
       font-size: 0.72rem;
     }
@@ -214,9 +223,9 @@
     .mission-value {
       display: block;
       color: white;
-      font-size: 0.98rem;
+      font-size: 0.96rem;
       font-weight: 750;
-      line-height: 1.22;
+      line-height: 1.18;
       text-shadow: 0 2px 8px rgba(0, 0, 0, 0.85);
     }
 
@@ -224,7 +233,7 @@
       display: flex;
       align-items: center;
       gap: 14px;
-      margin-top: 8px;
+      margin-top: 7px;
     }
 
     .confidence-bar {
@@ -244,7 +253,8 @@
       box-shadow: 0 0 16px rgba(255, 128, 24, 0.7);
     }
 
-    .hero-button, .card-button {
+    .hero-button,
+    .card-button {
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -263,13 +273,17 @@
       transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
     }
 
-    .hero-button:hover, .card-button:hover {
+    .hero-button:hover,
+    .card-button:hover {
       transform: translateY(-1px);
       background: rgba(255, 138, 36, 0.22);
       border-color: rgba(255, 138, 36, 0.56);
     }
 
-    .hero-button { margin-top: 3px; min-width: 250px; }
+    .hero-button {
+      margin-top: 2px;
+      min-width: 250px;
+    }
 
     .dashboard-strip {
       position: absolute;
@@ -286,9 +300,10 @@
       margin-bottom: 16px;
     }
 
-    .status-card, .card {
+    .status-card,
+    .card {
       border: 1px solid var(--line);
-      background: linear-gradient(180deg, rgba(8, 13, 19, 0.84), rgba(4, 8, 12, 0.9));
+      background: linear-gradient(180deg, rgba(8, 13, 19, 0.84), rgba(4, 8, 12, 0.91));
       box-shadow: 0 14px 30px rgba(0, 0, 0, 0.28);
       backdrop-filter: blur(10px);
     }
@@ -518,7 +533,8 @@
     @media (max-width: 1180px) {
       .site-header { padding: 0 28px; }
       .site-nav { gap: 12px; }
-      .status-row, .cards-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .status-row,
+      .cards-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .hero { min-height: 920px; }
     }
 
@@ -532,11 +548,13 @@
       .site-nav a { font-size: 0.72rem; min-height: 32px; }
       .hero { min-height: auto; padding: 44px 18px 22px; display: block; }
       .hero::before { background-position: 55% 50%; }
-      .hero-content, .mission-overview { max-width: 100%; }
+      .hero-content,
+      .mission-overview { max-width: 100%; }
       .hero-title { font-size: clamp(2.5rem, 14vw, 4rem); }
       .hero-button { width: 100%; min-width: 0; }
       .dashboard-strip { position: relative; left: auto; right: auto; bottom: auto; margin-top: 28px; }
-      .status-row, .cards-grid { grid-template-columns: 1fr; }
+      .status-row,
+      .cards-grid { grid-template-columns: 1fr; }
       .status-card { min-height: 92px; }
     }
   </style>
