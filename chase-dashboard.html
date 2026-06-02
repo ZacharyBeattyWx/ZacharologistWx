@@ -129,8 +129,8 @@
 
     .hero {
       position: relative;
-      min-height: 690px;
-      padding: 68px 48px 234px;
+      min-height: 735px;
+      padding: 64px 48px 260px;
       display: flex;
       align-items: flex-start;
       overflow: hidden;
@@ -149,9 +149,9 @@
         radial-gradient(circle at 54% 43%, rgba(170, 176, 184, 0.25), transparent 11rem),
         linear-gradient(180deg, #87919b 0%, #56606b 32%, #171b20 65%, #05070a 100%);
       background-size: cover;
-      background-position: center center;
-      filter: saturate(0.86) contrast(1.08) brightness(0.5);
-      transform: scale(1.04);
+      background-position: center 46%;
+      filter: saturate(0.92) contrast(1.08) brightness(0.82);
+      transform: scale(1.035);
     }
 
     .hero::after {
@@ -160,8 +160,8 @@
       inset: 0;
       z-index: -2;
       background:
-        linear-gradient(90deg, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.58) 30%, rgba(0, 0, 0, 0.18) 58%, rgba(0, 0, 0, 0.5) 100%),
-        linear-gradient(180deg, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0.15) 56%, rgba(0, 0, 0, 0.9) 100%);
+        linear-gradient(90deg, rgba(0, 0, 0, 0.76) 0%, rgba(0, 0, 0, 0.48) 32%, rgba(0, 0, 0, 0.14) 60%, rgba(0, 0, 0, 0.42) 100%),
+        linear-gradient(180deg, rgba(0, 0, 0, 0.03) 0%, rgba(0, 0, 0, 0.10) 54%, rgba(0, 0, 0, 0.84) 100%);
     }
 
     .hero-content {
@@ -171,10 +171,10 @@
     }
 
     .hero-title {
-      margin: 0 0 24px;
+      margin: 0 0 22px;
       color: white;
-      font-size: clamp(3rem, 5vw, 5.4rem);
-      line-height: 0.9;
+      font-size: clamp(2.75rem, 4.25vw, 4.45rem);
+      line-height: 0.92;
       font-weight: 1000;
       text-transform: uppercase;
       letter-spacing: 0.07em;
@@ -197,26 +197,26 @@
     }
 
     .section-kicker {
-      margin-bottom: 22px;
-      font-size: 1rem;
+      margin-bottom: 18px;
+      font-size: 0.95rem;
       color: #f5f7fb;
     }
 
-    .mission-item { margin-bottom: 17px; }
+    .mission-item { margin-bottom: 14px; }
 
     .mission-label {
       display: block;
       margin-bottom: 4px;
       color: #f1f5fb;
-      font-size: 0.74rem;
+      font-size: 0.72rem;
     }
 
     .mission-value {
       display: block;
       color: white;
-      font-size: 1.03rem;
+      font-size: 0.98rem;
       font-weight: 750;
-      line-height: 1.25;
+      line-height: 1.22;
       text-shadow: 0 2px 8px rgba(0, 0, 0, 0.85);
     }
 
@@ -269,7 +269,7 @@
       border-color: rgba(255, 138, 36, 0.56);
     }
 
-    .hero-button { margin-top: 6px; min-width: 250px; }
+    .hero-button { margin-top: 3px; min-width: 250px; }
 
     .dashboard-strip {
       position: absolute;
@@ -288,7 +288,7 @@
 
     .status-card, .card {
       border: 1px solid var(--line);
-      background: linear-gradient(180deg, rgba(8, 13, 19, 0.9), rgba(4, 8, 12, 0.9));
+      background: linear-gradient(180deg, rgba(8, 13, 19, 0.84), rgba(4, 8, 12, 0.9));
       box-shadow: 0 14px 30px rgba(0, 0, 0, 0.28);
       backdrop-filter: blur(10px);
     }
@@ -394,7 +394,7 @@
       background-image: url("assets/chase-dashboard-bg.jpg"), linear-gradient(135deg, #151c22, #030608);
       background-size: cover;
       background-position: center;
-      filter: contrast(1.08) brightness(0.52);
+      filter: contrast(1.08) brightness(0.62);
     }
 
     .play-button {
@@ -519,7 +519,7 @@
       .site-header { padding: 0 28px; }
       .site-nav { gap: 12px; }
       .status-row, .cards-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .hero { min-height: 880px; }
+      .hero { min-height: 920px; }
     }
 
     @media (max-width: 760px) {
