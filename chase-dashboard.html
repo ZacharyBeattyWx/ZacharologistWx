@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -286,11 +286,12 @@
     }
 
     .dashboard-strip {
-      position: absolute;
-      left: 26px;
-      right: 26px;
-      bottom: 26px;
+      position: relative;
+      left: auto;
+      right: auto;
+      bottom: auto;
       z-index: 5;
+      margin-top: 18px;
     }
 
     .status-row {
@@ -564,7 +565,7 @@
     <main class="dashboard-frame">
       <header class="site-header">
         <a href="index.html" class="site-brand" aria-label="Zacharologist Storm Operations home">
-          <div class="brand-main">WX<span class="bolt">⚡</span></div>
+          <div class="brand-main">WX<span class="bolt">âš¡</span></div>
           <div class="brand-sub">Zacharologist</div>
         </a>
         <nav class="site-nav" aria-label="Chase dashboard navigation">
@@ -605,19 +606,19 @@
         <div class="dashboard-strip">
           <div class="status-row" aria-label="Current chase status">
             <article class="status-card">
-              <div class="status-icon">◷</div>
+              <div class="status-icon">â—·</div>
               <div><span class="status-label">Next Target Window</span><div class="status-value">May 26-31, 2026</div><div class="status-detail">T.B.D.</div></div>
             </article>
             <article class="status-card">
-              <div class="status-icon">▰</div>
+              <div class="status-icon">â–°</div>
               <div><span class="status-label">Vehicle Status</span><div class="status-value green">In Position</div><div class="status-detail">Ready to Deploy</div></div>
             </article>
             <article class="status-card">
-              <div class="status-icon">⌁</div>
+              <div class="status-icon">âŒ</div>
               <div><span class="status-label">Stream Status</span><div class="status-value">OFFLINE</div><div class="status-detail">Standby</div></div>
             </article>
             <article class="status-card">
-              <div class="status-icon">●</div>
+              <div class="status-icon">â—</div>
               <div><span class="status-label">Current Location</span><div class="status-value">Greensboro, NC</div><div class="status-detail">N/A</div></div>
             </article>
           </div>
@@ -625,7 +626,7 @@
           <div class="cards-grid" aria-label="Chase operation cards">
             <article class="card" id="live">
               <div class="card-head"><h2 class="card-title">Live Stream</h2></div>
-              <div class="card-visual stream-visual"><div class="play-button">▶</div><div class="live-badge">Live</div></div>
+              <div class="card-visual stream-visual"><div class="play-button">â–¶</div><div class="live-badge">Live</div></div>
               <div class="card-footer"><button class="card-button" type="button" onclick="alert('View Stream')">View Stream</button></div>
             </article>
             <article class="card" id="targets">
@@ -660,3 +661,4 @@
   </script>
 </body>
 </html>
+
