@@ -5,901 +5,638 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Chase Dashboard | Zacharologist WX</title>
   <link rel="icon" type="image/jpeg" href="/hero.jpg">
-  
   <style>
-    * {
-      box-sizing: border-box;
+    :root {
+      --bg: #03070b;
+      --panel: rgba(7, 12, 18, 0.86);
+      --line: rgba(170, 185, 205, 0.22);
+      --text: #f8fafc;
+      --muted: #c7d0dc;
+      --orange: #ff8a24;
+      --green: #38d96f;
+      --red: #ff3434;
     }
+
+    * { box-sizing: border-box; }
 
     html, body {
       width: 100%;
-      overflow-x: hidden;
+      min-height: 100%;
       margin: 0;
       padding: 0;
+      overflow-x: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Arial Narrow", "Roboto Condensed", "Segoe UI", Arial, sans-serif;
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-      background: linear-gradient(
-        180deg,
-        #09111d 0%,
-        #050b16 45%,
-        #040811 100%
-      );
-      color: white;
+      background:
+        radial-gradient(circle at 50% -15%, rgba(80, 90, 105, 0.22), transparent 36rem),
+        linear-gradient(180deg, #010407 0%, #05090f 54%, #02050a 100%);
     }
 
-    /* HEADER / NAV */
-    .site-header {
-      width: 100%;
-      max-width: 100%;
+    button, a { font: inherit; }
+    button { border: 0; }
+
+    .page-shell {
+      width: min(100%, 1600px);
       margin: 0 auto;
-      padding: 14px 32px;
+      padding: 18px 26px 30px;
+    }
+
+    .dashboard-frame {
+      min-height: calc(100vh - 48px);
+      border: 1px solid rgba(150, 160, 175, 0.28);
+      background: #03070b;
+      box-shadow: 0 28px 80px rgba(0, 0, 0, 0.65);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .site-header {
+      height: 88px;
+      padding: 0 48px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 24px;
-      background: rgba(5, 10, 20, 0.94);
-      border-bottom: 1px solid rgba(143, 179, 255, 0.16);
-      position: sticky;
-      top: 0;
-      z-index: 1000;
-      backdrop-filter: blur(14px);
+      gap: 28px;
+      background: rgba(0, 0, 0, 0.86);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+      position: relative;
+      z-index: 20;
     }
 
     .site-brand {
       color: white;
       text-decoration: none;
-      display: flex;
-      flex-direction: column;
-      min-width: 160px;
+      min-width: 170px;
+      line-height: 0.9;
     }
 
     .brand-main {
-      font-size: 1.1rem;
-      font-weight: 900;
-      letter-spacing: 0.08em;
-      line-height: 1;
+      font-size: 1.55rem;
+      font-weight: 1000;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
     }
 
-    .brand-main span {
-      color: #38bdf8;
+    .brand-main .bolt {
+      color: #2fd3ff;
+      letter-spacing: 0;
     }
 
     .brand-sub {
-      margin-top: 3px;
-      color: #8fb3ff;
-      font-size: 0.6rem;
-      font-weight: 800;
+      margin-top: 6px;
+      color: #cfd7e2;
+      font-size: 0.68rem;
+      font-weight: 950;
+      letter-spacing: 0.22em;
       text-transform: uppercase;
-      letter-spacing: 0.18em;
     }
 
     .site-nav {
       display: flex;
       align-items: center;
       justify-content: flex-end;
-      gap: 8px;
+      gap: 24px;
       flex: 1;
+      overflow-x: auto;
+      scrollbar-width: none;
     }
+
+    .site-nav::-webkit-scrollbar { display: none; }
 
     .site-nav a {
-      padding: 8px 12px;
-      color: #e5e7eb;
-      text-decoration: none;
-      border: 1px solid transparent;
-      border-radius: 10px;
-      font-size: 0.7rem;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      white-space: nowrap;
-      transition: 0.22s ease;
-    }
-
-    .site-nav a span {
-      display: block;
-      margin-top: 2px;
-      color: #64748b;
-      font-size: 0.55rem;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-    }
-
-    .site-nav a:hover {
-      background: rgba(56, 189, 248, 0.12);
-      border-color: rgba(56, 189, 248, 0.34);
-      color: white;
-    }
-
-    .site-nav a.active {
-      background: rgba(249, 115, 22, 0.15);
-      border-color: rgba(249, 115, 22, 0.4);
-      color: #fb923c;
-    }
-
-    .site-nav a.active span {
-      color: #f97316;
-    }
-
-    /* HERO SECTION */
-    .hero {
-      position: relative;
-      height: 65vh;
-      min-height: 500px;
-      overflow: hidden;
+      min-height: 42px;
       display: flex;
       align-items: center;
-      justify-content: flex-start;
-      margin-top: 0;
+      justify-content: center;
+      padding: 8px 4px;
+      color: #eef3f9;
+      text-decoration: none;
+      font-size: 0.82rem;
+      font-weight: 950;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      white-space: nowrap;
+      border-bottom: 2px solid transparent;
+      transition: color 0.2s ease, border-color 0.2s ease;
     }
 
-    .hero-background {
-      position: absolute;
-      inset: 0;
-      background-color: #0a1428;
-      /* Place your hero image at assets/hero-chase.jpg (recommended) */
-      /* try the image if present, otherwise fallback to a moody gradient */
-      background-image: url('assets/hero-chase.jpg'), linear-gradient(90deg, #081018 0%, #071018 40%, #051015 100%);
-      background-size: cover;
-      background-position: right center;
-      background-repeat: no-repeat;
-      z-index: 0;
+    .site-nav a span { display: none; }
+    .site-nav a:hover, .site-nav a.active { color: var(--orange); border-bottom-color: var(--orange); }
+
+    .hero {
+      position: relative;
+      min-height: 690px;
+      padding: 68px 48px 234px;
+      display: flex;
+      align-items: flex-start;
       overflow: hidden;
-    }
-
-    /* subtle cyan glow on the right to mimic vehicle/lighting */
-    .hero-background::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(90deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.15) 35%, rgba(0,0,0,0.65) 100%);
-      pointer-events: none;
+      isolation: isolate;
     }
 
     .hero::before {
       content: "";
       position: absolute;
       inset: 0;
-      background: rgba(0, 0, 0, 0.42);
-      z-index: 1;
+      z-index: -3;
+      background-image:
+        url("assets/chase-dashboard-bg.jpg"),
+        linear-gradient(115deg, rgba(26, 34, 44, 0.55), rgba(5, 8, 12, 0.95)),
+        radial-gradient(circle at 60% 28%, rgba(220, 230, 240, 0.38), transparent 14rem),
+        radial-gradient(circle at 54% 43%, rgba(170, 176, 184, 0.25), transparent 11rem),
+        linear-gradient(180deg, #87919b 0%, #56606b 32%, #171b20 65%, #05070a 100%);
+      background-size: cover;
+      background-position: center center;
+      filter: saturate(0.86) contrast(1.08) brightness(0.5);
+      transform: scale(1.04);
     }
 
-    .hero-content {
-      position: relative;
-      z-index: 2;
-      max-width: 560px;
-      margin: 0;
-      padding: 40px 24px 40px 24px;
-      width: auto;
-      display: flex;
-      align-items: flex-start;
-      justify-content: flex-start;
-    }
-
-    .hero-text {
-      flex: 0 0 520px;
-      margin: 0;
-      max-width: 520px;
-    }
-
-    .hero-title {
-      font-size: 3.2rem;
-      font-weight: 900;
-      margin: 0 0 28px 0;
-      letter-spacing: -0.02em;
-      line-height: 1.1;
-    }
-
-    .mission-overview {
-      background: rgba(10, 15, 30, 0.6);
-      border: 1px solid rgba(56, 189, 248, 0.25);
-      border-radius: 14px;
-      padding: 28px;
-      backdrop-filter: blur(8px);
-    }
-
-    .mission-item {
-      margin-bottom: 18px;
-    }
-
-    .mission-item:last-child {
-      margin-bottom: 0;
-    }
-
-    .mission-label {
-      font-size: 0.75rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: #8fb3ff;
-      margin-bottom: 5px;
-      display: block;
-    }
-
-    .mission-value {
-      font-size: 1.15rem;
-      font-weight: 600;
-      color: white;
-    }
-
-    .confidence-bar {
-      background: rgba(50, 100, 200, 0.2);
-      border-radius: 8px;
-      height: 8px;
-      overflow: hidden;
-      margin-top: 20px;
-      margin-bottom: 20px;
-      border: 1px solid rgba(56, 189, 248, 0.3);
-    }
-
-    .confidence-fill {
-      background: linear-gradient(90deg, #38bdf8 0%, #fb923c 100%);
-      height: 100%;
-      width: 75%;
-      border-radius: 8px;
-      box-shadow: 0 0 12px rgba(249, 115, 22, 0.4);
-    }
-
-    .hero-button {
-      display: inline-block;
-      padding: 12px 28px;
-      background: linear-gradient(135deg, #fb923c 0%, #f97316 100%);
-      color: white;
-      text-decoration: none;
-      border: none;
-      border-radius: 10px;
-      font-size: 0.85rem;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      cursor: pointer;
-      transition: 0.25s ease;
-      box-shadow: 0 6px 20px rgba(249, 115, 22, 0.3);
-    }
-
-    .hero-button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 10px 30px rgba(249, 115, 22, 0.45);
-    }
-
-    /* DASHBOARD SECTION */
-    .dashboard-section {
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 50px 32px;
-    }
-
-    .dashboard-section-title {
-      font-size: 2rem;
-      font-weight: 800;
-      margin-bottom: 36px;
-      letter-spacing: -0.01em;
-    }
-
-    /* STATUS ROW */
-    .status-row {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 18px;
-      margin-bottom: 32px;
-    }
-
-    .status-card {
-      background: rgba(18, 25, 42, 0.75);
-      padding: 24px;
-      border-radius: 14px;
-      border: 1px solid rgba(143, 179, 255, 0.15);
-      backdrop-filter: blur(10px);
-      transition: 0.25s ease;
-    }
-
-    .status-card:hover {
-      background: rgba(28, 38, 62, 0.9);
-      border-color: rgba(56, 189, 248, 0.3);
-      box-shadow: 0 8px 24px rgba(50, 90, 255, 0.15);
-      transform: translateY(-2px);
-    }
-
-    .status-icon {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 36px;
-      height: 36px;
-      background: rgba(56, 189, 248, 0.15);
-      border-radius: 8px;
-      margin-bottom: 12px;
-      font-size: 1.4rem;
-    }
-
-    .status-label {
-      font-size: 0.7rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: #8fb3ff;
-      margin-bottom: 8px;
-      display: block;
-    }
-
-    .status-value {
-      font-size: 1.35rem;
-      font-weight: 700;
-      color: white;
-      margin-bottom: 4px;
-    }
-
-    .status-detail {
-      font-size: 0.85rem;
-      color: #cbd5e1;
-    }
-
-    .status-badge {
-      display: inline-block;
-      padding: 3px 8px;
-      border-radius: 6px;
-      font-size: 0.65rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      margin-top: 8px;
-    }
-
-    .badge-ready {
-      background: rgba(34, 197, 94, 0.2);
-      color: #86efac;
-      border: 1px solid rgba(34, 197, 94, 0.4);
-    }
-
-    .badge-offline {
-      background: rgba(239, 68, 68, 0.2);
-      color: #fca5a5;
-      border: 1px solid rgba(239, 68, 68, 0.4);
-    }
-
-    /* CARDS ROW */
-    .cards-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 18px;
-    }
-
-    .card {
-      background: rgba(18, 25, 42, 0.75);
-      border-radius: 14px;
-      border: 1px solid rgba(143, 179, 255, 0.15);
-      backdrop-filter: blur(10px);
-      overflow: hidden;
-      transition: 0.25s ease;
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-    }
-
-    .card:hover {
-      background: rgba(28, 38, 62, 0.9);
-      border-color: rgba(56, 189, 248, 0.3);
-      box-shadow: 0 12px 36px rgba(50, 90, 255, 0.2);
-      transform: translateY(-3px);
-    }
-
-    .card-image {
-      position: relative;
-      width: 100%;
-      height: 180px;
-      background: linear-gradient(135deg, rgba(56, 189, 248, 0.15) 0%, rgba(249, 115, 22, 0.08) 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-      background-image: 
-        linear-gradient(135deg, rgba(56, 189, 248, 0.1) 0%, rgba(249, 115, 22, 0.05) 100%);
-    }
-
-    .card-image::before {
+    .hero::after {
       content: "";
       position: absolute;
       inset: 0;
-      background: 
-        repeating-linear-gradient(
-          45deg,
-          transparent,
-          transparent 35px,
-          rgba(56, 189, 248, 0.03) 35px,
-          rgba(56, 189, 248, 0.03) 70px
-        );
+      z-index: -2;
+      background:
+        linear-gradient(90deg, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.58) 30%, rgba(0, 0, 0, 0.18) 58%, rgba(0, 0, 0, 0.5) 100%),
+        linear-gradient(180deg, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0.15) 56%, rgba(0, 0, 0, 0.9) 100%);
     }
 
-    .card-image.radar {
-      background: radial-gradient(circle at center, rgba(56, 189, 248, 0.2) 0%, rgba(56, 189, 248, 0.08) 35%, rgba(0, 0, 0, 0.2) 100%);
+    .hero-content {
+      width: min(440px, 100%);
+      position: relative;
+      z-index: 2;
     }
 
-    .card-image.radar::before {
-      background: 
-        radial-gradient(circle, transparent 20%, rgba(56, 189, 248, 0.1) 20%, rgba(56, 189, 248, 0.1) 40%, transparent 40%),
-        radial-gradient(circle, transparent 30%, rgba(249, 115, 22, 0.05) 30%, rgba(249, 115, 22, 0.05) 50%, transparent 50%);
+    .hero-title {
+      margin: 0 0 24px;
+      color: white;
+      font-size: clamp(3rem, 5vw, 5.4rem);
+      line-height: 0.9;
+      font-weight: 1000;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      text-shadow: 0 4px 18px rgba(0, 0, 0, 0.9);
+    }
+
+    .mission-overview {
+      width: 100%;
+      max-width: 330px;
+      padding: 0;
+      background: transparent;
+      border: 0;
+      box-shadow: none;
+    }
+
+    .section-kicker, .mission-label, .card-title, .status-label {
+      font-weight: 950;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+    }
+
+    .section-kicker {
+      margin-bottom: 22px;
+      font-size: 1rem;
+      color: #f5f7fb;
+    }
+
+    .mission-item { margin-bottom: 17px; }
+
+    .mission-label {
+      display: block;
+      margin-bottom: 4px;
+      color: #f1f5fb;
+      font-size: 0.74rem;
+    }
+
+    .mission-value {
+      display: block;
+      color: white;
+      font-size: 1.03rem;
+      font-weight: 750;
+      line-height: 1.25;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.85);
+    }
+
+    .confidence-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-top: 8px;
+    }
+
+    .confidence-bar {
+      flex: 1;
+      height: 6px;
+      background: rgba(0, 0, 0, 0.45);
+      border-radius: 999px;
+      overflow: hidden;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+    }
+
+    .confidence-fill {
+      width: 75%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #ffb13d 0%, #ff7a18 100%);
+      box-shadow: 0 0 16px rgba(255, 128, 24, 0.7);
+    }
+
+    .hero-button, .card-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 38px;
+      padding: 10px 22px;
+      background: rgba(15, 18, 24, 0.92);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      text-decoration: none;
+      font-size: 0.82rem;
+      font-weight: 950;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      cursor: pointer;
+      transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+    }
+
+    .hero-button:hover, .card-button:hover {
+      transform: translateY(-1px);
+      background: rgba(255, 138, 36, 0.22);
+      border-color: rgba(255, 138, 36, 0.56);
+    }
+
+    .hero-button { margin-top: 6px; min-width: 250px; }
+
+    .dashboard-strip {
+      position: absolute;
+      left: 26px;
+      right: 26px;
+      bottom: 26px;
+      z-index: 5;
+    }
+
+    .status-row {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .status-card, .card {
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(8, 13, 19, 0.9), rgba(4, 8, 12, 0.9));
+      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.28);
+      backdrop-filter: blur(10px);
+    }
+
+    .status-card {
+      min-height: 104px;
+      padding: 18px 20px;
+      border-radius: 7px;
+      display: grid;
+      grid-template-columns: 58px 1fr;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .status-icon {
+      width: 48px;
+      height: 48px;
+      display: grid;
+      place-items: center;
+      color: rgba(225, 234, 242, 0.72);
+      font-size: 2.05rem;
+      filter: grayscale(1);
+    }
+
+    .status-label {
+      display: block;
+      margin-bottom: 7px;
+      color: #b8c4d2;
+      font-size: 0.66rem;
+    }
+
+    .status-value {
+      margin-bottom: 5px;
+      color: #f8fbff;
+      font-size: 1.05rem;
+      font-weight: 900;
+      line-height: 1.18;
+    }
+
+    .status-value.green { color: var(--green); }
+
+    .status-detail {
+      color: #e1e7ed;
+      font-size: 0.92rem;
+      line-height: 1.24;
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      min-height: 188px;
+      border-radius: 7px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card-head {
+      min-height: 44px;
+      padding: 15px 16px 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .card-title {
+      margin: 0;
+      color: white;
+      font-size: 0.88rem;
+    }
+
+    .card-meta {
+      color: #d7dde4;
+      font-size: 0.72rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .card-visual {
+      position: relative;
+      min-height: 96px;
+      margin: 0 16px 10px;
+      overflow: hidden;
+      border-radius: 3px;
+      background: #111820;
+      isolation: isolate;
+    }
+
+    .card-visual::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.32));
+      z-index: 2;
+    }
+
+    .stream-visual {
+      background-image: url("assets/chase-dashboard-bg.jpg"), linear-gradient(135deg, #151c22, #030608);
+      background-size: cover;
+      background-position: center;
+      filter: contrast(1.08) brightness(0.52);
     }
 
     .play-button {
-      position: relative;
-      z-index: 2;
-      width: 60px;
-      height: 60px;
-      background: rgba(249, 115, 22, 0.9);
+      position: absolute;
+      inset: 0;
+      margin: auto;
+      z-index: 3;
+      width: 48px;
+      height: 48px;
+      display: grid;
+      place-items: center;
       border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: 0.25s ease;
-    }
-
-    .play-button:hover {
-      background: #fb923c;
-      transform: scale(1.1);
-    }
-
-    .play-button::after {
-      content: "▶";
+      background: rgba(0, 0, 0, 0.58);
       color: white;
-      font-size: 1.5rem;
-      margin-left: 3px;
+      font-size: 1.25rem;
     }
 
     .live-badge {
       position: absolute;
-      top: 12px;
-      right: 12px;
-      z-index: 3;
-      background: #ef4444;
+      top: 8px;
+      right: 8px;
+      z-index: 4;
+      padding: 4px 8px;
+      border-radius: 2px;
+      background: #e42020;
       color: white;
-      padding: 4px 10px;
-      border-radius: 6px;
-      font-size: 0.65rem;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
-    }
-
-    .card-content {
-      padding: 24px;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .card-title {
-      font-size: 1.1rem;
-      font-weight: 700;
-      margin: 0 0 12px 0;
-      color: white;
-    }
-
-    .card-text {
-      font-size: 0.9rem;
-      color: #cbd5e1;
-      margin-bottom: 16px;
-      flex: 1;
-    }
-
-    .card-meta {
-      font-size: 0.8rem;
-      color: #94a3b8;
-      margin-bottom: 16px;
-    }
-
-    .card-timestamp {
-      position: absolute;
-      bottom: 12px;
-      right: 12px;
-      z-index: 3;
-      background: rgba(15, 23, 42, 0.8);
-      color: #64748b;
-      padding: 4px 10px;
-      border-radius: 6px;
-      font-size: 0.65rem;
-      font-weight: 600;
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(56, 189, 248, 0.15);
-    }
-
-    .card-button {
-      display: inline-block;
-      padding: 10px 16px;
-      background: rgba(56, 189, 248, 0.15);
-      border: 1px solid rgba(56, 189, 248, 0.3);
-      color: #38bdf8;
-      text-decoration: none;
-      border-radius: 8px;
-      font-size: 0.8rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      cursor: pointer;
-      transition: 0.22s ease;
-      text-align: center;
-    }
-
-    .card-button:hover {
-      background: rgba(56, 189, 248, 0.25);
-      border-color: rgba(56, 189, 248, 0.5);
-    }
-
-    .card-button.orange {
-      background: rgba(249, 115, 22, 0.15);
-      border-color: rgba(249, 115, 22, 0.3);
-      color: #fb923c;
-    }
-
-    .card-button.orange:hover {
-      background: rgba(249, 115, 22, 0.25);
-      border-color: rgba(249, 115, 22, 0.5);
-    }
-
-    /* PROBABILITY CARD SPECIAL */
-    .probability-display {
-      text-align: center;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .probability-number {
-      font-size: 3.5rem;
-      font-weight: 900;
-      color: #fb923c;
-      margin: 0;
-      line-height: 1;
-    }
-
-    .probability-label {
-      font-size: 1rem;
-      color: #8fb3ff;
-      margin-top: 8px;
-      font-weight: 600;
+      font-size: 0.63rem;
+      font-weight: 1000;
       text-transform: uppercase;
       letter-spacing: 0.08em;
     }
 
+    .target-visual {
+      background:
+        linear-gradient(120deg, transparent 0 43%, rgba(255, 90, 20, 0.95) 44% 46%, transparent 47%),
+        linear-gradient(140deg, transparent 0 54%, rgba(48, 190, 255, 0.95) 55% 56%, transparent 57%),
+        radial-gradient(circle at 45% 58%, rgba(32, 170, 255, 0.45) 0 14%, transparent 15%),
+        linear-gradient(135deg, rgba(80, 140, 90, 0.28), rgba(15, 35, 24, 0.82)),
+        repeating-linear-gradient(0deg, transparent 0 17px, rgba(255,255,255,0.05) 18px),
+        repeating-linear-gradient(90deg, transparent 0 20px, rgba(255,255,255,0.04) 21px),
+        #0b1912;
+    }
+
+    .meso-visual {
+      background:
+        radial-gradient(circle at 55% 48%, rgba(255, 30, 30, 0.9) 0 4%, transparent 5%),
+        radial-gradient(circle at 52% 52%, rgba(255, 170, 0, 0.55) 0 8%, transparent 10%),
+        linear-gradient(118deg, transparent 0 42%, rgba(25, 255, 80, 0.9) 43% 45%, transparent 46%),
+        linear-gradient(130deg, transparent 0 48%, rgba(80, 200, 255, 0.8) 49% 50%, transparent 51%),
+        repeating-linear-gradient(8deg, rgba(255, 0, 140, 0.32) 0 1px, transparent 2px 12px),
+        #061014;
+    }
+
+    .probability-card .card-body {
+      min-height: 120px;
+      display: grid;
+      place-items: center;
+      padding: 0 16px 8px;
+    }
+
     .probability-gauge {
-      width: 120px;
-      height: 120px;
-      margin: 12px 0;
-      border-radius: 50%;
-      background: conic-gradient(
-        #fb923c 0deg 270deg,
-        rgba(56, 189, 248, 0.2) 270deg 360deg
-      );
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.4), 0 0 30px rgba(249, 115, 22, 0.2);
+      width: 150px;
+      height: 82px;
+      display: grid;
+      place-items: end center;
       position: relative;
+      color: white;
+      font-size: 2.25rem;
+      font-weight: 1000;
     }
 
     .probability-gauge::before {
       content: "";
       position: absolute;
-      width: 100px;
-      height: 100px;
-      border-radius: 50%;
-      background: rgba(10, 15, 30, 0.6);
-      border: 2px solid rgba(249, 115, 22, 0.3);
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 75px;
+      border-radius: 150px 150px 0 0;
+      background: conic-gradient(from 270deg at 50% 100%, #d62f21 0deg, #ffb327 135deg, rgba(102, 120, 140, 0.38) 136deg 180deg, transparent 180deg 360deg);
+      -webkit-mask: radial-gradient(circle at 50% 100%, transparent 0 45px, black 46px);
+      mask: radial-gradient(circle at 50% 100%, transparent 0 45px, black 46px);
+      filter: drop-shadow(0 0 18px rgba(255, 149, 31, 0.22));
     }
 
-    .probability-gauge::after {
-      content: "75%";
-      font-size: 1.8rem;
-      font-weight: 900;
-      color: #fb923c;
+    .probability-gauge span {
       position: relative;
       z-index: 2;
+      line-height: 1;
+      text-shadow: 0 3px 12px rgba(0, 0, 0, 0.9);
     }
 
-    /* RESPONSIVE */
-    @media (max-width: 1200px) {
-      .status-row {
-        grid-template-columns: repeat(2, 1fr);
-      }
-
-      .cards-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-
-      .hero-text {
-        margin-right: 40px;
-      }
-
-      .hero-title {
-        font-size: 2.5rem;
-      }
+    .probability-level {
+      margin-top: 2px;
+      color: #ff6e2a;
+      font-size: 0.7rem;
+      font-weight: 1000;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      text-align: center;
     }
 
-    @media (max-width: 768px) {
-      .site-header {
-        padding: 12px 16px;
-        gap: 12px;
-      }
-
-      .site-nav {
-        gap: 4px;
-      }
-
-      .site-nav a {
-        padding: 6px 8px;
-        font-size: 0.65rem;
-      }
-
-      .hero {
-        height: 50vh;
-        min-height: 400px;
-      }
-
-      .hero-content {
-        padding: 24px 16px;
-        flex-direction: column;
-      }
-
-      .hero-text {
-        margin-right: 0;
-        margin-bottom: 24px;
-        flex: 1;
-      }
-
-      .hero-title {
-        font-size: 2rem;
-      }
-
-      .dashboard-section {
-        padding: 32px 16px;
-      }
-
-      .status-row {
-        grid-template-columns: 1fr;
-      }
-
-      .cards-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .mission-overview {
-        padding: 20px;
-      }
-
-      .mission-item {
-        margin-bottom: 14px;
-      }
+    .card-footer {
+      margin-top: auto;
+      padding: 0 16px 14px;
     }
 
-    @media (max-width: 480px) {
-      .hero-title {
-        font-size: 1.6rem;
-      }
+    .card-button {
+      width: 100%;
+      min-height: 32px;
+      padding: 8px 14px;
+      background: rgba(16, 20, 27, 0.95);
+      font-size: 0.72rem;
+    }
 
-      .dashboard-section-title {
-        font-size: 1.5rem;
-      }
+    .dashboard-spacer {
+      min-height: 48px;
+      background: #02050a;
+    }
 
-      .site-header {
-        flex-direction: column;
-        align-items: flex-start;
-      }
+    @media (max-width: 1180px) {
+      .site-header { padding: 0 28px; }
+      .site-nav { gap: 12px; }
+      .status-row, .cards-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .hero { min-height: 880px; }
+    }
 
-      .site-nav {
-        width: 100%;
-        justify-content: flex-start;
-        overflow-x: auto;
-      }
+    @media (max-width: 760px) {
+      .page-shell { padding: 0; }
+      .dashboard-frame { min-height: 100vh; border-left: 0; border-right: 0; }
+      .site-header { height: auto; min-height: 72px; padding: 14px 16px 12px; flex-direction: column; align-items: flex-start; gap: 12px; }
+      .brand-main { font-size: 1.35rem; }
+      .brand-sub { font-size: 0.62rem; }
+      .site-nav { width: 100%; justify-content: flex-start; gap: 16px; padding-bottom: 4px; }
+      .site-nav a { font-size: 0.72rem; min-height: 32px; }
+      .hero { min-height: auto; padding: 44px 18px 22px; display: block; }
+      .hero::before { background-position: 55% 50%; }
+      .hero-content, .mission-overview { max-width: 100%; }
+      .hero-title { font-size: clamp(2.5rem, 14vw, 4rem); }
+      .hero-button { width: 100%; min-width: 0; }
+      .dashboard-strip { position: relative; left: auto; right: auto; bottom: auto; margin-top: 28px; }
+      .status-row, .cards-grid { grid-template-columns: 1fr; }
+      .status-card { min-height: 92px; }
     }
   </style>
 </head>
-
 <body>
-  <!-- HEADER / NAV -->
-  <header class="site-header">
-    <a href="#" class="site-brand">
-      <div class="brand-main">Zacharologist</div>
-      <div class="brand-sub">Storm Operations</div>
-    </a>
-    
-    <nav class="site-nav">
-      <a href="chase-dashboard.html" class="active">
-        Dashboard
-        <span>Ops</span>
-      </a>
-      <a href="#chase-logs">
-        Chase Logs
-        <span>History</span>
-      </a>
-      <a href="#live">
-        Live Streams
-        <span>Feed</span>
-      </a>
-      <a href="#gallery">
-        Gallery
-        <span>Media</span>
-      </a>
-      <a href="#gear">
-        Gear & Vehicle
-        <span>Equipment</span>
-      </a>
-      <a href="#targets">
-        Targets
-        <span>Alerts</span>
-      </a>
-      <a href="#archive">
-        Archive
-        <span>History</span>
-      </a>
-    </nav>
-  </header>
+  <div class="page-shell">
+    <main class="dashboard-frame">
+      <header class="site-header">
+        <a href="index.html" class="site-brand" aria-label="Zacharologist Storm Operations home">
+          <div class="brand-main">WX<span class="bolt">⚡</span></div>
+          <div class="brand-sub">Zacharologist</div>
+        </a>
+        <nav class="site-nav" aria-label="Chase dashboard navigation">
+          <a href="chase-dashboard.html" class="active">Dashboard<span>Ops</span></a>
+          <a href="#chase-logs">Chase Logs<span>History</span></a>
+          <a href="#live">Live Streams<span>Feed</span></a>
+          <a href="#gallery">Gallery<span>Media</span></a>
+          <a href="#gear">Gear &amp; Vehicle<span>Equipment</span></a>
+          <a href="#targets">Targets<span>Alerts</span></a>
+          <a href="#archive">Archive<span>History</span></a>
+        </nav>
+      </header>
 
-  <!-- HERO SECTION -->
-  <section class="hero">
-    <div class="hero-background"></div>
-    
-    <div class="hero-content">
-      <div class="hero-text">
-        <h1 class="hero-title">CHASE<br>DASHBOARD</h1>
-        
-        <div class="mission-overview">
-          <div class="mission-item">
-            <span class="mission-label">Current Mission Overview</span>
-          </div>
-          
-          <div class="mission-item">
-            <span class="mission-label">Target Area</span>
-            <span class="mission-value">T.B.D.</span>
-          </div>
-          
-          <div class="mission-item">
-            <span class="mission-label">Primary Hazards</span>
-            <span class="mission-value">Large Hail, Tornadoes, Damaging Winds</span>
-          </div>
-          
-          <div class="mission-item">
-            <span class="mission-label">Confidence Level</span>
-            <span class="mission-value">75%</span>
-            <div class="confidence-bar">
-              <div class="confidence-fill"></div>
+      <section class="hero" aria-label="Storm chase dashboard overview">
+        <div class="hero-content">
+          <h1 class="hero-title">Chase<br>Dashboard</h1>
+          <div class="mission-overview">
+            <div class="section-kicker">Current Mission Overview</div>
+            <div class="mission-item">
+              <span class="mission-label">Target Area</span>
+              <span class="mission-value">T.B.D.</span>
             </div>
-          </div>
-
-          <button class="hero-button" onclick="alert('View Target Discussion')">
-            View Target Discussion
-          </button>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- DASHBOARD CARDS SECTION -->
-  <section class="dashboard-section">
-    <!-- STATUS ROW -->
-    <div class="status-row">
-      <div class="status-card">
-        <div class="status-icon">⏰</div>
-        <span class="status-label">Next Target Window</span>
-        <div class="status-value">May 26-31, 2026</div>
-        <div class="status-detail">T.B.D.</div>
-      </div>
-
-      <div class="status-card">
-        <div class="status-icon">🚗</div>
-        <span class="status-label">Vehicle Status</span>
-        <div class="status-value">In Position</div>
-        <div class="status-detail">Ready to Deploy</div>
-        <div class="status-badge badge-ready">Operational</div>
-      </div>
-
-      <div class="status-card">
-        <div class="status-icon">📡</div>
-        <span class="status-label">Stream Status</span>
-        <div class="status-value">OFFLINE</div>
-        <div class="status-detail">Standby</div>
-        <div class="status-badge badge-offline">Inactive</div>
-      </div>
-
-      <div class="status-card">
-        <div class="status-icon">📍</div>
-        <span class="status-label">Current Location</span>
-        <div class="status-value">Greensboro, NC</div>
-        <div class="status-detail">N/A</div>
-      </div>
-    </div>
-
-    <!-- CARDS GRID -->
-    <div class="cards-grid">
-      <!-- LIVE STREAM CARD -->
-      <div class="card">
-        <div class="card-image">
-          <div class="play-button"></div>
-          <div class="live-badge">LIVE</div>
-        </div>
-        <div class="card-content">
-          <h3 class="card-title">Live Stream</h3>
-          <p class="card-text">Real-time storm chase feed from the field</p>
-          <button class="card-button orange" onclick="alert('View Stream')">
-            View Stream
-          </button>
-        </div>
-      </div>
-
-      <!-- TARGET DISCUSSION CARD -->
-      <div class="card">
-        <div class="card-image radar">
-          <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 0.85rem;">
-            [Map Placeholder]
+            <div class="mission-item">
+              <span class="mission-label">Primary Hazards</span>
+              <span class="mission-value">Large Hail, Tornadoes, Damaging Winds</span>
+            </div>
+            <div class="mission-item">
+              <span class="mission-label">Confidence</span>
+              <span class="mission-value">75%</span>
+              <div class="confidence-row" aria-label="Confidence level 75 percent">
+                <div class="confidence-bar"><div class="confidence-fill"></div></div>
+              </div>
+            </div>
+            <button class="hero-button" type="button" onclick="alert('View Target Discussion')">View Target Discussion</button>
           </div>
         </div>
-        <div class="card-content">
-          <h3 class="card-title">Target Discussion</h3>
-          <p class="card-text">Storm forecast analysis and discussion</p>
-          <div class="card-meta">Updated 2 hours ago</div>
-          <button class="card-button" onclick="alert('View Discussion')">
-            View Discussion
-          </button>
-        </div>
-      </div>
 
-      <!-- CHASE PROBABILITY CARD -->
-      <div class="card">
-        <div class="card-content" style="padding-top: 28px;">
-          <div class="probability-display">
-            <h3 class="card-title" style="margin-bottom: 0;">Chase Probability</h3>
-            <div class="probability-gauge">60%</div>
-            <div class="probability-label">HIGH CONFIDENCE</div>
+        <div class="dashboard-strip">
+          <div class="status-row" aria-label="Current chase status">
+            <article class="status-card">
+              <div class="status-icon">◷</div>
+              <div><span class="status-label">Next Target Window</span><div class="status-value">May 26-31, 2026</div><div class="status-detail">T.B.D.</div></div>
+            </article>
+            <article class="status-card">
+              <div class="status-icon">▰</div>
+              <div><span class="status-label">Vehicle Status</span><div class="status-value green">In Position</div><div class="status-detail">Ready to Deploy</div></div>
+            </article>
+            <article class="status-card">
+              <div class="status-icon">⌁</div>
+              <div><span class="status-label">Stream Status</span><div class="status-value">OFFLINE</div><div class="status-detail">Standby</div></div>
+            </article>
+            <article class="status-card">
+              <div class="status-icon">●</div>
+              <div><span class="status-label">Current Location</span><div class="status-value">Greensboro, NC</div><div class="status-detail">N/A</div></div>
+            </article>
           </div>
-          <button class="card-button" style="margin-top: auto;" onclick="alert('View Details')">
-            View Details
-          </button>
-        </div>
-      </div>
 
-      <!-- MESO ANALYSIS CARD -->
-      <div class="card">
-        <div class="card-image radar">
-          <div style="position: relative; z-index: 2; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 0.85rem;">
-            [Analysis Map]
+          <div class="cards-grid" aria-label="Chase operation cards">
+            <article class="card" id="live">
+              <div class="card-head"><h2 class="card-title">Live Stream</h2></div>
+              <div class="card-visual stream-visual"><div class="play-button">▶</div><div class="live-badge">Live</div></div>
+              <div class="card-footer"><button class="card-button" type="button" onclick="alert('View Stream')">View Stream</button></div>
+            </article>
+            <article class="card" id="targets">
+              <div class="card-head"><h2 class="card-title">Target Discussion</h2><span class="card-meta">Updated 6:45 PM CDT</span></div>
+              <div class="card-visual target-visual"></div>
+              <div class="card-footer"><button class="card-button" type="button" onclick="alert('View Discussion')">View Discussion</button></div>
+            </article>
+            <article class="card probability-card">
+              <div class="card-head"><h2 class="card-title">Chase Probability</h2></div>
+              <div class="card-body"><div><div class="probability-gauge"><span>75%</span></div><div class="probability-level">High</div></div></div>
+              <div class="card-footer"><button class="card-button" type="button" onclick="alert('View Details')">View Details</button></div>
+            </article>
+            <article class="card">
+              <div class="card-head"><h2 class="card-title">Meso Analysis</h2><span class="card-meta">7:35 PM CDT</span></div>
+              <div class="card-visual meso-visual"></div>
+              <div class="card-footer"><button class="card-button" type="button" onclick="alert('View Map')">View Map</button></div>
+            </article>
           </div>
-          <div class="card-timestamp">7:35 PM CDT</div>
         </div>
-        <div class="card-content">
-          <h3 class="card-title">Meso Analysis</h3>
-          <p class="card-text">Mesoscale analysis and visualization</p>
-          <div class="card-meta">Updated 45 minutes ago</div>
-          <button class="card-button" onclick="alert('View Map')">
-            View Map
-          </button>
-        </div>
-      </div>
-    </div>
-  </section>
+      </section>
+      <div class="dashboard-spacer"></div>
+    </main>
+  </div>
 
-  <!-- SIMPLE JAVASCRIPT FOR BUTTON INTERACTIONS -->
   <script>
-    // Button click handlers - replace with actual functionality
-    document.querySelectorAll('button').forEach(button => {
-      button.addEventListener('click', function(e) {
-        if (this.getAttribute('onclick')) {
-          // Allow default onclick handlers
-          return;
-        }
-        e.preventDefault();
-        // Add your button functionality here
-      });
-    });
-
-    // Simple demo: log navigation
     document.querySelectorAll('.site-nav a').forEach(link => {
-      link.addEventListener('click', function(e) {
-        if (this.getAttribute('href') === '#') {
-          e.preventDefault();
-        }
+      link.addEventListener('click', event => {
+        const href = link.getAttribute('href');
+        if (href && href.startsWith('#')) event.preventDefault();
       });
     });
   </script>
