@@ -543,26 +543,25 @@
     @media (max-width: 760px) {
       .page-shell { padding: 0; }
       .dashboard-frame { min-height: 100vh; border-left: 0; border-right: 0; }
-      .site-header { height: auto; min-height: 72px; padding: 14px 16px 12px; flex-direction: column; align-items: flex-start; gap: 12px; }
-      .brand-main { font-size: 1.35rem; }
-      .brand-sub { font-size: 0.62rem; }
-      .site-nav { width: 100%; justify-content: flex-start; gap: 16px; padding-bottom: 4px; }
-      .site-nav a { font-size: 0.72rem; min-height: 32px; }
-      .hero { min-height: auto; padding: 44px 18px 22px; display: block; }
+      .site-header { height: auto; min-height: 72px; padding: 14px 16px 12px; flex-direction: column; align-items: stretch; gap: 10px; }
+      .site-brand { align-self: flex-start; max-width: 100%; }
+      .brand-main { font-size: 1.2rem; }
+      .brand-sub { font-size: 0.58rem; }
+      .site-nav { width: 100%; flex: none; justify-content: flex-start; gap: 0; overflow: hidden; padding-bottom: 0; }
+      .site-nav a { display: none; font-size: 0.68rem; min-height: 30px; }
+      .site-nav a.active { display: flex; }
+      .hero { min-height: auto; padding: 36px 18px 22px; display: block; }
       .hero::before { background-position: 55% 50%; }
       .hero-content,
       .mission-overview { max-width: 100%; }
-      .hero-title { font-size: clamp(2.5rem, 14vw, 4rem); }
+      .hero-title { font-size: clamp(2rem, 10.5vw, 2.7rem); letter-spacing: 0.055em; }
+      .mission-overview { margin-top: 8px; }
       .hero-button { width: 100%; min-width: 0; }
       .dashboard-strip {
-      position: absolute;
-      left: 26px;
-      right: 26px;
-      bottom: 8px;
-      z-index: 5;
-      width: auto;
-      margin-top: 0;
-    }
+        position: static;
+        width: 100%;
+        margin-top: 32px;
+      }
       .status-row,
       .cards-grid { grid-template-columns: 1fr; }
       .status-card { min-height: 92px; }
