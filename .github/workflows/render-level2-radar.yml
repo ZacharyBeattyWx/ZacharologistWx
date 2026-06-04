@@ -125,6 +125,11 @@ jobs:
             echo "No existing Level II R2 output for ${SITE}; rendering fresh."
           fi
 
+          # Do not let stale R2 artifacts participate in the next manifest.
+          # The renderer will fetch fresh Level II scans and rebuild output.
+          find "$LOCAL_DIR" -maxdepth 1 -type f \( -name "*.tif" -o -name "*.json" \) -delete
+          find "$LOCAL_DIR/mobile" -maxdepth 1 -type f -name "*.webp" -delete 2>/dev/null || true
+
       - name: Render latest Level II frames
         shell: bash
         run: |
