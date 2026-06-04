@@ -134,6 +134,10 @@
       border-bottom-color: var(--orange);
     }
 
+    .mobile-nav-toggle {
+      display: none;
+    }
+
     .hero {
       position: relative;
       min-height: 1000px;
@@ -543,13 +547,48 @@
     @media (max-width: 760px) {
       .page-shell { padding: 0; }
       .dashboard-frame { min-height: 100vh; border-left: 0; border-right: 0; }
-      .site-header { height: auto; min-height: 72px; padding: 14px 16px 12px; flex-direction: column; align-items: stretch; gap: 10px; }
+      .site-header { height: auto; min-height: 72px; padding: 14px 16px 12px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px 14px; }
       .site-brand { align-self: flex-start; max-width: 100%; }
       .brand-main { font-size: 1.2rem; }
       .brand-sub { font-size: 0.58rem; }
-      .site-nav { width: 100%; flex: none; justify-content: flex-start; gap: 0; overflow: hidden; padding-bottom: 0; }
-      .site-nav a { display: none; font-size: 0.68rem; min-height: 30px; }
-      .site-nav a.active { display: flex; }
+      .mobile-nav-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 36px;
+        padding: 8px 13px;
+        background: rgba(255, 138, 36, 0.12);
+        color: var(--orange);
+        border: 1px solid rgba(255, 138, 36, 0.58);
+        border-radius: 5px;
+        font-size: 0.68rem;
+        font-weight: 950;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+      .mobile-nav-toggle[aria-expanded="true"] { background: rgba(255, 138, 36, 0.24); }
+      .site-nav {
+        grid-column: 1 / -1;
+        width: 100%;
+        display: none;
+        grid-template-columns: 1fr;
+        gap: 2px;
+        overflow: hidden;
+        padding: 8px;
+        background: rgba(4, 7, 11, 0.98);
+        border: 1px solid rgba(255, 138, 36, 0.28);
+        border-radius: 6px;
+      }
+      .site-header.menu-open .site-nav { display: grid; }
+      .site-nav a {
+        min-height: 36px;
+        justify-content: flex-start;
+        padding: 8px 10px;
+        font-size: 0.68rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .site-nav a:last-child { border-bottom: 0; }
       .hero { min-height: auto; padding: 36px 18px 22px; display: block; }
       .hero::before { background-position: 55% 50%; }
       .hero-content,
@@ -576,7 +615,8 @@
           <div class="brand-main">ZACHAROLOGIST</div>
           <div class="brand-sub">Built for the Storm</div>
         </a>
-        <nav class="site-nav" aria-label="Chase dashboard navigation">
+        <button class="mobile-nav-toggle" type="button" aria-expanded="false" aria-controls="chase-navigation">Menu</button>
+        <nav class="site-nav" id="chase-navigation" aria-label="Chase dashboard navigation">
           <a href="chase-dashboard.html" class="active">Dashboard<span>Ops</span></a>
           <a href="#chase-logs">Chase Logs<span>History</span></a>
           <a href="#live">Live Streams<span>Feed</span></a>
@@ -656,11 +696,33 @@
   </div>
 
   <script>
+    const siteHeader = document.querySelector('.site-header');
+    const mobileNavToggle = document.querySelector('.mobile-nav-toggle');
+
+    const closeMobileNav = () => {
+      siteHeader.classList.remove('menu-open');
+      mobileNavToggle.setAttribute('aria-expanded', 'false');
+    };
+
+    mobileNavToggle.addEventListener('click', () => {
+      const isOpen = siteHeader.classList.toggle('menu-open');
+      mobileNavToggle.setAttribute('aria-expanded', String(isOpen));
+    });
+
     document.querySelectorAll('.site-nav a').forEach(link => {
       link.addEventListener('click', event => {
         const href = link.getAttribute('href');
         if (href && href.startsWith('#')) event.preventDefault();
+        closeMobileNav();
       });
+    });
+
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape') closeMobileNav();
+    });
+
+    window.addEventListener('resize', () => {
+      if (window.innerWidth > 760) closeMobileNav();
     });
   </script>
 </body>
