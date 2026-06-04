@@ -634,15 +634,15 @@
             <div class="section-kicker">Current Mission Overview</div>
             <div class="mission-item">
               <span class="mission-label">Target Area</span>
-              <span class="mission-value">T.B.D.</span>
+              <span class="mission-value" data-chase-hero-target>T.B.D.</span>
             </div>
             <div class="mission-item">
               <span class="mission-label">Primary Hazards</span>
-              <span class="mission-value">Large Hail, Tornadoes, Damaging Winds</span>
+              <span class="mission-value" data-chase-hazards>Large Hail, Tornadoes, Damaging Winds</span>
             </div>
             <div class="mission-item">
               <span class="mission-label">Confidence</span>
-              <span class="mission-value">75%</span>
+              <span class="mission-value" data-chase-confidence>75%</span>
               <div class="confidence-row" aria-label="Confidence level 75 percent">
                 <div class="confidence-bar"><div class="confidence-fill"></div></div>
               </div>
@@ -654,7 +654,7 @@
         <div class="dashboard-strip">
           <div class="status-row" aria-label="Current chase status">
             <article class="status-card">
-              <div class="status-icon">TIME</div><div><span class="status-label">Next Target Window</span><div class="status-value">June 10-20, 2026</div><div class="status-detail">T.B.D.</div></div>
+              <div class="status-icon">TIME</div><div><span class="status-label">Next Target Window</span><div class="status-value" data-chase-next-update>As needed</div><div class="status-detail" data-chase-status>Monitoring</div></div>
             </article>
             <article class="status-card">
               <div class="status-icon">CAR</div><div><span class="status-label">Vehicle Status</span><div class="status-value green">In Position</div><div class="status-detail">Ready to Deploy</div></div>
@@ -663,7 +663,7 @@
               <div class="status-icon">LIVE</div><div><span class="status-label">Stream Status</span><div class="status-value">OFFLINE</div><div class="status-detail">Standby</div></div>
             </article>
             <article class="status-card">
-              <div class="status-icon">LOC</div><div><span class="status-label">Current Location</span><div class="status-value">Greensboro, NC</div><div class="status-detail">N/A</div></div>
+              <div class="status-icon">LOC</div><div><span class="status-label">Current Location</span><div class="status-value" data-chase-location>Not actively chasing</div><div class="status-detail" data-chase-target>NC / VA / SC</div></div>
             </article>
           </div>
 
@@ -674,8 +674,8 @@
               <div class="card-footer"><button class="card-button" type="button" onclick="alert('View Stream')">View Stream</button></div>
             </article>
             <article class="card" id="targets">
-              <div class="card-head"><h2 class="card-title">Target Discussion</h2><span class="card-meta">Updated 6:45 PM CDT</span></div>
-              <div class="card-visual target-visual"></div>
+              <div class="card-head"><h2 class="card-title">Target Discussion</h2><span class="card-meta" data-chase-updated>Updated from live data</span></div>
+              <div class="card-visual target-visual"><div class="target-copy"><strong data-chase-headline>Monitoring potential chase opportunities</strong><span data-chase-discussion>No active chase is currently underway. Updates will appear here when operations are active.</span></div></div>
               <div class="card-footer"><button class="card-button" type="button" onclick="alert('View Discussion')">View Discussion</button></div>
             </article>
             <article class="card probability-card">
@@ -725,8 +725,57 @@
       if (window.innerWidth > 760) closeMobileNav();
     });
   </script>
+  <script>
+    async function loadChaseStatus() {
+      try {
+        const response = await fetch("/data/chase-status.json", { cache: "no-store" });
+        if (!response.ok) throw new Error("Unable to load chase status");
+        const data = await response.json();
+
+        const setText = (selector, value, fallback = "") => {
+          const el = document.querySelector(selector);
+          if (el) el.textContent = value || fallback;
+        };
+
+        setText("[data-chase-status]", data.status, "Monitoring");
+        setText("[data-chase-target]", data.targetArea, "NC / VA / SC");
+        setText("[data-chase-location]", data.currentLocation, "Not actively chasing");
+        setText("[data-chase-headline]", data.headline, "Monitoring potential chase opportunities");
+        setText("[data-chase-discussion]", data.discussion, "No active chase is currently underway.");
+        setText("[data-chase-next-update]", data.nextUpdate, "As needed");
+        setText("[data-chase-hero-target]", data.targetArea, "T.B.D.");
+
+        if (Array.isArray(data.hazards)) {
+          setText("[data-chase-hazards]", data.hazards.join(", "), "");
+        }
+
+        if (typeof data.confidence === "number") {
+          setText("[data-chase-confidence]", `${data.confidence}%`, "0%");
+        }
+
+        const updatedEl = document.querySelector("[data-chase-updated]");
+        if (updatedEl && data.lastUpdated) {
+          const updated = new Date(data.lastUpdated);
+          updatedEl.textContent = `Updated ${updated.toLocaleString([], {
+            month: "short",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit"
+          })}`;
+        }
+      } catch (error) {
+        console.warn("Chase status failed:", error);
+      }
+    }
+
+    loadChaseStatus();
+  </script>
 </body>
 </html>
+
+
+
+
 
 
 
