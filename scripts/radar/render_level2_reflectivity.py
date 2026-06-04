@@ -203,7 +203,7 @@ def valid_time_from_projected_filename(path: Path) -> str:
 def prune_level2_output_frames(output_root: Path, keep: int) -> None:
     frame_files = sorted(
         output_root.glob("*_projected_dbz.tif"),
-        key=lambda file_path: file_path.stat().st_mtime,
+        key=lambda file_path: valid_time_from_projected_filename(file_path) or infer_valid_time_from_name(file_path) or "",
         reverse=True,
     )
     for stale_file in frame_files[keep:]:
@@ -334,7 +334,7 @@ def build_level2_frames_manifest(
     west, south, east, north = bounds
     frame_files = sorted(
         output_root.glob("*_projected_dbz.tif"),
-        key=lambda file_path: file_path.stat().st_mtime,
+        key=lambda file_path: valid_time_from_projected_filename(file_path) or infer_valid_time_from_name(file_path) or "",
     )
     frames = []
     for frame_file in frame_files:
