@@ -124,7 +124,7 @@
 
   <script>
     async function loadCurrentStatus() {
-      const response = await fetch("/data/chase-status.json", { cache: "no-store" });
+      const response = await fetch("https://zacharologist-chase-api.zacharologistwx.workers.dev/api/chase/status", { cache: "no-store" });
       const data = await response.json();
 
       document.getElementById("status").value = data.status || "Monitoring";
@@ -185,6 +185,7 @@
   </script>
 </body>
 </html>
+
 
 
 
