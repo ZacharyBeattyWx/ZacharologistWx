@@ -680,7 +680,7 @@
             </article>
             <article class="card probability-card">
               <div class="card-head"><h2 class="card-title">Chase Probability</h2></div>
-              <div class="card-body"><div><div class="probability-gauge"><span>75%</span></div><div class="probability-level">High</div></div></div>
+              <div class="card-body"><div><div class="probability-gauge"><span data-chase-probability>75%</span></div><div class="probability-level" data-chase-probability-label>High</div></div></div>
               <div class="card-footer"><button class="card-button" type="button" onclick="alert('View Details')">View Details</button></div>
             </article>
             <article class="card">
@@ -728,7 +728,7 @@
   <script>
     async function loadChaseStatus() {
       try {
-        const response = await fetch("/data/chase-status.json", { cache: "no-store" });
+        const response = await fetch("https://zacharologist-chase-api.zacharologistwx.workers.dev/api/chase/status", { cache: "no-store" });
         if (!response.ok) throw new Error("Unable to load chase status");
         const data = await response.json();
 
@@ -753,6 +753,12 @@
           setText("[data-chase-confidence]", `${data.confidence}%`, "0%");
         }
 
+        if (typeof data.chaseProbability === "number") {
+          setText("[data-chase-probability]", `${data.chaseProbability}%`, "0%");
+        }
+
+        setText("[data-chase-probability-label]", data.chaseProbabilityLabel, "High");
+
         const updatedEl = document.querySelector("[data-chase-updated]");
         if (updatedEl && data.lastUpdated) {
           const updated = new Date(data.lastUpdated);
@@ -772,6 +778,8 @@
   </script>
 </body>
 </html>
+
+
 
 
 

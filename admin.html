@@ -106,10 +106,16 @@
     <label>Confidence</label>
     <input id="confidence" type="number" min="0" max="100" placeholder="75">
 
+    <label>Chase Probability</label>
+    <input id="chaseProbability" type="number" min="0" max="100" placeholder="75">
+
+    <label>Chase Probability Label</label>
+    <input id="chaseProbabilityLabel" placeholder="High">
+
     <label>Next Update</label>
     <input id="nextUpdate" placeholder="As needed">
 
-    <button type="button" id="previewButton">Preview Data</button>
+    <button type="button" id="publishButton">Publish Update</button>
 
     <p class="note">
       This is the mobile-first admin shell. The next step is connecting Publish to Cloudflare Worker + D1.
@@ -128,6 +134,8 @@
       document.getElementById("discussion").value = data.discussion || "";
       document.getElementById("hazards").value = Array.isArray(data.hazards) ? data.hazards.join(", ") : "";
       document.getElementById("confidence").value = data.confidence ?? "";
+      document.getElementById("chaseProbability").value = data.chaseProbability ?? data.confidence ?? "";
+      document.getElementById("chaseProbabilityLabel").value = data.chaseProbabilityLabel || "High";
       document.getElementById("nextUpdate").value = data.nextUpdate || "";
     }
 
@@ -140,18 +148,38 @@
         discussion: document.getElementById("discussion").value.trim(),
         hazards: document.getElementById("hazards").value.split(",").map((item) => item.trim()).filter(Boolean),
         confidence: Number(document.getElementById("confidence").value || 0),
+        chaseProbability: Number(document.getElementById("chaseProbability").value || 0),
+        chaseProbabilityLabel: document.getElementById("chaseProbabilityLabel").value.trim() || "High",
         nextUpdate: document.getElementById("nextUpdate").value.trim(),
         lastUpdated: new Date().toISOString(),
         isLive: document.getElementById("status").value === "Live"
       };
     }
 
-    document.getElementById("previewButton").addEventListener("click", () => {
-      console.log(JSON.stringify(collectFormData(), null, 2));
-      alert("Preview data printed to browser console.");
+    document.getElementById("publishButton").addEventListener("click", async () => {
+      const token = prompt("Enter chase admin token:");
+      if (!token) return;
+
+      const response = await fetch("https://zacharologist-chase-api.zacharologistwx.workers.dev/api/chase/status", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(collectFormData())
+      });
+
+      if (!response.ok) {
+        alert("Publish failed.");
+        return;
+      }
+
+      alert("Chase update published.");
     });
 
     loadCurrentStatus();
   </script>
 </body>
 </html>
+
+
