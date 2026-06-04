@@ -1,0 +1,157 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chase Admin | Zacharologist WX</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: #07111d;
+      color: #f8fafc;
+      padding: 18px;
+    }
+
+    .admin-shell {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin-bottom: 4px;
+      font-size: 1.7rem;
+    }
+
+    p {
+      color: #94a3b8;
+    }
+
+    label {
+      display: block;
+      margin-top: 16px;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #cbd5e1;
+    }
+
+    input,
+    textarea,
+    select {
+      width: 100%;
+      box-sizing: border-box;
+      margin-top: 6px;
+      padding: 13px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      background: rgba(15, 23, 42, 0.88);
+      color: #f8fafc;
+      font: inherit;
+    }
+
+    textarea {
+      min-height: 150px;
+      resize: vertical;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 22px;
+      padding: 15px;
+      border: 0;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #ffb13d, #ff7a18);
+      color: #111827;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .note {
+      margin-top: 14px;
+      font-size: 0.85rem;
+      color: #94a3b8;
+    }
+  </style>
+</head>
+<body>
+  <main class="admin-shell">
+    <h1>Chase Admin</h1>
+    <p>Mobile posting panel for ZacharologistWX chase updates.</p>
+
+    <label>Status</label>
+    <select id="status">
+      <option>Monitoring</option>
+      <option>Active Chase</option>
+      <option>Live</option>
+      <option>Offline</option>
+    </select>
+
+    <label>Target Area</label>
+    <input id="targetArea" placeholder="NC / VA / SC">
+
+    <label>Current Location</label>
+    <input id="currentLocation" placeholder="Not actively chasing">
+
+    <label>Headline</label>
+    <input id="headline" placeholder="Monitoring potential chase opportunities">
+
+    <label>Discussion</label>
+    <textarea id="discussion" placeholder="Write the current chase discussion..."></textarea>
+
+    <label>Hazards</label>
+    <input id="hazards" placeholder="Large Hail, Tornadoes, Damaging Winds">
+
+    <label>Confidence</label>
+    <input id="confidence" type="number" min="0" max="100" placeholder="75">
+
+    <label>Next Update</label>
+    <input id="nextUpdate" placeholder="As needed">
+
+    <button type="button" id="previewButton">Preview Data</button>
+
+    <p class="note">
+      This is the mobile-first admin shell. The next step is connecting Publish to Cloudflare Worker + D1.
+    </p>
+  </main>
+
+  <script>
+    async function loadCurrentStatus() {
+      const response = await fetch("/data/chase-status.json", { cache: "no-store" });
+      const data = await response.json();
+
+      document.getElementById("status").value = data.status || "Monitoring";
+      document.getElementById("targetArea").value = data.targetArea || "";
+      document.getElementById("currentLocation").value = data.currentLocation || "";
+      document.getElementById("headline").value = data.headline || "";
+      document.getElementById("discussion").value = data.discussion || "";
+      document.getElementById("hazards").value = Array.isArray(data.hazards) ? data.hazards.join(", ") : "";
+      document.getElementById("confidence").value = data.confidence ?? "";
+      document.getElementById("nextUpdate").value = data.nextUpdate || "";
+    }
+
+    function collectFormData() {
+      return {
+        status: document.getElementById("status").value,
+        targetArea: document.getElementById("targetArea").value.trim(),
+        currentLocation: document.getElementById("currentLocation").value.trim(),
+        headline: document.getElementById("headline").value.trim(),
+        discussion: document.getElementById("discussion").value.trim(),
+        hazards: document.getElementById("hazards").value.split(",").map((item) => item.trim()).filter(Boolean),
+        confidence: Number(document.getElementById("confidence").value || 0),
+        nextUpdate: document.getElementById("nextUpdate").value.trim(),
+        lastUpdated: new Date().toISOString(),
+        isLive: document.getElementById("status").value === "Live"
+      };
+    }
+
+    document.getElementById("previewButton").addEventListener("click", () => {
+      console.log(JSON.stringify(collectFormData(), null, 2));
+      alert("Preview data printed to browser console.");
+    });
+
+    loadCurrentStatus();
+  </script>
+</body>
+</html>
