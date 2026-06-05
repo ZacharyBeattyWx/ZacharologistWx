@@ -115,6 +115,11 @@
     <label>Next Update</label>
     <input id="nextUpdate" placeholder="As needed">
 
+    <label>Admin Token</label>
+    <input id="adminToken" type="password" placeholder="Saved locally on this device">
+
+    <button type="button" id="saveTokenButton">Save Admin Token</button>
+    <button type="button" id="clearTokenButton">Clear Saved Token</button>
     <button type="button" id="publishButton">Publish Update</button>
 
     <p class="note">
@@ -156,13 +161,34 @@
       };
     }
 
-    document.getElementById("publishButton").addEventListener("click", async () => {
-      let token = localStorage.getItem("zwxChaseAdminToken");
+    const tokenInput = document.getElementById("adminToken");
+    tokenInput.value = localStorage.getItem("zwxChaseAdminToken") || "";
+
+    document.getElementById("saveTokenButton").addEventListener("click", () => {
+      const token = tokenInput.value.trim();
       if (!token) {
-        token = prompt("Enter chase admin token:");
-        if (!token) return;
-        localStorage.setItem("zwxChaseAdminToken", token);
+        alert("Enter a token first.");
+        return;
       }
+
+      localStorage.setItem("zwxChaseAdminToken", token);
+      alert("Admin token saved on this device.");
+    });
+
+    document.getElementById("clearTokenButton").addEventListener("click", () => {
+      localStorage.removeItem("zwxChaseAdminToken");
+      tokenInput.value = "";
+      alert("Saved admin token cleared.");
+    });
+
+    document.getElementById("publishButton").addEventListener("click", async () => {
+      const token = tokenInput.value.trim() || localStorage.getItem("zwxChaseAdminToken");
+      if (!token) {
+        alert("Enter or save the admin token before publishing.");
+        return;
+      }
+
+      localStorage.setItem("zwxChaseAdminToken", token);
 
       const response = await fetch("https://zacharologist-chase-api.zacharologistwx.workers.dev/api/chase/status", {
         method: "POST",
@@ -185,6 +211,7 @@
   </script>
 </body>
 </html>
+
 
 
 
