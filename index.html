@@ -7493,19 +7493,19 @@ body {
     </div>
 
     <div class="hazard-box">
-      <span class="hazard-label">ðŸ§Š Max Hail</span>
+      <span class="hazard-label">Max Hail</span>
       <span class="hazard-value hazard-hail-value"></span>
     </div>
 
     <div class="hazard-box">
-      <span class="hazard-label">ðŸ“¡ Source</span>
+      <span class="hazard-label">Source</span>
       <span class="hazard-value hazard-source-value"></span>
     </div>
   </div>
 
   <div class="warning-info">
-    <p><span>ðŸ“ Where:</span> <span class="alert-where"></span></p>
-    <p><span>ðŸ•˜ When:</span> <span class="alert-when"></span></p>
+    <p><span>Where:</span> <span class="alert-where"></span></p>
+    <p><span>When:</span> <span class="alert-when"></span></p>
   </div>
 
  <div class="warning-impacts">
@@ -7514,7 +7514,7 @@ body {
 </div>
 
 <div class="alert-full-text">
-  <strong>ðŸ“‹ Alert Details</strong>
+  <strong>Alert Details</strong>
   <pre class="alert-raw-text"></pre>
 </div>
 
@@ -7905,9 +7905,9 @@ function getCompactAlertIcon(event) {
 
   if (e.includes("severe thunderstorm")) return "⛈️";
 
-  if (e.includes("flash flood")) return "ðŸŒŠ";
+  if (e.includes("flash flood")) return "";
 
-  if (e.includes("flood")) return "ðŸŒŠ";
+  if (e.includes("flood")) return "";
 
   if (e.includes("winter storm")) return "❄️";
 
@@ -7915,19 +7915,19 @@ function getCompactAlertIcon(event) {
 
   if (e.includes("snow")) return "❄️";
 
-  if (e.includes("ice storm")) return "ðŸ§Š";
+  if (e.includes("ice storm")) return "";
 
-  if (e.includes("freezing")) return "ðŸ§Š";
+  if (e.includes("freezing")) return "";
 
-  if (e.includes("frost")) return "ðŸ§Š";
+  if (e.includes("frost")) return "";
 
-  if (e.includes("tropical")) return "ðŸŒ€";
+  if (e.includes("tropical")) return "";
 
-  if (e.includes("hurricane")) return "ðŸŒ€";
+  if (e.includes("hurricane")) return "";
 
-  if (e.includes("marine")) return "ðŸŒŠ";
+  if (e.includes("marine")) return "";
 
-  if (e.includes("wind")) return "ðŸ’¨";
+  if (e.includes("wind")) return "";
 
   if (e.includes("special weather statement")) return "⚠️";
 
@@ -8075,13 +8075,13 @@ card.innerHTML = `
   <div class="ro-main-tags">
     ${
       metrics.hail && metrics.hail !== "—"
-        ? `<span class="ro-main-tag hail">ðŸ§Š Hail: ${metrics.hail.replace("IN", " IN")}</span>`
+        ? `<span class="ro-main-tag hail">Hail: ${metrics.hail.replace("IN", " IN")}</span>`
         : ""
     }
 
     ${
       metrics.wind && metrics.wind !== "—"
-        ? `<span class="ro-main-tag wind">ðŸ’¨ Wind: ${metrics.wind.replace("MPH", " MPH")}</span>`
+        ? `<span class="ro-main-tag wind">Wind: ${metrics.wind.replace("MPH", " MPH")}</span>`
         : ""
     }
   </div>
@@ -8092,7 +8092,7 @@ card.innerHTML = `
   type="button"
   data-radar-mode="clean"
   data-alert-id="${alert.id}">
-  ðŸŒŽ Radar
+  Radar
 </button>
 
 <button
@@ -8100,7 +8100,7 @@ card.innerHTML = `
   type="button"
   data-radar-mode="raw"
   data-alert-id="${alert.id}">
-  ðŸ“¡ HI-RES
+  HI-RES
 </button>
 
 
@@ -8665,7 +8665,7 @@ if (tornado) {
 
   stormTags.innerHTML += `
     <div class="${tornadoClass}">
-      ðŸŒª Tornado: ${tornado}
+      Tornado: ${tornado}
     </div>
   `;
 }
@@ -8753,7 +8753,7 @@ warningBottom.style.display = "none";
     if (wind) {
       hazardSection.innerHTML += `
         <div class="hazard-box">
-          <span class="hazard-label">ðŸ’¨ WIND</span>
+          <span class="hazard-label">WIND</span>
           <strong>${wind}</strong>
         </div>
       `;
@@ -8774,7 +8774,7 @@ warningBottom.style.display = "none";
   if (hail) {
     hazardHTML += `
       <div class="hazard-box">
-        <span class="hazard-label">ðŸ§Š Max Hail</span>
+        <span class="hazard-label">Max Hail</span>
         <span class="hazard-value hazard-hail-value">${hail}</span>
       </div>
     `;
@@ -8783,7 +8783,7 @@ warningBottom.style.display = "none";
   if (alertSource) {
     hazardHTML += `
       <div class="hazard-box">
-        <span class="hazard-label">ðŸ“¡ Source</span>
+        <span class="hazard-label">Source</span>
         <span class="hazard-value hazard-source-value">${alertSource}</span>
       </div>
     `;
