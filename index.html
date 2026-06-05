@@ -227,7 +227,7 @@ color: white;
       height: 60vh;
       overflow: hidden;
     }
-    
+
 
     .hero img {
       width: 100%;
@@ -2063,7 +2063,7 @@ main,
     padding: 9px 10px;
   } 
 
-  
+
   .forecast-dashboard,
   .dashboard-grid,
   .dashboard-card,
@@ -2167,7 +2167,7 @@ main,
     font-size: 12px;
     padding: 8px 10px;
   }
-  
+
   .grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2273,7 +2273,7 @@ main,
 .alert-modal-box {
   width: 92vw;
   max-width: 92vw;
-  
+
   max-height: 90vh;
 
   overflow-y: visible;
@@ -3072,7 +3072,8 @@ margin: 0 !important;
 .forecast-dashboard .alerts-card .ro-alert-bottom-row .compact-details-btn {
 grid-area: auto !important;
 
-width: 42px !important;
+width: auto !important;
+min-width: 78px !important;
 height: 42px !important;
 
 display: grid !important;
@@ -5566,7 +5567,7 @@ body {
 
 .forecast-dashboard .alerts-card .ro-alert-bottom-row {
   display: grid !important;
-  grid-template-columns: minmax(0, auto) minmax(0, auto) 34px !important;
+  grid-template-columns: minmax(0, auto) minmax(0, auto) minmax(78px, auto) !important;
   justify-content: end !important;
   align-items: center !important;
   gap: 6px !important;
@@ -5588,8 +5589,9 @@ body {
 }
 
 .forecast-dashboard .alerts-card .ro-alert-bottom-row .compact-details-btn {
-  width: 34px !important;
-  padding: 0 !important;
+  width: auto !important;
+  min-width: 78px !important;
+  padding: 0 12px !important;
 }
 
 @media (max-width: 640px) {
@@ -5598,7 +5600,7 @@ body {
   }
 
   .forecast-dashboard .alerts-card .ro-alert-bottom-row {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 34px !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(78px, auto) !important;
     justify-content: stretch !important;
   }
 
@@ -7166,7 +7168,26 @@ body {
   }
 }
 
- </style>
+
+/* Phase 2: make the top status tile carry forecast value instead of generic operations copy */
+.operations-status-card.forecast-status-card {
+  min-width: min(390px, 34vw) !important;
+  align-items: flex-start !important;
+}
+
+.operations-status-card.forecast-status-card p {
+  margin: 6px 0 10px !important;
+}
+
+.operations-status-card.forecast-status-card .dashboard-button {
+  display: inline-flex !important;
+  width: fit-content !important;
+  padding: 7px 11px !important;
+  font-size: 0.68rem !important;
+  letter-spacing: 0.12em !important;
+}
+
+</style>
 </head>
 
 <body>
@@ -7228,11 +7249,14 @@ body {
     </p>
   </div>
 
-  <div class="operations-status-card">
-    <span class="status-dot"></span>
+  <div class="operations-status-card forecast-status-card">
     <div>
-      <strong>Operations</strong>
-      <p>Monitoring active weather and forecast updates</p>
+      <strong>Forecast Discussion</strong>
+      <p>
+        An unsettled pattern for now, but monitoring long-range signals for
+        increased storm potential across the Plains, Midwest, and Southeast.
+      </p>
+      <a href="wx-updates.html" class="dashboard-button">Read Full Discussion</a>
     </div>
   </div>
 </div>
@@ -7386,40 +7410,6 @@ body {
 
   <!-- CENTER COLUMN -->
   <div class="ops-column ops-center-column">
-
-    <article class="dashboard-card briefing-card forecast-discussion-card">
-      <div class="card-topline">
-        <span class="status-dot"></span>
-        <span>Updated Today</span>
-      </div>
-
-      <div class="briefing-title-row">
-        <h3>Forecast Discussion</h3>
-        <a href="wx-updates.html" class="dashboard-button">Read Full Discussion</a>
-      </div>
-
-      <p class="briefing-text">
-        An unsettled pattern for now, but monitoring long-range signals for increased
-        storm potential across the Plains, Midwest, and Southeast.
-      </p>
-
-      <div class="briefing-meta">
-        <div>
-          <span class="meta-label">Primary Concern</span>
-          <strong>Monitoring</strong>
-        </div>
-
-        <div>
-          <span class="meta-label">Confidence</span>
-          <strong>Increasing</strong>
-        </div>
-
-        <div>
-          <span class="meta-label">Region</span>
-          <strong>Central-Eastern</strong>
-        </div>
-      </div>
-    </article>
 
     <article class="dashboard-card mini-card radar-card">
       <div class="card-header-row">
@@ -8001,7 +7991,7 @@ wrapper.open = dropdownMemory[parentMemoryKey] ?? true;
 wrapper.addEventListener("toggle", () => {
   dropdownMemory[parentMemoryKey] = wrapper.open;
 });
-  
+
   wrapper.innerHTML = `
     <summary>
       Alert Count: ${alerts.length}
@@ -8105,7 +8095,7 @@ card.innerHTML = `
 
 
     <button class="compact-details-btn" data-alert-id="${alert.id}" type="button">
-      ...
+      DETAILS
     </button>
   </div>
 `;
@@ -8177,7 +8167,7 @@ if (modalOpen) {
   isFetchingAlerts = false;
   return;
 }
-  
+
 if (!alertsList) {
   isFetchingAlerts = false;
  return;
@@ -11308,8 +11298,4 @@ setInterval(loadSPCImages, 10 * 60 * 1000);
 
 </body>
 </html>
-
-
-
-
 
