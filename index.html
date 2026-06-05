@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8" />
@@ -7366,7 +7366,7 @@ body {
         </a>
 
         <div class="spc-slide-controls">
-          <button type="button" class="spc-slide-btn" data-spc-slide="prev">‹</button>
+          <button type="button" class="spc-slide-btn" data-spc-slide="prev">”¹</button>
 
           <div class="spc-slide-dots">
             <button type="button" class="active" data-spc-dot="0"></button>
@@ -7375,7 +7375,7 @@ body {
             <button type="button" data-spc-dot="3"></button>
           </div>
 
-          <button type="button" class="spc-slide-btn" data-spc-slide="next">›</button>
+          <button type="button" class="spc-slide-btn" data-spc-slide="next">”º</button>
         </div>
 
       </div>
@@ -7488,24 +7488,24 @@ body {
 
   <div class="warning-hazards">
     <div class="hazard-box">
-      <span class="hazard-label">🌬️ Max Wind</span>
+      <span class="hazard-label">🌬️ Max Wind</span>
       <span class="hazard-value hazard-wind-value"></span>
     </div>
 
     <div class="hazard-box">
-      <span class="hazard-label">🧊 Max Hail</span>
+      <span class="hazard-label">ðŸ§Š Max Hail</span>
       <span class="hazard-value hazard-hail-value"></span>
     </div>
 
     <div class="hazard-box">
-      <span class="hazard-label">📡 Source</span>
+      <span class="hazard-label">ðŸ“¡ Source</span>
       <span class="hazard-value hazard-source-value"></span>
     </div>
   </div>
 
   <div class="warning-info">
-    <p><span>📍 Where:</span> <span class="alert-where"></span></p>
-    <p><span>🕘 When:</span> <span class="alert-when"></span></p>
+    <p><span>ðŸ“ Where:</span> <span class="alert-where"></span></p>
+    <p><span>ðŸ•˜ When:</span> <span class="alert-when"></span></p>
   </div>
 
  <div class="warning-impacts">
@@ -7514,7 +7514,7 @@ body {
 </div>
 
 <div class="alert-full-text">
-  <strong>📋 Alert Details</strong>
+  <strong>ðŸ“‹ Alert Details</strong>
   <pre class="alert-raw-text"></pre>
 </div>
 
@@ -7602,9 +7602,9 @@ body {
           </button>
 
 <div class="radar-loop-controls">
-<button id="radarStepBackBtn" type="button" class="radar-loop-btn">‹</button>
+<button id="radarStepBackBtn" type="button" class="radar-loop-btn">”¹</button>
 <button id="radarPlayBtn" type="button" class="radar-loop-btn radar-play-btn">▶ Play</button>
-<button id="radarStepForwardBtn" type="button" class="radar-loop-btn">›</button>
+<button id="radarStepForwardBtn" type="button" class="radar-loop-btn">”º</button>
 <span id="radarFrameTime" class="radar-frame-time">Latest</span>
 <label class="radar-speed-control" for="radarSpeedSlider">
   <span class="radar-speed-label">
@@ -7901,13 +7901,13 @@ function getCompactAlertIcon(event) {
 
   const e = event.toLowerCase();
 
-  if (e.includes("tornado")) return "🌪️";
+  if (e.includes("tornado")) return "🌪️";
 
-  if (e.includes("severe thunderstorm")) return "⛈️";
+  if (e.includes("severe thunderstorm")) return "⛈️";
 
-  if (e.includes("flash flood")) return "🌊";
+  if (e.includes("flash flood")) return "ðŸŒŠ";
 
-  if (e.includes("flood")) return "🌊";
+  if (e.includes("flood")) return "ðŸŒŠ";
 
   if (e.includes("winter storm")) return "❄️";
 
@@ -7915,19 +7915,19 @@ function getCompactAlertIcon(event) {
 
   if (e.includes("snow")) return "❄️";
 
-  if (e.includes("ice storm")) return "🧊";
+  if (e.includes("ice storm")) return "ðŸ§Š";
 
-  if (e.includes("freezing")) return "🧊";
+  if (e.includes("freezing")) return "ðŸ§Š";
 
-  if (e.includes("frost")) return "🧊";
+  if (e.includes("frost")) return "ðŸ§Š";
 
-  if (e.includes("tropical")) return "🌀";
+  if (e.includes("tropical")) return "ðŸŒ€";
 
-  if (e.includes("hurricane")) return "🌀";
+  if (e.includes("hurricane")) return "ðŸŒ€";
 
-  if (e.includes("marine")) return "🌊";
+  if (e.includes("marine")) return "ðŸŒŠ";
 
-  if (e.includes("wind")) return "💨";
+  if (e.includes("wind")) return "ðŸ’¨";
 
   if (e.includes("special weather statement")) return "⚠️";
 
@@ -8075,13 +8075,13 @@ card.innerHTML = `
   <div class="ro-main-tags">
     ${
       metrics.hail && metrics.hail !== "—"
-        ? `<span class="ro-main-tag hail">🧊 Hail: ${metrics.hail.replace("IN", " IN")}</span>`
+        ? `<span class="ro-main-tag hail">ðŸ§Š Hail: ${metrics.hail.replace("IN", " IN")}</span>`
         : ""
     }
 
     ${
       metrics.wind && metrics.wind !== "—"
-        ? `<span class="ro-main-tag wind">💨 Wind: ${metrics.wind.replace("MPH", " MPH")}</span>`
+        ? `<span class="ro-main-tag wind">ðŸ’¨ Wind: ${metrics.wind.replace("MPH", " MPH")}</span>`
         : ""
     }
   </div>
@@ -8092,7 +8092,7 @@ card.innerHTML = `
   type="button"
   data-radar-mode="clean"
   data-alert-id="${alert.id}">
-  🌎 Radar
+  ðŸŒŽ Radar
 </button>
 
 <button
@@ -8100,7 +8100,7 @@ card.innerHTML = `
   type="button"
   data-radar-mode="raw"
   data-alert-id="${alert.id}">
-  📡 HI-RES
+  ðŸ“¡ HI-RES
 </button>
 
 
@@ -8665,7 +8665,7 @@ if (tornado) {
 
   stormTags.innerHTML += `
     <div class="${tornadoClass}">
-      🌪 Tornado: ${tornado}
+      ðŸŒª Tornado: ${tornado}
     </div>
   `;
 }
@@ -8753,7 +8753,7 @@ warningBottom.style.display = "none";
     if (wind) {
       hazardSection.innerHTML += `
         <div class="hazard-box">
-          <span class="hazard-label">💨 WIND</span>
+          <span class="hazard-label">ðŸ’¨ WIND</span>
           <strong>${wind}</strong>
         </div>
       `;
@@ -8765,7 +8765,7 @@ warningBottom.style.display = "none";
   if (wind) {
     hazardHTML += `
       <div class="hazard-box">
-        <span class="hazard-label">🌬️ Max Wind</span>
+        <span class="hazard-label">🌬️ Max Wind</span>
         <span class="hazard-value hazard-wind-value">${wind}</span>
       </div>
     `;
@@ -8774,7 +8774,7 @@ warningBottom.style.display = "none";
   if (hail) {
     hazardHTML += `
       <div class="hazard-box">
-        <span class="hazard-label">🧊 Max Hail</span>
+        <span class="hazard-label">ðŸ§Š Max Hail</span>
         <span class="hazard-value hazard-hail-value">${hail}</span>
       </div>
     `;
@@ -8783,7 +8783,7 @@ warningBottom.style.display = "none";
   if (alertSource) {
     hazardHTML += `
       <div class="hazard-box">
-        <span class="hazard-label">📡 Source</span>
+        <span class="hazard-label">ðŸ“¡ Source</span>
         <span class="hazard-value hazard-source-value">${alertSource}</span>
       </div>
     `;
@@ -10466,7 +10466,7 @@ function toggleSingleSiteRadarLoop() {
   const playBtn = document.getElementById("radarPlayBtn");
 
   if (playBtn) {
-    playBtn.textContent = "❚❚ Pause";
+    playBtn.textContent = "⏸ Pause";
     playBtn.classList.add("is-playing");
   }
 
@@ -11067,8 +11067,8 @@ function renderLiveConditionsFromCache(cacheData, showSavedNote = false) {
   if (showSavedNote) {
     const updatedLabel = formatLastUpdated(cacheData.updatedAt);
     const note = updatedLabel
-      ? `Showing last saved conditions • Last updated ${updatedLabel}`
-      : "Showing last saved conditions";
+      ? `Showing saved conditions • Updated ${updatedLabel}`
+      : "Showing saved conditions";
     setCacheNote(note);
   } else {
     clearCacheNote();
@@ -11182,21 +11182,60 @@ async function loadConditionsFromLocation(lat, lon) {
     conditionsLabel.textContent = "Live Conditions Near You";
 
     const stationsData = await fetchJson(stationUrl);
-    const firstStation = stationsData.features?.[0];
-    if (!firstStation?.id) {
+    const nearbyStations = Array.isArray(stationsData.features)
+      ? stationsData.features.slice(0, 6)
+      : [];
+
+    if (!nearbyStations.length) {
       throw new Error("No nearby observation station found.");
     }
 
-    const observationData = await fetchJson(
-      `${firstStation.id}/observations/latest`
-    );
+    let observationData = null;
+    let props = {};
+    let tempF = null;
+    let humidity = null;
 
-    const props = observationData.properties || {};
-    const tempF = cToF(props.temperature?.value);
+    for (const station of nearbyStations) {
+      if (!station?.id) continue;
+
+      try {
+        const candidateObservation = await fetchJson(
+          `${station.id}/observations/latest`
+        );
+        const candidateProps = candidateObservation.properties || {};
+        const candidateTempF = cToF(candidateProps.temperature?.value);
+        const candidateHumidity = candidateProps.relativeHumidity?.value;
+
+        if (!observationData) {
+          observationData = candidateObservation;
+          props = candidateProps;
+          tempF = candidateTempF;
+          humidity = candidateHumidity;
+        }
+
+        if (
+          candidateTempF !== null &&
+          candidateHumidity !== null &&
+          candidateHumidity !== undefined
+        ) {
+          observationData = candidateObservation;
+          props = candidateProps;
+          tempF = candidateTempF;
+          humidity = candidateHumidity;
+          break;
+        }
+      } catch (stationError) {
+        console.warn("Skipping unavailable observation station:", stationError);
+      }
+    }
+
+    if (!observationData) {
+      throw new Error("No recent observation data found.");
+    }
+
     const dewF = cToF(props.dewpoint?.value);
     const windMph = msToMph(props.windSpeed?.value);
     const pressureIn = paToInHg(props.barometricPressure?.value);
-    const humidity = props.relativeHumidity?.value;
 
     const tempText = tempF !== null ? `${tempF}°` : "--°";
     const conditionText = props.textDescription || "Current conditions";
@@ -11269,6 +11308,8 @@ setInterval(loadSPCImages, 10 * 60 * 1000);
 
 </body>
 </html>
+
+
 
 
 
