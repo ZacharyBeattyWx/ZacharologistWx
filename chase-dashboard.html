@@ -643,8 +643,8 @@
             <div class="mission-item">
               <span class="mission-label">Confidence</span>
               <span class="mission-value" data-chase-confidence>75%</span>
-              <div class="confidence-row" aria-label="Confidence level 75 percent">
-                <div class="confidence-bar"><div class="confidence-fill"></div></div>
+              <div class="confidence-row" aria-label="Confidence level" data-chase-confidence-row>
+                <div class="confidence-bar"><div class="confidence-fill" data-chase-confidence-fill></div></div>
               </div>
             </div>
             <button class="hero-button" type="button" onclick="alert('View Target Discussion')">View Target Discussion</button>
@@ -750,7 +750,18 @@
         }
 
         if (typeof data.confidence === "number") {
-          setText("[data-chase-confidence]", `${data.confidence}%`, "0%");
+          const confidence = Math.max(0, Math.min(100, data.confidence));
+          setText("[data-chase-confidence]", `${confidence}%`, "0%");
+
+          const confidenceFill = document.querySelector("[data-chase-confidence-fill]");
+          if (confidenceFill) {
+            confidenceFill.style.width = `${confidence}%`;
+          }
+
+          const confidenceRow = document.querySelector("[data-chase-confidence-row]");
+          if (confidenceRow) {
+            confidenceRow.setAttribute("aria-label", `Confidence level ${confidence} percent`);
+          }
         }
 
         if (typeof data.chaseProbability === "number") {
@@ -778,6 +789,8 @@
   </script>
 </body>
 </html>
+
+
 
 
 
