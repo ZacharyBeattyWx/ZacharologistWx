@@ -2931,7 +2931,7 @@ text-align: left !important;
 /* Top row */
 .forecast-dashboard .alerts-card .ro-alert-title-row {
 display: grid !important;
-grid-template-columns: 24px minmax(0, 1fr) !important;
+grid-template-columns: minmax(0, 1fr) !important;
 align-items: center !important;
 gap: 10px !important;
 }
@@ -5503,7 +5503,7 @@ body {
 }
 
 .forecast-dashboard .alerts-card .ro-alert-title-row {
-  grid-template-columns: 24px minmax(0, 1fr) !important;
+  grid-template-columns: minmax(0, 1fr) !important;
   gap: 8px !important;
 }
 
@@ -7188,6 +7188,17 @@ body {
   letter-spacing: 0.12em !important;
 }
 
+
+/* Alert titles no longer use leading icons */
+.forecast-dashboard .alerts-card .ro-alert-icon {
+  display: none !important;
+}
+
+.forecast-dashboard .alerts-card .ro-alert-title-row {
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 0 !important;
+}
+
 </style>
 </head>
 
@@ -7897,23 +7908,23 @@ function getCompactAlertMetrics(alert) {
 }
 
 function getCompactAlertIcon(event) {
-  if (!event) return "⚠️";
+  if (!event) return "";
 
   const e = event.toLowerCase();
 
-  if (e.includes("tornado")) return "🌪️";
+  if (e.includes("tornado")) return "";
 
-  if (e.includes("severe thunderstorm")) return "⛈️";
+  if (e.includes("severe thunderstorm")) return "";
 
   if (e.includes("flash flood")) return "";
 
   if (e.includes("flood")) return "";
 
-  if (e.includes("winter storm")) return "❄️";
+  if (e.includes("winter storm")) return "";
 
-  if (e.includes("blizzard")) return "❄️";
+  if (e.includes("blizzard")) return "";
 
-  if (e.includes("snow")) return "❄️";
+  if (e.includes("snow")) return "";
 
   if (e.includes("ice storm")) return "";
 
@@ -7929,9 +7940,9 @@ function getCompactAlertIcon(event) {
 
   if (e.includes("wind")) return "";
 
-  if (e.includes("special weather statement")) return "⚠️";
+  if (e.includes("special weather statement")) return "";
 
-  return "⚠️";
+  return "";
 }
 
 function getCompactExpireLabel(expires) {
