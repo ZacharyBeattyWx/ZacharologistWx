@@ -1,7 +1,8 @@
 ﻿<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="description" content="Live radar, active NWS alerts, SPC outlooks, forecast monitoring, and storm operations from Zacharologist Wx.">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Zacharologist Wx | Weather Operations Hub</title>
   <link rel="icon" type="image/jpeg" href="/hero.jpg">
@@ -7235,7 +7236,7 @@ body {
   </nav>
 </header>
 
-<section class="forecast-dashboard">
+<main class="forecast-dashboard">
 
   <div class="ops-board-shell">
 
@@ -7390,16 +7391,16 @@ body {
         </a>
 
         <div class="spc-slide-controls">
-          <button type="button" class="spc-slide-btn" data-spc-slide="prev">”¹</button>
+          <button type="button" class="spc-slide-btn" data-spc-slide="prev" aria-label="Previous SPC outlook">‹</button>
 
           <div class="spc-slide-dots">
-            <button type="button" class="active" data-spc-dot="0"></button>
-            <button type="button" data-spc-dot="1"></button>
-            <button type="button" data-spc-dot="2"></button>
-            <button type="button" data-spc-dot="3"></button>
+            <button type="button" class="active" data-spc-dot="0" aria-label="Show SPC outlook slide 1"></button>
+            <button type="button" data-spc-dot="1" aria-label="Show SPC outlook slide 2"></button>
+            <button type="button" data-spc-dot="2" aria-label="Show SPC outlook slide 3"></button>
+            <button type="button" data-spc-dot="3" aria-label="Show SPC outlook slide 4"></button>
           </div>
 
-          <button type="button" class="spc-slide-btn" data-spc-slide="next">”º</button>
+          <button type="button" class="spc-slide-btn" data-spc-slide="next" aria-label="Next SPC outlook">›</button>
         </div>
 
       </div>
@@ -7422,6 +7423,7 @@ body {
       </div>
 
       <iframe
+        title="Regional live radar"
         src="https://embed.windy.com/embed2.html?lat=35.78&lon=-79.80&zoom=5&level=surface&overlay=radar&product=radar"
         class="radar-frame">
       </iframe>
@@ -7453,7 +7455,7 @@ body {
 
     </div>
   </div>
-</section>
+</main>
 
 <div class="alert-modal" id="stormModal">
   <div class="alert-modal-backdrop"></div>
@@ -7466,7 +7468,7 @@ body {
       <p class="alert-modal-office">National Weather Service</p>
     </div>
 
-    <button class="alert-modal-close" type="button">×</button>
+    <button class="alert-modal-close" type="button" aria-label="Close alert details">×</button>
   </div>
 
 <div class="warning-detail-card">
@@ -7526,7 +7528,7 @@ body {
         <p>Clean radar and CONUS reflectivity views</p>
       </div>
 
-      <button class="radar-modal-close" type="button">×</button>
+      <button class="radar-modal-close" type="button" aria-label="Close radar viewer">×</button>
     </div>
 
     <div class="radar-mode-buttons">
@@ -7587,14 +7589,14 @@ body {
             </select>
           </label>
 
-          <button id="radarRefreshBtn" type="button">
+          <button id="radarRefreshBtn" type="button" aria-label="Refresh radar loop">
             ↻ Refresh
           </button>
 
 <div class="radar-loop-controls">
-<button id="radarStepBackBtn" type="button" class="radar-loop-btn">”¹</button>
-<button id="radarPlayBtn" type="button" class="radar-loop-btn radar-play-btn">▶ Play</button>
-<button id="radarStepForwardBtn" type="button" class="radar-loop-btn">”º</button>
+<button id="radarStepBackBtn" type="button" class="radar-loop-btn" aria-label="Previous radar frame">‹</button>
+<button id="radarPlayBtn" type="button" class="radar-loop-btn radar-play-btn" aria-label="Play radar loop">▶ Play</button>
+<button id="radarStepForwardBtn" type="button" class="radar-loop-btn" aria-label="Next radar frame">›</button>
 <span id="radarFrameTime" class="radar-frame-time">Latest</span>
 <label class="radar-speed-control" for="radarSpeedSlider">
   <span class="radar-speed-label">
