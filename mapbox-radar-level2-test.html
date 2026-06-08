@@ -606,7 +606,6 @@
     const DEFAULT_LEVEL2_SITE = "KFCX";
     const LEVEL2_PRODUCT = "LEVEL2_REF0";
     const LEVEL2_REMOTE_BASE_URL = "https://radar.zacharologistwx.com";
-    const FALLBACK_LEVEL2_TIF = "/radar/tilesets/test/KFCX/LEVEL2/REF0/KFCX_20260528_191913_projected_dbz.tif";
     const FRAME_REFRESH_MS = 60000;
     const ALERT_REFRESH_MS = 60000;
     const PLAYBACK_INTERVAL_MS = 900;
@@ -1111,7 +1110,10 @@
           colorizerSmokeLogged = true;
         }
 
-        const tifPath = frame?.path || level2DataUrl(FALLBACK_LEVEL2_TIF);
+        if (!frame?.path) {
+          throw new Error("No Level II frame path available.");
+        }
+        const tifPath = frame.path;
         const tifFetchUrl = new URL(tifPath, window.location.href);
         tifFetchUrl.searchParams.set("cb", String(Date.now()));
         const response = await fetch(tifFetchUrl.toString(), { cache: "no-store" });
@@ -1570,12 +1572,7 @@
           if (latestFrame) upsertLevel2Frame(latestFrame);
         } catch (_latestError) {
           if (level2Frames.length === 0) {
-            upsertLevel2Frame({
-              path: level2DataUrl(FALLBACK_LEVEL2_TIF),
-              validTime: "",
-              validTimeDate: new Date(""),
-              bounds: radarBounds
-            });
+            setStatusText("No Level II radar frame available.");
           }
         }
       }
