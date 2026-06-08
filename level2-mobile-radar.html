@@ -619,7 +619,6 @@
     const FRAME_REFRESH_MS = 60000;
     const ALERT_REFRESH_MS = 60000;
     const PLAYBACK_INTERVAL_MS = 900;
-    const USE_MOBILE_MAPBOX_RADAR_LAYER = false;
     const MOBILE_LEVEL2_RASTER_SCALE = 0.5;
     const MOBILE_LEVEL2_RENDER_CACHE_LIMIT = 12;
     const DESKTOP_LEVEL2_RENDER_CACHE_LIMIT = 6;
@@ -1877,49 +1876,11 @@
 
     function syncLevel2RadarMapLayer() {
       if (!map) return;
-      const useMobileMapboxLayer = USE_MOBILE_MAPBOX_RADAR_LAYER && isMobileLevel2Mode();
-
-      if (!useMobileMapboxLayer) {
-        if (map.getLayer(LEVEL2_RADAR_LAYER_ID)) {
-          map.removeLayer(LEVEL2_RADAR_LAYER_ID);
-        }
-        if (map.getSource(LEVEL2_RADAR_SOURCE_ID)) {
-          map.removeSource(LEVEL2_RADAR_SOURCE_ID);
-        }
-        return;
+      if (map.getLayer(LEVEL2_RADAR_LAYER_ID)) {
+        map.removeLayer(LEVEL2_RADAR_LAYER_ID);
       }
-
-      if (radarCanvas.width === 0 || radarCanvas.height === 0 || !radarBounds) return;
-
-      const imageDataUrl = radarCanvas.toDataURL("image/png");
-      const coordinates = radarImageCoordinates(radarBounds);
-      const source = map.getSource(LEVEL2_RADAR_SOURCE_ID);
-
-      if (!source) {
-        map.addSource(LEVEL2_RADAR_SOURCE_ID, {
-          type: "image",
-          url: imageDataUrl,
-          coordinates
-        });
-      } else if (typeof source.updateImage === "function") {
-        source.updateImage({
-          url: imageDataUrl,
-          coordinates
-        });
-      }
-
-      if (!map.getLayer(LEVEL2_RADAR_LAYER_ID)) {
-        map.addLayer({
-          id: LEVEL2_RADAR_LAYER_ID,
-          type: "raster",
-          source: LEVEL2_RADAR_SOURCE_ID,
-          paint: {
-            "raster-opacity": Number(opacitySlider?.value ?? 1),
-            "raster-resampling": "nearest"
-          }
-        });
-      } else {
-        map.setPaintProperty(LEVEL2_RADAR_LAYER_ID, "raster-opacity", Number(opacitySlider?.value ?? 1));
+      if (map.getSource(LEVEL2_RADAR_SOURCE_ID)) {
+        map.removeSource(LEVEL2_RADAR_SOURCE_ID);
       }
     }
 
@@ -1967,18 +1928,6 @@
       syncLevel2RadarMapLayer();
 
       if (!map || radarCanvas.width === 0 || radarCanvas.height === 0 || !radarBounds) return;
-      if (USE_MOBILE_MAPBOX_RADAR_LAYER && isMobileLevel2Mode()) {
-        const dpr = overlayDevicePixelRatio();
-        const container = map.getContainer();
-        const width = Math.max(1, Math.round(container.clientWidth * dpr));
-        const height = Math.max(1, Math.round(container.clientHeight * dpr));
-        if (radarOverlayCanvas.width !== width || radarOverlayCanvas.height !== height) {
-          radarOverlayCanvas.width = width;
-          radarOverlayCanvas.height = height;
-        }
-        radarOverlayContext.clearRect(0, 0, width, height);
-        return;
-      }
 
       const dpr = overlayDevicePixelRatio();
       const container = map.getContainer();
