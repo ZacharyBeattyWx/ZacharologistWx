@@ -1174,7 +1174,7 @@
 
     async function buildLevel2RenderedSurface(frame = currentFrame(), options = {}) {
       try {
-        if (isMobileLevel2Mode() && frame?.imagePath) {
+        if (frame?.imagePath) {
           const mobileImageSurface = await buildMobileLevel2ImageSurface(frame, options);
           if (mobileImageSurface) return mobileImageSurface;
         }
