@@ -1860,20 +1860,6 @@
       }, ALERT_REFRESH_MS);
     }
 
-    function level2RadarImageCoordinates(bounds = radarBounds) {
-      if (!bounds) return null;
-      const west = bounds[0][1];
-      const south = bounds[0][0];
-      const east = bounds[1][1];
-      const north = bounds[1][0];
-      return [
-        [west, north],
-        [east, north],
-        [east, south],
-        [west, south]
-      ];
-    }
-
     function syncLevel2RadarMapLayer() {
       if (!map) return;
       if (map.getLayer(LEVEL2_RADAR_LAYER_ID)) {
