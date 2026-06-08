@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -610,7 +610,7 @@
     const ALERT_REFRESH_MS = 60000;
     const PLAYBACK_INTERVAL_MS = 900;
     const MOBILE_LEVEL2_RASTER_SCALE = 0.5;
-    const MOBILE_LEVEL2_RENDER_CACHE_LIMIT = 3;
+    const MOBILE_LEVEL2_RENDER_CACHE_LIMIT = 12;
     const DESKTOP_LEVEL2_RENDER_CACHE_LIMIT = 6;
     const MOBILE_UNCACHED_FRAME_MIN_INTERVAL_MS = 1800;
     const DISPLAY_MIN_DBZ = -32;
@@ -802,7 +802,7 @@
 
     function overlayDevicePixelRatio() {
       const dpr = window.devicePixelRatio || 1;
-      return Math.min(1.75, Math.max(1, dpr));
+      return Math.min(2.5, Math.max(1, dpr));
     }
 
     function parseHexColor(hex) {
