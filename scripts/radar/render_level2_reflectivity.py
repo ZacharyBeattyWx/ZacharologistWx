@@ -59,8 +59,9 @@ LEVEL2_TILE_SIZE = 256
 LEVEL2_TILE_MIN_ZOOM = 5
 LEVEL2_TILE_MAX_ZOOM = 8
 DISPLAY_MIN_DBZ = -32.0
+PALETTE_FILE = SCRIPT_DIR / "palettes" / "zacharologist-reflectivity.pal"
 
-RADAR_DBZ_PALETTE = [
+RADAR_DBZ_PALETTE_FALLBACK = [
     (-32, 88, 54, 128, 8),
     (-30, 96, 62, 138, 10),
     (-28, 105, 72, 145, 12),
@@ -111,6 +112,53 @@ LOW_DBZ_OPACITY_TAPER = [
     (10, 0.7),
     (15, 1.0),
 ]
+
+def load_radar_palette(path: Path = PALETTE_FILE) -> list[tuple[float, int, int, int, int]]:
+    """Load a simple .pal-style dBZ RGBA palette.
+
+    Supported line format:
+      dBZ red green blue alpha
+
+    Blank lines and comments starting with #, ;, or // are ignored.
+    """
+    if not path.exists():
+        return RADAR_DBZ_PALETTE_FALLBACK
+
+    stops: list[tuple[float, int, int, int, int]] = []
+    numeric_re = re.compile(r"[-+]?\d+(?:\.\d+)?")
+
+    for line_number, raw_line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        line = raw_line.strip()
+        if not line or line.startswith(("#", ";", "//")):
+            continue
+
+        values = numeric_re.findall(line)
+        if len(values) < 4:
+            continue
+
+        dbz = float(values[0])
+        red = int(round(float(values[1])))
+        green = int(round(float(values[2])))
+        blue = int(round(float(values[3])))
+        alpha = int(round(float(values[4]))) if len(values) >= 5 else 255
+
+        stops.append((
+            dbz,
+            max(0, min(255, red)),
+            max(0, min(255, green)),
+            max(0, min(255, blue)),
+            max(0, min(255, alpha)),
+        ))
+
+    if not stops:
+        raise ValueError(f"No valid radar palette stops found in {path}")
+
+    stops.sort(key=lambda stop: stop[0])
+    return stops
+
+
+RADAR_DBZ_PALETTE = load_radar_palette()
+
 KEY_RE = re.compile(r"(?P<site>K[A-Z0-9]{3})(?P<ts>\d{8}_\d{6})")
 PROJECTED_NAME_RE = re.compile(
     r"^(?P<site>[A-Z0-9]{4})_(?P<date>\d{8})_(?P<time>\d{6})_projected_dbz\.tif$"
@@ -369,6 +417,7 @@ def build_level2_frames_manifest(
     return {
         "site": site,
         "product": product,
+        "palettePath": f"/scripts/radar/palettes/{PALETTE_FILE.name}",
         "updatedAt": datetime.now(tz=UTC).isoformat(),
         "frames": frames,
     }
@@ -958,6 +1007,7 @@ def main() -> int:
             {
                 "site": site,
                 "product": LEVEL2_PRODUCT,
+                "palettePath": f"/scripts/radar/palettes/{PALETTE_FILE.name}",
                 "sourceFile": str(latest_source_name),
                 "validTime": latest_valid_time,
                 "bounds": {
