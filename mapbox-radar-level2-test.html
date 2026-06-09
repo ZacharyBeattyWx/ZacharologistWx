@@ -1724,8 +1724,14 @@
       }
       frameRefreshTimer = window.setInterval(async () => {
         const latestChanged = await refreshLevel2Frames();
-        if (latestChanged && currentFrameIndex === level2Frames.length - 1) {
+        if (latestChanged && level2Frames.length > 0) {
+          if (!isPlaying) {
+            currentFrameIndex = level2Frames.length - 1;
+            syncFrameSelect();
+            updateFrameInfoRow();
+          }
           await renderCurrentFrame();
+          setStatusText("Latest radar frame refreshed");
         }
         // Manual playback only: do not auto-start after refresh.
       }, FRAME_REFRESH_MS);
