@@ -621,6 +621,7 @@
     const USE_STEPPED_REFLECTIVITY_PALETTE = false;
     const NODATA_DEFAULT = -9999;
     const RADAR_OVERLAY_VERTICAL_STRIPS = 96;
+    const RADAR_OVERLAY_INTERACTION_VERTICAL_STRIPS = 32;
     const LEVEL2_RADAR_SOURCE_ID = "level2-radar-canvas-source";
     const LEVEL2_RADAR_LAYER_ID = "level2-radar-canvas-layer";
     const PALETTE_SOURCE_FILE = "scripts/radar/radar_config.json";
@@ -795,6 +796,8 @@
     let radarImageRevision = 0;
     let syncedRadarImageRevision = -1;
     let syncedRadarImageSizeKey = "";
+    let overlayRedrawFrame = null;
+    let pendingOverlayRedrawQuality = "full";
 
     function clamp255(value) {
       return Math.max(0, Math.min(255, Math.round(value)));
@@ -1801,10 +1804,14 @@
       return { removed: true, removedCurrent };
     }
 
-    function redrawRadarOverlay() {
+    function redrawRadarOverlay(options = {}) {
       syncLevel2RadarMapLayer();
 
       if (!map || radarCanvas.width === 0 || radarCanvas.height === 0 || !radarBounds) return;
+
+      const stripCount = Number.isFinite(options.stripCount)
+        ? Math.max(1, Math.round(options.stripCount))
+        : RADAR_OVERLAY_VERTICAL_STRIPS;
 
       const dpr = overlayDevicePixelRatio();
       const container = map.getContainer();
@@ -1826,9 +1833,9 @@
       const north = radarBounds[1][0];
       const latSpan = north - south;
 
-      for (let strip = 0; strip < RADAR_OVERLAY_VERTICAL_STRIPS; strip += 1) {
-        const t0 = strip / RADAR_OVERLAY_VERTICAL_STRIPS;
-        const t1 = (strip + 1) / RADAR_OVERLAY_VERTICAL_STRIPS;
+      for (let strip = 0; strip < stripCount; strip += 1) {
+        const t0 = strip / stripCount;
+        const t1 = (strip + 1) / stripCount;
         const srcY = t0 * radarCanvas.height;
         const srcH = (t1 - t0) * radarCanvas.height;
 
@@ -1848,6 +1855,38 @@
       }
 
       radarOverlayContext.globalAlpha = 1;
+    }
+
+    function requestOverlayRedraw(options = {}) {
+      const requestedQuality = options.quality === "interaction" ? "interaction" : "full";
+      if (requestedQuality === "full") {
+        pendingOverlayRedrawQuality = "full";
+      } else if (pendingOverlayRedrawQuality !== "full") {
+        pendingOverlayRedrawQuality = "interaction";
+      }
+
+      if (overlayRedrawFrame !== null) return;
+
+      overlayRedrawFrame = window.requestAnimationFrame(() => {
+        overlayRedrawFrame = null;
+        const useInteractionQuality = pendingOverlayRedrawQuality === "interaction";
+        pendingOverlayRedrawQuality = "full";
+
+        redrawRadarOverlay({
+          stripCount: useInteractionQuality ? RADAR_OVERLAY_INTERACTION_VERTICAL_STRIPS : RADAR_OVERLAY_VERTICAL_STRIPS
+        });
+        drawAlertOverlay();
+      });
+    }
+
+    function forceOverlayRedraw() {
+      if (overlayRedrawFrame !== null) {
+        window.cancelAnimationFrame(overlayRedrawFrame);
+        overlayRedrawFrame = null;
+      }
+      pendingOverlayRedrawQuality = "full";
+      redrawRadarOverlay();
+      drawAlertOverlay();
     }
 
     function drawAlertOverlay() {
@@ -2852,23 +2891,22 @@
       });
       map.on("moveend", () => {
         isMapInteracting = false;
+        forceOverlayRedraw();
         scheduleLevel2FrameWarmup({ aroundIndex: currentFrameIndex, delayMs: 900 });
       });
       map.on("zoomend", () => {
         isMapInteracting = false;
+        forceOverlayRedraw();
         scheduleLevel2FrameWarmup({ aroundIndex: currentFrameIndex, delayMs: 900 });
       });
       map.on("move", () => {
-        redrawRadarOverlay();
-        drawAlertOverlay();
+        requestOverlayRedraw({ quality: "interaction" });
       });
       map.on("zoom", () => {
-        redrawRadarOverlay();
-        drawAlertOverlay();
+        requestOverlayRedraw({ quality: "interaction" });
       });
       map.on("resize", () => {
-        redrawRadarOverlay();
-        drawAlertOverlay();
+        forceOverlayRedraw();
       });
 
       map.on("load", async () => {
