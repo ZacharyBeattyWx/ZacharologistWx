@@ -7,6 +7,7 @@ import argparse
 import json
 import math
 import re
+import shutil
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -53,6 +54,10 @@ MAX_LEVEL2_FRAMES = 25
 MOBILE_WEBP_DIR = "mobile"
 MOBILE_WEBP_MAX_SIZE = 4096
 MOBILE_WEBP_QUALITY = 90
+LEVEL2_TILE_DIR = "tiles"
+LEVEL2_TILE_SIZE = 256
+LEVEL2_TILE_MIN_ZOOM = 5
+LEVEL2_TILE_MAX_ZOOM = 8
 DISPLAY_MIN_DBZ = -32.0
 
 RADAR_DBZ_PALETTE = [
@@ -349,6 +354,9 @@ def build_level2_frames_manifest(
             {
                 "path": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{frame_file.name}",
                 "imagePath": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{MOBILE_WEBP_DIR}/{frame_file.stem}.webp",
+                "tileTemplate": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{LEVEL2_TILE_DIR}/{frame_file.stem}/{{z}}/{{x}}/{{y}}.png",
+                "tileMinZoom": LEVEL2_TILE_MIN_ZOOM,
+                "tileMaxZoom": LEVEL2_TILE_MAX_ZOOM,
                 "validTime": valid_time,
                 "bounds": {
                     "west": west,
@@ -630,6 +638,155 @@ def write_mobile_webp(path: Path, grid: np.ndarray, nodata: float) -> None:
     image.save(path, format="WEBP", quality=MOBILE_WEBP_QUALITY, method=4)
 
 
+
+
+def clamp_mercator_lat(lat: float) -> float:
+    return max(-85.05112878, min(85.05112878, float(lat)))
+
+
+def lon_to_tile_x(lon: float, zoom: int) -> int:
+    n = 2 ** zoom
+    value = int(math.floor(((float(lon) + 180.0) / 360.0) * n))
+    return max(0, min(n - 1, value))
+
+
+def lat_to_tile_y(lat: float, zoom: int) -> int:
+    lat = clamp_mercator_lat(lat)
+    n = 2 ** zoom
+    lat_rad = math.radians(lat)
+    value = int(math.floor((1.0 - math.asinh(math.tan(lat_rad)) / math.pi) / 2.0 * n))
+    return max(0, min(n - 1, value))
+
+
+def tile_x_to_lon(tile_x_float: np.ndarray | float, zoom: int) -> np.ndarray | float:
+    return (np.asarray(tile_x_float) / float(2 ** zoom)) * 360.0 - 180.0
+
+
+def tile_y_to_lat(tile_y_float: np.ndarray | float, zoom: int) -> np.ndarray | float:
+    mercator_y = math.pi * (1.0 - 2.0 * (np.asarray(tile_y_float) / float(2 ** zoom)))
+    return np.degrees(np.arctan(np.sinh(mercator_y)))
+
+
+def tile_ranges_for_bounds(
+    bounds: tuple[float, float, float, float],
+    zoom: int,
+) -> tuple[range, range]:
+    west, south, east, north = bounds
+    x_min = lon_to_tile_x(west, zoom)
+    x_max = lon_to_tile_x(east, zoom)
+    y_min = lat_to_tile_y(north, zoom)
+    y_max = lat_to_tile_y(south, zoom)
+    return range(min(x_min, x_max), max(x_min, x_max) + 1), range(min(y_min, y_max), max(y_min, y_max) + 1)
+
+
+def sample_grid_for_tile(
+    grid: np.ndarray,
+    bounds: tuple[float, float, float, float],
+    tile_x: int,
+    tile_y: int,
+    zoom: int,
+    nodata: float,
+    tile_size: int = LEVEL2_TILE_SIZE,
+) -> np.ndarray:
+    west, south, east, north = bounds
+    height, width = grid.shape
+
+    pixel_centers = (np.arange(tile_size, dtype=np.float64) + 0.5) / float(tile_size)
+    lon_cols = tile_x_to_lon(tile_x + pixel_centers, zoom)
+    lat_rows = tile_y_to_lat(tile_y + pixel_centers, zoom)
+
+    lon_grid, lat_grid = np.meshgrid(lon_cols, lat_rows)
+
+    in_bounds = (
+        (lon_grid >= west) &
+        (lon_grid <= east) &
+        (lat_grid >= south) &
+        (lat_grid <= north)
+    )
+
+    sampled = np.full((tile_size, tile_size), nodata, dtype=np.float32)
+    if not np.any(in_bounds):
+        return sampled
+
+    src_x = np.floor(((lon_grid - west) / (east - west)) * width).astype(np.int32)
+    src_y = np.floor(((north - lat_grid) / (north - south)) * height).astype(np.int32)
+
+    src_x = np.clip(src_x, 0, width - 1)
+    src_y = np.clip(src_y, 0, height - 1)
+
+    sampled[in_bounds] = grid[src_y[in_bounds], src_x[in_bounds]]
+    return sampled
+
+
+def write_level2_png_tiles(
+    output_root: Path,
+    geotiff_path: Path,
+    grid: np.ndarray,
+    bounds: tuple[float, float, float, float],
+    nodata: float,
+    min_zoom: int = LEVEL2_TILE_MIN_ZOOM,
+    max_zoom: int = LEVEL2_TILE_MAX_ZOOM,
+) -> int:
+    frame_tile_root = output_root / LEVEL2_TILE_DIR / geotiff_path.stem
+    if frame_tile_root.exists():
+        shutil.rmtree(frame_tile_root)
+
+    tiles_written = 0
+    for zoom in range(min_zoom, max_zoom + 1):
+        x_range, y_range = tile_ranges_for_bounds(bounds, zoom)
+        for tile_x in x_range:
+            for tile_y in y_range:
+                sampled = sample_grid_for_tile(grid, bounds, tile_x, tile_y, zoom, nodata)
+                rgba = colorize_dbz_grid(sampled, nodata)
+
+                if int(rgba[..., 3].max()) <= 0:
+                    continue
+
+                tile_path = frame_tile_root / str(zoom) / str(tile_x) / f"{tile_y}.png"
+                tile_path.parent.mkdir(parents=True, exist_ok=True)
+                Image.fromarray(rgba, mode="RGBA").save(tile_path, format="PNG", optimize=True)
+                tiles_written += 1
+
+    return tiles_written
+
+
+def ensure_level2_png_tiles(
+    output_root: Path,
+    bounds: tuple[float, float, float, float],
+    nodata: float,
+) -> None:
+    for geotiff_path in sorted(output_root.glob("*_projected_dbz.tif")):
+        frame_tile_root = output_root / LEVEL2_TILE_DIR / geotiff_path.stem
+        if frame_tile_root.exists() and any(frame_tile_root.glob("*/*/*.png")):
+            continue
+
+        with rasterio.open(geotiff_path) as src:
+            grid = src.read(1).astype(np.float32)
+            source_nodata = src.nodata if src.nodata is not None else nodata
+
+        written = write_level2_png_tiles(
+            output_root=output_root,
+            geotiff_path=geotiff_path,
+            grid=grid,
+            bounds=bounds,
+            nodata=float(source_nodata),
+        )
+        print(f"tileFrame={geotiff_path.stem}")
+        print(f"tileCount={written}")
+
+
+def prune_orphan_level2_tiles(output_root: Path) -> None:
+    tiles_root = output_root / LEVEL2_TILE_DIR
+    if not tiles_root.exists():
+        return
+
+    valid_stems = {frame_file.stem for frame_file in output_root.glob("*_projected_dbz.tif")}
+    for frame_tile_root in tiles_root.iterdir():
+        if frame_tile_root.is_dir() and frame_tile_root.name not in valid_stems:
+            shutil.rmtree(frame_tile_root)
+
+
+
 def ensure_mobile_webps(output_root: Path, nodata: float) -> None:
     for geotiff_path in sorted(output_root.glob("*_projected_dbz.tif")):
         webp_path = mobile_webp_path_for_geotiff(output_root, geotiff_path)
@@ -765,6 +922,8 @@ def main() -> int:
 
         write_geotiff(path=output_path, grid=grid, bounds=bounds, nodata=args.nodata)
         write_mobile_webp(mobile_webp_path_for_geotiff(output_root, output_path), grid, args.nodata)
+        tile_count = write_level2_png_tiles(output_root, output_path, grid, bounds, args.nodata)
+        print(f"tileCount={tile_count}")
 
         valid_mask = np.isfinite(grid) & (grid != args.nodata)
         valid_count = int(valid_mask.sum())
@@ -789,7 +948,9 @@ def main() -> int:
 
     prune_level2_output_frames(output_root, MAX_LEVEL2_FRAMES)
     ensure_mobile_webps(output_root, args.nodata)
+    ensure_level2_png_tiles(output_root, bounds, args.nodata)
     prune_orphan_mobile_webps(output_root)
+    prune_orphan_level2_tiles(output_root)
 
     latest_json = output_root / "latest.json"
     latest_json.write_text(
@@ -807,6 +968,9 @@ def main() -> int:
                 },
                 "path": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{latest_output_path.name}",
                 "imagePath": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{MOBILE_WEBP_DIR}/{latest_output_path.stem}.webp",
+                "tileTemplate": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{LEVEL2_TILE_DIR}/{latest_output_path.stem}/{{z}}/{{x}}/{{y}}.png",
+                "tileMinZoom": LEVEL2_TILE_MIN_ZOOM,
+                "tileMaxZoom": LEVEL2_TILE_MAX_ZOOM,
                 "width": int(args.output_size),
                 "height": int(args.output_size),
                 "nodata": args.nodata,
