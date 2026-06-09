@@ -642,7 +642,8 @@
     const LEVEL2_MAPBOX_TILE_LAYER_ID = "level2-radar-tile-layer";
     const LEVEL2_MAPBOX_TILE_FRAME_SOURCE_PREFIX = "level2-radar-tile-frame-source";
     const LEVEL2_MAPBOX_TILE_FRAME_LAYER_PREFIX = "level2-radar-tile-frame-layer";
-    const LEVEL2_TILE_FRAME_STACK_LIMIT = 8;
+    const LEVEL2_TILE_FRAME_STACK_LIMIT = 25;
+    const LEVEL2_TILE_INACTIVE_OPACITY = 0.001;
     const PALETTE_SOURCE_FILE = "scripts/radar/radar_config.json";
 
     const ALERT_SOURCE_ID = "nws-alert-polygons";
@@ -2182,7 +2183,7 @@
           type: "raster",
           source: sourceId,
           paint: {
-            "raster-opacity": 0,
+            "raster-opacity": LEVEL2_TILE_INACTIVE_OPACITY,
             "raster-fade-duration": 0,
             "raster-resampling": "nearest"
           }
@@ -2213,7 +2214,7 @@
         map.setPaintProperty(
           frameRecord.layerId,
           "raster-opacity",
-          frameIndex === activeMapboxLevel2TileFrameIndex ? targetOpacity : 0
+          frameIndex === activeMapboxLevel2TileFrameIndex ? targetOpacity : LEVEL2_TILE_INACTIVE_OPACITY
         );
       }
     }
@@ -2313,7 +2314,9 @@
 
       if (!activeReady) return false;
 
-      pruneMapboxLevel2TileFrameStack(wantedIndexes);
+      if (!isPlaying) {
+        pruneMapboxLevel2TileFrameStack(wantedIndexes);
+      }
       activeMapboxLevel2TileFrameIndex = activeIndex;
 
       syncMapboxLevel2TileLayerOpacity();
