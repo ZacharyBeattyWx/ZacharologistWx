@@ -642,10 +642,14 @@
     const LEVEL2_MAPBOX_TILE_LAYER_ID = "level2-radar-tile-layer";
     const LEVEL2_MAPBOX_TILE_FRAME_SOURCE_PREFIX = "level2-radar-tile-frame-source";
     const LEVEL2_MAPBOX_TILE_FRAME_LAYER_PREFIX = "level2-radar-tile-frame-layer";
-    const LEVEL2_TILE_FRAME_STACK_LIMIT = 8;
+    const LEVEL2_TILE_FRAME_STACK_LIMIT = 2;
     const LEVEL2_TILE_PLAY_START_DELAY_MS = 2400;
     const LEVEL2_TILE_FRAME_READY_TIMEOUT_MS = 2200;
     const LEVEL2_TILE_FRAME_READY_POLL_MS = 120;
+    const LEVEL2_TILE_PREFETCH_PADDING = 1;
+    const LEVEL2_TILE_PREFETCH_MAX_TILES = 96;
+    const LEVEL2_TILE_PREFETCH_TIMEOUT_MS = 1800;
+    const LEVEL2_TILE_PREFETCH_CACHE_LIMIT = 1200;
     const PALETTE_SOURCE_FILE = "scripts/radar/radar_config.json";
 
     const ALERT_SOURCE_ID = "nws-alert-polygons";
@@ -830,6 +834,7 @@
     let pendingOverlayRedrawQuality = "full";
     let mapboxLevel2TileFrames = new Map();
     let activeMapboxLevel2TileFrameIndex = -1;
+    let mapboxLevel2TilePrefetchCache = new Map();
 
     function clamp255(value) {
       return Math.max(0, Math.min(255, Math.round(value)));
@@ -1891,6 +1896,7 @@
       if (siteSelect) siteSelect.value = nextSite;
       stopPlayback();
       renderedFrameCache.clear();
+      mapboxLevel2TilePrefetchCache.clear();
       level2Frames = [];
       currentFrameIndex = 0;
       syncFrameSelect();
@@ -2208,6 +2214,142 @@
       return isMapboxLevel2TileFrameLoaded(frameIndex);
     }
 
+    function lonToTileX(lon, zoom) {
+      return Math.floor(((Number(lon) + 180) / 360) * Math.pow(2, zoom));
+    }
+
+    function latToTileY(lat, zoom) {
+      const latRad = Number(lat) * Math.PI / 180;
+      return Math.floor(
+        (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * Math.pow(2, zoom)
+      );
+    }
+
+    function clampTile(value, zoom) {
+      const maxTile = Math.pow(2, zoom) - 1;
+      return Math.max(0, Math.min(maxTile, value));
+    }
+
+    function level2TileUrlForFrameXyz(frame, zoom, tileX, tileY) {
+      const template = level2TileUrlForFrame(frame);
+      if (!template) return null;
+
+      return template
+        .replace("{z}", String(zoom))
+        .replace("{x}", String(tileX))
+        .replace("{y}", String(tileY));
+    }
+
+    function visibleMapboxLevel2TileUrlsForFrame(frame) {
+      if (!map || !frame?.tileTemplate) return [];
+
+      const bounds = map.getBounds();
+      if (!bounds) return [];
+
+      const tileMinZoom = Number.isFinite(frame.tileMinZoom) ? frame.tileMinZoom : 5;
+      const tileMaxZoom = Number.isFinite(frame.tileMaxZoom) ? frame.tileMaxZoom : 10;
+      const zoom = Math.max(tileMinZoom, Math.min(tileMaxZoom, Math.floor(map.getZoom())));
+
+      const padding = LEVEL2_TILE_PREFETCH_PADDING;
+      const west = bounds.getWest();
+      const east = bounds.getEast();
+      const north = bounds.getNorth();
+      const south = bounds.getSouth();
+
+      let xMin = clampTile(lonToTileX(west, zoom) - padding, zoom);
+      let xMax = clampTile(lonToTileX(east, zoom) + padding, zoom);
+      let yMin = clampTile(latToTileY(north, zoom) - padding, zoom);
+      let yMax = clampTile(latToTileY(south, zoom) + padding, zoom);
+
+      if (xMax < xMin) [xMin, xMax] = [xMax, xMin];
+      if (yMax < yMin) [yMin, yMax] = [yMax, yMin];
+
+      const centerX = (xMin + xMax) / 2;
+      const centerY = (yMin + yMax) / 2;
+      const tiles = [];
+
+      for (let x = xMin; x <= xMax; x += 1) {
+        for (let y = yMin; y <= yMax; y += 1) {
+          const url = level2TileUrlForFrameXyz(frame, zoom, x, y);
+          if (!url) continue;
+          tiles.push({
+            url,
+            distance: Math.hypot(x - centerX, y - centerY)
+          });
+        }
+      }
+
+      tiles.sort((a, b) => a.distance - b.distance);
+      return tiles.slice(0, LEVEL2_TILE_PREFETCH_MAX_TILES).map((tile) => tile.url);
+    }
+
+    function trimMapboxLevel2TilePrefetchCache() {
+      while (mapboxLevel2TilePrefetchCache.size > LEVEL2_TILE_PREFETCH_CACHE_LIMIT) {
+        const firstKey = mapboxLevel2TilePrefetchCache.keys().next().value;
+        if (!firstKey) break;
+        mapboxLevel2TilePrefetchCache.delete(firstKey);
+      }
+    }
+
+    function prefetchMapboxLevel2TileImage(url) {
+      if (!url) return Promise.resolve(false);
+      if (mapboxLevel2TilePrefetchCache.has(url)) {
+        return mapboxLevel2TilePrefetchCache.get(url);
+      }
+
+      const promise = new Promise((resolve) => {
+        const image = new Image();
+        let settled = false;
+
+        const finish = (loaded) => {
+          if (settled) return;
+          settled = true;
+          window.clearTimeout(timeoutId);
+          image.onload = null;
+          image.onerror = null;
+          resolve(loaded);
+        };
+
+        const timeoutId = window.setTimeout(() => finish(false), LEVEL2_TILE_PREFETCH_TIMEOUT_MS);
+
+        image.onload = () => {
+          if (typeof image.decode === "function") {
+            image.decode().then(() => finish(true)).catch(() => finish(true));
+          } else {
+            finish(true);
+          }
+        };
+
+        // A 404 tile usually just means no radar in that tile. Treat it as non-fatal.
+        image.onerror = () => finish(false);
+        image.decoding = "async";
+        image.src = url;
+      });
+
+      mapboxLevel2TilePrefetchCache.set(url, promise);
+      trimMapboxLevel2TilePrefetchCache();
+      return promise;
+    }
+
+    async function prefetchVisibleMapboxLevel2FrameTiles(frameIndex) {
+      if (!shouldUseMapboxLevel2TileLayer()) return true;
+      if (frameIndex < 0 || frameIndex >= level2Frames.length) return false;
+
+      const frame = level2Frames[frameIndex];
+      const urls = visibleMapboxLevel2TileUrlsForFrame(frame);
+
+      if (!urls.length) return true;
+
+      setStatusText(`prefetching radar frame tiles ${frameIndex + 1}/${level2Frames.length}`);
+
+      const results = await Promise.allSettled(
+        urls.map((url) => prefetchMapboxLevel2TileImage(url))
+      );
+
+      const loaded = results.filter((result) => result.status === "fulfilled" && result.value === true).length;
+      return loaded > 0 || results.length > 0;
+    }
+
     async function stepMapboxLevel2TileFrame(direction) {
       if (!shouldUseMapboxLevel2TileLayer() || !level2Frames.length) return false;
 
@@ -2222,6 +2364,10 @@
       const nextIndex = (currentFrameIndex + direction + level2Frames.length) % level2Frames.length;
 
       prepareMapboxLevel2TilePlaybackStack(previousIndex);
+
+      // WeatherFront-style behavior: manually warm the visible next-frame tiles
+      // before allowing Mapbox to switch opacity to that frame.
+      await prefetchVisibleMapboxLevel2FrameTiles(nextIndex);
       ensureMapboxLevel2TileFrame(nextIndex);
 
       const ready = await waitForMapboxLevel2TileFrame(nextIndex);
