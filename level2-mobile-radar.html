@@ -1979,6 +1979,10 @@
       return USE_MAPBOX_LEVEL2_TILE_LAYER && !!map;
     }
 
+    function shouldUseMapboxAlertVisualLayers() {
+      return shouldUseMapboxLevel2TileLayer();
+    }
+
     function mapboxBoundsForFrame(frame) {
       const bounds = frame?.bounds || radarBounds;
       if (!Array.isArray(bounds) || bounds.length < 2) return null;
@@ -2019,8 +2023,7 @@
     function syncMapboxAlertLayerVisibility() {
       if (!map) return;
 
-      const useMapboxAlerts = shouldUseMapboxLevel2TileLayer();
-      const opacity = useMapboxAlerts && isAlertOverlayVisible
+      const opacity = shouldUseMapboxAlertVisualLayers() && isAlertOverlayVisible
         ? Math.max(0, Math.min(1, alertOverlayOpacity))
         : 0;
 
@@ -2028,8 +2031,8 @@
         map.setPaintProperty(ALERT_FILL_LAYER_ID, "fill-opacity", [
           "case",
           ["==", ["get", "_visibleStormPolygon"], true], 0.16 * opacity,
-          ["==", ["get", "_fallbackGeometry"], true], 0.14 * opacity,
-          0.10 * opacity
+          ["==", ["get", "_fallbackGeometry"], true], 0.12 * opacity,
+          0.08 * opacity
         ]);
       }
 
@@ -2044,9 +2047,19 @@
       if (map.getLayer(ALERT_LINE_LAYER_ID)) {
         map.setPaintProperty(ALERT_LINE_LAYER_ID, "line-opacity", [
           "case",
-          ["==", ["get", "_visibleStormPolygon"], true], 0.90 * opacity,
+          ["==", ["get", "_visibleStormPolygon"], true], 0.92 * opacity,
           0
         ]);
+        map.setPaintProperty(ALERT_LINE_LAYER_ID, "line-width", [
+          "interpolate", ["linear"], ["zoom"],
+          4, 1.5,
+          8, 2.8,
+          11, 4.2
+        ]);
+      }
+
+      if (alertOverlayCanvas) {
+        alertOverlayCanvas.style.display = shouldUseMapboxAlertVisualLayers() ? "none" : "";
       }
     }
 
@@ -2299,6 +2312,11 @@
 
     function drawAlertOverlay() {
       if (!map) return;
+
+      if (shouldUseMapboxAlertVisualLayers()) {
+        syncMapboxAlertLayerVisibility();
+        return;
+      }
 
       if (shouldUseMapboxLevel2TileLayer()) {
         if (alertOverlayCanvas) alertOverlayCanvas.style.display = "none";
@@ -2652,6 +2670,7 @@
       map.moveLayer(ALERT_FILL_LAYER_ID);
       map.moveLayer(ALERT_STORM_HITBOX_LAYER_ID);
       map.moveLayer(ALERT_LINE_LAYER_ID);
+      syncMapboxAlertLayerVisibility();
 
       const onInteract = (event) => {
         const alertLayerIds = (map.getStyle()?.layers || [])
