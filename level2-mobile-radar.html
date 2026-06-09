@@ -988,7 +988,7 @@
 
     function updateLoopLoadProgressUi() {
       if (!loopLoadProgress || !loopLoadProgressText || !loopLoadProgressFill) return;
-      const shouldShow = isMobileLevel2Mode() && mobileLoopLoadInProgress && mobileLoopTotalCount > 1;
+      const shouldShow = isMobileLevel2Mode() && !shouldUseMapboxLevel2ImageLayer() && mobileLoopLoadInProgress && mobileLoopTotalCount > 1;
       loopLoadProgress.classList.toggle("is-visible", shouldShow);
       loopLoadProgress.setAttribute("aria-hidden", shouldShow ? "false" : "true");
       const loaded = Math.min(mobileLoopLoadedPaths.size, Math.max(0, mobileLoopTotalCount));
@@ -1582,6 +1582,7 @@
     }
 
     function scheduleLevel2FrameWarmup(options = {}) {
+      if (shouldUseMapboxLevel2ImageLayer()) return;
       if (isMobileLevel2Mode()) return;
       if (!level2Frames.length) return;
 
@@ -1695,6 +1696,14 @@
       if (!frame) return null;
 
       if (updateMapboxLevel2ImageLayer(frame)) {
+        if (isMobileLevel2Mode()) {
+          mobileLoopLoadRequested = false;
+          mobileLoopLoadInProgress = false;
+          mobileLoopLoadToken += 1;
+          mobileLoopLoadedPaths = new Set(frame?.path ? [frame.path] : []);
+          mobileLoopTotalCount = 0;
+          updateLoopLoadProgressUi();
+        }
         drawAlertOverlay();
         setStatusText(`Mapbox radar layer loaded: ${selectedLevel2Site()} ${LEVEL2_PRODUCT}`);
         return "mapbox-image-layer";
@@ -1734,6 +1743,14 @@
 
     async function startMobileLoopLoadAfterPlay() {
       if (!isMobileLevel2Mode() || !mobileLoopLoadRequested || mobileLoopLoadInProgress) return;
+      if (shouldUseMapboxLevel2ImageLayer()) {
+        mobileLoopLoadRequested = false;
+        mobileLoopLoadInProgress = false;
+        mobileLoopLoadToken += 1;
+        mobileLoopTotalCount = 0;
+        updateLoopLoadProgressUi();
+        return;
+      }
       mobileLoopTotalCount = Math.min(12, level2Frames.length || 0);
       if (mobileLoopTotalCount <= 1) return;
 
@@ -1800,7 +1817,7 @@
       if (!userRequested && !playbackWasUserRequested) return;
       if (isPlaying || level2Frames.length < 2) return;
       playbackWasUserRequested = true;
-      if (isMobileLevel2Mode()) {
+      if (isMobileLevel2Mode() && !shouldUseMapboxLevel2ImageLayer()) {
         mobileLoopLoadRequested = true;
         startMobileLoopLoadAfterPlay();
       }

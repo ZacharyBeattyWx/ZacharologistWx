@@ -1532,6 +1532,7 @@
     }
 
     function scheduleLevel2FrameWarmup(options = {}) {
+      if (shouldUseMapboxLevel2ImageLayer()) return;
       if (!level2Frames.length) return;
 
       if (level2WarmupTimer !== null) {
