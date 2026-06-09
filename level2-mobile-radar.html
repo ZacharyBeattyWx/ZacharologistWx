@@ -645,6 +645,8 @@
     const LEVEL2_TILE_FRAME_STACK_LIMIT = 25;
     const LEVEL2_TILE_INACTIVE_OPACITY = 0.001;
     const LEVEL2_TILE_PLAY_START_DELAY_MS = 2400;
+    const LEVEL2_TILE_FRAME_READY_TIMEOUT_MS = 2200;
+    const LEVEL2_TILE_FRAME_READY_POLL_MS = 120;
     const PALETTE_SOURCE_FILE = "scripts/radar/radar_config.json";
 
     const ALERT_SOURCE_ID = "nws-alert-polygons";
@@ -1763,6 +1765,12 @@
 
     async function stepFrame(direction) {
       if (!level2Frames.length) return;
+
+      if (shouldUseMapboxLevel2TileLayer()) {
+        const handled = await stepMapboxLevel2TileFrame(direction);
+        if (handled) return;
+      }
+
       currentFrameIndex = (currentFrameIndex + direction + level2Frames.length) % level2Frames.length;
       await renderCurrentFrame();
     }
@@ -1837,7 +1845,11 @@
     async function playbackTick() {
       if (!isPlaying) return;
       if (level2Frames.length > 1) {
-        await stepFrame(1);
+        if (shouldUseMapboxLevel2TileLayer()) {
+          await stepMapboxLevel2TileFrame(1);
+        } else {
+          await stepFrame(1);
+        }
       }
       if (!isPlaying) return;
       clearPlaybackTimer();
@@ -2171,6 +2183,59 @@
       setStatusText(`warming radar tile stack ${wantedIndexes.length}/${level2Frames.length}`);
 
       return wantedIndexes;
+    }
+
+    function isMapboxLevel2TileFrameLoaded(frameIndex) {
+      if (!map) return false;
+
+      const record = mapboxLevel2TileFrames.get(frameIndex);
+      if (!record?.sourceId || !map.getSource(record.sourceId)) return false;
+
+      try {
+        return map.isSourceLoaded(record.sourceId);
+      } catch (_error) {
+        return false;
+      }
+    }
+
+    async function waitForMapboxLevel2TileFrame(frameIndex, timeoutMs = LEVEL2_TILE_FRAME_READY_TIMEOUT_MS) {
+      const startedAt = performance.now();
+
+      while (performance.now() - startedAt < timeoutMs) {
+        if (isMapboxLevel2TileFrameLoaded(frameIndex)) return true;
+        await new Promise((resolve) => window.setTimeout(resolve, LEVEL2_TILE_FRAME_READY_POLL_MS));
+      }
+
+      return isMapboxLevel2TileFrameLoaded(frameIndex);
+    }
+
+    async function stepMapboxLevel2TileFrame(direction) {
+      if (!shouldUseMapboxLevel2TileLayer() || !level2Frames.length) return false;
+
+      // Do not advance while the map is actively changing tiles.
+      // That is a major cause of blank flashes during pan/zoom.
+      if (isMapInteracting) {
+        setStatusText("holding radar frame while map is moving");
+        return true;
+      }
+
+      const previousIndex = currentFrameIndex;
+      const nextIndex = (currentFrameIndex + direction + level2Frames.length) % level2Frames.length;
+
+      prepareMapboxLevel2TilePlaybackStack(previousIndex);
+      ensureMapboxLevel2TileFrame(nextIndex);
+
+      const ready = await waitForMapboxLevel2TileFrame(nextIndex);
+
+      if (!ready && isPlaying) {
+        // Keep the current frame visible. Never switch to a blank next frame.
+        setStatusText("waiting for next radar frame tiles");
+        return true;
+      }
+
+      currentFrameIndex = nextIndex;
+      await renderCurrentFrame();
+      return true;
     }
 
     function ensureMapboxLevel2TileFrame(frameIndex) {
