@@ -644,6 +644,7 @@
     const LEVEL2_MAPBOX_TILE_FRAME_LAYER_PREFIX = "level2-radar-tile-frame-layer";
     const LEVEL2_TILE_FRAME_STACK_LIMIT = 25;
     const LEVEL2_TILE_INACTIVE_OPACITY = 0.001;
+    const LEVEL2_TILE_PLAY_START_DELAY_MS = 2400;
     const PALETTE_SOURCE_FILE = "scripts/radar/radar_config.json";
 
     const ALERT_SOURCE_ID = "nws-alert-polygons";
@@ -1855,6 +1856,14 @@
       isPlaying = true;
       updatePlaybackButton();
       clearPlaybackTimer();
+
+      if (shouldUseMapboxLevel2TileLayer()) {
+        const warmIndexes = prepareMapboxLevel2TilePlaybackStack(currentFrameIndex);
+        const delay = warmIndexes.length > 1 ? LEVEL2_TILE_PLAY_START_DELAY_MS : playbackIntervalMs;
+        playbackTimer = window.setTimeout(playbackTick, delay);
+        return;
+      }
+
       playbackTimer = window.setTimeout(playbackTick, playbackIntervalMs);
     }
 
@@ -2144,6 +2153,26 @@
       }
     }
 
+    function prepareMapboxLevel2TilePlaybackStack(centerIndex = currentFrameIndex) {
+      if (!shouldUseMapboxLevel2TileLayer() || !level2Frames.length) return [];
+
+      const activeIndex = Math.max(0, Math.min(centerIndex, level2Frames.length - 1));
+      const wantedIndexes = level2TileFrameIndexesAround(activeIndex);
+
+      for (const frameIndex of wantedIndexes) {
+        ensureMapboxLevel2TileFrame(frameIndex);
+      }
+
+      activeMapboxLevel2TileFrameIndex = activeIndex;
+      syncMapboxLevel2TileLayerOpacity();
+      positionLevel2WeatherLayers();
+      syncMapboxAlertLayerVisibility();
+
+      setStatusText(`warming radar tile stack ${wantedIndexes.length}/${level2Frames.length}`);
+
+      return wantedIndexes;
+    }
+
     function ensureMapboxLevel2TileFrame(frameIndex) {
       if (!map || frameIndex < 0 || frameIndex >= level2Frames.length) return false;
 
@@ -2304,7 +2333,9 @@
       }
 
       const activeIndex = Math.max(0, Math.min(currentFrameIndex, level2Frames.length - 1));
-      const wantedIndexes = level2TileFrameIndexesAround(activeIndex);
+      const wantedIndexes = (isPlaying || playbackWasUserRequested)
+        ? level2TileFrameIndexesAround(activeIndex)
+        : [activeIndex];
 
       let activeReady = false;
       for (const frameIndex of wantedIndexes) {
