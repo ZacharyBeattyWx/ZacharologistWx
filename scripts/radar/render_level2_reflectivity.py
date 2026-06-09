@@ -59,7 +59,7 @@ LEVEL2_TILE_SIZE = 256
 LEVEL2_TILE_MIN_ZOOM = 5
 LEVEL2_TILE_MAX_ZOOM = 10
 DISPLAY_MIN_DBZ = -32.0
-TILE_DISPLAY_MIN_DBZ = 0.0
+TILE_DISPLAY_MIN_DBZ = -5.0
 PALETTE_FILE = SCRIPT_DIR / "palettes" / "zacharologist-reflectivity.pal"
 
 RADAR_DBZ_PALETTE_FALLBACK = [
@@ -697,15 +697,17 @@ def colorize_dbz_grid_for_tiles(grid: np.ndarray, nodata: float) -> np.ndarray:
     weak = valid & (sampled < TILE_DISPLAY_MIN_DBZ)
     rgba[..., 3][weak] = 0
 
-    # Make 0-10 dBZ visible but not smoky/black.
+    # Make -5 to 10 dBZ visible but not smoky/black.
+    # This keeps weak echoes and boundaries from disappearing at max tile zoom.
     low = valid & (sampled >= TILE_DISPLAY_MIN_DBZ) & (sampled < 10.0)
     if np.any(low):
         values = sampled[low]
-        # Bright blue/cyan low-end ramp, WeatherFront-style cleaner weak echoes.
-        rgba[..., 0][low] = np.clip(np.interp(values, [0, 10], [40, 70]), 0, 255).astype(np.uint8)
-        rgba[..., 1][low] = np.clip(np.interp(values, [0, 10], [140, 205]), 0, 255).astype(np.uint8)
-        rgba[..., 2][low] = np.clip(np.interp(values, [0, 10], [190, 235]), 0, 255).astype(np.uint8)
-        rgba[..., 3][low] = np.clip(np.interp(values, [0, 10], [35, 120]), 0, 255).astype(np.uint8)
+        ramp_dbz = [TILE_DISPLAY_MIN_DBZ, 0.0, 10.0]
+        # Bright blue/cyan low-end ramp, kept transparent enough to avoid broad haze.
+        rgba[..., 0][low] = np.clip(np.interp(values, ramp_dbz, [28, 40, 70]), 0, 255).astype(np.uint8)
+        rgba[..., 1][low] = np.clip(np.interp(values, ramp_dbz, [95, 115, 210]), 0, 255).astype(np.uint8)
+        rgba[..., 2][low] = np.clip(np.interp(values, ramp_dbz, [140, 165, 230]), 0, 255).astype(np.uint8)
+        rgba[..., 3][low] = np.clip(np.interp(values, ramp_dbz, [10, 35, 120]), 0, 255).astype(np.uint8)
 
     # Never allow valid-looking black haze in the tile product.
     black_with_alpha = (
@@ -777,6 +779,12 @@ def sample_grid_for_tile(
     nodata: float,
     tile_size: int = LEVEL2_TILE_SIZE,
 ) -> np.ndarray:
+    """Sample the projected dBZ grid into one map tile.
+
+    This uses nodata-aware bilinear sampling instead of nearest-neighbor sampling.
+    It keeps the radar locked to the map but removes the harsh block/gap look that
+    becomes obvious when the browser displays max-zoom radar tiles.
+    """
     west, south, east, north = bounds
     height, width = grid.shape
 
@@ -787,23 +795,66 @@ def sample_grid_for_tile(
     lon_grid, lat_grid = np.meshgrid(lon_cols, lat_rows)
 
     in_bounds = (
-        (lon_grid >= west) &
-        (lon_grid <= east) &
-        (lat_grid >= south) &
-        (lat_grid <= north)
+        (lon_grid >= west)
+        & (lon_grid <= east)
+        & (lat_grid >= south)
+        & (lat_grid <= north)
     )
 
     sampled = np.full((tile_size, tile_size), nodata, dtype=np.float32)
     if not np.any(in_bounds):
         return sampled
 
-    src_x = np.floor(((lon_grid - west) / (east - west)) * width).astype(np.int32)
-    src_y = np.floor(((north - lat_grid) / (north - south)) * height).astype(np.int32)
+    # Convert tile pixel lon/lat into projected raster pixel coordinates.
+    # The -0.5 aligns sampling to raster cell centers.
+    src_x = ((lon_grid - west) / (east - west)) * width - 0.5
+    src_y = ((north - lat_grid) / (north - south)) * height - 0.5
 
-    src_x = np.clip(src_x, 0, width - 1)
-    src_y = np.clip(src_y, 0, height - 1)
+    src_x = np.clip(src_x, 0.0, float(width - 1))
+    src_y = np.clip(src_y, 0.0, float(height - 1))
 
-    sampled[in_bounds] = grid[src_y[in_bounds], src_x[in_bounds]]
+    x0 = np.floor(src_x).astype(np.int32)
+    y0 = np.floor(src_y).astype(np.int32)
+    x1 = np.clip(x0 + 1, 0, width - 1)
+    y1 = np.clip(y0 + 1, 0, height - 1)
+
+    wx = (src_x - x0).astype(np.float32)
+    wy = (src_y - y0).astype(np.float32)
+
+    g00 = grid[y0, x0]
+    g10 = grid[y0, x1]
+    g01 = grid[y1, x0]
+    g11 = grid[y1, x1]
+
+    valid00 = np.isfinite(g00) & (g00 != nodata)
+    valid10 = np.isfinite(g10) & (g10 != nodata)
+    valid01 = np.isfinite(g01) & (g01 != nodata)
+    valid11 = np.isfinite(g11) & (g11 != nodata)
+
+    w00 = (1.0 - wx) * (1.0 - wy)
+    w10 = wx * (1.0 - wy)
+    w01 = (1.0 - wx) * wy
+    w11 = wx * wy
+
+    w00 = np.where(valid00, w00, 0.0)
+    w10 = np.where(valid10, w10, 0.0)
+    w01 = np.where(valid01, w01, 0.0)
+    w11 = np.where(valid11, w11, 0.0)
+
+    weight_sum = w00 + w10 + w01 + w11
+
+    weighted_sum = (
+        np.where(valid00, g00, 0.0) * w00
+        + np.where(valid10, g10, 0.0) * w10
+        + np.where(valid01, g01, 0.0) * w01
+        + np.where(valid11, g11, 0.0) * w11
+    )
+
+    blended = np.full((tile_size, tile_size), nodata, dtype=np.float32)
+    np.divide(weighted_sum, weight_sum, out=blended, where=weight_sum > 0)
+
+    has_value = in_bounds & (weight_sum > 0)
+    sampled[has_value] = blended[has_value]
     return sampled
 
 

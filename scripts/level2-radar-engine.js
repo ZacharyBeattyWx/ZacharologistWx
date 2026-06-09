@@ -3,9 +3,9 @@
 
   const DEFAULT_LAYER_ID = "level2-manual-radar-layer";
   const DEFAULT_PREFETCH_PADDING = 1;
-  const DEFAULT_MAX_VISIBLE_TILES = 128;
+  const DEFAULT_MAX_VISIBLE_TILES = 2000;
   const DEFAULT_TILE_TIMEOUT_MS = 2200;
-  const DEFAULT_CACHE_LIMIT = 900;
+  const DEFAULT_CACHE_LIMIT = 5000;
 
   function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
@@ -194,42 +194,61 @@
 
       const tileMinZoom = Number.isFinite(frame.tileMinZoom) ? frame.tileMinZoom : 5;
       const tileMaxZoom = Number.isFinite(frame.tileMaxZoom) ? frame.tileMaxZoom : 10;
-      const z = clamp(Math.floor(this.map.getZoom()), tileMinZoom, tileMaxZoom);
       const padding = this.prefetchPadding;
 
-      let xMin = clampTile(lonToTileX(west, z) - padding, z);
-      let xMax = clampTile(lonToTileX(east, z) + padding, z);
-      let yMin = clampTile(latToTileY(north, z) - padding, z);
-      let yMax = clampTile(latToTileY(south, z) + padding, z);
+      const buildTilesForZoom = (z) => {
+        let xMin = clampTile(lonToTileX(west, z) - padding, z);
+        let xMax = clampTile(lonToTileX(east, z) + padding, z);
+        let yMin = clampTile(latToTileY(north, z) - padding, z);
+        let yMax = clampTile(latToTileY(south, z) + padding, z);
 
-      if (xMax < xMin) [xMin, xMax] = [xMax, xMin];
-      if (yMax < yMin) [yMin, yMax] = [yMax, yMin];
+        if (xMax < xMin) [xMin, xMax] = [xMax, xMin];
+        if (yMax < yMin) [yMin, yMax] = [yMax, yMin];
 
-      const centerX = (xMin + xMax) / 2;
-      const centerY = (yMin + yMax) / 2;
-      const tiles = [];
+        const centerX = (xMin + xMax) / 2;
+        const centerY = (yMin + yMax) / 2;
+        const tiles = [];
 
-      for (let x = xMin; x <= xMax; x += 1) {
-        for (let y = yMin; y <= yMax; y += 1) {
-          const url = tileUrlForFrame(frame, z, x, y);
-          if (!url) continue;
+        for (let x = xMin; x <= xMax; x += 1) {
+          for (let y = yMin; y <= yMax; y += 1) {
+            if (!this.tileExistsInFrameIndex(frame, z, x, y)) continue;
 
-          tiles.push({
-            z,
-            x,
-            y,
-            url,
-            west: tileXToLon(x, z),
-            east: tileXToLon(x + 1, z),
-            north: tileYToLat(y, z),
-            south: tileYToLat(y + 1, z),
-            distance: Math.hypot(x - centerX, y - centerY)
-          });
+            const url = tileUrlForFrame(frame, z, x, y);
+            if (!url) continue;
+
+            tiles.push({
+              z,
+              x,
+              y,
+              url,
+              west: tileXToLon(x, z),
+              east: tileXToLon(x + 1, z),
+              north: tileYToLat(y, z),
+              south: tileYToLat(y + 1, z),
+              distance: Math.hypot(x - centerX, y - centerY)
+            });
+          }
+        }
+
+        tiles.sort((a, b) => a.distance - b.distance);
+        return tiles;
+      };
+
+      // Quality-first strategy:
+      // Prefer the highest rendered radar tile zoom, usually z10, so radar stays crisp.
+      // Fall back only if the visible/indexed tile count exceeds the engine budget.
+      for (let z = tileMaxZoom; z >= tileMinZoom; z -= 1) {
+        const candidateTiles = buildTilesForZoom(z);
+        if (!candidateTiles.length) continue;
+
+        if (candidateTiles.length <= this.maxVisibleTiles || z === tileMinZoom) {
+          this.activeTileZoom = z;
+          return candidateTiles;
         }
       }
 
-      tiles.sort((a, b) => a.distance - b.distance);
-      return tiles.slice(0, this.maxVisibleTiles);
+      this.activeTileZoom = null;
+      return [];
     }
 
     loadTile(url) {
@@ -371,8 +390,9 @@
       gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+      // LINEAR filtering reduces harsh blockiness while keeping the tiled radar locked to the map.
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, tile.image);
 
       this.textureCache.set(key, texture);

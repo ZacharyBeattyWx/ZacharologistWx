@@ -826,6 +826,7 @@
     let overlayRedrawFrame = null;
     let pendingOverlayRedrawQuality = "full";
     let level2RadarEngine = null;
+    let manualLevel2RadarViewRefreshTimer = null;
 
     function clamp255(value) {
       return Math.max(0, Math.min(255, Math.round(value)));
@@ -1596,6 +1597,7 @@
     }
 
     function scheduleLevel2FrameWarmup(options = {}) {
+      if (shouldUseManualLevel2RadarEngine()) return;
       if (shouldUseMapboxLevel2ImageLayer()) return;
       if (isMobileLevel2Mode()) return;
       if (!level2Frames.length) return;
@@ -2129,6 +2131,33 @@
       drawAlertOverlay();
 
       return true;
+    }
+
+    function scheduleManualLevel2RadarViewRefresh(reason = "view") {
+      if (!shouldUseManualLevel2RadarEngine()) return;
+      if (!level2RadarEngine || !level2Frames.length) return;
+
+      if (manualLevel2RadarViewRefreshTimer !== null) {
+        window.clearTimeout(manualLevel2RadarViewRefreshTimer);
+      }
+
+      manualLevel2RadarViewRefreshTimer = window.setTimeout(async () => {
+        manualLevel2RadarViewRefreshTimer = null;
+
+        if (!shouldUseManualLevel2RadarEngine() || !level2RadarEngine || !level2Frames.length) return;
+
+        try {
+          setStatusText(`refreshing radar tiles after ${reason}`);
+          level2RadarEngine.setFrames(level2Frames);
+          level2RadarEngine.setOpacity(Number(opacitySlider?.value ?? 1));
+          await level2RadarEngine.setFrame(currentFrameIndex);
+          positionLevel2WeatherLayers();
+          syncMapboxAlertLayerVisibility();
+          drawAlertOverlay();
+        } catch (error) {
+          console.warn("Manual Level II radar view refresh failed", error);
+        }
+      }, 160);
     }
 
     function mapboxBoundsForFrame(frame) {
@@ -3471,6 +3500,7 @@
       map.on("moveend", () => {
         isMapInteracting = false;
         forceOverlayRedraw();
+        scheduleManualLevel2RadarViewRefresh("moveend");
         if (isMobileLevel2Mode()) {
           if (mobileLoopLoadRequested && mobileLoopLoadInProgress) startMobileLoopLoadAfterPlay();
         } else {
@@ -3480,6 +3510,7 @@
       map.on("zoomend", () => {
         isMapInteracting = false;
         forceOverlayRedraw();
+        scheduleManualLevel2RadarViewRefresh("zoomend");
         if (isMobileLevel2Mode()) {
           if (mobileLoopLoadRequested && mobileLoopLoadInProgress) startMobileLoopLoadAfterPlay();
         } else {
@@ -3494,6 +3525,7 @@
       });
       map.on("resize", () => {
         forceOverlayRedraw();
+        scheduleManualLevel2RadarViewRefresh("resize");
       });
 
       map.on("load", async () => {
