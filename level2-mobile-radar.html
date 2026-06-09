@@ -988,7 +988,7 @@
 
     function updateLoopLoadProgressUi() {
       if (!loopLoadProgress || !loopLoadProgressText || !loopLoadProgressFill) return;
-      const shouldShow = isMobileLevel2Mode() && !shouldUseMapboxLevel2ImageLayer() && mobileLoopLoadInProgress && mobileLoopTotalCount > 1;
+      const shouldShow = isMobileLevel2Mode() && !USE_MAPBOX_LEVEL2_IMAGE_LAYER && mobileLoopLoadInProgress && mobileLoopTotalCount > 1;
       loopLoadProgress.classList.toggle("is-visible", shouldShow);
       loopLoadProgress.setAttribute("aria-hidden", shouldShow ? "false" : "true");
       const loaded = Math.min(mobileLoopLoadedPaths.size, Math.max(0, mobileLoopTotalCount));
@@ -1817,7 +1817,7 @@
       if (!userRequested && !playbackWasUserRequested) return;
       if (isPlaying || level2Frames.length < 2) return;
       playbackWasUserRequested = true;
-      if (isMobileLevel2Mode() && !shouldUseMapboxLevel2ImageLayer()) {
+      if (isMobileLevel2Mode() && !USE_MAPBOX_LEVEL2_IMAGE_LAYER) {
         mobileLoopLoadRequested = true;
         startMobileLoopLoadAfterPlay();
       }
