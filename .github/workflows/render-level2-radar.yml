@@ -1,4 +1,4 @@
-﻿name: Render Level II Radar
+name: Render Level II Radar
 
 on:
   schedule:
@@ -120,6 +120,7 @@ jobs:
               --include "*.tif" \
               --include "*.json" \
               --include "mobile/*.webp" \
+              --include "tiles/*/*/*/*.png" \
               --endpoint-url "$R2_ENDPOINT"
           else
             echo "No existing Level II R2 output for ${SITE}; rendering fresh."
@@ -141,7 +142,7 @@ jobs:
 
       - name: Show generated Level II files
         run: |
-          find "radar/tilesets/test/${{ matrix.site }}/LEVEL2/REF0" -maxdepth 2 -type f | sort
+          find "radar/tilesets/test/${{ matrix.site }}/LEVEL2/REF0" -maxdepth 6 -type f | sort
           python - <<'PY'
           import json
           from pathlib import Path
@@ -178,6 +179,7 @@ jobs:
             --include "*.tif" \
             --include "*.json" \
             --include "mobile/*.webp" \
+            --include "tiles/*/*/*/*.png" \
             --delete \
             --endpoint-url "$R2_ENDPOINT"
 
