@@ -404,6 +404,7 @@ def build_level2_frames_manifest(
                 "path": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{frame_file.name}",
                 "imagePath": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{MOBILE_WEBP_DIR}/{frame_file.stem}.webp",
                 "tileTemplate": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{LEVEL2_TILE_DIR}/{frame_file.stem}/{{z}}/{{x}}/{{y}}.png",
+                "tileIndex": tile_index_for_geotiff(output_root, frame_file),
                 "tileMinZoom": LEVEL2_TILE_MIN_ZOOM,
                 "tileMaxZoom": LEVEL2_TILE_MAX_ZOOM,
                 "validTime": valid_time,
@@ -838,6 +839,31 @@ def write_level2_png_tiles(
     return tiles_written
 
 
+def tile_index_for_geotiff(output_root: Path, geotiff_path: Path) -> dict[str, list[str]]:
+    """Return the exact static PNG tiles that exist for one frame.
+
+    The manual browser radar engine uses this to avoid requesting missing
+    empty/no-echo tiles. That prevents 404 spam without writing transparent
+    placeholder tiles.
+    """
+    frame_tile_root = output_root / LEVEL2_TILE_DIR / geotiff_path.stem
+    if not frame_tile_root.exists():
+        return {}
+
+    tile_index: dict[str, list[str]] = {}
+    for tile_path in sorted(frame_tile_root.glob("*/*/*.png")):
+        try:
+            zoom, tile_x, tile_file = tile_path.relative_to(frame_tile_root).parts
+        except ValueError:
+            continue
+        tile_y = Path(tile_file).stem
+        if not zoom.isdigit() or not tile_x.isdigit() or not tile_y.isdigit():
+            continue
+        tile_index.setdefault(zoom, []).append(f"{tile_x}/{tile_y}")
+
+    return {zoom: sorted(values) for zoom, values in sorted(tile_index.items(), key=lambda item: int(item[0]))}
+
+
 def ensure_level2_png_tiles(
     output_root: Path,
     bounds: tuple[float, float, float, float],
@@ -1058,6 +1084,7 @@ def main() -> int:
                 "path": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{latest_output_path.name}",
                 "imagePath": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{MOBILE_WEBP_DIR}/{latest_output_path.stem}.webp",
                 "tileTemplate": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{LEVEL2_TILE_DIR}/{latest_output_path.stem}/{{z}}/{{x}}/{{y}}.png",
+                "tileIndex": tile_index_for_geotiff(output_root, latest_output_path),
                 "tileMinZoom": LEVEL2_TILE_MIN_ZOOM,
                 "tileMaxZoom": LEVEL2_TILE_MAX_ZOOM,
                 "width": int(args.output_size),

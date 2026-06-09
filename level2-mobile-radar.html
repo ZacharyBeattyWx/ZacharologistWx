@@ -609,6 +609,7 @@
     </section>
   </div>
 
+  <script src="scripts/level2-radar-engine.js"></script>
   <script>
     const MAPBOX_TOKEN = window.MAPBOX_PUBLIC_TOKEN;
     const MAPBOX_STYLE = "mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
@@ -640,6 +641,8 @@
     const LEVEL2_MAPBOX_IMAGE_LAYER_ID = "level2-radar-image-layer";
     const LEVEL2_MAPBOX_TILE_SOURCE_ID = "level2-radar-tile-source";
     const LEVEL2_MAPBOX_TILE_LAYER_ID = "level2-radar-tile-layer";
+    const USE_MANUAL_LEVEL2_RADAR_ENGINE = new URLSearchParams(window.location.search).get("level2Engine") === "manual";
+    const LEVEL2_MANUAL_RADAR_LAYER_ID = "level2-manual-radar-layer";
     const PALETTE_SOURCE_FILE = "scripts/radar/radar_config.json";
 
     const ALERT_SOURCE_ID = "nws-alert-polygons";
@@ -822,6 +825,7 @@
     let syncedRadarImageSizeKey = "";
     let overlayRedrawFrame = null;
     let pendingOverlayRedrawQuality = "full";
+    let level2RadarEngine = null;
 
     function clamp255(value) {
       return Math.max(0, Math.min(255, Math.round(value)));
@@ -922,6 +926,7 @@
       const value = Number(opacitySlider.value);
       opacityValue.textContent = `${Math.round(value * 100)}%`;
       syncMapboxLevel2ImageLayerOpacity();
+      if (level2RadarEngine) level2RadarEngine.setOpacity(value);
       redrawRadarOverlay();
     }
     function updatePlaybackSpeedDisplay() {
@@ -966,6 +971,7 @@
         path: level2DataUrl(meta.path),
         imagePath: meta.imagePath ? level2DataUrl(meta.imagePath) : null,
         tileTemplate: meta.tileTemplate ? level2DataUrl(meta.tileTemplate) : null,
+        tileIndex: meta.tileIndex && typeof meta.tileIndex === "object" ? meta.tileIndex : null,
         tileMinZoom: Number.isFinite(Number(meta.tileMinZoom)) ? Number(meta.tileMinZoom) : 5,
         tileMaxZoom: Number.isFinite(Number(meta.tileMaxZoom)) ? Number(meta.tileMaxZoom) : 8,
         validTime: meta.validTime || "",
@@ -1703,6 +1709,10 @@
       const frame = currentFrame();
       if (!frame) return null;
 
+      if (await updateManualLevel2RadarEngineFrame(frame)) {
+        return "manual-radar-engine";
+      }
+
       if (updateMapboxLevel2TileLayer(frame)) {
         if (isMobileLevel2Mode()) {
           mobileLoopLoadRequested = false;
@@ -1863,6 +1873,10 @@
       if (siteSelect) siteSelect.value = nextSite;
       stopPlayback();
       renderedFrameCache.clear();
+      if (level2RadarEngine) {
+        level2RadarEngine.removeFromMap();
+        level2RadarEngine = null;
+      }
       level2Frames = [];
       currentFrameIndex = 0;
       syncFrameSelect();
@@ -1976,8 +1990,12 @@
     }
 
 
+    function shouldUseManualLevel2RadarEngine() {
+      return USE_MANUAL_LEVEL2_RADAR_ENGINE && !!map && typeof window.Level2RadarEngine === "function";
+    }
+
     function shouldUseMapboxLevel2TileLayer() {
-      return USE_MAPBOX_LEVEL2_TILE_LAYER && !!map;
+      return USE_MAPBOX_LEVEL2_TILE_LAYER && !shouldUseManualLevel2RadarEngine() && !!map;
     }
 
     function weatherLayerBeforeLayerId() {
@@ -1987,6 +2005,7 @@
         LEVEL2_RADAR_LAYER_ID,
         LEVEL2_MAPBOX_IMAGE_LAYER_ID,
         LEVEL2_MAPBOX_TILE_LAYER_ID,
+        LEVEL2_MANUAL_RADAR_LAYER_ID,
         ALERT_FILL_LAYER_ID,
         ALERT_STORM_HITBOX_LAYER_ID,
         ALERT_LINE_LAYER_ID
@@ -2036,12 +2055,13 @@
     function positionLevel2WeatherLayers() {
       if (!map) return;
 
-      const beforeLayerId = shouldUseMapboxLevel2TileLayer()
+      const beforeLayerId = (shouldUseMapboxLevel2TileLayer() || shouldUseManualLevel2RadarEngine())
         ? weatherLayerBeforeLayerId()
         : undefined;
 
       // Order matters. Radar first, then alert fills/lines above radar,
       // then Mapbox roads/boundaries/labels above all weather layers.
+      moveLayerIfPresent(LEVEL2_MANUAL_RADAR_LAYER_ID, beforeLayerId);
       moveLayerIfPresent(LEVEL2_MAPBOX_TILE_LAYER_ID, beforeLayerId);
       moveLayerIfPresent(ALERT_FILL_LAYER_ID, beforeLayerId);
       moveLayerIfPresent(ALERT_STORM_HITBOX_LAYER_ID, beforeLayerId);
@@ -2049,7 +2069,66 @@
     }
 
     function shouldUseMapboxAlertVisualLayers() {
-      return shouldUseMapboxLevel2TileLayer();
+      return shouldUseMapboxLevel2TileLayer() || shouldUseManualLevel2RadarEngine();
+    }
+
+    function ensureLevel2RadarEngine() {
+      if (!shouldUseManualLevel2RadarEngine()) return null;
+
+      if (!level2RadarEngine) {
+        level2RadarEngine = new window.Level2RadarEngine({
+          map,
+          layerId: LEVEL2_MANUAL_RADAR_LAYER_ID,
+          beforeLayerId: () => weatherLayerBeforeLayerId(),
+          status: setStatusText,
+          opacity: Number(opacitySlider?.value ?? 1)
+        });
+      }
+
+      return level2RadarEngine;
+    }
+
+    async function updateManualLevel2RadarEngineFrame(frame) {
+      if (!shouldUseManualLevel2RadarEngine()) return false;
+      if (!frame?.tileTemplate) return false;
+
+      removeMapboxLevel2TileLayer();
+
+      if (map.getLayer(LEVEL2_MAPBOX_IMAGE_LAYER_ID)) {
+        map.removeLayer(LEVEL2_MAPBOX_IMAGE_LAYER_ID);
+      }
+      if (map.getSource(LEVEL2_MAPBOX_IMAGE_SOURCE_ID)) {
+        map.removeSource(LEVEL2_MAPBOX_IMAGE_SOURCE_ID);
+      }
+
+      radarBounds = frame.bounds || radarBounds;
+
+      const engine = ensureLevel2RadarEngine();
+      if (!engine) return false;
+
+      engine.setFrames(level2Frames);
+      engine.setOpacity(Number(opacitySlider?.value ?? 1));
+      await engine.setFrame(currentFrameIndex);
+
+      positionLevel2WeatherLayers();
+      syncMapboxAlertLayerVisibility();
+
+      if (radarOverlayCanvas) radarOverlayCanvas.style.display = "none";
+      if (alertOverlayCanvas) alertOverlayCanvas.style.display = "none";
+
+      const validText = frame.validTime ? new Date(frame.validTime).toLocaleString() : "unknown";
+      if (typeof validTimeRow !== "undefined" && validTimeRow) {
+        validTimeRow.textContent = `Valid time: ${validText}`;
+      }
+      if (typeof sourceRow !== "undefined" && sourceRow) {
+        sourceRow.textContent = `Manual radar engine: ${selectedLevel2Site()} ${LEVEL2_PRODUCT}`;
+      }
+
+      updateFrameInfoRow();
+      syncFrameSelect();
+      drawAlertOverlay();
+
+      return true;
     }
 
     function mapboxBoundsForFrame(frame) {
