@@ -39,6 +39,7 @@ jobs:
 
           SITE_INPUT="${{ github.event.inputs.site || github.event.client_payload.site || '' }}"
           SOURCE_COUNT="${{ github.event.inputs.source_count || github.event.client_payload.source_count || '25' }}"
+          export SITE_INPUT SOURCE_COUNT
 
           python - <<'PY'
           import json
