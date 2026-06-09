@@ -624,6 +624,9 @@
     const RADAR_OVERLAY_INTERACTION_VERTICAL_STRIPS = 32;
     const LEVEL2_RADAR_SOURCE_ID = "level2-radar-canvas-source";
     const LEVEL2_RADAR_LAYER_ID = "level2-radar-canvas-layer";
+    const USE_MAPBOX_LEVEL2_IMAGE_LAYER = true;
+    const LEVEL2_MAPBOX_IMAGE_SOURCE_ID = "level2-radar-image-source";
+    const LEVEL2_MAPBOX_IMAGE_LAYER_ID = "level2-radar-image-layer";
     const PALETTE_SOURCE_FILE = "scripts/radar/radar_config.json";
 
     const ALERT_SOURCE_ID = "nws-alert-polygons";
@@ -897,6 +900,7 @@
     function updateOpacity() {
       const value = Number(opacitySlider.value);
       opacityValue.textContent = `${Math.round(value * 100)}%`;
+      syncMapboxLevel2ImageLayerOpacity();
       redrawRadarOverlay();
     }
     function updatePlaybackSpeedDisplay() {
@@ -1357,6 +1361,7 @@
 
         updateFrameInfoRow();
         syncFrameSelect();
+        syncMapboxLevel2ImageLayerOpacity();
         redrawRadarOverlay();
         return frame;
       } catch (error) {
@@ -1423,6 +1428,7 @@
       setStatusText("cached frame loaded");
       updateFrameInfoRow();
       syncFrameSelect();
+      syncMapboxLevel2ImageLayerOpacity();
       redrawRadarOverlay();
 
       return true;
@@ -1637,6 +1643,16 @@
       const frame = currentFrame();
       if (!frame) return null;
 
+      if (updateMapboxLevel2ImageLayer(frame)) {
+        drawAlertOverlay();
+        setStatusText(`Mapbox radar layer loaded: ${selectedLevel2Site()} ${LEVEL2_PRODUCT}`);
+        return "mapbox-image-layer";
+      }
+
+      if (radarOverlayCanvas) {
+        radarOverlayCanvas.style.display = "";
+      }
+
       const renderMode = await renderLevel2Dbz(frame);
 
       scheduleLevel2FrameWarmup({
@@ -1804,6 +1820,97 @@
       return { removed: true, removedCurrent };
     }
 
+    function shouldUseMapboxLevel2ImageLayer() {
+      return USE_MAPBOX_LEVEL2_IMAGE_LAYER && !!map;
+    }
+
+    function mapboxImageCoordinatesForFrame(frame) {
+      const bounds = frame?.bounds || radarBounds;
+      if (!Array.isArray(bounds) || bounds.length < 2) return null;
+
+      const south = Number(bounds[0]?.[0]);
+      const west = Number(bounds[0]?.[1]);
+      const north = Number(bounds[1]?.[0]);
+      const east = Number(bounds[1]?.[1]);
+
+      if (![south, west, north, east].every(Number.isFinite)) return null;
+
+      return [
+        [west, north],
+        [east, north],
+        [east, south],
+        [west, south]
+      ];
+    }
+
+    function syncMapboxLevel2ImageLayerOpacity() {
+      if (!map?.getLayer?.(LEVEL2_MAPBOX_IMAGE_LAYER_ID)) return;
+      map.setPaintProperty(
+        LEVEL2_MAPBOX_IMAGE_LAYER_ID,
+        "raster-opacity",
+        Number(opacitySlider?.value ?? 0.78)
+      );
+    }
+
+    function updateMapboxLevel2ImageLayer(frame) {
+      if (!shouldUseMapboxLevel2ImageLayer()) return false;
+      if (!frame?.imagePath) return false;
+
+      const coordinates = mapboxImageCoordinatesForFrame(frame);
+      if (!coordinates) return false;
+
+      radarBounds = frame.bounds || radarBounds;
+
+      const existingSource = map.getSource(LEVEL2_MAPBOX_IMAGE_SOURCE_ID);
+      if (existingSource?.updateImage) {
+        existingSource.updateImage({
+          url: frame.imagePath,
+          coordinates
+        });
+      } else {
+        if (!map.getSource(LEVEL2_MAPBOX_IMAGE_SOURCE_ID)) {
+          map.addSource(LEVEL2_MAPBOX_IMAGE_SOURCE_ID, {
+            type: "image",
+            url: frame.imagePath,
+            coordinates
+          });
+        }
+
+        if (!map.getLayer(LEVEL2_MAPBOX_IMAGE_LAYER_ID)) {
+          const beforeLayer = map.getLayer(ALERT_FILL_LAYER_ID) ? ALERT_FILL_LAYER_ID : undefined;
+          map.addLayer({
+            id: LEVEL2_MAPBOX_IMAGE_LAYER_ID,
+            type: "raster",
+            source: LEVEL2_MAPBOX_IMAGE_SOURCE_ID,
+            paint: {
+              "raster-opacity": Number(opacitySlider?.value ?? 0.78),
+              "raster-fade-duration": 0,
+              "raster-resampling": "nearest"
+            }
+          }, beforeLayer);
+        }
+      }
+
+      syncMapboxLevel2ImageLayerOpacity();
+
+      if (radarOverlayCanvas) {
+        radarOverlayCanvas.style.display = "none";
+      }
+
+      const validText = frame.validTime ? new Date(frame.validTime).toLocaleString() : "unknown";
+      if (typeof validTimeRow !== "undefined" && validTimeRow) {
+        validTimeRow.textContent = `Valid time: ${validText}`;
+      }
+      if (typeof sourceRow !== "undefined" && sourceRow) {
+        sourceRow.textContent = `Radar source: ${frame.imagePath}`;
+      }
+
+      updateFrameInfoRow();
+      syncFrameSelect();
+
+      return true;
+    }
+
     function redrawRadarOverlay(options = {}) {
       syncLevel2RadarMapLayer();
 
@@ -1885,6 +1992,7 @@
         overlayRedrawFrame = null;
       }
       pendingOverlayRedrawQuality = "full";
+      syncMapboxLevel2ImageLayerOpacity();
       redrawRadarOverlay();
       drawAlertOverlay();
     }
