@@ -642,8 +642,7 @@
     const LEVEL2_MAPBOX_TILE_LAYER_ID = "level2-radar-tile-layer";
     const LEVEL2_MAPBOX_TILE_FRAME_SOURCE_PREFIX = "level2-radar-tile-frame-source";
     const LEVEL2_MAPBOX_TILE_FRAME_LAYER_PREFIX = "level2-radar-tile-frame-layer";
-    const LEVEL2_TILE_FRAME_STACK_LIMIT = 25;
-    const LEVEL2_TILE_INACTIVE_OPACITY = 0.001;
+    const LEVEL2_TILE_FRAME_STACK_LIMIT = 8;
     const LEVEL2_TILE_PLAY_START_DELAY_MS = 2400;
     const LEVEL2_TILE_FRAME_READY_TIMEOUT_MS = 2200;
     const LEVEL2_TILE_FRAME_READY_POLL_MS = 120;
@@ -2277,7 +2276,7 @@
           type: "raster",
           source: sourceId,
           paint: {
-            "raster-opacity": LEVEL2_TILE_INACTIVE_OPACITY,
+            "raster-opacity": 0,
             "raster-fade-duration": 0,
             "raster-resampling": "nearest"
           }
@@ -2308,7 +2307,7 @@
         map.setPaintProperty(
           frameRecord.layerId,
           "raster-opacity",
-          frameIndex === activeMapboxLevel2TileFrameIndex ? targetOpacity : LEVEL2_TILE_INACTIVE_OPACITY
+          frameIndex === activeMapboxLevel2TileFrameIndex ? targetOpacity : 0
         );
       }
     }
@@ -2410,9 +2409,7 @@
 
       if (!activeReady) return false;
 
-      if (!isPlaying) {
-        pruneMapboxLevel2TileFrameStack(wantedIndexes);
-      }
+      pruneMapboxLevel2TileFrameStack(wantedIndexes);
       activeMapboxLevel2TileFrameIndex = activeIndex;
 
       syncMapboxLevel2TileLayerOpacity();
