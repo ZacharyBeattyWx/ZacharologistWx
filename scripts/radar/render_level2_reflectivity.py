@@ -57,8 +57,9 @@ MOBILE_WEBP_QUALITY = 90
 LEVEL2_TILE_DIR = "tiles"
 LEVEL2_TILE_SIZE = 256
 LEVEL2_TILE_MIN_ZOOM = 5
-LEVEL2_TILE_MAX_ZOOM = 8
+LEVEL2_TILE_MAX_ZOOM = 10
 DISPLAY_MIN_DBZ = -32.0
+TILE_DISPLAY_MIN_DBZ = 0.0
 PALETTE_FILE = SCRIPT_DIR / "palettes" / "zacharologist-reflectivity.pal"
 
 RADAR_DBZ_PALETTE_FALLBACK = [
@@ -679,6 +680,44 @@ def colorize_dbz_grid(grid: np.ndarray, nodata: float) -> np.ndarray:
     return rgba
 
 
+def colorize_dbz_grid_for_tiles(grid: np.ndarray, nodata: float) -> np.ndarray:
+    """Colorize dBZ for map-owned radar tiles.
+
+    The regular palette keeps ultra-weak returns for analysis/fallback.
+    Tile display needs cleaner no-data behavior so weak negative noise
+    does not tint huge rectangular areas of the basemap.
+    """
+    sampled = np.asarray(grid, dtype=np.float32)
+    rgba = colorize_dbz_grid(sampled, nodata)
+
+    valid = np.isfinite(sampled) & (sampled != nodata)
+
+    # Treat very weak/negative values as transparent in the tile product.
+    weak = valid & (sampled < TILE_DISPLAY_MIN_DBZ)
+    rgba[..., 3][weak] = 0
+
+    # Make 0-10 dBZ visible but not smoky/black.
+    low = valid & (sampled >= TILE_DISPLAY_MIN_DBZ) & (sampled < 10.0)
+    if np.any(low):
+        values = sampled[low]
+        # Bright blue/cyan low-end ramp, WeatherFront-style cleaner weak echoes.
+        rgba[..., 0][low] = np.clip(np.interp(values, [0, 10], [40, 70]), 0, 255).astype(np.uint8)
+        rgba[..., 1][low] = np.clip(np.interp(values, [0, 10], [140, 205]), 0, 255).astype(np.uint8)
+        rgba[..., 2][low] = np.clip(np.interp(values, [0, 10], [190, 235]), 0, 255).astype(np.uint8)
+        rgba[..., 3][low] = np.clip(np.interp(values, [0, 10], [35, 120]), 0, 255).astype(np.uint8)
+
+    # Never allow valid-looking black haze in the tile product.
+    black_with_alpha = (
+        (rgba[..., 0] < 8)
+        & (rgba[..., 1] < 8)
+        & (rgba[..., 2] < 8)
+        & (rgba[..., 3] > 0)
+    )
+    rgba[..., 3][black_with_alpha] = 0
+
+    return rgba
+
+
 def write_mobile_webp(path: Path, grid: np.ndarray, nodata: float) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     sampled = downsample_grid_nearest(grid)
@@ -786,7 +825,7 @@ def write_level2_png_tiles(
         for tile_x in x_range:
             for tile_y in y_range:
                 sampled = sample_grid_for_tile(grid, bounds, tile_x, tile_y, zoom, nodata)
-                rgba = colorize_dbz_grid(sampled, nodata)
+                rgba = colorize_dbz_grid_for_tiles(sampled, nodata)
 
                 if int(rgba[..., 3].max()) <= 0:
                     continue

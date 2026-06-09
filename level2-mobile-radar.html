@@ -1590,7 +1590,7 @@
     }
 
     function scheduleLevel2FrameWarmup(options = {}) {
-      if (shouldUseMapboxLevel2ImageLayer()) return;
+      if (shouldUseMapboxLevel2TileLayer() || shouldUseMapboxLevel2ImageLayer()) return;
       if (isMobileLevel2Mode()) return;
       if (!level2Frames.length) return;
 
@@ -1743,10 +1743,12 @@
         mobileLoopTotalCount = Math.min(12, level2Frames.length || 0);
         updateLoopLoadProgressUi();
       } else {
-        scheduleLevel2FrameWarmup({
-          aroundIndex: currentFrameIndex,
-          delayMs: isPlaying ? 1200 : 650
-        });
+        if (!shouldUseMapboxLevel2TileLayer()) {
+          scheduleLevel2FrameWarmup({
+            aroundIndex: currentFrameIndex,
+            delayMs: isPlaying ? 1200 : 650
+          });
+        }
       }
 
       return renderMode;
