@@ -2197,9 +2197,7 @@
     function syncMapboxAlertLayerVisibility() {
       if (!map) return;
 
-      const opacity = shouldUseMapboxAlertVisualLayers() && isAlertOverlayVisible
-        ? Math.max(0, Math.min(1, alertOverlayOpacity))
-        : 0;
+      const opacity = 0;
 
       if (map.getLayer(ALERT_FILL_LAYER_ID)) {
         map.setPaintProperty(ALERT_FILL_LAYER_ID, "fill-opacity", [
@@ -2233,7 +2231,7 @@
       }
 
       if (alertOverlayCanvas) {
-        alertOverlayCanvas.style.display = shouldUseMapboxAlertVisualLayers() ? "none" : "";
+        alertOverlayCanvas.style.display = "";
       }
     }
 
@@ -2492,7 +2490,7 @@
 
       if (shouldUseMapboxAlertVisualLayers()) {
         syncMapboxAlertLayerVisibility();
-        return;
+        // Mapbox alert layers stay available for hit-testing; canvas owns visible alert colors.
       }
 
       if (shouldUseMapboxLevel2TileLayer()) {
@@ -2514,7 +2512,13 @@
       }
 
       alertOverlayContext.clearRect(0, 0, width, height);
-      if (!activeAlertFeatures.length || !isAlertOverlayVisible) return;
+
+      const alertSourceFeatures = map.getSource(ALERT_SOURCE_ID)?._data?.features;
+      const drawableAlertFeatures = Array.isArray(alertSourceFeatures) && alertSourceFeatures.length
+        ? alertSourceFeatures
+        : activeAlertFeatures;
+
+      if (!drawableAlertFeatures.length || !isAlertOverlayVisible) return;
 
       alertOverlayContext.lineJoin = "round";
       alertOverlayContext.lineCap = "round";
@@ -2544,7 +2548,7 @@
       const bucketFallback = [];
       const bucketOther = [];
       const bucketStorm = [];
-      activeAlertFeatures.forEach((feature) => {
+      drawableAlertFeatures.forEach((feature) => {
         const properties = feature?.properties || {};
         const isFallback = properties._fallbackGeometry === true;
         const visibleStorm = properties._visibleStormPolygon === true;
