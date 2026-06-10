@@ -2,7 +2,7 @@ name: Render Level II Radar
 
 on:
   repository_dispatch:
-    types: [radar_level2_cron]
+    types: [radar_level2_cron, radar_level2_scan]
   workflow_dispatch:
     inputs:
       site:
@@ -16,10 +16,6 @@ on:
 
 permissions:
   contents: read
-
-concurrency:
-  group: level2-radar
-  cancel-in-progress: false
 
 jobs:
   prepare-matrix:
@@ -36,8 +32,9 @@ jobs:
           set -euo pipefail
 
           SITE_INPUT="${{ github.event.inputs.site || github.event.client_payload.site || '' }}"
-          SOURCE_COUNT="${{ github.event.inputs.source_count || github.event.client_payload.source_count || '25' }}"
-          export SITE_INPUT SOURCE_COUNT
+          SOURCE_COUNT_INPUT="${{ github.event.inputs.source_count || github.event.client_payload.source_count || '' }}"
+          EVENT_NAME="${{ github.event_name }}"
+          export SITE_INPUT SOURCE_COUNT_INPUT EVENT_NAME
 
           python - <<'PY'
           import json
@@ -47,8 +44,9 @@ jobs:
 
           default_sites = ["KFCX", "KRAX", "KGSP", "KLTX", "KMHX", "KAKQ", "KCAE", "KCLX"]
 
+          event_name = os.environ.get("EVENT_NAME", "").strip()
           site_input = os.environ.get("SITE_INPUT", "").strip().upper()
-          source_count = os.environ.get("SOURCE_COUNT", "25").strip() or "25"
+          source_count_input = os.environ.get("SOURCE_COUNT_INPUT", "").strip()
 
           if site_input:
               if re.fullmatch(r"[A-Z0-9]{3}", site_input):
@@ -56,14 +54,24 @@ jobs:
               if not re.fullmatch(r"K[A-Z0-9]{3}", site_input):
                   raise SystemExit(f"Unsupported radar site: {site_input}")
               sites = [site_input]
+          elif event_name == "repository_dispatch":
+              # Temporary safety fallback while the external dispatcher is upgraded.
+              # Do not let old no-site dispatches fan out to every radar.
+              sites = ["KFCX"]
           else:
+              # Manual workflow_dispatch with no site still supports a full backfill run.
               sites = default_sites
 
-          try:
-              count = max(1, int(source_count))
-          except ValueError:
-              count = 25
+          if source_count_input:
+              try:
+                  count = max(1, int(source_count_input))
+              except ValueError:
+                  count = 1 if event_name == "repository_dispatch" else 25
+          else:
+              count = 1 if event_name == "repository_dispatch" else 25
 
+          print(f"Level II event_name: {event_name}")
+          print(f"Level II raw site input: {site_input or '(empty)'}")
           print(f"Level II sites: {sites}")
           print(f"Level II source_count: {count}")
 
@@ -71,10 +79,13 @@ jobs:
               print(f"sites={json.dumps(sites)}", file=output)
               print(f"source_count={count}", file=output)
           PY
-
   render-level2:
     needs: prepare-matrix
     runs-on: ubuntu-latest
+
+    concurrency:
+      group: level2-radar-${{ matrix.site }}
+      cancel-in-progress: true
 
     strategy:
       fail-fast: false
@@ -139,16 +150,18 @@ jobs:
           set -e
           exit "$status"
 
-      - name: Show generated Level II files
+      - name: Show generated Level II summary
         run: |
-          find "radar/tilesets/test/${{ matrix.site }}/LEVEL2/REF0" -maxdepth 6 -type f | sort
           python - <<'PY'
           import json
           from pathlib import Path
 
           site = "${{ matrix.site }}"
-          manifest = Path(f"radar/tilesets/test/{site}/LEVEL2/REF0/frames.json")
-          latest = Path(f"radar/tilesets/test/{site}/LEVEL2/REF0/latest.json")
+          base = Path(f"radar/tilesets/test/{site}/LEVEL2/REF0")
+          manifest = base / "frames.json"
+          latest = base / "latest.json"
+          mobile = base / "mobile"
+          tiles = base / "tiles"
 
           frames = json.loads(manifest.read_text(encoding="utf-8"))
           latest_payload = json.loads(latest.read_text(encoding="utf-8"))
@@ -156,8 +169,11 @@ jobs:
           print(f"site={site}")
           print(f"framesCount={len(frames.get('frames') or [])}")
           print(f"latestValidTime={latest_payload.get('validTime')}")
+          print(f"jsonFiles={len(list(base.glob('*.json')))}")
+          print(f"tifFiles={len(list(base.glob('*.tif')))}")
+          print(f"mobileWebpFiles={len(list(mobile.glob('*.webp'))) if mobile.exists() else 0}")
+          print(f"tileFrameDirs={sum(1 for p in tiles.iterdir() if p.is_dir()) if tiles.exists() else 0}")
           PY
-
       - name: Upload Level II radar to Cloudflare R2
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
