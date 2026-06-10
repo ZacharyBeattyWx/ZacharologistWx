@@ -1,8 +1,6 @@
 name: Render Level II Radar
 
 on:
-  schedule:
-    - cron: "2-59/7 * * * *"
   repository_dispatch:
     types: [radar_level2_cron]
   workflow_dispatch:

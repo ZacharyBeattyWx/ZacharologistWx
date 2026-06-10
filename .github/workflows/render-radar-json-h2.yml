@@ -1,8 +1,6 @@
 name: Render Radar JSON-H2
 
 on:
-  schedule:
-    - cron: "*/10 * * * *"
   repository_dispatch:
     types: [radar_h2_cron]
 permissions:
