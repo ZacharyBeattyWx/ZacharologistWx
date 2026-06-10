@@ -175,13 +175,25 @@ jobs:
           LOCAL_DIR="radar/tilesets/test/${SITE}/LEVEL2/REF0"
           REMOTE_DIR="s3://${{ secrets.R2_BUCKET }}/radar/tilesets/test/${SITE}/LEVEL2/REF0"
 
+          # Upload heavy radar assets first. Keep manifests out of this sync so
+          # browsers never see a new frames.json before its tile PNGs exist.
           aws s3 sync "$LOCAL_DIR" "$REMOTE_DIR" \
             --exclude "*" \
             --include "*.tif" \
-            --include "*.json" \
             --include "mobile/*.webp" \
             --include "tiles/*/*/*/*.png" \
             --delete \
+            --endpoint-url "$R2_ENDPOINT"
+
+          # Publish manifests last. These are the browser's source of truth.
+          aws s3 cp "$LOCAL_DIR/frames.json" "$REMOTE_DIR/frames.json" \
+            --cache-control "no-cache, no-store, must-revalidate" \
+            --content-type "application/json" \
+            --endpoint-url "$R2_ENDPOINT"
+
+          aws s3 cp "$LOCAL_DIR/latest.json" "$REMOTE_DIR/latest.json" \
+            --cache-control "no-cache, no-store, must-revalidate" \
+            --content-type "application/json" \
             --endpoint-url "$R2_ENDPOINT"
 
           aws s3 cp "$REMOTE_DIR/frames.json" "/tmp/${SITE}-frames.json" --endpoint-url "$R2_ENDPOINT"
