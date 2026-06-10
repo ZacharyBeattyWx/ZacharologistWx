@@ -1912,12 +1912,18 @@
       frameRefreshTimer = window.setInterval(async () => {
         const latestChanged = await refreshLevel2Frames();
         if (latestChanged && level2Frames.length > 0) {
-          if (!isPlaying) {
-            currentFrameIndex = level2Frames.length - 1;
-            syncFrameSelect();
-            updateFrameInfoRow();
-          }
+          currentFrameIndex = level2Frames.length - 1;
+          resetMobileLoopLoadState();
+          syncFrameSelect();
+          updateFrameInfoRow();
+
           await renderCurrentFrame();
+
+          if (isPlaying && isMobileLevel2Mode() && !USE_MAPBOX_LEVEL2_IMAGE_LAYER && !USE_MAPBOX_LEVEL2_TILE_LAYER) {
+            mobileLoopLoadRequested = true;
+            startMobileLoopLoadAfterPlay();
+          }
+
           setStatusText("Latest radar frame refreshed");
         }
         // Manual playback only: do not auto-start after refresh.
