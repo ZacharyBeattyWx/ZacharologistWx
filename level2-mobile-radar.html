@@ -2452,6 +2452,17 @@
       radarOverlayContext.globalAlpha = 1;
     }
 
+    let alertOverlayRedrawFrame = null;
+
+    function requestAlertOverlayRedraw() {
+      if (alertOverlayRedrawFrame !== null) return;
+
+      alertOverlayRedrawFrame = window.requestAnimationFrame(() => {
+        alertOverlayRedrawFrame = null;
+        drawAlertOverlay();
+      });
+    }
+
     function requestOverlayRedraw(options = {}) {
       const requestedQuality = options.quality === "interaction" ? "interaction" : "full";
       if (requestedQuality === "full") {
@@ -3520,12 +3531,18 @@
       });
       map.on("move", () => {
         requestOverlayRedraw({ quality: "interaction" });
+        requestAlertOverlayRedraw();
       });
       map.on("zoom", () => {
         requestOverlayRedraw({ quality: "interaction" });
+        requestAlertOverlayRedraw();
+      });
+      map.on("render", () => {
+        requestAlertOverlayRedraw();
       });
       map.on("resize", () => {
         forceOverlayRedraw();
+        requestAlertOverlayRedraw();
         scheduleManualLevel2RadarViewRefresh("resize");
       });
 
