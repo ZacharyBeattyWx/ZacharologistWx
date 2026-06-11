@@ -2817,6 +2817,33 @@
       );
     }
 
+    function mapboxAlertColorExpression() {
+      const event = ["coalesce", ["get", "event"], ""];
+
+      return [
+        "case",
+        [">=", ["index-of", "Tornado Emergency", event], 0], "#ff00ff",
+        [">=", ["index-of", "Tornado Warning", event], 0], "#ff0033",
+        [">=", ["index-of", "Tornado Watch", event], 0], "#A11D33",
+        [">=", ["index-of", "Severe Thunderstorm Warning", event], 0], "#facc15",
+        [">=", ["index-of", "Severe Thunderstorm Watch", event], 0], "#FFBB00",
+        [">=", ["index-of", "Flash Flood Warning", event], 0], "#39ff14",
+        [">=", ["index-of", "Flash Flood Statement", event], 0], "#39ff14",
+        [">=", ["index-of", "Flood", event], 0], "#00a008",
+        [">=", ["index-of", "Hurricane", event], 0], "#a13671",
+        [">=", ["index-of", "Tropical", event], 0], "#a13671",
+        [">=", ["index-of", "Storm Surge", event], 0], "#a13671",
+        [">=", ["index-of", "Winter", event], 0], "#3b9dff",
+        [">=", ["index-of", "Blizzard", event], 0], "#3b9dff",
+        [">=", ["index-of", "Ice Storm", event], 0], "#3b9dff",
+        [">=", ["index-of", "Freeze", event], 0], "#3b9dff",
+        [">=", ["index-of", "Frost", event], 0], "#3b9dff",
+        [">=", ["index-of", "Red Flag", event], 0], "#b83d18",
+        [">=", ["index-of", "Fire Weather", event], 0], "#b83d18",
+        [">=", ["index-of", "Special Weather Statement", event], 0], "#f59e0b",
+        "#58b7ff"
+      ];
+    }
     function addAlertLayers() {
       map.addSource(ALERT_SOURCE_ID, { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       // Transparent fill hitbox keeps polygon interiors clickable while visible outlines are drawn on alertOverlayCanvas.
@@ -2828,7 +2855,7 @@
           "fill-sort-key": ["coalesce", ["get", "_alertDrawRank"], 0]
         },
         paint: {
-          "fill-color": ["to-color", ["coalesce", ["get", "_alertColor"], ["literal", "#ffffff"]]],
+          "fill-color": mapboxAlertColorExpression(),
           "fill-opacity": 0
         }
       });
@@ -2841,7 +2868,7 @@
           "fill-sort-key": ["coalesce", ["get", "_alertDrawRank"], 0]
         },
         paint: {
-          "fill-color": ["to-color", ["coalesce", ["get", "_alertColor"], ["literal", "#ffffff"]]],
+          "fill-color": mapboxAlertColorExpression(),
           "fill-opacity": 0
         }
       });
@@ -2854,7 +2881,7 @@
           "line-sort-key": ["coalesce", ["get", "_alertDrawRank"], 0]
         },
         paint: {
-          "line-color": ["to-color", ["coalesce", ["get", "_alertColor"], ["literal", "#ffffff"]]],
+          "line-color": mapboxAlertColorExpression(),
           "line-opacity": 0,
           "line-width": ["interpolate", ["linear"], ["zoom"], 4, 1.5, 8, 2.8]
         }
