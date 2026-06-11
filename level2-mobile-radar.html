@@ -2074,7 +2074,9 @@
     }
 
     function shouldUseMapboxAlertVisualLayers() {
-      return shouldUseMapboxLevel2TileLayer() || shouldUseManualLevel2RadarEngine();
+      // Visible alert colors are owned by alertOverlayCanvas.
+      // Mapbox alert layers stay invisible and are only used for geometry/hit-testing.
+      return false;
     }
 
     function ensureLevel2RadarEngine() {
@@ -2203,8 +2205,7 @@
     function syncMapboxAlertLayerVisibility() {
       if (!map) return;
 
-      const useMapboxVisualAlerts = shouldUseMapboxAlertVisualLayers();
-      const opacity = (isAlertOverlayVisible && useMapboxVisualAlerts) ? alertOverlayOpacity : 0;
+      const opacity = 0;
 
       if (map.getLayer(ALERT_FILL_LAYER_ID)) {
         map.setPaintProperty(ALERT_FILL_LAYER_ID, "fill-opacity", [
@@ -2239,7 +2240,7 @@
       }
 
       if (alertOverlayCanvas) {
-        alertOverlayCanvas.style.display = useMapboxVisualAlerts ? "none" : "";
+        alertOverlayCanvas.style.display = "";
       }
     }
 
