@@ -85,7 +85,7 @@ jobs:
 
     concurrency:
       group: level2-radar-${{ matrix.site }}
-      cancel-in-progress: true
+      cancel-in-progress: false
 
     strategy:
       fail-fast: false
