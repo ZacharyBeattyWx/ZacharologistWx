@@ -2209,16 +2209,16 @@
       if (map.getLayer(ALERT_FILL_LAYER_ID)) {
         map.setPaintProperty(ALERT_FILL_LAYER_ID, "fill-opacity", [
           "case",
-          ["==", ["get", "_visibleStormPolygon"], true], 0.16 * opacity,
-          ["==", ["get", "_fallbackGeometry"], true], 0.12 * opacity,
-          0.08 * opacity
+          ["==", ["get", "_visibleStormPolygon"], true], 0.38 * opacity,
+          ["==", ["get", "_fallbackGeometry"], true], 0.32 * opacity,
+          0.24 * opacity
         ]);
       }
 
       if (map.getLayer(ALERT_STORM_HITBOX_LAYER_ID)) {
         map.setPaintProperty(ALERT_STORM_HITBOX_LAYER_ID, "fill-opacity", [
           "case",
-          ["==", ["get", "_visibleStormPolygon"], true], 0.22 * opacity,
+          ["==", ["get", "_visibleStormPolygon"], true], 0.18 * opacity,
           0
         ]);
       }
@@ -2226,8 +2226,9 @@
       if (map.getLayer(ALERT_LINE_LAYER_ID)) {
         map.setPaintProperty(ALERT_LINE_LAYER_ID, "line-opacity", [
           "case",
-          ["==", ["get", "_visibleStormPolygon"], true], 0.92 * opacity,
-          0
+          ["==", ["get", "_visibleStormPolygon"], true], 0.95 * opacity,
+          ["==", ["get", "_fallbackGeometry"], true], 0.82 * opacity,
+          0.62 * opacity
         ]);
         map.setPaintProperty(ALERT_LINE_LAYER_ID, "line-width", [
           "interpolate", ["linear"], ["zoom"],
@@ -2876,7 +2877,11 @@
         id: ALERT_LINE_LAYER_ID,
         type: "line",
         source: ALERT_SOURCE_ID,
-        filter: ["==", ["get", "_visibleStormPolygon"], true],
+        filter: [
+          "any",
+          ["==", ["get", "_visibleStormPolygon"], true],
+          ["==", ["get", "_fallbackGeometry"], true]
+        ],
         layout: {
           "line-sort-key": ["coalesce", ["get", "_alertDrawRank"], 0]
         },
