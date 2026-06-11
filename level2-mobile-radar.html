@@ -2074,9 +2074,7 @@
     }
 
     function shouldUseMapboxAlertVisualLayers() {
-      // Visible alert colors are owned by alertOverlayCanvas.
-      // Mapbox alert layers stay invisible and are only used for geometry/hit-testing.
-      return false;
+      return shouldUseMapboxLevel2TileLayer() || shouldUseManualLevel2RadarEngine();
     }
 
     function ensureLevel2RadarEngine() {
@@ -2205,7 +2203,8 @@
     function syncMapboxAlertLayerVisibility() {
       if (!map) return;
 
-      const opacity = 0;
+      const useMapboxVisualAlerts = shouldUseMapboxAlertVisualLayers();
+      const opacity = (isAlertOverlayVisible && useMapboxVisualAlerts) ? alertOverlayOpacity : 0;
 
       if (map.getLayer(ALERT_FILL_LAYER_ID)) {
         map.setPaintProperty(ALERT_FILL_LAYER_ID, "fill-opacity", [
@@ -2240,7 +2239,7 @@
       }
 
       if (alertOverlayCanvas) {
-        alertOverlayCanvas.style.display = "";
+        alertOverlayCanvas.style.display = useMapboxVisualAlerts ? "none" : "";
       }
     }
 
@@ -2857,7 +2856,7 @@
           "fill-sort-key": ["coalesce", ["get", "_alertDrawRank"], 0]
         },
         paint: {
-          "fill-color": mapboxAlertColorExpression(),
+          "fill-color": ["coalesce", ["get", "_alertColor"], "#ffffff"],
           "fill-opacity": 0
         }
       });
@@ -2870,7 +2869,7 @@
           "fill-sort-key": ["coalesce", ["get", "_alertDrawRank"], 0]
         },
         paint: {
-          "fill-color": mapboxAlertColorExpression(),
+          "fill-color": ["coalesce", ["get", "_alertColor"], "#ffffff"],
           "fill-opacity": 0
         }
       });
@@ -2887,7 +2886,7 @@
           "line-sort-key": ["coalesce", ["get", "_alertDrawRank"], 0]
         },
         paint: {
-          "line-color": mapboxAlertColorExpression(),
+          "line-color": ["coalesce", ["get", "_alertColor"], "#ffffff"],
           "line-opacity": 0,
           "line-width": ["interpolate", ["linear"], ["zoom"], 4, 1.5, 8, 2.8]
         }
