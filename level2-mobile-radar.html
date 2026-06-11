@@ -12,7 +12,7 @@
     html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #061025; color: #f8fafc; font-family: Arial, sans-serif; }
     #map { position: fixed; inset: 0; }
     #radarOverlayCanvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
-    #alertOverlayCanvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 6; }
+    #alertOverlayCanvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 4; }
     #radarCanvas {
       position: fixed;
       left: -99999px;
@@ -2064,13 +2064,13 @@
         ? weatherLayerBeforeLayerId()
         : undefined;
 
-      // Order matters. Radar first, then alert fills/lines above radar,
-      // then Mapbox roads/boundaries/labels above all weather layers.
-      moveLayerIfPresent(LEVEL2_MANUAL_RADAR_LAYER_ID, beforeLayerId);
-      moveLayerIfPresent(LEVEL2_MAPBOX_TILE_LAYER_ID, beforeLayerId);
+      // Order matters. Alerts first so they sit above the basemap,
+      // then radar above alerts, then Mapbox roads/boundaries/labels above all weather layers.
       moveLayerIfPresent(ALERT_FILL_LAYER_ID, beforeLayerId);
       moveLayerIfPresent(ALERT_STORM_HITBOX_LAYER_ID, beforeLayerId);
       moveLayerIfPresent(ALERT_LINE_LAYER_ID, beforeLayerId);
+      moveLayerIfPresent(LEVEL2_MANUAL_RADAR_LAYER_ID, beforeLayerId);
+      moveLayerIfPresent(LEVEL2_MAPBOX_TILE_LAYER_ID, beforeLayerId);
     }
 
     function shouldUseMapboxAlertVisualLayers() {
@@ -2203,7 +2203,8 @@
     function syncMapboxAlertLayerVisibility() {
       if (!map) return;
 
-      const opacity = 0;
+      const useMapboxVisualAlerts = shouldUseMapboxAlertVisualLayers();
+      const opacity = (isAlertOverlayVisible && useMapboxVisualAlerts) ? alertOverlayOpacity : 0;
 
       if (map.getLayer(ALERT_FILL_LAYER_ID)) {
         map.setPaintProperty(ALERT_FILL_LAYER_ID, "fill-opacity", [
@@ -2237,7 +2238,7 @@
       }
 
       if (alertOverlayCanvas) {
-        alertOverlayCanvas.style.display = "";
+        alertOverlayCanvas.style.display = useMapboxVisualAlerts ? "none" : "";
       }
     }
 
@@ -2505,12 +2506,7 @@
 
       if (shouldUseMapboxAlertVisualLayers()) {
         syncMapboxAlertLayerVisibility();
-        // Mapbox alert layers stay available for hit-testing; canvas owns visible alert colors.
-      }
-
-      if (shouldUseMapboxLevel2TileLayer()) {
         if (alertOverlayCanvas) alertOverlayCanvas.style.display = "none";
-        syncMapboxAlertLayerVisibility();
         return;
       }
 
