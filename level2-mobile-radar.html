@@ -3552,7 +3552,8 @@
       map.on("moveend", () => {
         isMapInteracting = false;
         forceOverlayRedraw();
-        scheduleManualLevel2RadarViewRefresh("moveend");
+        // Manual radar engine follows map movement internally; do not reload tiles after pan.
+        // scheduleManualLevel2RadarViewRefresh("moveend");
         if (isMobileLevel2Mode()) {
           if (mobileLoopLoadRequested && mobileLoopLoadInProgress) startMobileLoopLoadAfterPlay();
         } else {
@@ -3562,7 +3563,8 @@
       map.on("zoomend", () => {
         isMapInteracting = false;
         forceOverlayRedraw();
-        scheduleManualLevel2RadarViewRefresh("zoomend");
+        // Manual radar engine follows map zoom internally; do not reload tiles after zoom.
+        // scheduleManualLevel2RadarViewRefresh("zoomend");
         if (isMobileLevel2Mode()) {
           if (mobileLoopLoadRequested && mobileLoopLoadInProgress) startMobileLoopLoadAfterPlay();
         } else {
