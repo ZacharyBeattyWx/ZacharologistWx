@@ -574,7 +574,7 @@
       </div>
       <div id="mobileRadarOptionsPanel">
         <label class="toolbar-field">Site
-          <select id="siteSelect"><option value="KFCX">KFCX</option><option value="KRAX">KRAX</option><option value="KGSP">KGSP</option><option value="KLTX">KLTX</option><option value="KMHX">KMHX</option><option value="KAKQ">KAKQ</option><option value="KCAE">KCAE</option><option value="KCLX">KCLX</option></select>
+          <select id="siteSelect"><option value="KFCX">KFCX</option><option value="KRAX">KRAX</option><option value="KGSP">KGSP</option><option value="KLTX">KLTX</option><option value="KMRX">KMRX</option><option value="KJKL">KJKL</option><option value="KRLX">KRLX</option><option value="KLWX">KLWX</option><option value="KMHX">KMHX</option><option value="KAKQ">KAKQ</option><option value="KCAE">KCAE</option><option value="KCLX">KCLX</option></select>
         </label>
         <div class="select-row">
           <label class="toolbar-field">Frame
@@ -608,7 +608,7 @@
   <script>
     const MAPBOX_TOKEN = window.MAPBOX_PUBLIC_TOKEN;
     const MAPBOX_STYLE = "mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
-    const LEVEL2_SUPPORTED_SITES = ["KFCX", "KRAX", "KGSP", "KLTX", "KMHX", "KAKQ", "KCAE", "KCLX"];
+    const LEVEL2_SUPPORTED_SITES = ["KFCX", "KRAX", "KGSP", "KLTX", "KMRX", "KJKL", "KRLX", "KLWX", "KMHX", "KAKQ", "KCAE", "KCLX"];
     const DEFAULT_LEVEL2_SITE = "KFCX";
     const LEVEL2_PRODUCT = "LEVEL2_REF0";
     const LEVEL2_REMOTE_BASE_URL = "https://radar.zacharologistwx.com";
@@ -3134,6 +3134,10 @@
           { type: "Feature", properties: { id: "KCAE" }, geometry: { type: "Point", coordinates: [-81.118, 33.949] } },
           { type: "Feature", properties: { id: "KCLX" }, geometry: { type: "Point", coordinates: [-81.042, 32.656] } },
           { type: "Feature", properties: { id: "KLTX" }, geometry: { type: "Point", coordinates: [-78.429, 33.989] } },
+          { type: "Feature", properties: { id: "KMRX" }, geometry: { type: "Point", coordinates: [-83.402, 36.169] } },
+          { type: "Feature", properties: { id: "KJKL" }, geometry: { type: "Point", coordinates: [-83.313, 37.591] } },
+          { type: "Feature", properties: { id: "KRLX" }, geometry: { type: "Point", coordinates: [-81.723, 38.311] } },
+          { type: "Feature", properties: { id: "KLWX" }, geometry: { type: "Point", coordinates: [-77.488, 38.976] } },
           { type: "Feature", properties: { id: "KMHX" }, geometry: { type: "Point", coordinates: [-76.877, 34.775] } },
           { type: "Feature", properties: { id: "KAKQ" }, geometry: { type: "Point", coordinates: [-77.007, 36.983] } }
         ]
