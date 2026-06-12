@@ -42,7 +42,7 @@ jobs:
           import re
           from pathlib import Path
 
-          default_sites = ["KFCX", "KRAX", "KGSP", "KLTX", "KMHX", "KAKQ", "KCAE", "KCLX"]
+          default_sites = ["KFCX", "KRAX", "KGSP", "KLTX", "KMRX", "KJKL", "KRLX", "KLWX", "KMHX", "KAKQ", "KCAE", "KCLX"]
 
           event_name = os.environ.get("EVENT_NAME", "").strip()
           site_input = os.environ.get("SITE_INPUT", "").strip().upper()
