@@ -824,7 +824,6 @@
     let pendingOverlayRedrawQuality = "full";
     let level2RadarEngine = null;
     let manualLevel2RadarViewRefreshTimer = null;
-    let manualLevel2RadarFramesSignature = "";
 
     function clamp255(value) {
       return Math.max(0, Math.min(255, Math.round(value)));
@@ -2102,26 +2101,6 @@
       return level2RadarEngine;
     }
 
-    function getManualLevel2RadarFramesSignature() {
-      return level2Frames
-        .map((frame) => `${frame?.validTime || ""}|${frame?.tileTemplate || frame?.imagePath || frame?.path || ""}`)
-        .join("||");
-    }
-
-    function syncManualLevel2RadarEngineFrames(engine, options = {}) {
-      if (!engine || !level2Frames.length) return false;
-
-      const signature = getManualLevel2RadarFramesSignature();
-      if (!signature) return false;
-
-      if (!options.force && manualLevel2RadarFramesSignature === signature) {
-        return false;
-      }
-
-      engine.setFrames(level2Frames);
-      manualLevel2RadarFramesSignature = signature;
-      return true;
-    }
 
     async function updateManualLevel2RadarEngineFrame(frame) {
       if (!shouldUseManualLevel2RadarEngine()) return false;
@@ -2141,7 +2120,7 @@
       const engine = ensureLevel2RadarEngine();
       if (!engine) return false;
 
-      syncManualLevel2RadarEngineFrames(engine);
+      engine.setFrames(level2Frames);
       engine.setOpacity(Number(opacitySlider?.value ?? 1));
       await engine.setFrame(currentFrameIndex);
 
@@ -2181,7 +2160,7 @@
 
         try {
           setStatusText(`refreshing radar tiles after ${reason}`);
-          syncManualLevel2RadarEngineFrames(level2RadarEngine);
+          level2RadarEngine.setFrames(level2Frames);
           level2RadarEngine.setOpacity(Number(opacitySlider?.value ?? 1));
           await level2RadarEngine.setFrame(currentFrameIndex);
           positionLevel2WeatherLayers();
