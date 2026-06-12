@@ -1456,7 +1456,9 @@
 
     function pruneRenderedFrameCache() {
       const limit = level2RenderCacheLimit();
-      const validPaths = new Set(level2Frames.map((frame) => frame.path).filter(Boolean));
+      const validPaths = new Set(
+        level2Frames.map((frame) => level2FrameCacheKey(frame)).filter(Boolean)
+      );
       const currentKey = level2FrameCacheKey(currentFrame());
 
       for (const key of Array.from(renderedFrameCache.keys())) {
@@ -1470,7 +1472,11 @@
     }
 
     function applyRenderedFrameCache(frame, cachedFrame) {
-      if (!frame || !cachedFrame?.canvas) return false;
+      if (!frame || !cachedFrame?.canvas || !cachedFrame.width || !cachedFrame.height) {
+        console.warn("Skipping invalid cached radar frame; keeping previous image");
+        return false;
+      }
+
 
       radarCanvas.width = cachedFrame.width;
       radarCanvas.height = cachedFrame.height;
