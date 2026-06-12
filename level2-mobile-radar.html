@@ -1963,8 +1963,10 @@
     function pruneStaleLevel2Frame(stalePath, options = {}) {
       if (!stalePath) return { removed: false, removedCurrent: false };
 
-      const staleIndex = level2Frames.findIndex((frame) => frame?.path === stalePath);
+      const staleFrame = level2Frames.find((frame) => frame?.path === stalePath || frame?.imagePath === stalePath);
+      const staleIndex = level2Frames.findIndex((frame) => frame === staleFrame);
       renderedFrameCache.delete(stalePath);
+      renderedFrameCache.delete(level2FrameCacheKey(staleFrame));
       if (staleIndex < 0) return { removed: false, removedCurrent: false };
 
       const allowRemoveCurrent = options.allowRemoveCurrent !== false;
@@ -3554,7 +3556,7 @@
         if (isMobileLevel2Mode()) {
           if (mobileLoopLoadRequested && mobileLoopLoadInProgress) startMobileLoopLoadAfterPlay();
         } else {
-          scheduleLevel2FrameWarmup({ aroundIndex: currentFrameIndex, delayMs: 900 });
+          // scheduleLevel2FrameWarmup({ aroundIndex: currentFrameIndex, delayMs: 900 });
         }
       });
       map.on("zoomend", () => {
@@ -3564,7 +3566,7 @@
         if (isMobileLevel2Mode()) {
           if (mobileLoopLoadRequested && mobileLoopLoadInProgress) startMobileLoopLoadAfterPlay();
         } else {
-          scheduleLevel2FrameWarmup({ aroundIndex: currentFrameIndex, delayMs: 900 });
+          // scheduleLevel2FrameWarmup({ aroundIndex: currentFrameIndex, delayMs: 900 });
         }
       });
       map.on("move", () => {
