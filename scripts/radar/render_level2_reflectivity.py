@@ -51,6 +51,14 @@ LEVEL2_PRODUCT = "LEVEL2_REF0"
 NODATA = -9999.0
 OUTPUT_SIZE = 5120
 MAX_LEVEL2_FRAMES = 25
+
+# Phase 4: use extra source candidates so incomplete/newest scans can be skipped
+# without losing loop depth. SAILS can add extra low-level cuts, but the newest
+# Level II file may still be partial while it is being published.
+LEVEL2_CANDIDATE_MULTIPLIER = 3
+TARGET_LOW_LEVEL_SWEEP_DEG = 0.5
+MAX_LOW_LEVEL_SWEEP_DEG = 0.8
+MIN_VALID_LEVEL2_PIXELS = 1000
 MOBILE_WEBP_DIR = "mobile"
 MOBILE_WEBP_MAX_SIZE = 4096
 MOBILE_WEBP_QUALITY = 90
@@ -475,6 +483,7 @@ def load_bounds_from_frames_json(site: str = DEFAULT_SITE) -> tuple[float, float
 
 def extract_lowest_reflectivity_sweep(level2: Level2File) -> SweepData:
     best: SweepData | None = None
+    best_distance = math.inf
 
     for sweep in level2.sweeps:
         if not sweep:
@@ -485,6 +494,14 @@ def extract_lowest_reflectivity_sweep(level2: Level2File) -> SweepData:
             continue
 
         first_ray = rays_with_ref[0]
+        elevation = float(first_ray[0].el_angle)
+
+        # Keep the main REF0 product locked to the low-level 0.5-degree family.
+        # This lets SAILS supplemental 0.5-degree cuts improve temporal smoothness
+        # without allowing higher-elevation cuts to jump into the loop.
+        if elevation > MAX_LOW_LEVEL_SWEEP_DEG:
+            continue
+
         ref_hdr = first_ray[4][b"REF"][0]
         num_gates = int(ref_hdr.num_gates)
         ref_rows = []
@@ -503,7 +520,6 @@ def extract_lowest_reflectivity_sweep(level2: Level2File) -> SweepData:
 
         ref = np.stack(ref_rows, axis=0)
         az = np.asarray(azimuths, dtype=np.float32)
-        elevation = float(first_ray[0].el_angle)
         site_lat = float(first_ray[1].lat)
         site_lon = float(first_ray[1].lon)
 
@@ -517,14 +533,17 @@ def extract_lowest_reflectivity_sweep(level2: Level2File) -> SweepData:
             site_lon=site_lon,
         )
 
-        if best is None or current.elevation_deg < best.elevation_deg:
+        distance = abs(current.elevation_deg - TARGET_LOW_LEVEL_SWEEP_DEG)
+        if best is None or distance < best_distance:
             best = current
+            best_distance = distance
 
     if best is None:
-        raise RuntimeError("No reflectivity moments (REF) found in Level II file")
+        raise RuntimeError(
+            f"No low-level reflectivity moments found at or below {MAX_LOW_LEVEL_SWEEP_DEG:.2f} degrees"
+        )
 
     return best
-
 
 def circular_nearest_indices(angles_deg: np.ndarray, targets_deg: np.ndarray) -> np.ndarray:
     order = np.argsort(angles_deg)
@@ -1043,74 +1062,105 @@ def main() -> int:
 
     # Input scan selection:
     # - --input renders one explicit file.
-    # - Otherwise, render recent files from --input-dir (newest N), enabling multi-frame loops.
-    source_paths = [args.input] if args.input else recent_level2_files(input_dir, max(1, args.max_sources))
+    # - Otherwise, inspect extra recent candidates newest-first, keep only valid low-level frames,
+    #   and stop after --max-sources successful frames. This protects the loop from partial
+    #   newest scans while still taking advantage of SAILS 0.5-degree updates.
+    target_frame_count = max(1, args.max_sources)
+    candidate_count = target_frame_count if args.input else target_frame_count * LEVEL2_CANDIDATE_MULTIPLIER
+    source_paths = [args.input] if args.input else list(reversed(recent_level2_files(input_dir, candidate_count)))
+    print(f"level2TargetFrameCount={target_frame_count}")
+    print(f"level2CandidateCount={len(source_paths)}")
     bounds = load_bounds_from_frames_json(site)
     latest_output_path: Path | None = None
     latest_valid_time = ""
     latest_source_name = ""
 
+    successful_frame_count = 0
+    skipped_source_count = 0
+
     for source_path in source_paths:
-        slug_base = source_path.name
-        match = KEY_RE.search(source_path.name)
-        if match:
-            slug_base = f"{match.group('site')}_{match.group('ts')}"
-        output_path = output_root / f"{slug_base}_projected_dbz.tif"
+        if not args.input and successful_frame_count >= target_frame_count:
+            break
 
-        valid_time = infer_valid_time_from_name(source_path) or valid_time_from_projected_filename(output_path) or ""
+        try:
+            slug_base = source_path.name
+            match = KEY_RE.search(source_path.name)
+            if match:
+                slug_base = f"{match.group('site')}_{match.group('ts')}"
+            output_path = output_root / f"{slug_base}_projected_dbz.tif"
 
-        if output_path.exists() and not args.force:
-            latest_output_path = output_path
-            latest_valid_time = valid_time or "unknown"
-            latest_source_name = source_path.name
-            print(f"skipExistingOutput={output_path}")
+            valid_time = infer_valid_time_from_name(source_path) or valid_time_from_projected_filename(output_path) or ""
+
+            if output_path.exists() and not args.force:
+                if latest_output_path is None:
+                    latest_output_path = output_path
+                    latest_valid_time = valid_time or "unknown"
+                    latest_source_name = source_path.name
+                successful_frame_count += 1
+                print(f"skipExistingOutput={output_path}")
+                continue
+
+            with source_path.open("rb") as handle:
+                level2 = Level2File(handle)
+
+            if getattr(level2, "dt", None):
+                valid_time = format_utc_iso(level2.dt)
+            if not valid_time:
+                valid_time = valid_time_from_projected_filename(output_path) or "unknown"
+
+            sweep = extract_lowest_reflectivity_sweep(level2)
+            grid = build_projected_dbz_grid(
+                sweep=sweep,
+                bounds=bounds,
+                output_size=args.output_size,
+                nodata=args.nodata,
+            )
+
+            if grid.shape != (args.output_size, args.output_size):
+                raise RuntimeError(f"Projected grid shape mismatch: {grid.shape}")
+
+            valid_mask = np.isfinite(grid) & (grid != args.nodata)
+            valid_count = int(valid_mask.sum())
+            if valid_count < MIN_VALID_LEVEL2_PIXELS:
+                raise RuntimeError(f"Too few valid radar pixels: {valid_count}")
+
+            nodata_count = int(grid.size - valid_count)
+            finite_vals = grid[valid_mask]
+            min_dbz = float(np.min(finite_vals)) if valid_count else math.nan
+            max_dbz = float(np.max(finite_vals)) if valid_count else math.nan
+
+            write_geotiff(path=output_path, grid=grid, bounds=bounds, nodata=args.nodata)
+            write_mobile_webp(mobile_webp_path_for_geotiff(output_root, output_path), grid, args.nodata)
+            tile_count = write_level2_png_tiles(output_root, output_path, grid, bounds, args.nodata)
+            print(f"tileCount={tile_count}")
+
+            if latest_output_path is None:
+                latest_output_path = output_path
+                latest_valid_time = valid_time
+                latest_source_name = source_path.name
+
+            successful_frame_count += 1
+
+            print(f"radarSite={site}")
+            print(f"validTime={valid_time}")
+            print(f"sweepElevationDeg={sweep.elevation_deg:.3f}")
+            print(f"sourceShape={sweep.reflectivity.shape[0]}x{sweep.reflectivity.shape[1]}")
+            print(f"outputShape={grid.shape[0]}x{grid.shape[1]}")
+            print(f"finiteMinDbz={min_dbz if np.isfinite(min_dbz) else 'nan'}")
+            print(f"finiteMaxDbz={max_dbz if np.isfinite(max_dbz) else 'nan'}")
+            print(f"validPixels={valid_count}")
+            print(f"nodataPixels={nodata_count}")
+            print(f"outputPath={output_path}")
+
+        except Exception as exc:
+            skipped_source_count += 1
+            print(f"skipLevel2Source={source_path.name} reason={type(exc).__name__}: {exc}")
+            if args.input:
+                raise
             continue
 
-        with source_path.open("rb") as handle:
-            level2 = Level2File(handle)
-
-        if getattr(level2, "dt", None):
-            valid_time = format_utc_iso(level2.dt)
-        if not valid_time:
-            valid_time = valid_time_from_projected_filename(output_path) or "unknown"
-
-        latest_output_path = output_path
-        latest_valid_time = valid_time
-        latest_source_name = source_path.name
-
-        sweep = extract_lowest_reflectivity_sweep(level2)
-        grid = build_projected_dbz_grid(
-            sweep=sweep,
-            bounds=bounds,
-            output_size=args.output_size,
-            nodata=args.nodata,
-        )
-
-        if grid.shape != (args.output_size, args.output_size):
-            raise RuntimeError(f"Projected grid shape mismatch: {grid.shape}")
-
-        write_geotiff(path=output_path, grid=grid, bounds=bounds, nodata=args.nodata)
-        write_mobile_webp(mobile_webp_path_for_geotiff(output_root, output_path), grid, args.nodata)
-        tile_count = write_level2_png_tiles(output_root, output_path, grid, bounds, args.nodata)
-        print(f"tileCount={tile_count}")
-
-        valid_mask = np.isfinite(grid) & (grid != args.nodata)
-        valid_count = int(valid_mask.sum())
-        nodata_count = int(grid.size - valid_count)
-        finite_vals = grid[valid_mask]
-        min_dbz = float(np.min(finite_vals)) if valid_count else math.nan
-        max_dbz = float(np.max(finite_vals)) if valid_count else math.nan
-
-        print(f"radarSite={site}")
-        print(f"validTime={valid_time}")
-        print(f"sweepElevationDeg={sweep.elevation_deg:.3f}")
-        print(f"sourceShape={sweep.reflectivity.shape[0]}x{sweep.reflectivity.shape[1]}")
-        print(f"outputShape={grid.shape[0]}x{grid.shape[1]}")
-        print(f"finiteMinDbz={min_dbz if np.isfinite(min_dbz) else 'nan'}")
-        print(f"finiteMaxDbz={max_dbz if np.isfinite(max_dbz) else 'nan'}")
-        print(f"validPixels={valid_count}")
-        print(f"nodataPixels={nodata_count}")
-        print(f"outputPath={output_path}")
+    print(f"level2SuccessfulFrameCount={successful_frame_count}")
+    print(f"level2SkippedSourceCount={skipped_source_count}")
 
     if latest_output_path is None:
         raise RuntimeError("No Level II source files selected for rendering.")
