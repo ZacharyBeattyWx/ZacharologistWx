@@ -223,23 +223,39 @@ def dispatch_to_cloudflare(site, source_key, dispatch_reason):
         ) from error
 
 
-def dispatch_to_github(site, source_key, dispatch_reason):
+def dispatch_to_github(site, source_key, dispatch_reason, sites=None, dispatch_group=None):
     if not GITHUB_DISPATCH_TOKEN:
         raise RuntimeError("Missing GITHUB_DISPATCH_TOKEN.")
 
     url = f"https://api.github.com/repos/{GITHUB_REPOSITORY}/dispatches"
 
+    normalized_sites = []
+    if sites:
+        for value in sites:
+            normalized = str(value).strip().upper()
+            if normalized and normalized not in normalized_sites:
+                normalized_sites.append(normalized)
+
+    if not normalized_sites:
+        normalized_sites = [str(site).strip().upper()]
+
+    client_payload = {
+        "site": normalized_sites[0],
+        "sites": normalized_sites,
+        "source_count": SOURCE_COUNT,
+        "frame_count": FRAME_COUNT,
+        "source_key": source_key,
+        "source": "aws-level2-scanner",
+        "dispatch_reason": dispatch_reason,
+    }
+
+    if dispatch_group:
+        client_payload["dispatch_group"] = dispatch_group
+
     body = json.dumps(
         {
             "event_type": GITHUB_DISPATCH_EVENT_TYPE,
-            "client_payload": {
-                "site": site,
-                "source_count": SOURCE_COUNT,
-                "frame_count": FRAME_COUNT,
-                "source_key": source_key,
-                "source": "aws-level2-scanner",
-                "dispatch_reason": dispatch_reason,
-            },
+            "client_payload": client_payload,
         }
     ).encode("utf-8")
 
@@ -260,7 +276,6 @@ def dispatch_to_github(site, source_key, dispatch_reason):
         with urllib.request.urlopen(request, timeout=20) as response:
             response_body = response.read().decode("utf-8", errors="replace")
             return response.status, response_body
-
     except urllib.error.HTTPError as error:
         response_body = error.read().decode("utf-8", errors="replace")
         raise RuntimeError(
@@ -268,11 +283,17 @@ def dispatch_to_github(site, source_key, dispatch_reason):
         ) from error
 
 
-def dispatch_render(site, source_key, dispatch_reason, dispatch_target=None):
+def dispatch_render(site, source_key, dispatch_reason, dispatch_target=None, sites=None, dispatch_group=None):
     target = (dispatch_target or LEVEL2_DISPATCH_TARGET).strip().lower()
 
     if target == "github":
-        status, response_body = dispatch_to_github(site, source_key, dispatch_reason)
+        status, response_body = dispatch_to_github(
+            site,
+            source_key,
+            dispatch_reason,
+            sites=sites,
+            dispatch_group=dispatch_group,
+        )
         return "github", status, response_body
 
     if target == "cloudflare":
@@ -576,6 +597,16 @@ def candidate_priority(candidate):
     )
 
 
+def grouped_dispatch_reason(lane, lane_candidates):
+    if any(candidate.get("source_newer_than_manifest") for candidate in lane_candidates):
+        return f"watchdog_{lane}_source_newer"
+
+    if any(candidate.get("source_lookup_error") for candidate in lane_candidates):
+        return f"watchdog_{lane}_source_lookup_failed"
+
+    return f"watchdog_{lane}_stale"
+
+
 def run_watchdog(event):
     now_utc = datetime.now(timezone.utc)
     stale_seconds = int(event.get("stale_seconds", WATCHDOG_STALE_SECONDS))
@@ -684,10 +715,11 @@ def run_watchdog(event):
 
     candidates = sorted(candidates, key=candidate_priority, reverse=True)
 
-    dispatched = []
+    selected = []
     attempted_sites = set()
+    claimed_sites = set()
 
-    def try_dispatch_candidate(candidate, selection_reason):
+    def try_select_candidate(candidate, selection_reason):
         site = candidate["site"]
 
         if site in attempted_sites:
@@ -695,7 +727,7 @@ def run_watchdog(event):
 
         attempted_sites.add(site)
 
-        if len(dispatched) >= max_dispatches:
+        if len(selected) >= max_dispatches:
             skipped.append(
                 {
                     "site": site,
@@ -723,71 +755,13 @@ def run_watchdog(event):
             )
             return False
 
-        try:
-            latest_source = candidate.get("latest_source")
-            source_lookup_error = candidate.get("source_lookup_error")
-            source_newer = candidate.get("source_newer_than_manifest")
-
-            dispatch_source_key = (
-                latest_source.get("key")
-                if latest_source and latest_source.get("key")
-                else watchdog_source_key(candidate)
-            )
-
-            if source_newer:
-                dispatch_reason = "watchdog_source_newer"
-            elif source_lookup_error:
-                dispatch_reason = "watchdog_stale_source_lookup_failed"
-            else:
-                dispatch_reason = "watchdog_stale"
-
-            target, status, response_body = dispatch_render(
-                site=site,
-                source_key=dispatch_source_key,
-                dispatch_reason=dispatch_reason,
-                dispatch_target=manual_dispatch_target,
-            )
-
-            dispatched.append(
-                {
-                    "site": site,
-                    "selection_reason": selection_reason,
-                    "age_seconds": candidate.get("age_seconds"),
-                    "frames": candidate.get("frames"),
-                    "updated_at": candidate.get("updated_at"),
-                    "latest_scan": candidate.get("latest_scan"),
-                    "latest_source_key": candidate.get("latest_source_key"),
-                    "latest_source_scan": candidate.get("latest_source_scan"),
-                    "source_newer_than_manifest": source_newer,
-                    "source_gap_seconds": candidate.get("source_gap_seconds"),
-                    "source_lookup_error": source_lookup_error,
-                    "watchdog_lane": candidate.get("watchdog_lane"),
-                    "dispatch_target": target,
-                    "dispatch_status": status,
-                    "dispatch_reason": dispatch_reason,
-                    "dispatch_response": response_body,
-                }
-            )
-
-            return True
-        except Exception as error:
-            release_dispatch_slot(site)
-            failed.append(
-                {
-                    "site": site,
-                    "reason": "dispatch failed",
-                    "selection_reason": selection_reason,
-                    "error": str(error),
-                    "age_seconds": candidate.get("age_seconds"),
-                    "latest_source_key": candidate.get("latest_source_key"),
-                    "latest_source_scan": candidate.get("latest_source_scan"),
-                    "watchdog_lane": candidate.get("watchdog_lane"),
-                }
-            )
-            return False
+        candidate["selection_reason"] = selection_reason
+        selected.append(candidate)
+        claimed_sites.add(site)
+        return True
 
     for lane in ("fema_region_iii", "fema_region_iv", "unassigned"):
-        if len(dispatched) >= max_dispatches:
+        if len(selected) >= max_dispatches:
             break
 
         lane_candidates = [
@@ -797,14 +771,89 @@ def run_watchdog(event):
         ]
 
         for candidate in lane_candidates:
-            if try_dispatch_candidate(candidate, f"lane:{lane}"):
+            if try_select_candidate(candidate, f"lane:{lane}"):
                 break
 
     for candidate in candidates:
-        if len(dispatched) >= max_dispatches:
+        if len(selected) >= max_dispatches:
             break
 
-        try_dispatch_candidate(candidate, "global_priority")
+        try_select_candidate(candidate, "global_priority")
+
+    selected_by_lane = {}
+    for candidate in selected:
+        lane = candidate.get("watchdog_lane") or "unassigned"
+        selected_by_lane.setdefault(lane, []).append(candidate)
+
+    dispatched = []
+
+    lane_order = ["fema_region_iii", "fema_region_iv", "unassigned"]
+    lane_order.extend(
+        lane
+        for lane in sorted(selected_by_lane)
+        if lane not in lane_order
+    )
+
+    for lane in lane_order:
+        lane_candidates = selected_by_lane.get(lane) or []
+        if not lane_candidates:
+            continue
+
+        sites = [candidate["site"] for candidate in lane_candidates]
+        source_key = f"watchdog://{lane}/{now_utc.isoformat().replace('+00:00', 'Z')}"
+        dispatch_reason = grouped_dispatch_reason(lane, lane_candidates)
+
+        try:
+            target, status, response_body = dispatch_render(
+                site=sites[0],
+                sites=sites,
+                source_key=source_key,
+                dispatch_reason=dispatch_reason,
+                dispatch_target=manual_dispatch_target,
+                dispatch_group=lane,
+            )
+
+            dispatched.append(
+                {
+                    "lane": lane,
+                    "sites": sites,
+                    "site_count": len(sites),
+                    "selection_reasons": [
+                        candidate.get("selection_reason")
+                        for candidate in lane_candidates
+                    ],
+                    "candidate_summaries": [
+                        {
+                            "site": candidate.get("site"),
+                            "age_seconds": candidate.get("age_seconds"),
+                            "latest_scan": candidate.get("latest_scan"),
+                            "latest_source_key": candidate.get("latest_source_key"),
+                            "latest_source_scan": candidate.get("latest_source_scan"),
+                            "source_newer_than_manifest": candidate.get("source_newer_than_manifest"),
+                            "source_gap_seconds": candidate.get("source_gap_seconds"),
+                            "watchdog_lane": candidate.get("watchdog_lane"),
+                        }
+                        for candidate in lane_candidates
+                    ],
+                    "source_key": source_key,
+                    "dispatch_target": target,
+                    "dispatch_status": status,
+                    "dispatch_reason": dispatch_reason,
+                    "dispatch_response": response_body,
+                }
+            )
+        except Exception as error:
+            for candidate in lane_candidates:
+                release_dispatch_slot(candidate["site"])
+
+            failed.append(
+                {
+                    "lane": lane,
+                    "sites": sites,
+                    "reason": "group dispatch failed",
+                    "error": str(error),
+                }
+            )
 
     result = {
         "ok": True,
@@ -815,7 +864,9 @@ def run_watchdog(event):
         "allowed_sites": sorted(ALLOWED_SITES),
         "checked_count": len(checked),
         "candidate_count": len(candidates),
+        "selected_site_count": len(selected),
         "dispatched_count": len(dispatched),
+        "dispatched_site_count": sum(len(group.get("sites", [])) for group in dispatched),
         "skipped_count": len(skipped),
         "failed_count": len(failed),
         "checked": checked,
@@ -826,6 +877,14 @@ def run_watchdog(event):
                 if key != "latest_source"
             }
             for candidate in candidates
+        ],
+        "selected": [
+            {
+                key: value
+                for key, value in candidate.items()
+                if key != "latest_source"
+            }
+            for candidate in selected
         ],
         "dispatched": dispatched,
         "skipped": skipped,
