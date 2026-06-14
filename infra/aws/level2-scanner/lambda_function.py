@@ -225,17 +225,19 @@ def dispatch_to_github(site, source_key, dispatch_reason):
         ) from error
 
 
-def dispatch_render(site, source_key, dispatch_reason):
-    if LEVEL2_DISPATCH_TARGET == "github":
+def dispatch_render(site, source_key, dispatch_reason, dispatch_target=None):
+    target = (dispatch_target or LEVEL2_DISPATCH_TARGET).strip().lower()
+
+    if target == "github":
         status, response_body = dispatch_to_github(site, source_key, dispatch_reason)
         return "github", status, response_body
 
-    if LEVEL2_DISPATCH_TARGET == "cloudflare":
+    if target == "cloudflare":
         status, response_body = dispatch_to_cloudflare(site, source_key, dispatch_reason)
         return "cloudflare", status, response_body
 
     raise RuntimeError(
-        f"Unsupported LEVEL2_DISPATCH_TARGET={LEVEL2_DISPATCH_TARGET!r}. "
+        f"Unsupported dispatch target={target!r}. "
         "Use 'cloudflare' or 'github'."
     )
 
@@ -243,6 +245,9 @@ def dispatch_render(site, source_key, dispatch_reason):
 def lambda_handler(event, context):
     ignored = []
     keys_by_site = {}
+
+    manual_dispatch_target = str(event.get("dispatch_target", "")).strip().lower() or None
+    manual_force_dispatch = bool(event.get("force_dispatch", False))
 
     for record in event.get("Records", []):
         body_payload = extract_json(record.get("body", ""))
@@ -282,7 +287,7 @@ def lambda_handler(event, context):
     for site, keys in sorted(keys_by_site.items()):
         latest_key = sorted(keys)[-1]
 
-        if not claim_dispatch_slot(site):
+        if not manual_force_dispatch and not claim_dispatch_slot(site):
             skipped.append(
                 {
                     "site": site,
@@ -297,7 +302,8 @@ def lambda_handler(event, context):
             target, status, response_body = dispatch_render(
                 site=site,
                 source_key=latest_key,
-                dispatch_reason="source_event",
+                dispatch_reason="manual_test" if manual_dispatch_target else "source_event",
+                dispatch_target=manual_dispatch_target,
             )
 
             dispatched.append(
