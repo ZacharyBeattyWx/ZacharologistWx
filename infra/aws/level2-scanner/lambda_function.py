@@ -4,11 +4,11 @@ import re
 import time
 import urllib.request
 import urllib.error
-import urllib.parse
-import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 
 import boto3
+from botocore import UNSIGNED
+from botocore.config import Config
 from botocore.exceptions import ClientError
 
 
@@ -43,6 +43,7 @@ WATCHDOG_SOURCE_LOOKBACK_DAYS = int(os.environ.get("WATCHDOG_SOURCE_LOOKBACK_DAY
 WATCHDOG_SOURCE_LIST_MAX_KEYS = int(os.environ.get("WATCHDOG_SOURCE_LIST_MAX_KEYS", "1000"))
 
 dynamodb = boto3.client("dynamodb")
+source_s3 = boto3.client("s3", config=Config(signature_version=UNSIGNED))
 
 
 def extract_json(value):
@@ -368,33 +369,32 @@ def source_scan_time_from_key(key):
 
 
 def list_source_keys_for_prefix(prefix):
-    query = urllib.parse.urlencode(
-        {
-            "list-type": "2",
-            "prefix": prefix,
-            "max-keys": str(WATCHDOG_SOURCE_LIST_MAX_KEYS),
-        }
-    )
-    url = f"https://{WATCHDOG_SOURCE_BUCKET}.s3.amazonaws.com/?{query}"
-
-    request = urllib.request.Request(
-        url,
-        headers={
-            "Accept": "application/xml",
-            "Cache-Control": "no-cache",
-            "User-Agent": "zacharologistwx-level2-watchdog",
-        },
-    )
-
-    with urllib.request.urlopen(request, timeout=20) as response:
-        xml_body = response.read()
-
-    root = ET.fromstring(xml_body)
     keys = []
+    continuation_token = None
 
-    for element in root.iter():
-        if element.tag.endswith("Key") and element.text:
-            keys.append(element.text)
+    while True:
+        request = {
+            "Bucket": WATCHDOG_SOURCE_BUCKET,
+            "Prefix": prefix,
+            "MaxKeys": WATCHDOG_SOURCE_LIST_MAX_KEYS,
+        }
+
+        if continuation_token:
+            request["ContinuationToken"] = continuation_token
+
+        response = source_s3.list_objects_v2(**request)
+
+        for item in response.get("Contents", []):
+            key = item.get("Key")
+            if key:
+                keys.append(key)
+
+        if not response.get("IsTruncated"):
+            break
+
+        continuation_token = response.get("NextContinuationToken")
+        if not continuation_token:
+            break
 
     return keys
 
@@ -468,20 +468,21 @@ def run_watchdog(event):
 
         latest_source = None
         source_newer = False
+        source_lookup_error = None
 
         try:
             latest_source = latest_source_for_site(site, now_utc)
             source_newer = source_is_newer_than_manifest(latest_source, summary)
         except Exception as error:
+            source_lookup_error = str(error)
             failed.append(
                 {
                     "site": site,
                     "reason": "source lookup failed",
-                    "error": str(error),
+                    "error": source_lookup_error,
                     "age_seconds": age_seconds,
                 }
             )
-            continue
 
         summary["latest_source_key"] = latest_source.get("key") if latest_source else None
         summary["latest_source_scan"] = latest_source.get("scan_time_iso") if latest_source else None
@@ -489,7 +490,7 @@ def run_watchdog(event):
 
         render_is_stale = age_seconds is None or age_seconds > stale_seconds
 
-        if WATCHDOG_REQUIRE_NEWER_SOURCE and not source_newer and not force_dispatch:
+        if WATCHDOG_REQUIRE_NEWER_SOURCE and not source_newer and not source_lookup_error and not force_dispatch:
             if render_is_stale:
                 skipped.append(
                     {
@@ -536,7 +537,12 @@ def run_watchdog(event):
                 else watchdog_source_key(summary)
             )
 
-            dispatch_reason = "watchdog_source_newer" if source_newer else "watchdog_stale"
+            if source_newer:
+                dispatch_reason = "watchdog_source_newer"
+            elif source_lookup_error:
+                dispatch_reason = "watchdog_stale_source_lookup_failed"
+            else:
+                dispatch_reason = "watchdog_stale"
 
             target, status, response_body = dispatch_render(
                 site=site,
@@ -555,6 +561,7 @@ def run_watchdog(event):
                     "latest_source_key": summary.get("latest_source_key"),
                     "latest_source_scan": summary.get("latest_source_scan"),
                     "source_newer_than_manifest": source_newer,
+                    "source_lookup_error": source_lookup_error,
                     "dispatch_target": target,
                     "dispatch_status": status,
                     "dispatch_reason": dispatch_reason,
