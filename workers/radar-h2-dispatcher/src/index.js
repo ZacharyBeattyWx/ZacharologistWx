@@ -1,4 +1,19 @@
 const GITHUB_DISPATCH_URL = "https://api.github.com/repos/ZacharyBeattyWx/ZacharologistWx/dispatches";
+const LEVEL2_SITES = [
+  "KFCX",
+  "KRAX",
+  "KGSP",
+  "KLTX",
+  "KMRX",
+  "KJKL",
+  "KRLX",
+  "KLWX",
+  "KMHX",
+  "KAKQ",
+  "KCAE",
+  "KCLX",
+];
+
 const DISPATCH_REQUESTS = [
   {
     event_type: "radar_h2_cron",
@@ -13,8 +28,8 @@ const DISPATCH_REQUESTS = [
     client_payload: {
       source: "cloudflare-worker-cron",
       workflow: "render-level2-radar",
-      site: "",
-      source_count: "25",
+      sites: LEVEL2_SITES,
+      frame_count: 25,
     },
   },
 ];
