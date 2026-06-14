@@ -54,17 +54,67 @@ jobs:
           site_input = os.environ.get("SITE_INPUT", "").strip().upper()
           source_count_input = os.environ.get("SOURCE_COUNT_INPUT", "").strip()
           frame_count_input = os.environ.get("FRAME_COUNT_INPUT", "").strip()
+          dispatch_payload_raw = r'''${{ toJson(github.event.client_payload) }}'''
+
+          try:
+              dispatch_payload = json.loads(dispatch_payload_raw) if dispatch_payload_raw and dispatch_payload_raw != "null" else {}
+          except json.JSONDecodeError:
+              dispatch_payload = {}
+
+          if not source_count_input:
+              source_count_input = str(
+                  dispatch_payload.get("source_count")
+                  or dispatch_payload.get("sourceCount")
+                  or ""
+              ).strip()
+
+          if not frame_count_input:
+              frame_count_input = str(
+                  dispatch_payload.get("frame_count")
+                  or dispatch_payload.get("frameCount")
+                  or ""
+              ).strip()
+
+          def normalize_site_id(site):
+              site = str(site or "").strip().upper()
+              if re.fullmatch(r"[A-Z0-9]{3}", site):
+                  site = "K" + site
+              if not re.fullmatch(r"K[A-Z0-9]{3}", site):
+                  raise SystemExit(f"Unsupported radar site: {site}")
+              if site not in default_sites:
+                  raise SystemExit(f"Radar site is not configured for Level II rendering: {site}")
+              return site
+
+          def normalize_dispatch_sites(value):
+              if not value:
+                  return []
+
+              if isinstance(value, str):
+                  raw_sites = [part for part in re.split(r"[,\s]+", value) if part.strip()]
+              elif isinstance(value, list):
+                  raw_sites = value
+              else:
+                  raise SystemExit(f"Unsupported dispatch sites payload: {value!r}")
+
+              normalized = []
+              for raw_site in raw_sites:
+                  site = normalize_site_id(raw_site)
+                  if site not in normalized:
+                      normalized.append(site)
+
+              return normalized
+
+          payload_sites = normalize_dispatch_sites(
+              dispatch_payload.get("sites")
+              or dispatch_payload.get("site")
+          )
 
           if site_input:
-              if re.fullmatch(r"[A-Z0-9]{3}", site_input):
-                  site_input = "K" + site_input
-              if not re.fullmatch(r"K[A-Z0-9]{3}", site_input):
-                  raise SystemExit(f"Unsupported radar site: {site_input}")
-              sites = [site_input]
+              sites = [normalize_site_id(site_input)]
           elif event_name == "repository_dispatch":
-              # Temporary safety fallback while the external dispatcher is upgraded.
-              # Do not let old no-site dispatches fan out to every radar.
-              sites = ["KFCX"]
+              # Long-term path: the external dispatcher decides active sites.
+              # Safety fallback stays KFCX if an old dispatcher sends no payload.
+              sites = payload_sites or ["KFCX"]
           else:
               # Manual workflow_dispatch with no site still supports a full backfill run.
               sites = default_sites
@@ -106,7 +156,7 @@ jobs:
 
     strategy:
       fail-fast: false
-      max-parallel: 10
+      max-parallel: 12
       matrix:
         site: ${{ fromJSON(needs.prepare-matrix.outputs.sites) }}
 
