@@ -1,19 +1,4 @@
 const GITHUB_DISPATCH_URL = "https://api.github.com/repos/ZacharyBeattyWx/ZacharologistWx/dispatches";
-const LEVEL2_SITES = [
-  "KFCX",
-  "KRAX",
-  "KGSP",
-  "KLTX",
-  "KMRX",
-  "KJKL",
-  "KRLX",
-  "KLWX",
-  "KMHX",
-  "KAKQ",
-  "KCAE",
-  "KCLX",
-];
-
 const DISPATCH_REQUESTS = [
   {
     event_type: "radar_h2_cron",
@@ -21,15 +6,6 @@ const DISPATCH_REQUESTS = [
       source: "cloudflare-worker-cron",
       workflow: "render-radar-json-h2",
       site_mode: "core",
-    },
-  },
-  {
-    event_type: "radar_level2_cron",
-    client_payload: {
-      source: "cloudflare-worker-cron",
-      workflow: "render-level2-radar",
-      sites: LEVEL2_SITES,
-      frame_count: 25,
     },
   },
 ];
