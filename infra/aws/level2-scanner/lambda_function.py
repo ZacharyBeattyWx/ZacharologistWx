@@ -4,7 +4,9 @@ import re
 import time
 import urllib.request
 import urllib.error
-from datetime import datetime, timezone
+import urllib.parse
+import xml.etree.ElementTree as ET
+from datetime import datetime, timedelta, timezone
 
 import boto3
 from botocore.exceptions import ClientError
@@ -36,6 +38,9 @@ WATCHDOG_MANIFEST_BASE_URL = os.environ.get(
 ).rstrip("/")
 WATCHDOG_STALE_SECONDS = int(os.environ.get("WATCHDOG_STALE_SECONDS", "300"))
 WATCHDOG_MAX_DISPATCHES = int(os.environ.get("WATCHDOG_MAX_DISPATCHES", str(len(ALLOWED_SITES))))
+WATCHDOG_SOURCE_BUCKET = os.environ.get("WATCHDOG_SOURCE_BUCKET", "noaa-nexrad-level2")
+WATCHDOG_SOURCE_LOOKBACK_DAYS = int(os.environ.get("WATCHDOG_SOURCE_LOOKBACK_DAYS", "2"))
+WATCHDOG_SOURCE_LIST_MAX_KEYS = int(os.environ.get("WATCHDOG_SOURCE_LIST_MAX_KEYS", "1000"))
 
 dynamodb = boto3.client("dynamodb")
 
@@ -58,6 +63,9 @@ def as_bool(value):
         return value
 
     return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+WATCHDOG_REQUIRE_NEWER_SOURCE = str(os.environ.get("WATCHDOG_REQUIRE_NEWER_SOURCE", "true")).strip().lower() in {"1", "true", "yes", "y", "on"}
 
 
 def find_s3_keys(payload):
@@ -339,6 +347,96 @@ def watchdog_source_key(summary):
     return f"watchdog://{summary['site']}/{latest_scan}"
 
 
+def source_scan_time_from_key(key):
+    filename = str(key).split("/")[-1]
+
+    if "_MDM" in filename:
+        return None
+
+    match = re.match(r"^(K[A-Z0-9]{3})(\d{8})_(\d{6})_V\d+", filename)
+    if not match:
+        return None
+
+    site, yyyymmdd, hhmmss = match.groups()
+
+    try:
+        return datetime.strptime(f"{yyyymmdd}{hhmmss}", "%Y%m%d%H%M%S").replace(
+            tzinfo=timezone.utc
+        )
+    except ValueError:
+        return None
+
+
+def list_source_keys_for_prefix(prefix):
+    query = urllib.parse.urlencode(
+        {
+            "list-type": "2",
+            "prefix": prefix,
+            "max-keys": str(WATCHDOG_SOURCE_LIST_MAX_KEYS),
+        }
+    )
+    url = f"https://{WATCHDOG_SOURCE_BUCKET}.s3.amazonaws.com/?{query}"
+
+    request = urllib.request.Request(
+        url,
+        headers={
+            "Accept": "application/xml",
+            "Cache-Control": "no-cache",
+            "User-Agent": "zacharologistwx-level2-watchdog",
+        },
+    )
+
+    with urllib.request.urlopen(request, timeout=20) as response:
+        xml_body = response.read()
+
+    root = ET.fromstring(xml_body)
+    keys = []
+
+    for element in root.iter():
+        if element.tag.endswith("Key") and element.text:
+            keys.append(element.text)
+
+    return keys
+
+
+def latest_source_for_site(site, now_utc):
+    latest = None
+
+    for day_offset in range(max(WATCHDOG_SOURCE_LOOKBACK_DAYS, 1)):
+        day = now_utc - timedelta(days=day_offset)
+        prefix = f"{day:%Y/%m/%d}/{site}/"
+
+        for key in list_source_keys_for_prefix(prefix):
+            scan_time = source_scan_time_from_key(key)
+            if not scan_time:
+                continue
+
+            if latest is None or scan_time > latest["scan_time"]:
+                latest = {
+                    "key": key,
+                    "scan_time": scan_time,
+                    "scan_time_iso": scan_time.isoformat().replace("+00:00", "Z"),
+                }
+
+    return latest
+
+
+def source_is_newer_than_manifest(source_summary, manifest_summary):
+    if not source_summary:
+        return False
+
+    source_time = source_summary.get("scan_time")
+    manifest_time = parse_iso_datetime(manifest_summary.get("latest_scan"))
+
+    if not source_time:
+        return False
+
+    if not manifest_time:
+        return True
+
+    return source_time > manifest_time
+
+
 def run_watchdog(event):
     now_utc = datetime.now(timezone.utc)
     stale_seconds = int(event.get("stale_seconds", WATCHDOG_STALE_SECONDS))
@@ -368,7 +466,44 @@ def run_watchdog(event):
 
         age_seconds = summary.get("age_seconds")
 
-        if age_seconds is not None and age_seconds <= stale_seconds and not force_dispatch:
+        latest_source = None
+        source_newer = False
+
+        try:
+            latest_source = latest_source_for_site(site, now_utc)
+            source_newer = source_is_newer_than_manifest(latest_source, summary)
+        except Exception as error:
+            failed.append(
+                {
+                    "site": site,
+                    "reason": "source lookup failed",
+                    "error": str(error),
+                    "age_seconds": age_seconds,
+                }
+            )
+            continue
+
+        summary["latest_source_key"] = latest_source.get("key") if latest_source else None
+        summary["latest_source_scan"] = latest_source.get("scan_time_iso") if latest_source else None
+        summary["source_newer_than_manifest"] = source_newer
+
+        render_is_stale = age_seconds is None or age_seconds > stale_seconds
+
+        if WATCHDOG_REQUIRE_NEWER_SOURCE and not source_newer and not force_dispatch:
+            if render_is_stale:
+                skipped.append(
+                    {
+                        "site": site,
+                        "reason": "source not newer than manifest",
+                        "age_seconds": age_seconds,
+                        "manifest_latest_scan": summary.get("latest_scan"),
+                        "latest_source_key": summary.get("latest_source_key"),
+                        "latest_source_scan": summary.get("latest_source_scan"),
+                    }
+                )
+            continue
+
+        if not render_is_stale and not source_newer and not force_dispatch:
             continue
 
         if len(dispatched) >= max_dispatches:
@@ -377,6 +512,7 @@ def run_watchdog(event):
                     "site": site,
                     "reason": "watchdog max dispatches reached",
                     "age_seconds": age_seconds,
+                    "latest_source_key": summary.get("latest_source_key"),
                 }
             )
             continue
@@ -387,15 +523,25 @@ def run_watchdog(event):
                     "site": site,
                     "reason": "dispatch cooldown active",
                     "age_seconds": age_seconds,
+                    "latest_source_key": summary.get("latest_source_key"),
+                    "latest_source_scan": summary.get("latest_source_scan"),
                 }
             )
             continue
 
         try:
+            dispatch_source_key = (
+                latest_source.get("key")
+                if latest_source and latest_source.get("key")
+                else watchdog_source_key(summary)
+            )
+
+            dispatch_reason = "watchdog_source_newer" if source_newer else "watchdog_stale"
+
             target, status, response_body = dispatch_render(
                 site=site,
-                source_key=watchdog_source_key(summary),
-                dispatch_reason="watchdog_stale",
+                source_key=dispatch_source_key,
+                dispatch_reason=dispatch_reason,
                 dispatch_target=manual_dispatch_target,
             )
 
@@ -406,8 +552,12 @@ def run_watchdog(event):
                     "frames": summary.get("frames"),
                     "updated_at": summary.get("updated_at"),
                     "latest_scan": summary.get("latest_scan"),
+                    "latest_source_key": summary.get("latest_source_key"),
+                    "latest_source_scan": summary.get("latest_source_scan"),
+                    "source_newer_than_manifest": source_newer,
                     "dispatch_target": target,
                     "dispatch_status": status,
+                    "dispatch_reason": dispatch_reason,
                     "dispatch_response": response_body,
                 }
             )
