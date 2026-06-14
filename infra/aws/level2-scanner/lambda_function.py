@@ -546,6 +546,36 @@ def source_is_newer_than_manifest(source_summary, manifest_summary):
     return source_time > manifest_time
 
 
+def watchdog_site_lane(site):
+    fema_region_iii = {"KFCX", "KLWX", "KAKQ", "KRLX"}
+    fema_region_iv = {"KRAX", "KMHX", "KGSP", "KLTX", "KCAE", "KCLX", "KMRX", "KJKL"}
+
+    if site in fema_region_iii:
+        return "fema_region_iii"
+
+    if site in fema_region_iv:
+        return "fema_region_iv"
+
+    return "unassigned"
+
+
+def candidate_priority(candidate):
+    age_seconds = candidate.get("age_seconds")
+    if age_seconds is None:
+        age_seconds = 999999
+
+    source_gap_seconds = candidate.get("source_gap_seconds") or 0
+    source_newer = 1 if candidate.get("source_newer_than_manifest") else 0
+    source_lookup_failed = 1 if candidate.get("source_lookup_error") else 0
+
+    return (
+        source_newer,
+        source_gap_seconds,
+        source_lookup_failed,
+        age_seconds,
+    )
+
+
 def run_watchdog(event):
     now_utc = datetime.now(timezone.utc)
     stale_seconds = int(event.get("stale_seconds", WATCHDOG_STALE_SECONDS))
@@ -554,7 +584,7 @@ def run_watchdog(event):
     force_dispatch = as_bool(event.get("force_dispatch", False))
 
     checked = []
-    dispatched = []
+    candidates = []
     skipped = []
     failed = []
 
@@ -578,10 +608,17 @@ def run_watchdog(event):
         latest_source = None
         source_newer = False
         source_lookup_error = None
+        source_gap_seconds = 0
 
         try:
             latest_source = latest_source_for_site(site, now_utc)
             source_newer = source_is_newer_than_manifest(latest_source, summary)
+
+            manifest_scan = parse_iso_datetime(summary.get("latest_scan"))
+            source_scan = latest_source.get("scan_time") if latest_source else None
+
+            if manifest_scan and source_scan:
+                source_gap_seconds = max(0, int((source_scan - manifest_scan).total_seconds()))
         except Exception as error:
             source_lookup_error = str(error)
             failed.append(
@@ -596,10 +633,24 @@ def run_watchdog(event):
         summary["latest_source_key"] = latest_source.get("key") if latest_source else None
         summary["latest_source_scan"] = latest_source.get("scan_time_iso") if latest_source else None
         summary["source_newer_than_manifest"] = source_newer
+        summary["source_gap_seconds"] = source_gap_seconds
+        summary["watchdog_lane"] = watchdog_site_lane(site)
 
         render_is_stale = age_seconds is None or age_seconds > stale_seconds
 
-        if WATCHDOG_REQUIRE_NEWER_SOURCE and not source_newer and not source_lookup_error and not force_dispatch:
+        should_candidate = (
+            force_dispatch
+            or source_newer
+            or (
+                render_is_stale
+                and (
+                    not WATCHDOG_REQUIRE_NEWER_SOURCE
+                    or source_lookup_error
+                )
+            )
+        )
+
+        if not should_candidate:
             if render_is_stale:
                 skipped.append(
                     {
@@ -609,41 +660,78 @@ def run_watchdog(event):
                         "manifest_latest_scan": summary.get("latest_scan"),
                         "latest_source_key": summary.get("latest_source_key"),
                         "latest_source_scan": summary.get("latest_source_scan"),
+                        "watchdog_lane": summary.get("watchdog_lane"),
                     }
                 )
             continue
 
-        if not render_is_stale and not source_newer and not force_dispatch:
-            continue
+        candidates.append(
+            {
+                "site": site,
+                "age_seconds": age_seconds,
+                "frames": summary.get("frames"),
+                "updated_at": summary.get("updated_at"),
+                "latest_scan": summary.get("latest_scan"),
+                "latest_source_key": summary.get("latest_source_key"),
+                "latest_source_scan": summary.get("latest_source_scan"),
+                "source_newer_than_manifest": source_newer,
+                "source_gap_seconds": source_gap_seconds,
+                "source_lookup_error": source_lookup_error,
+                "watchdog_lane": summary.get("watchdog_lane"),
+                "latest_source": latest_source,
+            }
+        )
+
+    candidates = sorted(candidates, key=candidate_priority, reverse=True)
+
+    dispatched = []
+    attempted_sites = set()
+
+    def try_dispatch_candidate(candidate, selection_reason):
+        site = candidate["site"]
+
+        if site in attempted_sites:
+            return False
+
+        attempted_sites.add(site)
 
         if len(dispatched) >= max_dispatches:
             skipped.append(
                 {
                     "site": site,
                     "reason": "watchdog max dispatches reached",
-                    "age_seconds": age_seconds,
-                    "latest_source_key": summary.get("latest_source_key"),
+                    "selection_reason": selection_reason,
+                    "age_seconds": candidate.get("age_seconds"),
+                    "latest_source_key": candidate.get("latest_source_key"),
+                    "latest_source_scan": candidate.get("latest_source_scan"),
+                    "watchdog_lane": candidate.get("watchdog_lane"),
                 }
             )
-            continue
+            return False
 
         if not force_dispatch and not claim_dispatch_slot(site):
             skipped.append(
                 {
                     "site": site,
                     "reason": "dispatch cooldown active",
-                    "age_seconds": age_seconds,
-                    "latest_source_key": summary.get("latest_source_key"),
-                    "latest_source_scan": summary.get("latest_source_scan"),
+                    "selection_reason": selection_reason,
+                    "age_seconds": candidate.get("age_seconds"),
+                    "latest_source_key": candidate.get("latest_source_key"),
+                    "latest_source_scan": candidate.get("latest_source_scan"),
+                    "watchdog_lane": candidate.get("watchdog_lane"),
                 }
             )
-            continue
+            return False
 
         try:
+            latest_source = candidate.get("latest_source")
+            source_lookup_error = candidate.get("source_lookup_error")
+            source_newer = candidate.get("source_newer_than_manifest")
+
             dispatch_source_key = (
                 latest_source.get("key")
                 if latest_source and latest_source.get("key")
-                else watchdog_source_key(summary)
+                else watchdog_source_key(candidate)
             )
 
             if source_newer:
@@ -663,14 +751,17 @@ def run_watchdog(event):
             dispatched.append(
                 {
                     "site": site,
-                    "age_seconds": age_seconds,
-                    "frames": summary.get("frames"),
-                    "updated_at": summary.get("updated_at"),
-                    "latest_scan": summary.get("latest_scan"),
-                    "latest_source_key": summary.get("latest_source_key"),
-                    "latest_source_scan": summary.get("latest_source_scan"),
+                    "selection_reason": selection_reason,
+                    "age_seconds": candidate.get("age_seconds"),
+                    "frames": candidate.get("frames"),
+                    "updated_at": candidate.get("updated_at"),
+                    "latest_scan": candidate.get("latest_scan"),
+                    "latest_source_key": candidate.get("latest_source_key"),
+                    "latest_source_scan": candidate.get("latest_source_scan"),
                     "source_newer_than_manifest": source_newer,
+                    "source_gap_seconds": candidate.get("source_gap_seconds"),
                     "source_lookup_error": source_lookup_error,
+                    "watchdog_lane": candidate.get("watchdog_lane"),
                     "dispatch_target": target,
                     "dispatch_status": status,
                     "dispatch_reason": dispatch_reason,
@@ -678,9 +769,42 @@ def run_watchdog(event):
                 }
             )
 
-        except Exception:
+            return True
+        except Exception as error:
             release_dispatch_slot(site)
-            raise
+            failed.append(
+                {
+                    "site": site,
+                    "reason": "dispatch failed",
+                    "selection_reason": selection_reason,
+                    "error": str(error),
+                    "age_seconds": candidate.get("age_seconds"),
+                    "latest_source_key": candidate.get("latest_source_key"),
+                    "latest_source_scan": candidate.get("latest_source_scan"),
+                    "watchdog_lane": candidate.get("watchdog_lane"),
+                }
+            )
+            return False
+
+    for lane in ("fema_region_iii", "fema_region_iv", "unassigned"):
+        if len(dispatched) >= max_dispatches:
+            break
+
+        lane_candidates = [
+            candidate
+            for candidate in candidates
+            if candidate.get("watchdog_lane") == lane
+        ]
+
+        for candidate in lane_candidates:
+            if try_dispatch_candidate(candidate, f"lane:{lane}"):
+                break
+
+    for candidate in candidates:
+        if len(dispatched) >= max_dispatches:
+            break
+
+        try_dispatch_candidate(candidate, "global_priority")
 
     result = {
         "ok": True,
@@ -690,10 +814,19 @@ def run_watchdog(event):
         "max_dispatches": max_dispatches,
         "allowed_sites": sorted(ALLOWED_SITES),
         "checked_count": len(checked),
+        "candidate_count": len(candidates),
         "dispatched_count": len(dispatched),
         "skipped_count": len(skipped),
         "failed_count": len(failed),
         "checked": checked,
+        "candidates": [
+            {
+                key: value
+                for key, value in candidate.items()
+                if key != "latest_source"
+            }
+            for candidate in candidates
+        ],
         "dispatched": dispatched,
         "skipped": skipped,
         "failed": failed,
@@ -701,7 +834,6 @@ def run_watchdog(event):
 
     print(json.dumps(result))
     return result
-
 
 def lambda_handler(event, context):
     if should_run_watchdog(event):
