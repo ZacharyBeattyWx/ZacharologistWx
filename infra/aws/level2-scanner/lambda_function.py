@@ -41,6 +41,7 @@ WATCHDOG_MAX_DISPATCHES = int(os.environ.get("WATCHDOG_MAX_DISPATCHES", str(len(
 WATCHDOG_SOURCE_BUCKET = os.environ.get("WATCHDOG_SOURCE_BUCKET", "noaa-nexrad-level2")
 WATCHDOG_SOURCE_LOOKBACK_DAYS = int(os.environ.get("WATCHDOG_SOURCE_LOOKBACK_DAYS", "2"))
 WATCHDOG_SOURCE_LIST_MAX_KEYS = int(os.environ.get("WATCHDOG_SOURCE_LIST_MAX_KEYS", "1000"))
+SOURCE_STATE_TTL_SECONDS = int(os.environ.get("SOURCE_STATE_TTL_SECONDS", "172800"))
 
 dynamodb = boto3.client("dynamodb")
 source_s3 = boto3.client("s3", config=Config(signature_version=UNSIGNED))
@@ -399,26 +400,134 @@ def list_source_keys_for_prefix(prefix):
     return keys
 
 
+def source_state_key(site):
+    return f"source#{site}"
+
+
+def source_summary_from_key(key):
+    scan_time = source_scan_time_from_key(key)
+
+    if not scan_time:
+        return None
+
+    return {
+        "key": key,
+        "scan_time": scan_time,
+        "scan_time_iso": scan_time.isoformat().replace("+00:00", "Z"),
+    }
+
+
+def latest_renderable_source_key(keys):
+    valid_keys = []
+
+    for key in keys:
+        if source_scan_time_from_key(key):
+            valid_keys.append(key)
+
+    if valid_keys:
+        return sorted(valid_keys)[-1]
+
+    return sorted(keys)[-1]
+
+
+def remember_latest_source_key(site, key):
+    source_summary = source_summary_from_key(key)
+
+    if not source_summary:
+        return {
+            "ok": False,
+            "site": site,
+            "latest_key": key,
+            "reason": "source key is not a renderable Level II volume",
+        }
+
+    scan_epoch = int(source_summary["scan_time"].timestamp())
+    expires_at = int(time.time()) + SOURCE_STATE_TTL_SECONDS
+
+    try:
+        dynamodb.put_item(
+            TableName=DISPATCH_LOCK_TABLE,
+            Item={
+                "site": {"S": source_state_key(site)},
+                "radar_site": {"S": site},
+                "latest_key": {"S": key},
+                "scan_epoch": {"N": str(scan_epoch)},
+                "scan_time": {"S": source_summary["scan_time_iso"]},
+                "expires_at": {"N": str(expires_at)},
+            },
+            ConditionExpression="attribute_not_exists(#site) OR scan_epoch < :scan_epoch",
+            ExpressionAttributeNames={
+                "#site": "site",
+            },
+            ExpressionAttributeValues={
+                ":scan_epoch": {"N": str(scan_epoch)},
+            },
+        )
+
+        return {
+            "ok": True,
+            "site": site,
+            "latest_key": key,
+            "scan_time": source_summary["scan_time_iso"],
+            "source": "sqs_event",
+        }
+    except ClientError as error:
+        if error.response.get("Error", {}).get("Code") == "ConditionalCheckFailedException":
+            return {
+                "ok": True,
+                "site": site,
+                "latest_key": key,
+                "scan_time": source_summary["scan_time_iso"],
+                "source": "sqs_event",
+                "ignored": "older than cached source",
+            }
+
+        return {
+            "ok": False,
+            "site": site,
+            "latest_key": key,
+            "scan_time": source_summary["scan_time_iso"],
+            "error": str(error),
+        }
+
+
+def latest_remembered_source_for_site(site):
+    response = dynamodb.get_item(
+        TableName=DISPATCH_LOCK_TABLE,
+        Key={
+            "site": {"S": source_state_key(site)},
+        },
+    )
+
+    item = response.get("Item")
+    if not item:
+        return None
+
+    key = item.get("latest_key", {}).get("S")
+    scan_time_raw = item.get("scan_time", {}).get("S")
+
+    if not key:
+        return None
+
+    scan_time = parse_iso_datetime(scan_time_raw) if scan_time_raw else None
+
+    if not scan_time:
+        source_summary = source_summary_from_key(key)
+        if not source_summary:
+            return None
+
+        return source_summary
+
+    return {
+        "key": key,
+        "scan_time": scan_time,
+        "scan_time_iso": scan_time.isoformat().replace("+00:00", "Z"),
+        "source": "dynamodb_source_event",
+    }
+
+
 def latest_source_for_site(site, now_utc):
-    latest = None
-
-    for day_offset in range(max(WATCHDOG_SOURCE_LOOKBACK_DAYS, 1)):
-        day = now_utc - timedelta(days=day_offset)
-        prefix = f"{day:%Y/%m/%d}/{site}/"
-
-        for key in list_source_keys_for_prefix(prefix):
-            scan_time = source_scan_time_from_key(key)
-            if not scan_time:
-                continue
-
-            if latest is None or scan_time > latest["scan_time"]:
-                latest = {
-                    "key": key,
-                    "scan_time": scan_time,
-                    "scan_time_iso": scan_time.isoformat().replace("+00:00", "Z"),
-                }
-
-    return latest
+    return latest_remembered_source_for_site(site)
 
 
 def source_is_newer_than_manifest(source_summary, manifest_summary):
@@ -640,7 +749,8 @@ def lambda_handler(event, context):
     skipped = []
 
     for site, keys in sorted(keys_by_site.items()):
-        latest_key = sorted(keys)[-1]
+        latest_key = latest_renderable_source_key(keys)
+        source_state = remember_latest_source_key(site, latest_key)
 
         if not manual_force_dispatch and not claim_dispatch_slot(site):
             skipped.append(
@@ -649,6 +759,7 @@ def lambda_handler(event, context):
                     "reason": "dispatch cooldown active",
                     "keys_in_batch": len(keys),
                     "latest_key": latest_key,
+                    "source_state": source_state,
                 }
             )
             continue
@@ -666,6 +777,7 @@ def lambda_handler(event, context):
                     "site": site,
                     "latest_key": latest_key,
                     "keys_in_batch": len(keys),
+                    "source_state": source_state,
                     "source_count": SOURCE_COUNT,
                     "frame_count": FRAME_COUNT,
                     "dispatch_target": target,
