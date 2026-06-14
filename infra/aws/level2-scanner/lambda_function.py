@@ -4,6 +4,7 @@ import re
 import time
 import urllib.request
 import urllib.error
+from datetime import datetime, timezone
 
 import boto3
 from botocore.exceptions import ClientError
@@ -20,8 +21,6 @@ FRAME_COUNT = str(os.environ.get("FRAME_COUNT", "25"))
 DISPATCH_COOLDOWN_SECONDS = int(os.environ.get("DISPATCH_COOLDOWN_SECONDS", "240"))
 DISPATCH_LOCK_TABLE = os.environ["DISPATCH_LOCK_TABLE"]
 
-# Keep current production behavior by default.
-# Set LEVEL2_DISPATCH_TARGET=github later when direct GitHub dispatch is proven.
 LEVEL2_DISPATCH_TARGET = os.environ.get("LEVEL2_DISPATCH_TARGET", "cloudflare").strip().lower()
 
 CLOUDFLARE_LEVEL2_URL = os.environ.get("CLOUDFLARE_LEVEL2_URL", "")
@@ -30,6 +29,13 @@ RADAR_DISPATCH_SECRET = os.environ.get("RADAR_DISPATCH_SECRET", "")
 GITHUB_REPOSITORY = os.environ.get("GITHUB_REPOSITORY", "ZacharyBeattyWx/ZacharologistWx")
 GITHUB_DISPATCH_EVENT_TYPE = os.environ.get("GITHUB_DISPATCH_EVENT_TYPE", "radar_level2_scan")
 GITHUB_DISPATCH_TOKEN = os.environ.get("GITHUB_DISPATCH_TOKEN", "")
+
+WATCHDOG_MANIFEST_BASE_URL = os.environ.get(
+    "WATCHDOG_MANIFEST_BASE_URL",
+    "https://radar.zacharologistwx.com",
+).rstrip("/")
+WATCHDOG_STALE_SECONDS = int(os.environ.get("WATCHDOG_STALE_SECONDS", "300"))
+WATCHDOG_MAX_DISPATCHES = int(os.environ.get("WATCHDOG_MAX_DISPATCHES", str(len(ALLOWED_SITES))))
 
 dynamodb = boto3.client("dynamodb")
 
@@ -45,6 +51,13 @@ def extract_json(value):
         return json.loads(value)
     except json.JSONDecodeError:
         return {}
+
+
+def as_bool(value):
+    if isinstance(value, bool):
+        return value
+
+    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
 
 
 def find_s3_keys(payload):
@@ -95,6 +108,26 @@ def site_from_key(key):
         return ""
 
     return site
+
+
+def parse_iso_datetime(value):
+    if not value:
+        return None
+
+    text = str(value).strip()
+
+    if text.endswith("Z"):
+        text = f"{text[:-1]}+00:00"
+
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+
+    return parsed.astimezone(timezone.utc)
 
 
 def claim_dispatch_slot(site):
@@ -242,12 +275,177 @@ def dispatch_render(site, source_key, dispatch_reason, dispatch_target=None):
     )
 
 
+def should_run_watchdog(event):
+    if as_bool(event.get("watchdog", False)):
+        return True
+
+    if str(event.get("mode", "")).strip().lower() == "watchdog":
+        return True
+
+    if event.get("source") in {"aws.events", "aws.scheduler"}:
+        return True
+
+    if event.get("detail-type") in {"Scheduled Event", "EventBridge Scheduled Event"}:
+        return True
+
+    return False
+
+
+def fetch_level2_manifest(site):
+    cache_buster = int(time.time())
+    url = (
+        f"{WATCHDOG_MANIFEST_BASE_URL}/radar/tilesets/test/"
+        f"{site}/LEVEL2/REF0/frames.json?watchdog={cache_buster}"
+    )
+
+    request = urllib.request.Request(
+        url,
+        headers={
+            "Accept": "application/json",
+            "Cache-Control": "no-cache",
+            "User-Agent": "zacharologistwx-level2-watchdog",
+        },
+    )
+
+    with urllib.request.urlopen(request, timeout=20) as response:
+        body = response.read().decode("utf-8", errors="replace")
+        return json.loads(body)
+
+
+def summarize_manifest(site, manifest, now_utc):
+    frames = manifest.get("frames")
+    if not isinstance(frames, list):
+        frames = []
+
+    latest = frames[-1] if frames else {}
+    updated_at_raw = manifest.get("updatedAt")
+    updated_at = parse_iso_datetime(updated_at_raw)
+
+    age_seconds = None
+    if updated_at:
+        age_seconds = int((now_utc - updated_at).total_seconds())
+
+    return {
+        "site": site,
+        "frames": len(frames),
+        "updated_at": updated_at_raw,
+        "latest_scan": latest.get("validTime"),
+        "age_seconds": age_seconds,
+    }
+
+
+def watchdog_source_key(summary):
+    latest_scan = summary.get("latest_scan") or summary.get("updated_at") or int(time.time())
+    return f"watchdog://{summary['site']}/{latest_scan}"
+
+
+def run_watchdog(event):
+    now_utc = datetime.now(timezone.utc)
+    stale_seconds = int(event.get("stale_seconds", WATCHDOG_STALE_SECONDS))
+    max_dispatches = int(event.get("max_dispatches", WATCHDOG_MAX_DISPATCHES))
+    manual_dispatch_target = str(event.get("dispatch_target", "")).strip().lower() or None
+    force_dispatch = as_bool(event.get("force_dispatch", False))
+
+    checked = []
+    dispatched = []
+    skipped = []
+    failed = []
+
+    for site in sorted(ALLOWED_SITES):
+        try:
+            manifest = fetch_level2_manifest(site)
+            summary = summarize_manifest(site, manifest, now_utc)
+            checked.append(summary)
+        except Exception as error:
+            failed.append(
+                {
+                    "site": site,
+                    "reason": "manifest fetch failed",
+                    "error": str(error),
+                }
+            )
+            continue
+
+        age_seconds = summary.get("age_seconds")
+
+        if age_seconds is not None and age_seconds <= stale_seconds and not force_dispatch:
+            continue
+
+        if len(dispatched) >= max_dispatches:
+            skipped.append(
+                {
+                    "site": site,
+                    "reason": "watchdog max dispatches reached",
+                    "age_seconds": age_seconds,
+                }
+            )
+            continue
+
+        if not force_dispatch and not claim_dispatch_slot(site):
+            skipped.append(
+                {
+                    "site": site,
+                    "reason": "dispatch cooldown active",
+                    "age_seconds": age_seconds,
+                }
+            )
+            continue
+
+        try:
+            target, status, response_body = dispatch_render(
+                site=site,
+                source_key=watchdog_source_key(summary),
+                dispatch_reason="watchdog_stale",
+                dispatch_target=manual_dispatch_target,
+            )
+
+            dispatched.append(
+                {
+                    "site": site,
+                    "age_seconds": age_seconds,
+                    "frames": summary.get("frames"),
+                    "updated_at": summary.get("updated_at"),
+                    "latest_scan": summary.get("latest_scan"),
+                    "dispatch_target": target,
+                    "dispatch_status": status,
+                    "dispatch_response": response_body,
+                }
+            )
+
+        except Exception:
+            release_dispatch_slot(site)
+            raise
+
+    result = {
+        "ok": True,
+        "mode": "watchdog",
+        "dispatch_target": manual_dispatch_target or LEVEL2_DISPATCH_TARGET,
+        "stale_seconds": stale_seconds,
+        "max_dispatches": max_dispatches,
+        "allowed_sites": sorted(ALLOWED_SITES),
+        "checked_count": len(checked),
+        "dispatched_count": len(dispatched),
+        "skipped_count": len(skipped),
+        "failed_count": len(failed),
+        "checked": checked,
+        "dispatched": dispatched,
+        "skipped": skipped,
+        "failed": failed,
+    }
+
+    print(json.dumps(result))
+    return result
+
+
 def lambda_handler(event, context):
+    if should_run_watchdog(event):
+        return run_watchdog(event)
+
     ignored = []
     keys_by_site = {}
 
     manual_dispatch_target = str(event.get("dispatch_target", "")).strip().lower() or None
-    manual_force_dispatch = bool(event.get("force_dispatch", False))
+    manual_force_dispatch = as_bool(event.get("force_dispatch", False))
 
     for record in event.get("Records", []):
         body_payload = extract_json(record.get("body", ""))
