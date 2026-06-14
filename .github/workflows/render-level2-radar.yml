@@ -138,7 +138,12 @@ jobs:
           source_count = max(requested_source_count, minimum_source_count)
 
           print(f"Level II event_name: {event_name}")
+          print(f"Level II event_action: {event_action or '(none)'}")
           print(f"Level II raw site input: {site_input or '(empty)'}")
+          print(f"Level II dispatch payload: {dispatch_payload}")
+          print(f"Level II dispatch source: {dispatch_payload.get('source', '(none)')}")
+          print(f"Level II dispatch reason: {dispatch_payload.get('dispatch_reason', '(none)')}")
+          print(f"Level II source key: {dispatch_payload.get('source_key', '(none)')}")
           print(f"Level II sites: {sites}")
           print(f"Level II source_count: {source_count}")
           print(f"Level II frame_count: {frame_count}")
