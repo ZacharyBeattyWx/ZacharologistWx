@@ -4,10 +4,12 @@
 from __future__ import annotations
 
 import argparse
+import http.client
 import json
 import math
 import re
 import shutil
+import time
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -379,8 +381,25 @@ def fetch_latest_source_scans(
             print(f"sourceSkipExisting={output_path.name}")
             continue
         file_url = f"https://{bucket}.s3.amazonaws.com/{urllib.parse.quote(key)}"
-        with urllib.request.urlopen(file_url, timeout=120) as response:
-            output_path.write_bytes(response.read())
+        downloaded_ok = False
+        last_download_error = None
+
+        for attempt in range(1, 5):
+            try:
+                with urllib.request.urlopen(file_url, timeout=120) as response:
+                    output_path.write_bytes(response.read())
+                downloaded_ok = True
+                break
+            except (http.client.IncompleteRead, TimeoutError, ConnectionResetError, OSError) as exc:
+                last_download_error = exc
+                print(f"sourceDownloadRetry={attempt}/4 file={output_path.name} reason={type(exc).__name__}: {exc}")
+                time.sleep(attempt * 2)
+
+        if not downloaded_ok:
+            skipped += 1
+            print(f"sourceDownloadFailed={output_path.name} reason={type(last_download_error).__name__}: {last_download_error}")
+            continue
+
         downloaded += 1
         print(f"sourceDownloaded={output_path.name}")
 
