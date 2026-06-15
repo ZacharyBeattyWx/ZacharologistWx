@@ -806,6 +806,134 @@
     }
   }
 
+
+  /* Desktop field-ops content sync with mobile chase dashboard */
+  .field-ops-top-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .field-ops-quick-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 9px;
+    margin-bottom: 12px;
+  }
+
+  .field-ops-grid.field-ops-grid-wide {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .field-briefing-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 12px;
+  }
+
+  .field-briefing-grid label {
+    display: grid;
+    gap: 6px;
+    color: rgba(226, 232, 240, 0.72);
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+  }
+
+  .field-briefing-grid .field-wide {
+    grid-column: 1 / -1;
+  }
+
+  .field-briefing-input,
+  .field-briefing-textarea {
+    width: 100%;
+    color: #f8fafc;
+    background: rgba(3, 7, 12, 0.72);
+    border: 1px solid rgba(170, 185, 205, 0.26);
+    border-radius: 6px;
+    padding: 11px;
+    font: inherit;
+    outline: none;
+  }
+
+  .field-briefing-textarea {
+    min-height: 88px;
+    resize: vertical;
+  }
+
+  .field-briefing-input:focus,
+  .field-briefing-textarea:focus {
+    border-color: rgba(255, 138, 36, 0.66);
+    box-shadow: 0 0 0 3px rgba(255, 138, 36, 0.12);
+  }
+
+  .field-save-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 12px;
+  }
+
+  .field-save-btn {
+    min-height: 40px;
+    padding: 0 14px;
+    color: #f8fafc;
+    background: linear-gradient(135deg, rgba(255, 138, 36, 0.28), rgba(15, 23, 42, 0.9));
+    border: 1px solid rgba(255, 138, 36, 0.56);
+    border-radius: 5px;
+    font-weight: 900;
+    cursor: pointer;
+  }
+
+  .field-saved-note {
+    color: rgba(226, 232, 240, 0.66);
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+
+  .field-safety-list {
+    display: grid;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .field-safety-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    color: #f8fafc;
+    background: rgba(255, 255, 255, 0.055);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 6px;
+    padding: 10px;
+    line-height: 1.35;
+  }
+
+  .field-safety-dot {
+    width: 9px;
+    height: 9px;
+    margin-top: 6px;
+    border-radius: 999px;
+    background: #38d96f;
+    box-shadow: 0 0 16px rgba(56, 217, 111, 0.55);
+    flex: 0 0 auto;
+  }
+
+  @media (max-width: 1040px) {
+    .field-ops-top-grid,
+    .field-ops-grid.field-ops-grid-wide {
+      grid-template-columns: 1fr;
+    }
+
+    .field-ops-quick-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
 </style>
 <style id="universal-chase-mobile-css">
   .mobile-field-shell,
@@ -1164,6 +1292,134 @@
       grid-template-columns: 1fr;
     }
   }
+
+  /* Desktop field-ops content sync with mobile chase dashboard */
+  .field-ops-top-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .field-ops-quick-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 9px;
+    margin-bottom: 12px;
+  }
+
+  .field-ops-grid.field-ops-grid-wide {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .field-briefing-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 12px;
+  }
+
+  .field-briefing-grid label {
+    display: grid;
+    gap: 6px;
+    color: rgba(226, 232, 240, 0.72);
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+  }
+
+  .field-briefing-grid .field-wide {
+    grid-column: 1 / -1;
+  }
+
+  .field-briefing-input,
+  .field-briefing-textarea {
+    width: 100%;
+    color: #f8fafc;
+    background: rgba(3, 7, 12, 0.72);
+    border: 1px solid rgba(170, 185, 205, 0.26);
+    border-radius: 6px;
+    padding: 11px;
+    font: inherit;
+    outline: none;
+  }
+
+  .field-briefing-textarea {
+    min-height: 88px;
+    resize: vertical;
+  }
+
+  .field-briefing-input:focus,
+  .field-briefing-textarea:focus {
+    border-color: rgba(255, 138, 36, 0.66);
+    box-shadow: 0 0 0 3px rgba(255, 138, 36, 0.12);
+  }
+
+  .field-save-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 12px;
+  }
+
+  .field-save-btn {
+    min-height: 40px;
+    padding: 0 14px;
+    color: #f8fafc;
+    background: linear-gradient(135deg, rgba(255, 138, 36, 0.28), rgba(15, 23, 42, 0.9));
+    border: 1px solid rgba(255, 138, 36, 0.56);
+    border-radius: 5px;
+    font-weight: 900;
+    cursor: pointer;
+  }
+
+  .field-saved-note {
+    color: rgba(226, 232, 240, 0.66);
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+
+  .field-safety-list {
+    display: grid;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .field-safety-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    color: #f8fafc;
+    background: rgba(255, 255, 255, 0.055);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 6px;
+    padding: 10px;
+    line-height: 1.35;
+  }
+
+  .field-safety-dot {
+    width: 9px;
+    height: 9px;
+    margin-top: 6px;
+    border-radius: 999px;
+    background: #38d96f;
+    box-shadow: 0 0 16px rgba(56, 217, 111, 0.55);
+    flex: 0 0 auto;
+  }
+
+  @media (max-width: 1040px) {
+    .field-ops-top-grid,
+    .field-ops-grid.field-ops-grid-wide {
+      grid-template-columns: 1fr;
+    }
+
+    .field-ops-quick-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
 </style>
 </head>
 <body>
@@ -1253,22 +1509,104 @@
       </section>
       <div class="dashboard-spacer"></div>
     
+
 <section class="field-ops-board" id="field-ops">
   <div class="field-ops-header">
     <div class="field-ops-kicker">Field Operations</div>
     <h2 class="field-ops-title">Chase Day Quick Access</h2>
     <p class="field-ops-subtitle">
-      Lightweight official links for radar, SPC products, satellite, surface observations,
-      road conditions, and local NWS offices. Built for quick taps while staging or repositioning.
+      Same field-use content as mobile: briefing notes, quick launch, safety cutoffs,
+      SPC products, radar, satellite, observations, and road links.
     </p>
   </div>
 
-  <div class="field-ops-grid">
+  <div class="field-ops-top-grid">
+    <article class="field-ops-card">
+      <h3>Current Target / Chase Briefing</h3>
+      <p class="field-ops-subtitle">
+        These notes save locally in this browser. Use this for target, timing, hazards, and route thinking.
+      </p>
+
+      <div class="field-briefing-grid">
+        <label>
+          Target Area
+          <input class="field-briefing-input" data-desktop-chase-save="targetArea" type="text" placeholder="Central NC / southern VA corridor">
+        </label>
+
+        <label>
+          Main Hazard
+          <input class="field-briefing-input" data-desktop-chase-save="mainHazard" type="text" placeholder="Damaging wind, hail, isolated tornado">
+        </label>
+
+        <label>
+          Timing Window
+          <input class="field-briefing-input" data-desktop-chase-save="timingWindow" type="text" placeholder="3 PM - 9 PM EDT">
+        </label>
+
+        <label>
+          Boundary / Trigger
+          <input class="field-briefing-input" data-desktop-chase-save="trigger" type="text" placeholder="Outflow boundary, front, terrain heating">
+        </label>
+
+        <label class="field-wide">
+          Field Notes
+          <textarea class="field-briefing-textarea" data-desktop-chase-save="fieldNotes" placeholder="Escape routes, fuel stops, staging towns, terrain problems..."></textarea>
+        </label>
+      </div>
+
+      <div class="field-save-row">
+        <button class="field-save-btn" id="desktopChaseSaveBriefing" type="button">Save Briefing</button>
+        <span class="field-saved-note" id="desktopChaseSavedNote">Auto-saves locally</span>
+      </div>
+    </article>
+
+    <article class="field-ops-card">
+      <h3>Chase Safety Cutoffs</h3>
+      <p class="field-ops-subtitle">
+        Keep this boring and strict. The point is coming home with good data, not getting boxed in.
+      </p>
+
+      <div class="field-safety-list">
+        <div class="field-safety-item"><span class="field-safety-dot"></span><span>Do not core punch just to save time. Reposition early.</span></div>
+        <div class="field-safety-item"><span class="field-safety-dot"></span><span>Keep at least one clean east/south/east-southeast escape route.</span></div>
+        <div class="field-safety-item"><span class="field-safety-dot"></span><span>Abort if the road network gets wooded, flooded, or boxed by terrain.</span></div>
+        <div class="field-safety-item"><span class="field-safety-dot"></span><span>Never trust only one radar source. Cross-check warnings, velocity, roads, and visuals.</span></div>
+      </div>
+    </article>
+  </div>
+
+  <div class="field-ops-quick-grid">
+    <a class="field-link" href="level2-mobile-radar.html">
+      <span>Zach Radar<small>Level II mobile page</small></span>
+      <span class="field-link-arrow">›</span>
+    </a>
+
+    <a class="field-link" href="https://www.spc.noaa.gov/products/outlook/" target="_blank" rel="noopener">
+      <span>SPC Outlooks<small>Day 1-8 severe risk</small></span>
+      <span class="field-link-arrow">›</span>
+    </a>
+
+    <a class="field-link" href="https://www.spc.noaa.gov/products/md/" target="_blank" rel="noopener">
+      <span>SPC MDs<small>Mesoscale discussions</small></span>
+      <span class="field-link-arrow">›</span>
+    </a>
+
+    <a class="field-link" href="https://www.spc.noaa.gov/products/watch/" target="_blank" rel="noopener">
+      <span>SPC Watches<small>Current watches</small></span>
+      <span class="field-link-arrow">›</span>
+    </a>
+  </div>
+
+  <div class="field-ops-grid field-ops-grid-wide">
     <article class="field-ops-card">
       <h3>SPC / Severe Weather</h3>
       <div class="field-link-list">
         <a class="field-link" href="https://www.spc.noaa.gov/products/outlook/" target="_blank" rel="noopener">
           <span>Convective Outlooks<small>Day 1, Day 2, Day 3, Day 4-8</small></span>
+          <span class="field-link-arrow">›</span>
+        </a>
+        <a class="field-link" href="https://www.spc.noaa.gov/exper/mesoanalysis/" target="_blank" rel="noopener">
+          <span>SPC Mesoanalysis<small>Instability, shear, boundaries</small></span>
           <span class="field-link-arrow">›</span>
         </a>
         <a class="field-link" href="https://www.spc.noaa.gov/products/md/" target="_blank" rel="noopener">
@@ -1279,10 +1617,6 @@
           <span>Current Watches<small>Tornado / severe thunderstorm watches</small></span>
           <span class="field-link-arrow">›</span>
         </a>
-        <a class="field-link" href="https://www.spc.noaa.gov/exper/mesoanalysis/" target="_blank" rel="noopener">
-          <span>SPC Mesoanalysis<small>Instability, shear, boundaries</small></span>
-          <span class="field-link-arrow">›</span>
-        </a>
       </div>
     </article>
 
@@ -1290,7 +1624,7 @@
       <h3>Radar / Satellite / Obs</h3>
       <div class="field-link-list">
         <a class="field-link" href="level2-mobile-radar.html">
-          <span>Zach Level II Radar<small>Mobile radar page</small></span>
+          <span>Zach Level II Radar<small>Primary site radar view</small></span>
           <span class="field-link-arrow">›</span>
         </a>
         <a class="field-link" href="https://radar.weather.gov/" target="_blank" rel="noopener">
@@ -1298,11 +1632,19 @@
           <span class="field-link-arrow">›</span>
         </a>
         <a class="field-link" href="https://www.star.nesdis.noaa.gov/GOES/" target="_blank" rel="noopener">
-          <span>GOES Satellite<small>Visible, IR, GeoColor, sectors</small></span>
+          <span>GOES-East Satellite<small>Visible, IR, GeoColor, sectors</small></span>
           <span class="field-link-arrow">›</span>
         </a>
         <a class="field-link" href="https://aviationweather.gov/gfa/" target="_blank" rel="noopener">
           <span>AWC Obs Map<small>METARs, fronts, aviation weather</small></span>
+          <span class="field-link-arrow">›</span>
+        </a>
+        <a class="field-link" href="https://aviationweather.gov/data/metar/" target="_blank" rel="noopener">
+          <span>METAR Text<small>Surface obs by station</small></span>
+          <span class="field-link-arrow">›</span>
+        </a>
+        <a class="field-link" href="https://www.wpc.ncep.noaa.gov/html/sfc2.shtml" target="_blank" rel="noopener">
+          <span>WPC Surface Analysis<small>Fronts, lows, highs, boundaries</small></span>
           <span class="field-link-arrow">›</span>
         </a>
       </div>
@@ -1323,6 +1665,14 @@
           <span>South Carolina 511<small>SCDOT traffic map</small></span>
           <span class="field-link-arrow">›</span>
         </a>
+        <a class="field-link" href="https://smartway.tn.gov/traffic" target="_blank" rel="noopener">
+          <span>TN SmartWay<small>Tennessee traffic map</small></span>
+          <span class="field-link-arrow">›</span>
+        </a>
+        <a class="field-link" href="https://511ga.org/" target="_blank" rel="noopener">
+          <span>Georgia 511<small>GDOT traffic and incidents</small></span>
+          <span class="field-link-arrow">›</span>
+        </a>
         <a class="field-link" href="https://www.google.com/maps" target="_blank" rel="noopener">
           <span>Google Maps<small>Navigation backup</small></span>
           <span class="field-link-arrow">›</span>
@@ -1330,6 +1680,44 @@
       </div>
     </article>
   </div>
+
+  <script>
+    (function () {
+      const fields = document.querySelectorAll("[data-desktop-chase-save]");
+      const note = document.getElementById("desktopChaseSavedNote");
+      const btn = document.getElementById("desktopChaseSaveBriefing");
+      const prefix = "zachWxDesktopChaseBriefing:";
+
+      function flash(message) {
+        if (!note) return;
+        note.textContent = message;
+        window.clearTimeout(flash.timer);
+        flash.timer = window.setTimeout(function () {
+          note.textContent = "Auto-saves locally";
+        }, 1600);
+      }
+
+      fields.forEach(function (field) {
+        const key = prefix + field.dataset.desktopChaseSave;
+        const saved = window.localStorage.getItem(key);
+        if (saved !== null) field.value = saved;
+
+        field.addEventListener("input", function () {
+          window.localStorage.setItem(key, field.value);
+          flash("Saved");
+        });
+      });
+
+      if (btn) {
+        btn.addEventListener("click", function () {
+          fields.forEach(function (field) {
+            window.localStorage.setItem(prefix + field.dataset.desktopChaseSave, field.value);
+          });
+          flash("Briefing saved");
+        });
+      }
+    })();
+  </script>
 </section>
 
 <nav class="field-bottom-bar" aria-label="Chase day quick actions">
@@ -1683,6 +2071,7 @@
 <!-- UNIVERSAL_MOBILE_CHASE_END -->
 </body>
 </html>
+
 
 
 
