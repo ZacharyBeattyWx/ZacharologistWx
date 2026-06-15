@@ -475,10 +475,11 @@
         <label>
           Stream Status
           <select id="streamStatus">
-            <option>Offline</option>
-            <option>Standby</option>
-            <option>Live</option>
-          </select>
+  <option value="Auto">Auto</option>
+  <option value="Live">Live</option>
+  <option value="Standby">Standby</option>
+  <option value="Offline">Offline</option>
+</select>
         </label>
 
         <label>
@@ -651,7 +652,7 @@
         setField("chaseProbabilityLabel", data.chaseProbabilityLabel || "High");
         setField("nextUpdate", data.nextUpdate || "");
 
-        setField("streamStatus", data.streamStatus || (data.isLive ? "Live" : "Offline"));
+        setField("streamStatus", data.streamStatusMode || data.streamStatus || (data.isLive ? "Live" : "Offline"));
         setField("streamTitle", data.streamTitle || "");
         setField("streamUrl", data.streamUrl || "");
         setField("streamEmbedUrl", data.streamEmbedUrl || "");
@@ -868,6 +869,7 @@
   </script>
 </body>
 </html>
+
 
 
 

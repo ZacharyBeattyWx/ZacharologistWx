@@ -25,12 +25,162 @@ function normalizeRow(row) {
     chaseProbabilityLabel: row.chase_probability_label || "High",
     nextUpdate: row.next_update,
     streamStatus: row.stream_status || (row.is_live ? "Live" : "Offline"),
+    streamStatusMode: row.stream_status || (row.is_live ? "Live" : "Offline"),
     streamTitle: row.stream_title || "",
     streamUrl: row.stream_url || "",
     streamEmbedUrl: row.stream_embed_url || "",
     lastUpdated: row.last_updated,
     isLive: Boolean(row.is_live)
   };
+}
+
+
+let twitchTokenCache = {
+  token: "",
+  expiresAt: 0
+};
+
+let twitchLiveCache = {
+  channel: "",
+  checkedAt: "",
+  expiresAt: 0,
+  live: false
+};
+
+function twitchChannelFromUrl(rawUrl) {
+  const value = String(rawUrl || "").trim();
+  if (!value) return "zacharologist";
+
+  try {
+    const url = new URL(value);
+    const host = url.hostname.replace(/^www\./, "").toLowerCase();
+
+    if (host === "twitch.tv") {
+      return url.pathname.split("/").filter(Boolean)[0] || "zacharologist";
+    }
+
+    if (host === "player.twitch.tv") {
+      return url.searchParams.get("channel") || "zacharologist";
+    }
+  } catch (_error) {
+    return "zacharologist";
+  }
+
+  return "zacharologist";
+}
+
+async function getTwitchAppToken(env) {
+  const now = Date.now();
+
+  if (twitchTokenCache.token && twitchTokenCache.expiresAt > now + 60000) {
+    return twitchTokenCache.token;
+  }
+
+  if (!env.TWITCH_CLIENT_ID || !env.TWITCH_CLIENT_SECRET) {
+    throw new Error("Missing Twitch API credentials");
+  }
+
+  const body = new URLSearchParams();
+  body.set("client_id", env.TWITCH_CLIENT_ID);
+  body.set("client_secret", env.TWITCH_CLIENT_SECRET);
+  body.set("grant_type", "client_credentials");
+
+  const response = await fetch("https://id.twitch.tv/oauth2/token", {
+    method: "POST",
+    headers: {
+      "content-type": "application/x-www-form-urlencoded"
+    },
+    body
+  });
+
+  if (!response.ok) {
+    throw new Error(`Twitch token request failed: ${response.status}`);
+  }
+
+  const tokenData = await response.json();
+  const expiresIn = Number(tokenData.expires_in || 3600);
+
+  twitchTokenCache = {
+    token: tokenData.access_token,
+    expiresAt: now + Math.max(60, expiresIn - 120) * 1000
+  };
+
+  return twitchTokenCache.token;
+}
+
+async function getTwitchLiveStatus(env, channel) {
+  const now = Date.now();
+  const cleanChannel = String(channel || "zacharologist").trim().toLowerCase();
+
+  if (
+    twitchLiveCache.channel === cleanChannel &&
+    twitchLiveCache.expiresAt > now
+  ) {
+    return twitchLiveCache;
+  }
+
+  const token = await getTwitchAppToken(env);
+
+  const response = await fetch(
+    `https://api.twitch.tv/helix/streams?user_login=${encodeURIComponent(cleanChannel)}`,
+    {
+      headers: {
+        "authorization": `Bearer ${token}`,
+        "client-id": env.TWITCH_CLIENT_ID
+      }
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Twitch stream check failed: ${response.status}`);
+  }
+
+  const data = await response.json();
+  const live = Array.isArray(data.data) && data.data.length > 0;
+
+  twitchLiveCache = {
+    channel: cleanChannel,
+    checkedAt: new Date().toISOString(),
+    expiresAt: now + 60000,
+    live
+  };
+
+  return twitchLiveCache;
+}
+
+async function resolveAutoStreamStatus(status, env) {
+  const configuredStatus = String(status.streamStatus || "").trim();
+
+  status.streamStatusMode = configuredStatus || (status.isLive ? "Live" : "Offline");
+
+  if (configuredStatus.toLowerCase() !== "auto") {
+    return status;
+  }
+
+  try {
+    const channel = twitchChannelFromUrl(status.streamUrl);
+    const twitch = await getTwitchLiveStatus(env, channel);
+
+    return {
+      ...status,
+      streamStatusMode: "Auto",
+      streamStatus: twitch.live ? "Live" : "Offline",
+      streamAutoCheckedAt: twitch.checkedAt,
+      streamAutoSource: "twitch",
+      isLive: twitch.live
+    };
+  } catch (error) {
+    console.warn("Twitch auto stream check failed:", error);
+
+    return {
+      ...status,
+      streamStatusMode: "Auto",
+      streamStatus: "Standby",
+      streamAutoSource: "twitch-error",
+      streamAutoError: "Unable to check Twitch right now",
+      isLive: false
+    };
+  }
 }
 
 export default {
@@ -50,7 +200,9 @@ export default {
         return jsonResponse({ error: "No chase status found" }, 404);
       }
 
-      return jsonResponse(normalizeRow(row));
+      const normalized = normalizeRow(row);
+      const resolved = await resolveAutoStreamStatus(normalized, env);
+      return jsonResponse(resolved);
     }
 
     if (url.pathname === "/api/chase/status" && request.method === "POST") {
@@ -141,6 +293,7 @@ export default {
     return jsonResponse({ error: "Not found" }, 404);
   }
 };
+
 
 
 
