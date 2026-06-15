@@ -934,6 +934,105 @@
     }
   }
 
+
+  /* Admin-powered chase status + device location cards */
+  .field-admin-grid,
+  .chase-device-grid {
+    display: grid;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .field-admin-row,
+  .chase-device-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 10px;
+    background: rgba(255, 255, 255, 0.055);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 6px;
+  }
+
+  .field-admin-row span,
+  .chase-device-row span {
+    color: rgba(226, 232, 240, 0.68);
+    font-size: 0.76rem;
+    font-weight: 900;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+  }
+
+  .field-admin-row strong,
+  .chase-device-row strong {
+    color: #f8fafc;
+    text-align: right;
+  }
+
+  .chase-location-button,
+  .chase-location-map {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    padding: 0 13px;
+    color: #f8fafc;
+    text-decoration: none;
+    background: linear-gradient(135deg, rgba(255, 138, 36, 0.28), rgba(15, 23, 42, 0.9));
+    border: 1px solid rgba(255, 138, 36, 0.56);
+    border-radius: 6px;
+    font-weight: 900;
+    cursor: pointer;
+  }
+
+  .chase-location-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  @media (max-width: 760px) {
+    .mobile-admin-grid,
+    .mobile-device-grid {
+      display: grid;
+      gap: 9px;
+      margin-top: 14px;
+    }
+
+    .mobile-admin-row,
+    .mobile-device-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 11px 12px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 13px;
+    }
+
+    .mobile-admin-row span,
+    .mobile-device-row span {
+      color: #a8bfd7;
+      font-size: 0.74rem;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .mobile-admin-row strong,
+    .mobile-device-row strong {
+      color: #edf7ff;
+      text-align: right;
+    }
+
+    .chase-location-button,
+    .chase-location-map {
+      min-height: 46px;
+      border-radius: 14px;
+    }
+  }
+
 </style>
 <style id="universal-chase-mobile-css">
   .mobile-field-shell,
@@ -1420,6 +1519,105 @@
     }
   }
 
+
+  /* Admin-powered chase status + device location cards */
+  .field-admin-grid,
+  .chase-device-grid {
+    display: grid;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .field-admin-row,
+  .chase-device-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 10px;
+    background: rgba(255, 255, 255, 0.055);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 6px;
+  }
+
+  .field-admin-row span,
+  .chase-device-row span {
+    color: rgba(226, 232, 240, 0.68);
+    font-size: 0.76rem;
+    font-weight: 900;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+  }
+
+  .field-admin-row strong,
+  .chase-device-row strong {
+    color: #f8fafc;
+    text-align: right;
+  }
+
+  .chase-location-button,
+  .chase-location-map {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    padding: 0 13px;
+    color: #f8fafc;
+    text-decoration: none;
+    background: linear-gradient(135deg, rgba(255, 138, 36, 0.28), rgba(15, 23, 42, 0.9));
+    border: 1px solid rgba(255, 138, 36, 0.56);
+    border-radius: 6px;
+    font-weight: 900;
+    cursor: pointer;
+  }
+
+  .chase-location-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  @media (max-width: 760px) {
+    .mobile-admin-grid,
+    .mobile-device-grid {
+      display: grid;
+      gap: 9px;
+      margin-top: 14px;
+    }
+
+    .mobile-admin-row,
+    .mobile-device-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 11px 12px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 13px;
+    }
+
+    .mobile-admin-row span,
+    .mobile-device-row span {
+      color: #a8bfd7;
+      font-size: 0.74rem;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .mobile-admin-row strong,
+    .mobile-device-row strong {
+      color: #edf7ff;
+      text-align: right;
+    }
+
+    .chase-location-button,
+    .chase-location-map {
+      min-height: 46px;
+      border-radius: 14px;
+    }
+  }
+
 </style>
 </head>
 <body>
@@ -1522,9 +1720,9 @@
 
   <div class="field-ops-top-grid">
     <article class="field-ops-card">
-      <h3>Current Target / Chase Briefing</h3>
+      <h3>Private Field Notes</h3>
       <p class="field-ops-subtitle">
-        These notes save locally in this browser. Use this for target, timing, hazards, and route thinking.
+        These notes stay local to this browser. Use this for route thoughts, staging, fuel, escape routes, and chase-day reminders.
       </p>
 
       <div class="field-briefing-grid">
@@ -1555,7 +1753,7 @@
       </div>
 
       <div class="field-save-row">
-        <button class="field-save-btn" id="desktopChaseSaveBriefing" type="button">Save Briefing</button>
+        <button class="field-save-btn" id="desktopChaseSaveBriefing" type="button">Save Notes</button>
         <span class="field-saved-note" id="desktopChaseSavedNote">Auto-saves locally</span>
       </div>
     </article>
@@ -1574,6 +1772,29 @@
       </div>
     </article>
   </div>
+
+  
+  <article class="field-ops-card field-device-location-card">
+    <h3>My Device GPS</h3>
+    <p class="field-ops-subtitle">
+      Turn this on from the live HTTPS site to see your GPS position. Use Publish Approx Location to update the public chase location.
+    </p>
+
+    <div class="chase-device-grid">
+      <div class="chase-device-row"><span>Status</span><strong data-chase-device-status>Off</strong></div>
+      <div class="chase-device-row"><span>Latitude</span><strong data-chase-device-lat>--</strong></div>
+      <div class="chase-device-row"><span>Longitude</span><strong data-chase-device-lon>--</strong></div>
+      <div class="chase-device-row"><span>Accuracy</span><strong data-chase-device-accuracy>--</strong></div>
+      <div class="chase-device-row"><span>Speed</span><strong data-chase-device-speed>--</strong></div>
+      <div class="chase-device-row"><span>Heading</span><strong data-chase-device-heading>--</strong></div>
+      <div class="chase-device-row"><span>Updated</span><strong data-chase-device-updated>--</strong></div>
+    </div>
+
+    <div class="chase-location-actions">
+      <button class="chase-location-button" type="button" data-chase-location-enable>Enable Location</button><button class="chase-location-button" type="button" data-chase-location-publish>Publish Approx Location</button>
+      <a class="chase-location-map" href="#" target="_blank" rel="noopener" data-chase-device-map>Open Map</a>
+    </div>
+  </article>
 
   <div class="field-ops-quick-grid">
     <a class="field-link" href="level2-mobile-radar.html">
@@ -1767,8 +1988,9 @@
         const data = await response.json();
 
         const setText = (selector, value, fallback = "") => {
-          const el = document.querySelector(selector);
-          if (el) el.textContent = value || fallback;
+          document.querySelectorAll(selector).forEach((el) => {
+            el.textContent = value || fallback;
+          });
         };
 
         setText("[data-chase-status]", data.status, "Monitoring");
@@ -1787,15 +2009,13 @@
           const confidence = Math.max(0, Math.min(100, data.confidence));
           setText("[data-chase-confidence]", `${confidence}%`, "0%");
 
-          const confidenceFill = document.querySelector("[data-chase-confidence-fill]");
-          if (confidenceFill) {
+          document.querySelectorAll("[data-chase-confidence-fill]").forEach((confidenceFill) => {
             confidenceFill.style.width = `${confidence}%`;
-          }
+          });
 
-          const confidenceRow = document.querySelector("[data-chase-confidence-row]");
-          if (confidenceRow) {
+          document.querySelectorAll("[data-chase-confidence-row]").forEach((confidenceRow) => {
             confidenceRow.setAttribute("aria-label", `Confidence level ${confidence} percent`);
-          }
+          });
         }
 
         if (typeof data.chaseProbability === "number") {
@@ -1804,15 +2024,16 @@
 
         setText("[data-chase-probability-label]", data.chaseProbabilityLabel, "High");
 
-        const updatedEl = document.querySelector("[data-chase-updated]");
-        if (updatedEl && data.lastUpdated) {
+        if (data.lastUpdated) {
           const updated = new Date(data.lastUpdated);
-          updatedEl.textContent = `Updated ${updated.toLocaleString([], {
-            month: "short",
-            day: "numeric",
-            hour: "numeric",
-            minute: "2-digit"
-          })}`;
+          document.querySelectorAll("[data-chase-updated]").forEach((updatedEl) => {
+            updatedEl.textContent = `Updated ${updated.toLocaleString([], {
+              month: "short",
+              day: "numeric",
+              hour: "numeric",
+              minute: "2-digit"
+            })}`;
+          });
         }
       } catch (error) {
         console.warn("Chase status failed:", error);
@@ -1850,10 +2071,28 @@
       </div>
     </section>
 
+    <section class="mobile-card mobile-admin-status-card">
+      <div class="mobile-card-inner">
+        <h2>Current Mission</h2>
+        <p><strong data-chase-headline>Monitoring potential chase opportunities</strong></p>
+        <p data-chase-discussion>No active chase is currently underway. Updates will appear here when operations are active.</p>
+
+        <div class="mobile-admin-grid">
+          <div class="mobile-admin-row"><span>Status</span><strong data-chase-status>Monitoring</strong></div>
+          <div class="mobile-admin-row"><span>Target</span><strong data-chase-hero-target>T.B.D.</strong></div>
+          <div class="mobile-admin-row"><span>Location</span><strong data-chase-location>Not actively chasing</strong></div>
+          <div class="mobile-admin-row"><span>Hazards</span><strong data-chase-hazards>Large Hail, Tornadoes, Damaging Winds</strong></div>
+          <div class="mobile-admin-row"><span>Confidence</span><strong data-chase-confidence>75%</strong></div>
+          <div class="mobile-admin-row"><span>Next Update</span><strong data-chase-next-update>As needed</strong></div>
+          <div class="mobile-admin-row"><span>Updated</span><strong data-chase-updated>Updated from live data</strong></div>
+        </div>
+      </div>
+    </section>
+
+
     <section class="mobile-card">
       <div class="mobile-card-inner">
-        <h2>Current Target / Chase Briefing</h2>
-        <p>These notes save on this device only.</p>
+        <h2>Private Field Notes</h2><p>These notes save on this device only. They are not published to the public briefing.</p>
 
         <div class="mobile-fields">
           <label>
@@ -1883,13 +2122,35 @@
         </div>
 
         <div class="mobile-save-row">
-          <button class="mobile-save-btn" id="mobileSaveBriefing" type="button">Save Briefing</button>
+          <button class="mobile-save-btn" id="mobileSaveBriefing" type="button">Save Notes</button>
           <span class="mobile-saved-note" id="mobileSavedNote">Auto-saves locally</span>
         </div>
       </div>
     </section>
 
-    <section class="mobile-card">
+    <section class="mobile-card mobile-device-location-card">
+      <div class="mobile-card-inner">
+        <h2>My Device GPS</h2>
+        <p>Turn this on from the live HTTPS site to see your GPS position. Use Publish Approx Location to update the public chase location.</p>
+
+        <div class="mobile-device-grid">
+          <div class="mobile-device-row"><span>Status</span><strong data-chase-device-status>Off</strong></div>
+          <div class="mobile-device-row"><span>Latitude</span><strong data-chase-device-lat>--</strong></div>
+          <div class="mobile-device-row"><span>Longitude</span><strong data-chase-device-lon>--</strong></div>
+          <div class="mobile-device-row"><span>Accuracy</span><strong data-chase-device-accuracy>--</strong></div>
+          <div class="mobile-device-row"><span>Speed</span><strong data-chase-device-speed>--</strong></div>
+          <div class="mobile-device-row"><span>Heading</span><strong data-chase-device-heading>--</strong></div>
+          <div class="mobile-device-row"><span>Updated</span><strong data-chase-device-updated>--</strong></div>
+        </div>
+
+        <div class="chase-location-actions">
+          <button class="chase-location-button" type="button" data-chase-location-enable>Enable Location</button><button class="chase-location-button" type="button" data-chase-location-publish>Publish Approx Location</button>
+          <a class="chase-location-map" href="#" target="_blank" rel="noopener" data-chase-device-map>Open Map</a>
+        </div>
+      </div>
+    </section>
+
+<section class="mobile-card">
       <div class="mobile-card-inner">
         <h2>Quick Launch</h2>
         <p>The links most likely to matter while stopped, staging, or repositioning.</p>
@@ -2068,9 +2329,178 @@
     }
   })();
 </script>
+
+<script>
+  (function () {
+    if (window.zachWxLocationTrackerReady) return;
+    window.zachWxLocationTrackerReady = true;
+
+    const CHASE_STATUS_API = "https://zacharologist-chase-api.zacharologistwx.workers.dev/api/chase/status";
+    let watchId = null;
+    let latestPosition = null;
+
+    function setAll(selector, value) {
+      document.querySelectorAll(selector).forEach((el) => {
+        el.textContent = value;
+      });
+    }
+
+    function setButtonText(selector, value) {
+      document.querySelectorAll(selector).forEach((button) => {
+        button.textContent = value;
+      });
+    }
+
+    function metersPerSecondToMph(value) {
+      if (!Number.isFinite(value)) return "--";
+      return `${Math.round(value * 2.23694)} mph`;
+    }
+
+    function updateMaps(lat, lon) {
+      const url = `https://www.google.com/maps?q=${lat},${lon}`;
+      document.querySelectorAll("[data-chase-device-map]").forEach((link) => {
+        link.href = url;
+        link.textContent = "Open in Google Maps";
+      });
+    }
+
+    function startLocationWatch() {
+      if (!("geolocation" in navigator)) {
+        setAll("[data-chase-device-status]", "Not supported");
+        return;
+      }
+
+      if (watchId !== null) {
+        setAll("[data-chase-device-status]", "On");
+        setButtonText("[data-chase-location-enable]", "Location On");
+        return;
+      }
+
+      setAll("[data-chase-device-status]", "Requesting...");
+
+      watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          latestPosition = position;
+
+          const coords = position.coords;
+          const lat = coords.latitude;
+          const lon = coords.longitude;
+
+          setAll("[data-chase-device-status]", "On");
+          setButtonText("[data-chase-location-enable]", "Location On");
+          setAll("[data-chase-device-lat]", lat.toFixed(5));
+          setAll("[data-chase-device-lon]", lon.toFixed(5));
+          setAll("[data-chase-device-accuracy]", Number.isFinite(coords.accuracy) ? `${Math.round(coords.accuracy)} m` : "--");
+          setAll("[data-chase-device-speed]", metersPerSecondToMph(coords.speed));
+          setAll("[data-chase-device-heading]", Number.isFinite(coords.heading) ? `${Math.round(coords.heading)}°` : "--");
+          setAll("[data-chase-device-updated]", new Date(position.timestamp).toLocaleTimeString([], {
+            hour: "numeric",
+            minute: "2-digit",
+            second: "2-digit"
+          }));
+          updateMaps(lat, lon);
+        },
+        (error) => {
+          setAll("[data-chase-device-status]", error.message || "Location blocked");
+          setButtonText("[data-chase-location-enable]", "Enable Location");
+        },
+        {
+          enableHighAccuracy: true,
+          maximumAge: 5000,
+          timeout: 15000
+        }
+      );
+    }
+
+    async function publishApproxLocation() {
+      if (!latestPosition) {
+        alert("Turn on location first.");
+        return;
+      }
+
+      const savedToken = localStorage.getItem("zwxChaseAdminToken") || "";
+      const token = savedToken || prompt("Enter admin token to publish your approximate chase location:");
+
+      if (!token) {
+        alert("Admin token required to publish location.");
+        return;
+      }
+
+      localStorage.setItem("zwxChaseAdminToken", token);
+
+      const coords = latestPosition.coords;
+      const latApprox = coords.latitude.toFixed(3);
+      const lonApprox = coords.longitude.toFixed(3);
+      const accuracy = Number.isFinite(coords.accuracy) ? Math.round(coords.accuracy) : null;
+      const publishedLocation = accuracy
+        ? `Near ${latApprox}, ${lonApprox} · GPS ±${accuracy}m`
+        : `Near ${latApprox}, ${lonApprox}`;
+
+      setButtonText("[data-chase-location-publish]", "Publishing...");
+
+      try {
+        let currentData = {};
+        try {
+          const currentResponse = await fetch(CHASE_STATUS_API, { cache: "no-store" });
+          if (currentResponse.ok) currentData = await currentResponse.json();
+        } catch (_error) {
+          currentData = {};
+        }
+
+        const payload = {
+          ...currentData,
+          currentLocation: publishedLocation,
+          locationUpdated: new Date().toISOString(),
+          lastUpdated: new Date().toISOString()
+        };
+
+        const response = await fetch(CHASE_STATUS_API, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          throw new Error(`Publish failed with status ${response.status}`);
+        }
+
+        setAll("[data-chase-location]", publishedLocation);
+        setButtonText("[data-chase-location-publish]", "Published");
+        window.setTimeout(() => setButtonText("[data-chase-location-publish]", "Publish Approx Location"), 1800);
+
+        if (typeof loadChaseStatus === "function") {
+          loadChaseStatus();
+        }
+      } catch (error) {
+        console.warn("Location publish failed:", error);
+        alert("Location publish failed. Check token/API.");
+        setButtonText("[data-chase-location-publish]", "Publish Approx Location");
+      }
+    }
+
+    document.querySelectorAll("[data-chase-location-enable]").forEach((button) => {
+      button.addEventListener("click", startLocationWatch);
+    });
+
+    document.querySelectorAll("[data-chase-location-publish]").forEach((button) => {
+      button.addEventListener("click", publishApproxLocation);
+    });
+
+    if (typeof loadChaseStatus === "function") {
+      loadChaseStatus();
+    }
+  })();
+</script>
+
 <!-- UNIVERSAL_MOBILE_CHASE_END -->
 </body>
 </html>
+
+
+
 
 
 
