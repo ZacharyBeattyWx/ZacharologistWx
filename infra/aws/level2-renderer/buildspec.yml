@@ -1,0 +1,24 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - set -euo pipefail
+      - echo "Logging in to Amazon ECR..."
+      - aws ecr get-login-password --region "$AWS_DEFAULT_REGION" | docker login --username AWS --password-stdin "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com"
+      - IMAGE_URI="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG"
+      - echo "IMAGE_URI=$IMAGE_URI"
+
+  build:
+    commands:
+      - set -euo pipefail
+      - echo "Building Level II renderer image..."
+      - docker build -f infra/aws/level2-renderer/Dockerfile -t "$IMAGE_REPO_NAME:$IMAGE_TAG" .
+      - docker tag "$IMAGE_REPO_NAME:$IMAGE_TAG" "$IMAGE_URI"
+
+  post_build:
+    commands:
+      - set -euo pipefail
+      - echo "Pushing Level II renderer image..."
+      - docker push "$IMAGE_URI"
+      - echo "Pushed $IMAGE_URI"
