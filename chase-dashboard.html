@@ -2050,10 +2050,65 @@
 
         setText("[data-chase-probability-label]", data.chaseProbabilityLabel, "High");
 
+
+        function twitchChannelFromUrl(rawUrl) {
+          const value = String(rawUrl || "").trim();
+          if (!value) return "";
+
+          try {
+            const url = new URL(value, window.location.href);
+            const host = url.hostname.replace(/^www\./, "").toLowerCase();
+
+            if (host === "twitch.tv") {
+              const channel = url.pathname.split("/").filter(Boolean)[0] || "";
+              return channel.replace(/[^a-zA-Z0-9_]/g, "");
+            }
+
+            if (host === "player.twitch.tv") {
+              return (url.searchParams.get("channel") || "").replace(/[^a-zA-Z0-9_]/g, "");
+            }
+          } catch (_error) {
+            return "";
+          }
+
+          return "";
+        }
+
+        function resolveStreamEmbedUrl(rawEmbedUrl, rawStreamUrl) {
+          const explicitEmbed = String(rawEmbedUrl || "").trim();
+          const streamUrl = String(rawStreamUrl || "").trim();
+
+          if (explicitEmbed) {
+            try {
+              const url = new URL(explicitEmbed, window.location.href);
+
+              if (url.hostname === "player.twitch.tv") {
+                url.searchParams.delete("parent");
+                url.searchParams.append("parent", window.location.hostname);
+              }
+
+              return url.toString();
+            } catch (_error) {
+              return explicitEmbed;
+            }
+          }
+
+          const twitchChannel = twitchChannelFromUrl(streamUrl);
+          if (twitchChannel) {
+            const url = new URL("https://player.twitch.tv/");
+            url.searchParams.set("channel", twitchChannel);
+            url.searchParams.set("parent", window.location.hostname);
+            return url.toString();
+          }
+
+          return "";
+        }
+
         const streamStatus = data.streamStatus || (data.isLive ? "Live" : "Offline");
         const streamTitle = data.streamTitle || "Live Stream";
         const streamUrl = data.streamUrl || "";
         const streamEmbedUrl = data.streamEmbedUrl || "";
+        const resolvedStreamEmbedUrl = resolveStreamEmbedUrl(streamEmbedUrl, streamUrl);
 
         setText("[data-chase-stream-status]", streamStatus, "Offline");
         setText("[data-chase-stream-badge]", streamStatus, "Offline");
@@ -2072,8 +2127,8 @@
         });
 
         document.querySelectorAll("[data-chase-stream-iframe]").forEach((frame) => {
-          if (streamEmbedUrl) {
-            frame.src = streamEmbedUrl;
+          if (resolvedStreamEmbedUrl) {
+            frame.src = resolvedStreamEmbedUrl;
             frame.hidden = false;
           } else {
             frame.removeAttribute("src");
@@ -2082,7 +2137,7 @@
         });
 
         document.querySelectorAll("[data-chase-stream-placeholder]").forEach((placeholder) => {
-          placeholder.hidden = Boolean(streamEmbedUrl);
+          placeholder.hidden = Boolean(resolvedStreamEmbedUrl);
         });
 
 
@@ -2323,6 +2378,8 @@
 <!-- UNIVERSAL_MOBILE_CHASE_END -->
 </body>
 </html>
+
+
 
 
 
