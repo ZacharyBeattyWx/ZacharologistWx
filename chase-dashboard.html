@@ -2020,6 +2020,23 @@
     }
   }
 </style>
+
+<style id="stream-state-color-css">
+  .stream-state-green {
+    color: #35f28a !important;
+    text-shadow: 0 0 16px rgba(53, 242, 138, 0.34);
+  }
+
+  .stream-state-red {
+    color: #ff4d4d !important;
+    text-shadow: 0 0 16px rgba(255, 77, 77, 0.32);
+  }
+
+  .stream-state-gray {
+    color: #d1d5db !important;
+    text-shadow: none;
+  }
+</style>
 </head>
 <body>
 <div class="desktop-chase-shell">
@@ -2075,7 +2092,7 @@
               <div class="status-icon">CAR</div><div><span class="status-label">Vehicle</span><div class="status-value" data-chase-vehicle-status>In Position</div><div class="status-detail" data-chase-vehicle-detail>Ready to Deploy</div></div>
             </article>
             <article class="status-card">
-              <div class="status-icon">LIVE</div><div><span class="status-label">Stream</span><div class="status-value">OFFLINE</div><div class="status-detail">Standby</div></div>
+              <div class="status-icon">LIVE</div><div><span class="status-label">Stream</span><div class="status-value" data-chase-header-stream-status>OFFLINE</div><div class="status-detail" data-chase-header-stream-detail>Standby</div></div>
             </article>
             <article class="status-card">
               <div class="status-icon">LOC</div><div><span class="status-label">Current Position</span><div class="status-value" data-chase-location>Not actively chasing</div><div class="status-detail" data-chase-target>NC / VA / SC</div></div>
@@ -2328,6 +2345,34 @@
           });
         };
 
+        const streamStateClass = (value) => {
+          const normalized = String(value || "").trim().toLowerCase();
+
+          if (normalized.includes("offline") || normalized.includes("inactive")) {
+            return "stream-state-red";
+          }
+
+          if (normalized.includes("live") || normalized === "active") {
+            return "stream-state-green";
+          }
+
+          return "stream-state-gray";
+        };
+
+        const setStreamStateColor = (selector, value) => {
+          const className = streamStateClass(value);
+
+          document.querySelectorAll(selector).forEach((el) => {
+            el.classList.remove(
+              "stream-state-green",
+              "stream-state-red",
+              "stream-state-gray"
+            );
+            el.classList.add(className);
+          });
+        };
+
+
         const vehicleStateClass = (value) => {
           const normalized = String(value || "").trim().toLowerCase();
 
@@ -2468,6 +2513,12 @@
         setText("[data-chase-stream-status]", streamStatus, "Offline");
         setText("[data-chase-stream-badge]", streamStatus, "Offline");
         setText("[data-chase-stream-title]", streamTitle, "Live Stream");
+        setText("[data-chase-header-stream-status]", String(streamStatus || "Offline").toUpperCase(), "OFFLINE");
+        setText("[data-chase-header-stream-detail]", streamStatus === "Live" ? "Active" : streamStatus === "Offline" ? "Inactive" : "Standby");
+        setStreamStateColor("[data-chase-stream-status]", streamStatus || "Offline");
+        setStreamStateColor("[data-chase-stream-badge]", streamStatus || "Offline");
+        setStreamStateColor("[data-chase-header-stream-status]", streamStatus || "Offline");
+        setStreamStateColor("[data-chase-header-stream-detail]", streamStatus === "Live" ? "Active" : streamStatus === "Offline" ? "Inactive" : "Standby");
 
         document.querySelectorAll("[data-chase-stream-link]").forEach((link) => {
           if (streamUrl) {
@@ -2785,6 +2836,9 @@
 </script>
 </body>
 </html>
+
+
+
 
 
 
