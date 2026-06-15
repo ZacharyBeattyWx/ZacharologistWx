@@ -738,7 +738,7 @@
     }
 
     .field-link {
-      min-height: 54px;
+      min-height: 48px;
       border-radius: 12px;
       padding: 12px;
     }
@@ -1711,6 +1711,315 @@
   }
 
 </style>
+
+<style id="desktop-clean-header-status-strip-css">
+  @media (min-width: 901px) {
+    .desktop-chase-shell .site-header {
+      min-height: 86px;
+      padding: 14px clamp(28px, 3vw, 48px);
+      display: grid;
+      grid-template-columns: minmax(190px, 1fr) auto;
+      align-items: center;
+      gap: 16px;
+      overflow: visible !important;
+      position: relative;
+      z-index: 60;
+    }
+
+    .desktop-chase-shell .site-brand {
+      grid-column: 1;
+      min-width: 0;
+    }
+
+    .desktop-chase-shell .brand-main {
+      font-size: clamp(1.15rem, 1.45vw, 1.55rem);
+      letter-spacing: 0.13em;
+      white-space: nowrap;
+    }
+
+    .desktop-chase-shell .brand-sub {
+      font-size: clamp(0.43rem, 0.52vw, 0.6rem);
+      letter-spacing: 0.22em;
+      white-space: nowrap;
+    }
+
+    .desktop-chase-shell .site-menu-toggle {
+      grid-column: 2;
+      justify-self: end;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 84px;
+      min-height: 38px;
+      padding: 0 14px;
+      border-radius: 8px;
+      border: 1px solid rgba(148, 163, 184, 0.36);
+      background: rgba(10, 16, 24, 0.94);
+      color: #ffffff;
+      font: 800 0.76rem/1 "Inter", system-ui, sans-serif;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      cursor: pointer;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+      transform: none !important;
+    }
+
+    .desktop-chase-shell .site-menu-toggle:hover,
+    .desktop-chase-shell .site-menu-toggle[aria-expanded="true"] {
+      border-color: rgba(249, 115, 22, 0.85);
+      color: #ff8a1c;
+    }
+
+    .desktop-chase-shell .site-nav {
+      position: absolute;
+      top: calc(100% - 4px);
+      right: clamp(28px, 3vw, 48px);
+      width: min(280px, calc(100vw - 48px));
+      display: none;
+      grid-template-columns: 1fr;
+      gap: 4px;
+      padding: 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.28);
+      background: rgba(3, 7, 12, 0.97);
+      box-shadow: 0 22px 48px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(14px);
+      z-index: 90;
+    }
+
+    .desktop-chase-shell .site-nav.is-open {
+      display: grid;
+    }
+
+    .desktop-chase-shell .site-nav a {
+      min-height: 38px;
+      padding: 0 12px;
+      display: flex;
+      align-items: center;
+      border-radius: 8px;
+      border-bottom: 0 !important;
+      color: #f8fafc;
+    }
+
+    .desktop-chase-shell .site-nav a:hover,
+    .desktop-chase-shell .site-nav a.active {
+      background: rgba(249, 115, 22, 0.14);
+      color: #ff8a1c;
+    }
+
+    .desktop-chase-shell .header-status-row {
+      position: absolute !important;
+      left: clamp(30px, 3.4vw, 60px) !important;
+      right: clamp(30px, 3.4vw, 60px) !important;
+      top: calc(100% + 12px) !important;
+      width: auto !important;
+      margin: 0 !important;
+      transform: none !important;
+      z-index: 75;
+      display: grid !important;
+      grid-template-columns:
+        minmax(0, 0.9fr)
+        minmax(0, 0.95fr)
+        minmax(0, 0.75fr)
+        minmax(0, 1.55fr);
+      gap: 9px;
+      pointer-events: auto;
+    }
+
+    .desktop-chase-shell .header-status-row .status-card {
+      min-width: 0;
+      min-height: 44px;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow: hidden;
+      background: linear-gradient(180deg, rgba(8, 14, 22, 0.88), rgba(3, 8, 14, 0.94));
+      border-color: rgba(148, 163, 184, 0.34);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.36);
+      backdrop-filter: blur(12px);
+    }
+
+    .desktop-chase-shell .header-status-row .status-icon {
+      width: auto;
+      height: auto;
+      min-width: 30px;
+      padding: 0;
+      display: block;
+      background: transparent;
+      border: 0;
+      color: #aab7c9;
+      font-size: 0.5rem;
+      letter-spacing: 0.13em;
+      box-shadow: none;
+    }
+
+    .desktop-chase-shell .header-status-row .status-label {
+      display: none !important;
+    }
+
+    .desktop-chase-shell .header-status-row .status-card > div:last-child {
+      min-width: 0;
+      display: flex;
+      align-items: baseline;
+      gap: 7px;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .desktop-chase-shell .header-status-row .status-value,
+    .desktop-chase-shell .header-status-row .status-detail {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      line-height: 1;
+    }
+
+    .desktop-chase-shell .header-status-row .status-value {
+      font-size: clamp(0.86rem, 0.94vw, 1.08rem);
+    }
+
+    .desktop-chase-shell .header-status-row .status-detail {
+      font-size: 0.54rem;
+      opacity: 0.76;
+    }
+
+    .desktop-chase-shell .header-status-row .status-detail::before {
+      content: "•";
+      margin-right: 7px;
+      color: #6b7280;
+    }
+
+    .desktop-chase-shell .hero-content {
+      padding-top: clamp(78px, 8vh, 112px);
+    }
+  }
+
+  @media (min-width: 1500px) {
+    .desktop-chase-shell .header-status-row {
+      grid-template-columns:
+        minmax(0, 0.82fr)
+        minmax(0, 0.86fr)
+        minmax(0, 0.68fr)
+        minmax(0, 1.75fr);
+    }
+  }
+
+  @media (min-width: 901px) and (max-width: 1240px) {
+    .desktop-chase-shell .header-status-row {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .desktop-chase-shell .hero-content {
+      padding-top: 132px;
+    }
+  }
+</style>
+
+<style id="desktop-revert-menu-button-css">
+  @media (min-width: 901px) {
+    .desktop-chase-shell .site-header {
+      grid-template-columns: minmax(240px, 1fr) auto !important;
+    }
+
+    .desktop-chase-shell .site-menu-toggle {
+      display: none !important;
+    }
+
+    .desktop-chase-shell .site-nav {
+      position: static !important;
+      grid-column: 2;
+      width: auto !important;
+      display: flex !important;
+      align-items: center;
+      justify-content: flex-end;
+      gap: clamp(16px, 1.6vw, 26px);
+      padding: 0 !important;
+      border: 0 !important;
+      border-radius: 0 !important;
+      background: transparent !important;
+      box-shadow: none !important;
+      backdrop-filter: none !important;
+    }
+
+    .desktop-chase-shell .site-nav a {
+      min-height: auto !important;
+      padding: 8px 4px !important;
+      border-radius: 0 !important;
+      background: transparent !important;
+      color: #ffffff;
+      white-space: nowrap;
+    }
+
+    .desktop-chase-shell .site-nav a:hover,
+    .desktop-chase-shell .site-nav a.active {
+      background: transparent !important;
+      color: #ff8a1c;
+      border-bottom: 2px solid #ff8a1c !important;
+    }
+  }
+</style>
+
+<style id="desktop-lower-big-cards-css">
+  @media (min-width: 901px) {
+    .desktop-chase-shell .dashboard-strip > .cards-grid {
+      transform: translateY(46px);
+    }
+  }
+
+  @media (min-width: 1500px) {
+    .desktop-chase-shell .dashboard-strip > .cards-grid {
+      transform: translateY(58px);
+    }
+  }
+</style>
+
+<style id="vehicle-state-color-css">
+  .vehicle-state-green {
+    color: #35f28a !important;
+    text-shadow: 0 0 16px rgba(53, 242, 138, 0.34);
+  }
+
+  .vehicle-state-yellow {
+    color: #facc15 !important;
+    text-shadow: 0 0 14px rgba(250, 204, 21, 0.28);
+  }
+
+  .vehicle-state-red {
+    color: #ff4d4d !important;
+    text-shadow: 0 0 16px rgba(255, 77, 77, 0.32);
+  }
+
+  .vehicle-state-gray {
+    color: #d1d5db !important;
+    text-shadow: none;
+  }
+</style>
+<style id="desktop-header-detail-only-bump-css">
+  @media (min-width: 901px) {
+    .desktop-chase-shell .header-status-row .status-icon {
+      font-size: 0.5rem !important;
+      min-width: 30px;
+    }
+
+    .desktop-chase-shell .header-status-row .status-value {
+      font-size: clamp(0.86rem, 0.94vw, 1.08rem) !important;
+    }
+
+    .desktop-chase-shell .header-status-row .status-detail {
+      font-size: clamp(0.76rem, 0.82vw, 0.9rem) !important;
+      opacity: 0.92;
+      color: #d7deea;
+    }
+  }
+
+  @media (min-width: 1500px) {
+    .desktop-chase-shell .header-status-row .status-detail {
+      font-size: clamp(0.8rem, 0.84vw, 0.92rem) !important;
+    }
+  }
+</style>
 </head>
 <body>
 <div class="desktop-chase-shell">
@@ -1760,16 +2069,16 @@
         <div class="dashboard-strip">
           <div class="status-row" aria-label="Current chase status">
             <article class="status-card">
-              <div class="status-icon">TIME</div><div><span class="status-label">Next Target Window</span><div class="status-value" data-chase-next-update>As needed</div><div class="status-detail" data-chase-status>Monitoring</div></div>
+              <div class="status-icon">TIME</div><div><span class="status-label">Target Window</span><div class="status-value" data-chase-next-update>As needed</div><div class="status-detail" data-chase-status>Monitoring</div></div>
             </article>
             <article class="status-card">
-              <div class="status-icon">CAR</div><div><span class="status-label">Vehicle Status</span><div class="status-value green">In Position</div><div class="status-detail">Ready to Deploy</div></div>
+              <div class="status-icon">CAR</div><div><span class="status-label">Vehicle</span><div class="status-value" data-chase-vehicle-status>In Position</div><div class="status-detail" data-chase-vehicle-detail>Ready to Deploy</div></div>
             </article>
             <article class="status-card">
-              <div class="status-icon">LIVE</div><div><span class="status-label">Stream Status</span><div class="status-value">OFFLINE</div><div class="status-detail">Standby</div></div>
+              <div class="status-icon">LIVE</div><div><span class="status-label">Stream</span><div class="status-value">OFFLINE</div><div class="status-detail">Standby</div></div>
             </article>
             <article class="status-card">
-              <div class="status-icon">LOC</div><div><span class="status-label">Current Location</span><div class="status-value" data-chase-location>Not actively chasing</div><div class="status-detail" data-chase-target>NC / VA / SC</div></div>
+              <div class="status-icon">LOC</div><div><span class="status-label">Current Position</span><div class="status-value" data-chase-location>Not actively chasing</div><div class="status-detail" data-chase-target>NC / VA / SC</div></div>
             </article>
           </div>
 
@@ -2019,9 +2328,55 @@
           });
         };
 
+        const vehicleStateClass = (value) => {
+          const normalized = String(value || "").trim().toLowerCase();
+
+          if (normalized.includes("offline") || normalized.includes("inactive")) {
+            return "vehicle-state-red";
+          }
+
+          if (normalized.includes("chasing") || normalized === "active") {
+            return "vehicle-state-green";
+          }
+
+          if (normalized.includes("idle")) {
+            return "vehicle-state-gray";
+          }
+
+          if (
+            normalized.includes("target") ||
+            normalized.includes("assessing") ||
+            normalized.includes("moving")
+          ) {
+            return "vehicle-state-yellow";
+          }
+
+          return "vehicle-state-gray";
+        };
+
+        const setVehicleStateColor = (selector, value) => {
+          const className = vehicleStateClass(value);
+
+          document.querySelectorAll(selector).forEach((el) => {
+            el.classList.remove(
+              "green",
+              "vehicle-state-green",
+              "vehicle-state-yellow",
+              "vehicle-state-red",
+              "vehicle-state-gray"
+            );
+            el.classList.add(className);
+          });
+        };
+
+
         setText("[data-chase-status]", data.status, "Monitoring");
         setText("[data-chase-target]", data.targetArea, "NC / VA / SC");
         setText("[data-chase-location]", data.currentLocation, "Not actively chasing");
+        setText("[data-chase-vehicle-status]", data.vehicleStatus, "Assessing Target");
+        setText("[data-chase-vehicle-detail]", data.vehicleDetail, "Idle");
+        setVehicleStateColor("[data-chase-vehicle-status]", data.vehicleStatus || "Assessing Target");
+        setVehicleStateColor("[data-chase-vehicle-detail]", data.vehicleDetail || "Idle");
         setText("[data-chase-headline]", data.headline, "Monitoring potential chase opportunities");
         setText("[data-chase-discussion]", data.discussion, "No active chase is currently underway.");
         setText("[data-chase-next-update]", data.nextUpdate, "As needed");
@@ -2376,8 +2731,88 @@
   }
 </script>
 <!-- UNIVERSAL_MOBILE_CHASE_END -->
+
+<script id="desktop-header-status-menu-js">
+  (function () {
+    const shell = document.querySelector(".desktop-chase-shell");
+    if (!shell) return;
+
+    const header = shell.querySelector(".site-header");
+    const nav = shell.querySelector(".site-nav");
+    const statusRow = shell.querySelector(".status-row");
+
+    if (!header || !nav || !statusRow) return;
+
+    if (!shell.querySelector(".site-menu-toggle")) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "site-menu-toggle";
+      button.setAttribute("aria-expanded", "false");
+      button.textContent = "Menu";
+      header.insertBefore(button, nav);
+
+      button.addEventListener("click", () => {
+        const open = nav.classList.toggle("is-open");
+        button.setAttribute("aria-expanded", String(open));
+      });
+
+      document.addEventListener("click", (event) => {
+        if (!header.contains(event.target)) {
+          nav.classList.remove("is-open");
+          button.setAttribute("aria-expanded", "false");
+        }
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          nav.classList.remove("is-open");
+          button.setAttribute("aria-expanded", "false");
+        }
+      });
+    }
+
+    if (!statusRow.dataset.originalParent) {
+      const placeholder = document.createElement("div");
+      placeholder.id = "desktop-status-row-placeholder";
+      placeholder.hidden = true;
+      statusRow.parentNode.insertBefore(placeholder, statusRow);
+      statusRow.dataset.originalParent = "dashboard-strip";
+    }
+
+    statusRow.classList.add("header-status-row");
+    header.insertBefore(statusRow, shell.querySelector(".site-menu-toggle"));
+  })();
+</script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

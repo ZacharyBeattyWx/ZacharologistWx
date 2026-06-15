@@ -15,6 +15,8 @@ function normalizeRow(row) {
     status: row.status,
     targetArea: row.target_area,
     currentLocation: row.current_location,
+    vehicleStatus: row.vehicle_status || "Assessing Target",
+    vehicleDetail: row.vehicle_detail || "Idle",
     headline: row.headline,
     discussion: row.discussion,
     hazards: JSON.parse(row.hazards || "[]"),
@@ -73,6 +75,8 @@ export default {
         status: String(data.status || "Monitoring"),
         targetArea: String(data.targetArea || "T.B.D."),
         currentLocation: String(data.currentLocation || "Not actively chasing"),
+        vehicleStatus: String(data.vehicleStatus || "Assessing Target"),
+        vehicleDetail: String(data.vehicleDetail || "Idle"),
         headline: String(data.headline || "Monitoring potential chase opportunities"),
         discussion: String(data.discussion || ""),
         hazards,
@@ -94,6 +98,8 @@ export default {
           status = ?,
           target_area = ?,
           current_location = ?,
+          vehicle_status = ?,
+          vehicle_detail = ?,
           headline = ?,
           discussion = ?,
           hazards = ?,
@@ -112,6 +118,8 @@ export default {
         saved.status,
         saved.targetArea,
         saved.currentLocation,
+        saved.vehicleStatus,
+        saved.vehicleDetail,
         saved.headline,
         saved.discussion,
         JSON.stringify(saved.hazards),
@@ -133,5 +141,7 @@ export default {
     return jsonResponse({ error: "Not found" }, 404);
   }
 };
+
+
 
 

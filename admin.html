@@ -398,6 +398,26 @@
           </div>
           <span class="field-helper">Use the GPS tab to publish an approximate chase location.</span>
         </label>
+        <div class="form-grid two">
+          <label>
+            Vehicle Status
+            <select id="vehicleStatus">
+  <option value="Chasing">Chasing</option>
+  <option value="Moving to Target">Moving to Target</option>
+  <option value="Offline">Offline</option>
+  <option value="Assessing Target">Assessing Target</option>
+</select>
+          </label>
+
+          <label>
+            Vehicle Detail
+            <select id="vehicleDetail">
+  <option value="Active">Active</option>
+  <option value="Idle">Idle</option>
+  <option value="Inactive">Inactive</option>
+</select>
+          </label>
+        </div>
 
         <label>
           Next Update / Target Window
@@ -546,6 +566,8 @@
       "status",
       "targetArea",
       "currentLocation",
+      "vehicleStatus",
+      "vehicleDetail",
       "headline",
       "discussion",
       "hazards",
@@ -619,6 +641,8 @@
         setField("status", data.status || "Monitoring");
         setField("targetArea", data.targetArea || "");
         setField("currentLocation", data.currentLocation || "");
+        setField("vehicleStatus", data.vehicleStatus || "Assessing Target");
+        setField("vehicleDetail", data.vehicleDetail || "Idle");
         setField("headline", data.headline || "");
         setField("discussion", data.discussion || "");
         setField("hazards", Array.isArray(data.hazards) ? data.hazards.join(", ") : "");
@@ -648,6 +672,8 @@
         status: el("status").value,
         targetArea: el("targetArea").value.trim(),
         currentLocation: el("currentLocation").value.trim(),
+        vehicleStatus: el("vehicleStatus").value || "Assessing Target",
+        vehicleDetail: el("vehicleDetail").value || "Idle",
         headline: el("headline").value.trim(),
         discussion: el("discussion").value.trim(),
         hazards: el("hazards").value.split(",").map((item) => item.trim()).filter(Boolean),
@@ -842,5 +868,7 @@
   </script>
 </body>
 </html>
+
+
 
 
