@@ -36,7 +36,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          SITE_INPUT="${{ github.event.inputs.site || github.event.client_payload.site || '' }}"
+          SITE_INPUT="${{ github.event.inputs.site || '' }}"
           SOURCE_COUNT_INPUT="${{ github.event.inputs.source_count || github.event.client_payload.source_count || '' }}"
           FRAME_COUNT_INPUT="${{ github.event.inputs.frame_count || github.event.client_payload.frame_count || '' }}"
           EVENT_NAME="${{ github.event_name }}"
