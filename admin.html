@@ -2,217 +2,797 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Chase Admin | Zacharologist WX</title>
+
   <style>
+    :root {
+      --bg: #050b13;
+      --panel: rgba(9, 18, 30, 0.94);
+      --panel2: rgba(14, 29, 48, 0.88);
+      --line: rgba(148, 183, 218, 0.24);
+      --text: #edf7ff;
+      --muted: #a8bfd7;
+      --accent: #ff8a24;
+      --green: #28d979;
+      --danger: #ff4d4d;
+      --radius: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      background: var(--bg);
+      min-height: 100%;
+    }
+
     body {
       margin: 0;
-      font-family: system-ui, sans-serif;
-      background: #07111d;
-      color: #f8fafc;
-      padding: 18px;
+      min-height: 100%;
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 20% 0%, rgba(59, 157, 255, 0.16), transparent 30rem),
+        radial-gradient(circle at 85% 8%, rgba(255, 138, 36, 0.12), transparent 28rem),
+        linear-gradient(180deg, #06111f 0%, #050b13 100%);
+      padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
     }
 
     .admin-shell {
-      max-width: 720px;
+      width: min(920px, 100%);
       margin: 0 auto;
+      padding: 18px 12px 0;
+    }
+
+    .admin-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
     }
 
     h1 {
-      margin-bottom: 4px;
-      font-size: 1.7rem;
+      margin: 0;
+      font-size: clamp(2rem, 8vw, 3.2rem);
+      line-height: 0.95;
+      letter-spacing: -0.055em;
     }
 
-    p {
-      color: #94a3b8;
+    .subtitle {
+      margin: 8px 0 0;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .status-pill {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.07);
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 800;
+    }
+
+    .tabs {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 10px 0;
+      background: rgba(5, 11, 19, 0.92);
+      backdrop-filter: blur(16px);
+      scrollbar-width: none;
+    }
+
+    .tabs::-webkit-scrollbar {
+      display: none;
+    }
+
+    .tab-button {
+      flex: 0 0 auto;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.065);
+      color: var(--muted);
+      font: inherit;
+      font-size: 0.88rem;
+      font-weight: 850;
+      cursor: pointer;
+    }
+
+    .tab-button.active {
+      color: var(--text);
+      border-color: rgba(255, 138, 36, 0.58);
+      background: linear-gradient(135deg, rgba(255, 138, 36, 0.25), rgba(59, 157, 255, 0.10));
+    }
+
+    .tab-panel {
+      display: none;
+      background: linear-gradient(180deg, var(--panel), rgba(5, 12, 21, 0.94));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 14px;
+      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.34);
+      margin: 8px 0 14px;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    .panel-title {
+      margin: 0 0 5px;
+      font-size: 1.14rem;
+      letter-spacing: -0.025em;
+    }
+
+    .panel-copy {
+      margin: 0 0 14px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .form-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     label {
-      display: block;
-      margin-top: 16px;
+      display: grid;
+      gap: 7px;
+      color: var(--muted);
       font-size: 0.78rem;
+      font-weight: 900;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: #cbd5e1;
+      letter-spacing: 0.10em;
     }
 
     input,
     textarea,
     select {
       width: 100%;
-      box-sizing: border-box;
-      margin-top: 6px;
-      padding: 13px 14px;
-      border-radius: 12px;
-      border: 1px solid rgba(148, 163, 184, 0.35);
-      background: rgba(15, 23, 42, 0.88);
-      color: #f8fafc;
+      color: var(--text);
+      background: rgba(3, 10, 18, 0.76);
+      border: 1px solid rgba(148, 183, 218, 0.28);
+      border-radius: 13px;
+      padding: 12px;
       font: inherit;
+      font-size: 16px;
+      outline: none;
     }
 
     textarea {
       min-height: 150px;
       resize: vertical;
+      line-height: 1.45;
     }
 
-    button {
-      width: 100%;
-      margin-top: 22px;
-      padding: 15px;
-      border: 0;
-      border-radius: 999px;
-      background: linear-gradient(90deg, #ffb13d, #ff7a18);
-      color: #111827;
+    input:focus,
+    textarea:focus,
+    select:focus {
+      border-color: rgba(255, 138, 36, 0.7);
+      box-shadow: 0 0 0 3px rgba(255, 138, 36, 0.13);
+    }
+
+    .mini-note {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.4;
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px;
+      margin-top: 12px;
+    }
+
+    button,
+    .button-link {
+      min-height: 44px;
+      padding: 0 14px;
+      border-radius: 13px;
+      border: 1px solid rgba(255, 138, 36, 0.54);
+      background: linear-gradient(135deg, rgba(255, 138, 36, 0.25), rgba(59, 157, 255, 0.10));
+      color: var(--text);
+      font: inherit;
+      font-weight: 850;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    button.secondary {
+      border-color: var(--line);
+      background: rgba(255, 255, 255, 0.07);
+      color: var(--muted);
+    }
+
+    button.danger {
+      border-color: rgba(255, 77, 77, 0.5);
+      background: rgba(255, 77, 77, 0.12);
+    }
+
+    .gps-grid,
+    .preview-grid {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .gps-row,
+    .preview-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 11px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 12px;
+    }
+
+    .gps-row span,
+    .preview-row span {
+      color: var(--muted);
+      font-size: 0.74rem;
       font-weight: 900;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.10em;
     }
 
-    .note {
-      margin-top: 14px;
-      font-size: 0.85rem;
-      color: #94a3b8;
+    .gps-row strong,
+    .preview-row strong {
+      text-align: right;
+      color: var(--text);
+    }
+
+    .bottom-publish {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 40;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+      background: rgba(4, 11, 20, 0.94);
+      border-top: 1px solid var(--line);
+      backdrop-filter: blur(18px);
+    }
+
+    .bottom-publish button {
+      min-height: 48px;
+    }
+
+    .publish-status {
+      grid-column: 1 / -1;
+      color: var(--muted);
+      text-align: center;
+      font-size: 0.82rem;
+      min-height: 18px;
+    }
+
+    @media (max-width: 680px) {
+      .admin-header {
+        display: block;
+      }
+
+      .status-pill {
+        margin-top: 10px;
+      }
+
+      .two {
+        grid-template-columns: 1fr;
+      }
+
+      .tab-panel {
+        padding: 13px;
+      }
     }
   </style>
 </head>
+
 <body>
   <main class="admin-shell">
-    <h1>Chase Admin</h1>
-    <p>Mobile posting panel for ZacharologistWX chase updates.</p>
+    <header class="admin-header">
+      <div>
+        <h1>Chase Admin</h1>
+        <p class="subtitle">
+          One control panel for mission status, briefing, livestream, GPS location, and publishing.
+        </p>
+      </div>
+      <span class="status-pill" id="loadStatus">Loading...</span>
+    </header>
 
-    <label>Status</label>
-    <select id="status">
-      <option>Monitoring</option>
-      <option>Active Chase</option>
-      <option>Live</option>
-      <option>Offline</option>
-    </select>
+    <nav class="tabs" aria-label="Chase admin tabs">
+      <button class="tab-button active" type="button" data-tab="mission">Mission</button>
+      <button class="tab-button" type="button" data-tab="briefing">Briefing</button>
+      <button class="tab-button" type="button" data-tab="stream">Livestream</button>
+      <button class="tab-button" type="button" data-tab="gps">GPS</button>
+      <button class="tab-button" type="button" data-tab="token">Token</button>
+      <a class="button-link" href="chase-dashboard.html" target="_blank" rel="noopener">View Dashboard</a>
+    </nav>
 
-    <label>Target Area</label>
-    <input id="targetArea" placeholder="NC / VA / SC">
+    <section class="tab-panel active" data-panel="mission">
+      <h2 class="panel-title">Mission Status</h2>
+      <p class="panel-copy">These fields drive the main public chase dashboard cards.</p>
 
-    <label>Current Location</label>
-    <input id="currentLocation" placeholder="Not actively chasing">
+      <div class="form-grid two">
+        <label>
+          Status
+          <select id="status">
+            <option>Monitoring</option>
+            <option>Active Chase</option>
+            <option>Live</option>
+            <option>Offline</option>
+          </select>
+        </label>
 
-    <label>Headline</label>
-    <input id="headline" placeholder="Monitoring potential chase opportunities">
+        <label>
+          Target Area
+          <input id="targetArea" placeholder="NC / VA / SC">
+        </label>
 
-    <label>Discussion</label>
-    <textarea id="discussion" placeholder="Write the current chase discussion..."></textarea>
+        <label>
+          Current Location
+          <input id="currentLocation" placeholder="Not actively chasing">
+        </label>
 
-    <label>Hazards</label>
-    <input id="hazards" placeholder="Large Hail, Tornadoes, Damaging Winds">
+        <label>
+          Next Update / Target Window
+          <input id="nextUpdate" placeholder="As needed">
+        </label>
 
-    <label>Confidence</label>
-    <input id="confidence" type="number" min="0" max="100" placeholder="75">
+        <label>
+          Hazards
+          <input id="hazards" placeholder="Large Hail, Tornadoes, Damaging Winds">
+        </label>
 
-    <label>Chase Probability</label>
-    <input id="chaseProbability" type="number" min="0" max="100" placeholder="75">
+        <label>
+          Confidence
+          <input id="confidence" type="number" min="0" max="100" placeholder="75">
+        </label>
+      </div>
+    </section>
 
-    <label>Chase Probability Label</label>
-    <input id="chaseProbabilityLabel" placeholder="High">
+    <section class="tab-panel" data-panel="briefing">
+      <h2 class="panel-title">Briefing / Target Discussion</h2>
+      <p class="panel-copy">Use this for the public chase explanation shown on the dashboard.</p>
 
-    <label>Next Update</label>
-    <input id="nextUpdate" placeholder="As needed">
+      <div class="form-grid">
+        <label>
+          Headline
+          <input id="headline" placeholder="Monitoring potential chase opportunities">
+        </label>
 
-    <label>Admin Token</label>
-    <input id="adminToken" type="password" placeholder="Saved locally on this device">
+        <label>
+          Discussion
+          <textarea id="discussion" placeholder="Write the current chase discussion..."></textarea>
+        </label>
 
-    <button type="button" id="saveTokenButton">Save Admin Token</button>
-    <button type="button" id="clearTokenButton">Clear Saved Token</button>
-    <button type="button" id="publishButton">Publish Update</button>
+        <div class="form-grid two">
+          <label>
+            Chase Probability
+            <input id="chaseProbability" type="number" min="0" max="100" placeholder="75">
+          </label>
 
-    <p class="note">
-      This is the mobile-first admin shell. The next step is connecting Publish to Cloudflare Worker + D1.
-    </p>
+          <label>
+            Chase Probability Label
+            <input id="chaseProbabilityLabel" placeholder="High">
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab-panel" data-panel="stream">
+      <h2 class="panel-title">Livestream</h2>
+      <p class="panel-copy">
+        Add the stream link here. Embed URL can be added after we confirm your platform.
+      </p>
+
+      <div class="form-grid two">
+        <label>
+          Stream Status
+          <select id="streamStatus">
+            <option>Offline</option>
+            <option>Standby</option>
+            <option>Live</option>
+          </select>
+        </label>
+
+        <label>
+          Stream Title
+          <input id="streamTitle" placeholder="Live Storm Chase">
+        </label>
+      </div>
+
+      <div class="form-grid">
+        <label>
+          Stream URL
+          <input id="streamUrl" placeholder="https://youtube.com/...">
+        </label>
+
+        <label>
+          Stream Embed URL
+          <input id="streamEmbedUrl" placeholder="https://www.youtube.com/embed/...">
+        </label>
+      </div>
+
+      <p class="mini-note">
+        For now, this saves stream fields to the same chase status object. Next we will make the dashboard render the live stream card from these fields.
+      </p>
+    </section>
+
+    <section class="tab-panel" data-panel="gps">
+      <h2 class="panel-title">GPS Location</h2>
+      <p class="panel-copy">
+        Turn on GPS from this admin page, then publish an approximate public location.
+      </p>
+
+      <div class="gps-grid">
+        <div class="gps-row"><span>Status</span><strong id="gpsStatus">Off</strong></div>
+        <div class="gps-row"><span>Latitude</span><strong id="gpsLat">--</strong></div>
+        <div class="gps-row"><span>Longitude</span><strong id="gpsLon">--</strong></div>
+        <div class="gps-row"><span>Accuracy</span><strong id="gpsAccuracy">--</strong></div>
+        <div class="gps-row"><span>Speed</span><strong id="gpsSpeed">--</strong></div>
+        <div class="gps-row"><span>Heading</span><strong id="gpsHeading">--</strong></div>
+        <div class="gps-row"><span>Updated</span><strong id="gpsUpdated">--</strong></div>
+      </div>
+
+      <div class="button-row">
+        <button type="button" id="enableGpsButton">Enable GPS</button>
+        <button type="button" id="publishGpsButton">Publish Approx Location</button>
+        <a class="button-link" id="gpsMapLink" href="#" target="_blank" rel="noopener">Open Map</a>
+      </div>
+
+      <p class="mini-note">
+        Publishing GPS updates the Current Location field, then posts through the same admin token flow.
+      </p>
+    </section>
+
+    <section class="tab-panel" data-panel="token">
+      <h2 class="panel-title">Admin Token</h2>
+      <p class="panel-copy">
+        Save your token once per device. Publishing uses the saved token unless you clear it.
+      </p>
+
+      <div class="form-grid">
+        <label>
+          Admin Token
+          <input id="adminToken" type="password" placeholder="Saved locally on this device">
+        </label>
+      </div>
+
+      <div class="button-row">
+        <button type="button" id="saveTokenButton">Save Admin Token</button>
+        <button class="danger" type="button" id="clearTokenButton">Clear Saved Token</button>
+      </div>
+    </section>
   </main>
 
-  <script>
-    async function loadCurrentStatus() {
-      const response = await fetch("https://zacharologist-chase-api.zacharologistwx.workers.dev/api/chase/status", { cache: "no-store" });
-      const data = await response.json();
+  <footer class="bottom-publish">
+    <button type="button" id="reloadButton" class="secondary">Reload Current</button>
+    <button type="button" id="publishButton">Publish Update</button>
+    <div class="publish-status" id="publishStatus"></div>
+  </footer>
 
-      document.getElementById("status").value = data.status || "Monitoring";
-      document.getElementById("targetArea").value = data.targetArea || "";
-      document.getElementById("currentLocation").value = data.currentLocation || "";
-      document.getElementById("headline").value = data.headline || "";
-      document.getElementById("discussion").value = data.discussion || "";
-      document.getElementById("hazards").value = Array.isArray(data.hazards) ? data.hazards.join(", ") : "";
-      document.getElementById("confidence").value = data.confidence ?? "";
-      document.getElementById("chaseProbability").value = data.chaseProbability ?? data.confidence ?? "";
-      document.getElementById("chaseProbabilityLabel").value = data.chaseProbabilityLabel || "High";
-      document.getElementById("nextUpdate").value = data.nextUpdate || "";
+  <script>
+    const CHASE_STATUS_API = "https://zacharologist-chase-api.zacharologistwx.workers.dev/api/chase/status";
+    let currentStatusData = {};
+    let latestGpsPosition = null;
+    let gpsWatchId = null;
+
+    const ids = [
+      "status",
+      "targetArea",
+      "currentLocation",
+      "headline",
+      "discussion",
+      "hazards",
+      "confidence",
+      "chaseProbability",
+      "chaseProbabilityLabel",
+      "nextUpdate",
+      "streamStatus",
+      "streamTitle",
+      "streamUrl",
+      "streamEmbedUrl"
+    ];
+
+    function el(id) {
+      return document.getElementById(id);
+    }
+
+    function setPublishStatus(message) {
+      el("publishStatus").textContent = message || "";
+    }
+
+    function setLoadStatus(message) {
+      el("loadStatus").textContent = message || "";
+    }
+
+    function setField(id, value) {
+      const node = el(id);
+      if (!node) return;
+      node.value = value ?? "";
+    }
+
+    function numberValue(id) {
+      const raw = el(id).value;
+      return raw === "" ? 0 : Number(raw || 0);
+    }
+
+    function switchTab(target) {
+      document.querySelectorAll(".tab-button").forEach((button) => {
+        button.classList.toggle("active", button.dataset.tab === target);
+      });
+
+      document.querySelectorAll(".tab-panel").forEach((panel) => {
+        panel.classList.toggle("active", panel.dataset.panel === target);
+      });
+
+      window.localStorage.setItem("zwxChaseAdminActiveTab", target);
+    }
+
+    document.querySelectorAll("[data-tab]").forEach((button) => {
+      button.addEventListener("click", () => switchTab(button.dataset.tab));
+    });
+
+    function restoreActiveTab() {
+      const saved = window.localStorage.getItem("zwxChaseAdminActiveTab");
+      if (saved && document.querySelector(`[data-panel="${saved}"]`)) {
+        switchTab(saved);
+      }
+    }
+
+    async function loadCurrentStatus() {
+      setLoadStatus("Loading...");
+      setPublishStatus("");
+
+      try {
+        const response = await fetch(CHASE_STATUS_API, { cache: "no-store" });
+        if (!response.ok) throw new Error(`Load failed ${response.status}`);
+
+        const data = await response.json();
+        currentStatusData = data || {};
+
+        setField("status", data.status || "Monitoring");
+        setField("targetArea", data.targetArea || "");
+        setField("currentLocation", data.currentLocation || "");
+        setField("headline", data.headline || "");
+        setField("discussion", data.discussion || "");
+        setField("hazards", Array.isArray(data.hazards) ? data.hazards.join(", ") : "");
+        setField("confidence", data.confidence ?? "");
+        setField("chaseProbability", data.chaseProbability ?? data.confidence ?? "");
+        setField("chaseProbabilityLabel", data.chaseProbabilityLabel || "High");
+        setField("nextUpdate", data.nextUpdate || "");
+
+        setField("streamStatus", data.streamStatus || (data.isLive ? "Live" : "Offline"));
+        setField("streamTitle", data.streamTitle || "");
+        setField("streamUrl", data.streamUrl || "");
+        setField("streamEmbedUrl", data.streamEmbedUrl || "");
+
+        setLoadStatus("Loaded");
+      } catch (error) {
+        console.warn("Chase status load failed:", error);
+        setLoadStatus("Load failed");
+        setPublishStatus("Could not load current status.");
+      }
     }
 
     function collectFormData() {
+      const streamStatus = el("streamStatus").value;
+
       return {
-        status: document.getElementById("status").value,
-        targetArea: document.getElementById("targetArea").value.trim(),
-        currentLocation: document.getElementById("currentLocation").value.trim(),
-        headline: document.getElementById("headline").value.trim(),
-        discussion: document.getElementById("discussion").value.trim(),
-        hazards: document.getElementById("hazards").value.split(",").map((item) => item.trim()).filter(Boolean),
-        confidence: Number(document.getElementById("confidence").value || 0),
-        chaseProbability: Number(document.getElementById("chaseProbability").value || 0),
-        chaseProbabilityLabel: document.getElementById("chaseProbabilityLabel").value.trim() || "High",
-        nextUpdate: document.getElementById("nextUpdate").value.trim(),
-        lastUpdated: new Date().toISOString(),
-        isLive: document.getElementById("status").value === "Live"
+        ...currentStatusData,
+        status: el("status").value,
+        targetArea: el("targetArea").value.trim(),
+        currentLocation: el("currentLocation").value.trim(),
+        headline: el("headline").value.trim(),
+        discussion: el("discussion").value.trim(),
+        hazards: el("hazards").value.split(",").map((item) => item.trim()).filter(Boolean),
+        confidence: numberValue("confidence"),
+        chaseProbability: numberValue("chaseProbability"),
+        chaseProbabilityLabel: el("chaseProbabilityLabel").value.trim() || "High",
+        nextUpdate: el("nextUpdate").value.trim(),
+        streamStatus,
+        streamTitle: el("streamTitle").value.trim(),
+        streamUrl: el("streamUrl").value.trim(),
+        streamEmbedUrl: el("streamEmbedUrl").value.trim(),
+        isLive: el("status").value === "Live" || streamStatus === "Live",
+        lastUpdated: new Date().toISOString()
       };
     }
 
-    const tokenInput = document.getElementById("adminToken");
-    tokenInput.value = localStorage.getItem("zwxChaseAdminToken") || "";
+    function savedToken() {
+      return window.localStorage.getItem("zwxChaseAdminToken") || "";
+    }
 
-    document.getElementById("saveTokenButton").addEventListener("click", () => {
-      const token = tokenInput.value.trim();
+    function activeToken() {
+      return el("adminToken").value.trim() || savedToken();
+    }
+
+    async function publishUpdate(customPayload) {
+      const token = activeToken();
+
+      if (!token) {
+        switchTab("token");
+        setPublishStatus("Enter or save the admin token before publishing.");
+        alert("Enter or save the admin token before publishing.");
+        return false;
+      }
+
+      window.localStorage.setItem("zwxChaseAdminToken", token);
+      el("adminToken").value = token;
+
+      const payload = customPayload || collectFormData();
+
+      setPublishStatus("Publishing...");
+
+      try {
+        const response = await fetch(CHASE_STATUS_API, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          throw new Error(`Publish failed ${response.status}`);
+        }
+
+        currentStatusData = payload;
+        setPublishStatus("Published.");
+        setLoadStatus("Published");
+        window.setTimeout(() => setPublishStatus(""), 1800);
+        return true;
+      } catch (error) {
+        console.warn("Publish failed:", error);
+        setPublishStatus("Publish failed. Check token/API.");
+        alert("Publish failed. Check token/API.");
+        return false;
+      }
+    }
+
+    function metersPerSecondToMph(value) {
+      if (!Number.isFinite(value)) return "--";
+      return `${Math.round(value * 2.23694)} mph`;
+    }
+
+    function setGpsText(id, value) {
+      el(id).textContent = value;
+    }
+
+    function updateGpsDisplay(position) {
+      latestGpsPosition = position;
+
+      const coords = position.coords;
+      const lat = coords.latitude;
+      const lon = coords.longitude;
+
+      setGpsText("gpsStatus", "On");
+      setGpsText("gpsLat", lat.toFixed(5));
+      setGpsText("gpsLon", lon.toFixed(5));
+      setGpsText("gpsAccuracy", Number.isFinite(coords.accuracy) ? `${Math.round(coords.accuracy)} m` : "--");
+      setGpsText("gpsSpeed", metersPerSecondToMph(coords.speed));
+      setGpsText("gpsHeading", Number.isFinite(coords.heading) ? `${Math.round(coords.heading)}°` : "--");
+      setGpsText("gpsUpdated", new Date(position.timestamp).toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+        second: "2-digit"
+      }));
+
+      el("gpsMapLink").href = `https://www.google.com/maps?q=${lat},${lon}`;
+      el("enableGpsButton").textContent = "GPS On";
+    }
+
+    function enableGps() {
+      if (!("geolocation" in navigator)) {
+        setGpsText("gpsStatus", "Not supported");
+        return;
+      }
+
+      if (gpsWatchId !== null) {
+        setGpsText("gpsStatus", "On");
+        return;
+      }
+
+      setGpsText("gpsStatus", "Requesting...");
+
+      gpsWatchId = navigator.geolocation.watchPosition(
+        updateGpsDisplay,
+        (error) => {
+          setGpsText("gpsStatus", error.message || "Blocked");
+          el("enableGpsButton").textContent = "Enable GPS";
+        },
+        {
+          enableHighAccuracy: true,
+          maximumAge: 5000,
+          timeout: 15000
+        }
+      );
+    }
+
+    async function publishApproxLocation() {
+      if (!latestGpsPosition) {
+        alert("Turn on GPS first.");
+        switchTab("gps");
+        return;
+      }
+
+      const coords = latestGpsPosition.coords;
+      const latApprox = coords.latitude.toFixed(3);
+      const lonApprox = coords.longitude.toFixed(3);
+      const accuracy = Number.isFinite(coords.accuracy) ? Math.round(coords.accuracy) : null;
+
+      const publicLocation = accuracy
+        ? `Near ${latApprox}, ${lonApprox} · GPS ±${accuracy}m`
+        : `Near ${latApprox}, ${lonApprox}`;
+
+      el("currentLocation").value = publicLocation;
+
+      const payload = {
+        ...collectFormData(),
+        currentLocation: publicLocation,
+        locationUpdated: new Date().toISOString(),
+        lastUpdated: new Date().toISOString()
+      };
+
+      await publishUpdate(payload);
+    }
+
+    el("reloadButton").addEventListener("click", loadCurrentStatus);
+
+    el("publishButton").addEventListener("click", () => publishUpdate());
+
+    el("saveTokenButton").addEventListener("click", () => {
+      const token = el("adminToken").value.trim();
       if (!token) {
         alert("Enter a token first.");
         return;
       }
 
-      localStorage.setItem("zwxChaseAdminToken", token);
+      window.localStorage.setItem("zwxChaseAdminToken", token);
+      setPublishStatus("Admin token saved on this device.");
       alert("Admin token saved on this device.");
     });
 
-    document.getElementById("clearTokenButton").addEventListener("click", () => {
-      localStorage.removeItem("zwxChaseAdminToken");
-      tokenInput.value = "";
+    el("clearTokenButton").addEventListener("click", () => {
+      window.localStorage.removeItem("zwxChaseAdminToken");
+      el("adminToken").value = "";
+      setPublishStatus("Saved admin token cleared.");
       alert("Saved admin token cleared.");
     });
 
-    document.getElementById("publishButton").addEventListener("click", async () => {
-      const token = tokenInput.value.trim() || localStorage.getItem("zwxChaseAdminToken");
-      if (!token) {
-        alert("Enter or save the admin token before publishing.");
-        return;
-      }
+    el("enableGpsButton").addEventListener("click", enableGps);
+    el("publishGpsButton").addEventListener("click", publishApproxLocation);
 
-      localStorage.setItem("zwxChaseAdminToken", token);
+    el("adminToken").value = savedToken();
 
-      const response = await fetch("https://zacharologist-chase-api.zacharologistwx.workers.dev/api/chase/status", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify(collectFormData())
-      });
-
-      if (!response.ok) {
-        alert("Publish failed.");
-        return;
-      }
-
-      alert("Chase update published.");
-    });
-
+    restoreActiveTab();
     loadCurrentStatus();
   </script>
 </body>
 </html>
-
-
-
-
-

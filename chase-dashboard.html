@@ -1033,6 +1033,52 @@
     }
   }
 
+
+  /* Public dashboard read-only stream/admin display */
+  .stream-embed-frame {
+    width: 100%;
+    height: 100%;
+    min-height: 170px;
+    border: 0;
+    border-radius: 4px;
+    background: #020617;
+  }
+
+  .stream-placeholder {
+    width: 100%;
+    min-height: 170px;
+    display: grid;
+    place-items: center;
+    gap: 8px;
+    color: #f8fafc;
+  }
+
+  .stream-placeholder[hidden],
+  .stream-embed-frame[hidden] {
+    display: none !important;
+  }
+
+  .stream-status-pill {
+    color: #ff8a24;
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .mobile-stream-box {
+    margin-top: 14px;
+    overflow: hidden;
+    border: 1px solid rgba(148, 183, 218, 0.24);
+    border-radius: 14px;
+    background: rgba(3, 10, 18, 0.68);
+  }
+
+  .mobile-stream-box .stream-embed-frame,
+  .mobile-stream-box .stream-placeholder {
+    min-height: 205px;
+  }
+
 </style>
 <style id="universal-chase-mobile-css">
   .mobile-field-shell,
@@ -1618,6 +1664,52 @@
     }
   }
 
+
+  /* Public dashboard read-only stream/admin display */
+  .stream-embed-frame {
+    width: 100%;
+    height: 100%;
+    min-height: 170px;
+    border: 0;
+    border-radius: 4px;
+    background: #020617;
+  }
+
+  .stream-placeholder {
+    width: 100%;
+    min-height: 170px;
+    display: grid;
+    place-items: center;
+    gap: 8px;
+    color: #f8fafc;
+  }
+
+  .stream-placeholder[hidden],
+  .stream-embed-frame[hidden] {
+    display: none !important;
+  }
+
+  .stream-status-pill {
+    color: #ff8a24;
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .mobile-stream-box {
+    margin-top: 14px;
+    overflow: hidden;
+    border: 1px solid rgba(148, 183, 218, 0.24);
+    border-radius: 14px;
+    background: rgba(3, 10, 18, 0.68);
+  }
+
+  .mobile-stream-box .stream-embed-frame,
+  .mobile-stream-box .stream-placeholder {
+    min-height: 205px;
+  }
+
 </style>
 </head>
 <body>
@@ -1682,11 +1774,24 @@
           </div>
 
           <div class="cards-grid" aria-label="Chase operation cards">
+            
             <article class="card" id="live">
-              <div class="card-head"><h2 class="card-title">Live Stream</h2></div>
-              <div class="card-visual stream-visual"><div class="play-button">PLAY</div><div class="live-badge">Live</div></div>
-              <div class="card-footer"><button class="card-button" type="button" onclick="alert('View Stream')">View Stream</button></div>
+              <div class="card-head">
+                <h2 class="card-title" data-chase-stream-title>Live Stream</h2>
+                <span class="card-meta stream-status-pill" data-chase-stream-status>Offline</span>
+              </div>
+              <div class="card-visual stream-visual">
+                <iframe class="stream-embed-frame" data-chase-stream-iframe title="ZacharologistWx live stream" allowfullscreen hidden></iframe>
+                <div class="stream-placeholder" data-chase-stream-placeholder>
+                  <div class="play-button">PLAY</div>
+                  <div class="live-badge" data-chase-stream-badge>Offline</div>
+                </div>
+              </div>
+              <div class="card-footer">
+                <a class="card-button" data-chase-stream-link href="#" target="_blank" rel="noopener">Stream Offline</a>
+              </div>
             </article>
+
             <article class="card" id="targets">
               <div class="card-head"><h2 class="card-title">Target Discussion</h2><span class="card-meta" data-chase-updated>Updated from live data</span></div>
               <div class="card-visual target-visual"><div class="target-copy"><strong data-chase-headline>Monitoring potential chase opportunities</strong><span data-chase-discussion>No active chase is currently underway. Updates will appear here when operations are active.</span></div></div>
@@ -1719,46 +1824,29 @@
   </div>
 
   <div class="field-ops-top-grid">
-    <article class="field-ops-card">
-      <h3>Private Field Notes</h3>
+
+    <article class="field-ops-card field-public-briefing-card">
+      <h3>Admin Chase Briefing</h3>
       <p class="field-ops-subtitle">
-        These notes stay local to this browser. Use this for route thoughts, staging, fuel, escape routes, and chase-day reminders.
+        Published from the Chase Admin page. This public dashboard is read-only.
       </p>
 
-      <div class="field-briefing-grid">
-        <label>
-          Target Area
-          <input class="field-briefing-input" data-desktop-chase-save="targetArea" type="text" placeholder="Central NC / southern VA corridor">
-        </label>
-
-        <label>
-          Main Hazard
-          <input class="field-briefing-input" data-desktop-chase-save="mainHazard" type="text" placeholder="Damaging wind, hail, isolated tornado">
-        </label>
-
-        <label>
-          Timing Window
-          <input class="field-briefing-input" data-desktop-chase-save="timingWindow" type="text" placeholder="3 PM - 9 PM EDT">
-        </label>
-
-        <label>
-          Boundary / Trigger
-          <input class="field-briefing-input" data-desktop-chase-save="trigger" type="text" placeholder="Outflow boundary, front, terrain heating">
-        </label>
-
-        <label class="field-wide">
-          Field Notes
-          <textarea class="field-briefing-textarea" data-desktop-chase-save="fieldNotes" placeholder="Escape routes, fuel stops, staging towns, terrain problems..."></textarea>
-        </label>
+      <div class="field-admin-grid">
+        <div class="field-admin-row"><span>Headline</span><strong data-chase-headline>Monitoring potential chase opportunities</strong></div>
+        <div class="field-admin-row"><span>Status</span><strong data-chase-status>Monitoring</strong></div>
+        <div class="field-admin-row"><span>Target</span><strong data-chase-hero-target>T.B.D.</strong></div>
+        <div class="field-admin-row"><span>Location</span><strong data-chase-location>Not actively chasing</strong></div>
+        <div class="field-admin-row"><span>Hazards</span><strong data-chase-hazards>Large Hail, Tornadoes, Damaging Winds</strong></div>
+        <div class="field-admin-row"><span>Confidence</span><strong data-chase-confidence>75%</strong></div>
+        <div class="field-admin-row"><span>Next Update</span><strong data-chase-next-update>As needed</strong></div>
+        <div class="field-admin-row"><span>Updated</span><strong data-chase-updated>Updated from live data</strong></div>
       </div>
 
-      <div class="field-save-row">
-        <button class="field-save-btn" id="desktopChaseSaveBriefing" type="button">Save Notes</button>
-        <span class="field-saved-note" id="desktopChaseSavedNote">Auto-saves locally</span>
-      </div>
+      <p class="field-ops-subtitle" data-chase-discussion>
+        No active chase is currently underway. Updates will appear here when operations are active.
+      </p>
     </article>
-
-    <article class="field-ops-card">
+<article class="field-ops-card">
       <h3>Chase Safety Cutoffs</h3>
       <p class="field-ops-subtitle">
         Keep this boring and strict. The point is coming home with good data, not getting boxed in.
@@ -1772,31 +1860,7 @@
       </div>
     </article>
   </div>
-
-  
-  <article class="field-ops-card field-device-location-card">
-    <h3>My Device GPS</h3>
-    <p class="field-ops-subtitle">
-      Turn this on from the live HTTPS site to see your GPS position. Use Publish Approx Location to update the public chase location.
-    </p>
-
-    <div class="chase-device-grid">
-      <div class="chase-device-row"><span>Status</span><strong data-chase-device-status>Off</strong></div>
-      <div class="chase-device-row"><span>Latitude</span><strong data-chase-device-lat>--</strong></div>
-      <div class="chase-device-row"><span>Longitude</span><strong data-chase-device-lon>--</strong></div>
-      <div class="chase-device-row"><span>Accuracy</span><strong data-chase-device-accuracy>--</strong></div>
-      <div class="chase-device-row"><span>Speed</span><strong data-chase-device-speed>--</strong></div>
-      <div class="chase-device-row"><span>Heading</span><strong data-chase-device-heading>--</strong></div>
-      <div class="chase-device-row"><span>Updated</span><strong data-chase-device-updated>--</strong></div>
-    </div>
-
-    <div class="chase-location-actions">
-      <button class="chase-location-button" type="button" data-chase-location-enable>Enable Location</button><button class="chase-location-button" type="button" data-chase-location-publish>Publish Approx Location</button>
-      <a class="chase-location-map" href="#" target="_blank" rel="noopener" data-chase-device-map>Open Map</a>
-    </div>
-  </article>
-
-  <div class="field-ops-quick-grid">
+<div class="field-ops-quick-grid">
     <a class="field-link" href="level2-mobile-radar.html">
       <span>Zach Radar<small>Level II mobile page</small></span>
       <span class="field-link-arrow">›</span>
@@ -1901,44 +1965,6 @@
       </div>
     </article>
   </div>
-
-  <script>
-    (function () {
-      const fields = document.querySelectorAll("[data-desktop-chase-save]");
-      const note = document.getElementById("desktopChaseSavedNote");
-      const btn = document.getElementById("desktopChaseSaveBriefing");
-      const prefix = "zachWxDesktopChaseBriefing:";
-
-      function flash(message) {
-        if (!note) return;
-        note.textContent = message;
-        window.clearTimeout(flash.timer);
-        flash.timer = window.setTimeout(function () {
-          note.textContent = "Auto-saves locally";
-        }, 1600);
-      }
-
-      fields.forEach(function (field) {
-        const key = prefix + field.dataset.desktopChaseSave;
-        const saved = window.localStorage.getItem(key);
-        if (saved !== null) field.value = saved;
-
-        field.addEventListener("input", function () {
-          window.localStorage.setItem(key, field.value);
-          flash("Saved");
-        });
-      });
-
-      if (btn) {
-        btn.addEventListener("click", function () {
-          fields.forEach(function (field) {
-            window.localStorage.setItem(prefix + field.dataset.desktopChaseSave, field.value);
-          });
-          flash("Briefing saved");
-        });
-      }
-    })();
-  </script>
 </section>
 
 <nav class="field-bottom-bar" aria-label="Chase day quick actions">
@@ -2024,6 +2050,42 @@
 
         setText("[data-chase-probability-label]", data.chaseProbabilityLabel, "High");
 
+        const streamStatus = data.streamStatus || (data.isLive ? "Live" : "Offline");
+        const streamTitle = data.streamTitle || "Live Stream";
+        const streamUrl = data.streamUrl || "";
+        const streamEmbedUrl = data.streamEmbedUrl || "";
+
+        setText("[data-chase-stream-status]", streamStatus, "Offline");
+        setText("[data-chase-stream-badge]", streamStatus, "Offline");
+        setText("[data-chase-stream-title]", streamTitle, "Live Stream");
+
+        document.querySelectorAll("[data-chase-stream-link]").forEach((link) => {
+          if (streamUrl) {
+            link.href = streamUrl;
+            link.textContent = streamStatus === "Live" ? "Watch Live Stream" : "Open Stream";
+            link.removeAttribute("aria-disabled");
+          } else {
+            link.href = "#";
+            link.textContent = "Stream Offline";
+            link.setAttribute("aria-disabled", "true");
+          }
+        });
+
+        document.querySelectorAll("[data-chase-stream-iframe]").forEach((frame) => {
+          if (streamEmbedUrl) {
+            frame.src = streamEmbedUrl;
+            frame.hidden = false;
+          } else {
+            frame.removeAttribute("src");
+            frame.hidden = true;
+          }
+        });
+
+        document.querySelectorAll("[data-chase-stream-placeholder]").forEach((placeholder) => {
+          placeholder.hidden = Boolean(streamEmbedUrl);
+        });
+
+
         if (data.lastUpdated) {
           const updated = new Date(data.lastUpdated);
           document.querySelectorAll("[data-chase-updated]").forEach((updatedEl) => {
@@ -2089,63 +2151,24 @@
       </div>
     </section>
 
-
-    <section class="mobile-card">
+    <section class="mobile-card mobile-stream-card">
       <div class="mobile-card-inner">
-        <h2>Private Field Notes</h2><p>These notes save on this device only. They are not published to the public briefing.</p>
+        <h2>Live Stream</h2>
+        <p><strong data-chase-stream-title>Live Storm Chase</strong></p>
+        <p>Status: <span data-chase-stream-status>Offline</span></p>
 
-        <div class="mobile-fields">
-          <label>
-            Target Area
-            <input data-mobile-save="targetArea" type="text" placeholder="Central NC / southern VA corridor">
-          </label>
-
-          <label>
-            Main Hazard
-            <input data-mobile-save="mainHazard" type="text" placeholder="Damaging wind, hail, isolated tornado">
-          </label>
-
-          <label>
-            Timing Window
-            <input data-mobile-save="timingWindow" type="text" placeholder="3 PM - 9 PM EDT">
-          </label>
-
-          <label>
-            Boundary / Trigger
-            <input data-mobile-save="trigger" type="text" placeholder="Outflow boundary, front, terrain heating">
-          </label>
-
-          <label>
-            Field Notes
-            <textarea data-mobile-save="fieldNotes" placeholder="Escape routes, fuel stops, staging towns, terrain problems..."></textarea>
-          </label>
+        <div class="mobile-stream-box">
+          <iframe class="stream-embed-frame" data-chase-stream-iframe title="ZacharologistWx live stream" allowfullscreen hidden></iframe>
+          <div class="stream-placeholder" data-chase-stream-placeholder>
+            <span data-chase-stream-badge>Offline</span>
+          </div>
         </div>
 
-        <div class="mobile-save-row">
-          <button class="mobile-save-btn" id="mobileSaveBriefing" type="button">Save Notes</button>
-          <span class="mobile-saved-note" id="mobileSavedNote">Auto-saves locally</span>
-        </div>
-      </div>
-    </section>
-
-    <section class="mobile-card mobile-device-location-card">
-      <div class="mobile-card-inner">
-        <h2>My Device GPS</h2>
-        <p>Turn this on from the live HTTPS site to see your GPS position. Use Publish Approx Location to update the public chase location.</p>
-
-        <div class="mobile-device-grid">
-          <div class="mobile-device-row"><span>Status</span><strong data-chase-device-status>Off</strong></div>
-          <div class="mobile-device-row"><span>Latitude</span><strong data-chase-device-lat>--</strong></div>
-          <div class="mobile-device-row"><span>Longitude</span><strong data-chase-device-lon>--</strong></div>
-          <div class="mobile-device-row"><span>Accuracy</span><strong data-chase-device-accuracy>--</strong></div>
-          <div class="mobile-device-row"><span>Speed</span><strong data-chase-device-speed>--</strong></div>
-          <div class="mobile-device-row"><span>Heading</span><strong data-chase-device-heading>--</strong></div>
-          <div class="mobile-device-row"><span>Updated</span><strong data-chase-device-updated>--</strong></div>
-        </div>
-
-        <div class="chase-location-actions">
-          <button class="chase-location-button" type="button" data-chase-location-enable>Enable Location</button><button class="chase-location-button" type="button" data-chase-location-publish>Publish Approx Location</button>
-          <a class="chase-location-map" href="#" target="_blank" rel="noopener" data-chase-device-map>Open Map</a>
+        <div class="mobile-link-grid">
+          <a class="mobile-link" data-chase-stream-link href="#" target="_blank" rel="noopener">
+            <span>Open Stream<small>Livestream link from admin</small></span>
+            <span class="mobile-arrow">›</span>
+          </a>
         </div>
       </div>
     </section>
@@ -2291,213 +2314,17 @@
   <a href="https://www.spc.noaa.gov/products/outlook/" target="_blank" rel="noopener">SPC</a>
   <a href="https://drivenc.gov/" target="_blank" rel="noopener">Roads</a>
 </nav>
-
 <script>
-  (function () {
-    const fields = document.querySelectorAll("[data-mobile-save]");
-    const note = document.getElementById("mobileSavedNote");
-    const btn = document.getElementById("mobileSaveBriefing");
-    const prefix = "zachWxMobileChaseBriefing:";
-
-    function flash(message) {
-      if (!note) return;
-      note.textContent = message;
-      window.clearTimeout(flash.timer);
-      flash.timer = window.setTimeout(function () {
-        note.textContent = "Auto-saves locally";
-      }, 1600);
-    }
-
-    fields.forEach(function (field) {
-      const key = prefix + field.dataset.mobileSave;
-      const saved = window.localStorage.getItem(key);
-      if (saved !== null) field.value = saved;
-
-      field.addEventListener("input", function () {
-        window.localStorage.setItem(key, field.value);
-        flash("Saved");
-      });
-    });
-
-    if (btn) {
-      btn.addEventListener("click", function () {
-        fields.forEach(function (field) {
-          window.localStorage.setItem(prefix + field.dataset.mobileSave, field.value);
-        });
-        flash("Briefing saved");
-      });
-    }
-  })();
+  // Reload chase status after mobile shell exists so duplicate mobile data hooks populate too.
+  if (typeof loadChaseStatus === "function") {
+    loadChaseStatus();
+  }
 </script>
-
-<script>
-  (function () {
-    if (window.zachWxLocationTrackerReady) return;
-    window.zachWxLocationTrackerReady = true;
-
-    const CHASE_STATUS_API = "https://zacharologist-chase-api.zacharologistwx.workers.dev/api/chase/status";
-    let watchId = null;
-    let latestPosition = null;
-
-    function setAll(selector, value) {
-      document.querySelectorAll(selector).forEach((el) => {
-        el.textContent = value;
-      });
-    }
-
-    function setButtonText(selector, value) {
-      document.querySelectorAll(selector).forEach((button) => {
-        button.textContent = value;
-      });
-    }
-
-    function metersPerSecondToMph(value) {
-      if (!Number.isFinite(value)) return "--";
-      return `${Math.round(value * 2.23694)} mph`;
-    }
-
-    function updateMaps(lat, lon) {
-      const url = `https://www.google.com/maps?q=${lat},${lon}`;
-      document.querySelectorAll("[data-chase-device-map]").forEach((link) => {
-        link.href = url;
-        link.textContent = "Open in Google Maps";
-      });
-    }
-
-    function startLocationWatch() {
-      if (!("geolocation" in navigator)) {
-        setAll("[data-chase-device-status]", "Not supported");
-        return;
-      }
-
-      if (watchId !== null) {
-        setAll("[data-chase-device-status]", "On");
-        setButtonText("[data-chase-location-enable]", "Location On");
-        return;
-      }
-
-      setAll("[data-chase-device-status]", "Requesting...");
-
-      watchId = navigator.geolocation.watchPosition(
-        (position) => {
-          latestPosition = position;
-
-          const coords = position.coords;
-          const lat = coords.latitude;
-          const lon = coords.longitude;
-
-          setAll("[data-chase-device-status]", "On");
-          setButtonText("[data-chase-location-enable]", "Location On");
-          setAll("[data-chase-device-lat]", lat.toFixed(5));
-          setAll("[data-chase-device-lon]", lon.toFixed(5));
-          setAll("[data-chase-device-accuracy]", Number.isFinite(coords.accuracy) ? `${Math.round(coords.accuracy)} m` : "--");
-          setAll("[data-chase-device-speed]", metersPerSecondToMph(coords.speed));
-          setAll("[data-chase-device-heading]", Number.isFinite(coords.heading) ? `${Math.round(coords.heading)}°` : "--");
-          setAll("[data-chase-device-updated]", new Date(position.timestamp).toLocaleTimeString([], {
-            hour: "numeric",
-            minute: "2-digit",
-            second: "2-digit"
-          }));
-          updateMaps(lat, lon);
-        },
-        (error) => {
-          setAll("[data-chase-device-status]", error.message || "Location blocked");
-          setButtonText("[data-chase-location-enable]", "Enable Location");
-        },
-        {
-          enableHighAccuracy: true,
-          maximumAge: 5000,
-          timeout: 15000
-        }
-      );
-    }
-
-    async function publishApproxLocation() {
-      if (!latestPosition) {
-        alert("Turn on location first.");
-        return;
-      }
-
-      const savedToken = localStorage.getItem("zwxChaseAdminToken") || "";
-      const token = savedToken || prompt("Enter admin token to publish your approximate chase location:");
-
-      if (!token) {
-        alert("Admin token required to publish location.");
-        return;
-      }
-
-      localStorage.setItem("zwxChaseAdminToken", token);
-
-      const coords = latestPosition.coords;
-      const latApprox = coords.latitude.toFixed(3);
-      const lonApprox = coords.longitude.toFixed(3);
-      const accuracy = Number.isFinite(coords.accuracy) ? Math.round(coords.accuracy) : null;
-      const publishedLocation = accuracy
-        ? `Near ${latApprox}, ${lonApprox} · GPS ±${accuracy}m`
-        : `Near ${latApprox}, ${lonApprox}`;
-
-      setButtonText("[data-chase-location-publish]", "Publishing...");
-
-      try {
-        let currentData = {};
-        try {
-          const currentResponse = await fetch(CHASE_STATUS_API, { cache: "no-store" });
-          if (currentResponse.ok) currentData = await currentResponse.json();
-        } catch (_error) {
-          currentData = {};
-        }
-
-        const payload = {
-          ...currentData,
-          currentLocation: publishedLocation,
-          locationUpdated: new Date().toISOString(),
-          lastUpdated: new Date().toISOString()
-        };
-
-        const response = await fetch(CHASE_STATUS_API, {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            "authorization": `Bearer ${token}`
-          },
-          body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) {
-          throw new Error(`Publish failed with status ${response.status}`);
-        }
-
-        setAll("[data-chase-location]", publishedLocation);
-        setButtonText("[data-chase-location-publish]", "Published");
-        window.setTimeout(() => setButtonText("[data-chase-location-publish]", "Publish Approx Location"), 1800);
-
-        if (typeof loadChaseStatus === "function") {
-          loadChaseStatus();
-        }
-      } catch (error) {
-        console.warn("Location publish failed:", error);
-        alert("Location publish failed. Check token/API.");
-        setButtonText("[data-chase-location-publish]", "Publish Approx Location");
-      }
-    }
-
-    document.querySelectorAll("[data-chase-location-enable]").forEach((button) => {
-      button.addEventListener("click", startLocationWatch);
-    });
-
-    document.querySelectorAll("[data-chase-location-publish]").forEach((button) => {
-      button.addEventListener("click", publishApproxLocation);
-    });
-
-    if (typeof loadChaseStatus === "function") {
-      loadChaseStatus();
-    }
-  })();
-</script>
-
 <!-- UNIVERSAL_MOBILE_CHASE_END -->
 </body>
 </html>
+
+
 
 
 
