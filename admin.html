@@ -189,6 +189,43 @@
       border-color: rgba(255, 138, 36, 0.7);
       box-shadow: 0 0 0 3px rgba(255, 138, 36, 0.13);
     }
+    .inline-input-action {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    .inline-tab-button {
+      min-height: 44px;
+      padding: 0 13px;
+      border-radius: 13px;
+      border: 1px solid rgba(255, 138, 36, 0.54);
+      background: linear-gradient(135deg, rgba(255, 138, 36, 0.25), rgba(59, 157, 255, 0.10));
+      color: var(--text);
+      font: inherit;
+      font-weight: 850;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .field-helper {
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      line-height: 1.35;
+      letter-spacing: 0;
+      text-transform: none;
+      font-weight: 650;
+    }
+
+    @media (max-width: 520px) {
+      .inline-input-action {
+        grid-template-columns: 1fr;
+      }
+    }
+
+
 
     .mini-note {
       margin: 8px 0 0;
@@ -355,7 +392,11 @@
 
         <label>
           Current Location
-          <input id="currentLocation" placeholder="Not actively chasing">
+          <div class="inline-input-action">
+            <input id="currentLocation" placeholder="Not actively chasing">
+            <button class="inline-tab-button" type="button" id="openGpsFromLocation">GPS</button>
+          </div>
+          <span class="field-helper">Use the GPS tab to publish an approximate chase location.</span>
         </label>
 
         <label>
@@ -763,6 +804,12 @@
       await publishUpdate(payload);
     }
 
+
+    const openGpsFromLocationButton = el("openGpsFromLocation");
+    if (openGpsFromLocationButton) {
+      openGpsFromLocationButton.addEventListener("click", () => switchTab("gps"));
+    }
+
     el("reloadButton").addEventListener("click", loadCurrentStatus);
 
     el("publishButton").addEventListener("click", () => publishUpdate());
@@ -796,3 +843,4 @@
   </script>
 </body>
 </html>
+
