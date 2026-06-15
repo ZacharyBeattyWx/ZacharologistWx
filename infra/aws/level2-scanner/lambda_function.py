@@ -943,6 +943,18 @@ def lambda_handler(event, context):
         latest_key = latest_renderable_source_key(keys)
         source_state = remember_latest_source_key(site, latest_key)
 
+        if not manual_force_dispatch and not manual_dispatch_target:
+            skipped.append(
+                {
+                    "site": site,
+                    "reason": "source event cached for watchdog grouping",
+                    "keys_in_batch": len(keys),
+                    "latest_key": latest_key,
+                    "source_state": source_state,
+                }
+            )
+            continue
+
         if not manual_force_dispatch and not claim_dispatch_slot(site):
             skipped.append(
                 {
