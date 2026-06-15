@@ -22,6 +22,10 @@ function normalizeRow(row) {
     chaseProbability: row.chase_probability ?? row.confidence,
     chaseProbabilityLabel: row.chase_probability_label || "High",
     nextUpdate: row.next_update,
+    streamStatus: row.stream_status || (row.is_live ? "Live" : "Offline"),
+    streamTitle: row.stream_title || "",
+    streamUrl: row.stream_url || "",
+    streamEmbedUrl: row.stream_embed_url || "",
     lastUpdated: row.last_updated,
     isLive: Boolean(row.is_live)
   };
@@ -76,8 +80,12 @@ export default {
         chaseProbability,
         chaseProbabilityLabel,
         nextUpdate: String(data.nextUpdate || "As needed"),
+        streamStatus: String(data.streamStatus || (data.isLive ? "Live" : "Offline")),
+        streamTitle: String(data.streamTitle || ""),
+        streamUrl: String(data.streamUrl || ""),
+        streamEmbedUrl: String(data.streamEmbedUrl || ""),
         lastUpdated: new Date().toISOString(),
-        isLive: Boolean(data.isLive)
+        isLive: Boolean(data.isLive) || String(data.streamStatus || "").toLowerCase() === "live"
       };
 
       await env.DB.prepare(`
@@ -93,6 +101,10 @@ export default {
           chase_probability = ?,
           chase_probability_label = ?,
           next_update = ?,
+          stream_status = ?,
+          stream_title = ?,
+          stream_url = ?,
+          stream_embed_url = ?,
           last_updated = ?,
           is_live = ?
         WHERE id = 1
@@ -107,6 +119,10 @@ export default {
         saved.chaseProbability,
         saved.chaseProbabilityLabel,
         saved.nextUpdate,
+        saved.streamStatus,
+        saved.streamTitle,
+        saved.streamUrl,
+        saved.streamEmbedUrl,
         saved.lastUpdated,
         saved.isLive ? 1 : 0
       ).run();
@@ -117,4 +133,5 @@ export default {
     return jsonResponse({ error: "Not found" }, 404);
   }
 };
+
 
