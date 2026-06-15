@@ -11,6 +11,7 @@ RUN apt-get update \
         bash \
         ca-certificates \
         curl \
+        libexpat1 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY scripts/radar/requirements.txt /tmp/radar-requirements.txt
