@@ -574,7 +574,7 @@
       </div>
       <div id="mobileRadarOptionsPanel">
         <label class="toolbar-field">Site
-          <select id="siteSelect"><option value="KFCX">KFCX</option><option value="KRAX">KRAX</option><option value="KGSP">KGSP</option><option value="KLTX">KLTX</option><option value="KMRX">KMRX</option><option value="KJKL">KJKL</option><option value="KRLX">KRLX</option><option value="KLWX">KLWX</option><option value="KMHX">KMHX</option><option value="KAKQ">KAKQ</option><option value="KCAE">KCAE</option><option value="KCLX">KCLX</option></select>
+          <select id="siteSelect"><option value="KFCX">KFCX</option><option value="KRAX">KRAX</option><option value="KGSP">KGSP</option><option value="KLTX">KLTX</option><option value="KMRX">KMRX</option><option value="KJKL">KJKL</option><option value="KRLX">KRLX</option><option value="KLWX">KLWX</option><option value="KMHX">KMHX</option><option value="KAKQ">KAKQ</option><option value="KCAE">KCAE</option><option value="KCLX">KCLX</option><option value="KILX">KILX</option><option value="KIND">KIND</option><option value="KLOT">KLOT</option><option value="KLSX">KLSX</option><option value="KIWX">KIWX</option><option value="KDVN">KDVN</option></select>
         </label>
         <div class="select-row">
           <label class="toolbar-field">Frame
@@ -608,7 +608,7 @@
   <script>
     const MAPBOX_TOKEN = window.MAPBOX_PUBLIC_TOKEN;
     const MAPBOX_STYLE = "mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
-    const LEVEL2_SUPPORTED_SITES = ["KFCX", "KRAX", "KGSP", "KLTX", "KMRX", "KJKL", "KRLX", "KLWX", "KMHX", "KAKQ", "KCAE", "KCLX"];
+    const LEVEL2_SUPPORTED_SITES = ["KFCX", "KRAX", "KGSP", "KLTX", "KMRX", "KJKL", "KRLX", "KLWX", "KMHX", "KAKQ", "KCAE", "KCLX", "KILX", "KIND", "KLOT", "KLSX", "KIWX", "KDVN"];
     const DEFAULT_LEVEL2_SITE = "KFCX";
     const LEVEL2_PRODUCT = "LEVEL2_REF0";
     const LEVEL2_REMOTE_BASE_URL = "https://radar.zacharologistwx.com";
@@ -3139,7 +3139,13 @@
           { type: "Feature", properties: { id: "KRLX" }, geometry: { type: "Point", coordinates: [-81.723, 38.311] } },
           { type: "Feature", properties: { id: "KLWX" }, geometry: { type: "Point", coordinates: [-77.488, 38.976] } },
           { type: "Feature", properties: { id: "KMHX" }, geometry: { type: "Point", coordinates: [-76.877, 34.775] } },
-          { type: "Feature", properties: { id: "KAKQ" }, geometry: { type: "Point", coordinates: [-77.007, 36.983] } }
+          { type: "Feature", properties: { id: "KAKQ" }, geometry: { type: "Point", coordinates: [-77.007, 36.983] } },
+          { type: "Feature", properties: { id: "KILX" }, geometry: { type: "Point", coordinates: [-89.337, 40.151] } },
+          { type: "Feature", properties: { id: "KIND" }, geometry: { type: "Point", coordinates: [-86.280, 39.708] } },
+          { type: "Feature", properties: { id: "KLOT" }, geometry: { type: "Point", coordinates: [-88.084, 41.604] } },
+          { type: "Feature", properties: { id: "KLSX" }, geometry: { type: "Point", coordinates: [-90.683, 38.699] } },
+          { type: "Feature", properties: { id: "KIWX" }, geometry: { type: "Point", coordinates: [-85.700, 41.359] } },
+          { type: "Feature", properties: { id: "KDVN" }, geometry: { type: "Point", coordinates: [-90.581, 41.612] } }
         ]
       };
 
