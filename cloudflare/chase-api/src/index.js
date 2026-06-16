@@ -141,7 +141,7 @@ async function getTwitchLiveStatus(env, channel) {
   twitchLiveCache = {
     channel: cleanChannel,
     checkedAt: new Date().toISOString(),
-    expiresAt: now + 60000,
+    expiresAt: now + 15000,
     live
   };
 
@@ -293,6 +293,7 @@ export default {
     return jsonResponse({ error: "Not found" }, 404);
   }
 };
+
 
 
 
