@@ -621,7 +621,7 @@
       </div>
       <div id="mobileRadarOptionsPanel">
         <label class="toolbar-field">Site
-          <select id="siteSelect"><option value="KFCX">KFCX</option><option value="KRAX">KRAX</option><option value="KGSP">KGSP</option><option value="KLTX">KLTX</option><option value="KMRX">KMRX</option><option value="KJKL">KJKL</option><option value="KRLX">KRLX</option><option value="KLWX">KLWX</option><option value="KMHX">KMHX</option><option value="KAKQ">KAKQ</option><option value="KCAE">KCAE</option><option value="KCLX">KCLX</option><option value="KILX">KILX</option><option value="KIND">KIND</option><option value="KLOT">KLOT</option><option value="KLSX">KLSX</option><option value="KIWX">KIWX</option><option value="KDVN">KDVN</option></select>
+          <select id="siteSelect"><option value="KFCX">KFCX</option><option value="KRAX">KRAX</option><option value="KGSP">KGSP</option><option value="KLTX">KLTX</option><option value="KMRX">KMRX</option><option value="KJKL">KJKL</option><option value="KRLX">KRLX</option><option value="KLWX">KLWX</option><option value="KMHX">KMHX</option><option value="KAKQ">KAKQ</option><option value="KCAE">KCAE</option><option value="KCLX">KCLX</option><option value="KILX">KILX</option><option value="KIND">KIND</option><option value="KLOT">KLOT</option><option value="KLSX">KLSX</option><option value="KIWX">KIWX</option><option value="KDVN">KDVN</option><option value="KDMX">KDMX</option><option value="KOAX">KOAX</option><option value="KEAX">KEAX</option><option value="KICT">KICT</option><option value="KTWX">KTWX</option><option value="KSGF">KSGF</option></select>
         </label>
         <div class="select-row">
           <label class="toolbar-field">Frame
@@ -655,7 +655,7 @@
   <script>
     const MAPBOX_TOKEN = window.MAPBOX_PUBLIC_TOKEN;
     const MAPBOX_STYLE = "mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
-    const LEVEL2_SUPPORTED_SITES = ["KFCX", "KRAX", "KGSP", "KLTX", "KMRX", "KJKL", "KRLX", "KLWX", "KMHX", "KAKQ", "KCAE", "KCLX", "KILX", "KIND", "KLOT", "KLSX", "KIWX", "KDVN"];
+    const LEVEL2_SUPPORTED_SITES = ["KFCX", "KRAX", "KGSP", "KLTX", "KMRX", "KJKL", "KRLX", "KLWX", "KMHX", "KAKQ", "KCAE", "KCLX", "KILX", "KIND", "KLOT", "KLSX", "KIWX", "KDVN", "KDMX", "KOAX", "KEAX", "KICT", "KTWX", "KSGF"];
     const DEFAULT_LEVEL2_SITE = "KFCX";
     const LEVEL2_SELECTED_SITE_STORAGE_KEY = "zach-level2-selected-site";
     const LEVEL2_PRODUCT = "LEVEL2_REF0";
@@ -3255,7 +3255,13 @@
           { type: "Feature", properties: { id: "KLOT" }, geometry: { type: "Point", coordinates: [-88.084, 41.604] } },
           { type: "Feature", properties: { id: "KLSX" }, geometry: { type: "Point", coordinates: [-90.683, 38.699] } },
           { type: "Feature", properties: { id: "KIWX" }, geometry: { type: "Point", coordinates: [-85.700, 41.359] } },
-          { type: "Feature", properties: { id: "KDVN" }, geometry: { type: "Point", coordinates: [-90.581, 41.612] } }
+          { type: "Feature", properties: { id: "KDVN" }, geometry: { type: "Point", coordinates: [-90.581, 41.612] } },
+          { type: "Feature", properties: { id: "KDMX" }, geometry: { type: "Point", coordinates: [-93.722869, 41.731200] } },
+          { type: "Feature", properties: { id: "KOAX" }, geometry: { type: "Point", coordinates: [-96.366819, 41.320369] } },
+          { type: "Feature", properties: { id: "KEAX" }, geometry: { type: "Point", coordinates: [-94.264472, 38.810250] } },
+          { type: "Feature", properties: { id: "KICT" }, geometry: { type: "Point", coordinates: [-97.443056, 37.654444] } },
+          { type: "Feature", properties: { id: "KTWX" }, geometry: { type: "Point", coordinates: [-96.232550, 38.996950] } },
+          { type: "Feature", properties: { id: "KSGF" }, geometry: { type: "Point", coordinates: [-93.400419, 37.235239] } }
         ]
       };
 
