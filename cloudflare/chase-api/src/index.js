@@ -10,6 +10,68 @@
   });
 }
 
+const CHASE_LOCATION_STALE_MS = 10 * 60 * 1000;
+
+function finiteNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function trueFlag(value) {
+  return value === true ||
+    value === 1 ||
+    value === "1" ||
+    String(value).toLowerCase() === "true";
+}
+
+function chaseLocationIsStale(updatedAt) {
+  if (!updatedAt) return false;
+
+  const updatedTime = Date.parse(updatedAt);
+  if (!Number.isFinite(updatedTime)) return false;
+
+  return Date.now() - updatedTime > CHASE_LOCATION_STALE_MS;
+}
+
+function publicChaseLocationFromRow(row) {
+  const mapDisplay = trueFlag(row.chase_map_display);
+  const updatedAt = row.chase_location_updated || null;
+  const isStale = chaseLocationIsStale(updatedAt);
+
+  if (!mapDisplay) {
+    return {
+      mapDisplay: false,
+      status: "off",
+      updatedAt,
+      isStale
+    };
+  }
+
+  const lat = finiteNumber(row.chase_lat);
+  const lon = finiteNumber(row.chase_lon);
+
+  if (lat === null || lon === null) {
+    return {
+      mapDisplay: false,
+      status: "off",
+      updatedAt,
+      isStale
+    };
+  }
+
+  return {
+    mapDisplay: true,
+    status: isStale ? "stale" : "live",
+    lat,
+    lon,
+    accuracy: finiteNumber(row.chase_accuracy),
+    heading: finiteNumber(row.chase_heading),
+    speed: finiteNumber(row.chase_speed),
+    updatedAt,
+    isStale
+  };
+}
+
 function normalizeRow(row) {
   return {
     status: row.status,
@@ -29,6 +91,7 @@ function normalizeRow(row) {
     streamTitle: row.stream_title || "",
     streamUrl: row.stream_url || "",
     streamEmbedUrl: row.stream_embed_url || "",
+    chaseLocation: publicChaseLocationFromRow(row),
     lastUpdated: row.last_updated,
     isLive: Boolean(row.is_live)
   };
@@ -222,6 +285,9 @@ export default {
       const confidence = Math.max(0, Math.min(100, Number(data.confidence || 0)));
       const chaseProbability = Math.max(0, Math.min(100, Number(data.chaseProbability || confidence)));
       const chaseProbabilityLabel = String(data.chaseProbabilityLabel || "High");
+      const hasChaseLocation = data.chaseLocation && typeof data.chaseLocation === "object";
+      const chaseLocation = hasChaseLocation ? data.chaseLocation : {};
+      const hasChaseField = (field) => Object.prototype.hasOwnProperty.call(chaseLocation, field);
 
       const saved = {
         status: String(data.status || "Monitoring"),
@@ -241,32 +307,40 @@ export default {
         streamUrl: String(data.streamUrl || ""),
         streamEmbedUrl: String(data.streamEmbedUrl || ""),
         lastUpdated: new Date().toISOString(),
-        isLive: Boolean(data.isLive) || String(data.streamStatus || "").toLowerCase() === "live"
+        isLive: Boolean(data.isLive) || String(data.streamStatus || "").toLowerCase() === "live",
+        chaseLocation: {
+          mapDisplay: trueFlag(chaseLocation.mapDisplay),
+          lat: finiteNumber(chaseLocation.lat),
+          lon: finiteNumber(chaseLocation.lon),
+          accuracy: hasChaseField("accuracy") ? finiteNumber(chaseLocation.accuracy) : undefined,
+          heading: hasChaseField("heading") ? finiteNumber(chaseLocation.heading) : undefined,
+          speed: hasChaseField("speed") ? finiteNumber(chaseLocation.speed) : undefined,
+          updatedAt: chaseLocation.updatedAt ? String(chaseLocation.updatedAt) : undefined
+        }
       };
 
-      await env.DB.prepare(`
-        UPDATE chase_status
-        SET
-          status = ?,
-          target_area = ?,
-          current_location = ?,
-          vehicle_status = ?,
-          vehicle_detail = ?,
-          headline = ?,
-          discussion = ?,
-          hazards = ?,
-          confidence = ?,
-          chase_probability = ?,
-          chase_probability_label = ?,
-          next_update = ?,
-          stream_status = ?,
-          stream_title = ?,
-          stream_url = ?,
-          stream_embed_url = ?,
-          last_updated = ?,
-          is_live = ?
-        WHERE id = 1
-      `).bind(
+      const updateFields = [
+        "status = ?",
+        "target_area = ?",
+        "current_location = ?",
+        "vehicle_status = ?",
+        "vehicle_detail = ?",
+        "headline = ?",
+        "discussion = ?",
+        "hazards = ?",
+        "confidence = ?",
+        "chase_probability = ?",
+        "chase_probability_label = ?",
+        "next_update = ?",
+        "stream_status = ?",
+        "stream_title = ?",
+        "stream_url = ?",
+        "stream_embed_url = ?",
+        "last_updated = ?",
+        "is_live = ?"
+      ];
+
+      const updateBinds = [
         saved.status,
         saved.targetArea,
         saved.currentLocation,
@@ -285,7 +359,48 @@ export default {
         saved.streamEmbedUrl,
         saved.lastUpdated,
         saved.isLive ? 1 : 0
-      ).run();
+      ];
+
+      if (hasChaseLocation) {
+        updateFields.push("chase_map_display = ?");
+        updateBinds.push(saved.chaseLocation.mapDisplay ? 1 : 0);
+
+        if (saved.chaseLocation.lat !== null) {
+          updateFields.push("chase_lat = ?");
+          updateBinds.push(saved.chaseLocation.lat);
+        }
+
+        if (saved.chaseLocation.lon !== null) {
+          updateFields.push("chase_lon = ?");
+          updateBinds.push(saved.chaseLocation.lon);
+        }
+
+        if (hasChaseField("accuracy")) {
+          updateFields.push("chase_accuracy = ?");
+          updateBinds.push(saved.chaseLocation.accuracy);
+        }
+
+        if (hasChaseField("heading")) {
+          updateFields.push("chase_heading = ?");
+          updateBinds.push(saved.chaseLocation.heading);
+        }
+
+        if (hasChaseField("speed")) {
+          updateFields.push("chase_speed = ?");
+          updateBinds.push(saved.chaseLocation.speed);
+        }
+
+        if (saved.chaseLocation.updatedAt !== undefined) {
+          updateFields.push("chase_location_updated = ?");
+          updateBinds.push(saved.chaseLocation.updatedAt);
+        }
+      }
+
+      await env.DB.prepare(`
+        UPDATE chase_status
+        SET ${updateFields.join(",\n          ")}
+        WHERE id = 1
+      `).bind(...updateBinds).run();
 
       return jsonResponse({ ok: true, status: saved });
     }

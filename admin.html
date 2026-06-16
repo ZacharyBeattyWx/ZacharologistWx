@@ -517,6 +517,7 @@
         <div class="gps-row"><span>Accuracy</span><strong id="gpsAccuracy">--</strong></div>
         <div class="gps-row"><span>Speed</span><strong id="gpsSpeed">--</strong></div>
         <div class="gps-row"><span>Heading</span><strong id="gpsHeading">--</strong></div>
+        <div class="gps-row"><span>Map Display</span><strong id="gpsMapDisplayStatus">Off</strong></div>
         <div class="gps-row"><span>Auto Publish</span><strong id="gpsAutoStatus">Off</strong></div>
         <div class="gps-row"><span>Last Published</span><strong id="gpsAutoLastPublished">--</strong></div>
         <div class="gps-row"><span>Updated</span><strong id="gpsUpdated">--</strong></div>
@@ -525,6 +526,8 @@
       <div class="button-row">
         <button type="button" id="enableGpsButton">Enable GPS</button>
         <button type="button" id="publishGpsButton">Publish Approx Location</button>
+        <button type="button" id="gpsMapDisplayOnButton">Map Display ON</button>
+        <button class="secondary" type="button" id="gpsMapDisplayOffButton">Map Display OFF</button>
         <button type="button" id="startGpsAutoButton">Start Auto Publish</button>
         <button class="secondary" type="button" id="stopGpsAutoButton">Stop Auto Publish</button>
         <a class="button-link" id="gpsMapLink" href="#" target="_blank" rel="noopener">Open Map</a>
@@ -569,6 +572,7 @@
     let gpsAutoPublishTimer = null;
     let gpsAutoPublishEnabled = false;
     let gpsAutoPublishInFlight = false;
+    let chaseMapDisplayEnabled = false;
     const GPS_AUTO_PUBLISH_INTERVAL_MS = 20000;
 
     const ids = [
@@ -665,6 +669,9 @@
         setField("streamUrl", data.streamUrl || "");
         setField("streamEmbedUrl", data.streamEmbedUrl || "");
 
+        chaseMapDisplayEnabled = Boolean(data.chaseLocation?.mapDisplay);
+        updateGpsMapDisplayStatus();
+
         setLoadStatus("Loaded");
       } catch (error) {
         console.warn("Chase status load failed:", error);
@@ -760,6 +767,21 @@
       el(id).textContent = value;
     }
 
+    function updateGpsMapDisplayStatus() {
+      setGpsText("gpsMapDisplayStatus", chaseMapDisplayEnabled ? "On" : "Off");
+    }
+
+    function chaseMapUrl(lat, lon) {
+      const params = new URLSearchParams({
+        chaseLat: String(lat),
+        chaseLon: String(lon),
+        chaseZoom: "9",
+        from: "chase-admin"
+      });
+
+      return `level2-mobile-radar.html?${params.toString()}`;
+    }
+
     function updateGpsDisplay(position) {
       latestGpsPosition = position;
 
@@ -779,7 +801,7 @@
         second: "2-digit"
       }));
 
-      el("gpsMapLink").href = `https://www.google.com/maps?q=${lat},${lon}`;
+      el("gpsMapLink").href = chaseMapUrl(lat, lon);
       el("enableGpsButton").textContent = "Stop GPS";
     }
 
@@ -867,6 +889,20 @@
       return parts.join(" · ");
     }
 
+    function chaseLocationFromGps(position) {
+      const coords = position.coords;
+
+      return {
+        mapDisplay: chaseMapDisplayEnabled,
+        lat: coords.latitude,
+        lon: coords.longitude,
+        accuracy: Number.isFinite(coords.accuracy) ? coords.accuracy : null,
+        heading: Number.isFinite(coords.heading) ? coords.heading : null,
+        speed: Number.isFinite(coords.speed) ? coords.speed : null,
+        updatedAt: new Date(position.timestamp).toISOString()
+      };
+    }
+
     async function publishGpsLocation({ quiet = false } = {}) {
       if (!latestGpsPosition) {
         if (!quiet) {
@@ -882,6 +918,7 @@
       const payload = {
         ...collectFormData(),
         currentLocation: publicLocation,
+        chaseLocation: chaseLocationFromGps(latestGpsPosition),
         locationUpdated: new Date().toISOString(),
         lastUpdated: new Date().toISOString()
       };
@@ -960,6 +997,31 @@
       el("startGpsAutoButton").textContent = "Start Auto Publish";
     }
 
+    async function enableGpsMapDisplay() {
+      if (!latestGpsPosition) {
+        switchTab("gps");
+        alert("Turn on GPS first.");
+        return;
+      }
+
+      chaseMapDisplayEnabled = true;
+      updateGpsMapDisplayStatus();
+      await publishGpsLocation({ quiet: true });
+    }
+
+    async function disableGpsMapDisplay() {
+      chaseMapDisplayEnabled = false;
+      updateGpsMapDisplayStatus();
+
+      await publishUpdate({
+        ...collectFormData(),
+        chaseLocation: {
+          mapDisplay: false
+        },
+        lastUpdated: new Date().toISOString()
+      });
+    }
+
 
     const openGpsFromLocationButton = el("openGpsFromLocation");
     if (openGpsFromLocationButton) {
@@ -991,6 +1053,8 @@
 
     el("enableGpsButton").addEventListener("click", enableGps);
     el("publishGpsButton").addEventListener("click", publishApproxLocation);
+    el("gpsMapDisplayOnButton").addEventListener("click", enableGpsMapDisplay);
+    el("gpsMapDisplayOffButton").addEventListener("click", disableGpsMapDisplay);
     el("startGpsAutoButton").addEventListener("click", startGpsAutoUpdate);
     el("stopGpsAutoButton").addEventListener("click", stopGpsAutoUpdate);
 
@@ -1001,6 +1065,7 @@
   </script>
 </body>
 </html>
+
 
 
 
