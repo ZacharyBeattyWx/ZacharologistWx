@@ -2542,10 +2542,14 @@
 
         document.querySelectorAll("[data-chase-stream-iframe]").forEach((frame) => {
           if (resolvedStreamEmbedUrl) {
-            frame.src = resolvedStreamEmbedUrl;
+            if (frame.src !== resolvedStreamEmbedUrl) {
+              frame.src = resolvedStreamEmbedUrl;
+            }
             frame.hidden = false;
           } else {
-            frame.removeAttribute("src");
+            if (frame.getAttribute("src")) {
+              frame.removeAttribute("src");
+            }
             frame.hidden = true;
           }
         });
@@ -2572,7 +2576,9 @@
     }
 
     loadChaseStatus();
-    setInterval(loadChaseStatus, 15000);
+    if (!window.__chaseStatusRefreshTimer) {
+      window.__chaseStatusRefreshTimer = setInterval(loadChaseStatus, 15000);
+    }
   </script>
 </div>
 <!-- UNIVERSAL_MOBILE_CHASE_START -->
@@ -2788,7 +2794,9 @@
   // Reload chase status after mobile shell exists so duplicate mobile data hooks populate too.
   if (typeof loadChaseStatus === "function") {
     loadChaseStatus();
-    setInterval(loadChaseStatus, 15000);
+    if (!window.__chaseStatusRefreshTimer) {
+      window.__chaseStatusRefreshTimer = setInterval(loadChaseStatus, 15000);
+    }
   }
 </script>
 <!-- UNIVERSAL_MOBILE_CHASE_END -->
@@ -2846,6 +2854,8 @@
 </script>
 </body>
 </html>
+
+
 
 
 
