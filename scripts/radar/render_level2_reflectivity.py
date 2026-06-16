@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """Experimental projected Level II reflectivity (dBZ) GeoTIFF renderer for regional radar sites."""
 
 from __future__ import annotations
@@ -60,7 +60,7 @@ MAX_LEVEL2_FRAMES = 25
 LEVEL2_CANDIDATE_MULTIPLIER = 3
 TARGET_LOW_LEVEL_SWEEP_DEG = 0.5
 MAX_LOW_LEVEL_SWEEP_DEG = 0.8
-MIN_VALID_LEVEL2_PIXELS = 1000
+MIN_VALID_LEVEL2_PIXELS = 0
 MOBILE_WEBP_DIR = "mobile"
 MOBILE_WEBP_MAX_SIZE = 2048
 MOBILE_WEBP_QUALITY = 90
@@ -1239,3 +1239,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
