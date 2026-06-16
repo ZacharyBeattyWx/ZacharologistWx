@@ -2542,11 +2542,24 @@
 
         document.querySelectorAll("[data-chase-stream-iframe]").forEach((frame) => {
           if (resolvedStreamEmbedUrl) {
-            if (frame.src !== resolvedStreamEmbedUrl) {
-              frame.src = resolvedStreamEmbedUrl;
+            const streamStateKey = `${resolvedStreamEmbedUrl}|${String(streamStatus || "").toLowerCase()}`;
+
+            if (frame.dataset.streamStateKey !== streamStateKey) {
+              frame.dataset.streamStateKey = streamStateKey;
+
+              if (frame.getAttribute("src")) {
+                frame.src = "about:blank";
+                window.setTimeout(() => {
+                  frame.src = resolvedStreamEmbedUrl;
+                }, 80);
+              } else {
+                frame.src = resolvedStreamEmbedUrl;
+              }
             }
+
             frame.hidden = false;
           } else {
+            frame.dataset.streamStateKey = "";
             if (frame.getAttribute("src")) {
               frame.removeAttribute("src");
             }
@@ -2854,6 +2867,7 @@
 </script>
 </body>
 </html>
+
 
 
 
