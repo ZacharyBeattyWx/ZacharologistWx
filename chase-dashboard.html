@@ -2126,6 +2126,213 @@
   }
 </style>
 
+
+<style id="desktop-hero-card-refinement-css">
+  @media (min-width: 901px) {
+    .desktop-chase-shell .dashboard-strip .cards-grid {
+      align-items: stretch !important;
+    }
+
+    .desktop-chase-shell .dashboard-strip .card {
+      height: clamp(224px, 19vh, 250px) !important;
+      min-height: 0 !important;
+      display: flex !important;
+      flex-direction: column !important;
+    }
+
+    .desktop-chase-shell .dashboard-strip .card-head {
+      flex: 0 0 auto !important;
+      min-height: 48px !important;
+      padding: 14px 15px 7px !important;
+      margin-bottom: 0 !important;
+    }
+
+    .desktop-chase-shell .dashboard-strip .card-visual,
+    .desktop-chase-shell .probability-card .card-body {
+      flex: 1 1 auto !important;
+      min-height: 0 !important;
+      margin-bottom: 10px !important;
+    }
+
+    .desktop-chase-shell .dashboard-strip .card-footer {
+      flex: 0 0 auto !important;
+      margin-top: auto !important;
+      padding: 0 15px 13px !important;
+    }
+
+    .desktop-chase-shell .dashboard-strip .card-button {
+      width: 100% !important;
+      min-height: 34px !important;
+      padding: 7px 14px !important;
+    }
+
+    .desktop-chase-shell .stream-visual {
+      display: grid !important;
+      background-image: url("assets/chase-dashboard-bg.jpg"), linear-gradient(135deg, #151c22, #030608) !important;
+      background-size: cover !important;
+      background-position: center !important;
+    }
+
+    .desktop-chase-shell .stream-visual .stream-placeholder,
+    .desktop-chase-shell .stream-visual .stream-embed-frame {
+      width: 100% !important;
+      height: 100% !important;
+      min-height: 0 !important;
+    }
+
+    /* Target Discussion: text-first, vertically centered, no random graphic */
+    .desktop-chase-shell .target-visual {
+      padding: 14px 16px !important;
+      display: flex !important;
+      align-items: center !important;
+      background:
+        linear-gradient(135deg, rgba(255, 138, 36, 0.08), transparent 45%),
+        linear-gradient(180deg, rgba(12, 18, 26, 0.98), rgba(5, 9, 14, 0.96)) !important;
+    }
+
+    .desktop-chase-shell .target-visual::before,
+    .desktop-chase-shell .target-visual::after {
+      content: none !important;
+      display: none !important;
+    }
+
+    .desktop-chase-shell .target-copy {
+      width: 100% !important;
+      max-width: none !important;
+      max-height: 100% !important;
+      overflow: auto !important;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.72) !important;
+      scrollbar-width: thin;
+    }
+
+    .desktop-chase-shell .target-copy strong {
+      display: block !important;
+      margin-bottom: 7px !important;
+      font-size: clamp(0.86rem, 0.9vw, 0.98rem) !important;
+      line-height: 1.25 !important;
+    }
+
+    .desktop-chase-shell .target-copy span {
+      display: block !important;
+      font-size: clamp(0.76rem, 0.8vw, 0.88rem) !important;
+      line-height: 1.36 !important;
+      color: rgba(235, 242, 250, 0.92) !important;
+    }
+
+    /* Chase Probability: centered and not flattened */
+    .desktop-chase-shell .probability-card .card-body {
+      padding: 0 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
+
+    .desktop-chase-shell .probability-card .card-body > div {
+      width: 100% !important;
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
+
+    .desktop-chase-shell .probability-gauge {
+      width: clamp(168px, 11.5vw, 204px) !important;
+      height: auto !important;
+      aspect-ratio: 1.72 / 1 !important;
+      margin: -2px auto 0 !important;
+      place-items: end center !important;
+    }
+
+    .desktop-chase-shell .probability-gauge::before {
+      height: 86% !important;
+      border-radius: 999px 999px 0 0 !important;
+      -webkit-mask: radial-gradient(circle at 50% 100%, transparent 0 55%, black 56%) !important;
+      mask: radial-gradient(circle at 50% 100%, transparent 0 55%, black 56%) !important;
+    }
+
+    .desktop-chase-shell .probability-gauge span {
+      display: block !important;
+      font-size: clamp(2.2rem, 2.55vw, 2.85rem) !important;
+      line-height: 0.95 !important;
+      transform: translateY(-1px);
+    }
+
+    .desktop-chase-shell .probability-level {
+      margin-top: -1px !important;
+      font-size: clamp(0.76rem, 0.8vw, 0.88rem) !important;
+      letter-spacing: 0.16em !important;
+    }
+
+    /* Meso Analysis: compact intentional placeholder */
+    .desktop-chase-shell .meso-visual {
+      padding: 12px 14px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      background:
+        linear-gradient(135deg, rgba(255, 138, 36, 0.08), transparent 45%),
+        linear-gradient(180deg, rgba(12, 18, 26, 0.98), rgba(5, 9, 14, 0.96)) !important;
+    }
+
+    .desktop-chase-shell .meso-visual::before,
+    .desktop-chase-shell .meso-visual::after {
+      content: none !important;
+      display: none !important;
+    }
+
+    .desktop-chase-shell .meso-summary {
+      width: 100% !important;
+    }
+
+    .desktop-chase-shell .meso-summary-title {
+      margin-bottom: 8px !important;
+      color: #ffd24a !important;
+      font-size: clamp(0.72rem, 0.76vw, 0.84rem) !important;
+      font-weight: 950 !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.16em !important;
+      text-align: center !important;
+    }
+
+    .desktop-chase-shell .meso-summary-grid {
+      display: grid !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      gap: 6px !important;
+    }
+
+    .desktop-chase-shell .meso-summary-grid div {
+      padding: 7px 8px !important;
+      border: 1px solid rgba(170, 185, 205, 0.18) !important;
+      border-radius: 8px !important;
+      background: rgba(8, 13, 20, 0.78) !important;
+    }
+
+    .desktop-chase-shell .meso-summary-grid span {
+      display: block !important;
+      margin-bottom: 2px !important;
+      color: rgba(185, 198, 214, 0.86) !important;
+      font-size: 0.56rem !important;
+      font-weight: 900 !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.12em !important;
+    }
+
+    .desktop-chase-shell .meso-summary-grid strong {
+      display: block !important;
+      color: #ffffff !important;
+      font-size: clamp(0.68rem, 0.74vw, 0.82rem) !important;
+      font-weight: 950 !important;
+      line-height: 1 !important;
+    }
+  }
+
+  @media (min-width: 901px) and (max-width: 1180px) {
+    .desktop-chase-shell .meso-summary-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    }
+  }
+</style>
+
 </head>
 <body>
 <div class="desktop-chase-shell">
@@ -2219,7 +2426,17 @@
             </article>
             <article class="card">
               <div class="card-head"><h2 class="card-title">Meso Analysis</h2><span class="card-meta">7:35 PM CDT</span></div>
-              <div class="card-visual meso-visual"></div>
+              <div class="card-visual meso-visual">
+                <div class="meso-summary">
+                  <div class="meso-summary-title">Meso Snapshot</div>
+                  <div class="meso-summary-grid">
+                    <div><span>Instability</span><strong>Elevated</strong></div>
+                    <div><span>Shear</span><strong>Favorable</strong></div>
+                    <div><span>Boundary</span><strong>Monitoring</strong></div>
+                    <div><span>Storm Mode</span><strong>Discrete / Mixed</strong></div>
+                  </div>
+                </div>
+              </div>
               <div class="card-footer"><button class="card-button" type="button" onclick="alert('View Map')">View Map</button></div>
             </article>
           </div>
