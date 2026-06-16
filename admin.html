@@ -525,8 +525,8 @@
       <div class="button-row">
         <button type="button" id="enableGpsButton">Enable GPS</button>
         <button type="button" id="publishGpsButton">Publish Approx Location</button>
-        <button type="button" id="startGpsAutoButton">Start GPS Auto Update</button>
-        <button class="secondary" type="button" id="stopGpsAutoButton">Stop GPS Auto Update</button>
+        <button type="button" id="startGpsAutoButton">Start Auto Publish</button>
+        <button class="secondary" type="button" id="stopGpsAutoButton">Stop Auto Publish</button>
         <a class="button-link" id="gpsMapLink" href="#" target="_blank" rel="noopener">Open Map</a>
       </div>
 
@@ -780,9 +780,38 @@
       }));
 
       el("gpsMapLink").href = `https://www.google.com/maps?q=${lat},${lon}`;
-      el("enableGpsButton").textContent = "GPS On";
+      el("enableGpsButton").textContent = "Stop GPS";
     }
 
+    function stopGpsAll() {
+      gpsAutoPublishEnabled = false;
+      gpsAutoPublishInFlight = false;
+
+      if (gpsAutoPublishTimer) {
+        window.clearInterval(gpsAutoPublishTimer);
+        gpsAutoPublishTimer = null;
+      }
+
+      if (gpsWatchId !== null && "geolocation" in navigator) {
+        navigator.geolocation.clearWatch(gpsWatchId);
+        gpsWatchId = null;
+      }
+
+      latestGpsPosition = null;
+
+      setGpsText("gpsStatus", "Off");
+      setGpsText("gpsLat", "--");
+      setGpsText("gpsLon", "--");
+      setGpsText("gpsAccuracy", "--");
+      setGpsText("gpsSpeed", "--");
+      setGpsText("gpsHeading", "--");
+      setGpsText("gpsUpdated", "--");
+      setGpsText("gpsAutoStatus", "Off");
+
+      el("gpsMapLink").href = "#";
+      el("enableGpsButton").textContent = "Enable GPS";
+      el("startGpsAutoButton").textContent = "Start Auto Publish";
+    }
     function enableGps() {
       if (!("geolocation" in navigator)) {
         setGpsText("gpsStatus", "Not supported");
@@ -790,7 +819,7 @@
       }
 
       if (gpsWatchId !== null) {
-        setGpsText("gpsStatus", "On");
+        stopGpsAll();
         return;
       }
 
@@ -908,7 +937,7 @@
 
       gpsAutoPublishEnabled = true;
       setGpsText("gpsAutoStatus", "On · 30 sec");
-      el("startGpsAutoButton").textContent = "GPS Auto On";
+      el("startGpsAutoButton").textContent = "Auto Publish On";
 
       if (gpsAutoPublishTimer) {
         window.clearInterval(gpsAutoPublishTimer);
@@ -928,7 +957,7 @@
       }
 
       setGpsText("gpsAutoStatus", "Off");
-      el("startGpsAutoButton").textContent = "Start GPS Auto Update";
+      el("startGpsAutoButton").textContent = "Start Auto Publish";
     }
 
 
@@ -972,6 +1001,7 @@
   </script>
 </body>
 </html>
+
 
 
 
