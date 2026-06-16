@@ -3152,6 +3152,26 @@
       map.addSource(SITE_SOURCE_ID, { type: "geojson", data: sites });
       map.addLayer({ id: SITE_CIRCLE_LAYER_ID, type: "circle", source: SITE_SOURCE_ID, paint: { "circle-radius": 16, "circle-color": "#0b1f3f", "circle-opacity": 0.96, "circle-stroke-color": "rgba(148,163,184,0.72)", "circle-stroke-width": 1 } });
       map.addLayer({ id: SITE_LABEL_LAYER_ID, type: "symbol", source: SITE_SOURCE_ID, layout: { "text-field": ["get", "id"], "text-size": 10, "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"], "text-allow-overlap": true, "text-ignore-placement": true }, paint: { "text-color": "#ffffff" } });
+      const selectRadarSiteFromMap = async (event) => {
+        const site = sanitizeLevel2Site(event?.features?.[0]?.properties?.id || "");
+        if (!LEVEL2_SUPPORTED_SITES.includes(site)) return;
+
+        event?.originalEvent?.stopPropagation?.();
+        event?.originalEvent?.preventDefault?.();
+
+        if (siteSelect) siteSelect.value = site;
+        await changeLevel2Site(site);
+      };
+
+      [SITE_CIRCLE_LAYER_ID, SITE_LABEL_LAYER_ID].forEach((layerId) => {
+        map.on("click", layerId, selectRadarSiteFromMap);
+        map.on("mouseenter", layerId, () => {
+          map.getCanvas().style.cursor = "pointer";
+        });
+        map.on("mouseleave", layerId, () => {
+          map.getCanvas().style.cursor = "";
+        });
+      });
     }
 
     function isValidGeometry(geometry) {
