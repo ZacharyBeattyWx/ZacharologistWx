@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """Experimental projected Level II reflectivity (dBZ) GeoTIFF renderer for regional radar sites."""
 
 from __future__ import annotations
@@ -191,7 +191,12 @@ SITE_COORDS = {
     "KLWX": (-77.488, 38.976),
     "KMHX": (-76.877, 34.776),
     "KAKQ": (-77.007, 36.983),
-}
+    "KILX": (-89.337, 40.151),
+    "KIND": (-86.280, 39.708),
+    "KLOT": (-88.084, 41.604),
+    "KLSX": (-90.683, 38.699),
+    "KIWX": (-85.700, 41.359),
+    "KDVN": (-90.581, 41.612),}
 
 SITE_LON_HALF_DEG = 5.176
 SITE_LAT_HALF_DEG = 4.132
