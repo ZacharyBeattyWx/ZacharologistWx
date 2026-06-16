@@ -1652,10 +1652,15 @@
     }
 
     .mobile-admin-row strong,
-    .mobile-device-row strong {
-      color: #edf7ff;
-      text-align: right;
-    }
+.mobile-device-row strong {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #edf7ff;
+  text-align: right;
+}
 
     .mobile-location-row {
       align-items: center;
@@ -1671,6 +1676,7 @@
     }
 
     .mobile-location-value strong {
+      flex: 1 1 auto;
       min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
