@@ -569,7 +569,7 @@
     let gpsAutoPublishTimer = null;
     let gpsAutoPublishEnabled = false;
     let gpsAutoPublishInFlight = false;
-    const GPS_AUTO_PUBLISH_INTERVAL_MS = 30000;
+    const GPS_AUTO_PUBLISH_INTERVAL_MS = 20000;
 
     const ids = [
       "status",
@@ -916,7 +916,7 @@
 
       const ok = await publishGpsLocation({ quiet: true });
 
-      setGpsText("gpsAutoStatus", ok ? "On · 30 sec" : "Publish failed");
+      setGpsText("gpsAutoStatus", ok ? "On · 20 sec" : "Publish failed");
       gpsAutoPublishInFlight = false;
     }
 
@@ -936,7 +936,7 @@
       enableGps();
 
       gpsAutoPublishEnabled = true;
-      setGpsText("gpsAutoStatus", "On · 30 sec");
+      setGpsText("gpsAutoStatus", "On · 20 sec");
       el("startGpsAutoButton").textContent = "Auto Publish On";
 
       if (gpsAutoPublishTimer) {
@@ -1001,6 +1001,7 @@
   </script>
 </body>
 </html>
+
 
 
 
