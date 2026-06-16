@@ -1880,6 +1880,40 @@
       font-size: clamp(0.86rem, 0.94vw, 1.08rem);
     }
 
+    .desktop-chase-shell .header-status-row .header-location-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .desktop-chase-shell .header-status-row .track-zach-link {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 22px;
+      padding: 4px 8px;
+      border: 1px solid rgba(56, 189, 248, 0.52);
+      border-radius: 999px;
+      background: rgba(14, 116, 144, 0.32);
+      color: #e0f2fe;
+      font-size: 0.58rem;
+      font-weight: 900;
+      line-height: 1;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .desktop-chase-shell .header-status-row .track-zach-link[hidden] {
+      display: none !important;
+    }
+
+    .desktop-chase-shell .header-status-row .header-location-line .status-value {
+      flex: 1 1 auto;
+      margin-bottom: 0;
+    }
+
     .desktop-chase-shell .header-status-row .status-detail {
       font-size: 0.54rem;
       opacity: 0.76;
@@ -2391,7 +2425,7 @@
               <div class="status-icon">LIVE</div><div><span class="status-label">Stream</span><div class="status-value" data-chase-header-stream-status>OFFLINE</div><div class="status-detail" data-chase-header-stream-detail>Standby</div></div>
             </article>
             <article class="status-card">
-              <div class="status-icon">LOC</div><div><span class="status-label">Current Position</span><div class="status-value" data-chase-location>Not actively chasing</div><div class="status-detail" data-chase-target>NC / VA / SC</div></div>
+              <div class="status-icon">LOC</div><div><span class="status-label">Current Position</span><div class="header-location-line"><a class="track-zach-link" data-chase-track-link href="#" target="_blank" rel="noopener" hidden>Track Zach</a><div class="status-value" data-chase-header-location>Not actively chasing</div></div><div class="status-detail" data-chase-target>NC / VA / SC</div></div>
             </article>
           </div>
 
@@ -2651,6 +2685,64 @@
           });
         };
 
+        const stripGpsLocationParts = (value) => {
+          const cleaned = String(value || "")
+            .replace(/Near\s+-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?/gi, "")
+            .replace(/GPS\s*(?:\u00b1|\u252c\u2592)\s*\d+(?:\.\d+)?\s*m/gi, "")
+            .split(/\u00b7|\u252c\u2556/)
+            .map((part) => part.trim())
+            .filter(Boolean)
+            .join(" · ")
+            .replace(/(?:^\s*[·|,-]+\s*)|(?:\s*[·|,-]+\s*$)/g, "")
+            .replace(/\s{2,}/g, " ")
+            .trim();
+
+          return cleaned;
+        };
+
+        const cleanHeaderLocation = (statusData) => {
+          const targetArea = String(statusData?.targetArea || "").trim();
+          if (targetArea) return targetArea;
+
+          return stripGpsLocationParts(statusData?.currentLocation) || "Not actively chasing";
+        };
+
+        const validCoordinate = (value) => Number.isFinite(Number(value));
+
+        const chaseMapUrl = (lat, lon) => {
+          const params = new URLSearchParams({
+            chaseLat: String(lat),
+            chaseLon: String(lon),
+            chaseZoom: "9",
+            from: "chase-dashboard"
+          });
+
+          return `level2-mobile-radar.html?${params.toString()}`;
+        };
+
+        const updateTrackZachButton = (statusData) => {
+          const chaseLocation = statusData?.chaseLocation || {};
+          const lat = Number(chaseLocation.lat);
+          const lon = Number(chaseLocation.lon);
+          const canTrack = chaseLocation.mapDisplay === true &&
+            chaseLocation.isStale !== true &&
+            validCoordinate(chaseLocation.lat) &&
+            validCoordinate(chaseLocation.lon);
+
+          document.querySelectorAll("[data-chase-track-link]").forEach((link) => {
+            if (!canTrack) {
+              link.hidden = true;
+              link.removeAttribute("href");
+              link.setAttribute("aria-disabled", "true");
+              return;
+            }
+
+            link.hidden = false;
+            link.href = chaseMapUrl(lat, lon);
+            link.removeAttribute("aria-disabled");
+          });
+        };
+
         const streamStateClass = (value) => {
           const normalized = String(value || "").trim().toLowerCase();
 
@@ -2723,6 +2815,8 @@
 
         setText("[data-chase-status]", data.status, "Monitoring");
         setText("[data-chase-target]", data.targetArea, "NC / VA / SC");
+        setText("[data-chase-header-location]", cleanHeaderLocation(data), "Not actively chasing");
+        updateTrackZachButton(data);
         setText("[data-chase-location]", data.currentLocation, "Not actively chasing");
         setText("[data-chase-vehicle-status]", data.vehicleStatus, "Assessing Target");
         setText("[data-chase-vehicle-detail]", data.vehicleDetail, "Idle");
@@ -3165,6 +3259,7 @@
 </script>
 </body>
 </html>
+
 
 
 

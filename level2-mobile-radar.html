@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -655,7 +655,35 @@
   <script>
     const MAPBOX_TOKEN = window.MAPBOX_PUBLIC_TOKEN;
     const MAPBOX_STYLE = "mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
+    const CHASE_STATUS_API = "https://zacharologist-chase-api.zacharologistwx.workers.dev/api/chase/status";
+    const CHASE_LOCATION_REFRESH_MS = 20000;
     const LEVEL2_SUPPORTED_SITES = ["KFCX", "KRAX", "KGSP", "KLTX", "KMRX", "KJKL", "KRLX", "KLWX", "KMHX", "KAKQ", "KCAE", "KCLX", "KILX", "KIND", "KLOT", "KLSX", "KIWX", "KDVN", "KDMX", "KOAX", "KEAX", "KICT", "KTWX", "KSGF"];
+    const LEVEL2_SITE_LOCATIONS = {
+      KFCX: { lat: 37.024, lon: -80.273 },
+      KRAX: { lat: 35.665, lon: -78.49 },
+      KGSP: { lat: 34.883, lon: -82.22 },
+      KLTX: { lat: 33.989, lon: -78.429 },
+      KMRX: { lat: 36.169, lon: -83.402 },
+      KJKL: { lat: 37.591, lon: -83.313 },
+      KRLX: { lat: 38.311, lon: -81.723 },
+      KLWX: { lat: 38.976, lon: -77.488 },
+      KMHX: { lat: 34.775, lon: -76.877 },
+      KAKQ: { lat: 36.983, lon: -77.007 },
+      KCAE: { lat: 33.949, lon: -81.118 },
+      KCLX: { lat: 32.656, lon: -81.042 },
+      KILX: { lat: 40.151, lon: -89.337 },
+      KIND: { lat: 39.708, lon: -86.28 },
+      KLOT: { lat: 41.604, lon: -88.084 },
+      KLSX: { lat: 38.699, lon: -90.683 },
+      KIWX: { lat: 41.359, lon: -85.7 },
+      KDVN: { lat: 41.612, lon: -90.581 },
+      KDMX: { lat: 41.7312, lon: -93.722869 },
+      KOAX: { lat: 41.320369, lon: -96.366819 },
+      KEAX: { lat: 38.81025, lon: -94.264472 },
+      KICT: { lat: 37.654444, lon: -97.443056 },
+      KTWX: { lat: 38.99695, lon: -96.23255 },
+      KSGF: { lat: 37.235239, lon: -93.400419 }
+    };
     const DEFAULT_LEVEL2_SITE = "KFCX";
     const LEVEL2_SELECTED_SITE_STORAGE_KEY = "zach-level2-selected-site";
     const LEVEL2_PRODUCT = "LEVEL2_REF0";
@@ -762,6 +790,43 @@
       return sanitizeLevel2Site(siteSelect?.value || DEFAULT_LEVEL2_SITE);
     }
 
+    function haversineDistanceKm(latA, lonA, latB, lonB) {
+      const earthRadiusKm = 6371;
+      const toRadians = (degrees) => degrees * Math.PI / 180;
+      const dLat = toRadians(latB - latA);
+      const dLon = toRadians(lonB - lonA);
+      const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRadians(latA)) * Math.cos(toRadians(latB)) *
+        Math.sin(dLon / 2) ** 2;
+
+      return 2 * earthRadiusKm * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    function nearestLevel2SiteForLocation(lat, lon) {
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+
+      const availableSites = siteSelect
+        ? Array.from(siteSelect.options).map((option) => sanitizeLevel2Site(option.value))
+        : LEVEL2_SUPPORTED_SITES;
+
+      let nearestSite = null;
+      let nearestDistance = Infinity;
+
+      availableSites.forEach((site) => {
+        const location = LEVEL2_SITE_LOCATIONS[site];
+        if (!location) return;
+
+        const distance = haversineDistanceKm(lat, lon, location.lat, location.lon);
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          nearestSite = site;
+        }
+      });
+
+      return nearestSite;
+    }
+
     function chaseLocationFromUrl() {
       const params = new URLSearchParams(window.location.search);
 
@@ -787,6 +852,28 @@
         zoom: Number.isFinite(chaseZoom) && chaseZoom > 0 ? chaseZoom : 9,
         from: source
       };
+    }
+
+    function normalizeChaseLocation(value) {
+      if (!value) return null;
+
+      const lat = Number(value.lat ?? value.latitude);
+      const lon = Number(value.lon ?? value.lng ?? value.longitude);
+
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+      if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return null;
+
+      return { ...value, lat, lon };
+    }
+    function shouldLiveFollowChaseLocation(chaseLocation) {
+      return chaseLocation?.from === "chase-admin" || chaseLocation?.from === "chase-dashboard";
+    }
+
+    function freshChaseLocationFromStatus(data) {
+      const chaseLocation = data?.chaseLocation;
+      if (!chaseLocation || chaseLocation.mapDisplay !== true || chaseLocation.isStale === true) return null;
+
+      return normalizeChaseLocation(chaseLocation);
     }
 
     function level2DataBaseUrl() {
@@ -901,6 +988,15 @@
 
     let map;
     let popup;
+    const chaseLocationState = {
+      marker: null,
+      popup: null,
+      lastLat: null,
+      lastLon: null,
+      refreshTimer: null,
+      followEnabled: false,
+      refreshInFlight: false
+    };
     let radarBounds = [[32.2, -86.6], [42.2, -73.4]];
     let activeAlertFeatures = [];
     let activeAlertsWithoutGeometry = [];
@@ -3666,7 +3762,14 @@
         mapboxgl.prewarm();
       }
 
-      const chaseLocation = chaseLocationFromUrl();
+      const chaseLocation = normalizeChaseLocation(chaseLocationFromUrl());
+      const nearestChaseSite = chaseLocation
+        ? nearestLevel2SiteForLocation(chaseLocation.lat, chaseLocation.lon)
+        : null;
+
+      if (nearestChaseSite && siteSelect) {
+        siteSelect.value = nearestChaseSite;
+      }
 
       map = new mapboxgl.Map({
         container: "map",
@@ -3687,7 +3790,8 @@
       window.zachLevel2RadarMap = map;
 
       map.addControl(new mapboxgl.NavigationControl(), "top-left");
-      addChaseLocationMarker(chaseLocation);
+      chaseLocationState.followEnabled = shouldLiveFollowChaseLocation(chaseLocation);
+      updateChaseLocationMarker(chaseLocation);
       map.dragRotate.disable();
       map.touchZoomRotate.disableRotation();
       if (map.setMaxPitch) map.setMaxPitch(0);
@@ -3750,6 +3854,7 @@
           if (isMobileLevel2Mode()) setStatusText("Latest frame ready");
           startFrameRefresh();
           startAlertRefresh();
+          startChaseLocationRefresh();
           // Manual playback only: show latest frame and wait for Play.
         } catch (error) {
           const message = error?.message || "error";
@@ -3760,28 +3865,93 @@
       });
     }
 
-    function addChaseLocationMarker(chaseLocation) {
+    function updateChaseLocationMarker(chaseLocation) {
+      chaseLocation = normalizeChaseLocation(chaseLocation);
       if (!chaseLocation) return;
 
-      const markerElement = document.createElement("div");
-      markerElement.className = "chase-location-marker";
+      if (!chaseLocationState.marker) {
+        const markerElement = document.createElement("div");
+        markerElement.className = "chase-location-marker";
+        chaseLocationState.popup = new mapboxgl.Popup({
+          className: "chase-location-popup",
+          closeButton: false,
+          closeOnClick: false,
+          offset: 18
+        }).setText("Zach's Chase Location");
 
-      const marker = new mapboxgl.Marker({
-        element: markerElement,
-        anchor: "center"
-      })
-        .setLngLat([chaseLocation.lon, chaseLocation.lat])
-        .setPopup(
-          new mapboxgl.Popup({
-            className: "chase-location-popup",
-            closeButton: false,
-            closeOnClick: false,
-            offset: 18
-          }).setText("Zach's Chase Location")
-        )
-        .addTo(map);
+        chaseLocationState.marker = new mapboxgl.Marker({
+          element: markerElement,
+          anchor: "center"
+        })
+          .setLngLat([chaseLocation.lon, chaseLocation.lat])
+          .setPopup(chaseLocationState.popup)
+          .addTo(map);
+      }
 
-      marker.togglePopup();
+      chaseLocationState.marker.setLngLat([chaseLocation.lon, chaseLocation.lat]);
+      chaseLocationState.lastLat = chaseLocation.lat;
+      chaseLocationState.lastLon = chaseLocation.lon;
+
+      if (chaseLocationState.popup) {
+        chaseLocationState.popup.setText("Zach's Chase Location");
+      }
+
+      if (!chaseLocationState.marker.getPopup()?.isOpen()) {
+        chaseLocationState.marker.togglePopup();
+      }
+    }
+
+    async function applyLiveChaseLocation(chaseLocation) {
+      chaseLocation = normalizeChaseLocation(chaseLocation);
+      if (!chaseLocation) return;
+
+      updateChaseLocationMarker(chaseLocation);
+
+      if (chaseLocationState.followEnabled) {
+        map.easeTo({
+          center: [chaseLocation.lon, chaseLocation.lat],
+          duration: 1200,
+          essential: true
+        });
+      }
+
+      const nearestSite = nearestLevel2SiteForLocation(chaseLocation.lat, chaseLocation.lon);
+      const currentSite = siteSelect ? sanitizeLevel2Site(siteSelect.value) : selectedLevel2Site();
+
+      if (nearestSite && nearestSite !== currentSite) {
+        if (siteSelect) siteSelect.value = nearestSite;
+        await changeLevel2Site(nearestSite);
+      }
+    }
+
+    async function refreshLiveChaseLocation() {
+      if (!chaseLocationState.followEnabled || chaseLocationState.refreshInFlight) return;
+
+      try {
+        chaseLocationState.refreshInFlight = true;
+        const response = await fetch(CHASE_STATUS_API, { cache: "no-store" });
+        if (!response.ok) throw new Error(`Chase status ${response.status}`);
+
+        const data = await response.json();
+        const chaseLocation = freshChaseLocationFromStatus(data);
+        if (!chaseLocation) return;
+
+        await applyLiveChaseLocation(chaseLocation);
+      } catch (error) {
+        console.warn("Live chase location refresh failed:", error);
+      } finally {
+        chaseLocationState.refreshInFlight = false;
+      }
+    }
+
+    function startChaseLocationRefresh() {
+      if (!chaseLocationState.followEnabled || chaseLocationState.refreshTimer) return;
+
+      window.setTimeout(refreshLiveChaseLocation, 1200);
+      chaseLocationState.refreshTimer = window.setInterval(
+        refreshLiveChaseLocation,
+        CHASE_LOCATION_REFRESH_MS
+      );
     }
 
     function setStatusText(text) {
@@ -3846,3 +4016,5 @@
   </script>
 </body>
 </html>
+
+
