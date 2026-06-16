@@ -657,6 +657,7 @@
     const MAPBOX_STYLE = "mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
     const LEVEL2_SUPPORTED_SITES = ["KFCX", "KRAX", "KGSP", "KLTX", "KMRX", "KJKL", "KRLX", "KLWX", "KMHX", "KAKQ", "KCAE", "KCLX", "KILX", "KIND", "KLOT", "KLSX", "KIWX", "KDVN"];
     const DEFAULT_LEVEL2_SITE = "KFCX";
+    const LEVEL2_SELECTED_SITE_STORAGE_KEY = "zach-level2-selected-site";
     const LEVEL2_PRODUCT = "LEVEL2_REF0";
     const LEVEL2_REMOTE_BASE_URL = "https://radar.zacharologistwx.com";
     const FRAME_REFRESH_MS = 60000;
@@ -722,15 +723,59 @@
       return LEVEL2_SUPPORTED_SITES.includes(normalized) ? normalized : DEFAULT_LEVEL2_SITE;
     }
 
+
+    function level2SiteFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      const site = params.get("site");
+      return site ? sanitizeLevel2Site(site) : "";
+    }
+
+    function level2SiteFromStorage() {
+      try {
+        const site = window.localStorage.getItem(LEVEL2_SELECTED_SITE_STORAGE_KEY);
+        return site ? sanitizeLevel2Site(site) : "";
+      } catch (_error) {
+        return "";
+      }
+    }
+
+    function initialLevel2Site() {
+      return level2SiteFromUrl() || level2SiteFromStorage() || DEFAULT_LEVEL2_SITE;
+    }
+
+    function persistSelectedLevel2Site(site) {
+      const nextSite = sanitizeLevel2Site(site);
+
+      try {
+        window.localStorage.setItem(LEVEL2_SELECTED_SITE_STORAGE_KEY, nextSite);
+      } catch (_error) {
+        // URL persistence still works if localStorage is blocked.
+      }
+
+      const url = new URL(window.location.href);
+      url.searchParams.set("site", nextSite);
+      window.history.replaceState({}, "", url);
+
+      return nextSite;
+    }
     function selectedLevel2Site() {
       return sanitizeLevel2Site(siteSelect?.value || DEFAULT_LEVEL2_SITE);
     }
 
     function chaseLocationFromUrl() {
       const params = new URLSearchParams(window.location.search);
-      const chaseLat = Number(params.get("chaseLat"));
-      const chaseLon = Number(params.get("chaseLon"));
-      const chaseZoom = Number(params.get("chaseZoom"));
+
+      if (!params.has("chaseLat") || !params.has("chaseLon")) return null;
+
+      const rawLat = params.get("chaseLat");
+      const rawLon = params.get("chaseLon");
+      const rawZoom = params.get("chaseZoom");
+
+      if (!rawLat || !rawLon) return null;
+
+      const chaseLat = Number(rawLat);
+      const chaseLon = Number(rawLon);
+      const chaseZoom = rawZoom ? Number(rawZoom) : NaN;
       const source = String(params.get("from") || "").trim();
 
       if (!Number.isFinite(chaseLat) || !Number.isFinite(chaseLon)) return null;
@@ -1939,7 +1984,7 @@
     }
 
     async function changeLevel2Site(site) {
-      const nextSite = sanitizeLevel2Site(site);
+      const nextSite = persistSelectedLevel2Site(site);
       if (siteSelect) siteSelect.value = nextSite;
       stopPlayback();
       renderedFrameCache.clear();
@@ -3781,6 +3826,11 @@
     opacitySlider.addEventListener("input", updateOpacity);
     alertOpacityRange?.addEventListener("input", updateAlertOverlayVisibility);
     toggleAlertOverlayButton?.addEventListener("click", toggleAlertOverlayVisibility);
+    if (siteSelect) {
+      siteSelect.value = initialLevel2Site();
+      persistSelectedLevel2Site(siteSelect.value);
+    }
+
     updateOpacity();
     updatePlaybackSpeedDisplay();
     updateAlertOverlayControls();
