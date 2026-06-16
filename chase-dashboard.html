@@ -2045,6 +2045,87 @@
     }
   }
 </style>
+
+<style id="desktop-hero-field-ops-spacing-css">
+  @media (min-width: 901px) {
+    /*
+      The top cards are visually lowered with transforms/absolute positioning,
+      so the next section needs real layout space below the hero.
+    */
+    .desktop-chase-shell .hero {
+      overflow: visible !important;
+      padding-bottom: clamp(310px, 28vh, 390px) !important;
+      margin-bottom: 0 !important;
+    }
+
+    /* Remove the dark tornado hero overlay/fade entirely */
+    .desktop-chase-shell .hero::after {
+      content: none !important;
+      display: none !important;
+      background: none !important;
+    }
+    /* White mission text with a tight dark outline over tornado image */
+    .desktop-chase-shell .mission-overview .section-kicker,
+    .desktop-chase-shell .mission-overview .mission-label,
+    .desktop-chase-shell .mission-overview .mission-value {
+      color: #ffffff !important;
+      font-weight: 950 !important;
+      -webkit-text-stroke: 0.35px rgba(0, 0, 0, 0.78);
+      text-shadow:
+        -1px -1px 0 rgba(0, 0, 0, 0.45),
+         1px -1px 0 rgba(0, 0, 0, 0.45),
+        -1px  1px 0 rgba(0, 0, 0, 0.45),
+         1px  1px 0 rgba(0, 0, 0, 0.45),
+         0 2px 5px rgba(0, 0, 0, 0.55) !important;
+    }
+
+    /* Slightly larger mission text under Chase Dashboard */
+    .desktop-chase-shell .mission-overview .section-kicker {
+      font-size: clamp(1.02rem, 1.12vw, 1.2rem) !important;
+      line-height: 1.15 !important;
+    }
+
+    .desktop-chase-shell .mission-overview .mission-label {
+      font-size: clamp(0.86rem, 0.9vw, 1rem) !important;
+      line-height: 1.18 !important;
+    }
+
+    .desktop-chase-shell .mission-overview .mission-value {
+      font-size: clamp(0.9rem, 0.94vw, 1.04rem) !important;
+      line-height: 1.22 !important;
+    }
+    /* Deep yellow mission section headers */
+    .desktop-chase-shell .mission-overview .mission-label {
+      color: #ffd24a !important;
+      -webkit-text-stroke: 0.35px rgba(0, 0, 0, 0.82);
+      text-shadow:
+        -1px -1px 0 rgba(0, 0, 0, 0.48),
+         1px -1px 0 rgba(0, 0, 0, 0.48),
+        -1px  1px 0 rgba(0, 0, 0, 0.48),
+         1px  1px 0 rgba(0, 0, 0, 0.48),
+         0 2px 5px rgba(0, 0, 0, 0.58) !important;
+    }
+    .desktop-chase-shell .dashboard-strip {
+      bottom: clamp(48px, 5vh, 72px) !important;
+    }
+
+    .desktop-chase-shell .dashboard-spacer {
+      display: block !important;
+      height: clamp(72px, 7vw, 118px) !important;
+    }
+
+    .desktop-chase-shell .field-ops-board {
+      margin-top: clamp(54px, 5vw, 86px) !important;
+    }
+  }
+
+  @media (max-width: 900px) {
+    .desktop-chase-shell .field-ops-board {
+      margin-top: 34px !important;
+    }
+  }
+</style>
+
 </head>
 <body>
 <div class="desktop-chase-shell">
