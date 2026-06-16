@@ -1657,6 +1657,48 @@
       text-align: right;
     }
 
+    .mobile-location-row {
+      align-items: center;
+    }
+
+    .mobile-location-value {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      min-width: 0;
+      max-width: 72%;
+    }
+
+    .mobile-location-value strong {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .mobile-track-link {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      color: #e0f2fe;
+      font-size: 0.64rem;
+      font-weight: 900;
+      line-height: 1;
+      text-decoration: none;
+      background: rgba(14, 116, 144, 0.34);
+      border: 1px solid rgba(56, 189, 248, 0.52);
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .mobile-track-link[hidden] {
+      display: none !important;
+    }
+
     .chase-location-button,
     .chase-location-map {
       min-height: 46px;
@@ -3023,7 +3065,7 @@
         <div class="mobile-admin-grid">
           <div class="mobile-admin-row"><span>Status</span><strong data-chase-status>Monitoring</strong></div>
           <div class="mobile-admin-row"><span>Target</span><strong data-chase-hero-target>T.B.D.</strong></div>
-          <div class="mobile-admin-row"><span>Location</span><strong data-chase-location>Not actively chasing</strong></div>
+          <div class="mobile-admin-row mobile-location-row"><span>Location</span><div class="mobile-location-value"><strong data-chase-location>Not actively chasing</strong><a class="mobile-track-link" data-chase-track-link href="#" target="_blank" rel="noopener" aria-label="Open chase location in map" title="Open map" hidden>MAP</a></div></div>
           <div class="mobile-admin-row"><span>Hazards</span><strong data-chase-hazards>Large Hail, Tornadoes, Damaging Winds</strong></div>
           <div class="mobile-admin-row"><span>Confidence</span><strong data-chase-confidence>75%</strong></div>
           <div class="mobile-admin-row"><span>Next Update</span><strong data-chase-next-update>As needed</strong></div>
