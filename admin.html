@@ -517,12 +517,16 @@
         <div class="gps-row"><span>Accuracy</span><strong id="gpsAccuracy">--</strong></div>
         <div class="gps-row"><span>Speed</span><strong id="gpsSpeed">--</strong></div>
         <div class="gps-row"><span>Heading</span><strong id="gpsHeading">--</strong></div>
+        <div class="gps-row"><span>Auto Publish</span><strong id="gpsAutoStatus">Off</strong></div>
+        <div class="gps-row"><span>Last Published</span><strong id="gpsAutoLastPublished">--</strong></div>
         <div class="gps-row"><span>Updated</span><strong id="gpsUpdated">--</strong></div>
       </div>
 
       <div class="button-row">
         <button type="button" id="enableGpsButton">Enable GPS</button>
         <button type="button" id="publishGpsButton">Publish Approx Location</button>
+        <button type="button" id="startGpsAutoButton">Start GPS Auto Update</button>
+        <button class="secondary" type="button" id="stopGpsAutoButton">Stop GPS Auto Update</button>
         <a class="button-link" id="gpsMapLink" href="#" target="_blank" rel="noopener">Open Map</a>
       </div>
 
@@ -562,6 +566,10 @@
     let currentStatusData = {};
     let latestGpsPosition = null;
     let gpsWatchId = null;
+    let gpsAutoPublishTimer = null;
+    let gpsAutoPublishEnabled = false;
+    let gpsAutoPublishInFlight = false;
+    const GPS_AUTO_PUBLISH_INTERVAL_MS = 30000;
 
     const ids = [
       "status",
@@ -802,22 +810,44 @@
       );
     }
 
-    async function publishApproxLocation() {
-      if (!latestGpsPosition) {
-        alert("Turn on GPS first.");
-        switchTab("gps");
-        return;
-      }
+    function gpsSpeedMph(position) {
+      const speed = position?.coords?.speed;
+      if (!Number.isFinite(speed) || speed < 0) return null;
+      return Math.round(speed * 2.23694);
+    }
 
-      const coords = latestGpsPosition.coords;
+    function gpsMovementLabel(position) {
+      const mph = gpsSpeedMph(position);
+      if (mph === null) return "";
+      if (mph >= 8) return `Moving ${mph} mph`;
+      return "Stopped";
+    }
+
+    function publicLocationFromGps(position) {
+      const coords = position.coords;
       const latApprox = coords.latitude.toFixed(3);
       const lonApprox = coords.longitude.toFixed(3);
       const accuracy = Number.isFinite(coords.accuracy) ? Math.round(coords.accuracy) : null;
+      const movement = gpsMovementLabel(position);
 
-      const publicLocation = accuracy
-        ? `Near ${latApprox}, ${lonApprox} · GPS ±${accuracy}m`
-        : `Near ${latApprox}, ${lonApprox}`;
+      const parts = [`Near ${latApprox}, ${lonApprox}`];
 
+      if (accuracy) parts.push(`GPS ±${accuracy}m`);
+      if (movement) parts.push(movement);
+
+      return parts.join(" · ");
+    }
+
+    async function publishGpsLocation({ quiet = false } = {}) {
+      if (!latestGpsPosition) {
+        if (!quiet) {
+          alert("Turn on GPS first.");
+          switchTab("gps");
+        }
+        return false;
+      }
+
+      const publicLocation = publicLocationFromGps(latestGpsPosition);
       el("currentLocation").value = publicLocation;
 
       const payload = {
@@ -827,7 +857,78 @@
         lastUpdated: new Date().toISOString()
       };
 
-      await publishUpdate(payload);
+      const ok = await publishUpdate(payload);
+
+      if (ok) {
+        setGpsText("gpsAutoLastPublished", new Date().toLocaleTimeString([], {
+          hour: "numeric",
+          minute: "2-digit",
+          second: "2-digit"
+        }));
+      }
+
+      return ok;
+    }
+
+    async function publishApproxLocation() {
+      await publishGpsLocation({ quiet: false });
+    }
+
+    async function publishGpsAutoLocation() {
+      if (!gpsAutoPublishEnabled || gpsAutoPublishInFlight) return;
+
+      if (!latestGpsPosition) {
+        setGpsText("gpsAutoStatus", "Waiting for GPS...");
+        return;
+      }
+
+      gpsAutoPublishInFlight = true;
+      setGpsText("gpsAutoStatus", "Publishing...");
+
+      const ok = await publishGpsLocation({ quiet: true });
+
+      setGpsText("gpsAutoStatus", ok ? "On · 30 sec" : "Publish failed");
+      gpsAutoPublishInFlight = false;
+    }
+
+    function startGpsAutoUpdate() {
+      const token = activeToken();
+
+      if (!token) {
+        switchTab("token");
+        setPublishStatus("Save the admin token before starting GPS auto update.");
+        alert("Save the admin token before starting GPS auto update.");
+        return;
+      }
+
+      window.localStorage.setItem("zwxChaseAdminToken", token);
+      el("adminToken").value = token;
+
+      enableGps();
+
+      gpsAutoPublishEnabled = true;
+      setGpsText("gpsAutoStatus", "On · 30 sec");
+      el("startGpsAutoButton").textContent = "GPS Auto On";
+
+      if (gpsAutoPublishTimer) {
+        window.clearInterval(gpsAutoPublishTimer);
+      }
+
+      gpsAutoPublishTimer = window.setInterval(publishGpsAutoLocation, GPS_AUTO_PUBLISH_INTERVAL_MS);
+
+      window.setTimeout(publishGpsAutoLocation, 2500);
+    }
+
+    function stopGpsAutoUpdate() {
+      gpsAutoPublishEnabled = false;
+
+      if (gpsAutoPublishTimer) {
+        window.clearInterval(gpsAutoPublishTimer);
+        gpsAutoPublishTimer = null;
+      }
+
+      setGpsText("gpsAutoStatus", "Off");
+      el("startGpsAutoButton").textContent = "Start GPS Auto Update";
     }
 
 
@@ -861,6 +962,8 @@
 
     el("enableGpsButton").addEventListener("click", enableGps);
     el("publishGpsButton").addEventListener("click", publishApproxLocation);
+    el("startGpsAutoButton").addEventListener("click", startGpsAutoUpdate);
+    el("stopGpsAutoButton").addEventListener("click", stopGpsAutoUpdate);
 
     el("adminToken").value = savedToken();
 
@@ -869,6 +972,7 @@
   </script>
 </body>
 </html>
+
 
 
 
