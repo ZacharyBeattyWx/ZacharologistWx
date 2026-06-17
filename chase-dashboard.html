@@ -523,12 +523,24 @@
       padding: 0 16px 14px;
     }
 
+    .stream-button-stack {
+      display: grid;
+      gap: 8px;
+    }
+
     .card-button {
       width: 100%;
       min-height: 32px;
       padding: 8px 14px;
       background: rgba(16, 20, 27, 0.95);
       font-size: 0.72rem;
+    }
+
+    .card-button.youtube-stream-button {
+      color: #fff7f7;
+      background: linear-gradient(135deg, rgba(255, 0, 0, 0.36), rgba(16, 20, 27, 0.96));
+      border-color: rgba(255, 70, 70, 0.54);
+      box-shadow: 0 0 18px rgba(255, 0, 0, 0.12);
     }
 
     .dashboard-spacer {
@@ -1378,6 +1390,12 @@
       border: 1px solid rgba(148, 183, 218, 0.24);
       border-radius: 14px;
       font-weight: 850;
+    }
+
+    .mobile-link.youtube-stream-link {
+      background: linear-gradient(135deg, rgba(255, 0, 0, 0.30), rgba(16, 39, 64, 0.86));
+      border-color: rgba(255, 80, 80, 0.52);
+      box-shadow: 0 0 18px rgba(255, 0, 0, 0.10);
     }
 
     .mobile-link small {
@@ -2802,8 +2820,9 @@
                   <div class="live-badge" data-chase-stream-badge>Offline</div>
                 </div>
               </div>
-              <div class="card-footer">
+              <div class="card-footer stream-button-stack">
                 <a class="card-button" data-chase-stream-link href="#" target="_blank" rel="noopener">Stream Offline</a>
+                <a class="card-button youtube-stream-button" href="https://www.youtube.com/@zacharologist" target="_blank" rel="noopener">Open YouTube</a>
               </div>
             </article>
 
@@ -3516,6 +3535,10 @@
         <div class="mobile-link-grid">
           <a class="mobile-link" data-chase-stream-link href="#" target="_blank" rel="noopener">
             <span>Open Stream<small>Livestream link from admin</small></span>
+            <span class="mobile-arrow">›</span>
+          </a>
+          <a class="mobile-link youtube-stream-link" href="https://www.youtube.com/@zacharologist" target="_blank" rel="noopener">
+            <span>Open YouTube<small>Zacharologist channel / stream</small></span>
             <span class="mobile-arrow">›</span>
           </a>
         </div>
