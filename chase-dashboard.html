@@ -1712,6 +1712,310 @@
       display: none !important;
     }
 
+    .mobile-mission-card {
+      width: min(100%, calc(100vw - 28px));
+      margin: 0 auto 12px;
+      box-sizing: border-box;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 14% 0%, rgba(59, 157, 255, 0.20), transparent 14rem),
+        radial-gradient(circle at 92% 8%, rgba(255, 138, 36, 0.18), transparent 13rem),
+        linear-gradient(180deg, rgba(12, 28, 47, 0.94), rgba(4, 11, 20, 0.96));
+      border-color: rgba(148, 183, 218, 0.30);
+      box-shadow:
+        0 18px 44px rgba(0, 0, 0, 0.42),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    .mobile-mission-card,
+    .mobile-mission-card * {
+      box-sizing: border-box;
+      min-width: 0;
+    }
+
+    .mobile-mission-card.mobile-status-monitoring {
+      border-color: rgba(255, 178, 28, 0.34);
+      box-shadow: 0 18px 44px rgba(0, 0, 0, 0.42), 0 0 28px rgba(59, 157, 255, 0.13);
+    }
+
+    .mobile-mission-card.mobile-status-active {
+      border-color: rgba(255, 92, 47, 0.48);
+      box-shadow: 0 18px 44px rgba(0, 0, 0, 0.42), 0 0 30px rgba(255, 92, 47, 0.20);
+    }
+
+    .mobile-mission-card.mobile-status-completed {
+      border-color: rgba(38, 208, 124, 0.42);
+      box-shadow: 0 18px 44px rgba(0, 0, 0, 0.42), 0 0 28px rgba(38, 208, 124, 0.14);
+    }
+
+    .mobile-mission-card.mobile-status-offline {
+      border-color: rgba(148, 163, 184, 0.24);
+      box-shadow: 0 18px 44px rgba(0, 0, 0, 0.42);
+    }
+
+    .mobile-mission-card .mobile-card-inner {
+      padding: 15px;
+    }
+
+    .mobile-mission-topline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .mobile-mission-kicker {
+      color: #8fb0cf;
+      font-size: 0.68rem;
+      font-weight: 950;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .mobile-status-badge {
+      display: inline-flex;
+      align-items: center;
+      max-width: 62%;
+      min-height: 30px;
+      padding: 7px 10px;
+      color: #f8fafc;
+      font-size: 0.72rem;
+      font-weight: 950;
+      line-height: 1.05;
+      text-transform: uppercase;
+      border: 1px solid rgba(148, 183, 218, 0.32);
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.70);
+      overflow-wrap: anywhere;
+    }
+
+    .mobile-status-badge.mobile-status-monitoring {
+      color: #fff7c2;
+      background: linear-gradient(135deg, rgba(59, 157, 255, 0.28), rgba(255, 178, 28, 0.18));
+      border-color: rgba(255, 209, 92, 0.56);
+      box-shadow: 0 0 20px rgba(59, 157, 255, 0.16);
+    }
+
+    .mobile-status-badge.mobile-status-active {
+      color: #fff4ed;
+      background: linear-gradient(135deg, rgba(255, 138, 36, 0.34), rgba(239, 68, 68, 0.28));
+      border-color: rgba(255, 138, 36, 0.64);
+      box-shadow: 0 0 22px rgba(239, 68, 68, 0.18);
+    }
+
+    .mobile-status-badge.mobile-status-completed {
+      color: #dcfce7;
+      background: rgba(22, 101, 52, 0.38);
+      border-color: rgba(38, 208, 124, 0.62);
+      box-shadow: 0 0 20px rgba(38, 208, 124, 0.16);
+    }
+
+    .mobile-status-badge.mobile-status-offline {
+      color: #d5dde8;
+      background: rgba(71, 85, 105, 0.42);
+      border-color: rgba(148, 163, 184, 0.38);
+    }
+
+    .mobile-mission-headline {
+      display: block;
+      margin: 0;
+      color: #f8fbff;
+      font-size: 1.34rem;
+      line-height: 1.08;
+      font-weight: 950;
+      letter-spacing: -0.02em;
+      overflow-wrap: anywhere;
+    }
+
+    .mobile-mission-discussion {
+      margin: 8px 0 0 !important;
+      color: #bfd4e8 !important;
+      font-size: 0.94rem;
+      line-height: 1.42 !important;
+      overflow-wrap: anywhere;
+    }
+
+    .mobile-mission-updated {
+      margin-top: 11px;
+      color: #8fb0cf;
+      font-size: 0.78rem;
+      font-weight: 800;
+      overflow-wrap: anywhere;
+    }
+
+    .mobile-mission-metrics {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .mobile-mission-metric {
+      display: grid;
+      align-content: start;
+      gap: 5px;
+      min-height: 88px;
+      padding: 10px 9px;
+      background: rgba(255, 255, 255, 0.055);
+      border: 1px solid rgba(148, 183, 218, 0.20);
+      border-radius: 14px;
+    }
+
+    .mobile-mission-metric span {
+      color: #8fb0cf;
+      font-size: 0.62rem;
+      font-weight: 950;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+    }
+
+    .mobile-mission-metric strong,
+    .mobile-mission-location-value strong {
+      color: #f8fbff;
+      font-size: 0.88rem;
+      line-height: 1.18;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    .mobile-mission-location-value {
+      display: grid;
+      gap: 7px;
+    }
+
+    .mobile-mission-location-value .mobile-track-link {
+      width: auto;
+      min-height: 28px;
+      height: auto;
+      padding: 0 10px;
+      justify-self: start;
+      border-radius: 999px;
+    }
+
+    .mobile-mission-hazards {
+      margin-top: 14px;
+    }
+
+    .mobile-mission-label {
+      display: block;
+      margin-bottom: 7px;
+      color: #8fb0cf;
+      font-size: 0.66rem;
+      font-weight: 950;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .mobile-hazard-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    .mobile-hazard-chip {
+      display: inline-flex;
+      align-items: center;
+      max-width: 100%;
+      min-height: 30px;
+      padding: 7px 10px;
+      color: #dcecff;
+      font-size: 0.78rem;
+      font-weight: 850;
+      line-height: 1.1;
+      background: rgba(37, 99, 235, 0.20);
+      border: 1px solid rgba(96, 165, 250, 0.32);
+      border-radius: 999px;
+      overflow-wrap: anywhere;
+    }
+
+    .mobile-hazard-chip.hazard-tornado {
+      color: #ffe3e3;
+      background: rgba(185, 28, 28, 0.34);
+      border-color: rgba(248, 113, 113, 0.55);
+    }
+
+    .mobile-hazard-chip.hazard-wind {
+      color: #ffedd5;
+      background: rgba(194, 65, 12, 0.34);
+      border-color: rgba(251, 146, 60, 0.56);
+    }
+
+    .mobile-hazard-chip.hazard-hail {
+      color: #f3e8ff;
+      background: rgba(109, 40, 217, 0.34);
+      border-color: rgba(196, 181, 253, 0.52);
+    }
+
+    .mobile-hazard-chip.hazard-flood {
+      color: #dcfce7;
+      background: rgba(21, 128, 61, 0.30);
+      border-color: rgba(74, 222, 128, 0.48);
+    }
+
+    .mobile-mission-footer {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+      padding-top: 13px;
+      border-top: 1px solid rgba(148, 183, 218, 0.17);
+    }
+
+    .mobile-mission-next {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      color: #edf7ff;
+      font-size: 0.9rem;
+      font-weight: 850;
+    }
+
+    .mobile-mission-next span {
+      flex: 0 0 auto;
+      color: #8fb0cf;
+      font-size: 0.66rem;
+      font-weight: 950;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .mobile-mission-next strong {
+      text-align: right;
+      overflow-wrap: anywhere;
+    }
+
+    .mobile-mission-map-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 46px;
+      padding: 0 14px;
+      color: #f8fbff;
+      text-decoration: none;
+      font-size: 0.92rem;
+      font-weight: 950;
+      background: linear-gradient(135deg, rgba(255, 138, 36, 0.28), rgba(59, 157, 255, 0.18));
+      border: 1px solid rgba(255, 138, 36, 0.48);
+      border-radius: 14px;
+    }
+
+    .mobile-mission-map-button[hidden],
+    .mobile-mission-sr-value {
+      display: none !important;
+    }
+
+    @media (max-width: 390px) {
+      .mobile-mission-metrics {
+        grid-template-columns: 1fr;
+      }
+
+      .mobile-status-badge {
+        max-width: 56%;
+      }
+    }
+
     .chase-location-button,
     .chase-location-map {
       min-height: 46px;
@@ -2740,6 +3044,81 @@
           });
         };
 
+        const chaseStatusClass = (value) => {
+          const normalized = String(value || "").trim().toLowerCase();
+
+          if (normalized.includes("complete")) return "mobile-status-completed";
+          if (normalized.includes("offline") || normalized.includes("inactive")) return "mobile-status-offline";
+          if (
+            normalized.includes("active") ||
+            normalized.includes("chasing") ||
+            normalized.includes("en route") ||
+            normalized.includes("deploy")
+          ) {
+            return "mobile-status-active";
+          }
+
+          return "mobile-status-monitoring";
+        };
+
+        const setChaseStatusStyle = (value) => {
+          const className = chaseStatusClass(value);
+
+          document.querySelectorAll("[data-chase-status-style]").forEach((el) => {
+            el.classList.remove(
+              "mobile-status-monitoring",
+              "mobile-status-active",
+              "mobile-status-completed",
+              "mobile-status-offline"
+            );
+            el.classList.add(className);
+          });
+        };
+
+        const hazardClass = (value) => {
+          const normalized = String(value || "").toLowerCase();
+
+          if (normalized.includes("tornado") || normalized.includes("tor ")) return "hazard-tornado";
+          if (normalized.includes("wind") || normalized.includes("gust")) return "hazard-wind";
+          if (normalized.includes("hail")) return "hazard-hail";
+          if (
+            normalized.includes("flood") ||
+            normalized.includes("hydro") ||
+            normalized.includes("flash")
+          ) {
+            return "hazard-flood";
+          }
+
+          return "hazard-other";
+        };
+
+        const hazardParts = (value) => {
+          if (Array.isArray(value)) {
+            return value.map((part) => String(part || "").trim()).filter(Boolean);
+          }
+
+          return String(value || "")
+            .split(/\s*(?:,|;|\/|\||\band\b)\s*/i)
+            .map((part) => part.trim())
+            .filter(Boolean);
+        };
+
+        const renderHazardChips = (value) => {
+          const hazards = hazardParts(value);
+
+          document.querySelectorAll("[data-chase-hazard-chips]").forEach((container) => {
+            container.textContent = "";
+
+            const chipValues = hazards.length ? hazards : ["No primary hazards listed"];
+            chipValues.forEach((hazard) => {
+              const chip = document.createElement("span");
+              chip.className = `mobile-hazard-chip ${hazardClass(hazard)}`;
+              chip.textContent = hazard;
+              container.appendChild(chip);
+            });
+          });
+        };
+
         const stripGpsLocationParts = (value) => {
           const cleaned = String(value || "")
             .replace(/Near\s+-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?/gi, "")
@@ -2868,6 +3247,7 @@
 
 
         setText("[data-chase-status]", data.status, "Monitoring");
+        setChaseStatusStyle(data.status || "Monitoring");
         setText("[data-chase-target]", data.targetArea, "NC / VA / SC");
         setText("[data-chase-header-location]", cleanHeaderLocation(data), "Not actively chasing");
         updateTrackZachButton(data);
@@ -2883,6 +3263,9 @@
 
         if (Array.isArray(data.hazards)) {
           setText("[data-chase-hazards]", data.hazards.join(", "), "");
+          renderHazardChips(data.hazards);
+        } else {
+          renderHazardChips(document.querySelector("[data-chase-hazards]")?.textContent || "");
         }
 
         if (typeof data.confidence === "number") {
@@ -3068,20 +3451,51 @@
       </div>
     </section>
 
-    <section class="mobile-card mobile-admin-status-card">
+    <section class="mobile-card mobile-admin-status-card mobile-mission-card mobile-status-monitoring" data-chase-status-style>
       <div class="mobile-card-inner">
-        <h2>Current Mission</h2>
-        <p><strong data-chase-headline>Monitoring potential chase opportunities</strong></p>
-        <p data-chase-discussion>No active chase is currently underway. Updates will appear here when operations are active.</p>
+        <div class="mobile-mission-topline">
+          <span class="mobile-mission-kicker">Current Mission</span>
+          <span class="mobile-status-badge mobile-status-monitoring" data-chase-status data-chase-status-badge data-chase-status-style>Monitoring</span>
+        </div>
 
-        <div class="mobile-admin-grid">
-          <div class="mobile-admin-row"><span>Status</span><strong data-chase-status>Monitoring</strong></div>
-          <div class="mobile-admin-row"><span>Target</span><strong data-chase-hero-target>T.B.D.</strong></div>
-          <div class="mobile-admin-row mobile-location-row"><span>Location</span><div class="mobile-location-value"><strong data-chase-location>Not actively chasing</strong><a class="mobile-track-link" data-chase-track-link href="#" target="_blank" rel="noopener" aria-label="Open chase location in map" title="Open map" hidden>MAP</a></div></div>
-          <div class="mobile-admin-row"><span>Hazards</span><strong data-chase-hazards>Large Hail, Tornadoes, Damaging Winds</strong></div>
-          <div class="mobile-admin-row"><span>Confidence</span><strong data-chase-confidence>75%</strong></div>
-          <div class="mobile-admin-row"><span>Next Update</span><strong data-chase-next-update>As needed</strong></div>
-          <div class="mobile-admin-row"><span>Updated</span><strong data-chase-updated>Updated from live data</strong></div>
+        <strong class="mobile-mission-headline" data-chase-headline>Monitoring potential chase opportunities</strong>
+        <p class="mobile-mission-discussion" data-chase-discussion>No active chase is currently underway. Updates will appear here when operations are active.</p>
+        <div class="mobile-mission-updated" data-chase-updated>Updated from live data</div>
+
+        <div class="mobile-mission-metrics" aria-label="Mission metrics">
+          <div class="mobile-mission-metric">
+            <span>Target</span>
+            <strong data-chase-hero-target>T.B.D.</strong>
+          </div>
+          <div class="mobile-mission-metric">
+            <span>Location</span>
+            <div class="mobile-mission-location-value">
+              <strong data-chase-location>Not actively chasing</strong>
+              <a class="mobile-track-link" data-chase-track-link href="#" target="_blank" rel="noopener" aria-label="Open chase location in map" title="Open map" hidden>MAP</a>
+            </div>
+          </div>
+          <div class="mobile-mission-metric">
+            <span>Confidence</span>
+            <strong data-chase-confidence>75%</strong>
+          </div>
+        </div>
+
+        <div class="mobile-mission-hazards">
+          <span class="mobile-mission-label">Hazards</span>
+          <div class="mobile-hazard-chips" data-chase-hazard-chips>
+            <span class="mobile-hazard-chip hazard-hail">Large Hail</span>
+            <span class="mobile-hazard-chip hazard-tornado">Tornadoes</span>
+            <span class="mobile-hazard-chip hazard-wind">Damaging Winds</span>
+          </div>
+          <strong class="mobile-mission-sr-value" data-chase-hazards>Large Hail, Tornadoes, Damaging Winds</strong>
+        </div>
+
+        <div class="mobile-mission-footer">
+          <div class="mobile-mission-next">
+            <span>Next Update</span>
+            <strong data-chase-next-update>As needed</strong>
+          </div>
+          <a class="mobile-mission-map-button" data-chase-track-link href="#" target="_blank" rel="noopener" aria-label="View chase location on map" hidden>View on Map</a>
         </div>
       </div>
     </section>
