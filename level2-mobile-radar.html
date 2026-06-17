@@ -3851,6 +3851,22 @@
           currentFrameIndex = Math.max(0, level2Frames.length - 1);
           resetMobileLoopLoadState();
           await Promise.all([renderCurrentFrame(), loadAlerts()]);
+
+          map.resize();
+          window.requestAnimationFrame(() => {
+            forceOverlayRedraw();
+            requestAlertOverlayRedraw();
+          });
+
+          map.once("idle", async () => {
+            try {
+              await renderCurrentFrame();
+              forceOverlayRedraw();
+              requestAlertOverlayRedraw();
+            } catch (error) {
+              console.warn("Initial radar redraw after map idle failed", error);
+            }
+          });
           if (isMobileLevel2Mode()) setStatusText("Latest frame ready");
           startFrameRefresh();
           startAlertRefresh();
