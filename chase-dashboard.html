@@ -1012,19 +1012,25 @@
     }
 
     .mobile-admin-row span,
-    .mobile-device-row span {
-      color: #a8bfd7;
-      font-size: 0.74rem;
-      font-weight: 900;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-    }
+.mobile-device-row span {
+  flex: 0 0 90px;
+  color: #a8bfd7;
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
 
     .mobile-admin-row strong,
-    .mobile-device-row strong {
-      color: #edf7ff;
-      text-align: right;
-    }
+.mobile-device-row strong {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #edf7ff;
+  text-align: right;
+}
 
     .chase-location-button,
     .chase-location-map {
@@ -1632,24 +1638,25 @@
     }
 
     .mobile-admin-row,
-    .mobile-device-row {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 11px 12px;
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.09);
-      border-radius: 13px;
-    }
+.mobile-device-row {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 12px;
+  padding: 11px 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 13px;
+}
 
-    .mobile-admin-row span,
-    .mobile-device-row span {
-      color: #a8bfd7;
-      font-size: 0.74rem;
-      font-weight: 900;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-    }
+   .mobile-admin-row span,
+.mobile-device-row span {
+  flex: 0 0 110px;
+  color: #a8bfd7;
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
 
     .mobile-admin-row strong,
 .mobile-device-row strong {
@@ -3307,6 +3314,7 @@
 </script>
 </body>
 </html>
+
 
 
 
