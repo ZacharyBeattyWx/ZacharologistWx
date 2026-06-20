@@ -3463,8 +3463,20 @@
       return HOMEPAGE_RADAR_ALERT_EVENTS.has(event);
     }
 
+
+    function isExpiredAlertFeature(feature) {
+      const properties = feature?.properties || {};
+      const expiresValue = properties.expires || properties.ends;
+      if (!expiresValue) return false;
+
+      const expiresDate = new Date(expiresValue);
+      if (Number.isNaN(expiresDate.getTime())) return false;
+
+      return expiresDate.getTime() <= Date.now();
+    }
+
     function normalizeAlertFeature(feature, index) {
-      if (isTestOrExerciseAlertFeature(feature)) {
+      if (isTestOrExerciseAlertFeature(feature) || isExpiredAlertFeature(feature)) {
         return null;
       }
       const properties = feature.properties || {};
@@ -4032,5 +4044,4 @@
   </script>
 </body>
 </html>
-
 
