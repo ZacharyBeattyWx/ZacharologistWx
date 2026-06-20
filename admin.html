@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -572,6 +572,9 @@
     let gpsAutoPublishTimer = null;
     let gpsAutoPublishEnabled = false;
     let gpsAutoPublishInFlight = false;
+    let gpsLastPublishTimestamp = null;
+    let gpsWatchdogTimer = null;
+    let gpsWakeLock = null;
     let chaseMapDisplayEnabled = false;
     const GPS_AUTO_PUBLISH_INTERVAL_MS = 20000;
 
@@ -771,6 +774,35 @@
       setGpsText("gpsMapDisplayStatus", chaseMapDisplayEnabled ? "On" : "Off");
     }
 
+    async function requestGpsWakeLock() {
+      if (!("wakeLock" in navigator)) {
+        return false;
+      }
+
+      try {
+        gpsWakeLock = await navigator.wakeLock.request("screen");
+        gpsWakeLock.addEventListener("release", () => {
+          gpsWakeLock = null;
+        });
+        return true;
+      } catch (error) {
+        console.warn("Wake lock request failed:", error);
+        return false;
+      }
+    }
+
+    async function releaseGpsWakeLock() {
+      if (!gpsWakeLock) return;
+
+      try {
+        await gpsWakeLock.release();
+      } catch (error) {
+        console.warn("Wake lock release failed:", error);
+      }
+
+      gpsWakeLock = null;
+    }
+
     function chaseMapUrl(lat, lon) {
       const params = new URLSearchParams({
         chaseLat: String(lat),
@@ -813,6 +845,13 @@
         window.clearInterval(gpsAutoPublishTimer);
         gpsAutoPublishTimer = null;
       }
+
+      if (gpsWatchdogTimer) {
+        window.clearInterval(gpsWatchdogTimer);
+        gpsWatchdogTimer = null;
+      }
+
+      releaseGpsWakeLock();
 
       if (gpsWatchId !== null && "geolocation" in navigator) {
         navigator.geolocation.clearWatch(gpsWatchId);
@@ -926,7 +965,9 @@
       const ok = await publishUpdate(payload);
 
       if (ok) {
-        setGpsText("gpsAutoLastPublished", new Date().toLocaleTimeString([], {
+        gpsLastPublishTimestamp = Date.now();
+
+        setGpsText("gpsAutoLastPublished", new Date(gpsLastPublishTimestamp).toLocaleTimeString([], {
           hour: "numeric",
           minute: "2-digit",
           second: "2-digit"
@@ -938,6 +979,32 @@
 
     async function publishApproxLocation() {
       await publishGpsLocation({ quiet: false });
+    }
+
+    function formatGpsAge(ms) {
+      const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+      if (totalSeconds < 60) return `${totalSeconds}s ago`;
+
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      return `${minutes}m ${seconds}s ago`;
+    }
+
+    function updateGpsAutoHeartbeat() {
+      if (!gpsAutoPublishEnabled) return;
+
+      if (!gpsLastPublishTimestamp) {
+        setGpsText("gpsAutoStatus", "Waiting for first publish");
+        return;
+      }
+
+      const age = Date.now() - gpsLastPublishTimestamp;
+
+      if (age > 90000) {
+        setGpsText("gpsAutoStatus", `STALE - ${formatGpsAge(age)}`);
+      } else {
+        setGpsText("gpsAutoStatus", `LIVE - ${formatGpsAge(age)}`);
+      }
     }
 
     async function publishGpsAutoLocation() {
@@ -953,7 +1020,16 @@
 
       const ok = await publishGpsLocation({ quiet: true });
 
-      setGpsText("gpsAutoStatus", ok ? "On · 20 sec" : "Publish failed");
+      if (ok) {
+        updateGpsAutoHeartbeat();
+      } else {
+        const lastGood = gpsLastPublishTimestamp
+          ? ` - last good ${formatGpsAge(Date.now() - gpsLastPublishTimestamp)}`
+          : "";
+
+        setGpsText("gpsAutoStatus", `FAILED${lastGood}`);
+      }
+
       gpsAutoPublishInFlight = false;
     }
 
@@ -971,6 +1047,7 @@
       el("adminToken").value = token;
 
       enableGps();
+      requestGpsWakeLock();
 
       gpsAutoPublishEnabled = true;
       setGpsText("gpsAutoStatus", "On · 20 sec");
@@ -982,6 +1059,12 @@
 
       gpsAutoPublishTimer = window.setInterval(publishGpsAutoLocation, GPS_AUTO_PUBLISH_INTERVAL_MS);
 
+      if (gpsWatchdogTimer) {
+        window.clearInterval(gpsWatchdogTimer);
+      }
+
+      gpsWatchdogTimer = window.setInterval(updateGpsAutoHeartbeat, 10000);
+
       window.setTimeout(publishGpsAutoLocation, 2500);
     }
 
@@ -992,6 +1075,13 @@
         window.clearInterval(gpsAutoPublishTimer);
         gpsAutoPublishTimer = null;
       }
+
+      if (gpsWatchdogTimer) {
+        window.clearInterval(gpsWatchdogTimer);
+        gpsWatchdogTimer = null;
+      }
+
+      releaseGpsWakeLock();
 
       setGpsText("gpsAutoStatus", "Off");
       el("startGpsAutoButton").textContent = "Start Auto Publish";
@@ -1057,6 +1147,13 @@
     el("gpsMapDisplayOffButton").addEventListener("click", disableGpsMapDisplay);
     el("startGpsAutoButton").addEventListener("click", startGpsAutoUpdate);
     el("stopGpsAutoButton").addEventListener("click", stopGpsAutoUpdate);
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && gpsAutoPublishEnabled) {
+        requestGpsWakeLock();
+        updateGpsAutoHeartbeat();
+      }
+    });
 
     el("adminToken").value = savedToken();
 
