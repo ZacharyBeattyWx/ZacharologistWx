@@ -621,7 +621,7 @@
       </div>
       <div id="mobileRadarOptionsPanel">
         <label class="toolbar-field">Site
-          <select id="siteSelect"><option value="KFCX">KFCX</option><option value="KRAX">KRAX</option><option value="KGSP">KGSP</option><option value="KLTX">KLTX</option><option value="KMRX">KMRX</option><option value="KJKL">KJKL</option><option value="KRLX">KRLX</option><option value="KLWX">KLWX</option><option value="KMHX">KMHX</option><option value="KAKQ">KAKQ</option><option value="KCAE">KCAE</option><option value="KCLX">KCLX</option><option value="KILX">KILX</option><option value="KIND">KIND</option><option value="KLOT">KLOT</option><option value="KLSX">KLSX</option><option value="KIWX">KIWX</option><option value="KDVN">KDVN</option><option value="KDMX">KDMX</option><option value="KOAX">KOAX</option><option value="KEAX">KEAX</option><option value="KICT">KICT</option><option value="KTWX">KTWX</option><option value="KSGF">KSGF</option></select>
+          <select id="siteSelect"><option value="KFCX">KFCX</option><option value="KRAX">KRAX</option><option value="KGSP">KGSP</option><option value="KLTX">KLTX</option><option value="KMRX">KMRX</option><option value="KJKL">KJKL</option><option value="KRLX">KRLX</option><option value="KLWX">KLWX</option><option value="KMHX">KMHX</option><option value="KAKQ">KAKQ</option><option value="KCAE">KCAE</option><option value="KCLX">KCLX</option><option value="KILX">KILX</option><option value="KIND">KIND</option><option value="KLOT">KLOT</option><option value="KLSX">KLSX</option><option value="KIWX">KIWX</option><option value="KDVN">KDVN</option><option value="KDMX">KDMX</option><option value="KOAX">KOAX</option><option value="KEAX">KEAX</option><option value="KICT">KICT</option><option value="KTWX">KTWX</option><option value="KSGF">KSGF</option><option value="KVWX">KVWX</option><option value="KPAH">KPAH</option></select>
         </label>
         <div class="select-row">
           <label class="toolbar-field">Frame
@@ -657,7 +657,7 @@
     const MAPBOX_STYLE = "mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
     const CHASE_STATUS_API = "https://zacharologist-chase-api.zacharologistwx.workers.dev/api/chase/status";
     const CHASE_LOCATION_REFRESH_MS = 20000;
-    const LEVEL2_SUPPORTED_SITES = ["KFCX", "KRAX", "KGSP", "KLTX", "KMRX", "KJKL", "KRLX", "KLWX", "KMHX", "KAKQ", "KCAE", "KCLX", "KILX", "KIND", "KLOT", "KLSX", "KIWX", "KDVN", "KDMX", "KOAX", "KEAX", "KICT", "KTWX", "KSGF"];
+    const LEVEL2_SUPPORTED_SITES = ["KFCX", "KRAX", "KGSP", "KLTX", "KMRX", "KJKL", "KRLX", "KLWX", "KMHX", "KAKQ", "KCAE", "KCLX", "KILX", "KIND", "KLOT", "KLSX", "KIWX", "KDVN", "KDMX", "KOAX", "KEAX", "KICT", "KTWX", "KSGF", "KVWX", "KPAH"];
     const LEVEL2_SITE_LOCATIONS = {
       KFCX: { lat: 37.024, lon: -80.273 },
       KRAX: { lat: 35.665, lon: -78.49 },
@@ -682,7 +682,9 @@
       KEAX: { lat: 38.81025, lon: -94.264472 },
       KICT: { lat: 37.654444, lon: -97.443056 },
       KTWX: { lat: 38.99695, lon: -96.23255 },
-      KSGF: { lat: 37.235239, lon: -93.400419 }
+      KSGF: { lat: 37.235239, lon: -93.400419 },
+      KVWX: { lat: 38.260335, lon: -87.724532 },
+      KPAH: { lat: 37.068363, lon: -88.771382 }
     };
     const DEFAULT_LEVEL2_SITE = "KFCX";
     const LEVEL2_SELECTED_SITE_STORAGE_KEY = "zach-level2-selected-site";
@@ -3357,7 +3359,9 @@
           { type: "Feature", properties: { id: "KEAX" }, geometry: { type: "Point", coordinates: [-94.264472, 38.810250] } },
           { type: "Feature", properties: { id: "KICT" }, geometry: { type: "Point", coordinates: [-97.443056, 37.654444] } },
           { type: "Feature", properties: { id: "KTWX" }, geometry: { type: "Point", coordinates: [-96.232550, 38.996950] } },
-          { type: "Feature", properties: { id: "KSGF" }, geometry: { type: "Point", coordinates: [-93.400419, 37.235239] } }
+          { type: "Feature", properties: { id: "KSGF" }, geometry: { type: "Point", coordinates: [-93.400419, 37.235239] } },
+          { type: "Feature", properties: { id: "KVWX" }, geometry: { type: "Point", coordinates: [-87.724532, 38.260335] } },
+          { type: "Feature", properties: { id: "KPAH" }, geometry: { type: "Point", coordinates: [-88.771382, 37.068363] } }
         ]
       };
 
