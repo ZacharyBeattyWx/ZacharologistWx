@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -2297,7 +2297,7 @@
     }
 
     .desktop-chase-shell .header-status-row .status-detail::before {
-      content: "•";
+      content: "\2022";
       margin-right: 7px;
       color: #6b7280;
     }
@@ -2744,6 +2744,167 @@
   }
 </style>
 
+<style id="desktop-hero-telemetry-polish-css">
+  @media (min-width: 901px) {
+    .desktop-chase-shell .hero {
+      position: relative;
+      min-height: clamp(650px, 72vh, 740px) !important;
+      padding-bottom: clamp(264px, 23vh, 314px) !important;
+      isolation: isolate;
+    }
+
+    .desktop-chase-shell .hero::after {
+      content: "" !important;
+      display: block !important;
+      position: absolute !important;
+      inset: 0 !important;
+      z-index: 0 !important;
+      pointer-events: none !important;
+      background:
+        linear-gradient(
+          90deg,
+          rgba(4, 8, 13, 0.82) 0%,
+          rgba(4, 8, 13, 0.67) 28%,
+          rgba(4, 8, 13, 0.31) 51%,
+          rgba(4, 8, 13, 0.08) 73%,
+          rgba(4, 8, 13, 0) 100%
+        ) !important;
+    }
+
+    .desktop-chase-shell .hero-content {
+      position: relative;
+      z-index: 1;
+      max-width: 405px !important;
+      padding-top: clamp(104px, 11vh, 138px) !important;
+    }
+
+    .desktop-chase-shell .dashboard-strip {
+      z-index: 1;
+      bottom: clamp(30px, 3.5vh, 46px) !important;
+    }
+
+    .desktop-chase-shell .dashboard-strip > .cards-grid {
+      transform: translateY(28px) !important;
+    }
+
+    .desktop-chase-shell .hero-kicker {
+      margin: 0 0 13px;
+      color: #ffad32;
+      font-size: clamp(0.7rem, 0.75vw, 0.82rem);
+      font-weight: 950;
+      letter-spacing: 0.19em;
+      line-height: 1;
+      text-transform: uppercase;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.75);
+    }
+
+    .desktop-chase-shell .hero-title {
+      margin: 0 0 23px !important;
+      color: #ffffff;
+      font-size: clamp(3.35rem, 4.6vw, 4.95rem) !important;
+      letter-spacing: 0.10em !important;
+      line-height: 0.88 !important;
+      text-shadow: 0 5px 20px rgba(0, 0, 0, 0.76) !important;
+    }
+
+    .desktop-chase-shell .mission-overview {
+      max-width: 365px !important;
+    }
+
+    .desktop-chase-shell .mission-overview .mission-item {
+      margin-bottom: 12px !important;
+    }
+
+    .desktop-chase-shell .mission-overview .mission-label {
+      margin-bottom: 4px !important;
+      color: #ffc453 !important;
+      font-size: clamp(0.68rem, 0.72vw, 0.78rem) !important;
+      letter-spacing: 0.15em !important;
+      -webkit-text-stroke: 0 !important;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8) !important;
+    }
+
+    .desktop-chase-shell .mission-overview .mission-value {
+      color: #f9fbfd !important;
+      font-size: clamp(0.98rem, 0.98vw, 1.1rem) !important;
+      font-weight: 850 !important;
+      -webkit-text-stroke: 0 !important;
+      text-shadow: 0 2px 9px rgba(0, 0, 0, 0.85) !important;
+    }
+
+    .desktop-chase-shell .mission-overview .confidence-row {
+      max-width: 340px;
+      margin-top: 8px !important;
+    }
+
+    .desktop-chase-shell .mission-overview .confidence-bar {
+      height: 7px !important;
+    }
+
+    .desktop-chase-shell .mission-overview .hero-button {
+      min-width: 220px;
+      min-height: 44px;
+      margin-top: 4px !important;
+      padding: 0 18px;
+      color: #fff8ef;
+      text-decoration: none !important;
+      background: rgba(8, 13, 19, 0.78);
+      border-color: rgba(255, 171, 50, 0.82);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+    }
+
+    .desktop-chase-shell .header-status-row {
+      gap: 8px !important;
+      grid-template-columns:
+        minmax(0, 0.92fr)
+        minmax(0, 1.08fr)
+        minmax(0, 0.82fr)
+        minmax(0, 1.48fr) !important;
+    }
+
+    .desktop-chase-shell .header-status-row .status-card {
+      min-height: 48px !important;
+      padding: 9px 12px !important;
+      border-radius: 7px !important;
+      background:
+        linear-gradient(180deg, rgba(8, 14, 22, 0.90), rgba(3, 8, 14, 0.96)) !important;
+      border-color: rgba(148, 163, 184, 0.30) !important;
+    }
+
+    .desktop-chase-shell .header-status-row .status-icon {
+      min-width: 38px !important;
+      color: #91a4b8 !important;
+      font-size: 0.52rem !important;
+    }
+
+    .desktop-chase-shell .header-status-row .status-value {
+      margin-bottom: 0 !important;
+      font-size: clamp(0.88rem, 0.95vw, 1.04rem) !important;
+      line-height: 1.1 !important;
+    }
+
+    .desktop-chase-shell .header-status-row .status-detail {
+      margin: 0 !important;
+      color: rgba(220, 228, 238, 0.82) !important;
+      font-size: clamp(0.66rem, 0.7vw, 0.76rem) !important;
+      line-height: 1 !important;
+    }
+
+    .desktop-chase-shell .header-status-row .status-detail:empty {
+      display: none !important;
+    }
+  }
+
+  @media (min-width: 901px) and (max-width: 1240px) {
+    .desktop-chase-shell .header-status-row {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    .desktop-chase-shell .hero-content {
+      padding-top: 132px !important;
+    }
+  }
+</style>
 </head>
 <body>
 <div class="desktop-chase-shell">
@@ -2768,9 +2929,9 @@
 
       <section class="hero" aria-label="Storm chase dashboard overview">
         <div class="hero-content">
+          <div class="hero-kicker">Current Mission</div>
           <h1 class="hero-title">Chase<br>Dashboard</h1>
           <div class="mission-overview">
-            <div class="section-kicker">Current Mission Overview</div>
             <div class="mission-item">
               <span class="mission-label">Target Area</span>
               <span class="mission-value" data-chase-hero-target>T.B.D.</span>
@@ -2786,14 +2947,14 @@
                 <div class="confidence-bar"><div class="confidence-fill" data-chase-confidence-fill></div></div>
               </div>
             </div>
-            <button class="hero-button" type="button" onclick="alert('View Target Discussion')">View Target Discussion</button>
+            <a class="hero-button" href="#targets">Open Target Brief</a>
           </div>
         </div>
 
         <div class="dashboard-strip">
           <div class="status-row" aria-label="Current chase status">
             <article class="status-card">
-              <div class="status-icon">TIME</div><div><span class="status-label">Target Window</span><div class="status-value" data-chase-next-update>As needed</div><div class="status-detail" data-chase-status>Monitoring</div></div>
+              <div class="status-icon">STATUS</div><div><span class="status-label">Operational Status</span><div class="status-value" data-chase-status>Monitoring</div><div class="status-detail" data-chase-next-update>As needed</div></div>
             </article>
             <article class="status-card">
               <div class="status-icon">CAR</div><div><span class="status-label">Vehicle</span><div class="status-value" data-chase-vehicle-status>In Position</div><div class="status-detail" data-chase-vehicle-detail>Ready to Deploy</div></div>
@@ -2907,22 +3068,22 @@
 <div class="field-ops-quick-grid">
     <a class="field-link" href="level2-mobile-radar.html">
       <span>Zach Radar<small>Level II mobile page</small></span>
-      <span class="field-link-arrow">›</span>
+      <span class="field-link-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
     </a>
 
     <a class="field-link" href="https://www.spc.noaa.gov/products/outlook/" target="_blank" rel="noopener">
       <span>SPC Outlooks<small>Day 1-8 severe risk</small></span>
-      <span class="field-link-arrow">›</span>
+      <span class="field-link-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
     </a>
 
     <a class="field-link" href="https://www.spc.noaa.gov/products/md/" target="_blank" rel="noopener">
       <span>SPC MDs<small>Mesoscale discussions</small></span>
-      <span class="field-link-arrow">›</span>
+      <span class="field-link-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
     </a>
 
     <a class="field-link" href="https://www.spc.noaa.gov/products/watch/" target="_blank" rel="noopener">
       <span>SPC Watches<small>Current watches</small></span>
-      <span class="field-link-arrow">›</span>
+      <span class="field-link-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
     </a>
   </div>
 
@@ -2932,19 +3093,19 @@
       <div class="field-link-list">
         <a class="field-link" href="https://www.spc.noaa.gov/products/outlook/" target="_blank" rel="noopener">
           <span>Convective Outlooks<small>Day 1, Day 2, Day 3, Day 4-8</small></span>
-          <span class="field-link-arrow">›</span>
+          <span class="field-link-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
         </a>
         <a class="field-link" href="https://www.spc.noaa.gov/exper/mesoanalysis/" target="_blank" rel="noopener">
           <span>SPC Mesoanalysis<small>Instability, shear, boundaries</small></span>
-          <span class="field-link-arrow">›</span>
+          <span class="field-link-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
         </a>
         <a class="field-link" href="https://www.spc.noaa.gov/products/md/" target="_blank" rel="noopener">
           <span>Mesoscale Discussions<small>Watch likelihood / near-term focus</small></span>
-          <span class="field-link-arrow">›</span>
+          <span class="field-link-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
         </a>
         <a class="field-link" href="https://www.spc.noaa.gov/products/watch/" target="_blank" rel="noopener">
           <span>Current Watches<small>Tornado / severe thunderstorm watches</small></span>
-          <span class="field-link-arrow">›</span>
+          <span class="field-link-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
         </a>
       </div>
     </article>
@@ -2954,27 +3115,27 @@
       <div class="field-link-list">
         <a class="field-link" href="level2-mobile-radar.html">
           <span>Zach Level II Radar<small>Primary site radar view</small></span>
-          <span class="field-link-arrow">›</span>
+          <span class="field-link-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
         </a>
         <a class="field-link" href="https://radar.weather.gov/" target="_blank" rel="noopener">
           <span>NWS Radar<small>Official national radar viewer</small></span>
-          <span class="field-link-arrow">›</span>
+          <span class="field-link-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
         </a>
         <a class="field-link" href="https://www.star.nesdis.noaa.gov/GOES/" target="_blank" rel="noopener">
           <span>GOES-East Satellite<small>Visible, IR, GeoColor, sectors</small></span>
-          <span class="field-link-arrow">›</span>
+          <span class="field-link-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
         </a>
         <a class="field-link" href="https://aviationweather.gov/gfa/" target="_blank" rel="noopener">
           <span>AWC Obs Map<small>METARs, fronts, aviation weather</small></span>
-          <span class="field-link-arrow">›</span>
+          <span class="field-link-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
         </a>
         <a class="field-link" href="https://aviationweather.gov/data/metar/" target="_blank" rel="noopener">
           <span>METAR Text<small>Surface obs by station</small></span>
-          <span class="field-link-arrow">›</span>
+          <span class="field-link-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
         </a>
         <a class="field-link" href="https://www.wpc.ncep.noaa.gov/html/sfc2.shtml" target="_blank" rel="noopener">
           <span>WPC Surface Analysis<small>Fronts, lows, highs, boundaries</small></span>
-          <span class="field-link-arrow">›</span>
+          <span class="field-link-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
         </a>
       </div>
     </article>
@@ -2984,27 +3145,27 @@
       <div class="field-link-list">
         <a class="field-link" href="https://drivenc.gov/" target="_blank" rel="noopener">
           <span>DriveNC<small>North Carolina traffic / incidents</small></span>
-          <span class="field-link-arrow">›</span>
+          <span class="field-link-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
         </a>
         <a class="field-link" href="https://511.vdot.virginia.gov/" target="_blank" rel="noopener">
           <span>Virginia 511<small>VDOT roads and traffic</small></span>
-          <span class="field-link-arrow">›</span>
+          <span class="field-link-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
         </a>
         <a class="field-link" href="https://www.511sc.org/" target="_blank" rel="noopener">
           <span>South Carolina 511<small>SCDOT traffic map</small></span>
-          <span class="field-link-arrow">›</span>
+          <span class="field-link-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
         </a>
         <a class="field-link" href="https://smartway.tn.gov/traffic" target="_blank" rel="noopener">
           <span>TN SmartWay<small>Tennessee traffic map</small></span>
-          <span class="field-link-arrow">›</span>
+          <span class="field-link-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
         </a>
         <a class="field-link" href="https://511ga.org/" target="_blank" rel="noopener">
           <span>Georgia 511<small>GDOT traffic and incidents</small></span>
-          <span class="field-link-arrow">›</span>
+          <span class="field-link-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
         </a>
         <a class="field-link" href="https://www.google.com/maps" target="_blank" rel="noopener">
           <span>Google Maps<small>Navigation backup</small></span>
-          <span class="field-link-arrow">›</span>
+          <span class="field-link-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
         </a>
       </div>
     </article>
@@ -3145,20 +3306,16 @@
             .split(/\u00b7|\u252c\u2556/)
             .map((part) => part.trim())
             .filter(Boolean)
-            .join(" · ")
-            .replace(/(?:^\s*[·|,-]+\s*)|(?:\s*[·|,-]+\s*$)/g, "")
+            .join(" Ãƒâ€šÃ‚Â· ")
+            .replace(/(?:^\s*[Ãƒâ€šÃ‚Â·|,-]+\s*)|(?:\s*[Ãƒâ€šÃ‚Â·|,-]+\s*$)/g, "")
             .replace(/\s{2,}/g, " ")
             .trim();
 
           return cleaned;
         };
 
-        const cleanHeaderLocation = (statusData) => {
-          const targetArea = String(statusData?.targetArea || "").trim();
-          if (targetArea) return targetArea;
-
-          return stripGpsLocationParts(statusData?.currentLocation) || "Not actively chasing";
-        };
+        const cleanHeaderLocation = (statusData) =>
+          stripGpsLocationParts(statusData?.currentLocation) || "Not actively chasing";
 
         const validCoordinate = (value) => Number.isFinite(Number(value));
 
@@ -3370,11 +3527,11 @@
         setText("[data-chase-stream-badge]", streamStatus, "Offline");
         setText("[data-chase-stream-title]", streamTitle, "Live Stream");
         setText("[data-chase-header-stream-status]", String(streamStatus || "Offline").toUpperCase(), "OFFLINE");
-        setText("[data-chase-header-stream-detail]", streamStatus === "Live" ? "Active" : streamStatus === "Offline" ? "Inactive" : "Standby");
+        setText("[data-chase-header-stream-detail]", streamStatus === "Live" ? "Active" : streamStatus === "Offline" ? "" : "Standby");
         setStreamStateColor("[data-chase-stream-status]", streamStatus || "Offline");
         setStreamStateColor("[data-chase-stream-badge]", streamStatus || "Offline");
         setStreamStateColor("[data-chase-header-stream-status]", streamStatus || "Offline");
-        setStreamStateColor("[data-chase-header-stream-detail]", streamStatus === "Live" ? "Active" : streamStatus === "Offline" ? "Inactive" : "Standby");
+        setStreamStateColor("[data-chase-header-stream-detail]", streamStatus === "Live" ? "Active" : streamStatus === "Offline" ? "" : "Standby");
 
         document.querySelectorAll("[data-chase-stream-link]").forEach((link) => {
           if (streamUrl) {
@@ -3446,7 +3603,7 @@
 <section class="mobile-field-shell" aria-label="Mobile storm chasing dashboard">
   <header class="mobile-field-header">
     <a class="mobile-field-brand" href="index.html">
-      <span class="mobile-field-brand-icon">⚡</span>
+      <span class="mobile-field-brand-icon">ÃƒÂ¢Ã…Â¡Ã‚Â¡</span>
       <span>ZacharologistWx</span>
     </a>
     <nav class="mobile-field-nav" aria-label="Mobile navigation">
@@ -3464,9 +3621,9 @@
         radar, satellite, surface obs, and road conditions.
       </p>
       <div class="mobile-field-pills">
-        <span class="mobile-field-pill">📱 Mobile-first</span>
-        <span class="mobile-field-pill">⚡ Lightweight links</span>
-        <span class="mobile-field-pill">🌪️ Chase briefing</span>
+        <span class="mobile-field-pill">ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‚Â± Mobile-first</span>
+        <span class="mobile-field-pill">ÃƒÂ¢Ã…Â¡Ã‚Â¡ Lightweight links</span>
+        <span class="mobile-field-pill">ÃƒÂ°Ã…Â¸Ã…â€™Ã‚ÂªÃƒÂ¯Ã‚Â¸Ã‚Â Chase briefing</span>
       </div>
     </section>
 
@@ -3535,11 +3692,11 @@
         <div class="mobile-link-grid">
           <a class="mobile-link" data-chase-stream-link href="#" target="_blank" rel="noopener">
             <span>Open Stream<small>Livestream link from admin</small></span>
-            <span class="mobile-arrow">›</span>
+            <span class="mobile-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
           </a>
           <a class="mobile-link youtube-stream-link" href="https://www.youtube.com/@zacharologist" target="_blank" rel="noopener">
             <span>Open YouTube<small>Zacharologist channel / stream</small></span>
-            <span class="mobile-arrow">›</span>
+            <span class="mobile-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
           </a>
         </div>
       </div>
@@ -3553,19 +3710,19 @@
         <div class="mobile-link-grid two">
           <a class="mobile-link" href="level2-mobile-radar.html">
             <span>Zach Radar<small>Level II mobile page</small></span>
-            <span class="mobile-arrow">›</span>
+            <span class="mobile-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
           </a>
           <a class="mobile-link" href="https://www.spc.noaa.gov/products/outlook/" target="_blank" rel="noopener">
             <span>SPC Outlooks<small>Day 1-8 severe risk</small></span>
-            <span class="mobile-arrow">›</span>
+            <span class="mobile-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
           </a>
           <a class="mobile-link" href="https://www.spc.noaa.gov/products/md/" target="_blank" rel="noopener">
             <span>SPC MDs<small>Mesoscale discussions</small></span>
-            <span class="mobile-arrow">›</span>
+            <span class="mobile-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
           </a>
           <a class="mobile-link" href="https://www.spc.noaa.gov/products/watch/" target="_blank" rel="noopener">
             <span>SPC Watches<small>Current watches</small></span>
-            <span class="mobile-arrow">›</span>
+            <span class="mobile-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
           </a>
         </div>
       </div>
@@ -3593,19 +3750,19 @@
         <div class="mobile-link-grid">
           <a class="mobile-link" href="https://www.spc.noaa.gov/products/outlook/" target="_blank" rel="noopener">
             <span>Convective Outlooks<small>Day 1, Day 2, Day 3, Day 4-8</small></span>
-            <span class="mobile-arrow">›</span>
+            <span class="mobile-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
           </a>
           <a class="mobile-link" href="https://www.spc.noaa.gov/exper/mesoanalysis/" target="_blank" rel="noopener">
             <span>SPC Mesoanalysis<small>Instability, shear, boundaries</small></span>
-            <span class="mobile-arrow">›</span>
+            <span class="mobile-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
           </a>
           <a class="mobile-link" href="https://www.spc.noaa.gov/products/md/" target="_blank" rel="noopener">
             <span>Mesoscale Discussions<small>Watch likelihood / near-term focus</small></span>
-            <span class="mobile-arrow">›</span>
+            <span class="mobile-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
           </a>
           <a class="mobile-link" href="https://www.spc.noaa.gov/products/watch/" target="_blank" rel="noopener">
             <span>Current Watches<small>Tornado / severe thunderstorm watches</small></span>
-            <span class="mobile-arrow">›</span>
+            <span class="mobile-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
           </a>
         </div>
       </div>
@@ -3619,27 +3776,27 @@
         <div class="mobile-link-grid">
           <a class="mobile-link" href="level2-mobile-radar.html">
             <span>Zach Level II Radar<small>Primary site radar view</small></span>
-            <span class="mobile-arrow">›</span>
+            <span class="mobile-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
           </a>
           <a class="mobile-link" href="https://radar.weather.gov/" target="_blank" rel="noopener">
             <span>NWS Radar<small>Official national radar viewer</small></span>
-            <span class="mobile-arrow">›</span>
+            <span class="mobile-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
           </a>
           <a class="mobile-link" href="https://www.star.nesdis.noaa.gov/GOES/" target="_blank" rel="noopener">
             <span>GOES-East Satellite<small>Visible, IR, GeoColor, sectors</small></span>
-            <span class="mobile-arrow">›</span>
+            <span class="mobile-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
           </a>
           <a class="mobile-link" href="https://aviationweather.gov/gfa/" target="_blank" rel="noopener">
             <span>AWC Obs Map<small>METARs, fronts, aviation weather</small></span>
-            <span class="mobile-arrow">›</span>
+            <span class="mobile-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
           </a>
           <a class="mobile-link" href="https://aviationweather.gov/data/metar/" target="_blank" rel="noopener">
             <span>METAR Text<small>Surface obs by station</small></span>
-            <span class="mobile-arrow">›</span>
+            <span class="mobile-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
           </a>
           <a class="mobile-link" href="https://www.wpc.ncep.noaa.gov/html/sfc2.shtml" target="_blank" rel="noopener">
             <span>WPC Surface Analysis<small>Fronts, lows, highs, boundaries</small></span>
-            <span class="mobile-arrow">›</span>
+            <span class="mobile-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
           </a>
         </div>
       </div>
@@ -3653,27 +3810,27 @@
         <div class="mobile-link-grid">
           <a class="mobile-link" href="https://drivenc.gov/" target="_blank" rel="noopener">
             <span>DriveNC<small>North Carolina traffic / incidents</small></span>
-            <span class="mobile-arrow">›</span>
+            <span class="mobile-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
           </a>
           <a class="mobile-link" href="https://511.vdot.virginia.gov/" target="_blank" rel="noopener">
             <span>Virginia 511<small>VDOT roads and traffic</small></span>
-            <span class="mobile-arrow">›</span>
+            <span class="mobile-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
           </a>
           <a class="mobile-link" href="https://www.511sc.org/" target="_blank" rel="noopener">
             <span>South Carolina 511<small>SCDOT traffic map</small></span>
-            <span class="mobile-arrow">›</span>
+            <span class="mobile-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
           </a>
           <a class="mobile-link" href="https://smartway.tn.gov/traffic" target="_blank" rel="noopener">
             <span>TN SmartWay<small>Tennessee traffic map</small></span>
-            <span class="mobile-arrow">›</span>
+            <span class="mobile-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
           </a>
           <a class="mobile-link" href="https://511ga.org/" target="_blank" rel="noopener">
             <span>Georgia 511<small>GDOT traffic and incidents</small></span>
-            <span class="mobile-arrow">›</span>
+            <span class="mobile-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
           </a>
           <a class="mobile-link" href="https://www.google.com/maps" target="_blank" rel="noopener">
             <span>Google Maps<small>Navigation backup</small></span>
-            <span class="mobile-arrow">›</span>
+            <span class="mobile-arrow">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Âº</span>
           </a>
         </div>
       </div>
