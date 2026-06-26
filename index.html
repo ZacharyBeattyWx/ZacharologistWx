@@ -2062,7 +2062,7 @@ main,
   .hazard-box {
     min-height: auto;
     padding: 9px 10px;
-  } 
+  }
 
 
   .forecast-dashboard,
@@ -7222,6 +7222,292 @@ body {
     }
   }
 </style>
+
+<style id="desktop-spc-full-image-fit-css">
+  /* Desktop: preserve the full SPC outlook and risk legend at laptop widths. */
+  @media (min-width: 769px) {
+    .forecast-dashboard .spc-slide .spc-outlook-img {
+      object-fit: contain !important;
+      object-position: center center !important;
+      background: #020509 !important;
+    }
+  }
+</style>
+
+<style id="desktop-conditions-full-column-width-css">
+  /* Desktop: make Live Conditions fill the same left-side column as SPC. */
+  @media (min-width: 769px) {
+    .forecast-dashboard .ops-conditions-card {
+      width: 100% !important;
+      max-width: none !important;
+      min-width: 0 !important;
+      box-sizing: border-box !important;
+      justify-self: stretch !important;
+    }
+  }
+</style>
+
+<style id="desktop-two-column-ops-layout-css">
+  @media (min-width: 769px) {
+    .forecast-dashboard .ops-dashboard-grid {
+      display: grid !important;
+      grid-template-columns:
+        minmax(0, 1.82fr)
+        minmax(310px, 0.88fr) !important;
+      grid-template-areas: "main sidebar" !important;
+      gap: 14px !important;
+      align-items: start !important;
+    }
+
+    .forecast-dashboard .ops-center-column {
+      grid-area: main !important;
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) !important;
+      gap: 14px !important;
+      min-width: 0 !important;
+    }
+
+    .forecast-dashboard .ops-right-column {
+      grid-area: sidebar !important;
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) !important;
+      gap: 14px !important;
+      min-width: 0 !important;
+    }
+
+    .forecast-dashboard .ops-center-column .radar-card,
+    .forecast-dashboard .ops-center-column .spc-card,
+    .forecast-dashboard .ops-right-column .ops-conditions-card,
+    .forecast-dashboard .ops-right-column .alerts-card {
+      width: 100% !important;
+      max-width: none !important;
+      min-width: 0 !important;
+      box-sizing: border-box !important;
+      grid-column: auto !important;
+      grid-row: auto !important;
+      grid-area: auto !important;
+    }
+  }
+
+  /* Avoid cramming the radar and sidebar together on smaller laptops. */
+  @media (min-width: 769px) and (max-width: 1120px) {
+    .forecast-dashboard .ops-dashboard-grid {
+      grid-template-columns: minmax(0, 1fr) !important;
+      grid-template-areas:
+        "main"
+        "sidebar" !important;
+    }
+  }
+</style>
+
+<style id="desktop-radar-spc-sizing-polish-css">
+  /*
+    Main-column media sizing:
+    - Radar stays broad but not oversized.
+    - SPC gets a centered 4:3 stage so its full map and risk legend remain visible.
+  */
+  @media (min-width: 769px) {
+    .forecast-dashboard .ops-center-column .radar-card,
+    .forecast-dashboard .ops-center-column .spc-card {
+      min-height: 0 !important;
+      padding: 16px !important;
+    }
+
+    .forecast-dashboard .ops-center-column .radar-frame {
+      display: block !important;
+      flex: 0 0 auto !important;
+      width: 100% !important;
+      height: clamp(360px, 31vw, 440px) !important;
+      min-height: 0 !important;
+      max-height: none !important;
+      margin: 10px 0 0 !important;
+      border-radius: 4px !important;
+    }
+
+    .forecast-dashboard .ops-center-column .spc-slideshow {
+      flex: 0 0 auto !important;
+      width: min(100%, 680px) !important;
+      height: auto !important;
+      min-height: 0 !important;
+      max-height: none !important;
+      aspect-ratio: 4 / 3 !important;
+      margin: 12px auto 0 !important;
+      background: #020509 !important;
+      border-radius: 4px !important;
+    }
+
+    .forecast-dashboard .ops-center-column .spc-slide {
+      width: 100% !important;
+      height: 100% !important;
+      overflow: hidden !important;
+    }
+
+    .forecast-dashboard .ops-center-column .spc-slide .spc-image-title {
+      flex: 0 0 28px !important;
+      min-height: 28px !important;
+    }
+
+    .forecast-dashboard .ops-center-column .spc-slide .spc-outlook-img {
+      width: 100% !important;
+      height: calc(100% - 28px) !important;
+      max-height: calc(100% - 28px) !important;
+      object-fit: contain !important;
+      object-position: center center !important;
+      background: #020509 !important;
+    }
+  }
+
+  @media (min-width: 1400px) {
+    .forecast-dashboard .ops-center-column .spc-slideshow {
+      width: min(100%, 740px) !important;
+    }
+  }
+</style>
+
+<style id="desktop-radar-width-balance-css">
+  /* Keep radar only slightly wider than the centered SPC outlook stage. */
+  @media (min-width: 769px) {
+    .forecast-dashboard .ops-center-column .radar-card {
+      width: min(100%, 760px) !important;
+      max-width: 760px !important;
+      justify-self: center !important;
+    }
+  }
+</style>
+
+<style id="desktop-wide-spc-width-balance-css">
+  /* Wide displays: radar stays slightly wider than the SPC stage. */
+  @media (min-width: 1400px) {
+    .forecast-dashboard .ops-center-column .spc-slideshow {
+      width: min(100%, 700px) !important;
+    }
+  }
+</style>
+
+<style id="desktop-spc-card-width-balance-css">
+  /* Keep the SPC card slightly narrower than the radar card. */
+  @media (min-width: 769px) {
+    .forecast-dashboard .ops-center-column .spc-card {
+      width: min(100%, 700px) !important;
+      max-width: 700px !important;
+      justify-self: center !important;
+    }
+
+    .forecast-dashboard .ops-center-column .spc-slideshow {
+      width: 100% !important;
+      max-width: none !important;
+    }
+  }
+</style>
+
+<style id="desktop-spc-no-crop-safe-zone-css">
+  /*
+    SPC full-image protection:
+    Reserve a rail for slide controls so the full map, risk legend,
+    NOAA logo, and source credits remain unobstructed.
+  */
+  @media (min-width: 769px) {
+    .forecast-dashboard .ops-center-column .spc-slideshow {
+      aspect-ratio: 6 / 5 !important;
+      overflow: hidden !important;
+    }
+
+    .forecast-dashboard .ops-center-column .spc-slide {
+      inset: 0 0 42px 0 !important;
+      width: auto !important;
+      height: auto !important;
+      overflow: hidden !important;
+    }
+
+    .forecast-dashboard .ops-center-column .spc-slide .spc-image-title {
+      flex: 0 0 28px !important;
+      min-height: 28px !important;
+    }
+
+    .forecast-dashboard .ops-center-column .spc-slide .spc-outlook-img {
+      width: 100% !important;
+      height: calc(100% - 28px) !important;
+      max-height: calc(100% - 28px) !important;
+      object-fit: contain !important;
+      object-position: center center !important;
+      background: #020509 !important;
+    }
+
+    .forecast-dashboard .ops-center-column .spc-slide-controls {
+      bottom: 7px !important;
+      z-index: 5 !important;
+    }
+  }
+</style>
+
+<style id="desktop-main-media-fill-css">
+  /*
+    Expand the paired main-column media cards while preserving:
+    - radar slightly wider than SPC
+    - full SPC outlook, legend, credits, and controls
+  */
+  @media (min-width: 769px) {
+    .forecast-dashboard .ops-center-column .radar-card {
+      width: min(100%, 880px) !important;
+      max-width: 880px !important;
+    }
+
+    .forecast-dashboard .ops-center-column .spc-card {
+      width: min(100%, 870px) !important;
+      max-width: 870px !important;
+    }
+
+    .forecast-dashboard .ops-center-column .radar-frame {
+      height: clamp(440px, 34vw, 520px) !important;
+    }
+  }
+</style>
+
+<style id="desktop-final-board-centering-css">
+  /*
+    Center the radar/SPC column and weather/alerts sidebar
+    together as one balanced desktop board.
+  */
+  @media (min-width: 1121px) {
+    .forecast-dashboard .ops-board-shell {
+      width: min(calc(100% - 48px), 1324px) !important;
+      max-width: 1324px !important;
+      margin-left: auto !important;
+      margin-right: auto !important;
+      box-sizing: border-box !important;
+    }
+
+    .forecast-dashboard .ops-dashboard-grid {
+      width: 100% !important;
+      max-width: none !important;
+      margin: 0 !important;
+
+      grid-template-columns:
+        minmax(0, 880px)
+        minmax(320px, 400px) !important;
+
+      grid-template-areas: "main sidebar" !important;
+      justify-content: center !important;
+      gap: 24px !important;
+      align-items: start !important;
+    }
+
+    .forecast-dashboard .ops-center-column,
+    .forecast-dashboard .ops-right-column {
+      width: 100% !important;
+      min-width: 0 !important;
+    }
+
+    .forecast-dashboard .ops-center-column {
+      justify-items: center !important;
+    }
+
+    .forecast-dashboard .ops-right-column {
+      max-width: 400px !important;
+      justify-self: center !important;
+    }
+  }
+</style>
 </head>
 
 <body>
@@ -7295,57 +7581,27 @@ body {
   </div>
 </div>
 
-<div class="dashboard-grid ops-dashboard-grid">
+<div class="dashboard-grid ops-dashboard-grid"><!-- CENTER COLUMN -->
+  <div class="ops-column ops-center-column">
 
-  <!-- LEFT COLUMN -->
-  <div class="ops-column ops-left-column">
+    <article class="dashboard-card mini-card radar-card">
+      <div class="card-header-row">
+        <div>
+          <span class="mini-label">Live Radar</span>
+          <h3>Regional Radar</h3>
+        </div>
 
- <article class="dashboard-card ops-conditions-card">
+        <span class="card-time">Live View</span>
+      </div>
 
-  <button
-    class="ops-location-icon"
-    id="useLocationBtn"
-    type="button"
-    title="Use my location"
-    aria-label="Use my location"
-  >
-    ⌖
-  </button>
+      <iframe
+        title="Regional live radar"
+        src="https://embed.windy.com/embed2.html?lat=35.78&lon=-79.80&zoom=5&level=surface&overlay=radar&product=radar"
+        class="radar-frame">
+      </iframe>
 
-  <span class="mini-label" id="conditionsLabel">Live Conditions Near You</span>
-
-  <div class="conditions-main">
-    <div>
-      <strong id="currentTemp">--°</strong>
-      <span id="currentLocation">Use your location for live conditions</span>
-    </div>
-
-    <p id="currentCondition">Waiting...</p>
-  </div>
-
-  <div class="conditions-grid">
-    <div>
-      <span>Wind</span>
-      <strong id="currentWind">-- mph</strong>
-    </div>
-
-    <div>
-      <span>Dew Point</span>
-      <strong id="currentDewpoint">--°</strong>
-    </div>
-
-    <div>
-      <span>Humidity</span>
-      <strong id="currentHumidity">--%</strong>
-    </div>
-
-    <div>
-      <span>Pressure</span>
-      <strong id="currentPressure">-- in</strong>
-    </div>
-  </div>
-
-</article>
+      <a class="dashboard-button subtle-button" href="https://zacharologistwx.com/level2-mobile-radar.html?level2Data=remote">Open Hi-Res Radar + Alerts</a>
+    </article>
 
     <article class="dashboard-card mini-card spc-card">
       <div class="card-header-row">
@@ -7450,33 +7706,57 @@ body {
   </div>
 
 
-  <!-- CENTER COLUMN -->
-  <div class="ops-column ops-center-column">
-
-    <article class="dashboard-card mini-card radar-card">
-      <div class="card-header-row">
-        <div>
-          <span class="mini-label">Live Radar</span>
-          <h3>Regional Radar</h3>
-        </div>
-
-        <span class="card-time">Live View</span>
-      </div>
-
-      <iframe
-        title="Regional live radar"
-        src="https://embed.windy.com/embed2.html?lat=35.78&lon=-79.80&zoom=5&level=surface&overlay=radar&product=radar"
-        class="radar-frame">
-      </iframe>
-
-      <a class="dashboard-button subtle-button" href="https://zacharologistwx.com/level2-mobile-radar.html?level2Data=remote">Open Hi-Res Radar + Alerts</a>
-    </article>
-
-  </div>
-
-
 <!-- RIGHT COLUMN -->
 <div class="ops-column ops-right-column">
+
+
+
+  <article class="dashboard-card ops-conditions-card">
+
+  <button
+    class="ops-location-icon"
+    id="useLocationBtn"
+    type="button"
+    title="Use my location"
+    aria-label="Use my location"
+  >
+    ⌖
+  </button>
+
+  <span class="mini-label" id="conditionsLabel">Live Conditions Near You</span>
+
+  <div class="conditions-main">
+    <div>
+      <strong id="currentTemp">--°</strong>
+      <span id="currentLocation">Use your location for live conditions</span>
+    </div>
+
+    <p id="currentCondition">Waiting...</p>
+  </div>
+
+  <div class="conditions-grid">
+    <div>
+      <span>Wind</span>
+      <strong id="currentWind">-- mph</strong>
+    </div>
+
+    <div>
+      <span>Dew Point</span>
+      <strong id="currentDewpoint">--°</strong>
+    </div>
+
+    <div>
+      <span>Humidity</span>
+      <strong id="currentHumidity">--%</strong>
+    </div>
+
+    <div>
+      <span>Pressure</span>
+      <strong id="currentPressure">-- in</strong>
+    </div>
+  </div>
+
+</article>
 
   <article class="dashboard-card mini-card alerts-card">
     <h2 id="alertsTitle">Active Alerts</h2>
@@ -7554,7 +7834,7 @@ body {
 <div class="warning-bottom">
     <span>Hail: <strong class="bottom-hail-value"></strong></span>
     <span>Wind: <strong class="bottom-wind-value"></strong></span>
- </div>  
+ </div>
 </div>
 </div>
 </div>
@@ -10780,7 +11060,7 @@ if (!pendingRadarAlert && !skipLoop) {
 }
 
 return true;
-} 
+}
 
 
 function loadSingleSiteRadar(site) {
