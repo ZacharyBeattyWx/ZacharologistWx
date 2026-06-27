@@ -7570,6 +7570,40 @@ body {
     }
   }
 </style>
+
+<style id="desktop-spc-compact-frame-css">
+  /*
+    Tighten the SPC frame without cropping the outlook image,
+    legend, credits, or carousel controls.
+  */
+  @media (min-width: 1121px) {
+    .forecast-dashboard .ops-center-column .spc-slideshow {
+      aspect-ratio: 13 / 10 !important;
+    }
+
+    .forecast-dashboard .ops-center-column .spc-slide {
+      inset: 0 0 42px 0 !important;
+    }
+
+    .forecast-dashboard .ops-center-column .spc-slide .spc-image-title {
+      height: 32px !important;
+      min-height: 32px !important;
+      flex: 0 0 32px !important;
+      padding-top: 0 !important;
+      padding-bottom: 0 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      box-sizing: border-box !important;
+    }
+
+    .forecast-dashboard .ops-center-column .spc-slide .spc-outlook-img {
+      height: calc(100% - 32px) !important;
+      max-height: calc(100% - 32px) !important;
+      object-fit: contain !important;
+    }
+  }
+</style>
 </head>
 
 <body>
