@@ -7508,6 +7508,68 @@ body {
     }
   }
 </style>
+
+<style id="desktop-hub-edge-alignment-css">
+  /*
+    Make the radar/alerts board span the exact same outer width
+    as the Operations Hub above it.
+  */
+  @media (min-width: 1121px) {
+    .forecast-dashboard .ops-dashboard-grid {
+      width: 100% !important;
+      max-width: none !important;
+      margin: 0 !important;
+
+      grid-template-columns:
+        minmax(0, 1fr)
+        400px !important;
+
+      gap: 24px !important;
+      justify-content: stretch !important;
+    }
+
+    .forecast-dashboard .ops-center-column {
+      justify-items: stretch !important;
+    }
+
+    .forecast-dashboard .ops-center-column .radar-card {
+      width: 100% !important;
+      max-width: none !important;
+      justify-self: stretch !important;
+    }
+
+    .forecast-dashboard .ops-right-column,
+    .forecast-dashboard .ops-right-column .ops-conditions-card,
+    .forecast-dashboard .ops-right-column .alerts-card {
+      width: 100% !important;
+      max-width: none !important;
+      justify-self: stretch !important;
+    }
+
+    /* Keep SPC intentionally just a little narrower than radar. */
+    .forecast-dashboard .ops-center-column .spc-card {
+      width: min(100%, 870px) !important;
+      max-width: 870px !important;
+      justify-self: center !important;
+    }
+  }
+</style>
+
+<style id="desktop-spc-hub-edge-alignment-css">
+  /* Make SPC span the same main-column width as Radar. */
+  @media (min-width: 1121px) {
+    .forecast-dashboard .ops-center-column .spc-card {
+      width: 100% !important;
+      max-width: none !important;
+      justify-self: stretch !important;
+    }
+
+    .forecast-dashboard .ops-center-column .spc-slideshow {
+      width: 100% !important;
+      max-width: none !important;
+    }
+  }
+</style>
 </head>
 
 <body>
@@ -7596,7 +7658,7 @@ body {
 
       <iframe
         title="Regional live radar"
-        src="https://embed.windy.com/embed2.html?lat=35.78&lon=-79.80&zoom=5&level=surface&overlay=radar&product=radar"
+        src="https://embed.windy.com/embed2.html?lat=39.50&lon=-98.35&zoom=4&level=surface&overlay=radar&product=radar"
         class="radar-frame">
       </iframe>
 
