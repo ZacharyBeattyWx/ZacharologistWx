@@ -2432,9 +2432,24 @@
         isAlertOverlayVisible && useMapboxVisualAlerts
       ) ? alertOverlayOpacity : 0;
 
-      // All source geometry remains usable for click/query handling only.
+      // Fallback zone geometry gets a quiet fill only: no county/zone outlines.
+      // This makes broad watches and warnings visible without rebuilding the slab problem.
       if (map.getLayer(ALERT_FILL_LAYER_ID)) {
-        map.setPaintProperty(ALERT_FILL_LAYER_ID, "fill-opacity", 0);
+        map.setPaintProperty(
+          ALERT_FILL_LAYER_ID,
+          "fill-emissive-strength",
+          1
+        );
+        map.setPaintProperty(ALERT_FILL_LAYER_ID, "fill-opacity", [
+          "case",
+          [
+            "all",
+            ["==", ["get", "_fallbackGeometry"], true],
+            ["==", ["get", "_visibleStormPolygon"], true]
+          ],
+          0.09 * opacity,
+          0
+        ]);
       }
 
       // Only direct storm polygons receive visible native Mapbox styling.
