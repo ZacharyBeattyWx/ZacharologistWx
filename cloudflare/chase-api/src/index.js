@@ -1,4 +1,4 @@
-﻿function jsonResponse(data, status = 200) {
+function jsonResponse(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
@@ -246,6 +246,621 @@ async function resolveAutoStreamStatus(status, env) {
   }
 }
 
+
+const OPS_CACHE_TTL_SECONDS = 120;
+
+const SPC_MAP_SERVICE =
+  "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/SPC_wx_outlks/MapServer";
+
+const SPC_REPORT_SOURCES = [
+  {
+    type: "tornado",
+    url: "https://www.spc.noaa.gov/climo/reports/today_filtered_torn.csv"
+  },
+  {
+    type: "hail",
+    url: "https://www.spc.noaa.gov/climo/reports/today_filtered_hail.csv"
+  },
+  {
+    type: "wind",
+    url: "https://www.spc.noaa.gov/climo/reports/today_filtered_wind.csv"
+  }
+];
+
+const NWS_ACTIVE_ALERTS_URL =
+  "https://api.weather.gov/alerts/active?status=actual&message_type=alert";
+
+const AWC_METAR_URL =
+  "https://aviationweather.gov/api/data/metar?ids=KGSO&format=json";
+
+const NWS_HEADERS = {
+  "accept": "application/geo+json, application/json",
+  "user-agent": "ZacharologistWx Operations Desk (https://zacharologistwx.com)"
+};
+
+function opsJsonResponse(data, status = 200, ttlSeconds = OPS_CACHE_TTL_SECONDS) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, OPTIONS",
+      "access-control-allow-headers": "content-type, authorization",
+      "cache-control": `public, max-age=${ttlSeconds}`
+    }
+  });
+}
+
+function cleanOpsText(value) {
+  return String(value || "").replace(/\s+/g, " ").trim();
+}
+
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let quoted = false;
+
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index];
+    const nextCharacter = text[index + 1];
+
+    if (character === '"') {
+      if (quoted && nextCharacter === '"') {
+        cell += '"';
+        index += 1;
+      } else {
+        quoted = !quoted;
+      }
+      continue;
+    }
+
+    if (character === "," && !quoted) {
+      row.push(cell.trim());
+      cell = "";
+      continue;
+    }
+
+    if ((character === "\n" || character === "\r") && !quoted) {
+      if (character === "\r" && nextCharacter === "\n") {
+        index += 1;
+      }
+
+      row.push(cell.trim());
+
+      if (row.some((value) => value !== "")) {
+        rows.push(row);
+      }
+
+      row = [];
+      cell = "";
+      continue;
+    }
+
+    cell += character;
+  }
+
+  if (cell !== "" || row.length > 0) {
+    row.push(cell.trim());
+
+    if (row.some((value) => value !== "")) {
+      rows.push(row);
+    }
+  }
+
+  return rows;
+}
+
+function normalizeCsvHeader(value) {
+  return cleanOpsText(value).toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function findCsvColumn(headers, possibleNames) {
+  return headers.findIndex((header) =>
+    possibleNames.includes(normalizeCsvHeader(header))
+  );
+}
+
+function csvCell(row, index) {
+  return index >= 0 ? cleanOpsText(row[index]) : "";
+}
+
+function formatSpcTime(value) {
+  const digits = String(value || "").replace(/\D/g, "").padStart(4, "0").slice(-4);
+
+  if (!digits || digits === "0000") return "Time unavailable";
+
+  return `${digits.slice(0, 2)}:${digits.slice(2)}Z`;
+}
+
+function spcSortValue(value) {
+  const digits = String(value || "").replace(/\D/g, "").padStart(4, "0").slice(-4);
+  const hour = Number(digits.slice(0, 2));
+  const minute = Number(digits.slice(2));
+
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return -1;
+
+  const time = hour * 100 + minute;
+
+  // SPC report days run 12Z to 1159Z the following day.
+  return hour < 12 ? time + 2400 : time;
+}
+
+function formatHailSize(value) {
+  const amount = Number(value);
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return "Hail report";
+  }
+
+  const inches = amount > 10 ? amount / 100 : amount;
+
+  return `${inches.toFixed(2).replace(/\.00$/, "").replace(/(\.\d)0$/, "$1")}" hail`;
+}
+
+function parseSpcReportCsv(text, type) {
+  const rows = parseCsv(text);
+
+  if (rows.length < 2) return [];
+
+  const headers = rows[0];
+  const timeIndex = findCsvColumn(headers, ["time"]);
+  const locationIndex = findCsvColumn(headers, ["location"]);
+  const countyIndex = findCsvColumn(headers, ["county"]);
+  const stateIndex = findCsvColumn(headers, ["state"]);
+  const commentsIndex = findCsvColumn(headers, ["comments", "comment"]);
+  const sizeIndex = findCsvColumn(headers, ["size"]);
+  const speedIndex = findCsvColumn(headers, ["speed"]);
+  const scaleIndex = findCsvColumn(headers, ["fscale", "scale"]);
+
+  if (timeIndex < 0) return [];
+
+  return rows
+    .slice(1)
+    .map((row) => {
+      const rawTime = csvCell(row, timeIndex);
+
+      if (!rawTime) return null;
+
+      const location = csvCell(row, locationIndex);
+      const county = csvCell(row, countyIndex);
+      const state = csvCell(row, stateIndex);
+      const comments = csvCell(row, commentsIndex);
+
+      let magnitude = "";
+
+      if (type === "hail") {
+        magnitude = formatHailSize(csvCell(row, sizeIndex));
+      } else if (type === "wind") {
+        const speed = Number(csvCell(row, speedIndex));
+        magnitude = Number.isFinite(speed) && speed > 0
+          ? `${Math.round(speed)} mph wind`
+          : "Wind report";
+      } else {
+        const scale = csvCell(row, scaleIndex);
+        magnitude = scale ? `${scale} tornado` : "Tornado report";
+      }
+
+      return {
+        type,
+        timeUtc: formatSpcTime(rawTime),
+        sortValue: spcSortValue(rawTime),
+        magnitude,
+        location: [location, state].filter(Boolean).join(", ") ||
+          [county, state].filter(Boolean).join(", ") ||
+          "Location unavailable",
+        county,
+        state,
+        comments
+      };
+    })
+    .filter(Boolean);
+}
+
+async function fetchJsonOrThrow(url, headers = {}) {
+  const response = await fetch(url, { headers });
+
+  if (!response.ok) {
+    throw new Error(`Source request failed: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+async function fetchTextOrThrow(url) {
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`Source request failed: ${response.status}`);
+  }
+
+  return response.text();
+}
+
+function spcLayerUrl(layerId) {
+  const url = new URL(`${SPC_MAP_SERVICE}/${layerId}/query`);
+
+  url.searchParams.set("where", "1=1");
+  url.searchParams.set("outFields", "dn,label,valid,issue,expire");
+  url.searchParams.set("returnGeometry", "false");
+  url.searchParams.set("f", "json");
+
+  return url.toString();
+}
+
+function spcFeatures(payload) {
+  return Array.isArray(payload?.features) ? payload.features : [];
+}
+
+function maxSpcProbability(payload) {
+  const features = spcFeatures(payload);
+
+  const probabilities = features
+    .map((feature) => Number(feature?.attributes?.dn))
+    .filter((value) => Number.isFinite(value));
+
+  const strongestFeature = features
+    .slice()
+    .sort((a, b) =>
+      Number(b?.attributes?.dn || 0) - Number(a?.attributes?.dn || 0)
+    )[0];
+
+  return {
+    percent: probabilities.length ? Math.max(...probabilities) : null,
+    valid: cleanOpsText(strongestFeature?.attributes?.valid),
+    issued: cleanOpsText(strongestFeature?.attributes?.issue),
+    expires: cleanOpsText(strongestFeature?.attributes?.expire)
+  };
+}
+
+function highestCategoricalRisk(payload) {
+  const riskLevels = [
+    { match: /HIGH/, rank: 5, label: "High" },
+    { match: /MDT|MODERATE/, rank: 4, label: "Moderate" },
+    { match: /ENH|ENHANCED/, rank: 3, label: "Enhanced" },
+    { match: /SLGT|SLIGHT/, rank: 2, label: "Slight" },
+    { match: /MRGL|MARGINAL/, rank: 1, label: "Marginal" },
+    { match: /TSTM|THUNDERSTORM/, rank: 0, label: "General thunderstorms" }
+  ];
+
+  let strongest = {
+    rank: -1,
+    label: "No severe risk",
+    valid: "",
+    issued: "",
+    expires: ""
+  };
+
+  for (const feature of spcFeatures(payload)) {
+    const attributes = feature?.attributes || {};
+    const sourceLabel = cleanOpsText(attributes.label).toUpperCase();
+
+    const matched = riskLevels.find((risk) => risk.match.test(sourceLabel));
+
+    if (!matched || matched.rank <= strongest.rank) continue;
+
+    strongest = {
+      rank: matched.rank,
+      label: matched.label,
+      valid: cleanOpsText(attributes.valid),
+      issued: cleanOpsText(attributes.issue),
+      expires: cleanOpsText(attributes.expire)
+    };
+  }
+
+  return strongest;
+}
+
+function countAlertEvents(features, predicate) {
+  const totals = new Map();
+
+  for (const feature of features) {
+    const event = cleanOpsText(feature?.properties?.event);
+
+    if (!event || !predicate(event, feature?.properties || {})) continue;
+
+    totals.set(event, (totals.get(event) || 0) + 1);
+  }
+
+  return [...totals.entries()]
+    .map(([event, count]) => ({ event, count }))
+    .sort((a, b) => b.count - a.count || a.event.localeCompare(b.event));
+}
+
+function nwsStateCountsFromFeatures(features) {
+  const validStates = new Set([
+    "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
+    "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD",
+    "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ",
+    "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC",
+    "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY",
+    "DC", "PR", "VI", "GU", "AS", "MP"
+  ]);
+
+  const counts = new Map();
+
+  for (const feature of features) {
+    const properties = feature?.properties || {};
+    const geocode = properties.geocode || {};
+    const ugcValues = Array.isArray(geocode.UGC) ? geocode.UGC : [];
+    const states = new Set();
+
+    for (const ugc of ugcValues) {
+      const match = String(ugc || "").toUpperCase().match(/^([A-Z]{2})[CZ]\d{3}$/);
+
+      if (match && validStates.has(match[1])) {
+        states.add(match[1]);
+      }
+    }
+
+    for (const state of states) {
+      counts.set(state, (counts.get(state) || 0) + 1);
+    }
+  }
+
+  return [...counts.entries()]
+    .map(([state, count]) => ({ state, count }))
+    .sort((a, b) => b.count - a.count || a.state.localeCompare(b.state))
+    .slice(0, 12);
+}
+
+function summarizeNwsAlerts(payload) {
+  const features = Array.isArray(payload?.features) ? payload.features : [];
+
+  const watches = countAlertEvents(
+    features,
+    (event) => /\bwatch$/i.test(event)
+  );
+
+  const fireWeather = countAlertEvents(
+    features,
+    (event) => event === "Red Flag Warning" || event === "Fire Weather Watch"
+  );
+
+  const eventTotals = countAlertEvents(
+    features,
+    () => true
+  ).slice(0, 10);
+
+  return {
+    activeCount: features.length,
+    watches,
+    fireWeather,
+    eventTotals,
+    topStates: nwsStateCountsFromFeatures(features),
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function settledValue(result, fallback) {
+  return result?.status === "fulfilled" ? result.value : fallback;
+}
+
+function settledOkay(result) {
+  return result?.status === "fulfilled";
+}
+
+function normalizeMetar(payload) {
+  const rows = Array.isArray(payload)
+    ? payload
+    : Array.isArray(payload?.data)
+      ? payload.data
+      : [];
+
+  const row = rows[0] || {};
+
+  function numberOrNull(value) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : null;
+  }
+
+  function celsiusToFahrenheit(value) {
+    const celsius = numberOrNull(value);
+    return celsius === null ? null : Math.round((celsius * 9 / 5) + 32);
+  }
+
+  const windDirection = numberOrNull(row.wdir ?? row.windDir);
+  const windSpeed = numberOrNull(row.wspd ?? row.windSpeed);
+  const visibility = numberOrNull(row.visib ?? row.visibility);
+  const altimeter = numberOrNull(row.altim ?? row.altimeter);
+
+  return {
+    station: cleanOpsText(row.icaoId || row.icao || "KGSO"),
+    flightCategory: cleanOpsText(row.fltCat || row.flightCategory || "OBS"),
+    temperatureF: celsiusToFahrenheit(row.temp ?? row.temperature),
+    dewPointF: celsiusToFahrenheit(row.dewp ?? row.dewpoint),
+    windDirection,
+    windSpeed,
+    visibilityMiles: visibility,
+    altimeterInHg: altimeter,
+    rawText: cleanOpsText(row.rawOb || row.raw_text || ""),
+    observedAt: cleanOpsText(row.obsTime || row.observationTime || "")
+  };
+}
+
+function buildSpcMonthTornadoArchive() {
+  // SPC report days run from 1200 UTC to 1159 UTC the next day.
+  const spcDay = new Date(Date.now() - (12 * 60 * 60 * 1000));
+  const year = spcDay.getUTCFullYear();
+  const month = spcDay.getUTCMonth();
+  const currentDay = spcDay.getUTCDate();
+
+  const formatKey = (utcDate) => {
+    const yy = String(utcDate.getUTCFullYear()).slice(-2);
+    const mm = String(utcDate.getUTCMonth() + 1).padStart(2, "0");
+    const dd = String(utcDate.getUTCDate()).padStart(2, "0");
+    return `${yy}${mm}${dd}`;
+  };
+
+  const previousDays = [];
+
+  for (let day = 1; day < currentDay; day += 1) {
+    const date = new Date(Date.UTC(year, month, day));
+    const key = formatKey(date);
+
+    previousDays.push({
+      key,
+      url: `https://www.spc.noaa.gov/climo/reports/${key}_rpts_torn.csv`
+    });
+  }
+
+  return {
+    currentKey: formatKey(spcDay),
+    monthLabel: new Intl.DateTimeFormat("en-US", {
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC"
+    }).format(spcDay),
+    previousDays
+  };
+}
+
+async function buildOpsSummary() {
+  const tornadoMonthArchive = buildSpcMonthTornadoArchive();
+
+  const tasks = [
+    ["category", fetchJsonOrThrow(spcLayerUrl(1))],
+    ["tornadoProbability", fetchJsonOrThrow(spcLayerUrl(3))],
+    ["hailProbability", fetchJsonOrThrow(spcLayerUrl(5))],
+    ["windProbability", fetchJsonOrThrow(spcLayerUrl(7))],
+    ["nwsAlerts", fetchJsonOrThrow(NWS_ACTIVE_ALERTS_URL, NWS_HEADERS)],
+    ["tornadoReports", fetchTextOrThrow(SPC_REPORT_SOURCES[0].url)],
+    ["hailReports", fetchTextOrThrow(SPC_REPORT_SOURCES[1].url)],
+    ["windReports", fetchTextOrThrow(SPC_REPORT_SOURCES[2].url)],
+    ["metar", fetchJsonOrThrow(AWC_METAR_URL)],
+    ...tornadoMonthArchive.previousDays.map(({ key, url }) => [
+      `tornadoMonth_${key}`,
+      fetchTextOrThrow(url)
+    ])
+  ];
+
+  const settled = await Promise.allSettled(tasks.map(([, task]) => task));
+
+  const results = Object.fromEntries(
+    tasks.map(([key], index) => [key, settled[index]])
+  );
+
+  const tornadoReportRows = parseSpcReportCsv(
+    settledValue(results.tornadoReports, ""),
+    "tornado"
+  );
+
+  const tornadoMonthAvailable =
+    settledOkay(results.tornadoReports) &&
+    tornadoMonthArchive.previousDays.every(({ key }) =>
+      settledOkay(results[`tornadoMonth_${key}`])
+    );
+
+  const tornadoMonthCount =
+    tornadoReportRows.length +
+    tornadoMonthArchive.previousDays.reduce((total, { key }) => {
+      const text = settledValue(results[`tornadoMonth_${key}`], "");
+      return total + parseSpcReportCsv(text, "tornado").length;
+    }, 0);
+
+  const reports = [
+    ...parseSpcReportCsv(
+      settledValue(results.tornadoReports, ""),
+      "tornado"
+    ),
+    ...parseSpcReportCsv(
+      settledValue(results.hailReports, ""),
+      "hail"
+    ),
+    ...parseSpcReportCsv(
+      settledValue(results.windReports, ""),
+      "wind"
+    )
+  ]
+    .sort((a, b) => b.sortValue - a.sortValue)
+    .slice(0, 6)
+    .map(({ sortValue, ...report }) => report);
+
+  return {
+    generatedAt: new Date().toISOString(),
+    cacheTtlSeconds: OPS_CACHE_TTL_SECONDS,
+
+    availability: {
+      spcOutlooks: [
+        "category",
+        "tornadoProbability",
+        "hailProbability",
+        "windProbability"
+      ].every((key) => settledOkay(results[key])),
+      stormReports: [
+        "tornadoReports",
+        "hailReports",
+        "windReports"
+      ].every((key) => settledOkay(results[key])),
+      nwsAlerts: settledOkay(results.nwsAlerts),
+      metar: settledOkay(results.metar)
+    },
+
+    severeRisk: highestCategoricalRisk(
+      settledValue(results.category, {})
+    ),
+
+    spcThreats: {
+      tornado: maxSpcProbability(
+        settledValue(results.tornadoProbability, {})
+      ),
+      hail: maxSpcProbability(
+        settledValue(results.hailProbability, {})
+      ),
+      wind: maxSpcProbability(
+        settledValue(results.windProbability, {})
+      )
+    },
+
+    stormReports: {
+      preliminary: true,
+      count: reports.length,
+      reports
+    },
+
+    tornadoCount: {
+      preliminary: true,
+      available: tornadoMonthAvailable,
+      count: tornadoMonthCount,
+      monthLabel: tornadoMonthArchive.monthLabel,
+      reportDayKey: tornadoMonthArchive.currentKey,
+      includedSpcDays: tornadoMonthArchive.previousDays.length + 1,
+      trackerUrl: "https://www.spc.noaa.gov/climo/reports/today.html"
+    },
+
+    metar: normalizeMetar(settledValue(results.metar, [])),
+
+    alerts: summarizeNwsAlerts(
+      settledValue(results.nwsAlerts, {})
+    )
+  };
+}
+
+async function getCachedOpsSummary(request) {
+  const cache = caches.default;
+
+  const cacheKey = new Request(
+    new URL("/api/ops/summary", request.url).toString(),
+    { method: "GET" }
+  );
+
+  const cached = await cache.match(cacheKey);
+
+  if (cached) {
+    return cached;
+  }
+
+  const summary = await buildOpsSummary();
+  const response = opsJsonResponse(summary);
+
+  try {
+    await cache.put(cacheKey, response.clone());
+  } catch (error) {
+    console.warn("Unable to cache operations summary:", error);
+  }
+
+  return response;
+}
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -254,6 +869,22 @@ export default {
       return jsonResponse({ ok: true });
     }
 
+    if (url.pathname === "/api/ops/summary" && request.method === "GET") {
+      try {
+        return await getCachedOpsSummary(request);
+      } catch (error) {
+        console.error("Operations summary failed:", error);
+
+        return opsJsonResponse(
+          {
+            error: "Operations summary is temporarily unavailable",
+            generatedAt: new Date().toISOString()
+          },
+          503,
+          30
+        );
+      }
+    }
     if (url.pathname === "/api/chase/status" && request.method === "GET") {
       const row = await env.DB.prepare(
         "SELECT * FROM chase_status WHERE id = 1"
