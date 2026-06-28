@@ -3023,13 +3023,11 @@
       return text || "N/A";
     }
     function isVisibleStormPolygon(eventName) {
-      const event = String(eventName || "");
-      return (
-        event === "Tornado Warning" ||
-        event === "Severe Thunderstorm Warning" ||
-        event === "Flash Flood Warning" ||
-        event === "Special Marine Warning"
-      );
+      const event = String(eventName || "").trim();
+
+      // Only direct NWS alert geometry may render visually.
+      // Zone-derived fallback geometry remains excluded by the Mapbox filters.
+      return event.endsWith(" Warning") || event.endsWith(" Watch");
     }
 
     function isStormStyleAlertPolygonEvent(eventName) {
