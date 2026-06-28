@@ -2276,17 +2276,24 @@
     function positionLevel2WeatherLayers() {
       if (!map) return;
 
-      const beforeLayerId = (shouldUseMapboxLevel2TileLayer() || shouldUseManualLevel2RadarEngine())
+      const usingNativeMapboxRadar = (
+        shouldUseMapboxLevel2TileLayer() ||
+        shouldUseMapboxLevel2ImageLayer() ||
+        shouldUseManualLevel2RadarEngine()
+      );
+
+      const beforeLayerId = usingNativeMapboxRadar
         ? weatherLayerBeforeLayerId()
         : undefined;
 
-      // Order matters. Alerts first so they sit above the basemap,
-      // then radar above alerts, then Mapbox roads/boundaries/labels above all weather layers.
+      // Radar below direct alert visuals; roads, boundaries, and labels remain above both.
+      moveLayerIfPresent(LEVEL2_MANUAL_RADAR_LAYER_ID, beforeLayerId);
+      moveLayerIfPresent(LEVEL2_MAPBOX_IMAGE_LAYER_ID, beforeLayerId);
+      moveLayerIfPresent(LEVEL2_MAPBOX_TILE_LAYER_ID, beforeLayerId);
+
       moveLayerIfPresent(ALERT_FILL_LAYER_ID, beforeLayerId);
       moveLayerIfPresent(ALERT_STORM_HITBOX_LAYER_ID, beforeLayerId);
       moveLayerIfPresent(ALERT_LINE_LAYER_ID, beforeLayerId);
-      moveLayerIfPresent(LEVEL2_MANUAL_RADAR_LAYER_ID, beforeLayerId);
-      moveLayerIfPresent(LEVEL2_MAPBOX_TILE_LAYER_ID, beforeLayerId);
     }
 
     function shouldUseMapboxAlertVisualLayers() {
@@ -2421,38 +2428,40 @@
       if (!map) return;
 
       const useMapboxVisualAlerts = shouldUseMapboxAlertVisualLayers();
-      const opacity = (isAlertOverlayVisible && useMapboxVisualAlerts) ? alertOverlayOpacity : 0;
+      const opacity = (
+        isAlertOverlayVisible && useMapboxVisualAlerts
+      ) ? alertOverlayOpacity : 0;
 
+      // All source geometry remains usable for click/query handling only.
       if (map.getLayer(ALERT_FILL_LAYER_ID)) {
-        map.setPaintProperty(ALERT_FILL_LAYER_ID, "fill-opacity", [
-          "case",
-          ["==", ["get", "_visibleStormPolygon"], true], 0.38 * opacity,
-          ["==", ["get", "_fallbackGeometry"], true], 0.32 * opacity,
-          0.24 * opacity
-        ]);
+        map.setPaintProperty(ALERT_FILL_LAYER_ID, "fill-opacity", 0);
       }
 
+      // Only direct storm polygons receive visible native Mapbox styling.
       if (map.getLayer(ALERT_STORM_HITBOX_LAYER_ID)) {
-        map.setPaintProperty(ALERT_STORM_HITBOX_LAYER_ID, "fill-opacity", [
-          "case",
-          ["==", ["get", "_visibleStormPolygon"], true], 0.18 * opacity,
-          0
-        ]);
+        map.setPaintProperty(
+          ALERT_STORM_HITBOX_LAYER_ID,
+          "fill-emissive-strength",
+          1
+        );
+        map.setPaintProperty(
+          ALERT_STORM_HITBOX_LAYER_ID,
+          "fill-opacity",
+          0.16 * opacity
+        );
       }
 
       if (map.getLayer(ALERT_LINE_LAYER_ID)) {
-        map.setPaintProperty(ALERT_LINE_LAYER_ID, "line-opacity", [
-          "case",
-          ["==", ["get", "_visibleStormPolygon"], true], 0.95 * opacity,
-          ["==", ["get", "_fallbackGeometry"], true], 0.82 * opacity,
-          0.62 * opacity
-        ]);
-        map.setPaintProperty(ALERT_LINE_LAYER_ID, "line-width", [
-          "interpolate", ["linear"], ["zoom"],
-          4, 1.5,
-          8, 2.8,
-          11, 4.2
-        ]);
+        map.setPaintProperty(
+          ALERT_LINE_LAYER_ID,
+          "line-emissive-strength",
+          1
+        );
+        map.setPaintProperty(
+          ALERT_LINE_LAYER_ID,
+          "line-opacity",
+          0.95 * opacity
+        );
       }
 
       if (alertOverlayCanvas) {
@@ -3081,7 +3090,11 @@
         id: ALERT_STORM_HITBOX_LAYER_ID,
         type: "fill",
         source: ALERT_SOURCE_ID,
-        filter: ["==", ["get", "_visibleStormPolygon"], true],
+        filter: [
+          "all",
+          ["==", ["get", "_visibleStormPolygon"], true],
+          ["!=", ["get", "_fallbackGeometry"], true]
+        ],
         layout: {
           "fill-sort-key": ["coalesce", ["get", "_alertDrawRank"], 0]
         },
@@ -3095,9 +3108,9 @@
         type: "line",
         source: ALERT_SOURCE_ID,
         filter: [
-          "any",
+          "all",
           ["==", ["get", "_visibleStormPolygon"], true],
-          ["==", ["get", "_fallbackGeometry"], true]
+          ["!=", ["get", "_fallbackGeometry"], true]
         ],
         layout: {
           "line-sort-key": ["coalesce", ["get", "_alertDrawRank"], 0]
