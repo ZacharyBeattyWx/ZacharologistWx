@@ -16702,52 +16702,46 @@ const threats = [
 
   if (!alertTile || !alertValue || !alertMeta || !alertCard) return;
 
-  function parseAlertTotals() {
-    const text = alertCard.textContent || "";
+  function getAllConfiguredAlerts() {
+    const categories = ["storm", "tropical", "winter", "hydro", "fire"];
 
-    const directCount = text.match(/ALERT COUNT:\s*(\d+)/i);
-    let totalAlerts = directCount ? parseInt(directCount[1], 10) : 0;
-
-    const summaries = Array.from(
-      alertCard.querySelectorAll("summary")
-    );
-
-    let stateCount = 0;
-    let derivedTotal = 0;
-
-    summaries.forEach((node) => {
-      const t = (node.textContent || "").replace(/\s+/g, " ").trim();
-      const m = t.match(/[—-]\s*(\d+)\s*alerts?/i);
-      if (m) {
-        stateCount += 1;
-        derivedTotal += parseInt(m[1], 10);
-      }
-    });
-
-    if (!totalAlerts && derivedTotal) {
-      totalAlerts = derivedTotal;
+    if (typeof getFilteredAlertsForCategory !== "function") {
+      return null;
     }
 
-    return {
-      totalAlerts,
-      stateCount
-    };
+    const seen = new Set();
+    const alerts = [];
+
+    categories.forEach((category) => {
+      const categoryAlerts = getFilteredAlertsForCategory(category);
+
+      if (!Array.isArray(categoryAlerts)) return;
+
+      categoryAlerts.forEach((alert) => {
+        if (seen.has(alert)) return;
+        seen.add(alert);
+        alerts.push(alert);
+      });
+    });
+
+    return alerts;
   }
 
   function updateAlertTile() {
-    const { totalAlerts, stateCount } = parseAlertTotals();
+    const allAlerts = getAllConfiguredAlerts();
+
+    if (!allAlerts) return;
+
+    const totalAlerts = allAlerts.length;
 
     if (totalAlerts > 0) {
       alertValue.textContent = String(totalAlerts);
-      alertMeta.textContent = stateCount > 0
-        ? `${stateCount} state${stateCount === 1 ? "" : "s"}`
-        : "Open NWS panel";
+      alertMeta.textContent = "All categories";
     } else {
       alertValue.textContent = "0";
       alertMeta.textContent = "No current alerts";
     }
   }
-
   const observer = new MutationObserver(updateAlertTile);
   observer.observe(alertCard, {
     childList: true,
