@@ -10268,14 +10268,16 @@ body {
 
   .mobile-overview-value {
     display: block;
-    overflow: hidden;
+    width: 100%;
+    overflow: visible;
     color: #f8fbff;
-    font-size: clamp(1.26rem, 5.6vw, 1.72rem);
+    font-size: clamp(0.92rem, 4.55vw, 1.62rem);
     font-weight: 900;
     line-height: 1;
-    letter-spacing: -0.045em;
-    text-overflow: ellipsis;
+    letter-spacing: -0.055em;
+    text-overflow: clip;
     white-space: nowrap;
+    font-variant-numeric: tabular-nums;
   }
 
   .mobile-overview-tile--alerts .mobile-overview-value {
@@ -10294,12 +10296,14 @@ body {
 
   .mobile-overview-meta {
     display: block;
-    overflow: hidden;
+    overflow: visible;
     margin-top: 8px;
     color: rgba(213, 225, 239, 0.68);
-    font-size: 0.72rem;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    font-size: clamp(0.56rem, 2.35vw, 0.72rem);
+    line-height: 1.12;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   /* Flatten existing columns into one deliberate mobile sequence. */
@@ -10563,18 +10567,22 @@ body {
   }
 
   .mobile-overview-value {
-    font-size: clamp(1.05rem, 5.2vw, 1.65rem) !important;
+    font-size: clamp(0.92rem, 4.55vw, 1.62rem) !important;
     line-height: 1 !important;
-    letter-spacing: -0.04em !important;
+    letter-spacing: -0.055em !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
   }
 
   .mobile-overview-meta {
     margin-top: 6px !important;
-    font-size: 0.63rem !important;
-    line-height: 1.15 !important;
+    font-size: clamp(0.56rem, 2.35vw, 0.68rem) !important;
+    line-height: 1.12 !important;
     white-space: normal !important;
-    overflow: hidden !important;
+    overflow: visible !important;
     text-overflow: clip !important;
+    overflow-wrap: anywhere !important;
   }
 
   .mobile-overview-tile--alerts .mobile-overview-meta {
@@ -15155,7 +15163,7 @@ async function loadConditionsFromLocation(lat, lon) {
 
     const tempText = tempF !== null ? `${tempF}°` : "--°";
     const conditionText = props.textDescription || "Current conditions";
-    const windText = windMph !== null ? `${windMph} mph` : "-- mph";
+    const windText = windMph !== null ? `${windMph}mph` : "--";
     const dewpointText = dewF !== null ? `${dewF}°` : "--°";
     const humidityText =
       humidity !== null && humidity !== undefined
@@ -17022,4 +17030,6 @@ const threats = [
 </script>
 </body>
 </html>
+
+
 
