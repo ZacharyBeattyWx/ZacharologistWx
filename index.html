@@ -10957,6 +10957,79 @@ body {
   filter: saturate(1.16) brightness(1.08) !important;
 }
 </style>
+
+<style id="spc-risk-ring-only-glow-css">
+/*
+  Keep the gauge container clean.
+  No full-circle / outside halo.
+*/
+.ops-risk-dial,
+.ops-risk-dial[class*="risk-rank-"],
+.risk-rank-0 .ops-risk-dial,
+.risk-rank-1 .ops-risk-dial,
+.risk-rank-2 .ops-risk-dial,
+.risk-rank-3 .ops-risk-dial,
+.risk-rank-4 .ops-risk-dial,
+.risk-rank-5 .ops-risk-dial {
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+/*
+  Glow only follows the visible colored pixels of the arc.
+  drop-shadow respects transparency, unlike box-shadow.
+*/
+.ops-risk-dial::before,
+.ops-risk-dial > .ops-risk-arc,
+.ops-risk-dial > .ops-risk-dial-arc,
+.ops-risk-dial > .ops-risk-arc-fill,
+.ops-risk-dial .ops-risk-arc,
+.ops-risk-dial .ops-risk-dial-arc,
+.ops-risk-dial .ops-risk-arc-fill {
+  box-shadow: none !important;
+  filter: drop-shadow(
+    0 0 var(--spc-ring-glow-blur, 3px)
+    var(--spc-ring-glow, rgba(255, 255, 255, 0.18))
+  ) !important;
+}
+
+/* Glow strength follows the actual SPC rank. */
+.ops-risk-dial.risk-rank-0,
+.risk-rank-0 .ops-risk-dial {
+  --spc-ring-glow: rgba(255, 255, 255, 0);
+  --spc-ring-glow-blur: 0px;
+}
+
+.ops-risk-dial.risk-rank-1,
+.risk-rank-1 .ops-risk-dial {
+  --spc-ring-glow: rgba(255, 255, 255, 0.12);
+  --spc-ring-glow-blur: 2px;
+}
+
+.ops-risk-dial.risk-rank-2,
+.risk-rank-2 .ops-risk-dial {
+  --spc-ring-glow: rgba(255, 255, 255, 0.20);
+  --spc-ring-glow-blur: 3px;
+}
+
+.ops-risk-dial.risk-rank-3,
+.risk-rank-3 .ops-risk-dial {
+  --spc-ring-glow: rgba(255, 255, 255, 0.28);
+  --spc-ring-glow-blur: 4px;
+}
+
+.ops-risk-dial.risk-rank-4,
+.risk-rank-4 .ops-risk-dial {
+  --spc-ring-glow: rgba(255, 255, 255, 0.34);
+  --spc-ring-glow-blur: 5px;
+}
+
+.ops-risk-dial.risk-rank-5,
+.risk-rank-5 .ops-risk-dial {
+  --spc-ring-glow: rgba(255, 255, 255, 0.42);
+  --spc-ring-glow-blur: 6px;
+}
+</style>
 </head>
 
 <body>
