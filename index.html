@@ -10127,6 +10127,713 @@ body {
     }
   }
 </style>
+<style id="mobile-layout-b-css">
+/* =========================================================
+   MOBILE LAYOUT B — STACKED OPERATIONS DASHBOARD
+   Mobile only. Desktop intentionally untouched.
+========================================================= */
+.mobile-ops-at-glance,
+.mobile-alerts-sheet {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .forecast-dashboard {
+    padding: 14px 12px 34px !important;
+    overflow-x: clip !important;
+  }
+
+  .ops-board-shell {
+    width: 100% !important;
+  }
+
+  .operations-intro {
+    width: 100% !important;
+    margin: 0 0 14px !important;
+    padding: 20px !important;
+    gap: 14px !important;
+    border-radius: 20px !important;
+    background:
+      radial-gradient(circle at 88% 8%, rgba(24, 190, 255, 0.19), transparent 38%),
+      linear-gradient(145deg, rgba(7, 18, 31, 0.98), rgba(4, 9, 17, 0.98)) !important;
+    border-color: rgba(74, 196, 255, 0.22) !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.05),
+      0 16px 38px rgba(0,0,0,0.28) !important;
+  }
+
+  .operations-intro .eyebrow {
+    margin-bottom: 8px !important;
+    font-size: 0.66rem !important;
+    letter-spacing: 0.17em !important;
+  }
+
+  .operations-intro h2 {
+    max-width: 100% !important;
+    font-size: clamp(1.9rem, 8.4vw, 2.45rem) !important;
+    line-height: 1.04 !important;
+  }
+
+  .operations-intro .dashboard-subtitle {
+    display: -webkit-box !important;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
+    margin-top: 11px !important;
+    font-size: 0.98rem !important;
+    line-height: 1.48 !important;
+  }
+
+  .operations-status-card.forecast-status-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    padding: 15px !important;
+    border-radius: 14px !important;
+    background: rgba(3, 9, 17, 0.72) !important;
+    border-color: rgba(110, 186, 228, 0.2) !important;
+  }
+
+  .operations-status-card.forecast-status-card strong {
+    font-size: 1.04rem !important;
+  }
+
+  .operations-status-card.forecast-status-card p {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    margin: 6px 0 12px !important;
+    font-size: 0.86rem !important;
+  }
+
+  .operations-status-card.forecast-status-card .dashboard-button {
+    width: 100% !important;
+    justify-content: center !important;
+    text-align: center !important;
+  }
+
+  .mobile-ops-at-glance {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin: 0 0 14px;
+  }
+
+  .mobile-overview-tile {
+    min-height: 112px;
+    padding: 14px;
+    appearance: none;
+    border: 1px solid rgba(123, 179, 216, 0.18);
+    border-radius: 16px;
+    background:
+      linear-gradient(155deg, rgba(18, 35, 53, 0.98), rgba(7, 15, 26, 0.98));
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.045),
+      0 10px 24px rgba(0,0,0,0.22);
+    color: #f8fbff;
+    text-align: left;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobile-overview-tile:active {
+    transform: scale(0.98);
+  }
+
+  .mobile-overview-tile--alerts {
+    border-color: rgba(255, 104, 104, 0.34);
+  }
+
+  .mobile-overview-tile--conditions {
+    border-color: rgba(105, 221, 159, 0.25);
+  }
+
+  .mobile-overview-tile--wind {
+    border-color: rgba(174, 192, 219, 0.2);
+  }
+
+  .mobile-overview-tile--spc {
+    border-color: rgba(255, 187, 64, 0.28);
+  }
+
+  .mobile-overview-label {
+    display: block;
+    margin-bottom: 11px;
+    color: rgba(131, 210, 255, 0.9);
+    font-size: 0.61rem;
+    font-weight: 900;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  .mobile-overview-value {
+    display: block;
+    overflow: hidden;
+    color: #f8fbff;
+    font-size: clamp(1.26rem, 5.6vw, 1.72rem);
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -0.045em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-overview-tile--alerts .mobile-overview-value {
+    color: #ff7474;
+  }
+
+  .mobile-overview-tile--conditions .mobile-overview-value {
+    color: #76e9a7;
+  }
+
+  .mobile-overview-tile--spc .mobile-overview-value {
+    color: #ffbf51;
+    font-size: 1.3rem;
+    letter-spacing: 0.04em;
+  }
+
+  .mobile-overview-meta {
+    display: block;
+    overflow: hidden;
+    margin-top: 8px;
+    color: rgba(213, 225, 239, 0.68);
+    font-size: 0.72rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Flatten existing columns into one deliberate mobile sequence. */
+  .forecast-dashboard .ops-dashboard-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 14px !important;
+    width: 100% !important;
+  }
+
+  .forecast-dashboard .ops-column {
+    display: contents !important;
+  }
+
+  .forecast-dashboard .ops-conditions-card {
+    display: none !important;
+  }
+
+  .forecast-dashboard .radar-card {
+    order: 10 !important;
+    min-height: 0 !important;
+  }
+
+  .forecast-dashboard .alerts-card {
+    order: 20 !important;
+    min-height: 0 !important;
+  }
+
+  .forecast-dashboard .spc-card {
+    order: 30 !important;
+    min-height: 0 !important;
+  }
+
+  .forecast-dashboard .dashboard-card {
+    padding: 16px !important;
+    border-radius: 18px !important;
+    background:
+      linear-gradient(160deg, rgba(14, 27, 43, 0.98), rgba(5, 12, 22, 0.99)) !important;
+    border-color: rgba(110, 181, 222, 0.18) !important;
+  }
+
+  .forecast-dashboard .radar-card .card-header-row,
+  .forecast-dashboard .spc-card .card-header-row {
+    margin-bottom: 10px !important;
+  }
+
+  .forecast-dashboard .radar-frame {
+    height: min(62vw, 335px) !important;
+    min-height: 245px !important;
+    margin: 12px 0 !important;
+    border-radius: 14px !important;
+  }
+
+  .forecast-dashboard .radar-card .dashboard-button {
+    width: 100% !important;
+    min-height: 46px;
+    justify-content: center !important;
+    text-align: center !important;
+  }
+
+  .forecast-dashboard .alerts-card #alertsTitle {
+    margin: 0 0 14px !important;
+    text-align: left !important;
+    font-size: 1.28rem !important;
+  }
+
+  .forecast-dashboard .alerts-card .alert-tabs-wrapper {
+    margin-bottom: 14px !important;
+  }
+
+  .forecast-dashboard .alerts-card .compact-alert-list {
+    position: relative;
+    max-height: 320px !important;
+    overflow: hidden !important;
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 81%, transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 0%, #000 81%, transparent 100%);
+  }
+
+  .mobile-alerts-view-all {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 48px;
+    margin-top: 12px;
+    border: 1px solid rgba(62, 188, 255, 0.45);
+    border-radius: 12px;
+    background: rgba(16, 89, 135, 0.2);
+    color: #b9e7ff;
+    font: inherit;
+    font-size: 0.76rem;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  .mobile-alerts-sheet {
+    position: fixed;
+    inset: 0;
+    z-index: 1000002;
+    isolation: isolate;
+  }
+
+  .mobile-alerts-sheet[hidden] {
+    display: none !important;
+  }
+
+  .mobile-alerts-sheet:not([hidden]) {
+    display: block !important;
+  }
+
+  .mobile-alerts-sheet-backdrop {
+    position: absolute;
+    inset: 0;
+    border: 0;
+    background: rgba(0, 5, 12, 0.78);
+    backdrop-filter: blur(9px);
+  }
+
+  .mobile-alerts-sheet-panel {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    height: min(92dvh, 900px);
+    max-height: 92vh;
+    border: 1px solid rgba(101, 194, 244, 0.24);
+    border-bottom: 0;
+    border-radius: 25px 25px 0 0;
+    background:
+      radial-gradient(circle at 90% 4%, rgba(27, 169, 235, 0.13), transparent 31%),
+      linear-gradient(160deg, rgba(8, 18, 30, 0.995), rgba(2, 7, 14, 0.997));
+    box-shadow: 0 -26px 62px rgba(0,0,0,0.5);
+    overflow: hidden;
+  }
+
+  .mobile-alerts-sheet-handle {
+    width: 48px;
+    height: 4px;
+    margin: 10px auto 2px;
+    border-radius: 999px;
+    background: rgba(199, 224, 240, 0.34);
+    flex: 0 0 auto;
+  }
+
+  .mobile-alerts-sheet-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 14px;
+    padding: 14px 18px 16px;
+    border-bottom: 1px solid rgba(132, 185, 216, 0.14);
+  }
+
+  .mobile-alerts-sheet-eyebrow {
+    margin: 0 0 6px;
+    color: #70d4ff;
+    font-size: 0.63rem;
+    font-weight: 900;
+    letter-spacing: 0.16em;
+  }
+
+  .mobile-alerts-sheet-header h2 {
+    margin: 0;
+    color: #f8fbff;
+    font-size: 1.54rem;
+    line-height: 1;
+  }
+
+  .mobile-alerts-sheet-header p:not(.mobile-alerts-sheet-eyebrow) {
+    margin: 8px 0 0;
+    color: rgba(210, 223, 236, 0.68);
+    font-size: 0.8rem;
+    line-height: 1.38;
+  }
+
+  .mobile-alerts-sheet-close {
+    width: 42px;
+    height: 42px;
+    border: 1px solid rgba(171, 203, 224, 0.24);
+    border-radius: 13px;
+    background: rgba(255,255,255,0.045);
+    color: #f7fbff;
+    font-size: 1.85rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .mobile-alerts-sheet-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 14px 12px calc(24px + env(safe-area-inset-bottom));
+  }
+
+  .mobile-alerts-sheet .alerts-card {
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 8px !important;
+    overflow: visible !important;
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .mobile-alerts-sheet .alerts-card #alertsTitle {
+    display: none !important;
+  }
+
+  .mobile-alerts-sheet .alerts-card .compact-alert-list {
+    max-height: none !important;
+    overflow: visible !important;
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+  }
+
+  .mobile-alerts-sheet .mobile-alerts-view-all {
+    display: none !important;
+  }
+
+  body.mobile-alerts-open,
+  html.mobile-alerts-open {
+    overflow: hidden !important;
+  }
+}
+
+@media (min-width: 769px) {
+  .mobile-ops-at-glance,
+  .mobile-alerts-sheet,
+  .mobile-alerts-view-all {
+    display: none !important;
+  }
+}
+</style>
+<style id="mobile-layout-b-compact-strip-css">
+@media (max-width: 768px) {
+  .mobile-ops-at-glance {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    margin: 0 0 14px !important;
+  }
+
+  .mobile-overview-tile {
+    min-height: 92px !important;
+    padding: 10px 9px !important;
+    border-radius: 14px !important;
+  }
+
+  .mobile-overview-label {
+    margin-bottom: 8px !important;
+    font-size: 0.56rem !important;
+    letter-spacing: 0.16em !important;
+    line-height: 1.1 !important;
+  }
+
+  .mobile-overview-value {
+    font-size: clamp(1.05rem, 5.2vw, 1.65rem) !important;
+    line-height: 1 !important;
+    letter-spacing: -0.04em !important;
+  }
+
+  .mobile-overview-meta {
+    margin-top: 6px !important;
+    font-size: 0.63rem !important;
+    line-height: 1.15 !important;
+    white-space: normal !important;
+    overflow: hidden !important;
+    text-overflow: clip !important;
+  }
+
+  .mobile-overview-tile--alerts .mobile-overview-meta {
+    color: #b9e7ff !important;
+  }
+
+  /* Homepage should NOT show the full active alerts block on mobile */
+  .forecast-dashboard .alerts-card {
+    display: none !important;
+  }
+
+  /* When moved into the popup sheet, allow it to display normally */
+  .mobile-alerts-sheet .alerts-card {
+    display: block !important;
+  }
+}
+</style>
+<style id="mobile-alert-sheet-height-fix-css">
+@media (max-width: 768px) {
+  .mobile-alerts-sheet {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    overflow: hidden !important;
+  }
+
+  .mobile-alerts-sheet-panel {
+    top: 54px !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+
+    border-radius: 26px 26px 0 0 !important;
+  }
+
+  .mobile-alerts-sheet-body {
+    padding-bottom: calc(132px + env(safe-area-inset-bottom)) !important;
+  }
+}
+</style>
+<style id="mobile-alerts-fullscreen-css">
+@media (max-width: 768px) {
+  html.mobile-alerts-open,
+  body.mobile-alerts-open {
+    height: 100% !important;
+    overflow: hidden !important;
+  }
+
+  .mobile-alerts-sheet {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 2147483647 !important;
+
+    width: 100vw !important;
+    min-width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    min-height: 100vh !important;
+    min-height: 100dvh !important;
+
+    background: #040914 !important;
+    overflow: hidden !important;
+  }
+
+  .mobile-alerts-sheet-backdrop,
+  .mobile-alerts-sheet-handle {
+    display: none !important;
+  }
+
+  .mobile-alerts-sheet-panel {
+    position: fixed !important;
+    inset: 0 !important;
+
+    display: flex !important;
+    flex-direction: column !important;
+
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    min-height: 100vh !important;
+    min-height: 100dvh !important;
+    max-height: none !important;
+
+    border: 0 !important;
+    border-radius: 0 !important;
+    background:
+      radial-gradient(circle at 90% 3%, rgba(27, 169, 235, 0.14), transparent 30%),
+      linear-gradient(160deg, rgba(8, 18, 30, 1), rgba(2, 7, 14, 1)) !important;
+    box-shadow: none !important;
+    overflow: hidden !important;
+  }
+
+  .mobile-alerts-sheet-header {
+    flex: 0 0 auto !important;
+    padding:
+      calc(18px + env(safe-area-inset-top))
+      20px
+      16px !important;
+    background: rgba(4, 12, 22, 0.96) !important;
+    border-bottom-color: rgba(132, 185, 216, 0.16) !important;
+  }
+
+  .mobile-alerts-sheet-close {
+    width: 46px !important;
+    height: 46px !important;
+    border-radius: 14px !important;
+  }
+
+  .mobile-alerts-sheet-body {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    padding: 14px 12px calc(32px + env(safe-area-inset-bottom)) !important;
+    background: transparent !important;
+  }
+}
+</style>
+<style id="mobile-alerts-dedicated-page-css">
+.mobile-alerts-page-header {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  body.mobile-alerts-page {
+    background: #040914 !important;
+  }
+
+  body.mobile-alerts-page > header {
+    display: none !important;
+  }
+
+  body.mobile-alerts-page .mobile-alerts-sheet {
+    display: none !important;
+  }
+
+  .mobile-alerts-page-header {
+    position: sticky;
+    top: 0;
+    z-index: 10002;
+    display: grid !important;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    min-height: 76px;
+    padding: calc(12px + env(safe-area-inset-top)) 14px 12px;
+    background:
+      linear-gradient(135deg, rgba(5, 18, 34, 0.99), rgba(2, 8, 16, 0.99));
+    border-bottom: 1px solid rgba(104, 197, 246, 0.18);
+    box-shadow: 0 10px 28px rgba(0,0,0,0.26);
+  }
+
+  .mobile-alerts-page-back,
+  .mobile-alerts-page-map {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    border: 1px solid rgba(147, 192, 220, 0.26);
+    border-radius: 12px;
+    background: rgba(255,255,255,0.045);
+    color: #eff9ff;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .mobile-alerts-page-back {
+    font-size: 2rem;
+    line-height: 1;
+  }
+
+  .mobile-alerts-page-map {
+    color: #83ddff;
+    font-size: 0.6rem;
+    font-weight: 900;
+    letter-spacing: 0.11em;
+  }
+
+  .mobile-alerts-page-header-copy {
+    min-width: 0;
+  }
+
+  .mobile-alerts-page-header-copy p {
+    margin: 0 0 4px;
+    color: #70d4ff;
+    font-size: 0.59rem;
+    font-weight: 900;
+    letter-spacing: 0.16em;
+  }
+
+  .mobile-alerts-page-header-copy h1 {
+    overflow: hidden;
+    margin: 0;
+    color: #f8fbff;
+    font-size: 1.4rem;
+    line-height: 1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  body.mobile-alerts-page .forecast-dashboard {
+    padding: 12px 12px calc(30px + env(safe-area-inset-bottom)) !important;
+    background: #040914 !important;
+  }
+
+  body.mobile-alerts-page .operations-intro,
+  body.mobile-alerts-page .mobile-ops-at-glance,
+  body.mobile-alerts-page .ops-center-column,
+  body.mobile-alerts-page .ops-conditions-card,
+  body.mobile-alerts-page .spc-card,
+  body.mobile-alerts-page .ops-live-card {
+    display: none !important;
+  }
+
+  body.mobile-alerts-page .ops-board-shell,
+  body.mobile-alerts-page .ops-dashboard-grid,
+  body.mobile-alerts-page .ops-right-column {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+  }
+
+  body.mobile-alerts-page .forecast-dashboard .alerts-card {
+    display: block !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 8px !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+  }
+
+  body.mobile-alerts-page .forecast-dashboard .alerts-card #alertsTitle,
+  body.mobile-alerts-page .forecast-dashboard .mobile-alerts-view-all {
+    display: none !important;
+  }
+
+  body.mobile-alerts-page .forecast-dashboard .alerts-card .alert-tabs-wrapper {
+    margin: 0 0 16px !important;
+  }
+
+  body.mobile-alerts-page .forecast-dashboard .alerts-card .compact-alert-list {
+    max-height: none !important;
+    overflow: visible !important;
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+  }
+}
+</style>
 </head>
 
 <body>
@@ -10200,6 +10907,47 @@ body {
   </div>
 </div>
 
+<section class="mobile-ops-at-glance" aria-label="Weather operations at a glance">
+  <button class="mobile-overview-tile mobile-overview-tile--alerts"
+          type="button"
+          data-mobile-alerts-open>
+    <span class="mobile-overview-label">Active Alerts</span>
+    <strong class="mobile-overview-value">LIVE</strong>
+    <small class="mobile-overview-meta">Open NWS panel</small>
+  </button>
+
+  <button class="mobile-overview-tile mobile-overview-tile--conditions"
+          type="button"
+          data-mobile-scroll=".radar-card">
+    <span class="mobile-overview-label">Conditions</span>
+    <strong class="mobile-overview-value"
+            data-mobile-mirror="#currentTemp"
+            data-mobile-fallback="--">--</strong>
+    <small class="mobile-overview-meta"
+           data-mobile-mirror="#currentCondition"
+           data-mobile-fallback="Near you">Near you</small>
+  </button>
+
+  <button class="mobile-overview-tile mobile-overview-tile--wind"
+          type="button"
+          data-mobile-scroll=".radar-card">
+    <span class="mobile-overview-label">Wind</span>
+    <strong class="mobile-overview-value"
+            data-mobile-mirror="#currentWind"
+            data-mobile-fallback="-- mph">-- mph</strong>
+    <small class="mobile-overview-meta"
+           data-mobile-mirror="#currentLocation"
+           data-mobile-fallback="Use location">Use location</small>
+  </button>
+
+  <button class="mobile-overview-tile mobile-overview-tile--spc"
+          type="button"
+          data-mobile-scroll=".spc-card">
+    <span class="mobile-overview-label">SPC Outlook</span>
+    <strong class="mobile-overview-value">DAY 1</strong>
+    <small class="mobile-overview-meta">Tap to view</small>
+  </button>
+</section>
 <div class="dashboard-grid ops-dashboard-grid"><!-- CENTER COLUMN -->
   <div class="ops-column ops-center-column">
 
@@ -10395,6 +11143,34 @@ body {
 
     </div>
   </div>
+<div class="mobile-alerts-sheet" id="mobileAlertsSheet" hidden aria-hidden="true">
+  <button class="mobile-alerts-sheet-backdrop"
+          type="button"
+          aria-label="Close active alerts"
+          data-mobile-alerts-close></button>
+
+  <section class="mobile-alerts-sheet-panel"
+           role="dialog"
+           aria-modal="true"
+           aria-labelledby="mobileAlertsSheetTitle">
+    <div class="mobile-alerts-sheet-handle" aria-hidden="true"></div>
+
+    <header class="mobile-alerts-sheet-header">
+      <div>
+        <p class="mobile-alerts-sheet-eyebrow">LIVE NWS FEED</p>
+        <h2 id="mobileAlertsSheetTitle">Active Alerts</h2>
+        <p>Warnings, watches, and advisories across the monitoring area.</p>
+      </div>
+
+      <button class="mobile-alerts-sheet-close"
+              type="button"
+              aria-label="Close active alerts"
+              data-mobile-alerts-close>&times;</button>
+    </header>
+
+    <div class="mobile-alerts-sheet-body" id="mobileAlertsSheetBody"></div>
+  </section>
+</div>
 </main>
 
 <div class="alert-modal" id="stormModal">
@@ -15806,6 +16582,245 @@ const threats = [
     childList: true,
     subtree: true
   });
+})();
+</script>
+<script id="mobile-layout-b-js">
+(() => {
+  "use strict";
+
+  const isMobile = () => window.matchMedia("(max-width: 768px)").matches;
+  const alertCard = document.querySelector(".forecast-dashboard .alerts-card");
+  const sheet = document.getElementById("mobileAlertsSheet");
+  const sheetBody = document.getElementById("mobileAlertsSheetBody");
+
+  if (!alertCard || !sheet || !sheetBody) return;
+
+  const origin = document.createComment("mobile-alerts-origin");
+  alertCard.parentNode.insertBefore(origin, alertCard);
+
+  let viewAllButton = alertCard.querySelector(".mobile-alerts-view-all");
+
+  if (!viewAllButton) {
+    viewAllButton = document.createElement("button");
+    viewAllButton.type = "button";
+    viewAllButton.className = "mobile-alerts-view-all";
+    viewAllButton.textContent = "View All Active Alerts";
+    alertCard.appendChild(viewAllButton);
+  }
+
+  const openSheet = () => {
+    if (!isMobile() || !sheet.hidden) return;
+
+    sheetBody.appendChild(alertCard);
+    alertCard.classList.add("mobile-alerts-sheet-card");
+
+    sheet.hidden = false;
+    sheet.setAttribute("aria-hidden", "false");
+    document.documentElement.classList.add("mobile-alerts-open");
+    document.body.classList.add("mobile-alerts-open");
+
+    requestAnimationFrame(() => {
+      sheet.querySelector(".mobile-alerts-sheet-close")?.focus();
+    });
+  };
+
+  const closeSheet = () => {
+    if (sheet.hidden) return;
+
+    origin.parentNode.insertBefore(alertCard, origin.nextSibling);
+    alertCard.classList.remove("mobile-alerts-sheet-card");
+
+    sheet.hidden = true;
+    sheet.setAttribute("aria-hidden", "true");
+    document.documentElement.classList.remove("mobile-alerts-open");
+    document.body.classList.remove("mobile-alerts-open");
+  };
+
+  document.querySelectorAll("[data-mobile-alerts-open]").forEach((button) => {
+    button.addEventListener("click", openSheet);
+  });
+
+  viewAllButton.addEventListener("click", openSheet);
+
+  sheet.addEventListener("click", (event) => {
+    if (event.target.closest("[data-mobile-alerts-close]")) {
+      closeSheet();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeSheet();
+  });
+
+  document.querySelectorAll("[data-mobile-scroll]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const target = document.querySelector(button.dataset.mobileScroll);
+      target?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+
+  const syncMirrors = () => {
+    document.querySelectorAll("[data-mobile-mirror]").forEach((target) => {
+      const source = document.querySelector(target.dataset.mobileMirror);
+      const text = source?.textContent?.trim();
+      target.textContent = text || target.dataset.mobileFallback || "--";
+    });
+  };
+
+  const mirrorSources = [
+    document.querySelector("#currentTemp"),
+    document.querySelector("#currentCondition"),
+    document.querySelector("#currentWind"),
+    document.querySelector("#currentLocation")
+  ].filter(Boolean);
+
+  const observer = new MutationObserver(syncMirrors);
+
+  mirrorSources.forEach((source) => {
+    observer.observe(source, {
+      childList: true,
+      characterData: true,
+      subtree: true
+    });
+  });
+
+  syncMirrors();
+
+  window.addEventListener("resize", () => {
+    if (!isMobile()) closeSheet();
+  });
+})();
+</script>
+<script id="mobile-layout-b-compact-strip-js">
+(() => {
+  "use strict";
+
+  const alertTile = document.querySelector(".mobile-overview-tile--alerts");
+  const alertValue = alertTile?.querySelector(".mobile-overview-value");
+  const alertMeta = alertTile?.querySelector(".mobile-overview-meta");
+  const alertCard = document.querySelector(".forecast-dashboard .alerts-card");
+
+  if (!alertTile || !alertValue || !alertMeta || !alertCard) return;
+
+  function parseAlertTotals() {
+    const text = alertCard.textContent || "";
+
+    const directCount = text.match(/ALERT COUNT:\s*(\d+)/i);
+    let totalAlerts = directCount ? parseInt(directCount[1], 10) : 0;
+
+    const summaries = Array.from(
+      alertCard.querySelectorAll("summary")
+    );
+
+    let stateCount = 0;
+    let derivedTotal = 0;
+
+    summaries.forEach((node) => {
+      const t = (node.textContent || "").replace(/\s+/g, " ").trim();
+      const m = t.match(/[—-]\s*(\d+)\s*alerts?/i);
+      if (m) {
+        stateCount += 1;
+        derivedTotal += parseInt(m[1], 10);
+      }
+    });
+
+    if (!totalAlerts && derivedTotal) {
+      totalAlerts = derivedTotal;
+    }
+
+    return {
+      totalAlerts,
+      stateCount
+    };
+  }
+
+  function updateAlertTile() {
+    const { totalAlerts, stateCount } = parseAlertTotals();
+
+    if (totalAlerts > 0) {
+      alertValue.textContent = String(totalAlerts);
+      alertMeta.textContent = stateCount > 0
+        ? `${stateCount} state${stateCount === 1 ? "" : "s"}`
+        : "Open NWS panel";
+    } else {
+      alertValue.textContent = "0";
+      alertMeta.textContent = "No current alerts";
+    }
+  }
+
+  const observer = new MutationObserver(updateAlertTile);
+  observer.observe(alertCard, {
+    childList: true,
+    subtree: true,
+    characterData: true
+  });
+
+  updateAlertTile();
+})();
+</script>
+<script id="mobile-alerts-dedicated-page-js">
+(() => {
+  "use strict";
+
+  const params = new URLSearchParams(window.location.search);
+  const isMobile = () => window.matchMedia("(max-width: 768px)").matches;
+  const isAlertsPage = () => params.get("view") === "alerts";
+
+  function goToAlertsPage() {
+    window.location.href = "index.html?view=alerts";
+  }
+
+  /*
+    Capture phase prevents the existing popup listener from opening.
+    Homepage alert buttons now navigate to the dedicated mobile page.
+  */
+  document.addEventListener("click", (event) => {
+    if (!isMobile() || isAlertsPage()) return;
+
+    const trigger = event.target.closest(
+      "[data-mobile-alerts-open], .mobile-alerts-view-all"
+    );
+
+    if (!trigger) return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    goToAlertsPage();
+  }, true);
+
+  if (!isMobile() || !isAlertsPage()) return;
+
+  document.documentElement.classList.add("mobile-alerts-page");
+  document.body.classList.add("mobile-alerts-page");
+
+  const pageHeader = document.createElement("div");
+  pageHeader.className = "mobile-alerts-page-header";
+  pageHeader.innerHTML = `
+    <button class="mobile-alerts-page-back"
+            type="button"
+            aria-label="Return to dashboard">&lsaquo;</button>
+
+    <div class="mobile-alerts-page-header-copy">
+      <p>LIVE NWS FEED</p>
+      <h1>Active Alerts</h1>
+    </div>
+
+    <a class="mobile-alerts-page-map"
+       href="level2-mobile-radar.html?level2Data=remote"
+       aria-label="Open live radar map">MAP</a>
+  `;
+
+  document.body.insertBefore(pageHeader, document.body.firstChild);
+
+  pageHeader
+    .querySelector(".mobile-alerts-page-back")
+    .addEventListener("click", () => {
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        window.location.href = "index.html";
+      }
+    });
 })();
 </script>
 </body>
