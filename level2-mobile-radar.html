@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -591,6 +591,1030 @@
       }
     }
   </style>
+<style id="alert-type-filter-shell-styles">
+.alert-type-filter-shell {
+  margin: 10px 0 2px;
+  border: 1px solid rgba(105, 148, 184, 0.3);
+  border-radius: 5px;
+  overflow: hidden;
+  background: rgba(4, 14, 26, 0.54);
+}
+
+.alert-type-filter-shell > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 32px;
+  padding: 7px 9px;
+  color: #e6f1ff;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.alert-type-filter-shell > summary::-webkit-details-marker {
+  display: none;
+}
+
+.alert-type-filter-shell > summary::after {
+  content: "+";
+  color: #84cfff;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.alert-type-filter-shell[open] > summary {
+  border-bottom: 1px solid rgba(105, 148, 184, 0.22);
+  background: rgba(34, 107, 157, 0.18);
+}
+
+.alert-type-filter-shell[open] > summary::after {
+  content: "−";
+}
+
+.alert-type-filter-shell > summary span {
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.alert-type-filter-shell > summary small {
+  color: rgba(199, 221, 239, 0.68);
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.alert-type-filter-shell-body {
+  padding: 10px;
+}
+
+.alert-type-filter-shell-body strong {
+  display: block;
+  color: #dcedff;
+  font-size: 0.67rem;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.alert-type-filter-shell-body p {
+  margin: 5px 0 0;
+  color: rgba(205, 222, 238, 0.7);
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+
+.alert-type-filter-list:empty {
+  display: none;
+}
+</style>
+<style id="alert-type-filter-open-fix">
+#mobileRadarOptionsPanel .alert-type-filter-shell[open] .alert-type-filter-shell-body {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  min-height: 82px !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+#mobileRadarOptionsPanel .alert-type-filter-shell[open] .alert-type-filter-shell-body strong,
+#mobileRadarOptionsPanel .alert-type-filter-shell[open] .alert-type-filter-shell-body p {
+  display: block !important;
+  visibility: visible !important;
+}
+
+#mobileRadarOptionsPanel .alert-type-filter-shell[open] {
+  overflow: visible !important;
+}
+</style>
+<style id="level2-alert-type-filter-runtime">
+#mobileRadarOptionsPanel .alert-type-filter-list {
+  max-height: min(38vh, 270px);
+  overflow-y: auto;
+  margin-top: 9px;
+  border-top: 1px solid rgba(105, 148, 184, 0.18);
+}
+
+#mobileRadarOptionsPanel .alert-type-filter-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 0;
+}
+
+#mobileRadarOptionsPanel .alert-type-filter-master {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  color: #dcecff;
+  cursor: pointer;
+  font-size: 0.67rem;
+  font-weight: 800;
+}
+
+#mobileRadarOptionsPanel .alert-type-filter-master input,
+#mobileRadarOptionsPanel .alert-type-filter-event input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  flex: 0 0 auto;
+  accent-color: #39bfff;
+}
+
+#mobileRadarOptionsPanel .alert-type-filter-reset {
+  min-height: 25px;
+  padding: 4px 7px;
+  border: 1px solid rgba(130, 174, 211, 0.36);
+  border-radius: 4px;
+  background: rgba(55, 118, 167, 0.18);
+  color: #d8edff;
+  cursor: pointer;
+  font-size: 0.6rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+#mobileRadarOptionsPanel .alert-type-filter-events {
+  display: grid;
+  grid-template-columns: 1fr;
+  border-top: 1px solid rgba(105, 148, 184, 0.12);
+}
+
+#mobileRadarOptionsPanel .alert-type-filter-event {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  min-height: 30px;
+  padding: 6px 1px;
+  border-bottom: 1px solid rgba(105, 148, 184, 0.1);
+  color: #d5e6f7;
+  cursor: pointer;
+}
+
+#mobileRadarOptionsPanel .alert-type-filter-event span {
+  overflow: hidden;
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#mobileRadarOptionsPanel .alert-type-filter-event em {
+  min-width: 17px;
+  color: rgba(177, 206, 232, 0.72);
+  font-size: 0.61rem;
+  font-style: normal;
+  font-weight: 800;
+  text-align: right;
+}
+
+@media (max-width: 768px) {
+  #mobileRadarOptionsPanel .alert-type-filter-list {
+    max-height: 32vh;
+  }
+}
+</style>
+<style id="level2-alert-type-filter-popup-styles">
+#mobileRadarOptionsPanel .alert-type-filter-shell {
+  margin-bottom: 8px;
+}
+
+#mobileRadarOptionsPanel .alert-type-filter-shell > summary {
+  min-height: 36px;
+}
+
+#mobileRadarOptionsPanel .alert-type-filter-shell > summary small {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.alert-type-filter-popup[hidden] {
+  display: none !important;
+}
+
+.alert-type-filter-popup {
+  position: fixed;
+  inset: 0;
+  z-index: 50000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.alert-type-filter-popup-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(1, 7, 16, 0.8);
+  backdrop-filter: blur(9px);
+  cursor: pointer;
+}
+
+.alert-type-filter-popup-panel {
+  position: relative;
+  z-index: 1;
+  width: min(780px, 100%);
+  max-height: min(82vh, 760px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(113, 174, 219, 0.36);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(12, 28, 45, 0.99), rgba(3, 11, 21, 0.99));
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.64);
+}
+
+.alert-type-filter-popup-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 19px 20px 16px;
+  border-bottom: 1px solid rgba(127, 178, 220, 0.18);
+}
+
+.alert-type-filter-popup-eyebrow {
+  margin: 0 0 5px;
+  color: #73c9ff;
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+
+.alert-type-filter-popup-header h2 {
+  margin: 0;
+  color: #f0f7ff;
+  font-size: 1.15rem;
+  line-height: 1.2;
+}
+
+.alert-type-filter-popup-header p:last-child {
+  margin: 6px 0 0;
+  color: #9eb8d1;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.alert-type-filter-popup-close {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(155, 197, 232, 0.26);
+  border-radius: 7px;
+  background: rgba(124, 177, 219, 0.1);
+  color: #e6f3ff;
+  cursor: pointer;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.alert-type-filter-popup-main {
+  min-height: 0;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  padding: 14px 20px 0;
+}
+
+.alert-type-filter-search-label {
+  display: block;
+  margin-bottom: 9px;
+  color: #bcd5ec;
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.alert-type-filter-search {
+  width: 100%;
+  height: 38px;
+  box-sizing: border-box;
+  border: 1px solid rgba(120, 172, 215, 0.3);
+  border-radius: 7px;
+  outline: none;
+  background: rgba(1, 10, 19, 0.7);
+  color: #edf6ff;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 0.84rem;
+}
+
+.alert-type-filter-search:focus {
+  border-color: #4fb9ff;
+  box-shadow: 0 0 0 2px rgba(79, 185, 255, 0.12);
+}
+
+.alert-type-filter-popup-main .alert-type-filter-shell-body {
+  min-height: 0;
+  display: flex !important;
+  flex: 1 1 auto;
+  flex-direction: column;
+  padding: 13px 0 0 !important;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-shell-body > strong {
+  color: #dcefff;
+  font-size: 0.72rem;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-shell-body > p {
+  margin-bottom: 10px;
+  color: #a9c2d8;
+  font-size: 0.75rem;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-list {
+  max-height: none !important;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  margin-top: 0 !important;
+  padding-right: 3px;
+  border-top: 1px solid rgba(113, 174, 219, 0.16);
+}
+
+.alert-type-filter-popup-main .alert-type-filter-actions {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 10px 2px;
+  background: rgba(5, 17, 29, 0.98);
+}
+
+.alert-type-filter-popup-main .alert-type-filter-master {
+  font-size: 0.78rem;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-reset {
+  min-height: 29px;
+  font-size: 0.66rem;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-group {
+  margin: 0 0 12px;
+  border: 1px solid rgba(112, 166, 207, 0.18);
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(58, 107, 145, 0.06);
+}
+
+.alert-type-filter-popup-main .alert-type-filter-group-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 31px;
+  padding: 0 10px;
+  border-bottom: 1px solid rgba(112, 166, 207, 0.14);
+  background: rgba(56, 114, 157, 0.14);
+  color: #cfe9ff;
+  font-size: 0.67rem;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-group-title em {
+  color: #85b9df;
+  font-size: 0.62rem;
+  font-style: normal;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-event {
+  min-height: 39px;
+  padding: 7px 10px;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-event span {
+  font-size: 0.78rem;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-event em {
+  font-size: 0.7rem;
+}
+
+.alert-type-filter-popup-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  padding: 14px 20px;
+  border-top: 1px solid rgba(127, 178, 220, 0.18);
+  background: rgba(0, 7, 15, 0.48);
+}
+
+.alert-type-filter-popup-footer button {
+  min-height: 38px;
+  border-radius: 7px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.alert-type-filter-popup-cancel {
+  border: 1px solid rgba(155, 197, 232, 0.25);
+  background: rgba(127, 178, 220, 0.08);
+  color: #d5e9fa;
+}
+
+.alert-type-filter-popup-apply {
+  border: 1px solid rgba(92, 193, 255, 0.7);
+  background: #38aef5;
+  color: #04121e;
+}
+
+body.alert-type-filter-popup-open {
+  overflow: hidden !important;
+}
+
+@media (max-width: 768px) {
+  .alert-type-filter-popup {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .alert-type-filter-popup-panel {
+    width: 100%;
+    max-height: min(88dvh, 760px);
+    min-height: min(76dvh, 620px);
+    border-bottom-right-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+
+  .alert-type-filter-popup-header,
+  .alert-type-filter-popup-main,
+  .alert-type-filter-popup-footer {
+    padding-left: 15px;
+    padding-right: 15px;
+  }
+
+  .alert-type-filter-popup-header h2 {
+    font-size: 1.05rem;
+  }
+
+  .alert-type-filter-popup-footer {
+    justify-content: stretch;
+  }
+
+  .alert-type-filter-popup-footer button {
+    flex: 1 1 0;
+  }
+}
+</style>
+<style id="level2-alert-type-filter-popup-row-fix">
+.alert-type-filter-popup-main .alert-type-filter-events {
+  display: block !important;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-group > div:last-child {
+  display: block !important;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-event {
+  display: grid !important;
+  grid-template-columns: 18px minmax(0, 1fr) 28px !important;
+  align-items: center !important;
+  column-gap: 9px !important;
+  min-height: 42px !important;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-event input {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  justify-self: start !important;
+  align-self: center !important;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-event span {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-event em {
+  grid-column: 3 !important;
+  grid-row: 1 !important;
+  justify-self: end !important;
+  align-self: center !important;
+  min-width: 0 !important;
+  text-align: right !important;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-actions {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  min-height: 48px;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-master {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-master input {
+  flex: 0 0 auto !important;
+  margin: 0 !important;
+}
+</style>
+<style id="level2-alert-type-filter-scroll-fix">
+.alert-type-filter-popup-panel {
+  height: min(82vh, 760px) !important;
+  min-height: 0 !important;
+}
+
+#level2AlertTypeFilterPopupContent {
+  display: flex !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.alert-type-filter-popup-main {
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-shell-body {
+  min-height: 0 !important;
+  flex: 1 1 auto !important;
+  overflow: hidden !important;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-list {
+  min-height: 0 !important;
+  flex: 1 1 0 !important;
+  max-height: none !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  padding-bottom: 12px;
+}
+
+@media (max-width: 768px) {
+  .alert-type-filter-popup-panel {
+    height: min(88dvh, 760px) !important;
+    min-height: 0 !important;
+  }
+}
+</style>
+<style id="level2-alert-type-filter-scale-up">
+.alert-type-filter-popup {
+  padding: 28px !important;
+}
+
+.alert-type-filter-popup-panel {
+  width: min(1080px, calc(100vw - 56px)) !important;
+  height: min(90vh, 900px) !important;
+  max-height: min(90vh, 900px) !important;
+}
+
+.alert-type-filter-popup-header {
+  padding: 24px 28px 20px !important;
+}
+
+.alert-type-filter-popup-eyebrow {
+  font-size: 0.78rem !important;
+  letter-spacing: 0.16em !important;
+}
+
+.alert-type-filter-popup-header h2 {
+  font-size: 1.55rem !important;
+}
+
+.alert-type-filter-popup-header p:last-child {
+  font-size: 0.98rem !important;
+  line-height: 1.45 !important;
+}
+
+.alert-type-filter-popup-close {
+  width: 42px !important;
+  height: 42px !important;
+  font-size: 1.5rem !important;
+}
+
+.alert-type-filter-popup-main {
+  padding: 20px 28px 0 !important;
+}
+
+.alert-type-filter-search-label {
+  margin-bottom: 10px !important;
+  font-size: 0.78rem !important;
+}
+
+.alert-type-filter-search {
+  height: 46px !important;
+  padding: 10px 13px !important;
+  font-size: 1rem !important;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-shell-body {
+  padding-top: 16px !important;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-shell-body > strong {
+  font-size: 0.9rem !important;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-shell-body > p {
+  margin-bottom: 14px !important;
+  font-size: 0.96rem !important;
+  line-height: 1.45 !important;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-actions {
+  min-height: 58px !important;
+  padding: 13px 4px !important;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-master {
+  gap: 10px !important;
+  font-size: 0.95rem !important;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-master input,
+.alert-type-filter-popup-main .alert-type-filter-event input {
+  width: 18px !important;
+  height: 18px !important;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-reset {
+  min-height: 34px !important;
+  padding: 6px 11px !important;
+  font-size: 0.74rem !important;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-group {
+  margin-bottom: 16px !important;
+  border-radius: 10px !important;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-group-title {
+  min-height: 42px !important;
+  padding: 0 14px !important;
+  font-size: 0.8rem !important;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-group-title em {
+  font-size: 0.72rem !important;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-event {
+  grid-template-columns: 22px minmax(0, 1fr) 34px !important;
+  column-gap: 11px !important;
+  min-height: 54px !important;
+  padding: 9px 14px !important;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-event span {
+  font-size: 0.98rem !important;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-event em {
+  font-size: 0.86rem !important;
+}
+
+.alert-type-filter-popup-footer {
+  padding: 18px 28px !important;
+}
+
+.alert-type-filter-popup-footer button {
+  min-height: 46px !important;
+  padding: 10px 18px !important;
+  font-size: 0.96rem !important;
+}
+
+@media (max-width: 768px) {
+  .alert-type-filter-popup {
+    padding: 0 !important;
+  }
+
+  .alert-type-filter-popup-panel {
+    width: 100% !important;
+    height: min(92dvh, 900px) !important;
+    max-height: min(92dvh, 900px) !important;
+  }
+
+  .alert-type-filter-popup-header {
+    padding: 20px 18px 17px !important;
+  }
+
+  .alert-type-filter-popup-main {
+    padding: 17px 18px 0 !important;
+  }
+
+  .alert-type-filter-popup-footer {
+    padding: 14px 18px !important;
+  }
+
+  .alert-type-filter-popup-header h2 {
+    font-size: 1.3rem !important;
+  }
+
+  .alert-type-filter-popup-header p:last-child,
+  .alert-type-filter-popup-main .alert-type-filter-shell-body > p {
+    font-size: 0.9rem !important;
+  }
+
+  .alert-type-filter-popup-main .alert-type-filter-event {
+    min-height: 52px !important;
+  }
+
+  .alert-type-filter-popup-main .alert-type-filter-event span {
+    font-size: 0.92rem !important;
+  }
+}
+</style>
+<style id="level2-alert-type-filter-apply-relocation">
+.alert-type-filter-popup-main .alert-type-filter-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding-bottom: 14px;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-heading-copy {
+  min-width: 0;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-heading-copy strong {
+  display: block;
+  color: #dcefff;
+  font-size: 0.9rem;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-heading-copy p {
+  margin: 6px 0 0;
+  color: #a9c2d8;
+  font-size: 0.96rem;
+  line-height: 1.45;
+}
+
+.alert-type-filter-popup-apply-inline {
+  min-width: 138px;
+  min-height: 40px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(92, 193, 255, 0.7);
+  border-radius: 7px;
+  background: #38aef5;
+  color: #04121e;
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+
+.alert-type-filter-popup-panel .alert-type-filter-popup-footer {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  .alert-type-filter-popup-main .alert-type-filter-heading-row {
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .alert-type-filter-popup-main .alert-type-filter-heading-copy strong {
+    font-size: 0.8rem;
+  }
+
+  .alert-type-filter-popup-main .alert-type-filter-heading-copy p {
+    font-size: 0.86rem;
+  }
+
+  .alert-type-filter-popup-apply-inline {
+    min-width: 118px;
+    min-height: 38px;
+    padding: 8px 10px;
+    font-size: 0.76rem;
+  }
+}
+</style>
+<style id="level2-alert-type-filter-group-select-all">
+.alert-type-filter-popup-main .alert-type-filter-group-title {
+  gap: 10px !important;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-group-title > span {
+  margin-right: auto;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-group-title > em {
+  min-width: 20px;
+  text-align: right;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-group-toggle {
+  min-width: 98px;
+  min-height: 27px;
+  padding: 4px 8px;
+  border: 1px solid rgba(123, 185, 229, 0.4);
+  border-radius: 5px;
+  background: rgba(65, 139, 192, 0.16);
+  color: #d9f0ff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-group-toggle:hover {
+  border-color: rgba(104, 197, 255, 0.82);
+  background: rgba(56, 174, 245, 0.24);
+}
+
+.alert-type-filter-popup-main .alert-type-filter-group-toggle:focus-visible {
+  outline: 2px solid #38aef5;
+  outline-offset: 2px;
+}
+
+@media (max-width: 768px) {
+  .alert-type-filter-popup-main .alert-type-filter-group-title {
+    min-height: 44px !important;
+    padding: 0 11px !important;
+  }
+
+  .alert-type-filter-popup-main .alert-type-filter-group-toggle {
+    min-width: 92px;
+    min-height: 29px;
+    font-size: 0.64rem;
+  }
+}
+</style>
+<style id="level2-alert-type-filter-hide-counts">
+/* Hide active-alert quantities from category headers and event rows. */
+.alert-type-filter-popup-main .alert-type-filter-group-title > em,
+.alert-type-filter-popup-main .alert-type-filter-event > em {
+  display: none !important;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-event {
+  grid-template-columns: 22px minmax(0, 1fr) !important;
+}
+</style>
+<style id="level2-alert-type-filter-desktop-grid">
+@media (min-width: 769px) {
+  .alert-type-filter-popup-main .alert-type-filter-group > div:last-child {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    align-items: stretch;
+  }
+
+  .alert-type-filter-popup-main
+    .alert-type-filter-group
+    > div:last-child
+    > .alert-type-filter-event {
+    min-width: 0;
+    margin: 0 !important;
+  }
+
+  .alert-type-filter-popup-main
+    .alert-type-filter-group
+    > div:last-child
+    > .alert-type-filter-event:nth-child(odd) {
+    border-right: 1px solid rgba(105, 148, 184, 0.14);
+  }
+
+  .alert-type-filter-popup-main
+    .alert-type-filter-group
+    > div:last-child
+    > .alert-type-filter-event:nth-last-child(-n + 2) {
+    border-bottom: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .alert-type-filter-popup-main .alert-type-filter-group > div:last-child {
+    display: block !important;
+  }
+
+  .alert-type-filter-popup-main
+    .alert-type-filter-group
+    > div:last-child
+    > .alert-type-filter-event:nth-child(odd) {
+    border-right: 0;
+  }
+}
+</style>
+<style id="level2-alert-type-filter-subtle-scrollbar">
+.alert-type-filter-popup-main .alert-type-filter-list {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(115, 176, 217, 0.28) transparent;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-list::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(115, 176, 217, 0.23);
+  background-clip: content-box;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-list:hover::-webkit-scrollbar-thumb {
+  background: rgba(115, 176, 217, 0.5);
+  background-clip: content-box;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-list::-webkit-scrollbar-corner {
+  background: transparent;
+}
+</style>
+<style id="level2-alert-type-filter-edge-scrollbar">
+/* Extend only the scrollable list to the popup card's right edge. */
+.alert-type-filter-popup-main .alert-type-filter-list {
+  margin-right: -28px !important;
+  padding-right: 28px !important;
+}
+
+/* Keep the master filter row clean instead of giving it a dark slab. */
+.alert-type-filter-popup-main .alert-type-filter-actions {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.alert-type-filter-popup-main .alert-type-filter-actions::before,
+.alert-type-filter-popup-main .alert-type-filter-actions::after {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+@media (max-width: 768px) {
+  .alert-type-filter-popup-main .alert-type-filter-list {
+    margin-right: -18px !important;
+    padding-right: 18px !important;
+  }
+}
+</style>
+<style id="level2-alert-type-filter-master-row-layout">
+/* Keep Show all / Defaults above the scrolling category list. */
+.alert-type-filter-popup-main
+  .alert-type-filter-shell-body
+  > .alert-type-filter-actions {
+  position: static !important;
+  z-index: auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  min-height: 54px !important;
+  margin: 0 0 12px !important;
+  padding: 0 4px 12px !important;
+  border-bottom: 1px solid rgba(113, 174, 219, 0.16) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/* The groups alone now live inside the scroll area. */
+.alert-type-filter-popup-main .alert-type-filter-list {
+  border-top: 0 !important;
+}
+
+.alert-type-filter-popup-main
+  .alert-type-filter-shell-body
+  > .alert-type-filter-actions::before,
+.alert-type-filter-popup-main
+  .alert-type-filter-shell-body
+  > .alert-type-filter-actions::after {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  .alert-type-filter-popup-main
+    .alert-type-filter-shell-body
+    > .alert-type-filter-actions {
+    min-height: 50px !important;
+    margin-bottom: 10px !important;
+    padding-bottom: 10px !important;
+  }
+}
+</style>
 </head>
 <body>
   <div id="map"></div>
@@ -639,6 +1663,34 @@
           <input id="alertOpacityRange" type="range" min="0" max="1" step="0.05" value="0.75">
           <output id="alertOpacityValue">75%</output>
         </div>
+        <details class="alert-type-filter-shell" id="alertTypeFilterShell">
+          <summary>
+            <span>Alert Types</span>
+            <small id="alertTypeFilterSummary">Current Defaults</small>
+          </summary>
+
+          <div class="alert-type-filter-shell-body">
+            <div class="alert-type-filter-heading-row">
+  <div class="alert-type-filter-heading-copy">
+    <strong>Map Alert Filters</strong>
+    <p id="alertTypeFilterHint">
+      Loading active NWS alert types…
+    </p>
+  </div>
+
+  <button type="button"
+          class="alert-type-filter-popup-apply alert-type-filter-popup-apply-inline"
+          data-level2-alert-popup-apply>
+    Apply Filters
+  </button>
+</div>
+
+            <div id="alertTypeFilterList"
+                 class="alert-type-filter-list"
+                 aria-live="polite"></div>
+          </div>
+        </details>
+
         <div class="status" id="statusText">Loading map...</div>
         <div id="loopLoadProgress" class="loop-load-progress" aria-live="polite" aria-hidden="true">
           <div id="loopLoadProgressText" class="progress-text">Loading loop: 0 / 15</div>
@@ -1002,6 +2054,47 @@
     let radarBounds = [[32.2, -86.6], [42.2, -73.4]];
     let activeAlertFeatures = [];
     let activeAlertsWithoutGeometry = [];
+    let level2FetchedAlertFeatures = [];
+    let level2AlertFilterApplyToken = 0;
+
+    const LEVEL2_ALERT_FILTER_STORAGE_KEY =
+      "zach-level2-alert-type-filters-v1";
+
+    function loadLevel2AlertFilterSettings() {
+      try {
+        const saved = JSON.parse(
+          window.localStorage.getItem(LEVEL2_ALERT_FILTER_STORAGE_KEY)
+        );
+
+        return {
+          version: 1,
+          showAll: saved?.showAll === true,
+          events:
+            saved?.events && typeof saved.events === "object"
+              ? saved.events
+              : {}
+        };
+      } catch (_error) {
+        return {
+          version: 1,
+          showAll: false,
+          events: {}
+        };
+      }
+    }
+
+    let level2AlertFilterSettings = loadLevel2AlertFilterSettings();
+
+    function saveLevel2AlertFilterSettings() {
+      try {
+        window.localStorage.setItem(
+          LEVEL2_ALERT_FILTER_STORAGE_KEY,
+          JSON.stringify(level2AlertFilterSettings)
+        );
+      } catch (_error) {
+        // The map still works if browser storage is blocked.
+      }
+    }
     let level2Frames = [];
     let currentFrameIndex = 0;
     let isPlaying = false;
@@ -3494,6 +4587,199 @@
     }
 
 
+    function getLevel2AlertEventOverride(eventName) {
+      const event = String(eventName || "").trim();
+      const value = level2AlertFilterSettings.events?.[event];
+
+      return typeof value === "boolean" ? value : null;
+    }
+
+    function isLevel2AlertEventCheckedInUi(eventName) {
+      const event = String(eventName || "").trim();
+
+      if (!event) return false;
+
+      const override = getLevel2AlertEventOverride(event);
+
+      if (override !== null) return override;
+      if (level2AlertFilterSettings.showAll) return true;
+
+      return (
+        HOMEPAGE_RADAR_ALERT_EVENTS.has(event) ||
+        event === "Special Weather Statement"
+      );
+    }
+
+    function isLevel2AlertFeatureEnabled(feature) {
+      const event = String(feature?.properties?.event || "").trim();
+
+      if (!event) return false;
+
+      const override = getLevel2AlertEventOverride(event);
+
+      if (override !== null) return override;
+      if (level2AlertFilterSettings.showAll) return true;
+
+      return isHomepageVisibleRadarAlertFeature(feature);
+    }
+
+    function escapeLevel2AlertFilterText(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function activeLevel2AlertEventCounts(features) {
+      const counts = new Map();
+
+      (Array.isArray(features) ? features : []).forEach((feature) => {
+        const event = String(feature?.properties?.event || "").trim();
+
+        if (!event) return;
+
+        counts.set(event, (counts.get(event) || 0) + 1);
+      });
+
+      return [...counts.entries()]
+        .sort(([left], [right]) => left.localeCompare(right));
+    }
+
+    function updateLevel2AlertTypeFilterUi(features) {
+      const list = document.getElementById("alertTypeFilterList");
+      const summary = document.getElementById("alertTypeFilterSummary");
+      const hint = document.getElementById("alertTypeFilterHint");
+
+      if (!list || !summary || !hint) return;
+
+      const activeFeatures = Array.isArray(features) ? features : [];
+      const eventCounts = activeLevel2AlertEventCounts(activeFeatures);
+      const selectedCount = activeFeatures.filter(
+        isLevel2AlertFeatureEnabled
+      ).length;
+
+      const hasOverrides = Object.values(
+        level2AlertFilterSettings.events || {}
+      ).some((value) => typeof value === "boolean");
+
+      summary.textContent =
+        level2AlertFilterSettings.showAll && hasOverrides
+          ? "All + Custom"
+          : level2AlertFilterSettings.showAll
+            ? "All Active"
+            : hasOverrides
+              ? "Custom"
+              : "Current Defaults";
+
+      hint.textContent = activeFeatures.length
+        ? `${selectedCount} of ${activeFeatures.length} active NWS alerts are enabled on this map.`
+        : "No active NWS alert types are available right now.";
+
+      const rows = eventCounts.map(([event, count]) => {
+        const checked = isLevel2AlertEventCheckedInUi(event);
+        const safeEvent = escapeLevel2AlertFilterText(event);
+        const encodedEvent = encodeURIComponent(event);
+
+        return `
+          <label class="alert-type-filter-event">
+            <input type="checkbox"
+                   data-level2-alert-filter-event="${encodedEvent}"
+                   ${checked ? "checked" : ""}>
+            <span title="${safeEvent}">${safeEvent}</span>
+            <em>${count}</em>
+          </label>
+        `;
+      }).join("");
+
+      list.innerHTML = `
+        <div class="alert-type-filter-actions">
+          <label class="alert-type-filter-master">
+            <input type="checkbox"
+                   data-level2-alert-filter-show-all
+                   ${level2AlertFilterSettings.showAll ? "checked" : ""}>
+            <span>Show all active NWS</span>
+          </label>
+
+          <button type="button"
+                  class="alert-type-filter-reset"
+                  data-level2-alert-filter-reset>
+            Defaults
+          </button>
+        </div>
+
+        ${
+          rows
+            ? `<div class="alert-type-filter-events">${rows}</div>`
+            : ""
+        }
+      `;
+    }
+
+    function refreshLevel2AlertTypesFromCache() {
+      if (!Array.isArray(level2FetchedAlertFeatures)) return;
+
+      applyLevel2AlertTypeFilters(level2FetchedAlertFeatures)
+        .catch((error) => {
+          console.warn("Alert type filter refresh failed", error);
+
+          if (alertsStatusRow) {
+            alertsStatusRow.textContent =
+              "Alerts: filter update failed";
+          }
+        });
+    }
+
+    document.addEventListener("change", (event) => {
+      const control = event.target;
+
+      if (!(control instanceof HTMLInputElement)) return;
+
+      if (control.matches("[data-level2-alert-filter-show-all]")) {
+        level2AlertFilterSettings.showAll = control.checked;
+        saveLevel2AlertFilterSettings();
+        refreshLevel2AlertTypesFromCache();
+        return;
+      }
+
+      if (control.matches("[data-level2-alert-filter-event]")) {
+        const encodedEvent =
+          control.dataset.level2AlertFilterEvent || "";
+
+        let eventName = "";
+
+        try {
+          eventName = decodeURIComponent(encodedEvent);
+        } catch (_error) {
+          return;
+        }
+
+        if (!eventName) return;
+
+        level2AlertFilterSettings.events[eventName] = control.checked;
+        saveLevel2AlertFilterSettings();
+        refreshLevel2AlertTypesFromCache();
+      }
+    });
+
+    document.addEventListener("click", (event) => {
+      const target = event.target instanceof Element
+        ? event.target.closest("[data-level2-alert-filter-reset]")
+        : null;
+
+      if (!target) return;
+
+      level2AlertFilterSettings = {
+        version: 1,
+        showAll: false,
+        events: {}
+      };
+
+      saveLevel2AlertFilterSettings();
+      refreshLevel2AlertTypesFromCache();
+    });
+
     function isExpiredAlertFeature(feature) {
       const properties = feature?.properties || {};
       const expiresValue = properties.expires || properties.ends;
@@ -3762,35 +5048,117 @@
       return deduped;
     }
 
-    async function loadAlerts() {
-      const fetchedFeatures = await fetchNwsAlertsForAreas();
-      const homepageVisibleFeatures = fetchedFeatures.filter(isHomepageVisibleRadarAlertFeature);
-      const normalizedFetchedFeatures = homepageVisibleFeatures.map(normalizeAlertFeature).filter(Boolean);
+    async function applyLevel2AlertTypeFilters(
+      fetchedFeatures = level2FetchedAlertFeatures
+    ) {
+      const applyToken = ++level2AlertFilterApplyToken;
+
+      const activeFetchedFeatures = (
+        Array.isArray(fetchedFeatures) ? fetchedFeatures : []
+      ).filter((feature) => {
+        const event = String(feature?.properties?.event || "").trim();
+
+        return (
+          Boolean(event) &&
+          !isTestOrExerciseAlertFeature(feature) &&
+          !isExpiredAlertFeature(feature)
+        );
+      });
+
+      const selectedFeatures = activeFetchedFeatures.filter(
+        isLevel2AlertFeatureEnabled
+      );
+
+      updateLevel2AlertTypeFilterUi(activeFetchedFeatures);
+
+      const normalizedFetchedFeatures = selectedFeatures
+        .map(normalizeAlertFeature)
+        .filter(Boolean);
+
       const featuresWithGeometry = dedupeAlertFeaturesById(
-        normalizedFetchedFeatures.filter((feature) => isValidGeometry(feature.geometry))
+        normalizedFetchedFeatures.filter((feature) =>
+          isValidGeometry(feature.geometry)
+        )
       );
+
       const directGeometryAlertIds = new Set(
-        featuresWithGeometry.map((feature) => feature.properties?._alertId)
+        featuresWithGeometry.map(
+          (feature) => feature.properties?._alertId
+        )
       );
+
       const normalizedFeaturesWithoutGeometry = dedupeAlertFeaturesById(
         normalizedFetchedFeatures.filter((feature) =>
           !isValidGeometry(feature.geometry) &&
           !directGeometryAlertIds.has(feature.properties?._alertId)
         )
       );
-      const { fallbackFeatures, listedOnlyFeatures } = await resolveFallbackAlertGeometries(normalizedFeaturesWithoutGeometry);
 
-      activeAlertFeatures = [...featuresWithGeometry, ...fallbackFeatures];
+      const { fallbackFeatures, listedOnlyFeatures } =
+        await resolveFallbackAlertGeometries(
+          normalizedFeaturesWithoutGeometry
+        );
+
+      if (applyToken !== level2AlertFilterApplyToken) return;
+
+      activeAlertFeatures = [
+        ...featuresWithGeometry,
+        ...fallbackFeatures
+      ];
+
       activeAlertsWithoutGeometry = listedOnlyFeatures;
-      map.getSource(ALERT_SOURCE_ID).setData({ type: "FeatureCollection", features: activeAlertFeatures });
+
+      const alertSource = map?.getSource?.(ALERT_SOURCE_ID);
+
+      if (alertSource) {
+        alertSource.setData({
+          type: "FeatureCollection",
+          features: activeAlertFeatures
+        });
+      }
+
       positionLevel2WeatherLayers();
+
       if (typeof syncMapboxAlertLayerVisibility === "function") {
         syncMapboxAlertLayerVisibility();
       }
+
       drawAlertOverlay();
-      const stormCount = activeAlertFeatures.filter((feature) => feature.properties?._visibleStormPolygon === true).length;
-      const fallbackCount = activeAlertFeatures.filter((feature) => feature.properties?._fallbackGeometry === true).length;
-      alertsStatusRow.textContent = `Homepage radar alerts: ${homepageVisibleFeatures.length} active - ${stormCount} storm polygons - ${fallbackCount} zone fallback - ${activeAlertsWithoutGeometry.length} listed only`;
+
+      const stormCount = activeAlertFeatures.filter(
+        (feature) => feature.properties?._visibleStormPolygon === true
+      ).length;
+
+      const fallbackCount = activeAlertFeatures.filter(
+        (feature) => feature.properties?._fallbackGeometry === true
+      ).length;
+
+      if (alertsStatusRow) {
+        alertsStatusRow.textContent =
+          `Map alert filters: ${selectedFeatures.length} shown of ` +
+          `${activeFetchedFeatures.length} active - ` +
+          `${stormCount} storm polygons - ` +
+          `${fallbackCount} zone fallback - ` +
+          `${activeAlertsWithoutGeometry.length} listed only`;
+      }
+
+      updateLevel2AlertTypeFilterUi(activeFetchedFeatures);
+    }
+
+    async function loadAlerts() {
+      const fetchedFeatures = await fetchNwsAlertsForAreas();
+
+      level2FetchedAlertFeatures = fetchedFeatures.filter((feature) => {
+        const event = String(feature?.properties?.event || "").trim();
+
+        return (
+          Boolean(event) &&
+          !isTestOrExerciseAlertFeature(feature) &&
+          !isExpiredAlertFeature(feature)
+        );
+      });
+
+      await applyLevel2AlertTypeFilters(level2FetchedAlertFeatures);
     }
 
     function initializeMap() {
@@ -4072,6 +5440,922 @@
     updateFrameInfoRow();
     initializeMap();
   </script>
+<div class="alert-type-filter-popup"
+     id="level2AlertTypeFilterPopup"
+     hidden
+     aria-hidden="true">
+  <button class="alert-type-filter-popup-backdrop"
+          type="button"
+          aria-label="Close alert type filters"
+          data-level2-alert-popup-close></button>
+
+  <section class="alert-type-filter-popup-panel"
+           role="dialog"
+           aria-modal="true"
+           aria-labelledby="level2AlertTypeFilterPopupTitle">
+    <header class="alert-type-filter-popup-header">
+      <div>
+        <p class="alert-type-filter-popup-eyebrow">NWS MAP OVERLAYS</p>
+        <h2 id="level2AlertTypeFilterPopupTitle">Alert Types</h2>
+        <p>Select the alert products you want visible on this map.</p>
+      </div>
+
+      <button type="button"
+              class="alert-type-filter-popup-close"
+              aria-label="Close alert type filters"
+              data-level2-alert-popup-close>&times;</button>
+    </header>
+
+    <div class="alert-type-filter-popup-main">
+      <label class="alert-type-filter-search-label"
+             for="level2AlertTypeFilterSearch">
+        Find alert type
+      </label>
+
+      <input id="level2AlertTypeFilterSearch"
+             class="alert-type-filter-search"
+             type="search"
+             placeholder="Search tornado, wind, heat, flood..."
+             autocomplete="off">
+
+      <div id="level2AlertTypeFilterPopupContent"></div>
+    </div>
+  </section>
+</div>
+<script id="level2-alert-type-filter-popup-runtime">
+(() => {
+  "use strict";
+
+  const shell = document.getElementById("alertTypeFilterShell");
+  const summary = shell?.querySelector("summary");
+  const shellBody = shell?.querySelector(".alert-type-filter-shell-body");
+  const modal = document.getElementById("level2AlertTypeFilterPopup");
+  const modalContent = document.getElementById(
+    "level2AlertTypeFilterPopupContent"
+  );
+  const searchInput = document.getElementById(
+    "level2AlertTypeFilterSearch"
+  );
+
+  if (
+    !shell ||
+    !summary ||
+    !shellBody ||
+    !modal ||
+    !modalContent ||
+    !searchInput ||
+    typeof updateLevel2AlertTypeFilterUi !== "function"
+  ) {
+    return;
+  }
+
+  const nativeRenderAlertTypeUi = updateLevel2AlertTypeFilterUi;
+  let draftSettings = null;
+  let popupIsOpen = false;
+
+  const GROUP_ORDER = [
+    "Storm",
+    "Flood",
+    "Tropical",
+    "Winter",
+    "Fire & Smoke",
+    "Marine & Coastal",
+    "Heat, Wind & Visibility",
+    "Other"
+  ];
+
+  function cloneSettings(source) {
+    return {
+      version: 1,
+      showAll: source?.showAll === true,
+      events: {
+        ...(source?.events || {})
+      }
+    };
+  }
+
+  function groupForEvent(eventName) {
+    const event = String(eventName || "");
+
+    if (/Tornado|Thunderstorm|Severe Weather|Snow Squall/i.test(event)) {
+      return "Storm";
+    }
+
+    if (/Flash Flood|Flood|Hydrologic|Coastal Flood/i.test(event)) {
+      return "Flood";
+    }
+
+    if (/Hurricane|Tropical|Storm Surge/i.test(event)) {
+      return "Tropical";
+    }
+
+    if (/Winter|Blizzard|Ice Storm|Freeze|Frost|Snow|Wind Chill|Avalanche/i.test(event)) {
+      return "Winter";
+    }
+
+    if (/Red Flag|Fire Weather|Fire Warning|Smoke/i.test(event)) {
+      return "Fire & Smoke";
+    }
+
+    if (/Marine|Gale|Hazardous Seas|Small Craft|Brisk Wind|High Surf|Rip Current|Beach Hazards/i.test(event)) {
+      return "Marine & Coastal";
+    }
+
+    if (/Heat|Wind|Fog|Dust|Air Quality|Air Stagnation/i.test(event)) {
+      return "Heat, Wind & Visibility";
+    }
+
+    return "Other";
+  }
+
+  function groupAlertTypeRows() {
+    const list = document.getElementById("alertTypeFilterList");
+    const eventsRoot = list?.querySelector(".alert-type-filter-events");
+
+    if (!eventsRoot || eventsRoot.dataset.popupGrouped === "true") {
+      return;
+    }
+
+    const rows = Array.from(
+      eventsRoot.querySelectorAll(".alert-type-filter-event")
+    );
+
+    if (!rows.length) {
+      eventsRoot.dataset.popupGrouped = "true";
+      return;
+    }
+
+    const groups = new Map(
+      GROUP_ORDER.map((name) => [name, []])
+    );
+
+    rows.forEach((row) => {
+      const name = row.querySelector("span")?.textContent || "";
+      groups.get(groupForEvent(name)).push(row);
+    });
+
+    eventsRoot.innerHTML = "";
+
+    GROUP_ORDER.forEach((groupName) => {
+      const groupRows = groups.get(groupName) || [];
+
+      if (!groupRows.length) return;
+
+      const section = document.createElement("section");
+      section.className = "alert-type-filter-group";
+      section.dataset.alertTypeGroup = groupName;
+
+      const header = document.createElement("div");
+      header.className = "alert-type-filter-group-title";
+      header.innerHTML = `
+        <span>${groupName}</span>
+        <em>${groupRows.length}</em>
+      `;
+
+      const rowContainer = document.createElement("div");
+
+      groupRows.forEach((row) => {
+        rowContainer.appendChild(row);
+      });
+
+      section.append(header, rowContainer);
+      eventsRoot.appendChild(section);
+    });
+
+    eventsRoot.dataset.popupGrouped = "true";
+  }
+
+  function applySearchFilter() {
+    const query = String(searchInput.value || "")
+      .trim()
+      .toLowerCase();
+
+    const list = document.getElementById("alertTypeFilterList");
+
+    if (!list) return;
+
+    list.querySelectorAll(".alert-type-filter-event").forEach((row) => {
+      const text = String(row.textContent || "").toLowerCase();
+      row.hidden = Boolean(query) && !text.includes(query);
+    });
+
+    list.querySelectorAll(".alert-type-filter-group").forEach((group) => {
+      const hasVisibleRow = Array.from(
+        group.querySelectorAll(".alert-type-filter-event")
+      ).some((row) => !row.hidden);
+
+      group.hidden = !hasVisibleRow;
+    });
+  }
+
+  function renderWithSettings(settings, features) {
+    const committedSettings = level2AlertFilterSettings;
+
+    level2AlertFilterSettings = cloneSettings(settings);
+
+    try {
+      nativeRenderAlertTypeUi(
+        Array.isArray(features)
+          ? features
+          : level2FetchedAlertFeatures
+      );
+
+      groupAlertTypeRows();
+      applySearchFilter();
+    } finally {
+      level2AlertFilterSettings = committedSettings;
+    }
+  }
+
+  function renderCommittedSettings() {
+    nativeRenderAlertTypeUi(level2FetchedAlertFeatures);
+    groupAlertTypeRows();
+    applySearchFilter();
+  }
+
+  updateLevel2AlertTypeFilterUi = function (features) {
+    if (popupIsOpen && draftSettings) {
+      renderWithSettings(draftSettings, features);
+      return;
+    }
+
+    nativeRenderAlertTypeUi(features);
+    groupAlertTypeRows();
+    applySearchFilter();
+  };
+
+  function openPopup() {
+    draftSettings = cloneSettings(level2AlertFilterSettings);
+    popupIsOpen = true;
+
+    shell.open = false;
+    summary.setAttribute("aria-expanded", "true");
+
+    modal.hidden = false;
+    modal.setAttribute("aria-hidden", "false");
+    document.body.classList.add("alert-type-filter-popup-open");
+
+    renderWithSettings(draftSettings, level2FetchedAlertFeatures);
+
+    window.requestAnimationFrame(() => {
+      searchInput.focus();
+    });
+  }
+
+  function closePopup() {
+    popupIsOpen = false;
+    draftSettings = null;
+
+    modal.hidden = true;
+    modal.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("alert-type-filter-popup-open");
+
+    searchInput.value = "";
+    summary.setAttribute("aria-expanded", "false");
+
+    renderCommittedSettings();
+    summary.focus();
+  }
+
+  function applyPopupFilters() {
+    if (!draftSettings) {
+      closePopup();
+      return;
+    }
+
+    level2AlertFilterSettings = cloneSettings(draftSettings);
+    saveLevel2AlertFilterSettings();
+
+    popupIsOpen = false;
+    draftSettings = null;
+
+    modal.hidden = true;
+    modal.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("alert-type-filter-popup-open");
+
+    searchInput.value = "";
+    summary.setAttribute("aria-expanded", "false");
+
+    refreshLevel2AlertTypesFromCache();
+    summary.focus();
+  }
+
+  modalContent.appendChild(shellBody);
+
+  shell.open = false;
+  summary.setAttribute("role", "button");
+  summary.setAttribute("tabindex", "0");
+  summary.setAttribute("aria-haspopup", "dialog");
+  summary.setAttribute("aria-expanded", "false");
+
+  summary.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    openPopup();
+  });
+
+  summary.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+
+    event.preventDefault();
+    openPopup();
+  });
+
+  searchInput.addEventListener("input", applySearchFilter);
+
+  document.addEventListener("change", (event) => {
+    const control = event.target;
+
+    if (
+      !popupIsOpen ||
+      !(control instanceof HTMLInputElement) ||
+      !modal.contains(control)
+    ) {
+      return;
+    }
+
+    if (control.matches("[data-level2-alert-filter-show-all]")) {
+      event.stopImmediatePropagation();
+
+      draftSettings.showAll = control.checked;
+      renderWithSettings(draftSettings, level2FetchedAlertFeatures);
+      return;
+    }
+
+    if (control.matches("[data-level2-alert-filter-event]")) {
+      event.stopImmediatePropagation();
+
+      let eventName = "";
+
+      try {
+        eventName = decodeURIComponent(
+          control.dataset.level2AlertFilterEvent || ""
+        );
+      } catch (_error) {
+        return;
+      }
+
+      if (!eventName) return;
+
+      draftSettings.events[eventName] = control.checked;
+      renderWithSettings(draftSettings, level2FetchedAlertFeatures);
+    }
+  }, true);
+
+  document.addEventListener("click", (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+
+    if (!target) return;
+
+    const resetButton = target.closest(
+      "[data-level2-alert-filter-reset]"
+    );
+
+    if (popupIsOpen && resetButton && modal.contains(resetButton)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      draftSettings = {
+        version: 1,
+        showAll: false,
+        events: {}
+      };
+
+      renderWithSettings(draftSettings, level2FetchedAlertFeatures);
+      return;
+    }
+
+    const applyButton = target.closest(
+      "[data-level2-alert-popup-apply]"
+    );
+
+    if (popupIsOpen && applyButton) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      applyPopupFilters();
+      return;
+    }
+
+    const closeButton = target.closest(
+      "[data-level2-alert-popup-close]"
+    );
+
+    if (popupIsOpen && closeButton) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      closePopup();
+    }
+  }, true);
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && popupIsOpen) {
+      event.preventDefault();
+      closePopup();
+    }
+  });
+})();
+</script>
+<script id="level2-alert-type-filter-group-select-all-runtime">
+(() => {
+  "use strict";
+
+  const popup = document.getElementById("level2AlertTypeFilterPopup");
+  const popupContent = document.getElementById(
+    "level2AlertTypeFilterPopupContent"
+  );
+
+  if (!popup || !popupContent) return;
+
+  let decorateFrame = null;
+
+  function groupInputs(group) {
+    return Array.from(
+      group.querySelectorAll("[data-level2-alert-filter-event]")
+    );
+  }
+
+  function updateGroupButton(group) {
+    const button = group.querySelector(
+      "[data-level2-alert-filter-group-toggle]"
+    );
+
+    if (!button) return;
+
+    const inputs = groupInputs(group);
+    const allSelected =
+      inputs.length > 0 && inputs.every((input) => input.checked);
+
+    button.textContent = allSelected ? "Deselect All" : "Select All";
+    button.dataset.level2AlertFilterGroupMode = allSelected
+      ? "deselect"
+      : "select";
+    button.disabled = inputs.length === 0;
+  }
+
+  function decorateGroups() {
+    decorateFrame = null;
+
+    popup.querySelectorAll(".alert-type-filter-group").forEach((group) => {
+      const header = group.querySelector(".alert-type-filter-group-title");
+
+      if (!header) return;
+
+      let button = header.querySelector(
+        "[data-level2-alert-filter-group-toggle]"
+      );
+
+      if (!button) {
+        button = document.createElement("button");
+        button.type = "button";
+        button.className = "alert-type-filter-group-toggle";
+        button.dataset.level2AlertFilterGroupToggle = "true";
+        header.appendChild(button);
+      }
+
+      updateGroupButton(group);
+    });
+  }
+
+  function scheduleDecorateGroups() {
+    if (decorateFrame !== null) return;
+
+    decorateFrame = window.requestAnimationFrame(decorateGroups);
+  }
+
+  popup.addEventListener("click", (event) => {
+    const button = event.target instanceof Element
+      ? event.target.closest("[data-level2-alert-filter-group-toggle]")
+      : null;
+
+    if (!button) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const group = button.closest(".alert-type-filter-group");
+
+    if (!group) return;
+
+    const shouldSelect =
+      button.dataset.level2AlertFilterGroupMode !== "deselect";
+
+    const encodedEvents = groupInputs(group)
+      .map((input) => input.dataset.level2AlertFilterEvent || "")
+      .filter(Boolean);
+
+    encodedEvents.forEach((encodedEvent) => {
+      const liveInput = Array.from(
+        popup.querySelectorAll("[data-level2-alert-filter-event]")
+      ).find(
+        (input) =>
+          input.dataset.level2AlertFilterEvent === encodedEvent
+      );
+
+      if (!liveInput || liveInput.checked === shouldSelect) return;
+
+      liveInput.checked = shouldSelect;
+
+      liveInput.dispatchEvent(
+        new Event("change", {
+          bubbles: true
+        })
+      );
+    });
+
+    scheduleDecorateGroups();
+  });
+
+  const observer = new MutationObserver(scheduleDecorateGroups);
+
+  observer.observe(popupContent, {
+    childList: true,
+    subtree: true
+  });
+
+  scheduleDecorateGroups();
+})();
+</script>
+<script id="level2-alert-type-filter-master-row-runtime">
+(() => {
+  "use strict";
+
+  const popup = document.getElementById("level2AlertTypeFilterPopup");
+  const popupContent = document.getElementById(
+    "level2AlertTypeFilterPopupContent"
+  );
+
+  if (!popup || !popupContent) return;
+
+  let relocateFrame = null;
+
+  function relocateMasterRow() {
+    relocateFrame = null;
+
+    const body = popup.querySelector(
+      ".alert-type-filter-shell-body"
+    );
+
+    const headingRow = body?.querySelector(
+      ".alert-type-filter-heading-row"
+    );
+
+    const actions = body?.querySelector(
+      ".alert-type-filter-list > .alert-type-filter-actions"
+    );
+
+    if (!body || !headingRow || !actions) return;
+
+    if (headingRow.nextElementSibling !== actions) {
+      headingRow.insertAdjacentElement("afterend", actions);
+    }
+  }
+
+  function scheduleRelocate() {
+    if (relocateFrame !== null) return;
+
+    relocateFrame = window.requestAnimationFrame(
+      relocateMasterRow
+    );
+  }
+
+  const observer = new MutationObserver(scheduleRelocate);
+
+  observer.observe(popupContent, {
+    childList: true,
+    subtree: true
+  });
+
+  scheduleRelocate();
+})();
+</script>
+<script id="level2-alert-type-filter-master-row-dedupe">
+(() => {
+  "use strict";
+
+  const popup = document.getElementById("level2AlertTypeFilterPopup");
+  const popupContent = document.getElementById(
+    "level2AlertTypeFilterPopupContent"
+  );
+
+  if (!popup || !popupContent) return;
+
+  let queued = false;
+
+  function reconcileMasterRow() {
+    queued = false;
+
+    const body = popup.querySelector(
+      ".alert-type-filter-shell-body"
+    );
+
+    const headingRow = body?.querySelector(
+      ".alert-type-filter-heading-row"
+    );
+
+    const list = body?.querySelector(
+      ".alert-type-filter-list"
+    );
+
+    if (!body || !headingRow || !list) return;
+
+    const actionRows = Array.from(
+      body.querySelectorAll(".alert-type-filter-actions")
+    );
+
+    if (!actionRows.length) return;
+
+    const actionInsideList = Array.from(list.children).find(
+      (child) =>
+        child.classList?.contains("alert-type-filter-actions")
+    );
+
+    const actionNextToHeading =
+      headingRow.nextElementSibling?.classList?.contains(
+        "alert-type-filter-actions"
+      )
+        ? headingRow.nextElementSibling
+        : null;
+
+    const keeper =
+      actionInsideList ||
+      actionNextToHeading ||
+      actionRows[actionRows.length - 1];
+
+    actionRows.forEach((row) => {
+      if (row !== keeper) {
+        row.remove();
+      }
+    });
+
+    if (headingRow.nextElementSibling !== keeper) {
+      headingRow.insertAdjacentElement("afterend", keeper);
+    }
+  }
+
+  function scheduleReconcile() {
+    if (queued) return;
+
+    queued = true;
+    window.requestAnimationFrame(reconcileMasterRow);
+  }
+
+  const observer = new MutationObserver(scheduleReconcile);
+
+  observer.observe(popupContent, {
+    childList: true,
+    subtree: true
+  });
+
+  scheduleReconcile();
+})();
+</script>
+<script id="level2-alert-type-filter-no-jump-runtime">
+(() => {
+  "use strict";
+
+  const popup = document.getElementById("level2AlertTypeFilterPopup");
+  const shell = document.getElementById("alertTypeFilterShell");
+  const searchInput = document.getElementById(
+    "level2AlertTypeFilterSearch"
+  );
+
+  if (!popup || !shell) return;
+
+  function popupIsOpen() {
+    return !popup.hidden &&
+      popup.getAttribute("aria-hidden") !== "true";
+  }
+
+  function getMasterInput() {
+    return popup.querySelector(
+      "[data-level2-alert-filter-show-all]"
+    );
+  }
+
+  function getEventInputs() {
+    return Array.from(
+      popup.querySelectorAll(
+        "[data-level2-alert-filter-event]"
+      )
+    );
+  }
+
+  function eventNameFromInput(input) {
+    try {
+      return decodeURIComponent(
+        input.dataset.level2AlertFilterEvent || ""
+      );
+    } catch (_error) {
+      return "";
+    }
+  }
+
+  function defaultEnabledForEvent(eventName) {
+    if (
+      typeof HOMEPAGE_RADAR_ALERT_EVENTS !== "undefined" &&
+      HOMEPAGE_RADAR_ALERT_EVENTS?.has(eventName)
+    ) {
+      return true;
+    }
+
+    return eventName === "Special Weather Statement";
+  }
+
+  function updateGroupButtons() {
+    popup.querySelectorAll(
+      ".alert-type-filter-group"
+    ).forEach((group) => {
+      const button = group.querySelector(
+        "[data-level2-alert-filter-group-toggle]"
+      );
+
+      const inputs = Array.from(
+        group.querySelectorAll(
+          "[data-level2-alert-filter-event]"
+        )
+      );
+
+      if (!button || !inputs.length) return;
+
+      const allChecked = inputs.every(
+        (input) => input.checked
+      );
+
+      button.textContent = allChecked
+        ? "Deselect All"
+        : "Select All";
+
+      button.dataset.level2AlertFilterGroupMode = allChecked
+        ? "deselect"
+        : "select";
+    });
+  }
+
+  function updateStagedSummary() {
+    const hint = document.getElementById(
+      "alertTypeFilterHint"
+    );
+
+    if (!hint) return;
+
+    let total = 0;
+    let selected = 0;
+
+    getEventInputs().forEach((input) => {
+      const row = input.closest(
+        ".alert-type-filter-event"
+      );
+
+      const countText = row?.querySelector("em")?.textContent || "";
+      const count = Number.parseInt(countText, 10) || 0;
+
+      total += count;
+
+      if (input.checked) {
+        selected += count;
+      }
+    });
+
+    if (total > 0) {
+      hint.textContent =
+        `${selected} of ${total} active NWS alerts are staged for this map.`;
+    }
+  }
+
+  function syncInPlace() {
+    updateGroupButtons();
+    updateStagedSummary();
+  }
+
+  function commitCurrentPopupChoices() {
+    const master = getMasterInput();
+    const showAll = master?.checked === true;
+    const events = {};
+
+    getEventInputs().forEach((input) => {
+      const eventName = eventNameFromInput(input);
+
+      if (!eventName) return;
+
+      const baseline = showAll
+        ? true
+        : defaultEnabledForEvent(eventName);
+
+      if (input.checked !== baseline) {
+        events[eventName] = input.checked;
+      }
+    });
+
+    level2AlertFilterSettings = {
+      version: 1,
+      showAll,
+      events
+    };
+
+    saveLevel2AlertFilterSettings();
+  }
+
+  function closePopupAfterApply() {
+    popup.hidden = true;
+    popup.setAttribute("aria-hidden", "true");
+
+    document.body.classList.remove(
+      "alert-type-filter-popup-open"
+    );
+
+    if (searchInput) {
+      searchInput.value = "";
+    }
+
+    const summary = shell.querySelector("summary");
+
+    if (summary) {
+      summary.setAttribute("aria-expanded", "false");
+      summary.focus();
+    }
+  }
+
+  /*
+    Window capture runs before the older document-level popup handler.
+    That prevents a full list rerender after every checkbox click.
+  */
+  window.addEventListener("change", (event) => {
+    const input = event.target;
+
+    if (
+      !popupIsOpen() ||
+      !(input instanceof HTMLInputElement) ||
+      !popup.contains(input)
+    ) {
+      return;
+    }
+
+    if (input.matches("[data-level2-alert-filter-show-all]")) {
+      event.stopImmediatePropagation();
+
+      const checked = input.checked;
+
+      getEventInputs().forEach((eventInput) => {
+        eventInput.checked = checked;
+      });
+
+      syncInPlace();
+      return;
+    }
+
+    if (input.matches("[data-level2-alert-filter-event]")) {
+      event.stopImmediatePropagation();
+      syncInPlace();
+    }
+  }, true);
+
+  window.addEventListener("click", (event) => {
+    const target = event.target instanceof Element
+      ? event.target
+      : null;
+
+    if (!popupIsOpen() || !target) return;
+
+    const resetButton = target.closest(
+      "[data-level2-alert-filter-reset]"
+    );
+
+    if (resetButton && popup.contains(resetButton)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      const master = getMasterInput();
+
+      if (master) {
+        master.checked = false;
+      }
+
+      getEventInputs().forEach((input) => {
+        const eventName = eventNameFromInput(input);
+
+        input.checked = defaultEnabledForEvent(eventName);
+      });
+
+      syncInPlace();
+      return;
+    }
+
+    const applyButton = target.closest(
+      "[data-level2-alert-popup-apply]"
+    );
+
+    if (applyButton && popup.contains(applyButton)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      commitCurrentPopupChoices();
+      closePopupAfterApply();
+
+      refreshLevel2AlertTypesFromCache();
+    }
+  }, true);
+})();
+</script>
 </body>
 </html>
 
