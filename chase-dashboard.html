@@ -1,7 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+<style id="briefing-gap-fix">
+  @media (min-width: 901px) {
+    .desktop-chase-shell .dashboard-spacer {
+      display: none !important;
+      height: 0 !important;
+      min-height: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+
+    .desktop-chase-shell .field-ops-board {
+      margin-top: 24px !important;
+    }
+  }
+</style>
+
+<meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Chase Dashboard | Zacharologist WX</title>
   <link rel="icon" type="image/jpeg" href="/hero.jpg">
@@ -3015,16 +3031,13 @@
           </div>
         </div>
       </section>
-      <div class="dashboard-spacer"></div>
-    
 
 <section class="field-ops-board" id="field-ops">
   <div class="field-ops-header">
     <div class="field-ops-kicker">Field Operations</div>
-    <h2 class="field-ops-title">Chase Day Quick Access</h2>
-    <p class="field-ops-subtitle">
-      Same field-use content as mobile: briefing notes, quick launch, safety cutoffs,
-      SPC products, radar, satellite, observations, and road links.
+    <h2 class="field-ops-title">Chase Day Operations</h2>
+        <p class="field-ops-subtitle">
+      Live mission briefing and safety cutoffs for active chase operations.
     </p>
   </div>
 
@@ -3065,119 +3078,7 @@
       </div>
     </article>
   </div>
-<div class="field-ops-quick-grid">
-    <a class="field-link" href="level2-mobile-radar.html">
-      <span>Zach Radar<small>Level II mobile page</small></span>
-      <span class="field-link-arrow">&raquo;</span>
-    </a>
-
-    <a class="field-link" href="https://www.spc.noaa.gov/products/outlook/" target="_blank" rel="noopener">
-      <span>SPC Outlooks<small>Day 1-8 severe risk</small></span>
-      <span class="field-link-arrow">&raquo;</span>
-    </a>
-
-    <a class="field-link" href="https://www.spc.noaa.gov/products/md/" target="_blank" rel="noopener">
-      <span>SPC MDs<small>Mesoscale discussions</small></span>
-      <span class="field-link-arrow">&raquo;</span>
-    </a>
-
-    <a class="field-link" href="https://www.spc.noaa.gov/products/watch/" target="_blank" rel="noopener">
-      <span>SPC Watches<small>Current watches</small></span>
-      <span class="field-link-arrow">&raquo;</span>
-    </a>
-  </div>
-
-  <div class="field-ops-grid field-ops-grid-wide">
-    <article class="field-ops-card">
-      <h3>SPC / Severe Weather</h3>
-      <div class="field-link-list">
-        <a class="field-link" href="https://www.spc.noaa.gov/products/outlook/" target="_blank" rel="noopener">
-          <span>Convective Outlooks<small>Day 1, Day 2, Day 3, Day 4-8</small></span>
-          <span class="field-link-arrow">&raquo;</span>
-        </a>
-        <a class="field-link" href="https://www.spc.noaa.gov/exper/mesoanalysis/" target="_blank" rel="noopener">
-          <span>SPC Mesoanalysis<small>Instability, shear, boundaries</small></span>
-          <span class="field-link-arrow">&raquo;</span>
-        </a>
-        <a class="field-link" href="https://www.spc.noaa.gov/products/md/" target="_blank" rel="noopener">
-          <span>Mesoscale Discussions<small>Watch likelihood / near-term focus</small></span>
-          <span class="field-link-arrow">&raquo;</span>
-        </a>
-        <a class="field-link" href="https://www.spc.noaa.gov/products/watch/" target="_blank" rel="noopener">
-          <span>Current Watches<small>Tornado / severe thunderstorm watches</small></span>
-          <span class="field-link-arrow">&raquo;</span>
-        </a>
-      </div>
-    </article>
-
-    <article class="field-ops-card">
-      <h3>Radar / Satellite / Obs</h3>
-      <div class="field-link-list">
-        <a class="field-link" href="level2-mobile-radar.html">
-          <span>Zach Level II Radar<small>Primary site radar view</small></span>
-          <span class="field-link-arrow">&raquo;</span>
-        </a>
-        <a class="field-link" href="https://radar.weather.gov/" target="_blank" rel="noopener">
-          <span>NWS Radar<small>Official national radar viewer</small></span>
-          <span class="field-link-arrow">&raquo;</span>
-        </a>
-        <a class="field-link" href="https://www.star.nesdis.noaa.gov/GOES/" target="_blank" rel="noopener">
-          <span>GOES-East Satellite<small>Visible, IR, GeoColor, sectors</small></span>
-          <span class="field-link-arrow">&raquo;</span>
-        </a>
-        <a class="field-link" href="https://aviationweather.gov/gfa/" target="_blank" rel="noopener">
-          <span>AWC Obs Map<small>METARs, fronts, aviation weather</small></span>
-          <span class="field-link-arrow">&raquo;</span>
-        </a>
-        <a class="field-link" href="https://aviationweather.gov/data/metar/" target="_blank" rel="noopener">
-          <span>METAR Text<small>Surface obs by station</small></span>
-          <span class="field-link-arrow">&raquo;</span>
-        </a>
-        <a class="field-link" href="https://www.wpc.ncep.noaa.gov/html/sfc2.shtml" target="_blank" rel="noopener">
-          <span>WPC Surface Analysis<small>Fronts, lows, highs, boundaries</small></span>
-          <span class="field-link-arrow">&raquo;</span>
-        </a>
-      </div>
-    </article>
-
-    <article class="field-ops-card">
-      <h3>Roads / Field Ops</h3>
-      <div class="field-link-list">
-        <a class="field-link" href="https://drivenc.gov/" target="_blank" rel="noopener">
-          <span>DriveNC<small>North Carolina traffic / incidents</small></span>
-          <span class="field-link-arrow">&raquo;</span>
-        </a>
-        <a class="field-link" href="https://511.vdot.virginia.gov/" target="_blank" rel="noopener">
-          <span>Virginia 511<small>VDOT roads and traffic</small></span>
-          <span class="field-link-arrow">&raquo;</span>
-        </a>
-        <a class="field-link" href="https://www.511sc.org/" target="_blank" rel="noopener">
-          <span>South Carolina 511<small>SCDOT traffic map</small></span>
-          <span class="field-link-arrow">&raquo;</span>
-        </a>
-        <a class="field-link" href="https://smartway.tn.gov/traffic" target="_blank" rel="noopener">
-          <span>TN SmartWay<small>Tennessee traffic map</small></span>
-          <span class="field-link-arrow">&raquo;</span>
-        </a>
-        <a class="field-link" href="https://511ga.org/" target="_blank" rel="noopener">
-          <span>Georgia 511<small>GDOT traffic and incidents</small></span>
-          <span class="field-link-arrow">&raquo;</span>
-        </a>
-        <a class="field-link" href="https://www.google.com/maps" target="_blank" rel="noopener">
-          <span>Google Maps<small>Navigation backup</small></span>
-          <span class="field-link-arrow">&raquo;</span>
-        </a>
-      </div>
-    </article>
-  </div>
 </section>
-
-<nav class="field-bottom-bar" aria-label="Chase day quick actions">
-  <a href="level2-mobile-radar.html">Radar</a>
-  <a href="https://www.spc.noaa.gov/products/outlook/" target="_blank" rel="noopener">SPC</a>
-  <a href="https://drivenc.gov/" target="_blank" rel="noopener">Roads</a>
-</nav>
-
 </main>
   </div>
 
@@ -3702,31 +3603,7 @@
       </div>
     </section>
 
-<section class="mobile-card">
-      <div class="mobile-card-inner">
-        <h2>Quick Launch</h2>
-        <p>The links most likely to matter while stopped, staging, or repositioning.</p>
 
-        <div class="mobile-link-grid two">
-          <a class="mobile-link" href="level2-mobile-radar.html">
-            <span>Zach Radar<small>Level II mobile page</small></span>
-            <span class="mobile-arrow">&raquo;</span>
-          </a>
-          <a class="mobile-link" href="https://www.spc.noaa.gov/products/outlook/" target="_blank" rel="noopener">
-            <span>SPC Outlooks<small>Day 1-8 severe risk</small></span>
-            <span class="mobile-arrow">&raquo;</span>
-          </a>
-          <a class="mobile-link" href="https://www.spc.noaa.gov/products/md/" target="_blank" rel="noopener">
-            <span>SPC MDs<small>Mesoscale discussions</small></span>
-            <span class="mobile-arrow">&raquo;</span>
-          </a>
-          <a class="mobile-link" href="https://www.spc.noaa.gov/products/watch/" target="_blank" rel="noopener">
-            <span>SPC Watches<small>Current watches</small></span>
-            <span class="mobile-arrow">&raquo;</span>
-          </a>
-        </div>
-      </div>
-    </section>
 
     <section class="mobile-card red">
       <div class="mobile-card-inner">
@@ -3742,108 +3619,13 @@
       </div>
     </section>
 
-    <section class="mobile-card">
-      <div class="mobile-card-inner">
-        <h2>SPC / Severe Weather</h2>
-        <p>Official convective products.</p>
 
-        <div class="mobile-link-grid">
-          <a class="mobile-link" href="https://www.spc.noaa.gov/products/outlook/" target="_blank" rel="noopener">
-            <span>Convective Outlooks<small>Day 1, Day 2, Day 3, Day 4-8</small></span>
-            <span class="mobile-arrow">&raquo;</span>
-          </a>
-          <a class="mobile-link" href="https://www.spc.noaa.gov/exper/mesoanalysis/" target="_blank" rel="noopener">
-            <span>SPC Mesoanalysis<small>Instability, shear, boundaries</small></span>
-            <span class="mobile-arrow">&raquo;</span>
-          </a>
-          <a class="mobile-link" href="https://www.spc.noaa.gov/products/md/" target="_blank" rel="noopener">
-            <span>Mesoscale Discussions<small>Watch likelihood / near-term focus</small></span>
-            <span class="mobile-arrow">&raquo;</span>
-          </a>
-          <a class="mobile-link" href="https://www.spc.noaa.gov/products/watch/" target="_blank" rel="noopener">
-            <span>Current Watches<small>Tornado / severe thunderstorm watches</small></span>
-            <span class="mobile-arrow">&raquo;</span>
-          </a>
-        </div>
-      </div>
-    </section>
 
-    <section class="mobile-card">
-      <div class="mobile-card-inner">
-        <h2>Radar / Satellite / Obs</h2>
-        <p>Keep these one tap away.</p>
 
-        <div class="mobile-link-grid">
-          <a class="mobile-link" href="level2-mobile-radar.html">
-            <span>Zach Level II Radar<small>Primary site radar view</small></span>
-            <span class="mobile-arrow">&raquo;</span>
-          </a>
-          <a class="mobile-link" href="https://radar.weather.gov/" target="_blank" rel="noopener">
-            <span>NWS Radar<small>Official national radar viewer</small></span>
-            <span class="mobile-arrow">&raquo;</span>
-          </a>
-          <a class="mobile-link" href="https://www.star.nesdis.noaa.gov/GOES/" target="_blank" rel="noopener">
-            <span>GOES-East Satellite<small>Visible, IR, GeoColor, sectors</small></span>
-            <span class="mobile-arrow">&raquo;</span>
-          </a>
-          <a class="mobile-link" href="https://aviationweather.gov/gfa/" target="_blank" rel="noopener">
-            <span>AWC Obs Map<small>METARs, fronts, aviation weather</small></span>
-            <span class="mobile-arrow">&raquo;</span>
-          </a>
-          <a class="mobile-link" href="https://aviationweather.gov/data/metar/" target="_blank" rel="noopener">
-            <span>METAR Text<small>Surface obs by station</small></span>
-            <span class="mobile-arrow">&raquo;</span>
-          </a>
-          <a class="mobile-link" href="https://www.wpc.ncep.noaa.gov/html/sfc2.shtml" target="_blank" rel="noopener">
-            <span>WPC Surface Analysis<small>Fronts, lows, highs, boundaries</small></span>
-            <span class="mobile-arrow">&raquo;</span>
-          </a>
-        </div>
-      </div>
-    </section>
 
-    <section class="mobile-card">
-      <div class="mobile-card-inner">
-        <h2>Roads / Field Ops</h2>
-        <p>Road conditions and state traffic maps.</p>
 
-        <div class="mobile-link-grid">
-          <a class="mobile-link" href="https://drivenc.gov/" target="_blank" rel="noopener">
-            <span>DriveNC<small>North Carolina traffic / incidents</small></span>
-            <span class="mobile-arrow">&raquo;</span>
-          </a>
-          <a class="mobile-link" href="https://511.vdot.virginia.gov/" target="_blank" rel="noopener">
-            <span>Virginia 511<small>VDOT roads and traffic</small></span>
-            <span class="mobile-arrow">&raquo;</span>
-          </a>
-          <a class="mobile-link" href="https://www.511sc.org/" target="_blank" rel="noopener">
-            <span>South Carolina 511<small>SCDOT traffic map</small></span>
-            <span class="mobile-arrow">&raquo;</span>
-          </a>
-          <a class="mobile-link" href="https://smartway.tn.gov/traffic" target="_blank" rel="noopener">
-            <span>TN SmartWay<small>Tennessee traffic map</small></span>
-            <span class="mobile-arrow">&raquo;</span>
-          </a>
-          <a class="mobile-link" href="https://511ga.org/" target="_blank" rel="noopener">
-            <span>Georgia 511<small>GDOT traffic and incidents</small></span>
-            <span class="mobile-arrow">&raquo;</span>
-          </a>
-          <a class="mobile-link" href="https://www.google.com/maps" target="_blank" rel="noopener">
-            <span>Google Maps<small>Navigation backup</small></span>
-            <span class="mobile-arrow">&raquo;</span>
-          </a>
-        </div>
-      </div>
-    </section>
   </main>
-</section>
-
-<nav class="mobile-field-bottom-bar" aria-label="Mobile chase quick actions">
-  <a href="level2-mobile-radar.html">Radar</a>
-  <a href="https://www.spc.noaa.gov/products/outlook/" target="_blank" rel="noopener">SPC</a>
-  <a href="https://drivenc.gov/" target="_blank" rel="noopener">Roads</a>
-</nav>
-<script>
+</section><script>
   // Reload chase status after mobile shell exists so duplicate mobile data hooks populate too.
   if (typeof loadChaseStatus === "function") {
     loadChaseStatus();
@@ -3905,6 +3687,65 @@
     header.insertBefore(statusRow, shell.querySelector(".site-menu-toggle"));
   })();
 </script>
+
+
+<style id="hero-overlay-remove">
+  .desktop-chase-shell .hero::after {
+    content: none !important;
+    display: none !important;
+    background: none !important;
+    opacity: 0 !important;
+  }
+</style>
+
+
+<style id="cards-field-ops-bottom-row">
+  @media (min-width: 901px) {
+    /* Keep the full card row inside the tornado image at its bottom edge. */
+    .desktop-chase-shell .hero {
+      overflow: hidden !important;
+    }
+
+    .desktop-chase-shell .dashboard-strip {
+      bottom: 0 !important;
+    }
+
+    .desktop-chase-shell .dashboard-strip > .cards-grid {
+      transform: none !important;
+    }
+
+    /* Normal breathing room before the operational briefing begins. */
+    .desktop-chase-shell .field-ops-board {
+      margin-top: 18px !important;
+    }
+  }
+</style>
+<style id="hero-text-shadow">
+  @media (min-width: 901px) {
+    /* Remove the boxed backing entirely. */
+    .desktop-chase-shell .mission-overview {
+      background: transparent !important;
+      border: 0 !important;
+      border-radius: 0 !important;
+      padding: 0 !important;
+      backdrop-filter: none !important;
+      box-shadow: none !important;
+    }
+
+    /* Strong, natural readability shadow only behind text. */
+    .desktop-chase-shell .hero-title,
+    .desktop-chase-shell .hero-kicker,
+    .desktop-chase-shell .mission-overview h1,
+    .desktop-chase-shell .mission-overview .section-kicker,
+    .desktop-chase-shell .mission-overview .mission-label,
+    .desktop-chase-shell .mission-overview .mission-value {
+      text-shadow:
+        0 2px 2px rgba(0, 0, 0, 0.98),
+        0 6px 14px rgba(0, 0, 0, 0.82),
+        0 0 3px rgba(0, 0, 0, 0.95) !important;
+    }
+  }
+</style>
 </body>
 </html>
 
