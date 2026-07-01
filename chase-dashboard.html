@@ -2998,9 +2998,22 @@
                 </div>
               </div>
               <div class="card-footer stream-button-stack">
-                <a class="card-button" data-chase-stream-link href="#" target="_blank" rel="noopener">Stream Offline</a>
-                <a class="card-button youtube-stream-button" href="https://www.youtube.com/@zacharologist" target="_blank" rel="noopener">Open YouTube</a>
-              </div>
+  <a class="card-button twitch-stream-button"
+     data-chase-stream-link
+     href="https://www.twitch.tv/zacharologist"
+     target="_blank"
+     rel="noopener noreferrer">Twitch Offline</a>
+
+  <a class="card-button youtube-stream-button"
+     href="https://www.youtube.com/@zacharologist"
+     target="_blank"
+     rel="noopener noreferrer">YouTube Offline</a>
+
+  <a class="card-button facebook-stream-button"
+     href="https://www.facebook.com/profile.php?id=100091540966699"
+     target="_blank"
+     rel="noopener noreferrer">Facebook Offline</a>
+</div>
             </article>
 
             <article class="card" id="targets">
@@ -3437,12 +3450,12 @@
         document.querySelectorAll("[data-chase-stream-link]").forEach((link) => {
           if (streamUrl) {
             link.href = streamUrl;
-            link.textContent = streamStatus === "Live" ? "Watch Live Stream" : "Open Stream";
+            link.textContent = streamStatus === "Live" ? "Watch Twitch Live" : "Twitch Offline";
             link.removeAttribute("aria-disabled");
           } else {
-            link.href = "#";
-            link.textContent = "Stream Offline";
-            link.setAttribute("aria-disabled", "true");
+            link.href = "https://www.twitch.tv/zacharologist";
+            link.textContent = "Twitch Offline";
+            link.removeAttribute("aria-disabled");
           }
         });
 
@@ -3743,6 +3756,74 @@
         0 2px 2px rgba(0, 0, 0, 0.98),
         0 6px 14px rgba(0, 0, 0, 0.82),
         0 0 3px rgba(0, 0, 0, 0.95) !important;
+    }
+  }
+</style>
+
+<style id="compact-stream-card">
+  @media (min-width: 901px) {
+    /*
+      Stream card becomes a simple control panel:
+      status in the header, links centered below.
+    */
+    .desktop-chase-shell .dashboard-strip .card:has(.stream-visual) .stream-visual {
+      display: none !important;
+    }
+
+    .desktop-chase-shell .dashboard-strip .card:has(.stream-visual) .card-footer {
+      width: calc(100% - 32px) !important;
+      margin: auto 16px !important;
+      padding: 0 !important;
+    }
+
+    .desktop-chase-shell .dashboard-strip .card:has(.stream-visual) .stream-button-stack {
+      gap: 10px !important;
+    }
+
+    .desktop-chase-shell .dashboard-strip .card:has(.stream-visual) .card-button {
+      min-height: 40px !important;
+    }
+  }
+</style>
+
+<style id="social-stream-buttons">
+  @media (min-width: 901px) {
+    .desktop-chase-shell .card-button.twitch-stream-button {
+      color: #ffffff !important;
+      background: linear-gradient(
+        135deg,
+        rgba(145, 70, 255, 0.54),
+        rgba(16, 20, 27, 0.98)
+      ) !important;
+      border-color: rgba(145, 70, 255, 0.85) !important;
+      box-shadow: 0 0 18px rgba(145, 70, 255, 0.22) !important;
+    }
+
+    .desktop-chase-shell .card-button.facebook-stream-button {
+      color: #ffffff !important;
+      background: linear-gradient(
+        135deg,
+        rgba(24, 119, 242, 0.54),
+        rgba(16, 20, 27, 0.98)
+      ) !important;
+      border-color: rgba(24, 119, 242, 0.85) !important;
+      box-shadow: 0 0 18px rgba(24, 119, 242, 0.22) !important;
+    }
+
+    .desktop-chase-shell .card-button.twitch-stream-button:hover {
+      background: linear-gradient(
+        135deg,
+        rgba(145, 70, 255, 0.75),
+        rgba(16, 20, 27, 0.98)
+      ) !important;
+    }
+
+    .desktop-chase-shell .card-button.facebook-stream-button:hover {
+      background: linear-gradient(
+        135deg,
+        rgba(24, 119, 242, 0.75),
+        rgba(16, 20, 27, 0.98)
+      ) !important;
     }
   }
 </style>
