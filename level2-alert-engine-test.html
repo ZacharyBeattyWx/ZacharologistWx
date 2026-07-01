@@ -1,0 +1,5081 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZacharologistWx Level II Radar Test</title>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
+  <script src="https://unpkg.com/geotiff/dist-browser/geotiff.js"></script>
+  <script src="mapbox-token.js"></script>
+  <style>
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #061025; color: #f8fafc; font-family: Arial, sans-serif; }
+    #map { position: fixed; inset: 0; }
+    #radarOverlayCanvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+    #alertOverlayCanvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 4; }
+    #radarCanvas {
+      position: fixed;
+      left: -99999px;
+      top: -99999px;
+      width: 4096px;
+      height: 4096px;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .panel {
+      position: fixed;
+      z-index: 20;
+      background: rgba(5, 10, 22, 0.88);
+      border: 1px solid rgba(148, 163, 184, 0.34);
+      border-radius: 12px;
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.34);
+      backdrop-filter: blur(10px);
+    }
+    .right-ui-rail {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 21;
+      width: clamp(340px, 26vw, 430px);
+      max-height: calc(100vh - 32px);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      pointer-events: none;
+    }
+    .right-ui-rail > .panel {
+      position: relative;
+      width: 100%;
+      pointer-events: auto;
+    }
+    .control-card {
+      max-height: min(52vh, 440px);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 10px;
+      overflow-y: auto;
+    }
+    .card-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+    }
+    .card-title { margin: 0; color: #fff; font-size: 0.92rem; font-weight: 700; line-height: 1.2; }
+    .status { color: #cbd5e1; font-size: 0.78rem; line-height: 1.35; min-height: 1.35em; overflow-wrap: anywhere; }
+    .readout { color: #e2e8f0; font-size: 0.76rem; line-height: 1.35; overflow-wrap: anywhere; }
+    .alert-readout { color: #bfdbfe; }
+    .toolbar-field { min-width: 0; }
+    .primary-controls-row, .select-row { display: grid; grid-template-columns: minmax(120px, 1fr) auto; gap: 8px; align-items: end; }
+    .select-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .speed-toolbar, .opacity-toolbar, .alert-opacity-toolbar {
+      display: grid; gap: 6px; align-items: center; min-width: 0;
+    }
+    .speed-toolbar, .opacity-toolbar { grid-template-columns: auto minmax(90px, 1fr) auto; }
+    .alert-opacity-toolbar { grid-template-columns: auto auto minmax(80px, 1fr) auto; }
+    .speed-toolbar span, .opacity-toolbar span, .alert-opacity-toolbar span {
+      color: #93c5fd; font-size: 0.72rem; font-weight: 800; white-space: nowrap;
+    }
+    .speed-toolbar output, .opacity-toolbar output, .alert-opacity-toolbar output {
+      color: #fff; font-size: 0.78rem; text-align: right; font-variant-numeric: tabular-nums;
+    }
+    .speed-toolbar-tail {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      min-width: 0;
+    }
+    .compact-site-field {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: #93c5fd;
+      font-size: 0.72rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .compact-site-label {
+      font-size: 0.68rem;
+      color: #93c5fd;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+    .compact-site-field select {
+      min-width: 0;
+      height: 28px;
+      padding: 2px 6px;
+      font-size: 0.72rem;
+    }
+    label { display: grid; gap: 5px; font-size: 0.76rem; color: #93c5fd; font-weight: 700; }
+    .row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
+    input[type="range"] { width: 100%; }
+    output { font-size: 0.78rem; color: #f8fafc; min-width: 44px; text-align: right; font-variant-numeric: tabular-nums; }
+    .error-panel {
+      display: none; margin-top: 2px; padding: 8px 10px; border-radius: 8px;
+      border: 1px solid rgba(248, 113, 113, 0.9); background: rgba(127, 29, 29, 0.82);
+      color: #fee2e2; font-size: 0.78rem; line-height: 1.3;
+    }
+    .mapboxgl-popup { z-index: 12; }
+    .mapboxgl-popup.level2-alert-popup {
+      z-index: 5000 !important;
+    }
+    .mapboxgl-popup.level2-alert-popup .mapboxgl-popup-content,
+    .mapboxgl-popup.level2-alert-popup .mapboxgl-popup-tip {
+      position: relative;
+      z-index: 5001;
+    }
+    .chase-location-marker {
+      position: relative;
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      background: #0a84ff;
+      border: 3px solid #ffffff;
+      box-shadow: 0 2px 8px rgba(2, 8, 23, 0.34), 0 0 0 1px rgba(10, 132, 255, 0.28);
+    }
+    .chase-location-marker::before {
+      content: "";
+      position: absolute;
+      inset: -10px;
+      border-radius: inherit;
+      background: rgba(10, 132, 255, 0.28);
+      animation: chase-location-pulse 1.9s ease-out infinite;
+    }
+    .chase-location-marker::after {
+      content: "";
+      position: absolute;
+      inset: 3px;
+      border-radius: inherit;
+      background: #38bdf8;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+    }
+    .mapboxgl-popup.chase-location-popup .mapboxgl-popup-content {
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.92);
+      color: #ffffff;
+      font-size: 0.78rem;
+      font-weight: 800;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.34);
+    }
+    .mapboxgl-popup.chase-location-popup .mapboxgl-popup-tip {
+      border-top-color: rgba(15, 23, 42, 0.92);
+    }
+    @keyframes chase-location-pulse {
+      0% {
+        opacity: 0.72;
+        transform: scale(0.45);
+      }
+      75%, 100% {
+        opacity: 0;
+        transform: scale(1.65);
+      }
+    }
+    .playback-controls { display: inline-flex; gap: 6px; align-items: center; }
+    .playback-controls button { min-width: 56px; padding: 7px 8px; }
+    .loop-load-progress {
+      display: none;
+      gap: 6px;
+      margin-top: 2px;
+    }
+    .loop-load-progress.is-visible {
+      display: grid;
+    }
+    .loop-load-progress .progress-text {
+      color: #93c5fd;
+      font-size: 0.72rem;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+    .loop-load-progress .progress-track {
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(30, 64, 175, 0.35);
+      border: 1px solid rgba(59, 130, 246, 0.55);
+      overflow: hidden;
+    }
+    .loop-load-progress .progress-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #2563eb 0%, #60a5fa 100%);
+      transition: width 160ms ease-out;
+    }
+    .mobile-radar-options-toggle {
+      display: none;
+      width: 34px;
+      height: 34px;
+      min-width: 34px;
+      min-height: 34px;
+      border-radius: 999px;
+      font-size: 1.05rem;
+      line-height: 1;
+      padding: 0;
+    }
+    #mobileRadarOptionsPanel {
+      display: contents;
+    }
+    .level2-alert-popup .mapboxgl-popup-content {
+      width: 300px;
+      max-width: calc(100vw - 28px);
+      padding: 0;
+      background: transparent;
+      border: 0;
+      border-radius: 10px;
+      color: #f8fafc;
+      box-shadow: none;
+      overflow: visible;
+    }
+    .level2-alert-popup .mapboxgl-popup-tip { display: none; }
+    .level2-alert-popup .mapboxgl-popup-close-button {
+      top: 4px;
+      right: 5px;
+      width: 19px;
+      height: 19px;
+      padding: 0;
+      border: 0;
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.2);
+      color: rgba(255, 255, 255, 0.88);
+      font-size: 15px;
+      line-height: 17px;
+    }
+    .level2-alert-popup .mapboxgl-popup-close-button:hover { background: rgba(0, 0, 0, 0.34); color: #ffffff; }
+    .level2-alert-popup-wrap {
+      position: relative;
+      width: 300px;
+      max-width: calc(100vw - 28px);
+      min-width: 0;
+      overflow-wrap: anywhere;
+      overflow: visible;
+    }
+    .level2-alert-popup .omega-alert-popup {
+      position: relative;
+      width: 100%;
+      max-width: 100%;
+      overflow: visible;
+      background: rgba(8, 14, 28, 0.84);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      box-shadow: 0 10px 22px rgba(0, 0, 0, 0.42);
+      pointer-events: auto;
+      z-index: 3;
+      transform: none;
+    }
+    .level2-alert-popup .omega-alert-stack { display: grid; gap: 8px; background: transparent; }
+    .level2-alert-popup .omega-alert-item { position: relative; }
+    .level2-alert-popup .omega-alert-card { background: transparent; }
+    .level2-alert-popup .omega-alert-header {
+      position: relative;
+      height: 30px;
+      padding: 0 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--alert-color, #7c4dff);
+      color: #ffffff;
+      font-size: 0.78rem;
+      font-weight: 800;
+      line-height: 1;
+      text-align: center;
+      text-transform: uppercase;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.42);
+      overflow-wrap: anywhere;
+      border-radius: 12px 12px 0 0;
+    }
+    .level2-alert-popup .omega-alert-title {
+      min-width: 0;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .level2-alert-popup .omega-alert-body {
+      height: 48px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 10px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent), rgba(7, 12, 24, 0.72);
+      backdrop-filter: blur(5px);
+      border-radius: 0 0 12px 12px;
+    }
+    .level2-alert-popup .omega-alert-expires {
+      color: #f8fafc;
+      font-size: 0.78rem;
+      font-weight: 700;
+      line-height: 1.25;
+      width: 100%;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
+      flex: 0 1 auto;
+      padding-right: 44px;
+    }
+    .level2-alert-popup .omega-alert-actions {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      justify-content: flex-end;
+      flex: 0 0 auto;
+    }
+    .level2-alert-popup .omega-alert-icon-btn {
+      width: 32px;
+      height: 32px;
+      min-height: 32px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.14);
+      color: #ffffff;
+      font-size: 0.72rem;
+      font-weight: 800;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .level2-alert-popup .omega-alert-icon-btn:hover { border-color: var(--alert-color, #7c4dff); background: #1b1d21; }
+    .level2-alert-popup .level2-alert-detail-panel {
+      position: absolute;
+      bottom: calc(100% + 10px);
+      left: 0;
+      width: min(520px, calc(100vw - 40px));
+      max-height: min(420px, 48vh);
+      overflow-y: auto;
+      overflow-x: hidden;
+      z-index: 4;
+      display: none;
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      border-radius: 12px;
+      background: rgba(3, 7, 18, 0.96);
+      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.42);
+      padding: 12px;
+      overscroll-behavior: contain;
+    }
+    .level2-alert-popup .level2-alert-detail-panel.is-open { display: block; }
+    .level2-alert-popup .level2-alert-detail-panel::-webkit-scrollbar { width: 10px; }
+    .level2-alert-popup .level2-alert-detail-panel::-webkit-scrollbar-track {
+      background: rgba(2, 6, 23, 0.62);
+      border-radius: 999px;
+    }
+    .level2-alert-popup .level2-alert-detail-panel::-webkit-scrollbar-thumb {
+      background: rgba(100, 116, 139, 0.72);
+      border: 2px solid rgba(2, 6, 23, 0.62);
+      border-radius: 999px;
+    }
+    .level2-alert-popup .level2-alert-detail-panel::-webkit-scrollbar-thumb:hover { background: rgba(129, 140, 155, 0.82); }
+    .level2-alert-popup .alert-detail-card { display: grid; gap: 12px; }
+    .level2-alert-popup .alert-detail-hero { display: grid; gap: 8px; }
+    .level2-alert-popup .alert-detail-headline {
+      padding: 10px 12px;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-left: 4px solid color-mix(in srgb, var(--alert-color, #7c4dff) 65%, transparent);
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.82);
+      color: #ffffff;
+      font-weight: 800;
+      line-height: 1.38;
+      overflow-wrap: anywhere;
+    }
+    .level2-alert-popup .alert-detail-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .level2-alert-popup .alert-detail-metric {
+      min-width: 0;
+      padding: 9px 10px;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 12px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent), rgba(15, 23, 42, 0.72);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+    }
+    .level2-alert-popup .alert-detail-metric-label,
+    .level2-alert-popup .alert-detail-section-title {
+      color: #93c5fd;
+      font-size: 0.68rem;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .level2-alert-popup .alert-detail-metric-value {
+      margin-top: 4px;
+      color: #ffffff;
+      font-size: 0.8rem;
+      font-weight: 750;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+    .level2-alert-popup .alert-detail-section {
+      padding: 11px 12px;
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      border-radius: 12px;
+      background: rgba(2, 6, 23, 0.55);
+    }
+    .level2-alert-popup .alert-detail-text {
+      margin-top: 7px;
+      color: #e5edf8;
+      line-height: 1.48;
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+      font-size: 0.84rem;
+    }
+    @media (max-width: 720px) {
+      html, body {
+        height: 100dvh;
+      }
+      #map, #radarOverlayCanvas, #alertOverlayCanvas {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100dvh;
+      }
+      .right-ui-rail {
+        position: fixed !important;
+        inset: 0 !important;
+        width: 100vw !important;
+        height: 100dvh !important;
+        pointer-events: none !important;
+        z-index: 20 !important;
+      }
+      .control-card {
+        position: fixed !important;
+        left: 50% !important;
+        right: auto !important;
+        top: auto !important;
+        bottom: calc(env(safe-area-inset-bottom, 0px) + 8px) !important;
+        width: min(92vw, 390px) !important;
+        max-width: 390px !important;
+        transform: translateX(-50%) !important;
+        box-sizing: border-box !important;
+        pointer-events: auto !important;
+      }
+      .card-header,
+      .desktop-product-field {
+        display: none !important;
+      }
+      .speed-toolbar {
+        display: grid !important;
+        grid-template-columns: auto minmax(0, 1fr) auto !important;
+        align-items: center !important;
+        gap: 8px !important;
+        width: 100% !important;
+        padding: 0 !important;
+      }
+      .primary-controls-row {
+        display: grid !important;
+        grid-template-columns: 42px minmax(0, 1fr) !important;
+        align-items: center !important;
+        gap: 8px !important;
+        width: 100% !important;
+      }
+      .mobile-radar-options-toggle {
+        display: grid !important;
+        place-items: center !important;
+        width: 42px !important;
+        height: 42px !important;
+        min-width: 42px !important;
+        min-height: 42px !important;
+        border-radius: 999px !important;
+        padding: 0 !important;
+      }
+      .playback-controls {
+        display: grid !important;
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: 8px !important;
+        width: 100% !important;
+      }
+      .playback-controls button {
+        min-width: 0 !important;
+        min-height: 38px !important;
+        padding: 5px 8px !important;
+        border-radius: 12px !important;
+        font-size: 0.88rem !important;
+      }
+      #mobileRadarOptionsPanel {
+        display: none !important;
+      }
+      body.mobile-radar-options-open #mobileRadarOptionsPanel {
+        display: grid !important;
+        gap: 8px !important;
+        border-top: 1px solid rgba(148, 163, 184, 0.28) !important;
+        padding-top: 8px !important;
+      }
+      body.mobile-radar-options-open #mobileRadarOptionsPanel .toolbar-field {
+        width: 160px !important;
+        max-width: 160px !important;
+      }
+      body.mobile-radar-options-open #siteSelect {
+        width: 160px !important;
+      }
+      .control-card .select-row,
+      .control-card .opacity-toolbar,
+      .control-card .alert-opacity-toolbar,
+      .control-card #statusText,
+      .control-card #frameReadout,
+      .control-card #alertsStatusRow,
+      .control-card #errorPanel {
+        display: none;
+      }
+      body.mobile-radar-options-open .control-card .select-row,
+      body.mobile-radar-options-open .control-card .opacity-toolbar,
+      body.mobile-radar-options-open .control-card .alert-opacity-toolbar,
+      body.mobile-radar-options-open .control-card #statusText,
+      body.mobile-radar-options-open .control-card #frameReadout,
+      body.mobile-radar-options-open .control-card #alertsStatusRow,
+      body.mobile-radar-options-open .control-card #errorPanel {
+        display: grid;
+      }
+      body.mobile-radar-options-open .control-card #errorPanel {
+        display: block;
+      }
+      .level2-alert-popup-wrap { width: min(300px, calc(100vw - 24px)); }
+      .level2-alert-popup .level2-alert-detail-panel {
+        width: min(340px, calc(100vw - 24px));
+        max-height: min(360px, 44vh);
+      }
+      .level2-alert-popup .alert-detail-metrics { grid-template-columns: 1fr; }
+      .level2-alert-popup-wrap {
+        width: min(86vw, 330px) !important;
+        max-width: 330px !important;
+      }
+      .level2-alert-popup .mapboxgl-popup-content {
+        width: min(86vw, 330px) !important;
+        max-width: 330px !important;
+        padding: 0 !important;
+      }
+      .level2-alert-summary-card {
+        font-size: 0.82rem !important;
+      }
+      .level2-alert-summary-card .alert-headline,
+      .level2-alert-summary-card .alert-title,
+      .level2-alert-summary-card .alert-expires {
+        padding: 8px 10px !important;
+      }
+      .level2-alert-summary-card .alert-title {
+        font-size: 0.82rem !important;
+        line-height: 1.25 !important;
+      }
+      .level2-alert-summary-card .alert-expires {
+        font-size: 0.8rem !important;
+      }
+      .level2-alert-summary-card button,
+      .level2-alert-summary-card .alert-detail-button {
+        width: 34px !important;
+        height: 34px !important;
+        min-width: 34px !important;
+      }
+      .level2-alert-popup .omega-alert-header {
+        height: 28px;
+        padding: 0 8px;
+        font-size: 0.72rem;
+      }
+      .level2-alert-popup .omega-alert-expires {
+        font-size: 0.72rem;
+      }
+      .level2-alert-popup .omega-alert-icon-btn {
+        width: 30px;
+        height: 30px;
+        min-height: 30px;
+        font-size: 0.72rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <canvas id="radarOverlayCanvas"></canvas>
+  <canvas id="alertOverlayCanvas"></canvas>
+  <canvas id="radarCanvas"></canvas>
+
+  <div class="right-ui-rail">
+    <section class="panel control-card" aria-label="Radar controls">
+      <div class="card-header">
+        <h1 class="card-title">Mobile Radar + Alerts</h1>
+      </div>
+      <div class="speed-toolbar">
+        <span>Playback speed</span>
+        <input id="playbackSpeedSlider" type="range" min="0.5" max="6" step="0.25" value="1" aria-label="Playback speed">
+        <output id="playbackSpeedValue">1x</output>
+      </div>
+      <label class="toolbar-field desktop-product-field">Product
+        <select id="productSelect"><option value="LEVEL2_REF0">LEVEL2_REF0</option></select>
+      </label>
+      <div class="primary-controls-row">
+        <button id="mobileRadarOptionsButton" class="mobile-radar-options-toggle" type="button" aria-controls="mobileRadarOptionsPanel" aria-expanded="false" aria-label="Radar options">&hellip;</button>
+        <div class="playback-controls" aria-label="Radar playback controls">
+          <button id="previousFrameButton" type="button">Prev</button>
+          <button id="playPauseButton" type="button" aria-pressed="false">Play</button>
+          <button id="nextFrameButton" type="button">Next</button>
+        </div>
+      </div>
+      <div id="mobileRadarOptionsPanel">
+        <label class="toolbar-field">Site
+          <select id="siteSelect"><option value="KFCX">KFCX</option><option value="KRAX">KRAX</option><option value="KGSP">KGSP</option><option value="KLTX">KLTX</option><option value="KMRX">KMRX</option><option value="KJKL">KJKL</option><option value="KRLX">KRLX</option><option value="KLWX">KLWX</option><option value="KMHX">KMHX</option><option value="KAKQ">KAKQ</option><option value="KCAE">KCAE</option><option value="KCLX">KCLX</option><option value="KILX">KILX</option><option value="KIND">KIND</option><option value="KLOT">KLOT</option><option value="KLSX">KLSX</option><option value="KIWX">KIWX</option><option value="KDVN">KDVN</option><option value="KDMX">KDMX</option><option value="KOAX">KOAX</option><option value="KEAX">KEAX</option><option value="KICT">KICT</option><option value="KTWX">KTWX</option><option value="KSGF">KSGF</option><option value="KVWX">KVWX</option><option value="KPAH">KPAH</option></select>
+        </label>
+        <div class="select-row">
+          <label class="toolbar-field">Frame
+            <select id="frameSelect"></select>
+          </label>
+        </div>
+        <div class="opacity-toolbar">
+          <span>Radar opacity</span>
+          <input id="opacityRange" type="range" min="0" max="1" step="0.01" value="1">
+          <output id="opacityValue">100%</output>
+        </div>
+        <div class="alert-opacity-toolbar">
+          <span>Alerts</span>
+          <button id="toggleAlertOverlayButton" type="button" aria-pressed="true">Alerts On</button>
+          <input id="alertOpacityRange" type="range" min="0" max="1" step="0.05" value="0.75">
+          <output id="alertOpacityValue">75%</output>
+        </div>
+        <div class="status" id="statusText">Loading map...</div>
+        <div id="loopLoadProgress" class="loop-load-progress" aria-live="polite" aria-hidden="true">
+          <div id="loopLoadProgressText" class="progress-text">Loading loop: 0 / 15</div>
+          <div class="progress-track"><div id="loopLoadProgressFill" class="progress-fill"></div></div>
+        </div>
+        <div class="readout" id="frameReadout">Frame time unavailable</div>
+        <div class="readout alert-readout" id="alertsStatusRow">Alerts: loading...</div>
+        <div id="errorPanel" class="error-panel"></div>
+      </div>
+    </section>
+  </div>
+
+  <script src="scripts/level2-radar-engine.js"></script>
+  <script>
+    const MAPBOX_TOKEN = window.MAPBOX_PUBLIC_TOKEN;
+    const MAPBOX_STYLE = "mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
+    const CHASE_STATUS_API = "https://zacharologist-chase-api.zacharologistwx.workers.dev/api/chase/status";
+    const CHASE_LOCATION_REFRESH_MS = 20000;
+    const LEVEL2_SUPPORTED_SITES = ["KFCX", "KRAX", "KGSP", "KLTX", "KMRX", "KJKL", "KRLX", "KLWX", "KMHX", "KAKQ", "KCAE", "KCLX", "KILX", "KIND", "KLOT", "KLSX", "KIWX", "KDVN", "KDMX", "KOAX", "KEAX", "KICT", "KTWX", "KSGF", "KVWX", "KPAH"];
+    const LEVEL2_SITE_LOCATIONS = {
+      KFCX: { lat: 37.024, lon: -80.273 },
+      KRAX: { lat: 35.665, lon: -78.49 },
+      KGSP: { lat: 34.883, lon: -82.22 },
+      KLTX: { lat: 33.989, lon: -78.429 },
+      KMRX: { lat: 36.169, lon: -83.402 },
+      KJKL: { lat: 37.591, lon: -83.313 },
+      KRLX: { lat: 38.311, lon: -81.723 },
+      KLWX: { lat: 38.976, lon: -77.488 },
+      KMHX: { lat: 34.775, lon: -76.877 },
+      KAKQ: { lat: 36.983, lon: -77.007 },
+      KCAE: { lat: 33.949, lon: -81.118 },
+      KCLX: { lat: 32.656, lon: -81.042 },
+      KILX: { lat: 40.151, lon: -89.337 },
+      KIND: { lat: 39.708, lon: -86.28 },
+      KLOT: { lat: 41.604, lon: -88.084 },
+      KLSX: { lat: 38.699, lon: -90.683 },
+      KIWX: { lat: 41.359, lon: -85.7 },
+      KDVN: { lat: 41.612, lon: -90.581 },
+      KDMX: { lat: 41.7312, lon: -93.722869 },
+      KOAX: { lat: 41.320369, lon: -96.366819 },
+      KEAX: { lat: 38.81025, lon: -94.264472 },
+      KICT: { lat: 37.654444, lon: -97.443056 },
+      KTWX: { lat: 38.99695, lon: -96.23255 },
+      KSGF: { lat: 37.235239, lon: -93.400419 },
+      KVWX: { lat: 38.260335, lon: -87.724532 },
+      KPAH: { lat: 37.068363, lon: -88.771382 }
+    };
+    const DEFAULT_LEVEL2_SITE = "KFCX";
+    const LEVEL2_SELECTED_SITE_STORAGE_KEY = "zach-level2-selected-site";
+    const LEVEL2_PRODUCT = "LEVEL2_REF0";
+    const LEVEL2_REMOTE_BASE_URL = "https://radar.zacharologistwx.com";
+    const FRAME_REFRESH_MS = 60000;
+    const ALERT_REFRESH_MS = 60000;
+    const PLAYBACK_INTERVAL_MS = 900;
+    const MOBILE_LEVEL2_RASTER_SCALE = 0.5;
+    const MOBILE_LEVEL2_RENDER_CACHE_LIMIT = 12;
+    const DESKTOP_LEVEL2_RENDER_CACHE_LIMIT = 6;
+    const MOBILE_UNCACHED_FRAME_MIN_INTERVAL_MS = 1800;
+    const DISPLAY_MIN_DBZ = -32;
+    const DEBUG_ALERT_STACKING = false;
+    const ALERT_SCREEN_HIT_TOLERANCE_PX = 12;
+    const FORCE_DEBUG_RADAR_COLORS = false;
+    const ENABLE_WEAK_DESPECKLE = false;
+    const USE_STEPPED_REFLECTIVITY_PALETTE = false;
+    const NODATA_DEFAULT = -9999;
+    const RADAR_OVERLAY_VERTICAL_STRIPS = 96;
+    const RADAR_OVERLAY_INTERACTION_VERTICAL_STRIPS = 32;
+    const LEVEL2_RADAR_SOURCE_ID = "level2-radar-canvas-source";
+    const LEVEL2_RADAR_LAYER_ID = "level2-radar-canvas-layer";
+    const USE_MAPBOX_LEVEL2_IMAGE_LAYER = false;
+    const USE_MAPBOX_LEVEL2_TILE_LAYER = new URLSearchParams(window.location.search).get("level2Tiles") === "1";
+    const LEVEL2_MAPBOX_IMAGE_SOURCE_ID = "level2-radar-image-source";
+    const LEVEL2_MAPBOX_IMAGE_LAYER_ID = "level2-radar-image-layer";
+    const LEVEL2_MAPBOX_TILE_SOURCE_ID = "level2-radar-tile-source";
+    const LEVEL2_MAPBOX_TILE_LAYER_ID = "level2-radar-tile-layer";
+    const LEVEL2_ENGINE_MODE = new URLSearchParams(window.location.search).get("level2Engine");
+    const USE_MANUAL_LEVEL2_RADAR_ENGINE =
+      LEVEL2_ENGINE_MODE !== "legacy" && LEVEL2_ENGINE_MODE !== "off";
+    const LEVEL2_MANUAL_RADAR_LAYER_ID = "level2-manual-radar-layer";
+    const PALETTE_SOURCE_FILE = "scripts/radar/radar_config.json";
+
+    const ALERT_SOURCE_ID = "nws-alert-polygons";
+    const ALERT_FILL_LAYER_ID = "nws-alert-polygons-fill-hitbox";
+    const ALERT_STORM_HITBOX_LAYER_ID = "nws-alert-polygons-storm-hitbox";
+    const ALERT_LINE_LAYER_ID = "nws-alert-polygons-line";
+    // Match the homepage Active Weather Alerts fetch scope.
+    const NWS_ALERT_AREAS = [
+  "AL", "AZ", "AR", "CA", "CO", "CT", "DE", "FL",
+  "GA", "ID", "IL", "IN", "IA", "KS", "KY", "LA",
+  "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT",
+  "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND",
+  "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN",
+  "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY",
+  "DC"
+];
+
+    const SITE_SOURCE_ID = "weatherwise-radar-sites";
+    const SITE_CIRCLE_LAYER_ID = "weatherwise-radar-sites-circle";
+    const SITE_LABEL_LAYER_ID = "weatherwise-radar-sites-label";
+
+    function cacheBustUrl(url) {
+      const separator = url.includes("?") ? "&" : "?";
+      return `${url}${separator}v=${Date.now()}`;
+    }
+
+    function minuteCacheBustUrl(url) {
+      const separator = url.includes("?") ? "&" : "?";
+      const minuteTick = Math.floor(Date.now() / 60000);
+      return `${url}${separator}v=${minuteTick}`;
+    }
+
+    function sanitizeLevel2Site(site) {
+      const normalized = String(site || DEFAULT_LEVEL2_SITE).trim().toUpperCase();
+      return LEVEL2_SUPPORTED_SITES.includes(normalized) ? normalized : DEFAULT_LEVEL2_SITE;
+    }
+
+
+    function level2SiteFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      const site = params.get("site");
+      return site ? sanitizeLevel2Site(site) : "";
+    }
+
+    function level2SiteFromStorage() {
+      try {
+        const site = window.localStorage.getItem(LEVEL2_SELECTED_SITE_STORAGE_KEY);
+        return site ? sanitizeLevel2Site(site) : "";
+      } catch (_error) {
+        return "";
+      }
+    }
+
+    function initialLevel2Site() {
+      return level2SiteFromUrl() || level2SiteFromStorage() || DEFAULT_LEVEL2_SITE;
+    }
+
+    function persistSelectedLevel2Site(site) {
+      const nextSite = sanitizeLevel2Site(site);
+
+      try {
+        window.localStorage.setItem(LEVEL2_SELECTED_SITE_STORAGE_KEY, nextSite);
+      } catch (_error) {
+        // URL persistence still works if localStorage is blocked.
+      }
+
+      const url = new URL(window.location.href);
+      url.searchParams.set("site", nextSite);
+      window.history.replaceState({}, "", url);
+
+      return nextSite;
+    }
+    function selectedLevel2Site() {
+      return sanitizeLevel2Site(siteSelect?.value || DEFAULT_LEVEL2_SITE);
+    }
+
+    function haversineDistanceKm(latA, lonA, latB, lonB) {
+      const earthRadiusKm = 6371;
+      const toRadians = (degrees) => degrees * Math.PI / 180;
+      const dLat = toRadians(latB - latA);
+      const dLon = toRadians(lonB - lonA);
+      const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRadians(latA)) * Math.cos(toRadians(latB)) *
+        Math.sin(dLon / 2) ** 2;
+
+      return 2 * earthRadiusKm * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    function nearestLevel2SiteForLocation(lat, lon) {
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+
+      const availableSites = siteSelect
+        ? Array.from(siteSelect.options).map((option) => sanitizeLevel2Site(option.value))
+        : LEVEL2_SUPPORTED_SITES;
+
+      let nearestSite = null;
+      let nearestDistance = Infinity;
+
+      availableSites.forEach((site) => {
+        const location = LEVEL2_SITE_LOCATIONS[site];
+        if (!location) return;
+
+        const distance = haversineDistanceKm(lat, lon, location.lat, location.lon);
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          nearestSite = site;
+        }
+      });
+
+      return nearestSite;
+    }
+
+    function chaseLocationFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+
+      if (!params.has("chaseLat") || !params.has("chaseLon")) return null;
+
+      const rawLat = params.get("chaseLat");
+      const rawLon = params.get("chaseLon");
+      const rawZoom = params.get("chaseZoom");
+
+      if (!rawLat || !rawLon) return null;
+
+      const chaseLat = Number(rawLat);
+      const chaseLon = Number(rawLon);
+      const chaseZoom = rawZoom ? Number(rawZoom) : NaN;
+      const source = String(params.get("from") || "").trim();
+
+      if (!Number.isFinite(chaseLat) || !Number.isFinite(chaseLon)) return null;
+      if (chaseLat < -90 || chaseLat > 90 || chaseLon < -180 || chaseLon > 180) return null;
+
+      return {
+        lat: chaseLat,
+        lon: chaseLon,
+        zoom: Number.isFinite(chaseZoom) && chaseZoom > 0 ? chaseZoom : 9,
+        from: source
+      };
+    }
+
+    function normalizeChaseLocation(value) {
+      if (!value) return null;
+
+      const lat = Number(value.lat ?? value.latitude);
+      const lon = Number(value.lon ?? value.lng ?? value.longitude);
+
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+      if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return null;
+
+      return { ...value, lat, lon };
+    }
+    function shouldLiveFollowChaseLocation(chaseLocation) {
+      return chaseLocation?.from === "chase-admin" || chaseLocation?.from === "chase-dashboard";
+    }
+
+    function freshChaseLocationFromStatus(data) {
+      const chaseLocation = data?.chaseLocation;
+      if (!chaseLocation || chaseLocation.mapDisplay !== true || chaseLocation.isStale === true) return null;
+
+      return normalizeChaseLocation(chaseLocation);
+    }
+
+    function level2DataBaseUrl() {
+      const params = new URLSearchParams(window.location.search);
+      const mode = String(params.get("level2Data") || "").trim().toLowerCase();
+
+      if (mode === "local") return "";
+      if (mode === "remote") return LEVEL2_REMOTE_BASE_URL;
+
+      const host = window.location.hostname;
+      const isLocalHost = host === "localhost" || host === "127.0.0.1" || host === "";
+      return isLocalHost ? "" : LEVEL2_REMOTE_BASE_URL;
+    }
+
+    function level2DataUrl(path) {
+      const rawPath = String(path || "");
+      if (/^https?:\/\//i.test(rawPath)) return rawPath;
+      const normalizedPath = rawPath.startsWith("/") ? rawPath : `/${rawPath}`;
+      const base = level2DataBaseUrl().replace(/\/$/, "");
+      return `${base}${normalizedPath}`;
+    }
+
+    function level2MetaUrl(site = selectedLevel2Site()) {
+      return level2DataUrl(`/radar/tilesets/test/${sanitizeLevel2Site(site)}/LEVEL2/REF0/latest.json`);
+    }
+
+    function level2FramesUrl(site = selectedLevel2Site()) {
+      return level2DataUrl(`/radar/tilesets/test/${sanitizeLevel2Site(site)}/LEVEL2/REF0/frames.json`);
+    }
+
+    // Copied from ZacharologistWx main radar renderer color table
+    const RADAR_DBZ_PALETTE = [
+      { v: -32, r: 88, g: 54, b: 128, a: 8 },
+      { v: -30, r: 96, g: 62, b: 138, a: 10 },
+      { v: -28, r: 105, g: 72, b: 145, a: 12 },
+      { v: -26, r: 116, g: 85, b: 150, a: 15 },
+      { v: -24, r: 128, g: 99, b: 153, a: 18 },
+      { v: -22, r: 139, g: 113, b: 153, a: 22 },
+      { v: -20, r: 148, g: 128, b: 150, a: 28 },
+      { v: -18, r: 155, g: 140, b: 145, a: 34 },
+      { v: -16, r: 160, g: 150, b: 138, a: 42 },
+      { v: -14, r: 163, g: 157, b: 130, a: 52 },
+      { v: -12, r: 160, g: 158, b: 123, a: 62 },
+      { v: -10, r: 156, g: 155, b: 119, a: 72 },
+      { v: -8, r: 167, g: 167, b: 136, a: 80 },
+      { v: -6, r: 175, g: 176, b: 150, a: 88 },
+      { v: -4, r: 158, g: 163, b: 150, a: 98 },
+      { v: -2, r: 135, g: 144, b: 145, a: 108 },
+      { v: 0, r: 115, g: 128, b: 142, a: 120 },
+      { v: 2, r: 92, g: 109, b: 137, a: 132 },
+      { v: 4, r: 73, g: 93, b: 133, a: 144 },
+      { v: 6, r: 55, g: 81, b: 132, a: 156 },
+      { v: 8, r: 63, g: 97, b: 141, a: 168 },
+      { v: 10, r: 73, g: 117, b: 152, a: 180 },
+      { v: 15, r: 76, g: 165, b: 142, a: 205 },
+      { v: 20, r: 18, g: 118, b: 24, a: 230 },
+      { v: 25, r: 203, g: 222, b: 1, a: 245 },
+      { v: 30, r: 215, g: 203, b: 0, a: 255 },
+      { v: 35, r: 227, g: 129, b: 3, a: 255 },
+      { v: 40, r: 185, g: 95, b: 10, a: 255 },
+      { v: 45, r: 192, g: 37, b: 20, a: 255 },
+      { v: 50, r: 202, g: 153, b: 180, a: 255 },
+      { v: 55, r: 196, g: 74, b: 138, a: 255 },
+      { v: 60, r: 139, g: 32, b: 210, a: 255 },
+      { v: 65, r: 86, g: 20, b: 162, a: 255 },
+      { v: 70, r: 111, g: 210, b: 219, a: 255 },
+      { v: 75, r: 74, g: 132, b: 154, a: 255 },
+      { v: 80, r: 115, g: 10, b: 1, a: 255 },
+      { v: 85, r: 235, g: 190, b: 255, a: 255 },
+      { v: 90, r: 255, g: 230, b: 245, a: 255 },
+      { v: 95, r: 255, g: 255, b: 255, a: 255 }
+    ];
+    let RADAR_DBZ_PALETTE_NORMALIZED = [];
+    const LOW_DBZ_OPACITY_TAPER = [
+      { dbz: -32, opacity: 0.0 },
+      { dbz: -20, opacity: 0.01 },
+      { dbz: -10, opacity: 0.04 },
+      { dbz: 0, opacity: 0.12 },
+      { dbz: 5, opacity: 0.32 },
+      { dbz: 10, opacity: 0.7 },
+      { dbz: 15, opacity: 1.0 }
+    ];
+
+    const radarOverlayCanvas = document.getElementById("radarOverlayCanvas");
+    const radarOverlayContext = radarOverlayCanvas.getContext("2d");
+    const alertOverlayCanvas = document.getElementById("alertOverlayCanvas");
+    const alertOverlayContext = alertOverlayCanvas.getContext("2d");
+    const radarCanvas = document.getElementById("radarCanvas");
+    const radarContext = radarCanvas.getContext("2d", { willReadFrequently: true });
+
+    const opacitySlider = document.getElementById("opacityRange");
+    const opacityValue = document.getElementById("opacityValue");
+    const playbackSpeedSlider = document.getElementById("playbackSpeedSlider");
+    const playbackSpeedValue = document.getElementById("playbackSpeedValue");
+    const siteSelect = document.getElementById("siteSelect");
+    const productSelect = document.getElementById("productSelect");
+    const frameSelect = document.getElementById("frameSelect");
+    const toggleAlertOverlayButton = document.getElementById("toggleAlertOverlayButton");
+    const alertOpacityRange = document.getElementById("alertOpacityRange");
+    const alertOpacityValue = document.getElementById("alertOpacityValue");
+    const statusText = document.getElementById("statusText");
+    const loopLoadProgress = document.getElementById("loopLoadProgress");
+    const loopLoadProgressText = document.getElementById("loopLoadProgressText");
+    const loopLoadProgressFill = document.getElementById("loopLoadProgressFill");
+    const frameReadout = document.getElementById("frameReadout");
+    const alertsStatusRow = document.getElementById("alertsStatusRow");
+    const errorPanel = document.getElementById("errorPanel");
+    const previousFrameButton = document.getElementById("previousFrameButton");
+    const playPauseButton = document.getElementById("playPauseButton");
+    const nextFrameButton = document.getElementById("nextFrameButton");
+    const mobileRadarOptionsButton = document.getElementById("mobileRadarOptionsButton");
+
+    let map;
+    let popup;
+    const chaseLocationState = {
+      marker: null,
+      popup: null,
+      lastLat: null,
+      lastLon: null,
+      refreshTimer: null,
+      followEnabled: false,
+      refreshInFlight: false
+    };
+    let radarBounds = [[32.2, -86.6], [42.2, -73.4]];
+    let activeAlertFeatures = [];
+    let activeAlertsWithoutGeometry = [];
+    let level2Frames = [];
+    let currentFrameIndex = 0;
+    let isPlaying = false;
+    let playbackWasUserRequested = false;
+    let playbackTimer = null;
+    let playbackIntervalMs = 900;
+    const renderedFrameCache = new Map();
+    const warmupMissingFrameWarned = new Set();
+    let level2WarmupTimer = null;
+    let level2WarmupToken = 0;
+    let level2WarmupBusy = false;
+    let mobileLoopLoadRequested = false;
+    let mobileLoopLoadInProgress = false;
+    let mobileLoopLoadToken = 0;
+    let mobileLoopLoadedPaths = new Set();
+    let mobileLoopTotalCount = 0;
+    let isMapInteracting = false;
+    let isAlertOverlayVisible = true;
+    let alertOverlayOpacity = 0.75;
+    let frameRefreshTimer = null;
+    let alertRefreshTimer = null;
+    let paletteLogPrinted = false;
+    let colorizerSmokeLogged = false;
+    let radarImageRevision = 0;
+    let syncedRadarImageRevision = -1;
+    let syncedRadarImageSizeKey = "";
+    let overlayRedrawFrame = null;
+    let pendingOverlayRedrawQuality = "full";
+    let level2RadarEngine = null;
+    let manualLevel2RadarViewRefreshTimer = null;
+
+    function clamp255(value) {
+      return Math.max(0, Math.min(255, Math.round(value)));
+    }
+
+    function overlayDevicePixelRatio() {
+      const dpr = window.devicePixelRatio || 1;
+      return Math.min(2.5, Math.max(1, dpr));
+    }
+
+    function parseHexColor(hex) {
+      if (typeof hex !== "string") {
+        throw new Error("hex color must be a string");
+      }
+      const cleaned = hex.trim().replace(/^#/, "");
+      if (!/^[0-9a-fA-F]{6}$/.test(cleaned)) {
+        throw new Error(`invalid hex color: ${hex}`);
+      }
+      return {
+        r: parseInt(cleaned.slice(0, 2), 16),
+        g: parseInt(cleaned.slice(2, 4), 16),
+        b: parseInt(cleaned.slice(4, 6), 16)
+      };
+    }
+
+    function normalizePaletteStop(stop) {
+      let vRaw;
+      let rRaw;
+      let gRaw;
+      let bRaw;
+      let alphaCandidate = 255;
+
+      if (Array.isArray(stop)) {
+        if (stop.length < 2) throw new Error("array palette stop must include at least value + color");
+        vRaw = stop[0];
+        if (typeof stop[1] === "string") {
+          const rgb = parseHexColor(stop[1]);
+          rRaw = rgb.r;
+          gRaw = rgb.g;
+          bRaw = rgb.b;
+          alphaCandidate = stop.length >= 3 ? stop[2] : 255;
+        } else {
+          if (stop.length < 5) throw new Error("numeric array palette stop must be [dbz,r,g,b,a]");
+          rRaw = stop[1];
+          gRaw = stop[2];
+          bRaw = stop[3];
+          alphaCandidate = stop[4];
+        }
+      } else if (stop && typeof stop === "object") {
+        vRaw = stop.v ?? stop.dbz ?? stop.value;
+        if (stop.color != null) {
+          const rgb = parseHexColor(stop.color);
+          rRaw = rgb.r;
+          gRaw = rgb.g;
+          bRaw = rgb.b;
+        } else {
+          rRaw = stop.r;
+          gRaw = stop.g;
+          bRaw = stop.b;
+        }
+        const alphaValue = stop.a ?? stop.alpha ?? stop.opacity ?? 255;
+        alphaCandidate = alphaValue;
+      } else {
+        throw new Error("palette stop must be an object or array");
+      }
+
+      const v = Number(vRaw);
+      const r = Number(rRaw);
+      const g = Number(gRaw);
+      const b = Number(bRaw);
+      let aNum = Number(alphaCandidate);
+
+      if (!Number.isFinite(v)) throw new Error(`invalid stop value: ${String(vRaw)}`);
+      if (!Number.isFinite(r) || !Number.isFinite(g) || !Number.isFinite(b)) {
+        throw new Error("invalid RGB channel");
+      }
+      if (!Number.isFinite(aNum)) aNum = 255;
+      if (aNum >= 0 && aNum <= 1) aNum *= 255;
+
+      return {
+        v,
+        r: clamp255(r),
+        g: clamp255(g),
+        b: clamp255(b),
+        a: clamp255(aNum)
+      };
+    }
+
+    function normalizeRadarPalette(stops) {
+      if (!Array.isArray(stops) || stops.length === 0) {
+        throw new Error("palette is empty");
+      }
+      const normalized = stops.map(normalizePaletteStop).sort((a, b) => a.v - b.v);
+      return normalized;
+    }
+
+    function updateOpacity() {
+      const value = Number(opacitySlider.value);
+      opacityValue.textContent = `${Math.round(value * 100)}%`;
+      syncMapboxLevel2ImageLayerOpacity();
+      if (level2RadarEngine) level2RadarEngine.setOpacity(value);
+      redrawRadarOverlay();
+    }
+    function updatePlaybackSpeedDisplay() {
+      const speed = Math.max(0.5, Math.min(6, Number(playbackSpeedSlider?.value) || 1));
+      if (playbackSpeedSlider) playbackSpeedSlider.value = String(speed);
+      if (playbackSpeedValue) playbackSpeedValue.textContent = `${speed.toFixed(speed % 1 === 0 ? 0 : 2)}x`;
+      playbackIntervalMs = Math.max(80, Math.round(900 / speed));
+    }
+    function updateAlertOverlayControls() {
+      if (toggleAlertOverlayButton) {
+        toggleAlertOverlayButton.textContent = isAlertOverlayVisible ? "Alerts On" : "Alerts Off";
+        toggleAlertOverlayButton.setAttribute("aria-pressed", String(isAlertOverlayVisible));
+      }
+      if (alertOpacityValue) {
+        alertOpacityValue.textContent = `${Math.round(alertOverlayOpacity * 100)}%`;
+      }
+    }
+    function updateAlertOverlayVisibility() {
+      alertOverlayOpacity = Math.min(1, Math.max(0, Number(alertOpacityRange?.value ?? alertOverlayOpacity)));
+      if (alertOpacityRange) alertOpacityRange.value = alertOverlayOpacity.toFixed(2);
+      updateAlertOverlayControls();
+      syncMapboxAlertLayerVisibility();
+      drawAlertOverlay();
+    }
+    function toggleAlertOverlayVisibility() {
+      isAlertOverlayVisible = !isAlertOverlayVisible;
+      updateAlertOverlayControls();
+      syncMapboxAlertLayerVisibility();
+      drawAlertOverlay();
+    }
+
+    function normalizeLevel2Frame(meta) {
+      if (!meta?.path) return null;
+      const bounds = meta?.bounds;
+      const hasBounds = bounds &&
+        Number.isFinite(bounds.west) &&
+        Number.isFinite(bounds.south) &&
+        Number.isFinite(bounds.east) &&
+        Number.isFinite(bounds.north);
+      const validTimeDate = new Date(meta.validTime || "");
+      return {
+        path: level2DataUrl(meta.path),
+        imagePath: meta.imagePath ? level2DataUrl(meta.imagePath) : null,
+        tileTemplate: meta.tileTemplate ? level2DataUrl(meta.tileTemplate) : null,
+        tileIndex: meta.tileIndex && typeof meta.tileIndex === "object" ? meta.tileIndex : null,
+        tileMinZoom: Number.isFinite(Number(meta.tileMinZoom)) ? Number(meta.tileMinZoom) : 5,
+        tileMaxZoom: Number.isFinite(Number(meta.tileMaxZoom)) ? Number(meta.tileMaxZoom) : 8,
+        validTime: meta.validTime || "",
+        validTimeDate,
+        bounds: hasBounds ? [[bounds.south, bounds.west], [bounds.north, bounds.east]] : null
+      };
+    }
+
+    function upsertLevel2Frame(frame) {
+      if (!frame?.path) return;
+      const existingIndex = level2Frames.findIndex((candidate) => candidate.path === frame.path);
+      if (existingIndex >= 0) {
+        level2Frames[existingIndex] = frame;
+      } else {
+        level2Frames.push(frame);
+      }
+      level2Frames.sort((a, b) => {
+        const aTime = Number.isFinite(a.validTimeDate?.getTime?.()) ? a.validTimeDate.getTime() : 0;
+        const bTime = Number.isFinite(b.validTimeDate?.getTime?.()) ? b.validTimeDate.getTime() : 0;
+        return aTime - bTime;
+      });
+    }
+
+    function updatePlaybackButton() {
+      playPauseButton.textContent = isPlaying ? "Pause" : "Play";
+      playPauseButton.setAttribute("aria-pressed", String(isPlaying));
+    }
+
+    function updateLoopLoadProgressUi() {
+      if (!loopLoadProgress || !loopLoadProgressText || !loopLoadProgressFill) return;
+      const shouldShow = isMobileLevel2Mode() && !USE_MAPBOX_LEVEL2_IMAGE_LAYER && !USE_MAPBOX_LEVEL2_TILE_LAYER && mobileLoopLoadInProgress && mobileLoopTotalCount > 1;
+      loopLoadProgress.classList.toggle("is-visible", shouldShow);
+      loopLoadProgress.setAttribute("aria-hidden", shouldShow ? "false" : "true");
+      const loaded = Math.min(mobileLoopLoadedPaths.size, Math.max(0, mobileLoopTotalCount));
+      const total = Math.max(0, mobileLoopTotalCount);
+      const pct = total > 0 ? Math.round((loaded / total) * 100) : 0;
+      loopLoadProgressText.textContent = `Loading loop: ${loaded} / ${total}`;
+      loopLoadProgressFill.style.width = `${pct}%`;
+    }
+
+    function resetMobileLoopLoadState() {
+      mobileLoopLoadRequested = false;
+      mobileLoopLoadInProgress = false;
+      mobileLoopLoadToken += 1;
+      mobileLoopLoadedPaths = new Set();
+      mobileLoopTotalCount = Math.min(12, level2Frames.length || 0);
+      const latestPath = currentFrame()?.path;
+      if (latestPath) mobileLoopLoadedPaths.add(latestPath);
+      updateLoopLoadProgressUi();
+    }
+
+    function buildMobileLoopLoadOrder(startIndex = currentFrameIndex) {
+      const order = [];
+      if (!level2Frames.length) return order;
+      for (let offset = 1; offset < level2Frames.length; offset += 1) {
+        order.push((startIndex + offset + level2Frames.length) % level2Frames.length);
+      }
+      return order;
+    }
+
+    function updateFrameInfoRow() {
+      if (!level2Frames.length) {
+        frameReadout.textContent = "Frame: none";
+        return;
+      }
+      const frame = level2Frames[currentFrameIndex];
+      const validText = frame?.validTime ? new Date(frame.validTime).toLocaleString() : "Unknown";
+      if (level2Frames.length === 1) {
+        frameReadout.textContent = `Frame 1/1 - waiting for more frames - ${validText}`;
+        return;
+      }
+      frameReadout.textContent = `Frame ${currentFrameIndex + 1}/${level2Frames.length} - ${validText}`;
+      frameSelect.value = String(currentFrameIndex);
+    }
+    function syncFrameSelect() {
+      if (!frameSelect) return;
+      const options = level2Frames.map((frame, index) => {
+        const option = document.createElement("option");
+        option.value = String(index);
+        const t = frame?.validTime ? new Date(frame.validTime).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : `#${index + 1}`;
+        option.textContent = `${index + 1}. ${t}`;
+        return option;
+      });
+      frameSelect.replaceChildren(...options);
+      frameSelect.value = String(currentFrameIndex);
+    }
+
+    function clearPlaybackTimer() {
+      if (playbackTimer !== null) {
+        window.clearTimeout(playbackTimer);
+        playbackTimer = null;
+      }
+    }
+
+    function lockOrientation() {
+      if (!map) return;
+      if (Math.abs(map.getPitch()) > 0.01) map.setPitch(0);
+      if (Math.abs(map.getBearing()) > 0.01) map.setBearing(0);
+    }
+
+    function colorForDbz(dbz) {
+      if (!Number.isFinite(dbz) || dbz < DISPLAY_MIN_DBZ) return { r: 0, g: 0, b: 0, a: 0 };
+      if (FORCE_DEBUG_RADAR_COLORS) {
+        if (dbz < 10) return { r: 0, g: 255, b: 255, a: 255 };
+        if (dbz < 20) return { r: 0, g: 255, b: 0, a: 255 };
+        if (dbz < 35) return { r: 255, g: 255, b: 0, a: 255 };
+        return { r: 255, g: 0, b: 255, a: 255 };
+      }
+      const stops = RADAR_DBZ_PALETTE_NORMALIZED;
+      if (!Array.isArray(stops) || stops.length === 0) return { r: 0, g: 0, b: 0, a: 0 };
+      if (dbz <= stops[0].v) return { r: stops[0].r, g: stops[0].g, b: stops[0].b, a: stops[0].a };
+      if (dbz >= stops[stops.length - 1].v) {
+        const last = stops[stops.length - 1];
+        return { r: last.r, g: last.g, b: last.b, a: last.a };
+      }
+      if (USE_STEPPED_REFLECTIVITY_PALETTE) {
+        for (let i = stops.length - 1; i >= 0; i -= 1) {
+          const stop = stops[i];
+          if (dbz >= stop.v) {
+            return {
+              r: stop.r,
+              g: stop.g,
+              b: stop.b,
+              a: stop.a
+            };
+          }
+        }
+      }
+      for (let i = 0; i < stops.length - 1; i += 1) {
+        const lower = stops[i];
+        const upper = stops[i + 1];
+        if (dbz >= lower.v && dbz <= upper.v) {
+          const span = upper.v - lower.v;
+          const t = span === 0 ? 0 : (dbz - lower.v) / span;
+          const r = Math.round(lower.r + (upper.r - lower.r) * t);
+          const g = Math.round(lower.g + (upper.g - lower.g) * t);
+          const b = Math.round(lower.b + (upper.b - lower.b) * t);
+          const alpha = Math.round(lower.a + (upper.a - lower.a) * t);
+          return {
+            r,
+            g,
+            b,
+            a: alpha
+          };
+        }
+      }
+      return { r: 0, g: 0, b: 0, a: 0 };
+    }
+
+    function opacityMultiplierForDbz(dbz) {
+      if (!Number.isFinite(dbz) || !LOW_DBZ_OPACITY_TAPER.length) return 1;
+      const points = LOW_DBZ_OPACITY_TAPER;
+      if (dbz <= points[0].dbz) return points[0].opacity;
+      if (dbz >= points[points.length - 1].dbz) return points[points.length - 1].opacity;
+      for (let i = 0; i < points.length - 1; i += 1) {
+        const lower = points[i];
+        const upper = points[i + 1];
+        if (dbz >= lower.dbz && dbz <= upper.dbz) {
+          const span = upper.dbz - lower.dbz;
+          const t = span === 0 ? 0 : (dbz - lower.dbz) / span;
+          return lower.opacity + (upper.opacity - lower.opacity) * t;
+        }
+      }
+      return 1;
+    }
+
+    async function fetchLatestLevel2Frame() {
+      const response = await fetch(level2MetaUrl(), { cache: "no-store" });
+      if (!response.ok) throw new Error(`metadata fetch failed (${response.status})`);
+      const meta = await response.json();
+      return normalizeLevel2Frame(meta);
+    }
+
+    async function fetchLevel2FramesCatalog() {
+      const response = await fetch(minuteCacheBustUrl(level2FramesUrl()), { cache: "no-store" });
+      if (!response.ok) throw new Error(`frames catalog fetch failed (${response.status})`);
+      const payload = await response.json();
+      const rawFrames = Array.isArray(payload?.frames) ? payload.frames : [];
+      return rawFrames.map(normalizeLevel2Frame).filter(Boolean);
+    }
+
+    function currentFrame() {
+      return level2Frames[currentFrameIndex] || null;
+    }
+
+    function loadRadarImageElement(url) {
+      return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = () => {
+          reject(new Error(`radar image failed to load: ${url}`));
+        };
+        image.src = cacheBustUrl(url);
+      });
+    }
+
+    async function buildMobileLevel2ImageSurface(frame = currentFrame(), options = {}) {
+      if (!frame?.imagePath) return null;
+
+      const image = await loadRadarImageElement(frame.imagePath);
+      const width = Math.max(1, image.naturalWidth || image.width || 1);
+      const height = Math.max(1, image.naturalHeight || image.height || 1);
+
+      const targetCanvas = options.canvas || document.createElement("canvas");
+      const targetContext = options.context || targetCanvas.getContext("2d", { willReadFrequently: true });
+
+      targetCanvas.width = width;
+      targetCanvas.height = height;
+      targetContext.clearRect(0, 0, width, height);
+      targetContext.drawImage(image, 0, 0, width, height);
+
+      return {
+        canvas: targetCanvas,
+        width,
+        height,
+        bounds: frame?.bounds || radarBounds,
+        path: frame.imagePath,
+        validTime: frame?.validTime || ""
+      };
+    }
+
+    async function buildLevel2RenderedSurface(frame = currentFrame(), options = {}) {
+      try {
+        if (frame?.imagePath) {
+          const mobileImageSurface = await buildMobileLevel2ImageSurface(frame, options);
+          if (mobileImageSurface) return mobileImageSurface;
+        }
+
+        try {
+          RADAR_DBZ_PALETTE_NORMALIZED = normalizeRadarPalette(RADAR_DBZ_PALETTE);
+        } catch (error) {
+          throw new Error(`Palette normalization failed: ${error?.message || "unknown error"}`);
+        }
+
+        const shouldLog = options.logDiagnostics !== false;
+
+        if (shouldLog && !paletteLogPrinted) {
+          console.log("Normalized Level II palette:", RADAR_DBZ_PALETTE_NORMALIZED);
+          paletteLogPrinted = true;
+        }
+
+        if (shouldLog && !colorizerSmokeLogged) {
+          console.log("Colorizer smoke test:", {
+            minus10: colorForDbz(-10),
+            zero: colorForDbz(0),
+            ten: colorForDbz(10),
+            thirtyFive: colorForDbz(35)
+          });
+          colorizerSmokeLogged = true;
+        }
+
+        if (!frame?.path) {
+          throw new Error("No Level II frame path available.");
+        }
+        const tifPath = frame.path;
+        const tifFetchUrl = new URL(tifPath, window.location.href);
+        tifFetchUrl.searchParams.set("cb", String(Date.now()));
+        const response = await fetch(tifFetchUrl.toString(), { cache: "no-store" });
+        if (!response.ok) {
+          const error = new Error(`GeoTIFF fetch failed: ${response.status} ${response.statusText} (${tifPath})`);
+          error.status = response.status;
+          error.path = tifPath;
+          throw error;
+        }
+
+        const buffer = await response.arrayBuffer();
+        const tiff = await GeoTIFF.fromArrayBuffer(buffer);
+        const image = await tiff.getImage();
+
+        const sourceWidth = image.getWidth();
+        const sourceHeight = image.getHeight();
+        const scale = isMobileLevel2Mode() ? MOBILE_LEVEL2_RASTER_SCALE : 1;
+        const width = Math.max(1, Math.round(sourceWidth * scale));
+        const height = Math.max(1, Math.round(sourceHeight * scale));
+
+        const nodataRaw = image.getGDALNoData();
+        const nodata = Number.isFinite(Number(nodataRaw)) ? Number(nodataRaw) : NODATA_DEFAULT;
+
+        const dbz = await image.readRasters({
+          samples: [0],
+          interleave: true,
+          width,
+          height
+        });
+
+        if (!dbz || dbz.length !== width * height) {
+          throw new Error(`invalid raster length (${dbz ? dbz.length : "none"}), expected ${width * height}`);
+        }
+
+        const targetCanvas = options.canvas || document.createElement("canvas");
+        const targetContext = options.context || targetCanvas.getContext("2d", { willReadFrequently: true });
+
+        targetCanvas.width = width;
+        targetCanvas.height = height;
+
+        const imageData = targetContext.createImageData(width, height);
+        const data = imageData.data;
+        data.fill(0);
+
+        const weakMask = new Uint8Array(width * height);
+        const validMask = new Uint8Array(width * height);
+
+        let belowDisplayMin = 0;
+        let negativeVisible = 0;
+        let zeroToFive = 0;
+        let fiveToFifteen = 0;
+        let fifteenToThirty = 0;
+        let thirtyPlus = 0;
+        let colored = 0;
+        let transparent = 0;
+
+        for (let i = 0, p = 0; i < dbz.length; i += 1, p += 4) {
+          const value = dbz[i];
+          const isNoData = !Number.isFinite(value) || value === nodata;
+
+          if (isNoData || value < DISPLAY_MIN_DBZ) {
+            if (!isNoData) belowDisplayMin += 1;
+            data[p] = 0;
+            data[p + 1] = 0;
+            data[p + 2] = 0;
+            data[p + 3] = 0;
+            transparent += 1;
+            continue;
+          }
+
+          validMask[i] = 1;
+          if (ENABLE_WEAK_DESPECKLE && value >= 0 && value < 8) weakMask[i] = 1;
+
+          if (value < 0) negativeVisible += 1;
+          else if (value < 5) zeroToFive += 1;
+          else if (value < 15) fiveToFifteen += 1;
+          else if (value < 30) fifteenToThirty += 1;
+          else thirtyPlus += 1;
+
+          const color = colorForDbz(value);
+          const baseAlpha = color.a;
+          const taperOpacity = opacityMultiplierForDbz(value);
+          const finalAlpha = Math.max(0, Math.min(255, Math.round(baseAlpha * taperOpacity)));
+
+          data[p] = color.r;
+          data[p + 1] = color.g;
+          data[p + 2] = color.b;
+          data[p + 3] = finalAlpha;
+
+          if (finalAlpha > 0) colored += 1;
+          else transparent += 1;
+        }
+
+        if (ENABLE_WEAK_DESPECKLE) {
+          for (let y = 1; y < height - 1; y += 1) {
+            for (let x = 1; x < width - 1; x += 1) {
+              const idx = y * width + x;
+              if (!weakMask[idx]) continue;
+
+              let neighbors = 0;
+              for (let oy = -1; oy <= 1; oy += 1) {
+                for (let ox = -1; ox <= 1; ox += 1) {
+                  if (ox === 0 && oy === 0) continue;
+                  const nIdx = (y + oy) * width + (x + ox);
+                  if (validMask[nIdx]) neighbors += 1;
+                }
+              }
+
+              if (neighbors === 0) {
+                const p = idx * 4;
+                if (data[p + 3] > 0) {
+                  data[p] = 0;
+                  data[p + 1] = 0;
+                  data[p + 2] = 0;
+                  data[p + 3] = 0;
+                  colored = Math.max(0, colored - 1);
+                  transparent += 1;
+                }
+              }
+            }
+          }
+        }
+
+        let blackPixelsClearedBySafetyPass = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          if (data[i] === 0 && data[i + 1] === 0 && data[i + 2] === 0 && data[i + 3] > 0) {
+            data[i + 3] = 0;
+            blackPixelsClearedBySafetyPass += 1;
+            colored = Math.max(0, colored - 1);
+            transparent += 1;
+          }
+        }
+
+        targetContext.putImageData(imageData, 0, 0);
+
+        if (shouldLog) {
+          console.log("Level II dBZ renderer diagnostics:", {
+            paletteSourceFileFound: PALETTE_SOURCE_FILE,
+            displayMinDbz: DISPLAY_MIN_DBZ,
+            sourceWidth,
+            sourceHeight,
+            renderedWidth: width,
+            renderedHeight: height,
+            mobileScale: scale,
+            belowDisplayMin,
+            negativeVisible,
+            zeroToFive,
+            fiveToFifteen,
+            fifteenToThirty,
+            thirtyPlus,
+            colored,
+            transparent,
+            blackPixelsClearedBySafetyPass
+          });
+        }
+
+        return {
+          canvas: targetCanvas,
+          width,
+          height,
+          bounds: frame?.bounds || radarBounds,
+          path: tifPath,
+          validTime: frame?.validTime || ""
+        };
+      } catch (error) {
+        throw error;
+      }
+    }
+
+    async function renderLevel2DbzUncached(frame = currentFrame()) {
+      try {
+        if (frame?.bounds) {
+          radarBounds = frame.bounds;
+        }
+
+        frameReadout.textContent = `Radar: updated ${frame?.validTime || "Unknown"}`;
+        updateFrameInfoRow();
+
+        const surface = await buildLevel2RenderedSurface(frame, {
+          canvas: radarCanvas,
+          context: radarContext,
+          logDiagnostics: true
+        });
+        radarImageRevision += 1;
+
+        radarBounds = surface.bounds || radarBounds;
+
+        const validText = frame?.validTime ? new Date(frame.validTime).toLocaleString() : "unknown";
+        if (typeof validTimeRow !== "undefined" && validTimeRow) {
+          validTimeRow.textContent = `Valid time: ${validText}`;
+        }
+        if (typeof sourceRow !== "undefined" && sourceRow) {
+          sourceRow.textContent = `Radar source: ${frame?.path || surface.path}`;
+        }
+        statusText.textContent = `Radar frame loaded: ${selectedLevel2Site()} ${LEVEL2_PRODUCT}`;
+
+        updateFrameInfoRow();
+        syncFrameSelect();
+        syncMapboxLevel2ImageLayerOpacity();
+        redrawRadarOverlay();
+        return frame;
+      } catch (error) {
+        if (error?.status !== 404) {
+          console.error("Level II render failed", error);
+        }
+        throw error;
+      }
+    }
+
+    function isMobileLevel2Mode() {
+      return window.matchMedia("(max-width: 760px)").matches;
+    }
+
+    function level2RenderCacheLimit() {
+      return isMobileLevel2Mode() ? MOBILE_LEVEL2_RENDER_CACHE_LIMIT : DESKTOP_LEVEL2_RENDER_CACHE_LIMIT;
+    }
+
+    function level2FrameCacheKey(frame) {
+      return frame?.path || "";
+    }
+
+    function clampCurrentFrameIndex() {
+      if (!level2Frames.length) {
+        currentFrameIndex = 0;
+        return;
+      }
+      currentFrameIndex = Math.max(0, Math.min(currentFrameIndex, level2Frames.length - 1));
+    }
+
+    function pruneRenderedFrameCache() {
+      const limit = level2RenderCacheLimit();
+      const validPaths = new Set(
+        level2Frames.map((frame) => level2FrameCacheKey(frame)).filter(Boolean)
+      );
+      const currentKey = level2FrameCacheKey(currentFrame());
+
+      for (const key of Array.from(renderedFrameCache.keys())) {
+        if (!validPaths.has(key)) renderedFrameCache.delete(key);
+      }
+
+      for (const key of Array.from(renderedFrameCache.keys())) {
+        if (renderedFrameCache.size <= limit) break;
+        if (key !== currentKey) renderedFrameCache.delete(key);
+      }
+    }
+
+    function applyRenderedFrameCache(frame, cachedFrame) {
+      if (!frame || !cachedFrame?.canvas || !cachedFrame.width || !cachedFrame.height) {
+        console.warn("Skipping invalid cached radar frame; keeping previous image");
+        return false;
+      }
+
+
+      radarCanvas.width = cachedFrame.width;
+      radarCanvas.height = cachedFrame.height;
+      radarContext.clearRect(0, 0, radarCanvas.width, radarCanvas.height);
+      radarContext.drawImage(cachedFrame.canvas, 0, 0);
+      radarImageRevision += 1;
+
+      radarBounds = cachedFrame.bounds || frame.bounds || radarBounds;
+
+      const validText = frame.validTime ? new Date(frame.validTime).toLocaleString() : "unknown";
+      if (typeof validTimeRow !== "undefined" && validTimeRow) {
+        validTimeRow.textContent = `Valid time: ${validText}`;
+      }
+      if (typeof sourceRow !== "undefined" && sourceRow) {
+        sourceRow.textContent = `Radar source: ${frame.path}`;
+      }
+      setStatusText("cached frame loaded");
+      updateFrameInfoRow();
+      syncFrameSelect();
+      syncMapboxLevel2ImageLayerOpacity();
+      redrawRadarOverlay();
+
+      return true;
+    }
+
+    async function renderLevel2Dbz(frame = currentFrame()) {
+      let selectedFrame = frame;
+      let cacheKey = level2FrameCacheKey(selectedFrame);
+
+      if (cacheKey && renderedFrameCache.has(cacheKey)) {
+        const cachedFrame = renderedFrameCache.get(cacheKey);
+        renderedFrameCache.delete(cacheKey);
+        renderedFrameCache.set(cacheKey, cachedFrame);
+        applyRenderedFrameCache(selectedFrame, cachedFrame);
+        return "cache";
+      }
+
+      for (;;) {
+        try {
+          selectedFrame = await renderLevel2DbzUncached(selectedFrame);
+          cacheKey = level2FrameCacheKey(selectedFrame);
+          break;
+        } catch (error) {
+          if (error?.status === 404) {
+            const stalePath = error.path || selectedFrame?.path || "";
+            const pruneResult = pruneStaleLevel2Frame(stalePath, { allowRemoveCurrent: true });
+            if (pruneResult.removed && level2Frames.length > 0) {
+              setStatusText("stale frame pruned after 404; rendering nearest available frame");
+              selectedFrame = currentFrame();
+              cacheKey = level2FrameCacheKey(selectedFrame);
+              continue;
+            }
+            if (level2Frames.length === 0) {
+              errorPanel.style.display = "block";
+              errorPanel.textContent = "Level II renderer failed: no frames remain after removing stale frame(s).";
+              throw new Error("No Level II frames remain after removing stale frame(s).");
+            }
+          }
+          throw error;
+        }
+      }
+
+      if (cacheKey && radarCanvas.width > 0 && radarCanvas.height > 0) {
+        const cachedCanvas = document.createElement("canvas");
+        cachedCanvas.width = radarCanvas.width;
+        cachedCanvas.height = radarCanvas.height;
+
+        const cachedContext = cachedCanvas.getContext("2d");
+        cachedContext.drawImage(radarCanvas, 0, 0);
+
+        renderedFrameCache.set(cacheKey, {
+          canvas: cachedCanvas,
+          width: radarCanvas.width,
+          height: radarCanvas.height,
+          bounds: selectedFrame?.bounds || radarBounds
+        });
+
+        pruneRenderedFrameCache();
+      }
+
+      updateFrameInfoRow();
+      syncFrameSelect();
+      return "rendered";
+    }
+
+
+    function storeRenderedFrameSurface(frame, surface) {
+      const cacheKey = level2FrameCacheKey(frame);
+      if (!cacheKey || !surface?.canvas) return;
+
+      renderedFrameCache.set(cacheKey, {
+        canvas: surface.canvas,
+        width: surface.width,
+        height: surface.height,
+        bounds: surface.bounds || frame.bounds || radarBounds
+      });
+
+      pruneRenderedFrameCache();
+    }
+
+    function buildLevel2WarmOrder(startIndex = currentFrameIndex) {
+      const order = [];
+      if (!level2Frames.length) return order;
+
+      if (isMobileLevel2Mode()) {
+        const mobileOffsets = [1, -1, 2, -2];
+        for (const offset of mobileOffsets) {
+          const index = (startIndex + offset + level2Frames.length) % level2Frames.length;
+          if (!order.includes(index) && index !== startIndex) {
+            order.push(index);
+          }
+        }
+        return order;
+      }
+
+      for (let offset = 1; offset < level2Frames.length; offset += 1) {
+        order.push((startIndex + offset) % level2Frames.length);
+      }
+
+      return order;
+    }
+
+    function scheduleLevel2FrameWarmup(options = {}) {
+      if (shouldUseManualLevel2RadarEngine()) return;
+      if (shouldUseMapboxLevel2ImageLayer()) return;
+      if (isMobileLevel2Mode()) return;
+      if (!level2Frames.length) return;
+
+      if (level2WarmupTimer !== null) {
+        window.clearTimeout(level2WarmupTimer);
+        level2WarmupTimer = null;
+      }
+
+      const startIndex = Number.isFinite(options.aroundIndex) ? options.aroundIndex : currentFrameIndex;
+      const delayMs = Number.isFinite(options.delayMs) ? options.delayMs : 700;
+      const token = ++level2WarmupToken;
+      const order = buildLevel2WarmOrder(startIndex);
+      let cursor = 0;
+
+      const tick = async () => {
+        if (token !== level2WarmupToken) return;
+
+        while (cursor < order.length) {
+          const frame = level2Frames[order[cursor]];
+          const key = level2FrameCacheKey(frame);
+
+          if (key && !renderedFrameCache.has(key)) break;
+          cursor += 1;
+        }
+
+        if (cursor >= order.length) return;
+
+        if (level2WarmupBusy || (isMobileLevel2Mode() && isMapInteracting)) {
+          level2WarmupTimer = window.setTimeout(tick, 650);
+          return;
+        }
+
+        const frameIndex = order[cursor];
+        const frame = level2Frames[frameIndex];
+        cursor += 1;
+
+        try {
+          level2WarmupBusy = true;
+          const surface = await buildLevel2RenderedSurface(frame, { logDiagnostics: false });
+
+          if (token === level2WarmupToken) {
+            storeRenderedFrameSurface(frame, surface);
+            setStatusText(`warming frame cache ${renderedFrameCache.size}/${level2Frames.length}`);
+          }
+        } catch (error) {
+          if (error?.status === 404) {
+            const missingPath = error.path || frame?.path || "";
+            if (missingPath && !warmupMissingFrameWarned.has(missingPath)) {
+              warmupMissingFrameWarned.add(missingPath);
+              console.warn(`Level II warm cache missing frame (404): ${missingPath}`);
+            }
+            pruneStaleLevel2Frame(missingPath, { allowRemoveCurrent: false });
+          } else {
+            console.warn("Level II warm cache failed", error);
+          }
+        } finally {
+          level2WarmupBusy = false;
+        }
+
+        if (token !== level2WarmupToken) return;
+
+        const nextDelay = isMobileLevel2Mode() ? 850 : 220;
+        level2WarmupTimer = window.setTimeout(tick, nextDelay);
+      };
+
+      level2WarmupTimer = window.setTimeout(tick, delayMs);
+    }
+
+    async function refreshLevel2Frames() {
+      const wasAtLatest = currentFrameIndex === Math.max(0, level2Frames.length - 1);
+      const previousLatestPath = level2Frames[level2Frames.length - 1]?.path || "";
+      try {
+        const catalogFrames = await fetchLevel2FramesCatalog();
+        if (catalogFrames.length > 0) {
+          level2Frames = catalogFrames.sort((a, b) => {
+            const aTime = Number.isFinite(a.validTimeDate?.getTime?.()) ? a.validTimeDate.getTime() : 0;
+            const bTime = Number.isFinite(b.validTimeDate?.getTime?.()) ? b.validTimeDate.getTime() : 0;
+            return aTime - bTime;
+          });
+          if (isMobileLevel2Mode() && level2Frames.length > 15) {
+            level2Frames = level2Frames.slice(-15);
+          }
+        } else {
+          const latestFrame = await fetchLatestLevel2Frame();
+          if (latestFrame) upsertLevel2Frame(latestFrame);
+        }
+      } catch (_error) {
+        try {
+          const latestFrame = await fetchLatestLevel2Frame();
+          if (latestFrame) upsertLevel2Frame(latestFrame);
+        } catch (_latestError) {
+          if (level2Frames.length === 0) {
+            setStatusText("No Level II radar frame available.");
+          }
+        }
+      }
+      if (level2Frames.length === 0) return false;
+
+      if (wasAtLatest) {
+        currentFrameIndex = level2Frames.length - 1;
+      } else {
+        currentFrameIndex = Math.max(0, Math.min(currentFrameIndex, level2Frames.length - 1));
+      }
+      syncFrameSelect();
+      updateFrameInfoRow();
+      return previousLatestPath !== (level2Frames[level2Frames.length - 1]?.path || "");
+    }
+
+    async function renderCurrentFrame() {
+      const frame = currentFrame();
+      if (!frame) return null;
+
+      if (await updateManualLevel2RadarEngineFrame(frame)) {
+        return "manual-radar-engine";
+      }
+
+      if (updateMapboxLevel2TileLayer(frame)) {
+        if (isMobileLevel2Mode()) {
+          mobileLoopLoadRequested = false;
+          mobileLoopLoadInProgress = false;
+          mobileLoopLoadToken += 1;
+          mobileLoopLoadedPaths = new Set(frame?.path ? [frame.path] : []);
+          mobileLoopTotalCount = 0;
+          updateLoopLoadProgressUi();
+        }
+        positionLevel2WeatherLayers();
+        drawAlertOverlay();
+        setStatusText(`Mapbox radar tiles loaded: ${selectedLevel2Site()} ${LEVEL2_PRODUCT}`);
+        return "mapbox-tile-layer";
+      }
+
+      if (updateMapboxLevel2ImageLayer(frame)) {
+        if (isMobileLevel2Mode()) {
+          mobileLoopLoadRequested = false;
+          mobileLoopLoadInProgress = false;
+          mobileLoopLoadToken += 1;
+          mobileLoopLoadedPaths = new Set(frame?.path ? [frame.path] : []);
+          mobileLoopTotalCount = 0;
+          updateLoopLoadProgressUi();
+        }
+        drawAlertOverlay();
+        setStatusText(`Mapbox radar layer loaded: ${selectedLevel2Site()} ${LEVEL2_PRODUCT}`);
+        return "mapbox-image-layer";
+      }
+
+      if (radarOverlayCanvas) {
+        radarOverlayCanvas.style.display = "";
+      }
+
+      const renderMode = await renderLevel2Dbz(frame);
+
+      if (isMobileLevel2Mode()) {
+        if (frame?.path) mobileLoopLoadedPaths.add(frame.path);
+        mobileLoopTotalCount = Math.min(12, level2Frames.length || 0);
+        updateLoopLoadProgressUi();
+      } else {
+        scheduleLevel2FrameWarmup({
+          aroundIndex: currentFrameIndex,
+          delayMs: isPlaying ? 1200 : 650
+        });
+      }
+
+      return renderMode;
+    }
+
+    async function stepFrame(direction) {
+      if (!level2Frames.length) return;
+      currentFrameIndex = (currentFrameIndex + direction + level2Frames.length) % level2Frames.length;
+      await renderCurrentFrame();
+    }
+
+    function stopPlayback() {
+      clearPlaybackTimer();
+      isPlaying = false;
+      updatePlaybackButton();
+    }
+
+    async function startMobileLoopLoadAfterPlay() {
+      if (!isMobileLevel2Mode() || !mobileLoopLoadRequested || mobileLoopLoadInProgress) return;
+      if (shouldUseMapboxLevel2TileLayer() || shouldUseMapboxLevel2ImageLayer()) {
+        mobileLoopLoadRequested = false;
+        mobileLoopLoadInProgress = false;
+        mobileLoopLoadToken += 1;
+        mobileLoopTotalCount = 0;
+        updateLoopLoadProgressUi();
+        return;
+      }
+      mobileLoopTotalCount = Math.min(12, level2Frames.length || 0);
+      if (mobileLoopTotalCount <= 1) return;
+
+      const token = ++mobileLoopLoadToken;
+      const order = buildMobileLoopLoadOrder(currentFrameIndex);
+      mobileLoopLoadInProgress = true;
+      updateLoopLoadProgressUi();
+
+      for (const frameIndex of order) {
+        if (token !== mobileLoopLoadToken) break;
+        if (isMapInteracting) {
+          setStatusText("Loop loading paused while moving map");
+          await new Promise((resolve) => window.setTimeout(resolve, 300));
+          continue;
+        }
+        const frame = level2Frames[frameIndex];
+        const key = level2FrameCacheKey(frame);
+        if (!key || mobileLoopLoadedPaths.has(key) || renderedFrameCache.has(key)) {
+          if (key) mobileLoopLoadedPaths.add(key);
+          updateLoopLoadProgressUi();
+          continue;
+        }
+        try {
+          const surface = await buildLevel2RenderedSurface(frame, { logDiagnostics: false });
+          if (token !== mobileLoopLoadToken) break;
+          storeRenderedFrameSurface(frame, surface);
+          mobileLoopLoadedPaths.add(key);
+          setStatusText(`loading loop frames ${mobileLoopLoadedPaths.size}/${mobileLoopTotalCount}`);
+        } catch (error) {
+          if (error?.status === 404) {
+            const missingPath = error.path || frame?.path || "";
+            if (missingPath && !warmupMissingFrameWarned.has(missingPath)) {
+              warmupMissingFrameWarned.add(missingPath);
+              console.warn(`Level II loop load missing frame (404): ${missingPath}`);
+            }
+            pruneStaleLevel2Frame(missingPath, { allowRemoveCurrent: false });
+          } else {
+            console.warn("Level II loop load failed", error);
+          }
+        }
+        updateLoopLoadProgressUi();
+        await new Promise((resolve) => window.setTimeout(resolve, 180));
+      }
+
+      if (token === mobileLoopLoadToken) {
+        mobileLoopLoadInProgress = false;
+        updateLoopLoadProgressUi();
+        setStatusText("loop frames ready");
+      }
+    }
+
+    async function playbackTick() {
+      if (!isPlaying) return;
+      if (level2Frames.length > 1) {
+        await stepFrame(1);
+      }
+      if (!isPlaying) return;
+      clearPlaybackTimer();
+      playbackTimer = window.setTimeout(playbackTick, playbackIntervalMs);
+    }
+
+    function startPlayback(options = {}) {
+      const userRequested = options && options.userRequested === true;
+      if (!userRequested && !playbackWasUserRequested) return;
+      if (isPlaying || level2Frames.length < 2) return;
+      playbackWasUserRequested = true;
+      if (isMobileLevel2Mode() && !USE_MAPBOX_LEVEL2_IMAGE_LAYER && !USE_MAPBOX_LEVEL2_TILE_LAYER) {
+        mobileLoopLoadRequested = true;
+        startMobileLoopLoadAfterPlay();
+      }
+      isPlaying = true;
+      updatePlaybackButton();
+      clearPlaybackTimer();
+      playbackTimer = window.setTimeout(playbackTick, playbackIntervalMs);
+    }
+
+    function togglePlayback() {
+      if (isPlaying) {
+        stopPlayback();
+      } else {
+        startPlayback({ userRequested: true });
+      }
+    }
+
+    async function changeLevel2Site(site) {
+      const nextSite = persistSelectedLevel2Site(site);
+      if (siteSelect) siteSelect.value = nextSite;
+      stopPlayback();
+      renderedFrameCache.clear();
+      if (level2RadarEngine) {
+        level2RadarEngine.removeFromMap();
+        level2RadarEngine = null;
+      }
+      level2Frames = [];
+      currentFrameIndex = 0;
+      syncFrameSelect();
+      updateFrameInfoRow();
+
+      if (radarCanvas.width && radarCanvas.height) {
+        radarContext.clearRect(0, 0, radarCanvas.width, radarCanvas.height);
+      }
+      radarImageRevision += 1;
+      syncedRadarImageRevision = -1;
+      syncedRadarImageSizeKey = "";
+      radarOverlayContext.clearRect(0, 0, radarOverlayCanvas.width, radarOverlayCanvas.height);
+
+      setStatusText(`loading ${nextSite} frame list`);
+      try {
+        await refreshLevel2Frames();
+        currentFrameIndex = Math.max(0, level2Frames.length - 1);
+        resetMobileLoopLoadState();
+        await renderCurrentFrame();
+        setStatusText(isMobileLevel2Mode() ? "Latest frame ready" : `loaded ${nextSite} ${LEVEL2_PRODUCT}`);
+      } catch (error) {
+        const message = error?.message || "error";
+        console.error("Level II site change failed", error);
+        setStatusText(`failed loading ${nextSite}: ${message}`);
+        errorPanel.style.display = "block";
+        errorPanel.textContent = `Level II ${nextSite} failed: ${message}`;
+      }
+    }
+
+    function startFrameRefresh() {
+      if (frameRefreshTimer !== null) {
+        window.clearInterval(frameRefreshTimer);
+      }
+      frameRefreshTimer = window.setInterval(async () => {
+        const latestChanged = await refreshLevel2Frames();
+        if (latestChanged && level2Frames.length > 0) {
+          currentFrameIndex = level2Frames.length - 1;
+          resetMobileLoopLoadState();
+          syncFrameSelect();
+          updateFrameInfoRow();
+
+          await renderCurrentFrame();
+
+          if (isPlaying && isMobileLevel2Mode() && !USE_MAPBOX_LEVEL2_IMAGE_LAYER && !USE_MAPBOX_LEVEL2_TILE_LAYER) {
+            mobileLoopLoadRequested = true;
+            startMobileLoopLoadAfterPlay();
+          }
+
+          setStatusText("Latest radar frame refreshed");
+        }
+        // Manual playback only: do not auto-start after refresh.
+      }, FRAME_REFRESH_MS);
+    }
+
+    function startAlertRefresh() {
+      if (alertRefreshTimer !== null) {
+        window.clearInterval(alertRefreshTimer);
+      }
+      alertRefreshTimer = window.setInterval(async () => {
+        try {
+          await loadAlerts();
+        } catch (error) {
+          console.warn("Alert refresh failed", error);
+          alertsStatusRow.textContent = "Alerts: refresh failed";
+        }
+      }, ALERT_REFRESH_MS);
+    }
+
+    function syncLevel2RadarMapLayer() {
+      if (!map) return;
+      if (map.getLayer(LEVEL2_RADAR_LAYER_ID)) {
+        map.removeLayer(LEVEL2_RADAR_LAYER_ID);
+      }
+      if (map.getSource(LEVEL2_RADAR_SOURCE_ID)) {
+        map.removeSource(LEVEL2_RADAR_SOURCE_ID);
+      }
+    }
+
+    function pruneStaleLevel2Frame(stalePath, options = {}) {
+      if (!stalePath) return { removed: false, removedCurrent: false };
+
+      const staleFrame = level2Frames.find((frame) => frame?.path === stalePath || frame?.imagePath === stalePath);
+      const staleIndex = level2Frames.findIndex((frame) => frame === staleFrame);
+      renderedFrameCache.delete(stalePath);
+      renderedFrameCache.delete(level2FrameCacheKey(staleFrame));
+      if (staleIndex < 0) return { removed: false, removedCurrent: false };
+
+      const allowRemoveCurrent = options.allowRemoveCurrent !== false;
+      const currentPath = currentFrame()?.path || "";
+      const removedCurrent = currentPath === stalePath;
+      if (removedCurrent && !allowRemoveCurrent) {
+        return { removed: false, removedCurrent: true };
+      }
+
+      const wasAtLatest = currentFrameIndex === Math.max(0, level2Frames.length - 1);
+      level2Frames.splice(staleIndex, 1);
+
+      if (level2Frames.length === 0) {
+        currentFrameIndex = 0;
+        syncFrameSelect();
+        updateFrameInfoRow();
+        return { removed: true, removedCurrent };
+      }
+
+      if (wasAtLatest) {
+        currentFrameIndex = level2Frames.length - 1;
+      } else if (!removedCurrent && currentPath) {
+        const currentPathIndex = level2Frames.findIndex((frame) => frame?.path === currentPath);
+        currentFrameIndex = currentPathIndex >= 0 ? currentPathIndex : Math.min(staleIndex, level2Frames.length - 1);
+      } else {
+        currentFrameIndex = Math.min(staleIndex, level2Frames.length - 1);
+      }
+
+      clampCurrentFrameIndex();
+      pruneRenderedFrameCache();
+      syncFrameSelect();
+      updateFrameInfoRow();
+      return { removed: true, removedCurrent };
+    }
+
+
+    function shouldUseManualLevel2RadarEngine() {
+      return USE_MANUAL_LEVEL2_RADAR_ENGINE && !!map && typeof window.Level2RadarEngine === "function";
+    }
+
+    function shouldUseMapboxLevel2TileLayer() {
+      return USE_MAPBOX_LEVEL2_TILE_LAYER && !shouldUseManualLevel2RadarEngine() && !!map;
+    }
+
+    function weatherLayerBeforeLayerId() {
+      if (!map) return undefined;
+
+      const weatherLayerIds = new Set([
+        LEVEL2_RADAR_LAYER_ID,
+        LEVEL2_MAPBOX_IMAGE_LAYER_ID,
+        LEVEL2_MAPBOX_TILE_LAYER_ID,
+        LEVEL2_MANUAL_RADAR_LAYER_ID,
+        ALERT_FILL_LAYER_ID,
+        ALERT_STORM_HITBOX_LAYER_ID,
+        ALERT_LINE_LAYER_ID
+      ]);
+
+      const weatherSourceIds = new Set([
+        LEVEL2_RADAR_SOURCE_ID,
+        LEVEL2_MAPBOX_IMAGE_SOURCE_ID,
+        LEVEL2_MAPBOX_TILE_SOURCE_ID,
+        ALERT_SOURCE_ID
+      ]);
+
+      const layers = map.getStyle()?.layers || [];
+      const target = layers.find((layer) => {
+        const id = String(layer?.id || "").toLowerCase();
+        const source = String(layer?.source || "");
+        if (weatherLayerIds.has(layer?.id) || weatherSourceIds.has(source)) return false;
+
+        return (
+          layer?.type === "symbol" ||
+          id.includes("label") ||
+          id.includes("road") ||
+          id.includes("street") ||
+          id.includes("highway") ||
+          id.includes("route") ||
+          id.includes("place") ||
+          id.includes("settlement") ||
+          id.includes("admin") ||
+          id.includes("boundary") ||
+          id.includes("county") ||
+          id.includes("state")
+        );
+      });
+
+      return target?.id;
+    }
+
+    function moveLayerIfPresent(layerId, beforeLayerId) {
+      if (!map?.getLayer?.(layerId)) return;
+      if (beforeLayerId && map.getLayer(beforeLayerId) && beforeLayerId !== layerId) {
+        map.moveLayer(layerId, beforeLayerId);
+      } else {
+        map.moveLayer(layerId);
+      }
+    }
+
+    function positionLevel2WeatherLayers() {
+      if (!map) return;
+
+      const usingNativeMapboxRadar = (
+        shouldUseMapboxLevel2TileLayer() ||
+        shouldUseMapboxLevel2ImageLayer() ||
+        shouldUseManualLevel2RadarEngine()
+      );
+
+      const beforeLayerId = usingNativeMapboxRadar
+        ? weatherLayerBeforeLayerId()
+        : undefined;
+
+      // Radar below direct alert visuals; roads, boundaries, and labels remain above both.
+      moveLayerIfPresent(LEVEL2_MANUAL_RADAR_LAYER_ID, beforeLayerId);
+      moveLayerIfPresent(LEVEL2_MAPBOX_IMAGE_LAYER_ID, beforeLayerId);
+      moveLayerIfPresent(LEVEL2_MAPBOX_TILE_LAYER_ID, beforeLayerId);
+
+      moveLayerIfPresent(ALERT_FILL_LAYER_ID, beforeLayerId);
+      moveLayerIfPresent(ALERT_STORM_HITBOX_LAYER_ID, beforeLayerId);
+      moveLayerIfPresent(ALERT_LINE_LAYER_ID, beforeLayerId);
+    }
+
+    function shouldUseMapboxAlertVisualLayers() {
+      return shouldUseMapboxLevel2TileLayer() || shouldUseManualLevel2RadarEngine();
+    }
+
+    function ensureLevel2RadarEngine() {
+      if (!shouldUseManualLevel2RadarEngine()) return null;
+
+      if (!level2RadarEngine) {
+        level2RadarEngine = new window.Level2RadarEngine({
+          map,
+          layerId: LEVEL2_MANUAL_RADAR_LAYER_ID,
+          beforeLayerId: () => weatherLayerBeforeLayerId(),
+          status: setStatusText,
+          opacity: Number(opacitySlider?.value ?? 1)
+        });
+      }
+
+      return level2RadarEngine;
+    }
+
+
+    async function updateManualLevel2RadarEngineFrame(frame) {
+      if (!shouldUseManualLevel2RadarEngine()) return false;
+      if (!frame?.tileTemplate) return false;
+
+      removeMapboxLevel2TileLayer();
+
+      if (map.getLayer(LEVEL2_MAPBOX_IMAGE_LAYER_ID)) {
+        map.removeLayer(LEVEL2_MAPBOX_IMAGE_LAYER_ID);
+      }
+      if (map.getSource(LEVEL2_MAPBOX_IMAGE_SOURCE_ID)) {
+        map.removeSource(LEVEL2_MAPBOX_IMAGE_SOURCE_ID);
+      }
+
+      radarBounds = frame.bounds || radarBounds;
+
+      const engine = ensureLevel2RadarEngine();
+      if (!engine) return false;
+
+      engine.setFrames(level2Frames);
+      engine.setOpacity(Number(opacitySlider?.value ?? 1));
+      await engine.setFrame(currentFrameIndex);
+
+      positionLevel2WeatherLayers();
+      syncMapboxAlertLayerVisibility();
+
+      if (radarOverlayCanvas) radarOverlayCanvas.style.display = "none";
+      if (alertOverlayCanvas) alertOverlayCanvas.style.display = "none";
+
+      const validText = frame.validTime ? new Date(frame.validTime).toLocaleString() : "unknown";
+      if (typeof validTimeRow !== "undefined" && validTimeRow) {
+        validTimeRow.textContent = `Valid time: ${validText}`;
+      }
+      if (typeof sourceRow !== "undefined" && sourceRow) {
+        sourceRow.textContent = `Manual radar engine: ${selectedLevel2Site()} ${LEVEL2_PRODUCT}`;
+      }
+
+      updateFrameInfoRow();
+      syncFrameSelect();
+      drawAlertOverlay();
+
+      return true;
+    }
+
+    function scheduleManualLevel2RadarViewRefresh(reason = "view") {
+      if (!shouldUseManualLevel2RadarEngine()) return;
+      if (!level2RadarEngine || !level2Frames.length) return;
+
+      if (manualLevel2RadarViewRefreshTimer !== null) {
+        window.clearTimeout(manualLevel2RadarViewRefreshTimer);
+      }
+
+      manualLevel2RadarViewRefreshTimer = window.setTimeout(async () => {
+        manualLevel2RadarViewRefreshTimer = null;
+
+        if (!shouldUseManualLevel2RadarEngine() || !level2RadarEngine || !level2Frames.length) return;
+
+        try {
+          setStatusText(`refreshing radar tiles after ${reason}`);
+          level2RadarEngine.setFrames(level2Frames);
+          level2RadarEngine.setOpacity(Number(opacitySlider?.value ?? 1));
+          await level2RadarEngine.setFrame(currentFrameIndex);
+          positionLevel2WeatherLayers();
+          syncMapboxAlertLayerVisibility();
+          drawAlertOverlay();
+        } catch (error) {
+          console.warn("Manual Level II radar view refresh failed", error);
+        }
+      }, 160);
+    }
+
+    function mapboxBoundsForFrame(frame) {
+      const bounds = frame?.bounds || radarBounds;
+      if (!Array.isArray(bounds) || bounds.length < 2) return null;
+
+      const south = Number(bounds[0]?.[0]);
+      const west = Number(bounds[0]?.[1]);
+      const north = Number(bounds[1]?.[0]);
+      const east = Number(bounds[1]?.[1]);
+
+      if (![west, south, east, north].every(Number.isFinite)) return null;
+      return [west, south, east, north];
+    }
+
+    function level2TileUrlForFrame(frame) {
+      if (!frame?.tileTemplate) return null;
+      return minuteCacheBustUrl(frame.tileTemplate);
+    }
+
+    function syncMapboxLevel2TileLayerOpacity() {
+      if (!map?.getLayer?.(LEVEL2_MAPBOX_TILE_LAYER_ID)) return;
+      map.setPaintProperty(
+        LEVEL2_MAPBOX_TILE_LAYER_ID,
+        "raster-opacity",
+        Number(opacitySlider?.value ?? 0.78)
+      );
+    }
+
+    function removeMapboxLevel2TileLayer() {
+      if (!map) return;
+      if (map.getLayer(LEVEL2_MAPBOX_TILE_LAYER_ID)) {
+        map.removeLayer(LEVEL2_MAPBOX_TILE_LAYER_ID);
+      }
+      if (map.getSource(LEVEL2_MAPBOX_TILE_SOURCE_ID)) {
+        map.removeSource(LEVEL2_MAPBOX_TILE_SOURCE_ID);
+      }
+    }
+
+    function syncMapboxAlertLayerVisibility() {
+      if (!map) return;
+
+      const useMapboxVisualAlerts = shouldUseMapboxAlertVisualLayers();
+      const opacity = (
+        isAlertOverlayVisible && useMapboxVisualAlerts
+      ) ? alertOverlayOpacity : 0;
+
+      // Fallback zone geometry gets a quiet fill only: no county/zone outlines.
+      // This makes broad watches and warnings visible without rebuilding the slab problem.
+      if (map.getLayer(ALERT_FILL_LAYER_ID)) {
+        map.setPaintProperty(
+          ALERT_FILL_LAYER_ID,
+          "fill-emissive-strength",
+          1
+        );
+        map.setPaintProperty(ALERT_FILL_LAYER_ID, "fill-opacity", [
+          "case",
+          [
+            "all",
+            ["==", ["get", "_fallbackGeometry"], true],
+            ["==", ["get", "_visibleStormPolygon"], true]
+          ],
+          0.09 * opacity,
+          0
+        ]);
+      }
+
+      // Only direct storm polygons receive visible native Mapbox styling.
+      if (map.getLayer(ALERT_STORM_HITBOX_LAYER_ID)) {
+        map.setPaintProperty(
+          ALERT_STORM_HITBOX_LAYER_ID,
+          "fill-emissive-strength",
+          1
+        );
+        map.setPaintProperty(
+          ALERT_STORM_HITBOX_LAYER_ID,
+          "fill-opacity",
+          0.16 * opacity
+        );
+      }
+
+      if (map.getLayer(ALERT_LINE_LAYER_ID)) {
+        map.setPaintProperty(
+          ALERT_LINE_LAYER_ID,
+          "line-emissive-strength",
+          1
+        );
+        map.setPaintProperty(
+          ALERT_LINE_LAYER_ID,
+          "line-opacity",
+          0.95 * opacity
+        );
+      }
+
+      if (alertOverlayCanvas) {
+        alertOverlayCanvas.style.display = useMapboxVisualAlerts ? "none" : "";
+      }
+    }
+
+    function updateMapboxLevel2TileLayer(frame) {
+      if (!shouldUseMapboxLevel2TileLayer()) return false;
+
+      const tileUrl = level2TileUrlForFrame(frame);
+      if (!tileUrl) return false;
+
+      const bounds = mapboxBoundsForFrame(frame);
+      radarBounds = frame.bounds || radarBounds;
+
+      if (map.getLayer(LEVEL2_MAPBOX_IMAGE_LAYER_ID)) {
+        map.removeLayer(LEVEL2_MAPBOX_IMAGE_LAYER_ID);
+      }
+      if (map.getSource(LEVEL2_MAPBOX_IMAGE_SOURCE_ID)) {
+        map.removeSource(LEVEL2_MAPBOX_IMAGE_SOURCE_ID);
+      }
+
+      removeMapboxLevel2TileLayer();
+
+      const sourceConfig = {
+        type: "raster",
+        tiles: [tileUrl],
+        tileSize: 256,
+        minzoom: Number.isFinite(frame?.tileMinZoom) ? frame.tileMinZoom : 5,
+        maxzoom: Number.isFinite(frame?.tileMaxZoom) ? frame.tileMaxZoom : 8
+      };
+
+      if (bounds) {
+        sourceConfig.bounds = bounds;
+      }
+
+      map.addSource(LEVEL2_MAPBOX_TILE_SOURCE_ID, sourceConfig);
+
+      const beforeLayer = shouldUseMapboxLevel2TileLayer()
+        ? weatherLayerBeforeLayerId()
+        : (map.getLayer(ALERT_FILL_LAYER_ID) ? ALERT_FILL_LAYER_ID : undefined);
+      map.addLayer({
+        id: LEVEL2_MAPBOX_TILE_LAYER_ID,
+        type: "raster",
+        source: LEVEL2_MAPBOX_TILE_SOURCE_ID,
+        paint: {
+          "raster-opacity": Number(opacitySlider?.value ?? 0.78),
+          "raster-fade-duration": 0,
+          "raster-resampling": "nearest"
+        }
+      }, beforeLayer);
+
+      syncMapboxLevel2TileLayerOpacity();
+      positionLevel2WeatherLayers();
+      syncMapboxAlertLayerVisibility();
+
+      if (radarOverlayCanvas) radarOverlayCanvas.style.display = "none";
+      if (alertOverlayCanvas) alertOverlayCanvas.style.display = "none";
+
+      const validText = frame.validTime ? new Date(frame.validTime).toLocaleString() : "unknown";
+      if (typeof validTimeRow !== "undefined" && validTimeRow) {
+        validTimeRow.textContent = `Valid time: ${validText}`;
+      }
+      if (typeof sourceRow !== "undefined" && sourceRow) {
+        sourceRow.textContent = `Radar tiles: ${tileUrl}`;
+      }
+
+      updateFrameInfoRow();
+      syncFrameSelect();
+
+      return true;
+    }
+
+
+    function shouldUseMapboxLevel2ImageLayer() {
+      return USE_MAPBOX_LEVEL2_IMAGE_LAYER && !!map;
+    }
+
+    function mapboxImageCoordinatesForFrame(frame) {
+      const bounds = frame?.bounds || radarBounds;
+      if (!Array.isArray(bounds) || bounds.length < 2) return null;
+
+      const south = Number(bounds[0]?.[0]);
+      const west = Number(bounds[0]?.[1]);
+      const north = Number(bounds[1]?.[0]);
+      const east = Number(bounds[1]?.[1]);
+
+      if (![south, west, north, east].every(Number.isFinite)) return null;
+
+      return [
+        [west, north],
+        [east, north],
+        [east, south],
+        [west, south]
+      ];
+    }
+
+    function syncMapboxLevel2ImageLayerOpacity() {
+      if (!map?.getLayer?.(LEVEL2_MAPBOX_IMAGE_LAYER_ID)) return;
+      map.setPaintProperty(
+        LEVEL2_MAPBOX_IMAGE_LAYER_ID,
+        "raster-opacity",
+        Number(opacitySlider?.value ?? 0.78)
+      );
+    }
+
+    function updateMapboxLevel2ImageLayer(frame) {
+      if (!shouldUseMapboxLevel2ImageLayer()) return false;
+      if (!frame?.imagePath) return false;
+
+      const coordinates = mapboxImageCoordinatesForFrame(frame);
+      if (!coordinates) return false;
+
+      radarBounds = frame.bounds || radarBounds;
+
+      const existingSource = map.getSource(LEVEL2_MAPBOX_IMAGE_SOURCE_ID);
+      if (existingSource?.updateImage) {
+        existingSource.updateImage({
+          url: frame.imagePath,
+          coordinates
+        });
+      } else {
+        if (!map.getSource(LEVEL2_MAPBOX_IMAGE_SOURCE_ID)) {
+          map.addSource(LEVEL2_MAPBOX_IMAGE_SOURCE_ID, {
+            type: "image",
+            url: frame.imagePath,
+            coordinates
+          });
+        }
+
+        if (!map.getLayer(LEVEL2_MAPBOX_IMAGE_LAYER_ID)) {
+          const beforeLayer = shouldUseMapboxLevel2TileLayer() ? weatherLayerBeforeLayerId() : (map.getLayer(ALERT_FILL_LAYER_ID) ? ALERT_FILL_LAYER_ID : undefined);
+          map.addLayer({
+            id: LEVEL2_MAPBOX_IMAGE_LAYER_ID,
+            type: "raster",
+            source: LEVEL2_MAPBOX_IMAGE_SOURCE_ID,
+            paint: {
+              "raster-opacity": Number(opacitySlider?.value ?? 0.78),
+              "raster-fade-duration": 0,
+              "raster-resampling": "nearest"
+            }
+          }, beforeLayer);
+        }
+      }
+
+      syncMapboxLevel2ImageLayerOpacity();
+
+      if (radarOverlayCanvas) {
+        radarOverlayCanvas.style.display = "none";
+      }
+
+      const validText = frame.validTime ? new Date(frame.validTime).toLocaleString() : "unknown";
+      if (typeof validTimeRow !== "undefined" && validTimeRow) {
+        validTimeRow.textContent = `Valid time: ${validText}`;
+      }
+      if (typeof sourceRow !== "undefined" && sourceRow) {
+        sourceRow.textContent = `Radar source: ${frame.imagePath}`;
+      }
+
+      updateFrameInfoRow();
+      syncFrameSelect();
+
+      return true;
+    }
+
+    function redrawRadarOverlay(options = {}) {
+      syncLevel2RadarMapLayer();
+
+      if (shouldUseMapboxLevel2TileLayer()) {
+        syncMapboxLevel2TileLayerOpacity();
+        return;
+      }
+
+      if (!map || radarCanvas.width === 0 || radarCanvas.height === 0 || !radarBounds) return;
+
+      const stripCount = Number.isFinite(options.stripCount)
+        ? Math.max(1, Math.round(options.stripCount))
+        : RADAR_OVERLAY_VERTICAL_STRIPS;
+
+      const dpr = overlayDevicePixelRatio();
+      const container = map.getContainer();
+      const width = Math.max(1, Math.round(container.clientWidth * dpr));
+      const height = Math.max(1, Math.round(container.clientHeight * dpr));
+
+      if (radarOverlayCanvas.width !== width || radarOverlayCanvas.height !== height) {
+        radarOverlayCanvas.width = width;
+        radarOverlayCanvas.height = height;
+      }
+
+      radarOverlayContext.clearRect(0, 0, width, height);
+      radarOverlayContext.globalAlpha = Number(opacitySlider.value);
+      radarOverlayContext.imageSmoothingEnabled = false;
+
+      const west = radarBounds[0][1];
+      const south = radarBounds[0][0];
+      const east = radarBounds[1][1];
+      const north = radarBounds[1][0];
+      const latSpan = north - south;
+
+      for (let strip = 0; strip < stripCount; strip += 1) {
+        const t0 = strip / stripCount;
+        const t1 = (strip + 1) / stripCount;
+        const srcY = t0 * radarCanvas.height;
+        const srcH = (t1 - t0) * radarCanvas.height;
+
+        const stripNorth = north - t0 * latSpan;
+        const stripSouth = north - t1 * latSpan;
+        const nw = map.project([west, stripNorth]);
+        const se = map.project([east, stripSouth]);
+
+        radarOverlayContext.drawImage(
+          radarCanvas,
+          0, srcY, radarCanvas.width, srcH,
+          nw.x * dpr,
+          nw.y * dpr,
+          (se.x - nw.x) * dpr,
+          (se.y - nw.y) * dpr
+        );
+      }
+
+      radarOverlayContext.globalAlpha = 1;
+    }
+
+    let alertOverlayRedrawFrame = null;
+
+    function requestAlertOverlayRedraw() {
+      if (alertOverlayRedrawFrame !== null) return;
+
+      alertOverlayRedrawFrame = window.requestAnimationFrame(() => {
+        alertOverlayRedrawFrame = null;
+        drawAlertOverlay();
+      });
+    }
+
+    function requestOverlayRedraw(options = {}) {
+      const requestedQuality = options.quality === "interaction" ? "interaction" : "full";
+      if (requestedQuality === "full") {
+        pendingOverlayRedrawQuality = "full";
+      } else if (pendingOverlayRedrawQuality !== "full") {
+        pendingOverlayRedrawQuality = "interaction";
+      }
+
+      if (overlayRedrawFrame !== null) return;
+
+      overlayRedrawFrame = window.requestAnimationFrame(() => {
+        overlayRedrawFrame = null;
+        const useInteractionQuality = pendingOverlayRedrawQuality === "interaction";
+        pendingOverlayRedrawQuality = "full";
+
+        redrawRadarOverlay({
+          stripCount: useInteractionQuality ? RADAR_OVERLAY_INTERACTION_VERTICAL_STRIPS : RADAR_OVERLAY_VERTICAL_STRIPS
+        });
+      });
+    }
+
+    function forceOverlayRedraw() {
+      if (overlayRedrawFrame !== null) {
+        window.cancelAnimationFrame(overlayRedrawFrame);
+        overlayRedrawFrame = null;
+      }
+      pendingOverlayRedrawQuality = "full";
+      syncMapboxLevel2ImageLayerOpacity();
+      redrawRadarOverlay();
+    }
+
+    function drawAlertOverlay() {
+      if (!map) return;
+
+      if (shouldUseMapboxAlertVisualLayers()) {
+        syncMapboxAlertLayerVisibility();
+        if (alertOverlayCanvas) alertOverlayCanvas.style.display = "none";
+        return;
+      }
+
+      if (alertOverlayCanvas) alertOverlayCanvas.style.display = "";
+
+      const dpr = overlayDevicePixelRatio();
+      const container = map.getContainer();
+      const width = Math.max(1, Math.round(container.clientWidth * dpr));
+      const height = Math.max(1, Math.round(container.clientHeight * dpr));
+
+      if (alertOverlayCanvas.width !== width || alertOverlayCanvas.height !== height) {
+        alertOverlayCanvas.width = width;
+        alertOverlayCanvas.height = height;
+      }
+
+      alertOverlayContext.clearRect(0, 0, width, height);
+
+      const alertSourceFeatures = map.getSource(ALERT_SOURCE_ID)?._data?.features;
+      const drawableAlertFeatures = Array.isArray(alertSourceFeatures) && alertSourceFeatures.length
+        ? alertSourceFeatures
+        : activeAlertFeatures;
+
+      if (!drawableAlertFeatures.length || !isAlertOverlayVisible) return;
+
+      alertOverlayContext.lineJoin = "round";
+      alertOverlayContext.lineCap = "round";
+
+      const drawRing = (ring) => {
+        if (!Array.isArray(ring) || ring.length < 2) return;
+        ring.forEach((coord, index) => {
+          if (!Array.isArray(coord) || coord.length < 2) return;
+          const point = map.project([coord[0], coord[1]]);
+          const x = point.x * dpr;
+          const y = point.y * dpr;
+          if (index === 0) {
+            alertOverlayContext.moveTo(x, y);
+          } else {
+            alertOverlayContext.lineTo(x, y);
+          }
+        });
+        alertOverlayContext.closePath();
+      };
+
+      const drawPolygon = (polygonCoordinates) => {
+        if (!Array.isArray(polygonCoordinates) || !polygonCoordinates.length) return;
+        alertOverlayContext.beginPath();
+        polygonCoordinates.forEach(drawRing);
+      };
+
+      const bucketFallback = [];
+      const bucketOther = [];
+      const bucketStorm = [];
+      drawableAlertFeatures.forEach((feature) => {
+        const properties = feature?.properties || {};
+        const isFallback = properties._fallbackGeometry === true;
+        const visibleStorm = properties._visibleStormPolygon === true;
+        if (visibleStorm) bucketStorm.push(feature);
+        else if (isFallback) bucketFallback.push(feature);
+        else bucketOther.push(feature);
+      });
+
+      const drawFeatureFill = (feature) => {
+        const properties = feature?.properties || {};
+        const isFallback = properties._fallbackGeometry === true;
+        const visibleStorm = properties._visibleStormPolygon === true;
+        const hydroVisual = isHydroAlert(properties.event || "") ? alertFallbackStyle(properties.event || "") : null;
+        const fallbackVisual = isFallback ? alertFallbackStyle(properties.event || "") : null;
+        const directAlertPolygon = !isFallback && isStormStyleAlertPolygonEvent(properties.event || "");
+        const fillOpacity = (
+          directAlertPolygon ? 0.22 :
+          isFallback ? (fallbackVisual?.fillOpacity ?? 0.2) :
+          hydroVisual ? (hydroVisual.fillOpacity ?? 0.18) :
+          0.12
+        ) * alertOverlayOpacity;
+        const geometry = feature?.geometry;
+        if (!geometry) return;
+
+        const parentAlertColor = properties._alertColor || alertColor(properties.event || "");
+        alertOverlayContext.fillStyle = parentAlertColor;
+        alertOverlayContext.globalAlpha = fillOpacity;
+        alertOverlayContext.setLineDash([]);
+
+        if (geometry.type === "Polygon") {
+          drawPolygon(geometry.coordinates);
+          alertOverlayContext.fill("evenodd");
+        } else if (geometry.type === "MultiPolygon") {
+          geometry.coordinates.forEach((polygon) => {
+            drawPolygon(polygon);
+            alertOverlayContext.fill("evenodd");
+          });
+        }
+      };
+
+      const drawFeatureStroke = (feature) => {
+        const properties = feature.properties || {};
+        const isFallback = properties._fallbackGeometry === true;
+        const visibleStorm = properties._visibleStormPolygon === true;
+        const isFlashFloodWarning = String(properties.event || "").includes("Flash Flood Warning");
+        const hydroVisual = isHydroAlert(properties.event || "") ? alertFallbackStyle(properties.event || "") : null;
+        const fallbackVisual = isFallback ? alertFallbackStyle(properties.event || "") : null;
+        const zoom = map.getZoom();
+        const styleVisual = isFallback ? fallbackVisual : hydroVisual;
+        const visualMinWidth = styleVisual?.minWidth ?? 0.8;
+        const visualMaxWidth = styleVisual?.maxWidth ?? 1.4;
+        const hydroLineWidth = Math.max(
+          visualMinWidth,
+          Math.min(visualMaxWidth, visualMinWidth + ((zoom - 4) / 7) * (visualMaxWidth - visualMinWidth))
+        );
+        const directAlertPolygon = !isFallback && isStormStyleAlertPolygonEvent(properties.event || "");
+        const lineOpacity = (
+          directAlertPolygon ? 1 :
+          isFallback ? (fallbackVisual?.lineOpacity ?? 0.52) :
+          hydroVisual ? (hydroVisual.lineOpacity ?? 0.58) :
+          0.55
+        ) * alertOverlayOpacity;
+        const lineWidth = directAlertPolygon ? 2.4 : ((isFallback || hydroVisual) ? hydroLineWidth : 1.7);
+        const parentAlertColor = properties._alertColor || alertColor(properties.event || "");
+        alertOverlayContext.strokeStyle = parentAlertColor;
+        alertOverlayContext.globalAlpha = lineOpacity;
+        alertOverlayContext.lineWidth = lineWidth * dpr;
+        if (isFallback) {
+          alertOverlayContext.setLineDash([4 * dpr, 3 * dpr]);
+        } else {
+          alertOverlayContext.setLineDash([]);
+        }
+
+        const geometry = feature.geometry;
+        if (geometry?.type === "Polygon") {
+          drawPolygon(geometry.coordinates);
+          alertOverlayContext.stroke();
+        } else if (geometry?.type === "MultiPolygon") {
+          geometry.coordinates.forEach((polygon) => {
+            drawPolygon(polygon);
+            alertOverlayContext.stroke();
+          });
+        }
+      };
+
+      // Fill pass: fallback below storm polygons.
+      bucketFallback.forEach(drawFeatureFill);
+      bucketOther.forEach(drawFeatureFill);
+      bucketStorm.forEach(drawFeatureFill);
+
+      // Outline pass above fills, with storm outlines on top.
+      bucketFallback.forEach(drawFeatureStroke);
+      bucketOther.forEach(drawFeatureStroke);
+      bucketStorm.forEach(drawFeatureStroke);
+
+      alertOverlayContext.setLineDash([]);
+      alertOverlayContext.globalAlpha = 1;
+    }
+
+    // Homepage source-of-truth event color mapping (index.html getAlertColor).
+    function alertColor(eventName) {
+      const event = String(eventName || "").trim();
+
+      if (!event) return "#58b7ff";
+
+      // Tornado / severe
+      if (event.includes("Tornado Emergency")) return "#ff00ff";
+      if (event.includes("Tornado Warning")) return "#ff0000";
+      if (event.includes("Severe Thunderstorm Warning")) return "#FFBB00";
+      if (event.includes("Special Marine Warning")) return "#ff7a00";
+      if (event.includes("Tornado Watch")) return "#a11d33";
+      if (event.includes("Severe Thunderstorm Watch")) return "#ffbb00";
+
+      // Flood / hydro
+      if (
+        event.includes("Flash Flood Warning") ||
+        event.includes("Flood Warning") ||
+        event.includes("Coastal Flood Warning") ||
+        event.includes("Lakeshore Flood Warning")
+      ) return "#00b84a";
+
+      if (
+        event.includes("Flash Flood Watch") ||
+        event.includes("Flood Watch") ||
+        event.includes("Coastal Flood Watch") ||
+        event.includes("Lakeshore Flood Watch")
+      ) return "#008f38";
+
+      if (
+        event.includes("Flood Advisory") ||
+        event.includes("Coastal Flood Advisory") ||
+        event.includes("Lakeshore Flood Advisory")
+      ) return "#46c96b";
+
+      // Tropical
+      if (
+        event.includes("Hurricane Warning") ||
+        event.includes("Tropical Storm Warning") ||
+        event.includes("Storm Surge Warning")
+      ) return "#9f3671";
+
+      if (
+        event.includes("Hurricane Watch") ||
+        event.includes("Tropical Storm Watch") ||
+        event.includes("Storm Surge Watch")
+      ) return "#c05a9d";
+
+      // Winter
+      if (
+        event.includes("Blizzard Warning") ||
+        event.includes("Ice Storm Warning") ||
+        event.includes("Winter Storm Warning")
+      ) return "#d569e7";
+
+      if (
+        event.includes("Winter Weather Advisory") ||
+        event.includes("Freezing Rain Advisory") ||
+        event.includes("Lake Effect Snow Advisory")
+      ) return "#75a8ff";
+
+      if (
+        event.includes("Wind Chill Warning") ||
+        event.includes("Wind Chill Advisory")
+      ) return "#8bc7ff";
+
+      // Heat / wind / fire
+      if (
+        event.includes("Extreme Heat Warning") ||
+        event.includes("Excessive Heat Warning")
+      ) return "#ff3b1f";
+
+      if (
+        event.includes("Extreme Heat Watch") ||
+        event.includes("Excessive Heat Watch")
+      ) return "#ff7043";
+      if (event.includes("Heat Advisory")) return "#ff8a00";
+      if (
+        event.includes("High Wind Warning") ||
+        event.includes("High Wind Watch")
+      ) return "#c78518";
+      if (
+        event.includes("Wind Advisory") ||
+        event.includes("Lake Wind Advisory")
+      ) return "#ddb04c";
+      if (event.includes("Red Flag Warning")) return "#b83d18";
+      if (event.includes("Fire Weather Watch")) return "#d96d1d";
+
+      // Visibility / smoke / marine statements
+      if (
+        event.includes("Dense Fog") ||
+        event.includes("Dense Smoke")
+      ) return "#8c96a8";
+
+      if (event.includes("Air Quality")) return "#8b8f96";
+
+      if (
+        event.includes("Marine Weather Statement") ||
+        event.includes("Special Weather Statement")
+      ) return "#58b7ff";
+
+      // Sensible fallback for uncommon NWS products.
+      if (event.includes("Warning")) return "#ff7a00";
+      if (event.includes("Watch")) return "#ffbb00";
+      if (event.includes("Advisory")) return "#58b7ff";
+
+      return "#58b7ff";
+    }
+
+
+
+    function alertFallbackStyle(eventName) {
+      const event = String(eventName || "");
+      const base = alertColor(event);
+
+      let fillOpacity = 0.24;
+      let lineOpacity = 0.72;
+      let minWidth = 0.9;
+      let maxWidth = 1.6;
+
+      if (event.includes("Warning")) {
+        fillOpacity = 0.30;
+        lineOpacity = 0.86;
+        minWidth = 1.4;
+        maxWidth = 2.4;
+      } else if (event.includes("Watch")) {
+        fillOpacity = 0.20;
+        lineOpacity = 0.68;
+        minWidth = 1.0;
+        maxWidth = 1.8;
+      } else if (event.includes("Advisory")) {
+        fillOpacity = 0.24;
+        lineOpacity = 0.74;
+        minWidth = 1.0;
+        maxWidth = 1.8;
+      } else if (event.includes("Statement")) {
+        fillOpacity = 0.20;
+        lineOpacity = 0.62;
+        minWidth = 0.8;
+        maxWidth = 1.4;
+      }
+
+      return {
+        fill: base,
+        outline: base,
+        fillOpacity,
+        lineOpacity,
+        minWidth,
+        maxWidth
+      };
+    }
+
+    function alertDrawRank(eventName) {
+      const event = String(eventName || "");
+      if (event.includes("Flash Flood Warning")) return 500;
+      if (event.includes("Flood Warning")) return 420;
+      if (event.includes("Flood Advisory")) return 320;
+      if (event.includes("Flood Watch")) return 220;
+      if (event.includes("Flash Flood Discussion")) return 180;
+      if (event.includes("Warning")) return 300;
+      if (event.includes("Advisory")) return 220;
+      if (event.includes("Watch")) return 180;
+      return 120;
+    }
+
+    function isHydroAlert(eventName) {
+      const event = String(eventName || "");
+      return (
+        event.includes("Flash Flood") ||
+        event.includes("Flood Warning") ||
+        event.includes("Flood Advisory") ||
+        event.includes("Flood Watch") ||
+        event.includes("Flood")
+      );
+    }
+
+    function compactAlertSummary(props) {
+      const eventName = String(props?.event || "");
+      if (eventName.includes("Flash Flood")) return "Flash flooding possible.";
+      if (eventName.includes("Tornado")) return "Take shelter immediately.";
+      if (eventName.includes("Severe Thunderstorm")) return "Damaging winds and hail possible.";
+      if (eventName.includes("Special Marine")) return "Hazardous marine conditions possible.";
+      const headline = String(props?.headline || "").trim();
+      if (!headline) return "Active weather alert.";
+      return headline.length > 84 ? `${headline.slice(0, 84).trim()}...` : headline;
+    }
+    function escapeHtml(value) {
+      return String(value || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll("\"", "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+    function formatPopupExpires(value) {
+      if (!value) return "Unknown";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return String(value);
+      return date.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+    }
+    function formatPopupExpiresIn(value) {
+      if (!value) return "Expires in Unknown.";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return `Expires in ${String(value)}.`;
+      const deltaMs = date.getTime() - Date.now();
+      if (deltaMs <= 0) return "Expired.";
+      const totalMinutes = Math.max(1, Math.round(deltaMs / 60000));
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+      if (hours <= 0) return `Expires in ${minutes} min${minutes === 1 ? "" : "s"}.`;
+      return `Expires in ${hours} hr${hours === 1 ? "" : "s"}, ${minutes} min${minutes === 1 ? "" : "s"}.`;
+    }
+    function alertValue(value) {
+      const text = String(value || "").trim();
+      return text || "N/A";
+    }
+    function isVisibleStormPolygon(eventName) {
+      const event = String(eventName || "").trim();
+
+      // Only direct NWS alert geometry may render visually.
+      // Zone-derived fallback geometry remains excluded by the Mapbox filters.
+      return event.endsWith(" Warning") || event.endsWith(" Watch");
+    }
+
+    function isStormStyleAlertPolygonEvent(eventName) {
+      const event = String(eventName || "");
+      return (
+        event === "Tornado Warning" ||
+        event === "Severe Thunderstorm Warning" ||
+        event === "Flash Flood Warning" ||
+        event === "Special Marine Warning" ||
+        event === "Special Weather Statement" ||
+        event === "Marine Weather Statement"
+      );
+    }
+
+    function mapboxAlertColorExpression() {
+      const event = ["coalesce", ["get", "event"], ""];
+
+      return [
+        "case",
+        [">=", ["index-of", "Tornado Emergency", event], 0], "#ff00ff",
+        [">=", ["index-of", "Tornado Warning", event], 0], "#ff0033",
+        [">=", ["index-of", "Tornado Watch", event], 0], "#A11D33",
+        [">=", ["index-of", "Severe Thunderstorm Warning", event], 0], "#facc15",
+        [">=", ["index-of", "Severe Thunderstorm Watch", event], 0], "#FFBB00",
+        [">=", ["index-of", "Flash Flood Warning", event], 0], "#39ff14",
+        [">=", ["index-of", "Flash Flood Statement", event], 0], "#39ff14",
+        [">=", ["index-of", "Flood", event], 0], "#00a008",
+        [">=", ["index-of", "Hurricane", event], 0], "#a13671",
+        [">=", ["index-of", "Tropical", event], 0], "#a13671",
+        [">=", ["index-of", "Storm Surge", event], 0], "#a13671",
+        [">=", ["index-of", "Winter", event], 0], "#3b9dff",
+        [">=", ["index-of", "Blizzard", event], 0], "#3b9dff",
+        [">=", ["index-of", "Ice Storm", event], 0], "#3b9dff",
+        [">=", ["index-of", "Freeze", event], 0], "#3b9dff",
+        [">=", ["index-of", "Frost", event], 0], "#3b9dff",
+        [">=", ["index-of", "Red Flag", event], 0], "#b83d18",
+        [">=", ["index-of", "Fire Weather", event], 0], "#b83d18",
+        [">=", ["index-of", "Special Weather Statement", event], 0], "#f59e0b",
+        "#58b7ff"
+      ];
+    }
+    function addAlertLayers() {
+      map.addSource(ALERT_SOURCE_ID, { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+      // Transparent fill hitbox keeps polygon interiors clickable while visible outlines are drawn on alertOverlayCanvas.
+      map.addLayer({
+        id: ALERT_FILL_LAYER_ID,
+        type: "fill",
+        source: ALERT_SOURCE_ID,
+        layout: {
+          "fill-sort-key": ["coalesce", ["get", "_alertDrawRank"], 0]
+        },
+        paint: {
+          "fill-color": ["coalesce", ["get", "_alertColor"], "#ffffff"],
+          "fill-opacity": 0
+        }
+      });
+      map.addLayer({
+        id: ALERT_STORM_HITBOX_LAYER_ID,
+        type: "fill",
+        source: ALERT_SOURCE_ID,
+        filter: [
+          "all",
+          ["==", ["get", "_visibleStormPolygon"], true],
+          ["!=", ["get", "_fallbackGeometry"], true]
+        ],
+        layout: {
+          "fill-sort-key": ["coalesce", ["get", "_alertDrawRank"], 0]
+        },
+        paint: {
+          "fill-color": ["coalesce", ["get", "_alertColor"], "#ffffff"],
+          "fill-opacity": 0
+        }
+      });
+      map.addLayer({
+        id: ALERT_LINE_LAYER_ID,
+        type: "line",
+        source: ALERT_SOURCE_ID,
+        filter: [
+          "all",
+          ["==", ["get", "_visibleStormPolygon"], true],
+          ["!=", ["get", "_fallbackGeometry"], true]
+        ],
+        layout: {
+          "line-sort-key": ["coalesce", ["get", "_alertDrawRank"], 0]
+        },
+        paint: {
+          "line-color": ["coalesce", ["get", "_alertColor"], "#ffffff"],
+          "line-opacity": 0,
+          "line-width": ["interpolate", ["linear"], ["zoom"], 4, 1.5, 8, 2.8]
+        }
+      });
+      positionLevel2WeatherLayers();
+      if (typeof syncMapboxAlertLayerVisibility === "function") {
+        syncMapboxAlertLayerVisibility();
+      }
+
+      const onInteract = (event) => {
+        const alertLayerIds = (map.getStyle()?.layers || [])
+          .filter((layer) => layer?.source === ALERT_SOURCE_ID)
+          .map((layer) => layer.id)
+          .filter(Boolean);
+        const renderedFeatures = map.queryRenderedFeatures(event.point, {
+          layers: alertLayerIds
+        });
+        const clickPoint = [event?.lngLat?.lng, event?.lngLat?.lat];
+        const useFallbackPasses = renderedFeatures.length === 0;
+        const geometryContainedFeatures = useFallbackPasses
+          ? (Array.isArray(activeAlertFeatures) ? activeAlertFeatures : [])
+            .filter((feature) => pointInFeatureGeometry(clickPoint, feature?.geometry))
+          : [];
+        const screenSpaceHits = useFallbackPasses
+          ? (Array.isArray(activeAlertFeatures) ? activeAlertFeatures : [])
+            .filter((feature) => {
+              const props = feature?.properties || {};
+              if (props._visibleStormPolygon !== true) return false;
+              return screenFeatureHitTest([event.point.x, event.point.y], feature?.geometry, ALERT_SCREEN_HIT_TOLERANCE_PX);
+            })
+          : [];
+        const sourceDataFeatures = useFallbackPasses
+          ? (() => {
+            const source = map.getSource(ALERT_SOURCE_ID);
+            const sourceData = source?._data;
+            if (!sourceData || !Array.isArray(sourceData.features)) return [];
+            return sourceData.features.filter((feature) => pointInFeatureGeometry(clickPoint, feature?.geometry));
+          })()
+          : [];
+        const clickedFeatures = useFallbackPasses
+          ? [...geometryContainedFeatures, ...sourceDataFeatures, ...screenSpaceHits]
+          : renderedFeatures;
+        if (!clickedFeatures.length) return;
+
+        const dedupedByAlert = [];
+        const seenAlertKeys = new Set();
+        clickedFeatures.forEach((feature, index) => {
+          const props = feature?.properties || {};
+          const dedupeKey = String(
+            props._alertId ||
+            props.id ||
+            `${props.event || "alert"}|${props.effective || ""}|${props.expires || props.ends || ""}`
+          );
+          if (seenAlertKeys.has(dedupeKey)) return;
+          seenAlertKeys.add(dedupeKey);
+          dedupedByAlert.push(feature);
+        });
+        if (!dedupedByAlert.length) return;
+        const eventPriority = (eventName) => {
+          const value = String(eventName || "");
+          if (value.includes("Tornado Warning")) return 0;
+          if (value.includes("Severe Thunderstorm Warning")) return 1;
+          if (value.includes("Flash Flood Warning")) return 2;
+          if (value.includes("Special Marine Warning")) return 3;
+          if (value.includes("Flood Warning")) return 4;
+          if (value.includes("Flood Advisory")) return 5;
+          if (value.includes("Flood Watch")) return 6;
+          if (value.includes("Warning")) return 4;
+          if (value.includes("Watch")) return 7;
+          if (value.includes("Advisory")) return 8;
+          return 9;
+        };
+
+        const sortedFeatures = dedupedByAlert.slice().sort((a, b) => {
+          const aProps = a?.properties || {};
+          const bProps = b?.properties || {};
+          const priorityDiff = eventPriority(aProps.event) - eventPriority(bProps.event);
+          if (priorityDiff !== 0) return priorityDiff;
+          if (aProps._fallbackGeometry === true && bProps._fallbackGeometry !== true) return 1;
+          if (bProps._fallbackGeometry === true && aProps._fallbackGeometry !== true) return -1;
+          return String(aProps.event || "").localeCompare(String(bProps.event || ""));
+        });
+        if (DEBUG_ALERT_STACKING) {
+          console.log("[AlertStacking]", {
+            alertLayerIds,
+            usedFallbackPasses: useFallbackPasses,
+            renderedCount: renderedFeatures.length,
+            renderedEvents: renderedFeatures.map((feature) => feature?.properties?.event || "Unknown Event"),
+            activeContainedCount: geometryContainedFeatures.length,
+            sourceContainedCount: sourceDataFeatures.length,
+            screenHitCount: screenSpaceHits.length,
+            dedupedEvents: dedupedByAlert.map((feature) => feature?.properties?.event || "Unknown Event"),
+            sortedEvents: sortedFeatures.map((feature) => feature?.properties?.event || "Unknown Event")
+          });
+        }
+
+        const cardsHtml = sortedFeatures.map((feature, index) => {
+          const props = feature.properties || {};
+          const eventName = props.event || "Unknown Event";
+          const alertHex = props._alertColor || alertColor(eventName);
+          const expires = formatPopupExpires(props.expires || props.ends);
+          const effective = formatPopupExpires(props.effective);
+          const summary = compactAlertSummary(props);
+          const expiresIn = formatPopupExpiresIn(props.expires || props.ends);
+          return `
+            <div class="omega-alert-item" style="--alert-color:${escapeHtml(alertHex)};">
+              <div class="level2-alert-detail-panel" data-alert-detail-index="${index}">
+                <div class="alert-detail-card">
+                  <div class="alert-detail-hero">
+                    <div class="alert-detail-headline">${escapeHtml(alertValue(props.headline || summary))}</div>
+                    <div class="alert-detail-metrics">
+                      <div class="alert-detail-metric">
+                        <div class="alert-detail-metric-label">Event</div>
+                        <div class="alert-detail-metric-value">${escapeHtml(alertValue(eventName))}</div>
+                      </div>
+                      <div class="alert-detail-metric">
+                        <div class="alert-detail-metric-label">Severity</div>
+                        <div class="alert-detail-metric-value">${escapeHtml(alertValue(props.severity))}</div>
+                      </div>
+                      <div class="alert-detail-metric">
+                        <div class="alert-detail-metric-label">Urgency</div>
+                        <div class="alert-detail-metric-value">${escapeHtml(alertValue(props.urgency))}</div>
+                      </div>
+                      <div class="alert-detail-metric">
+                        <div class="alert-detail-metric-label">Certainty</div>
+                        <div class="alert-detail-metric-value">${escapeHtml(alertValue(props.certainty))}</div>
+                      </div>
+                      <div class="alert-detail-metric">
+                        <div class="alert-detail-metric-label">Effective</div>
+                        <div class="alert-detail-metric-value">${escapeHtml(alertValue(effective))}</div>
+                      </div>
+                      <div class="alert-detail-metric">
+                        <div class="alert-detail-metric-label">Expires</div>
+                        <div class="alert-detail-metric-value">${escapeHtml(alertValue(expires))}</div>
+                      </div>
+                    </div>
+                  </div>
+                  <section class="alert-detail-section">
+                    <div class="alert-detail-section-title">Area</div>
+                    <div class="alert-detail-text">${escapeHtml(alertValue(props.areaDesc))}</div>
+                  </section>
+                  <section class="alert-detail-section">
+                    <div class="alert-detail-section-title">Source</div>
+                    <div class="alert-detail-text">${escapeHtml(alertValue(props.senderName || "National Weather Service"))}</div>
+                  </section>
+                  <section class="alert-detail-section">
+                    <div class="alert-detail-section-title">Description</div>
+                    <div class="alert-detail-text">${escapeHtml(alertValue(props.description || summary))}</div>
+                  </section>
+                  ${props.instruction ? `
+                  <section class="alert-detail-section">
+                    <div class="alert-detail-section-title">Instruction</div>
+                    <div class="alert-detail-text">${escapeHtml(props.instruction)}</div>
+                  </section>` : ""}
+                </div>
+              </div>
+              <div class="omega-alert-card" style="--alert-color: ${escapeHtml(alertHex)};">
+                <div class="omega-alert-header" style="background: ${escapeHtml(alertHex)};"><span class="omega-alert-title">${escapeHtml(eventName)}</span></div>
+                <div class="omega-alert-body">
+                  <div class="omega-alert-expires">${escapeHtml(expiresIn)}</div>
+                  <div class="omega-alert-actions">
+                    <button class="omega-alert-icon-btn omega-alert-details-btn" type="button" aria-expanded="false" title="Details" data-alert-detail-index="${index}">></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join("");
+
+        const html = `
+          <div class="level2-alert-popup-wrap">
+            <div class="omega-alert-popup">
+              <div class="omega-alert-stack">
+                ${cardsHtml}
+              </div>
+            </div>
+          </div>
+        `;
+        if (popup) popup.remove();
+        popup = new mapboxgl.Popup({ className: "level2-alert-popup", closeButton: true, closeOnClick: true, maxWidth: "none", anchor: "bottom", offset: [0, -24] })
+          .setLngLat(event.lngLat)
+          .setHTML(html)
+          .addTo(map);
+        const popupEl = popup.getElement();
+        if (popupEl && popupEl.parentElement !== document.body) {
+          document.body.appendChild(popupEl);
+        }
+        const detailsButtons = popupEl?.querySelectorAll(".omega-alert-details-btn") || [];
+        detailsButtons.forEach((detailsButton) => {
+          detailsButton.addEventListener("click", (clickEvent) => {
+            clickEvent.preventDefault();
+            clickEvent.stopPropagation();
+            const detailIndex = detailsButton.getAttribute("data-alert-detail-index");
+            if (!detailIndex) return;
+            const detailCard = popupEl?.querySelector(`.level2-alert-detail-panel[data-alert-detail-index="${detailIndex}"]`);
+            if (!detailCard) return;
+            const open = detailCard.classList.toggle("is-open");
+            detailsButton.setAttribute("aria-expanded", String(open));
+            detailsButton.textContent = open ? "X" : ">";
+          });
+        });
+      };
+      map.on("mouseenter", ALERT_FILL_LAYER_ID, () => {
+        map.getCanvas().style.cursor = "pointer";
+      });
+      map.on("mouseleave", ALERT_FILL_LAYER_ID, () => {
+        map.getCanvas().style.cursor = "";
+      });
+      map.on("mouseenter", ALERT_STORM_HITBOX_LAYER_ID, () => {
+        map.getCanvas().style.cursor = "pointer";
+      });
+      map.on("mouseleave", ALERT_STORM_HITBOX_LAYER_ID, () => {
+        map.getCanvas().style.cursor = "";
+      });
+      map.on("mouseenter", ALERT_LINE_LAYER_ID, () => {
+        map.getCanvas().style.cursor = "pointer";
+      });
+      map.on("mouseleave", ALERT_LINE_LAYER_ID, () => {
+        map.getCanvas().style.cursor = "";
+      });
+      map.on("click", ALERT_FILL_LAYER_ID, onInteract);
+      map.on("click", ALERT_STORM_HITBOX_LAYER_ID, onInteract);
+      map.on("click", ALERT_LINE_LAYER_ID, onInteract);
+      map.on("touchstart", ALERT_FILL_LAYER_ID, onInteract);
+      map.on("touchstart", ALERT_STORM_HITBOX_LAYER_ID, onInteract);
+      map.on("touchstart", ALERT_LINE_LAYER_ID, onInteract);
+    }
+
+    function addRadarSiteLabels() {
+      const sites = {
+        type: "FeatureCollection",
+        features: [
+          { type: "Feature", properties: { id: "KFCX" }, geometry: { type: "Point", coordinates: [-80.273, 37.024] } },
+          { type: "Feature", properties: { id: "KRAX" }, geometry: { type: "Point", coordinates: [-78.49, 35.665] } },
+          { type: "Feature", properties: { id: "KGSP" }, geometry: { type: "Point", coordinates: [-82.22, 34.883] } },
+          { type: "Feature", properties: { id: "KCAE" }, geometry: { type: "Point", coordinates: [-81.118, 33.949] } },
+          { type: "Feature", properties: { id: "KCLX" }, geometry: { type: "Point", coordinates: [-81.042, 32.656] } },
+          { type: "Feature", properties: { id: "KLTX" }, geometry: { type: "Point", coordinates: [-78.429, 33.989] } },
+          { type: "Feature", properties: { id: "KMRX" }, geometry: { type: "Point", coordinates: [-83.402, 36.169] } },
+          { type: "Feature", properties: { id: "KJKL" }, geometry: { type: "Point", coordinates: [-83.313, 37.591] } },
+          { type: "Feature", properties: { id: "KRLX" }, geometry: { type: "Point", coordinates: [-81.723, 38.311] } },
+          { type: "Feature", properties: { id: "KLWX" }, geometry: { type: "Point", coordinates: [-77.488, 38.976] } },
+          { type: "Feature", properties: { id: "KMHX" }, geometry: { type: "Point", coordinates: [-76.877, 34.775] } },
+          { type: "Feature", properties: { id: "KAKQ" }, geometry: { type: "Point", coordinates: [-77.007, 36.983] } },
+          { type: "Feature", properties: { id: "KILX" }, geometry: { type: "Point", coordinates: [-89.337, 40.151] } },
+          { type: "Feature", properties: { id: "KIND" }, geometry: { type: "Point", coordinates: [-86.280, 39.708] } },
+          { type: "Feature", properties: { id: "KLOT" }, geometry: { type: "Point", coordinates: [-88.084, 41.604] } },
+          { type: "Feature", properties: { id: "KLSX" }, geometry: { type: "Point", coordinates: [-90.683, 38.699] } },
+          { type: "Feature", properties: { id: "KIWX" }, geometry: { type: "Point", coordinates: [-85.700, 41.359] } },
+          { type: "Feature", properties: { id: "KDVN" }, geometry: { type: "Point", coordinates: [-90.581, 41.612] } },
+          { type: "Feature", properties: { id: "KDMX" }, geometry: { type: "Point", coordinates: [-93.722869, 41.731200] } },
+          { type: "Feature", properties: { id: "KOAX" }, geometry: { type: "Point", coordinates: [-96.366819, 41.320369] } },
+          { type: "Feature", properties: { id: "KEAX" }, geometry: { type: "Point", coordinates: [-94.264472, 38.810250] } },
+          { type: "Feature", properties: { id: "KICT" }, geometry: { type: "Point", coordinates: [-97.443056, 37.654444] } },
+          { type: "Feature", properties: { id: "KTWX" }, geometry: { type: "Point", coordinates: [-96.232550, 38.996950] } },
+          { type: "Feature", properties: { id: "KSGF" }, geometry: { type: "Point", coordinates: [-93.400419, 37.235239] } },
+          { type: "Feature", properties: { id: "KVWX" }, geometry: { type: "Point", coordinates: [-87.724532, 38.260335] } },
+          { type: "Feature", properties: { id: "KPAH" }, geometry: { type: "Point", coordinates: [-88.771382, 37.068363] } }
+        ]
+      };
+
+      map.addSource(SITE_SOURCE_ID, { type: "geojson", data: sites });
+      map.addLayer({ id: SITE_CIRCLE_LAYER_ID, type: "circle", source: SITE_SOURCE_ID, paint: { "circle-radius": 16, "circle-color": "#0b1f3f", "circle-opacity": 0.96, "circle-stroke-color": "rgba(148,163,184,0.72)", "circle-stroke-width": 1 } });
+      map.addLayer({ id: SITE_LABEL_LAYER_ID, type: "symbol", source: SITE_SOURCE_ID, layout: { "text-field": ["get", "id"], "text-size": 10, "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"], "text-allow-overlap": true, "text-ignore-placement": true }, paint: { "text-color": "#ffffff" } });
+      const selectRadarSiteFromMap = async (event) => {
+        const site = sanitizeLevel2Site(event?.features?.[0]?.properties?.id || "");
+        if (!LEVEL2_SUPPORTED_SITES.includes(site)) return;
+
+        event?.originalEvent?.stopPropagation?.();
+        event?.originalEvent?.preventDefault?.();
+
+        if (siteSelect) siteSelect.value = site;
+        await changeLevel2Site(site);
+      };
+
+      [SITE_CIRCLE_LAYER_ID, SITE_LABEL_LAYER_ID].forEach((layerId) => {
+        map.on("click", layerId, selectRadarSiteFromMap);
+        map.on("mouseenter", layerId, () => {
+          map.getCanvas().style.cursor = "pointer";
+        });
+        map.on("mouseleave", layerId, () => {
+          map.getCanvas().style.cursor = "";
+        });
+      });
+    }
+
+    function isValidGeometry(geometry) {
+      if (!geometry || typeof geometry !== "object") return false;
+      if (geometry.type === "Polygon") return Array.isArray(geometry.coordinates) && geometry.coordinates.length > 0;
+      if (geometry.type === "MultiPolygon") return Array.isArray(geometry.coordinates) && geometry.coordinates.length > 0;
+      return false;
+    }
+
+    function isTestOrExerciseAlertFeature(feature) {
+      const properties = feature?.properties || {};
+      const status = String(properties.status || "").trim().toLowerCase();
+      if (status === "test" || status === "exercise" || status === "draft") return true;
+
+      const messageType = String(
+        properties.messageType ||
+        properties.message_type ||
+        properties.msgType ||
+        ""
+      ).trim().toLowerCase();
+      if (messageType === "test") return true;
+
+      const eventText = String(properties.event || "").toLowerCase();
+      const headlineText = String(properties.headline || "").toLowerCase();
+      const hasTestText = (text) =>
+        text.includes("test message") ||
+        text.includes("required weekly test") ||
+        text.includes("required monthly test");
+      return hasTestText(eventText) || hasTestText(headlineText);
+    }
+
+    // Alerts shown on the radar should match the homepage Active Weather Alerts categories.
+    // Do not show random NWS products here just because they have county/zone geometry.
+    const HOMEPAGE_RADAR_ALERT_EVENTS = new Set([
+      "Tornado Warning",
+      "Severe Thunderstorm Warning",
+      "Flash Flood Warning",
+      "Flash Flood Watch",
+      "Tornado Watch",
+      "Severe Thunderstorm Watch",
+      "Special Marine Warning",
+      "Marine Weather Statement",
+      "Flash Flood Statement",
+
+      "Hurricane Warning",
+      "Tropical Storm Warning",
+      "Storm Surge Warning",
+
+      "Winter Storm Warning",
+      "Blizzard Warning",
+      "Ice Storm Warning",
+      "Winter Weather Advisory",
+      "Freeze Warning",
+      "Frost Advisory",
+
+      "Flood Warning",
+      "Flood Watch",
+      "Coastal Flood Warning",
+      "Flood Advisory",
+      "Areal Flood Warning",
+      "Areal Flood Watch",
+
+      "Red Flag Warning",
+      "Fire Weather Watch"
+    ]);
+
+    function isHomepageVisibleRadarAlertFeature(feature) {
+      /*
+        Test page: allow every active NWS event through.
+        Test/exercise products and expired alerts are still removed later
+        by normalizeAlertFeature().
+      */
+      return Boolean(String(feature?.properties?.event || "").trim());
+    }
+
+
+
+    function isExpiredAlertFeature(feature) {
+      const properties = feature?.properties || {};
+      const expiresValue = properties.expires || properties.ends;
+      if (!expiresValue) return false;
+
+      const expiresDate = new Date(expiresValue);
+      if (Number.isNaN(expiresDate.getTime())) return false;
+
+      return expiresDate.getTime() <= Date.now();
+    }
+
+    function normalizeAlertFeature(feature, index) {
+      if (isTestOrExerciseAlertFeature(feature) || isExpiredAlertFeature(feature)) {
+        return null;
+      }
+      const properties = feature.properties || {};
+      const alertId = String(feature.id || properties.id || `${properties.event || "alert"}-${index}`);
+      const fallbackStyle = alertFallbackStyle(properties.event || "");
+      const drawRank = alertDrawRank(properties.event || "");
+      return {
+        ...feature,
+        id: alertId,
+        properties: {
+          ...properties,
+          _alertId: alertId,
+          _alertColor: alertColor(properties.event || ""),
+          _alertFallbackFillColor: fallbackStyle.fill,
+          _alertFillColor: fallbackStyle.fill,
+          _alertFallbackLineColor: fallbackStyle.outline,
+          _alertFallbackFillOpacity: fallbackStyle.fillOpacity,
+          _alertFallbackLineOpacity: fallbackStyle.lineOpacity,
+          _alertFallbackMinWidth: fallbackStyle.minWidth,
+          _alertFallbackMaxWidth: fallbackStyle.maxWidth,
+          _alertDrawRank: drawRank,
+          _visibleStormPolygon: isVisibleStormPolygon(properties.event || "")
+        }
+      };
+    }
+
+    function dedupeAlertFeaturesById(features) {
+      const seen = new Set();
+      return features.filter((feature) => {
+        const alertId = feature.properties?._alertId || feature.id;
+        if (!alertId || seen.has(alertId)) return false;
+        seen.add(alertId);
+        return true;
+      });
+    }
+
+    function polygonCoordinatesFromGeometry(geometry) {
+      if (geometry?.type === "Polygon" && Array.isArray(geometry.coordinates)) return [geometry.coordinates];
+      if (geometry?.type === "MultiPolygon" && Array.isArray(geometry.coordinates)) return geometry.coordinates;
+      return [];
+    }
+
+    function pointOnSegment(point, a, b) {
+      const [px, py] = point;
+      const [ax, ay] = a;
+      const [bx, by] = b;
+      const cross = (px - ax) * (by - ay) - (py - ay) * (bx - ax);
+      if (Math.abs(cross) > 1e-12) return false;
+      const dot = (px - ax) * (bx - ax) + (py - ay) * (by - ay);
+      if (dot < 0) return false;
+      const lenSq = (bx - ax) * (bx - ax) + (by - ay) * (by - ay);
+      return dot <= lenSq;
+    }
+
+    function pointInRing(point, ring) {
+      if (!Array.isArray(ring) || ring.length < 3) return false;
+      let inside = false;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const a = ring[i];
+        const b = ring[j];
+        if (!Array.isArray(a) || !Array.isArray(b) || a.length < 2 || b.length < 2) continue;
+        if (pointOnSegment(point, [a[0], a[1]], [b[0], b[1]])) return true;
+        const yi = a[1];
+        const yj = b[1];
+        const xi = a[0];
+        const xj = b[0];
+        const intersects = ((yi > point[1]) !== (yj > point[1])) &&
+          (point[0] < ((xj - xi) * (point[1] - yi)) / ((yj - yi) || Number.EPSILON) + xi);
+        if (intersects) inside = !inside;
+      }
+      return inside;
+    }
+
+    function pointInPolygon(point, polygonCoordinates) {
+      if (!Array.isArray(polygonCoordinates) || !polygonCoordinates.length) return false;
+      if (!pointInRing(point, polygonCoordinates[0])) return false;
+      for (let i = 1; i < polygonCoordinates.length; i++) {
+        if (pointInRing(point, polygonCoordinates[i])) return false;
+      }
+      return true;
+    }
+
+    function pointInFeatureGeometry(point, geometry) {
+      if (!Array.isArray(point) || point.length < 2 || !geometry || typeof geometry !== "object") return false;
+      if (geometry.type === "Polygon") return pointInPolygon(point, geometry.coordinates);
+      if (geometry.type === "MultiPolygon") {
+        return Array.isArray(geometry.coordinates) && geometry.coordinates.some((polygon) => pointInPolygon(point, polygon));
+      }
+      return false;
+    }
+
+    function distancePointToSegmentPx(point, a, b) {
+      const [px, py] = point;
+      const [ax, ay] = a;
+      const [bx, by] = b;
+      const abx = bx - ax;
+      const aby = by - ay;
+      const abLenSq = abx * abx + aby * aby;
+      if (abLenSq <= 1e-12) return Math.hypot(px - ax, py - ay);
+      let t = ((px - ax) * abx + (py - ay) * aby) / abLenSq;
+      t = Math.max(0, Math.min(1, t));
+      const cx = ax + t * abx;
+      const cy = ay + t * aby;
+      return Math.hypot(px - cx, py - cy);
+    }
+
+    function pointInScreenRing(point, ringPoints) {
+      if (!Array.isArray(ringPoints) || ringPoints.length < 3) return false;
+      let inside = false;
+      for (let i = 0, j = ringPoints.length - 1; i < ringPoints.length; j = i++) {
+        const a = ringPoints[i];
+        const b = ringPoints[j];
+        const intersects = ((a[1] > point[1]) !== (b[1] > point[1])) &&
+          (point[0] < ((b[0] - a[0]) * (point[1] - a[1])) / ((b[1] - a[1]) || Number.EPSILON) + a[0]);
+        if (intersects) inside = !inside;
+      }
+      return inside;
+    }
+
+    function screenFeatureHitTest(point, geometry, tolerancePx) {
+      if (!map || !geometry || typeof geometry !== "object") return false;
+      const screenHitPolygon = (polygonCoordinates) => {
+        if (!Array.isArray(polygonCoordinates) || !polygonCoordinates.length) return false;
+        const projectedRings = polygonCoordinates
+          .map((ring) => Array.isArray(ring)
+            ? ring
+              .filter((coord) => Array.isArray(coord) && coord.length >= 2)
+              .map((coord) => {
+                const projected = map.project([coord[0], coord[1]]);
+                return [projected.x, projected.y];
+              })
+            : [])
+          .filter((ring) => ring.length >= 3);
+        if (!projectedRings.length) return false;
+
+        const inOuter = pointInScreenRing(point, projectedRings[0]);
+        let inHole = false;
+        for (let i = 1; i < projectedRings.length; i++) {
+          if (pointInScreenRing(point, projectedRings[i])) {
+            inHole = true;
+            break;
+          }
+        }
+        if (inOuter && !inHole) return true;
+
+        for (const ring of projectedRings) {
+          for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+            if (distancePointToSegmentPx(point, ring[j], ring[i]) <= tolerancePx) return true;
+          }
+        }
+        return false;
+      };
+
+      if (geometry.type === "Polygon") return screenHitPolygon(geometry.coordinates);
+      if (geometry.type === "MultiPolygon") {
+        return Array.isArray(geometry.coordinates) && geometry.coordinates.some((polygon) => screenHitPolygon(polygon));
+      }
+      return false;
+    }
+
+    async function fetchAffectedZoneGeometry(zoneUrl) {
+      try {
+        const response = await fetch(zoneUrl, { headers: { Accept: "application/geo+json" }, cache: "no-cache" });
+        if (!response.ok) {
+          return { zoneUrl, ok: false, status: response.status, geometry: null };
+        }
+        const zone = await response.json();
+        return { zoneUrl, ok: true, status: response.status, geometry: zone?.geometry || null };
+      } catch (_error) {
+        return { zoneUrl, ok: false, status: "", geometry: null };
+      }
+    }
+
+    async function fallbackFeaturesFromAffectedZones(feature) {
+      const affectedZones = Array.isArray(feature.properties?.affectedZones) ? feature.properties.affectedZones : [];
+      const zoneUrls = [...new Set(affectedZones.filter(Boolean))];
+      if (!zoneUrls.length) return { fallbackFeatures: [] };
+
+      const zoneResults = await Promise.allSettled(zoneUrls.map(fetchAffectedZoneGeometry));
+      const zoneFetches = zoneResults.map((result, index) => result.status === "fulfilled"
+        ? result.value
+        : { zoneUrl: zoneUrls[index], ok: false, status: "", geometry: null });
+      const seenZoneGeometry = new Set();
+      const fallbackFeatures = zoneFetches
+        .filter((zoneResult) => zoneResult.ok && polygonCoordinatesFromGeometry(zoneResult.geometry).length)
+        .filter((zoneResult) => {
+          const key = JSON.stringify(zoneResult.geometry);
+          if (seenZoneGeometry.has(key)) return false;
+          seenZoneGeometry.add(key);
+          return true;
+        })
+        .map((zoneResult, index) => ({
+          ...feature,
+          id: `${feature.id}-zone-fallback-${index}`,
+          geometry: zoneResult.geometry,
+          properties: {
+            ...feature.properties,
+            _alertColor: feature.properties?._alertColor || alertColor(feature.properties?.event || ""),
+            _alertFallbackFillColor: feature.properties?._alertFallbackFillColor || alertFallbackStyle(feature.properties?.event || "").fill,
+            _alertFillColor: feature.properties?._alertFillColor || alertFallbackStyle(feature.properties?.event || "").fill,
+            _alertFallbackLineColor: feature.properties?._alertFallbackLineColor || alertFallbackStyle(feature.properties?.event || "").outline,
+            _alertFallbackFillOpacity: feature.properties?._alertFallbackFillOpacity ?? alertFallbackStyle(feature.properties?.event || "").fillOpacity,
+            _alertFallbackLineOpacity: feature.properties?._alertFallbackLineOpacity ?? alertFallbackStyle(feature.properties?.event || "").lineOpacity,
+            _alertFallbackMinWidth: feature.properties?._alertFallbackMinWidth ?? alertFallbackStyle(feature.properties?.event || "").minWidth,
+            _alertFallbackMaxWidth: feature.properties?._alertFallbackMaxWidth ?? alertFallbackStyle(feature.properties?.event || "").maxWidth,
+            _alertDrawRank: feature.properties?._alertDrawRank ?? alertDrawRank(feature.properties?.event || ""),
+            _fallbackGeometry: true,
+            _fallbackZoneUrl: zoneResult.zoneUrl
+          }
+        }));
+
+      return { fallbackFeatures };
+    }
+
+    async function resolveFallbackAlertGeometries(featuresWithoutGeometry) {
+      const MAX_CONCURRENT_ZONE_LOOKUPS = 4;
+      const queue = [...featuresWithoutGeometry];
+      const results = [];
+
+      await Promise.all(
+        Array.from(
+          { length: Math.min(MAX_CONCURRENT_ZONE_LOOKUPS, queue.length) },
+          async () => {
+            while (queue.length) {
+              const original = queue.shift();
+
+              const result = await fallbackFeaturesFromAffectedZones(original)
+                .catch(() => ({ fallbackFeatures: [] }));
+
+              results.push({ original, ...result });
+            }
+          }
+        )
+      );
+
+      return {
+        fallbackFeatures: results.flatMap((result) => result.fallbackFeatures),
+        listedOnlyFeatures: results
+          .filter((result) => !result.fallbackFeatures.length)
+          .map((result) => result.original)
+      };
+    }
+
+    async function fetchNwsAlertsForAreas() {
+      const nwsAlertsProxyUrl = (
+        location.hostname === "localhost" ||
+        location.hostname === "127.0.0.1"
+      )
+        ? "https://zacharologistwx.com/api/nws-alerts"
+        : "/api/nws-alerts";
+
+      const response = await fetch(nwsAlertsProxyUrl, {
+        headers: { Accept: "application/geo+json" },
+        cache: "no-store"
+      });
+
+      if (!response.ok) {
+        throw new Error(`NWS alerts proxy failed: HTTP ${response.status}`);
+      }
+
+      const collection = await response.json();
+
+      return Array.isArray(collection?.features)
+        ? collection.features
+        : [];
+    }
+    async function loadAlerts() {
+      const fetchedFeatures = await fetchNwsAlertsForAreas();
+      const homepageVisibleFeatures = fetchedFeatures.filter(isHomepageVisibleRadarAlertFeature);
+      const normalizedFetchedFeatures = homepageVisibleFeatures.map(normalizeAlertFeature).filter(Boolean);
+      const featuresWithGeometry = dedupeAlertFeaturesById(
+        normalizedFetchedFeatures.filter((feature) => isValidGeometry(feature.geometry))
+      );
+      const directGeometryAlertIds = new Set(
+        featuresWithGeometry.map((feature) => feature.properties?._alertId)
+      );
+      const normalizedFeaturesWithoutGeometry = dedupeAlertFeaturesById(
+        normalizedFetchedFeatures.filter((feature) =>
+          !isValidGeometry(feature.geometry) &&
+          !directGeometryAlertIds.has(feature.properties?._alertId)
+        )
+      );
+      // Zone geometry is intentionally not fetched in the browser.
+      // Direct-polygon alerts still render; zone-only products remain listed.
+      const fallbackFeatures = [];
+      const listedOnlyFeatures = normalizedFeaturesWithoutGeometry;
+
+      activeAlertFeatures = [...featuresWithGeometry, ...fallbackFeatures];
+      activeAlertsWithoutGeometry = listedOnlyFeatures;
+      map.getSource(ALERT_SOURCE_ID).setData({ type: "FeatureCollection", features: activeAlertFeatures });
+      positionLevel2WeatherLayers();
+      if (typeof syncMapboxAlertLayerVisibility === "function") {
+        syncMapboxAlertLayerVisibility();
+      }
+      drawAlertOverlay();
+      const stormCount = activeAlertFeatures.filter((feature) => feature.properties?._visibleStormPolygon === true).length;
+      const fallbackCount = activeAlertFeatures.filter((feature) => feature.properties?._fallbackGeometry === true).length;
+      alertsStatusRow.textContent = `Homepage radar alerts: ${homepageVisibleFeatures.length} active - ${stormCount} storm polygons - ${fallbackCount} zone fallback - ${activeAlertsWithoutGeometry.length} listed only`;
+    }
+
+    function initializeMap() {
+      if (!MAPBOX_TOKEN || !String(MAPBOX_TOKEN).startsWith("pk.")) {
+        statusText.textContent = "Renderer status: missing Mapbox token";
+        return;
+      }
+
+      mapboxgl.accessToken = MAPBOX_TOKEN;
+      if (mapboxgl.prewarm) {
+        mapboxgl.prewarm();
+      }
+
+      const chaseLocation = normalizeChaseLocation(chaseLocationFromUrl());
+      const nearestChaseSite = chaseLocation
+        ? nearestLevel2SiteForLocation(chaseLocation.lat, chaseLocation.lon)
+        : null;
+
+      if (nearestChaseSite && siteSelect) {
+        siteSelect.value = nearestChaseSite;
+      }
+
+      map = new mapboxgl.Map({
+        container: "map",
+        style: MAPBOX_STYLE,
+        center: chaseLocation ? [chaseLocation.lon, chaseLocation.lat] : [-80.5, 37.43],
+        zoom: chaseLocation ? chaseLocation.zoom : 4.92,
+        projection: "mercator",
+        renderWorldCopies: false,
+        bearing: 0,
+        pitch: 0,
+        pitchWithRotate: false,
+        dragRotate: false,
+        touchPitch: false,
+        antialias: false,
+        fadeDuration: 0,
+        attributionControl: true
+      });
+      window.zachLevel2RadarMap = map;
+
+      map.addControl(new mapboxgl.NavigationControl(), "top-left");
+      chaseLocationState.followEnabled = shouldLiveFollowChaseLocation(chaseLocation);
+      updateChaseLocationMarker(chaseLocation);
+      map.dragRotate.disable();
+      map.touchZoomRotate.disableRotation();
+      if (map.setMaxPitch) map.setMaxPitch(0);
+      map.on("rotate", lockOrientation);
+      map.on("pitch", lockOrientation);
+      map.on("movestart", () => {
+        isMapInteracting = true;
+      });
+      map.on("zoomstart", () => {
+        isMapInteracting = true;
+      });
+      map.on("moveend", () => {
+        isMapInteracting = false;
+        forceOverlayRedraw();
+        // Manual radar engine follows map movement internally; do not reload tiles after pan.
+        // scheduleManualLevel2RadarViewRefresh("moveend");
+        if (isMobileLevel2Mode()) {
+          if (mobileLoopLoadRequested && mobileLoopLoadInProgress) startMobileLoopLoadAfterPlay();
+        } else {
+          // scheduleLevel2FrameWarmup({ aroundIndex: currentFrameIndex, delayMs: 900 });
+        }
+      });
+      map.on("zoomend", () => {
+        isMapInteracting = false;
+        forceOverlayRedraw();
+        // Manual radar engine follows map zoom internally; do not reload tiles after zoom.
+        // scheduleManualLevel2RadarViewRefresh("zoomend");
+        if (isMobileLevel2Mode()) {
+          if (mobileLoopLoadRequested && mobileLoopLoadInProgress) startMobileLoopLoadAfterPlay();
+        } else {
+          // scheduleLevel2FrameWarmup({ aroundIndex: currentFrameIndex, delayMs: 900 });
+        }
+      });
+      map.on("move", () => {
+        requestOverlayRedraw({ quality: "interaction" });
+        requestAlertOverlayRedraw();
+      });
+      map.on("zoom", () => {
+        requestOverlayRedraw({ quality: "interaction" });
+        requestAlertOverlayRedraw();
+      });
+      map.on("render", () => {
+        requestAlertOverlayRedraw();
+      });
+      map.on("resize", () => {
+        forceOverlayRedraw();
+        requestAlertOverlayRedraw();
+        scheduleManualLevel2RadarViewRefresh("resize");
+      });
+
+      map.on("load", async () => {
+        try {
+          addAlertLayers();
+          addRadarSiteLabels();
+          setStatusText("loading frame list");
+          await refreshLevel2Frames();
+          currentFrameIndex = Math.max(0, level2Frames.length - 1);
+          resetMobileLoopLoadState();
+          await Promise.all([renderCurrentFrame(), loadAlerts()]);
+
+          map.resize();
+          window.requestAnimationFrame(() => {
+            forceOverlayRedraw();
+            requestAlertOverlayRedraw();
+          });
+
+          map.once("idle", async () => {
+            try {
+              await renderCurrentFrame();
+              forceOverlayRedraw();
+              requestAlertOverlayRedraw();
+            } catch (error) {
+              console.warn("Initial radar redraw after map idle failed", error);
+            }
+          });
+          if (isMobileLevel2Mode()) setStatusText("Latest frame ready");
+          startFrameRefresh();
+          startAlertRefresh();
+          startChaseLocationRefresh();
+          // Manual playback only: show latest frame and wait for Play.
+        } catch (error) {
+          const message = error?.message || "error";
+          statusText.textContent = `Renderer status: failed: ${message}`;
+          errorPanel.style.display = "block";
+          errorPanel.textContent = `Level II renderer failed: ${message}`;
+        }
+      });
+    }
+
+    function updateChaseLocationMarker(chaseLocation) {
+      chaseLocation = normalizeChaseLocation(chaseLocation);
+      if (!chaseLocation) return;
+
+      if (!chaseLocationState.marker) {
+        const markerElement = document.createElement("div");
+        markerElement.className = "chase-location-marker";
+        chaseLocationState.popup = new mapboxgl.Popup({
+          className: "chase-location-popup",
+          closeButton: false,
+          closeOnClick: false,
+          offset: 18
+        }).setText("Zach's Chase Location");
+
+        chaseLocationState.marker = new mapboxgl.Marker({
+          element: markerElement,
+          anchor: "center"
+        })
+          .setLngLat([chaseLocation.lon, chaseLocation.lat])
+          .setPopup(chaseLocationState.popup)
+          .addTo(map);
+      }
+
+      chaseLocationState.marker.setLngLat([chaseLocation.lon, chaseLocation.lat]);
+      chaseLocationState.lastLat = chaseLocation.lat;
+      chaseLocationState.lastLon = chaseLocation.lon;
+
+      if (chaseLocationState.popup) {
+        chaseLocationState.popup.setText("Zach's Chase Location");
+      }
+
+      if (!chaseLocationState.marker.getPopup()?.isOpen()) {
+        chaseLocationState.marker.togglePopup();
+      }
+    }
+
+    async function applyLiveChaseLocation(chaseLocation) {
+      chaseLocation = normalizeChaseLocation(chaseLocation);
+      if (!chaseLocation) return;
+
+      updateChaseLocationMarker(chaseLocation);
+
+      if (chaseLocationState.followEnabled) {
+        map.easeTo({
+          center: [chaseLocation.lon, chaseLocation.lat],
+          duration: 1200,
+          essential: true
+        });
+      }
+
+      const nearestSite = nearestLevel2SiteForLocation(chaseLocation.lat, chaseLocation.lon);
+      const currentSite = siteSelect ? sanitizeLevel2Site(siteSelect.value) : selectedLevel2Site();
+
+      if (nearestSite && nearestSite !== currentSite) {
+        if (siteSelect) siteSelect.value = nearestSite;
+        await changeLevel2Site(nearestSite);
+      }
+    }
+
+    async function refreshLiveChaseLocation() {
+      if (!chaseLocationState.followEnabled || chaseLocationState.refreshInFlight) return;
+
+      try {
+        chaseLocationState.refreshInFlight = true;
+        const response = await fetch(CHASE_STATUS_API, { cache: "no-store" });
+        if (!response.ok) throw new Error(`Chase status ${response.status}`);
+
+        const data = await response.json();
+        const chaseLocation = freshChaseLocationFromStatus(data);
+        if (!chaseLocation) return;
+
+        await applyLiveChaseLocation(chaseLocation);
+      } catch (error) {
+        console.warn("Live chase location refresh failed:", error);
+      } finally {
+        chaseLocationState.refreshInFlight = false;
+      }
+    }
+
+    function startChaseLocationRefresh() {
+      if (!chaseLocationState.followEnabled || chaseLocationState.refreshTimer) return;
+
+      window.setTimeout(refreshLiveChaseLocation, 1200);
+      chaseLocationState.refreshTimer = window.setInterval(
+        refreshLiveChaseLocation,
+        CHASE_LOCATION_REFRESH_MS
+      );
+    }
+
+    function setStatusText(text) {
+      statusText.textContent = `Renderer status: ${text}`;
+    }
+
+    function setMobileRadarOptionsOpen(isOpen) {
+      document.body.classList.toggle("mobile-radar-options-open", isOpen);
+      if (mobileRadarOptionsButton) {
+        mobileRadarOptionsButton.setAttribute("aria-expanded", isOpen ? "true" : "false");
+      }
+    }
+
+    mobileRadarOptionsButton?.addEventListener("click", () => {
+      const nextOpen = !document.body.classList.contains("mobile-radar-options-open");
+      setMobileRadarOptionsOpen(nextOpen);
+    });
+
+
+    previousFrameButton.addEventListener("click", async () => {
+      stopPlayback();
+      await stepFrame(-1);
+    });
+    nextFrameButton.addEventListener("click", async () => {
+      stopPlayback();
+      await stepFrame(1);
+    });
+    playPauseButton.addEventListener("click", togglePlayback);
+    frameSelect?.addEventListener("change", async () => {
+      stopPlayback();
+      currentFrameIndex = Math.max(0, Math.min(level2Frames.length - 1, Number(frameSelect.value) || 0));
+      await renderCurrentFrame();
+    });
+    playbackSpeedSlider?.addEventListener("input", () => {
+      updatePlaybackSpeedDisplay();
+      if (isPlaying) {
+        clearPlaybackTimer();
+        playbackTimer = window.setTimeout(playbackTick, playbackIntervalMs);
+      }
+    });
+    siteSelect?.addEventListener("change", async () => {
+      await changeLevel2Site(siteSelect.value);
+    });
+    productSelect?.addEventListener("change", () => {
+      productSelect.value = "LEVEL2_REF0";
+      setStatusText("Product fixed to LEVEL2_REF0");
+    });
+    opacitySlider.addEventListener("input", updateOpacity);
+    alertOpacityRange?.addEventListener("input", updateAlertOverlayVisibility);
+    toggleAlertOverlayButton?.addEventListener("click", toggleAlertOverlayVisibility);
+    if (siteSelect) {
+      siteSelect.value = initialLevel2Site();
+      persistSelectedLevel2Site(siteSelect.value);
+    }
+
+    updateOpacity();
+    updatePlaybackSpeedDisplay();
+    updateAlertOverlayControls();
+    updatePlaybackButton();
+    updateFrameInfoRow();
+    initializeMap();
+  </script>
+<style id="test-alert-types-popup-styles">
+  #testAlertTypesTrigger {
+    width: 100%;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 10px 0 8px;
+    padding: 8px 10px;
+    border: 1px solid rgba(105, 148, 184, 0.34);
+    border-radius: 5px;
+    background: rgba(4, 14, 26, 0.62);
+    color: #e6f1ff;
+    cursor: pointer;
+    text-align: left;
+  }
+
+  #testAlertTypesTrigger:hover {
+    border-color: rgba(82, 184, 245, 0.72);
+    background: rgba(34, 107, 157, 0.22);
+  }
+
+  #testAlertTypesTrigger strong {
+    font-size: 0.7rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  #testAlertTypesTrigger small {
+    color: rgba(199, 221, 239, 0.76);
+    font-size: 0.63rem;
+    font-weight: 800;
+  }
+
+  #testAlertTypesPopup[hidden] {
+    display: none !important;
+  }
+
+  #testAlertTypesPopup {
+    position: fixed;
+    inset: 0;
+    z-index: 60000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 28px;
+  }
+
+  #testAlertTypesPopup .test-alert-popup-backdrop {
+    position: absolute;
+    inset: 0;
+    border: 0;
+    background: rgba(1, 7, 16, 0.82);
+    backdrop-filter: blur(9px);
+    cursor: pointer;
+  }
+
+  #testAlertTypesPopup .test-alert-popup-panel {
+    position: relative;
+    z-index: 1;
+    width: min(980px, calc(100vw - 56px));
+    height: min(86vh, 820px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid rgba(113, 174, 219, 0.42);
+    border-radius: 10px;
+    background: linear-gradient(145deg, #071525, #020914);
+    box-shadow: 0 26px 90px rgba(0, 0, 0, 0.62);
+  }
+
+  #testAlertTypesPopup .test-alert-popup-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 22px 24px 18px;
+    border-bottom: 1px solid rgba(127, 178, 220, 0.18);
+  }
+
+  #testAlertTypesPopup .test-alert-popup-eyebrow {
+    margin: 0 0 5px;
+    color: #73c9ff;
+    font-size: 0.71rem;
+    font-weight: 900;
+    letter-spacing: 0.14em;
+  }
+
+  #testAlertTypesPopup h2 {
+    margin: 0;
+    color: #f0f7ff;
+    font-size: 1.35rem;
+  }
+
+  #testAlertTypesPopup .test-alert-popup-subtitle {
+    margin: 7px 0 0;
+    color: #a9c2d8;
+    font-size: 0.84rem;
+    line-height: 1.42;
+  }
+
+  #testAlertTypesPopup .test-alert-popup-close {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 auto;
+    border: 1px solid rgba(155, 197, 232, 0.28);
+    border-radius: 7px;
+    background: rgba(124, 177, 219, 0.10);
+    color: #e6f3ff;
+    cursor: pointer;
+    font-size: 1.35rem;
+  }
+
+  #testAlertTypesPopup .test-alert-popup-main {
+    min-height: 0;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    padding: 18px 24px 0;
+  }
+
+  #testAlertTypesPopup .test-alert-search {
+    width: 100%;
+    height: 42px;
+    box-sizing: border-box;
+    margin-bottom: 14px;
+    padding: 9px 12px;
+    border: 1px solid rgba(120, 172, 215, 0.34);
+    border-radius: 7px;
+    outline: none;
+    background: rgba(1, 10, 19, 0.74);
+    color: #edf6ff;
+    font-size: 0.9rem;
+  }
+
+  #testAlertTypesPopup .test-alert-search:focus {
+    border-color: #4fb9ff;
+    box-shadow: 0 0 0 2px rgba(79, 185, 255, 0.12);
+  }
+
+  #testAlertTypesPopup .test-alert-popup-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  #testAlertTypesPopup .test-alert-popup-actions-left {
+    display: flex;
+    gap: 8px;
+  }
+
+  #testAlertTypesPopup .test-alert-popup-actions button,
+  #testAlertTypesPopup .test-alert-group-toggle,
+  #testAlertTypesPopup .test-alert-popup-footer button {
+    min-height: 32px;
+    padding: 6px 10px;
+    border: 1px solid rgba(123, 185, 229, 0.36);
+    border-radius: 5px;
+    background: rgba(65, 139, 192, 0.14);
+    color: #d9f0ff;
+    cursor: pointer;
+    font-size: 0.68rem;
+    font-weight: 850;
+  }
+
+  #testAlertTypesPopup .test-alert-popup-count {
+    color: #9fc5e3;
+    font-size: 0.72rem;
+    font-weight: 750;
+  }
+
+  #testAlertTypesPopup .test-alert-popup-list {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+
+  #testAlertTypesPopup .test-alert-group {
+    margin: 0 0 12px;
+    overflow: hidden;
+    border: 1px solid rgba(112, 166, 207, 0.20);
+    border-radius: 8px;
+    background: rgba(58, 107, 145, 0.06);
+  }
+
+  #testAlertTypesPopup .test-alert-group-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 40px;
+    padding: 0 11px;
+    border-bottom: 1px solid rgba(112, 166, 207, 0.14);
+    background: rgba(56, 114, 157, 0.14);
+  }
+
+  #testAlertTypesPopup .test-alert-group-header strong {
+    margin-right: auto;
+    color: #cfe9ff;
+    font-size: 0.76rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  #testAlertTypesPopup .test-alert-events {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #testAlertTypesPopup .test-alert-event {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr);
+    align-items: center;
+    gap: 9px;
+    min-height: 42px;
+    padding: 7px 11px;
+    border-bottom: 1px solid rgba(105, 148, 184, 0.10);
+    color: #d5e6f7;
+    cursor: pointer;
+  }
+
+  #testAlertTypesPopup .test-alert-event:nth-child(odd) {
+    border-right: 1px solid rgba(105, 148, 184, 0.10);
+  }
+
+  #testAlertTypesPopup .test-alert-event input {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    accent-color: #39bfff;
+  }
+
+  #testAlertTypesPopup .test-alert-event span {
+    overflow: hidden;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  #testAlertTypesPopup .test-alert-empty {
+    padding: 26px 12px;
+    color: #a9c2d8;
+    font-size: 0.86rem;
+    text-align: center;
+  }
+
+  #testAlertTypesPopup .test-alert-popup-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 9px;
+    padding: 16px 24px;
+    border-top: 1px solid rgba(127, 178, 220, 0.18);
+    background: rgba(0, 7, 15, 0.46);
+  }
+
+  #testAlertTypesPopup .test-alert-popup-apply {
+    border-color: rgba(92, 193, 255, 0.72) !important;
+    background: #38aef5 !important;
+    color: #04121e !important;
+  }
+
+  @media (max-width: 768px) {
+    #testAlertTypesPopup {
+      align-items: flex-end;
+      padding: 0;
+    }
+
+    #testAlertTypesPopup .test-alert-popup-panel {
+      width: 100%;
+      height: min(88dvh, 820px);
+      border-bottom-right-radius: 0;
+      border-bottom-left-radius: 0;
+    }
+
+    #testAlertTypesPopup .test-alert-popup-header,
+    #testAlertTypesPopup .test-alert-popup-main,
+    #testAlertTypesPopup .test-alert-popup-footer {
+      padding-left: 16px;
+      padding-right: 16px;
+    }
+  }
+</style>
+<script id="test-alert-types-popup-runtime">
+(() => {
+  "use strict";
+
+  const triggerId = "testAlertTypesTrigger";
+  const popupId = "testAlertTypesPopup";
+
+  const ALERT_TYPE_CATALOG = [
+    // Storm / severe
+    "Tornado Warning",
+    "Tornado Watch",
+    "Severe Thunderstorm Warning",
+    "Severe Thunderstorm Watch",
+    "Extreme Wind Warning",
+    "High Wind Warning",
+    "High Wind Watch",
+    "Wind Advisory",
+    "Lake Wind Advisory",
+    "Dust Storm Warning",
+    "Dust Advisory",
+    "Dense Fog Advisory",
+    "Special Weather Statement",
+
+    // Flood / hydro
+    "Flash Flood Warning",
+    "Flash Flood Watch",
+    "Flood Warning",
+    "Flood Watch",
+    "Flood Advisory",
+    "Coastal Flood Warning",
+    "Coastal Flood Watch",
+    "Coastal Flood Advisory",
+    "Lakeshore Flood Warning",
+    "Lakeshore Flood Watch",
+    "Lakeshore Flood Advisory",
+
+    // Tropical
+    "Hurricane Warning",
+    "Hurricane Watch",
+    "Tropical Storm Warning",
+    "Tropical Storm Watch",
+    "Storm Surge Warning",
+    "Storm Surge Watch",
+
+    // Winter / cold
+    "Blizzard Warning",
+    "Winter Storm Warning",
+    "Winter Storm Watch",
+    "Winter Weather Advisory",
+    "Ice Storm Warning",
+    "Freezing Rain Advisory",
+    "Lake Effect Snow Warning",
+    "Lake Effect Snow Watch",
+    "Lake Effect Snow Advisory",
+    "Snow Squall Warning",
+    "Wind Chill Warning",
+    "Wind Chill Watch",
+    "Wind Chill Advisory",
+    "Extreme Cold Warning",
+    "Extreme Cold Watch",
+    "Cold Weather Advisory",
+    "Freeze Warning",
+    "Freeze Watch",
+    "Frost Advisory",
+
+    // Heat / fire / air quality
+    "Extreme Heat Warning",
+    "Extreme Heat Watch",
+    "Excessive Heat Warning",
+    "Excessive Heat Watch",
+    "Heat Advisory",
+    "Red Flag Warning",
+    "Fire Weather Watch",
+    "Dense Smoke Advisory",
+    "Air Quality Alert",
+    "Air Stagnation Advisory",
+
+    // Marine / coast
+    "Special Marine Warning",
+    "Marine Weather Statement",
+    "Small Craft Advisory",
+    "Gale Warning",
+    "Gale Watch",
+    "Storm Warning",
+    "Storm Watch",
+    "Hurricane Force Wind Warning",
+    "Hurricane Force Wind Watch",
+    "Hazardous Seas Warning",
+    "Hazardous Seas Watch",
+    "Brisk Wind Advisory",
+    "Low Water Advisory",
+    "Beach Hazards Statement",
+    "Rip Current Statement",
+
+    // Other weather hazards
+    "Ashfall Advisory",
+    "Tsunami Warning",
+    "Tsunami Watch",
+    "Tsunami Advisory"
+  ];
+
+  let allFeatures = [];
+  let eventNames = [];
+  let selectedEvents = new Set();
+  let draftEvents = new Set();
+  let lastRawSignature = "";
+  let hasUserSelection = false;
+
+  function eventName(feature) {
+    return String(feature?.properties?.event || "").trim();
+  }
+
+  function featureKey(feature, index) {
+    return String(
+      feature?.properties?._alertId ||
+      feature?.id ||
+      `${eventName(feature)}-${index}`
+    );
+  }
+
+  function signature(features) {
+    return (Array.isArray(features) ? features : [])
+      .map(featureKey)
+      .sort()
+      .join("|");
+  }
+
+  function getMapInstance() {
+    try {
+      return typeof map !== "undefined" ? map : null;
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  function getAlertSource() {
+    try {
+      const sourceId =
+        typeof ALERT_SOURCE_ID !== "undefined"
+          ? ALERT_SOURCE_ID
+          : "nws-alert-polygons";
+
+      return getMapInstance()?.getSource(sourceId) || null;
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  function getRawFeatures() {
+    try {
+      return Array.isArray(activeAlertFeatures)
+        ? activeAlertFeatures.filter((feature) => eventName(feature))
+        : [];
+    } catch (_error) {
+      return [];
+    }
+  }
+
+  function visibleFeatures() {
+    return allFeatures.filter((feature) =>
+      selectedEvents.has(eventName(feature))
+    );
+  }
+
+  function classifyEvent(event) {
+    const value = String(event || "").toLowerCase();
+
+    if (
+      value.includes("small craft") ||
+      value.includes("special marine") ||
+      value.includes("marine weather") ||
+      value.includes("gale") ||
+      value.includes("hazardous seas") ||
+      value.includes("brisk wind") ||
+      value.includes("low water") ||
+      value.includes("hurricane force") ||
+      value.includes("beach hazards") ||
+      value.includes("rip current") ||
+      value === "storm warning" ||
+      value === "storm watch"
+    ) {
+      return "Marine";
+    }
+
+    if (
+      value.includes("tornado") ||
+      value.includes("severe thunderstorm") ||
+      value.includes("extreme wind") ||
+      value.includes("high wind") ||
+      value.includes("wind advisory") ||
+      value.includes("dust storm") ||
+      value.includes("dust advisory") ||
+      value.includes("dense fog") ||
+      value.includes("special weather")
+    ) {
+      return "Storm";
+    }
+
+    if (
+      value.includes("flash flood") ||
+      value.includes("flood") ||
+      value.includes("coastal") ||
+      value.includes("lakeshore")
+    ) {
+      return "Flood";
+    }
+
+    if (
+      value.includes("hurricane") ||
+      value.includes("tropical") ||
+      value.includes("storm surge")
+    ) {
+      return "Tropical";
+    }
+
+    if (
+      value.includes("winter") ||
+      value.includes("blizzard") ||
+      value.includes("ice storm") ||
+      value.includes("freezing") ||
+      value.includes("wind chill") ||
+      value.includes("snow") ||
+      value.includes("extreme cold") ||
+      value.includes("cold weather") ||
+      value.includes("freeze") ||
+      value.includes("frost")
+    ) {
+      return "Winter";
+    }
+
+    if (
+      value.includes("heat") ||
+      value.includes("fire") ||
+      value.includes("red flag") ||
+      value.includes("smoke") ||
+      value.includes("air quality") ||
+      value.includes("air stagnation")
+    ) {
+      return "Fire / Heat";
+    }
+
+    return "Other";
+  }
+
+
+  function updateTrigger() {
+    const summary = document.querySelector(
+      `#${triggerId} [data-alert-types-summary]`
+    );
+
+    if (!summary) return;
+
+    const total = eventNames.length;
+    const selected = selectedEvents.size;
+    const activeTypes = new Set(allFeatures.map(eventName)).size;
+
+    summary.textContent =
+      total === 0
+        ? "Loading..."
+        : selected === total
+          ? `All products · ${activeTypes} active`
+          : `${selected} of ${total} products`;
+  }
+
+
+  function applySelectedEvents() {
+    const source = getAlertSource();
+
+    if (!source) return;
+
+    source.setData({
+      type: "FeatureCollection",
+      features: visibleFeatures()
+    });
+
+    window.requestAnimationFrame(() => {
+      try {
+        if (typeof drawAlertOverlay === "function") {
+          drawAlertOverlay();
+        }
+      } catch (_error) {}
+    });
+
+    updateTrigger();
+  }
+
+  function ensureTrigger() {
+    let trigger = document.getElementById(triggerId);
+
+    if (trigger) return trigger;
+
+    const status = document.getElementById("statusText");
+
+    if (!status) return null;
+
+    trigger = document.createElement("button");
+    trigger.id = triggerId;
+    trigger.type = "button";
+    trigger.innerHTML = `
+      <strong>Alert Types</strong>
+      <small data-alert-types-summary>Loading...</small>
+    `;
+
+    trigger.addEventListener("click", openPopup);
+    status.insertAdjacentElement("beforebegin", trigger);
+
+    return trigger;
+  }
+
+  function ensurePopup() {
+    let popup = document.getElementById(popupId);
+
+    if (popup) return popup;
+
+    popup = document.createElement("div");
+    popup.id = popupId;
+    popup.hidden = true;
+
+    popup.innerHTML = `
+      <button class="test-alert-popup-backdrop"
+              type="button"
+              aria-label="Close alert filters"
+              data-popup-close></button>
+
+      <section class="test-alert-popup-panel"
+               role="dialog"
+               aria-modal="true"
+               aria-labelledby="testAlertTypesTitle">
+        <header class="test-alert-popup-header">
+          <div>
+            <p class="test-alert-popup-eyebrow">NWS MAP OVERLAYS</p>
+            <h2 id="testAlertTypesTitle">Alert Types</h2>
+            <p class="test-alert-popup-subtitle">
+              Select the alert products you want visible on this map.
+            </p>
+          </div>
+
+          <button class="test-alert-popup-close"
+                  type="button"
+                  aria-label="Close alert filters"
+                  data-popup-close>&times;</button>
+        </header>
+
+        <div class="test-alert-popup-main">
+          <input class="test-alert-search"
+                 type="search"
+                 placeholder="Search tornado, wind, heat, flood..."
+                 autocomplete="off"
+                 data-popup-search>
+
+          <div class="test-alert-popup-actions">
+            <div class="test-alert-popup-actions-left">
+              <button type="button" data-popup-select-all>Select All</button>
+              <button type="button" data-popup-deselect-all>Deselect All</button>
+            </div>
+
+            <span class="test-alert-popup-count"
+                  data-popup-count>Loading active alert types...</span>
+          </div>
+
+          <div class="test-alert-popup-list" data-popup-list></div>
+        </div>
+
+        <footer class="test-alert-popup-footer">
+          <button type="button" data-popup-close>Cancel</button>
+          <button type="button"
+                  class="test-alert-popup-apply"
+                  data-popup-apply>Apply Filters</button>
+        </footer>
+      </section>
+    `;
+
+    document.body.appendChild(popup);
+
+    popup.querySelectorAll("[data-popup-close]").forEach((button) => {
+      button.addEventListener("click", closePopup);
+    });
+
+    popup.querySelector("[data-popup-select-all]").addEventListener("click", () => {
+      draftEvents = new Set(eventNames);
+      renderPopup();
+    });
+
+    popup.querySelector("[data-popup-deselect-all]").addEventListener("click", () => {
+      draftEvents = new Set();
+      renderPopup();
+    });
+
+    popup.querySelector("[data-popup-apply]").addEventListener("click", () => {
+      selectedEvents = new Set(draftEvents);
+      hasUserSelection = true;
+      applySelectedEvents();
+      closePopup();
+    });
+
+    popup.querySelector("[data-popup-search]").addEventListener("input", () => {
+      renderPopup();
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !popup.hidden) {
+        closePopup();
+      }
+    });
+
+    return popup;
+  }
+
+  function createEventRow(event) {
+    const label = document.createElement("label");
+    label.className = "test-alert-event";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = draftEvents.has(event);
+
+    checkbox.addEventListener("change", () => {
+      if (checkbox.checked) {
+        draftEvents.add(event);
+      } else {
+        draftEvents.delete(event);
+      }
+
+      updatePopupCount();
+    });
+
+    const text = document.createElement("span");
+    text.textContent = event;
+    text.title = event;
+
+    label.append(checkbox, text);
+    return label;
+  }
+
+  function updatePopupCount() {
+    const popup = document.getElementById(popupId);
+    const count = popup?.querySelector("[data-popup-count]");
+
+    if (!count) return;
+
+    const activeTypes = new Set(allFeatures.map(eventName)).size;
+
+    count.textContent =
+      eventNames.length === 0
+        ? "Loading alert products..."
+        : `${draftEvents.size} of ${eventNames.length} product types selected · ${activeTypes} active now`;
+  }
+
+
+  function renderPopup() {
+    const popup = ensurePopup();
+    const list = popup.querySelector("[data-popup-list]");
+    const search = popup.querySelector("[data-popup-search]");
+    const query = String(search?.value || "").trim().toLowerCase();
+
+    list.replaceChildren();
+
+    const visibleNames = eventNames.filter((event) =>
+      event.toLowerCase().includes(query)
+    );
+
+    if (!visibleNames.length) {
+      const empty = document.createElement("div");
+      empty.className = "test-alert-empty";
+      empty.textContent = eventNames.length
+        ? "No alert types match that search."
+        : "Loading active NWS alert types...";
+      list.appendChild(empty);
+      updatePopupCount();
+      return;
+    }
+
+    const groupOrder = [
+      "Storm",
+      "Flood",
+      "Tropical",
+      "Winter",
+      "Fire / Heat",
+      "Marine",
+      "Other"
+    ];
+
+    const groups = new Map(groupOrder.map((name) => [name, []]));
+
+    visibleNames.forEach((event) => {
+      groups.get(classifyEvent(event)).push(event);
+    });
+
+    groupOrder.forEach((groupName) => {
+      const events = groups.get(groupName);
+
+      if (!events.length) return;
+
+      const group = document.createElement("section");
+      group.className = "test-alert-group";
+
+      const header = document.createElement("div");
+      header.className = "test-alert-group-header";
+
+      const title = document.createElement("strong");
+      title.textContent = groupName;
+
+      const toggle = document.createElement("button");
+      toggle.type = "button";
+      toggle.className = "test-alert-group-toggle";
+
+      const selectedCount = events.filter((event) => draftEvents.has(event)).length;
+
+      toggle.textContent =
+        selectedCount === events.length ? "Clear" : "Select all";
+
+      toggle.addEventListener("click", () => {
+        const allSelected = events.every((event) => draftEvents.has(event));
+
+        events.forEach((event) => {
+          if (allSelected) {
+            draftEvents.delete(event);
+          } else {
+            draftEvents.add(event);
+          }
+        });
+
+        renderPopup();
+      });
+
+      header.append(title, toggle);
+
+      const eventsRoot = document.createElement("div");
+      eventsRoot.className = "test-alert-events";
+
+      events.forEach((event) => {
+        eventsRoot.appendChild(createEventRow(event));
+      });
+
+      group.append(header, eventsRoot);
+      list.appendChild(group);
+    });
+
+    updatePopupCount();
+  }
+
+  function openPopup() {
+    const popup = ensurePopup();
+
+    draftEvents = new Set(selectedEvents);
+    popup.hidden = false;
+    renderPopup();
+
+    window.setTimeout(() => {
+      popup.querySelector("[data-popup-search]")?.focus();
+    }, 0);
+  }
+
+  function closePopup() {
+    const popup = document.getElementById(popupId);
+
+    if (!popup) return;
+
+    popup.hidden = true;
+  }
+
+  function sync() {
+    ensureTrigger();
+
+    const rawFeatures = getRawFeatures();
+
+    if (!rawFeatures.length) {
+      updateTrigger();
+      return;
+    }
+
+    const rawSignature = signature(rawFeatures);
+
+    if (rawSignature !== lastRawSignature) {
+      const priorSelection = new Set(selectedEvents);
+
+      allFeatures = rawFeatures;
+      eventNames = [...new Set([
+        ...ALERT_TYPE_CATALOG,
+        ...allFeatures.map(eventName).filter(Boolean)
+      ])].sort();
+
+      if (!hasUserSelection) {
+        selectedEvents = new Set(eventNames);
+      } else {
+        selectedEvents = new Set(
+          eventNames.filter((event) => priorSelection.has(event))
+        );
+
+        if (!selectedEvents.size) {
+          selectedEvents = new Set(eventNames);
+          hasUserSelection = false;
+        }
+      }
+
+      lastRawSignature = rawSignature;
+      applySelectedEvents();
+      updateTrigger();
+    } else {
+      const sourceData = getAlertSource()?._data?.features || [];
+      const currentSourceSignature = signature(sourceData);
+      const desiredSignature = signature(visibleFeatures());
+
+      if (currentSourceSignature !== desiredSignature) {
+        applySelectedEvents();
+      }
+    }
+  }
+
+  window.setInterval(sync, 500);
+  sync();
+})();
+</script> = signature(visibleFeatures());
+
+      if (currentSourceSignature !== desiredSignature) {
+        applySelectedEvents();
+      }
+    }
+  }
+
+  window.setInterval(sync, 500);
+  sync();
+})();
+</script>
+</body>
+</html>
+

@@ -861,12 +861,95 @@ async function getCachedOpsSummary(request) {
 
   return response;
 }
+
+const NWS_ALERT_PROXY_AREAS = [
+  "AL", "AZ", "AR", "CA", "CO", "CT", "DE", "FL",
+  "GA", "ID", "IL", "IN", "IA", "KS", "KY", "LA",
+  "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT",
+  "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND",
+  "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN",
+  "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY",
+  "DC"
+];
+
+const NWS_ALERT_PROXY_TTL_SECONDS = 120;
+
+async function getCachedNwsAlerts(request) {
+  const cache = caches.default;
+
+  const cacheKey = new Request(
+    new URL("/api/nws-alerts", request.url).toString(),
+    { method: "GET" }
+  );
+
+  const cached = await cache.match(cacheKey);
+
+  if (cached) {
+    return cached;
+  }
+
+  const upstream = await fetch(NWS_ACTIVE_ALERTS_URL, {
+    headers: NWS_HEADERS
+  });
+
+  if (!upstream.ok) {
+    const detail = await upstream.text().catch(() => "");
+
+    throw new Error(
+      `NWS active-alert request failed: HTTP ${upstream.status}` +
+      (detail ? ` - ${detail.slice(0, 220)}` : "")
+    );
+  }
+
+  const collection = await upstream.json();
+  const features = Array.isArray(collection?.features)
+    ? collection.features
+    : [];
+
+  const response = opsJsonResponse(
+    {
+      type: "FeatureCollection",
+      features,
+      generatedAt: new Date().toISOString(),
+      source: NWS_ACTIVE_ALERTS_URL,
+      partialFailures: []
+    },
+    200,
+    NWS_ALERT_PROXY_TTL_SECONDS
+  );
+
+  try {
+    await cache.put(cacheKey, response.clone());
+  } catch (error) {
+    console.warn("Unable to cache NWS alerts response:", error);
+  }
+
+  return response;
+}
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
     if (request.method === "OPTIONS") {
       return jsonResponse({ ok: true });
+    }
+    if (url.pathname === "/api/nws-alerts" && request.method === "GET") {
+      try {
+        return await getCachedNwsAlerts(request);
+      } catch (error) {
+        console.error("NWS alerts proxy failed:", error);
+
+        return opsJsonResponse(
+          {
+            type: "FeatureCollection",
+            features: [],
+            error: "NWS alerts are temporarily unavailable",
+            generatedAt: new Date().toISOString()
+          },
+          503,
+          30
+        );
+      }
     }
 
     if (url.pathname === "/api/ops/summary" && request.method === "GET") {
