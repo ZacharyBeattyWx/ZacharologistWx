@@ -4955,17 +4955,45 @@ body.alert-type-filter-popup-open {
 
     async function fetchAffectedZoneGeometry(zoneUrl) {
       try {
-        const response = await fetch(zoneUrl, { headers: { Accept: "application/geo+json" }, cache: "no-cache" });
+        const proxyUrl = new URL(
+          "https://zacharologistwx.com/api/nws-zone"
+        );
+
+        proxyUrl.searchParams.set("url", String(zoneUrl || ""));
+
+        const response = await fetch(proxyUrl.toString(), {
+          headers: {
+            Accept: "application/geo+json, application/json"
+          },
+          cache: "no-store"
+        });
+
         if (!response.ok) {
-          return { zoneUrl, ok: false, status: response.status, geometry: null };
+          return {
+            zoneUrl,
+            ok: false,
+            status: response.status,
+            geometry: null
+          };
         }
+
         const zone = await response.json();
-        return { zoneUrl, ok: true, status: response.status, geometry: zone?.geometry || null };
+
+        return {
+          zoneUrl,
+          ok: true,
+          status: response.status,
+          geometry: zone?.geometry || null
+        };
       } catch (_error) {
-        return { zoneUrl, ok: false, status: "", geometry: null };
+        return {
+          zoneUrl,
+          ok: false,
+          status: "",
+          geometry: null
+        };
       }
     }
-
     async function fallbackFeaturesFromAffectedZones(feature) {
       const affectedZones = Array.isArray(feature.properties?.affectedZones) ? feature.properties.affectedZones : [];
       const zoneUrls = [...new Set(affectedZones.filter(Boolean))];
@@ -5020,34 +5048,28 @@ body.alert-type-filter-popup-open {
       };
     }
 
-    function nwsAlertsUrlForArea(area) {
-      return `https://api.weather.gov/alerts/active?area=${encodeURIComponent(area)}`;
-    }
-
     async function fetchNwsAlertsForAreas() {
-      const areaResults = await Promise.allSettled(
-        NWS_ALERT_AREAS.map(async (area) => {
-          const response = await fetch(nwsAlertsUrlForArea(area), { headers: { Accept: "application/geo+json" }, cache: "no-cache" });
-          if (!response.ok) throw new Error(`HTTP ${response.status}`);
-          const collection = await response.json();
-          return Array.isArray(collection.features) ? collection.features : [];
-        })
-      );
-      const allFeatures = [];
-      areaResults.forEach((result) => {
-        if (result.status === "fulfilled") allFeatures.push(...result.value);
+      const response = await fetch("https://zacharologistwx.com/api/nws-alerts", {
+        headers: {
+          Accept: "application/geo+json, application/json"
+        },
+        cache: "no-store"
       });
-      const seenAlertIds = new Set();
-      const deduped = [];
-      allFeatures.forEach((feature, index) => {
-        const alertId = String(feature?.id || feature?.properties?.id || `unknown-alert-${index}`);
-        if (seenAlertIds.has(alertId)) return;
-        seenAlertIds.add(alertId);
-        deduped.push(feature);
-      });
-      return deduped;
-    }
 
+      if (!response.ok) {
+        throw new Error(`NWS alert proxy HTTP ${response.status}`);
+      }
+
+      const collection = await response.json();
+
+      if (collection?.error) {
+        throw new Error(String(collection.error));
+      }
+
+      return Array.isArray(collection?.features)
+        ? collection.features
+        : [];
+    }
     async function applyLevel2AlertTypeFilters(
       fetchedFeatures = level2FetchedAlertFeatures
     ) {

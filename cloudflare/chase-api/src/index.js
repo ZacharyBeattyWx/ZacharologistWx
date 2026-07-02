@@ -926,12 +926,104 @@ async function getCachedNwsAlerts(request) {
 
   return response;
 }
+const NWS_ZONE_PROXY_CACHE_TTL_SECONDS = 300;
+
+function normalizeNwsZoneProxyUrl(rawUrl) {
+  try {
+    const url = new URL(String(rawUrl || ""));
+    const host = url.hostname.toLowerCase();
+
+    if (
+      url.protocol !== "https:" ||
+      host !== "api.weather.gov" ||
+      !url.pathname.startsWith("/zones/")
+    ) {
+      return "";
+    }
+
+    url.hash = "";
+    return url.toString();
+  } catch (_error) {
+    return "";
+  }
+}
+
+async function getCachedNwsZone(request) {
+  const requestUrl = new URL(request.url);
+  const upstreamUrl = normalizeNwsZoneProxyUrl(requestUrl.searchParams.get("url"));
+
+  if (!upstreamUrl) {
+    return opsJsonResponse(
+      { error: "Invalid NWS zone URL" },
+      400,
+      60
+    );
+  }
+
+  const cache = caches.default;
+  const cacheKeyUrl = new URL("/api/nws-zone", request.url);
+  cacheKeyUrl.searchParams.set("url", upstreamUrl);
+
+  const cacheKey = new Request(cacheKeyUrl.toString(), {
+    method: "GET"
+  });
+
+  const cached = await cache.match(cacheKey);
+
+  if (cached) {
+    return cached;
+  }
+
+  const upstream = await fetch(upstreamUrl, {
+    headers: NWS_HEADERS
+  });
+
+  if (!upstream.ok) {
+    const detail = await upstream.text().catch(() => "");
+
+    throw new Error(
+      `NWS zone request failed: HTTP ${upstream.status}` +
+      (detail ? ` - ${detail.slice(0, 220)}` : "")
+    );
+  }
+
+  const zone = await upstream.json();
+  const response = opsJsonResponse(
+    zone,
+    200,
+    NWS_ZONE_PROXY_CACHE_TTL_SECONDS
+  );
+
+  try {
+    await cache.put(cacheKey, response.clone());
+  } catch (error) {
+    console.warn("Unable to cache NWS zone geometry:", error);
+  }
+
+  return response;
+}
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
     if (request.method === "OPTIONS") {
       return jsonResponse({ ok: true });
+    }
+    if (url.pathname === "/api/nws-zone" && request.method === "GET") {
+      try {
+        return await getCachedNwsZone(request);
+      } catch (error) {
+        console.error("NWS zone proxy failed:", error);
+
+        return opsJsonResponse(
+          {
+            error: "NWS zone geometry is temporarily unavailable",
+            generatedAt: new Date().toISOString()
+          },
+          503,
+          30
+        );
+      }
     }
     if (url.pathname === "/api/nws-alerts" && request.method === "GET") {
       try {
