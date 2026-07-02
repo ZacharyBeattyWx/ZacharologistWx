@@ -268,7 +268,7 @@ const SPC_REPORT_SOURCES = [
 ];
 
 const NWS_ACTIVE_ALERTS_URL =
-  "https://api.weather.gov/alerts/active?status=actual&message_type=alert";
+  "https://api.weather.gov/alerts/active?status=actual";
 
 const AWC_METAR_URL =
   "https://aviationweather.gov/api/data/metar?ids=KGSO&format=json";
@@ -873,22 +873,52 @@ const NWS_ALERT_PROXY_AREAS = [
 ];
 
 const NWS_ALERT_PROXY_TTL_SECONDS = 120;
+const NWS_ALERT_PROXY_FETCH_CONCURRENCY = 6;
 
-async function getCachedNwsAlerts(request) {
-  const cache = caches.default;
+function normalizeNwsAlertAreas(rawAreas) {
+  const requested = String(rawAreas || "")
+    .split(",")
+    .map((area) => area.trim().toUpperCase())
+    .filter((area) => NWS_ALERT_PROXY_AREAS.includes(area));
 
-  const cacheKey = new Request(
-    new URL("/api/nws-alerts", request.url).toString(),
-    { method: "GET" }
+  return [...new Set(requested)].sort();
+}
+
+function nwsAlertsUrlForArea(area) {
+  return `https://api.weather.gov/alerts/active?area=${encodeURIComponent(area)}`;
+}
+
+async function mapWithConcurrency(items, concurrency, mapper) {
+  if (!Array.isArray(items) || !items.length) return [];
+
+  const results = new Array(items.length);
+  let nextIndex = 0;
+
+  const worker = async () => {
+    while (true) {
+      const itemIndex = nextIndex;
+      nextIndex += 1;
+
+      if (itemIndex >= items.length) return;
+
+      results[itemIndex] = await mapper(items[itemIndex], itemIndex);
+    }
+  };
+
+  const workerCount = Math.min(
+    items.length,
+    Math.max(1, Number(concurrency) || 1)
   );
 
-  const cached = await cache.match(cacheKey);
+  await Promise.all(
+    Array.from({ length: workerCount }, () => worker())
+  );
 
-  if (cached) {
-    return cached;
-  }
+  return results;
+}
 
-  const upstream = await fetch(NWS_ACTIVE_ALERTS_URL, {
+async function fetchNwsAlertFeaturesForArea(area) {
+  const upstream = await fetch(nwsAlertsUrlForArea(area), {
     headers: NWS_HEADERS
   });
 
@@ -896,23 +926,127 @@ async function getCachedNwsAlerts(request) {
     const detail = await upstream.text().catch(() => "");
 
     throw new Error(
-      `NWS active-alert request failed: HTTP ${upstream.status}` +
+      `NWS alerts ${area} request failed: HTTP ${upstream.status}` +
       (detail ? ` - ${detail.slice(0, 220)}` : "")
     );
   }
 
   const collection = await upstream.json();
-  const features = Array.isArray(collection?.features)
+
+  return Array.isArray(collection?.features)
     ? collection.features
     : [];
+}
+
+function dedupeNwsAlertFeatures(features) {
+  const seenAlertIds = new Set();
+
+  return (Array.isArray(features) ? features : []).filter((feature, index) => {
+    const alertId = String(
+      feature?.id ||
+      feature?.properties?.id ||
+      feature?.properties?.identifier ||
+      `unknown-alert-${index}`
+    );
+
+    if (seenAlertIds.has(alertId)) return false;
+
+    seenAlertIds.add(alertId);
+    return true;
+  });
+}
+
+async function getCachedNwsAlerts(request) {
+  const requestUrl = new URL(request.url);
+  const areas = normalizeNwsAlertAreas(
+    requestUrl.searchParams.get("areas")
+  );
+
+  const cache = caches.default;
+  const cacheUrl = new URL("/api/nws-alerts", request.url);
+
+  if (areas.length) {
+    cacheUrl.searchParams.set("areas", areas.join(","));
+  }
+
+  const cacheKey = new Request(cacheUrl.toString(), {
+    method: "GET"
+  });
+
+  const cached = await cache.match(cacheKey);
+
+  if (cached) {
+    return cached;
+  }
+
+  let features = [];
+  let partialFailures = [];
+  let source = NWS_ACTIVE_ALERTS_URL;
+
+  if (areas.length) {
+    source = "https://api.weather.gov/alerts/active?area={state}";
+
+    const areaResults = await mapWithConcurrency(
+      areas,
+      NWS_ALERT_PROXY_FETCH_CONCURRENCY,
+      async (area) => {
+        try {
+          return {
+            area,
+            features: await fetchNwsAlertFeaturesForArea(area),
+            error: ""
+          };
+        } catch (error) {
+          console.warn(`NWS alert-area request failed for ${area}:`, error);
+
+          return {
+            area,
+            features: [],
+            error: String(error?.message || error || "Unknown failure")
+          };
+        }
+      }
+    );
+
+    features = dedupeNwsAlertFeatures(
+      areaResults.flatMap((result) => result.features)
+    );
+
+    partialFailures = areaResults
+      .filter((result) => result.error)
+      .map((result) => ({
+        area: result.area,
+        error: result.error
+      }));
+  } else {
+    const upstream = await fetch(NWS_ACTIVE_ALERTS_URL, {
+      headers: NWS_HEADERS
+    });
+
+    if (!upstream.ok) {
+      const detail = await upstream.text().catch(() => "");
+
+      throw new Error(
+        `NWS active-alert request failed: HTTP ${upstream.status}` +
+        (detail ? ` - ${detail.slice(0, 220)}` : "")
+      );
+    }
+
+    const collection = await upstream.json();
+
+    features = Array.isArray(collection?.features)
+      ? collection.features
+      : [];
+  }
 
   const response = opsJsonResponse(
     {
       type: "FeatureCollection",
       features,
       generatedAt: new Date().toISOString(),
-      source: NWS_ACTIVE_ALERTS_URL,
-      partialFailures: []
+      source,
+      requestedAreas: areas,
+      partialFailures
     },
     200,
     NWS_ALERT_PROXY_TTL_SECONDS
@@ -926,7 +1060,7 @@ async function getCachedNwsAlerts(request) {
 
   return response;
 }
-const NWS_ZONE_PROXY_CACHE_TTL_SECONDS = 300;
+const NWS_ZONE_PROXY_CACHE_TTL_SECONDS = 86400;
 
 function normalizeNwsZoneProxyUrl(rawUrl) {
   try {
