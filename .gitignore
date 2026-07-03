@@ -7,3 +7,6 @@ workers/radar-h2-dispatcher/.wrangler/
 
 /alerts/active-alert-snapshot.json
 /alerts/nws-zone-cache.json.gz
+
+# Generated Level III frame images live in R2; keep only radar/frames.json in Git.
+/radar/frames/**/*.webp

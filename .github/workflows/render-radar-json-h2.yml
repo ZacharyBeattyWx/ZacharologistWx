@@ -613,7 +613,8 @@ jobs:
           mkdir -p "radar/frames/${SITE4}"
           cp -R "$BACKUP_DIR/radar/frames/${SITE4}/${PRODUCT}" "radar/frames/${SITE4}/${PRODUCT}"
 
-          git add radar/frames.json "radar/frames/${SITE4}/${PRODUCT}"
+          # Frame images live in R2. Keep only the catalog in Git so Pages does not publish the archive.
+          git add radar/frames.json
 
           if git diff --cached --quiet; then
             echo "No generated radar output changes to commit."
