@@ -4495,8 +4495,34 @@ body.alert-type-filter-popup-open {
       };
 
       map.addSource(SITE_SOURCE_ID, { type: "geojson", data: sites });
-      map.addLayer({ id: SITE_CIRCLE_LAYER_ID, type: "circle", source: SITE_SOURCE_ID, paint: { "circle-radius": 16, "circle-color": "#0b1f3f", "circle-opacity": 0.96, "circle-stroke-color": "rgba(148,163,184,0.72)", "circle-stroke-width": 1 } });
-      map.addLayer({ id: SITE_LABEL_LAYER_ID, type: "symbol", source: SITE_SOURCE_ID, layout: { "text-field": ["get", "id"], "text-size": 10, "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"], "text-allow-overlap": true, "text-ignore-placement": true }, paint: { "text-color": "#ffffff" } });
+      map.addLayer({
+        id: SITE_CIRCLE_LAYER_ID,
+        type: "circle",
+        source: SITE_SOURCE_ID,
+        paint: {
+          "circle-radius": ["interpolate", ["linear"], ["zoom"], 3, 5, 5, 7, 7, 10, 9, 14, 11, 16],
+          "circle-color": "#0b1f3f",
+          "circle-opacity": ["interpolate", ["linear"], ["zoom"], 3, 0.55, 5, 0.7, 7, 0.88, 9, 0.96],
+          "circle-stroke-color": "rgba(148,163,184,0.72)",
+          "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 3, 0.5, 7, 1, 10, 1.25]
+        }
+      });
+      map.addLayer({
+        id: SITE_LABEL_LAYER_ID,
+        type: "symbol",
+        source: SITE_SOURCE_ID,
+        layout: {
+          "text-field": ["get", "id"],
+          "text-size": ["interpolate", ["linear"], ["zoom"], 3, 0, 5, 0, 6, 8, 8, 9, 10, 10],
+          "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
+          "text-allow-overlap": true,
+          "text-ignore-placement": true
+        },
+        paint: {
+          "text-color": "#ffffff",
+          "text-opacity": ["interpolate", ["linear"], ["zoom"], 3, 0, 5.5, 0, 6.5, 0.85, 8, 1]
+        }
+      });
       const selectRadarSiteFromMap = async (event) => {
         const site = sanitizeLevel2Site(event?.features?.[0]?.properties?.id || "");
         if (!LEVEL2_SUPPORTED_SITES.includes(site)) return;
