@@ -1955,6 +1955,457 @@ body.alert-type-filter-popup-open {
   }
 }
 </style>
+<style id="level2-desktop-workstation-ui">
+@media (min-width: 721px) {
+  .desktop-radar-menu-button,
+  .desktop-radar-drawer,
+  .desktop-radar-drawer-backdrop,
+  .desktop-radar-command-strip,
+  .desktop-radar-playback-dock {
+    position: fixed;
+    z-index: 1200;
+    box-sizing: border-box;
+  }
+
+  .mapboxgl-ctrl-top-left {
+    top: 58px;
+    left: 12px;
+    z-index: 30;
+  }
+
+  .desktop-radar-menu-button {
+    top: 12px;
+    left: 12px;
+    width: 38px;
+    height: 38px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(147, 197, 253, 0.42);
+    border-radius: 6px;
+    background: rgba(5, 12, 24, 0.88);
+    color: #f8fafc;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    cursor: pointer;
+  }
+
+  .desktop-radar-menu-button span,
+  .desktop-radar-menu-button::before,
+  .desktop-radar-menu-button::after {
+    content: "";
+    width: 18px;
+    height: 2px;
+    border-radius: 999px;
+    background: currentColor;
+  }
+
+  .desktop-radar-menu-button {
+    grid-template-rows: repeat(3, 2px);
+    gap: 4px;
+  }
+
+  .desktop-radar-menu-button:hover,
+  .desktop-radar-menu-button:focus-visible,
+  .desktop-radar-command-strip button:hover,
+  .desktop-radar-command-strip button:focus-visible,
+  .desktop-radar-drawer-close:hover,
+  .desktop-radar-drawer-close:focus-visible {
+    border-color: rgba(125, 211, 252, 0.88);
+    background: rgba(30, 83, 132, 0.72);
+    outline: none;
+  }
+
+  .desktop-radar-drawer-backdrop {
+    inset: 0;
+    z-index: 1190;
+    display: none;
+    border: 0;
+    background: rgba(2, 6, 23, 0.08);
+    cursor: default;
+  }
+
+  .desktop-radar-drawer {
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1210;
+    width: min(342px, calc(100vw - 76px));
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid rgba(125, 211, 252, 0.34);
+    background: linear-gradient(180deg, rgba(5, 12, 24, 0.97), rgba(2, 8, 20, 0.94));
+    box-shadow: 18px 0 42px rgba(0, 0, 0, 0.38);
+    color: #f8fafc;
+    transform: translateX(-102%);
+    transition: transform 180ms ease-out;
+    pointer-events: none;
+  }
+
+  body.desktop-radar-drawer-open .desktop-radar-drawer {
+    transform: translateX(0);
+    pointer-events: auto;
+  }
+
+  body.desktop-radar-drawer-open .desktop-radar-drawer-backdrop {
+    display: block;
+  }
+
+  .desktop-radar-drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex: 0 0 auto;
+    min-height: 50px;
+    padding: 8px 10px 8px 14px;
+    border-bottom: 1px solid rgba(125, 211, 252, 0.22);
+    background: rgba(8, 18, 34, 0.58);
+  }
+
+  .desktop-radar-brand {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .desktop-radar-brand strong {
+    font-size: 0.84rem;
+    line-height: 1.1;
+    color: #ffffff;
+  }
+
+  .desktop-radar-brand span {
+    color: #93c5fd;
+    font-size: 0.64rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .desktop-radar-drawer-close {
+    width: 28px;
+    height: 28px;
+    flex: 0 0 auto;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .desktop-radar-drawer-body {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 12px;
+  }
+
+  .desktop-radar-drawer-section {
+    display: grid;
+    gap: 8px;
+    padding: 0 0 11px;
+    margin: 0 0 11px;
+    border-bottom: 1px solid rgba(125, 211, 252, 0.15);
+  }
+
+  .desktop-radar-drawer-section:last-child {
+    border-bottom: 0;
+    margin-bottom: 0;
+  }
+
+  .desktop-radar-drawer-section h2 {
+    margin: 0;
+    color: #bfdbfe;
+    font-size: 0.66rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .desktop-radar-drawer .toolbar-field,
+  .desktop-radar-drawer label {
+    color: #9bcdf6;
+    font-size: 0.66rem;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .desktop-radar-drawer select,
+  .desktop-radar-drawer button,
+  .desktop-radar-playback-dock select,
+  .desktop-radar-playback-dock button {
+    color-scheme: dark;
+  }
+
+  .desktop-radar-drawer select {
+    min-height: 31px;
+    border: 1px solid rgba(129, 183, 225, 0.34);
+    border-radius: 6px;
+    background: rgba(2, 10, 22, 0.92);
+    color: #f8fafc;
+  }
+
+  .desktop-radar-drawer .opacity-toolbar,
+  .desktop-radar-drawer .alert-opacity-toolbar {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 5px;
+  }
+
+  .desktop-radar-drawer .alert-opacity-toolbar {
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+  }
+
+  .desktop-radar-drawer .status,
+  .desktop-radar-drawer .readout,
+  .desktop-radar-drawer .error-panel {
+    padding: 5px 7px;
+    border-left: 2px solid rgba(81, 168, 230, 0.7);
+    border-radius: 4px;
+    background: rgba(18, 45, 74, 0.28);
+    font-size: 0.72rem;
+  }
+
+  .desktop-radar-drawer .loop-load-progress {
+    margin-top: 0;
+  }
+
+  .desktop-radar-advanced {
+    display: block;
+    border: 1px solid rgba(125, 211, 252, 0.16);
+    border-radius: 6px;
+    background: rgba(8, 20, 38, 0.42);
+  }
+
+  .desktop-radar-advanced > summary {
+    min-height: 28px;
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    color: #9bcdf6;
+    font-size: 0.66rem;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  .desktop-radar-advanced-body {
+    display: grid;
+    gap: 8px;
+    padding: 0 8px 8px;
+  }
+
+  .desktop-radar-command-strip {
+    top: 10px;
+    right: 10px;
+    z-index: 1195;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    max-width: min(620px, calc(100vw - 72px));
+    min-height: 34px;
+    padding: 5px 7px;
+    border: 1px solid rgba(125, 211, 252, 0.34);
+    border-radius: 7px;
+    background: rgba(5, 12, 24, 0.8);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28);
+    backdrop-filter: blur(10px);
+    overflow: hidden;
+  }
+
+  .desktop-radar-command-strip button {
+    min-height: 26px;
+    flex: 0 0 auto;
+    border: 1px solid rgba(129, 183, 225, 0.34);
+    border-radius: 999px;
+    background: rgba(22, 53, 83, 0.58);
+    color: #eaf5ff;
+    font-size: 0.69rem;
+    font-weight: 900;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .desktop-radar-command-strip [aria-pressed="true"] {
+    border-color: rgba(66, 187, 255, 0.82);
+    background: rgba(21, 112, 183, 0.68);
+    color: #ffffff;
+  }
+
+  .desktop-radar-strip-status {
+    min-width: 0;
+    color: #dbeafe;
+    font-size: 0.7rem;
+    font-weight: 800;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  body:has(.alert-details-dock.is-open) .desktop-radar-command-strip {
+    right: calc(min(360px, 32vw) + 10px);
+    max-width: min(560px, calc(100vw - min(360px, 32vw) - 72px));
+  }
+
+  .desktop-radar-playback-dock {
+    left: 50%;
+    bottom: 46px;
+    z-index: 1195;
+    width: min(700px, calc(100vw - 44px));
+    min-height: 46px;
+    display: grid;
+    grid-template-columns: auto 1px minmax(170px, 1fr) 1px minmax(150px, 0.8fr);
+    align-items: center;
+    gap: 9px;
+    padding: 7px 9px;
+    border: 1px solid rgba(125, 211, 252, 0.34);
+    border-radius: 8px;
+    background: rgba(5, 12, 24, 0.88);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    transform: translateX(-50%);
+  }
+
+  body.desktop-radar-drawer-open .desktop-radar-playback-dock {
+    left: calc(342px + ((100vw - 342px) / 2));
+  }
+
+  body:has(.alert-details-dock.is-open) .desktop-radar-playback-dock {
+    left: calc((100vw - min(360px, 32vw)) / 2);
+    width: min(640px, calc(100vw - min(360px, 32vw) - 42px));
+  }
+
+  .desktop-radar-playback-slot {
+    min-width: 0;
+  }
+
+  .desktop-radar-playback-divider {
+    width: 1px;
+    height: 28px;
+    background: rgba(148, 163, 184, 0.26);
+  }
+
+  .desktop-radar-playback-dock .speed-toolbar {
+    grid-template-columns: auto minmax(80px, 1fr) auto;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .desktop-radar-playback-dock .speed-toolbar span {
+    font-size: 0.68rem;
+  }
+
+  .desktop-radar-playback-dock .playback-controls {
+    display: inline-flex;
+    gap: 6px;
+    justify-content: center;
+  }
+
+  .desktop-radar-playback-dock .playback-controls button {
+    min-width: 54px;
+    min-height: 31px;
+    padding: 5px 8px;
+    border: 1px solid rgba(129, 183, 225, 0.34);
+    border-radius: 5px;
+    background: rgba(22, 53, 83, 0.72);
+    color: #eaf5ff;
+    font-weight: 900;
+  }
+
+  .desktop-radar-playback-dock #playPauseButton {
+    border-color: rgba(125, 211, 252, 0.74);
+    background: rgba(21, 112, 183, 0.72);
+    color: #ffffff;
+  }
+
+  .desktop-radar-playback-dock label {
+    min-width: 0;
+    color: #9bcdf6;
+    font-size: 0.68rem;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .desktop-radar-playback-dock select {
+    width: 100%;
+    min-width: 0;
+    min-height: 30px;
+    border: 1px solid rgba(129, 183, 225, 0.34);
+    border-radius: 5px;
+    background: rgba(2, 10, 22, 0.9);
+    color: #f8fafc;
+  }
+
+  .right-ui-rail {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(360px, 32vw);
+    height: 100dvh;
+    max-height: 100dvh;
+  }
+
+  .right-ui-rail > .control-card {
+    display: none !important;
+  }
+
+  .right-ui-rail > .alert-details-dock.is-open {
+    flex: 1 1 auto;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+}
+
+@media (min-width: 721px) and (max-width: 1100px) {
+  .desktop-radar-command-strip {
+    max-width: calc(100vw - 68px);
+  }
+
+  .desktop-radar-command-strip button {
+    padding-inline: 7px;
+  }
+
+  .desktop-radar-playback-dock {
+    bottom: 42px;
+    width: min(640px, calc(100vw - 24px));
+    grid-template-columns: auto 1px minmax(140px, 1fr) 1px minmax(120px, 0.8fr);
+    gap: 7px;
+    padding: 7px 8px;
+  }
+
+  .desktop-radar-playback-dock .playback-controls button {
+    min-width: 44px;
+    padding-inline: 6px;
+  }
+
+  body:has(.alert-details-dock.is-open) .desktop-radar-command-strip {
+    right: calc(min(360px, 32vw) + 10px);
+    max-width: min(500px, calc(100vw - min(360px, 32vw) - 68px));
+  }
+
+  body:has(.alert-details-dock.is-open) .desktop-radar-playback-dock {
+    left: calc((100vw - min(360px, 32vw)) / 2);
+    width: min(520px, calc(100vw - min(360px, 32vw) - 34px));
+  }
+}
+
+@media (max-width: 720px) {
+  .desktop-radar-menu-button,
+  .desktop-radar-drawer,
+  .desktop-radar-drawer-backdrop,
+  .desktop-radar-command-strip,
+  .desktop-radar-playback-dock {
+    display: none !important;
+  }
+}
+</style>
 </head>
 <body>
   <div id="map"></div>
@@ -2053,6 +2504,78 @@ body.alert-type-filter-popup-open {
       </div>
       <div id="alertDetailsDockBody" class="alert-details-dock-body"></div>
     </section>
+  </div>
+
+  <button id="desktopRadarMenuButton"
+          class="desktop-radar-menu-button"
+          type="button"
+          aria-label="Open radar controls"
+          aria-controls="desktopRadarDrawer"
+          aria-expanded="false"><span></span></button>
+  <button id="desktopRadarDrawerBackdrop"
+          class="desktop-radar-drawer-backdrop"
+          type="button"
+          aria-label="Close radar controls"
+          hidden></button>
+  <aside id="desktopRadarDrawer"
+         class="desktop-radar-drawer"
+         aria-label="Radar workstation controls"
+         aria-hidden="true">
+    <header class="desktop-radar-drawer-header">
+      <div class="desktop-radar-brand">
+        <strong>Zacharologist</strong>
+        <span>Radar Workstation</span>
+      </div>
+      <button id="desktopRadarDrawerClose"
+              class="desktop-radar-drawer-close"
+              type="button"
+              aria-label="Close radar controls">x</button>
+    </header>
+    <div class="desktop-radar-drawer-body">
+      <section class="desktop-radar-drawer-section" aria-labelledby="desktopRadarDrawerRadarTitle">
+        <h2 id="desktopRadarDrawerRadarTitle">Radar</h2>
+        <div id="desktopRadarDrawerRadarControls"></div>
+        <details class="desktop-radar-advanced">
+          <summary>Advanced Radar</summary>
+          <div id="desktopRadarDrawerAdvancedControls" class="desktop-radar-advanced-body"></div>
+        </details>
+      </section>
+      <section class="desktop-radar-drawer-section" aria-labelledby="desktopRadarDrawerAlertsTitle">
+        <h2 id="desktopRadarDrawerAlertsTitle">Alerts</h2>
+        <div id="desktopRadarDrawerAlertControls"></div>
+      </section>
+      <section class="desktop-radar-drawer-section" aria-labelledby="desktopRadarDrawerStatusTitle">
+        <h2 id="desktopRadarDrawerStatusTitle">Status</h2>
+        <div id="desktopRadarDrawerStatusControls"></div>
+      </section>
+    </div>
+  </aside>
+
+  <div id="desktopRadarCommandStrip"
+       class="desktop-radar-command-strip"
+       aria-label="Radar command strip">
+    <button id="desktopRadarSiteButton"
+            type="button"
+            aria-controls="desktopRadarDrawer">Site KFCX</button>
+    <button id="desktopRadarAlertsButton"
+            type="button"
+            aria-pressed="true">Alerts On</button>
+    <button id="desktopRadarFiltersButton"
+            type="button"
+            aria-controls="desktopRadarDrawer">Filters</button>
+    <span id="desktopRadarStripStatus"
+          class="desktop-radar-strip-status"
+          aria-live="polite">Loading map...</span>
+  </div>
+
+  <div id="desktopRadarPlaybackDock"
+       class="desktop-radar-playback-dock"
+       aria-label="Radar playback dock">
+    <div id="desktopRadarPlaybackControlsSlot" class="desktop-radar-playback-slot"></div>
+    <div class="desktop-radar-playback-divider" aria-hidden="true"></div>
+    <div id="desktopRadarPlaybackSpeedSlot" class="desktop-radar-playback-slot"></div>
+    <div class="desktop-radar-playback-divider" aria-hidden="true"></div>
+    <div id="desktopRadarPlaybackFrameSlot" class="desktop-radar-playback-slot"></div>
   </div>
 
   <script src="scripts/level2-radar-engine.js"></script>
@@ -2391,6 +2914,22 @@ body.alert-type-filter-popup-open {
     const playPauseButton = document.getElementById("playPauseButton");
     const nextFrameButton = document.getElementById("nextFrameButton");
     const mobileRadarOptionsButton = document.getElementById("mobileRadarOptionsButton");
+    const desktopRadarMenuButton = document.getElementById("desktopRadarMenuButton");
+    const desktopRadarDrawer = document.getElementById("desktopRadarDrawer");
+    const desktopRadarDrawerClose = document.getElementById("desktopRadarDrawerClose");
+    const desktopRadarDrawerBackdrop = document.getElementById("desktopRadarDrawerBackdrop");
+    const desktopRadarSiteButton = document.getElementById("desktopRadarSiteButton");
+    const desktopRadarAlertsButton = document.getElementById("desktopRadarAlertsButton");
+    const desktopRadarFiltersButton = document.getElementById("desktopRadarFiltersButton");
+    const desktopRadarStripStatus = document.getElementById("desktopRadarStripStatus");
+    const desktopRadarDrawerRadarControls = document.getElementById("desktopRadarDrawerRadarControls");
+    const desktopRadarDrawerAdvancedControls = document.getElementById("desktopRadarDrawerAdvancedControls");
+    const desktopRadarDrawerAlertControls = document.getElementById("desktopRadarDrawerAlertControls");
+    const desktopRadarDrawerStatusControls = document.getElementById("desktopRadarDrawerStatusControls");
+    const desktopRadarPlaybackDock = document.getElementById("desktopRadarPlaybackDock");
+    const desktopRadarPlaybackControlsSlot = document.getElementById("desktopRadarPlaybackControlsSlot");
+    const desktopRadarPlaybackSpeedSlot = document.getElementById("desktopRadarPlaybackSpeedSlot");
+    const desktopRadarPlaybackFrameSlot = document.getElementById("desktopRadarPlaybackFrameSlot");
 
     let map;
     let popup;
@@ -2696,6 +3235,7 @@ body.alert-type-filter-popup-open {
       }
       frameReadout.textContent = `Frame ${currentFrameIndex + 1}/${level2Frames.length} - ${validText}`;
       frameSelect.value = String(currentFrameIndex);
+      desktopWorkstationUi?.updateStrip?.();
     }
     function syncFrameSelect() {
       if (!frameSelect) return;
@@ -5915,6 +6455,232 @@ body.alert-type-filter-popup-open {
       }
     }
 
+    const desktopWorkstationUi = (() => {
+      const desktopMedia = window.matchMedia("(min-width: 721px)");
+      const movedNodes = new Map();
+      const requiredShell =
+        desktopRadarMenuButton &&
+        desktopRadarDrawer &&
+        desktopRadarDrawerClose &&
+        desktopRadarDrawerBackdrop &&
+        desktopRadarSiteButton &&
+        desktopRadarAlertsButton &&
+        desktopRadarFiltersButton &&
+        desktopRadarStripStatus &&
+        desktopRadarDrawerRadarControls &&
+        desktopRadarDrawerAdvancedControls &&
+        desktopRadarDrawerAlertControls &&
+        desktopRadarDrawerStatusControls &&
+        desktopRadarPlaybackDock &&
+        desktopRadarPlaybackControlsSlot &&
+        desktopRadarPlaybackSpeedSlot &&
+        desktopRadarPlaybackFrameSlot;
+
+      if (!requiredShell) {
+        return {
+          initialize() {}
+        };
+      }
+
+      const siteField = siteSelect?.closest("label");
+      const productField = productSelect?.closest("label");
+      const frameField = frameSelect?.closest("label");
+      const playbackControls = playPauseButton?.closest(".playback-controls");
+      const speedToolbar = playbackSpeedSlider?.closest(".speed-toolbar");
+      const radarOpacityToolbar = opacitySlider?.closest(".opacity-toolbar");
+      const alertOpacityToolbar = alertOpacityRange?.closest(".alert-opacity-toolbar");
+      const alertTypeFilterShell = document.getElementById("alertTypeFilterShell");
+
+      function placeNode(node, target) {
+        if (!node || !target) return;
+
+        if (!movedNodes.has(node)) {
+          const placeholder = document.createComment("desktop workstation placeholder");
+          node.parentNode?.insertBefore(placeholder, node);
+          movedNodes.set(node, placeholder);
+        }
+
+        target.appendChild(node);
+      }
+
+      function restoreNode(node) {
+        const placeholder = movedNodes.get(node);
+        if (!node || !placeholder?.parentNode) return;
+        placeholder.parentNode.insertBefore(node, placeholder.nextSibling);
+      }
+
+      function moveControlsToDesktop() {
+        placeNode(siteField, desktopRadarDrawerRadarControls);
+        placeNode(radarOpacityToolbar, desktopRadarDrawerRadarControls);
+        placeNode(productField, desktopRadarDrawerAdvancedControls);
+
+        placeNode(alertOpacityToolbar, desktopRadarDrawerAlertControls);
+        placeNode(alertTypeFilterShell, desktopRadarDrawerAlertControls);
+
+        placeNode(statusText, desktopRadarDrawerStatusControls);
+        placeNode(loopLoadProgress, desktopRadarDrawerStatusControls);
+        placeNode(frameReadout, desktopRadarDrawerStatusControls);
+        placeNode(alertsStatusRow, desktopRadarDrawerStatusControls);
+        placeNode(errorPanel, desktopRadarDrawerStatusControls);
+
+        placeNode(playbackControls, desktopRadarPlaybackControlsSlot);
+        placeNode(speedToolbar, desktopRadarPlaybackSpeedSlot);
+        placeNode(frameField, desktopRadarPlaybackFrameSlot);
+      }
+
+      function restoreControlsToMobile() {
+        [
+          siteField,
+          productField,
+          radarOpacityToolbar,
+          alertOpacityToolbar,
+          alertTypeFilterShell,
+          statusText,
+          loopLoadProgress,
+          frameReadout,
+          alertsStatusRow,
+          errorPanel,
+          speedToolbar,
+          playbackControls,
+          frameField
+        ].forEach(restoreNode);
+
+        setDrawerOpen(false, { returnFocus: false });
+      }
+
+      function firstDrawerControl() {
+        return desktopRadarDrawer.querySelector(
+          "select, button, input, summary, [tabindex]:not([tabindex='-1'])"
+        );
+      }
+
+      function updateStrip() {
+        const site = sanitizeLevel2Site(siteSelect?.value || DEFAULT_LEVEL2_SITE);
+        const alertLabel = toggleAlertOverlayButton?.textContent || (isAlertOverlayVisible ? "Alerts On" : "Alerts Off");
+        const frame = level2Frames[currentFrameIndex];
+        const validTime = frame?.validTime ? new Date(frame.validTime) : null;
+        const validTimeText = validTime && Number.isFinite(validTime.getTime())
+          ? validTime.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+          : "";
+        const frameStatus = level2Frames.length
+          ? `Frame ${currentFrameIndex + 1} · ${validTimeText || "time unavailable"}`
+          : "No frame available";
+
+        desktopRadarSiteButton.textContent = `Site ${site}`;
+        desktopRadarAlertsButton.textContent = alertLabel;
+        desktopRadarAlertsButton.setAttribute(
+          "aria-pressed",
+          toggleAlertOverlayButton?.getAttribute("aria-pressed") || String(isAlertOverlayVisible)
+        );
+        desktopRadarStripStatus.textContent = frameStatus;
+      }
+
+      function setDrawerOpen(isOpen, options = {}) {
+        const returnFocus = options.returnFocus !== false;
+
+        document.body.classList.toggle("desktop-radar-drawer-open", isOpen);
+        desktopRadarMenuButton.setAttribute("aria-expanded", String(isOpen));
+        desktopRadarDrawer.setAttribute("aria-hidden", String(!isOpen));
+        desktopRadarDrawerBackdrop.hidden = !isOpen;
+
+        if (isOpen) {
+          window.requestAnimationFrame(() => {
+            (options.focusTarget || firstDrawerControl())?.focus?.();
+          });
+          return;
+        }
+
+        if (returnFocus) {
+          desktopRadarMenuButton.focus();
+        }
+      }
+
+      function revealFilterControl(openPopup = false) {
+        const summary = alertTypeFilterShell?.querySelector("summary");
+        setDrawerOpen(true, { focusTarget: summary || alertTypeFilterShell });
+
+        window.requestAnimationFrame(() => {
+          alertTypeFilterShell?.scrollIntoView?.({ block: "center", behavior: "smooth" });
+          summary?.focus?.();
+
+          if (openPopup && summary) {
+            summary.dispatchEvent(
+              new MouseEvent("click", {
+                bubbles: true,
+                cancelable: true,
+                view: window
+              })
+            );
+          }
+        });
+      }
+
+      function syncLayout() {
+        if (desktopMedia.matches) {
+          moveControlsToDesktop();
+          updateStrip();
+        } else {
+          restoreControlsToMobile();
+        }
+      }
+
+      function initialize() {
+        desktopRadarMenuButton.addEventListener("click", () => {
+          setDrawerOpen(!document.body.classList.contains("desktop-radar-drawer-open"));
+        });
+
+        desktopRadarDrawerClose.addEventListener("click", () => setDrawerOpen(false));
+        desktopRadarDrawerBackdrop.addEventListener("click", () => setDrawerOpen(false));
+
+        desktopRadarSiteButton.addEventListener("click", () => {
+          setDrawerOpen(true, { focusTarget: siteSelect });
+        });
+
+        desktopRadarAlertsButton.addEventListener("click", () => {
+          toggleAlertOverlayButton?.click();
+          updateStrip();
+        });
+
+        desktopRadarFiltersButton.addEventListener("click", () => {
+          revealFilterControl(true);
+        });
+
+        document.addEventListener("keydown", (event) => {
+          if (event.key === "Escape" && document.body.classList.contains("desktop-radar-drawer-open")) {
+            event.preventDefault();
+            setDrawerOpen(false);
+          }
+        });
+
+        [siteSelect, toggleAlertOverlayButton, statusText, frameReadout, alertsStatusRow].forEach((node) => {
+          if (!node) return;
+          const observer = new MutationObserver(updateStrip);
+          observer.observe(node, {
+            attributes: true,
+            childList: true,
+            characterData: true,
+            subtree: true
+          });
+        });
+
+        siteSelect?.addEventListener("change", updateStrip);
+        toggleAlertOverlayButton?.addEventListener("click", updateStrip);
+
+        if (desktopMedia.addEventListener) {
+          desktopMedia.addEventListener("change", syncLayout);
+        } else {
+          desktopMedia.addListener(syncLayout);
+        }
+
+        syncLayout();
+      }
+
+      return {
+        initialize,
+        updateStrip
+      };
+    })();
+
     mobileRadarOptionsButton?.addEventListener("click", () => {
       const nextOpen = !document.body.classList.contains("mobile-radar-options-open");
       setMobileRadarOptionsOpen(nextOpen);
@@ -5957,9 +6723,11 @@ body.alert-type-filter-popup-open {
       persistSelectedLevel2Site(siteSelect.value);
     }
 
+    desktopWorkstationUi.initialize();
     updateOpacity();
     updatePlaybackSpeedDisplay();
     updateAlertOverlayControls();
+    desktopWorkstationUi.updateStrip();
     updatePlaybackButton();
     updateFrameInfoRow();
     initializeMap();
