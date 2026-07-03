@@ -1136,12 +1136,78 @@ async function getCachedNwsZone(request) {
 
   return response;
 }
+const NWS_ALERT_SNAPSHOT_OBJECT_KEY =
+  "alerts/active-alert-snapshot.json";
+
+async function getPublishedNwsAlertSnapshot(env) {
+  if (!env.RADAR_BUCKET) {
+    throw new Error("Missing R2 binding: RADAR_BUCKET");
+  }
+
+  const object = await env.RADAR_BUCKET.get(
+    NWS_ALERT_SNAPSHOT_OBJECT_KEY
+  );
+
+  if (!object) {
+    return opsJsonResponse(
+      {
+        error: "Published alert snapshot is not available yet"
+      },
+      404,
+      15
+    );
+  }
+
+  const headers = new Headers();
+
+  object.writeHttpMetadata(headers);
+
+  headers.set(
+    "content-type",
+    object.httpMetadata?.contentType ||
+      "application/geo+json; charset=utf-8"
+  );
+
+  headers.set(
+    "cache-control",
+    "public, max-age=45, stale-while-revalidate=75"
+  );
+
+  headers.set("etag", object.httpEtag);
+  headers.set("access-control-allow-origin", "*");
+  headers.set("access-control-allow-methods", "GET, OPTIONS");
+  headers.set(
+    "access-control-allow-headers",
+    "content-type, authorization"
+  );
+
+  return new Response(object.body, {
+    status: 200,
+    headers
+  });
+}
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
     if (request.method === "OPTIONS") {
       return jsonResponse({ ok: true });
+    }
+    if (url.pathname === "/api/nws-alert-snapshot" && request.method === "GET") {
+      try {
+        return await getPublishedNwsAlertSnapshot(env);
+      } catch (error) {
+        console.error("Published alert snapshot failed:", error);
+
+        return opsJsonResponse(
+          {
+            error: "Published alert snapshot is temporarily unavailable",
+            generatedAt: new Date().toISOString()
+          },
+          503,
+          15
+        );
+      }
     }
     if (url.pathname === "/api/nws-zone" && request.method === "GET") {
       try {

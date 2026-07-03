@@ -1,0 +1,118 @@
+name: Publish NWS Alert Snapshot
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  repository_dispatch:
+    types: [nws_alert_snapshot]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nws-alert-snapshot
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Restore persistent NWS zone cache from R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_EC2_METADATA_DISABLED: true
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          R2_ENDPOINT="https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com"
+          CACHE_OBJECT="s3://${{ secrets.R2_BUCKET }}/alerts/nws-zone-cache.json.gz"
+
+          mkdir -p alerts
+
+          if aws s3 ls "$CACHE_OBJECT" --endpoint-url "$R2_ENDPOINT" >/dev/null 2>&1; then
+            aws s3 cp "$CACHE_OBJECT" "alerts/nws-zone-cache.json.gz" \
+              --endpoint-url "$R2_ENDPOINT"
+          else
+            echo "No prior zone cache found; this run will seed it."
+          fi
+
+      - name: Build ready-to-render alert snapshot
+        run: |
+          python scripts/alerts/build_active_alert_snapshot.py \
+            --output alerts/active-alert-snapshot.json \
+            --zone-cache alerts/nws-zone-cache.json.gz
+
+      - name: Validate alert snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          snapshot = json.loads(
+              Path("alerts/active-alert-snapshot.json").read_text(
+                  encoding="utf-8"
+              )
+          )
+
+          stats = snapshot.get("stats") or {}
+          features = snapshot.get("features") or []
+
+          if snapshot.get("type") != "FeatureCollection":
+              raise SystemExit("Snapshot is not a GeoJSON FeatureCollection")
+
+          if not features:
+              raise SystemExit("Snapshot unexpectedly contains zero map features")
+
+          print(f"generatedAt={snapshot.get('generatedAt')}")
+          print(f"snapshotFeatures={len(features)}")
+          print(f"zoneFetchRequests={stats.get('zoneFetchRequests')}")
+          print(f"cachedZoneGeometryHits={stats.get('cachedZoneGeometryHits')}")
+          print(f"resolvedFallbackAlerts={stats.get('resolvedFallbackAlerts')}")
+          print(f"listedOnlyAlerts={stats.get('listedOnlyAlerts')}")
+          PY
+
+      - name: Publish zone cache and alert snapshot to R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_EC2_METADATA_DISABLED: true
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          R2_ENDPOINT="https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com"
+          REMOTE_DIR="s3://${{ secrets.R2_BUCKET }}/alerts"
+
+          # Cache first. The old working snapshot remains available if this job fails later.
+          aws s3 cp \
+            "alerts/nws-zone-cache.json.gz" \
+            "$REMOTE_DIR/nws-zone-cache.json.gz" \
+            --cache-control "no-cache" \
+            --content-type "application/gzip" \
+            --endpoint-url "$R2_ENDPOINT"
+
+          # Snapshot is the browser-facing source of truth, so publish it last.
+          aws s3 cp \
+            "alerts/active-alert-snapshot.json" \
+            "$REMOTE_DIR/active-alert-snapshot.json" \
+            --cache-control "no-cache, no-store, must-revalidate" \
+            --content-type "application/geo+json" \
+            --endpoint-url "$R2_ENDPOINT"
