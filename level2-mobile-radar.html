@@ -1719,6 +1719,242 @@ body.alert-type-filter-popup-open {
   }
 }
 </style>
+
+<style id="level2-desktop-rail-refinement">
+@media (min-width: 721px) {
+  /*
+    Desktop-only visual refinement.
+    Mobile controls and mobile alert popups remain unchanged.
+  */
+  .right-ui-rail {
+    gap: 10px;
+  }
+
+  .right-ui-rail > .control-card {
+    padding: 12px;
+    gap: 10px;
+    border-color: rgba(113, 174, 219, 0.38);
+    background:
+      linear-gradient(180deg, rgba(10, 23, 42, 0.97), rgba(4, 10, 22, 0.92));
+  }
+
+  .right-ui-rail > .control-card .card-header {
+    min-height: 28px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(113, 174, 219, 0.18);
+  }
+
+  .right-ui-rail > .control-card .card-title {
+    color: #eaf5ff;
+    font-size: 0.78rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .right-ui-rail > .control-card label {
+    color: #9bcdf6;
+    font-size: 0.68rem;
+    font-weight: 900;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .right-ui-rail > .control-card select {
+    min-height: 32px;
+    border: 1px solid rgba(129, 183, 225, 0.34);
+    border-radius: 6px;
+    background: rgba(2, 10, 22, 0.9);
+    color: #f8fafc;
+    color-scheme: dark;
+    font-size: 0.78rem;
+  }
+
+  .right-ui-rail > .control-card .primary-controls-row {
+    padding-bottom: 9px;
+    border-bottom: 1px solid rgba(113, 174, 219, 0.16);
+  }
+
+  .right-ui-rail > .control-card .playback-controls button,
+  .right-ui-rail > .control-card #toggleAlertOverlayButton {
+    min-height: 32px;
+    border: 1px solid rgba(129, 183, 225, 0.34);
+    border-radius: 6px;
+    background: rgba(41, 82, 121, 0.28);
+    color: #eaf5ff;
+    font-weight: 800;
+  }
+
+  .right-ui-rail > .control-card .playback-controls button:hover,
+  .right-ui-rail > .control-card #toggleAlertOverlayButton:hover {
+    border-color: rgba(116, 202, 255, 0.9);
+    background: rgba(35, 126, 188, 0.34);
+  }
+
+  .right-ui-rail > .control-card #toggleAlertOverlayButton[aria-pressed="true"] {
+    border-color: rgba(66, 187, 255, 0.82);
+    background: rgba(21, 112, 183, 0.5);
+    color: #ffffff;
+  }
+
+  .right-ui-rail > .control-card .status,
+  .right-ui-rail > .control-card .readout {
+    padding: 5px 7px;
+    border-left: 2px solid rgba(81, 168, 230, 0.7);
+    border-radius: 4px;
+    background: rgba(18, 45, 74, 0.28);
+    font-size: 0.71rem;
+  }
+
+  /*
+    The inspector stays independently scrollable but no longer
+    attempts to consume the entire remaining rail.
+  */
+  .alert-details-dock.is-open {
+    flex: 0 1 min(38vh, 360px);
+    max-height: min(38vh, 360px);
+  }
+
+  .alert-details-dock {
+    border-color: rgba(113, 174, 219, 0.34);
+    background:
+      linear-gradient(180deg, rgba(9, 21, 39, 0.97), rgba(3, 9, 20, 0.95));
+  }
+
+  .alert-details-dock-header {
+    min-height: 38px;
+    background: rgba(13, 31, 54, 0.92);
+  }
+
+  .alert-details-dock-body {
+    padding: 10px 12px 12px;
+    scrollbar-gutter: stable;
+  }
+
+  .alert-details-dock .alert-detail-card {
+    gap: 10px;
+  }
+}
+</style>
+
+<style id="level2-desktop-rail-geometry-fix">
+@media (min-width: 721px) {
+  /*
+    Keep the desktop inspector concept, but restore map space
+    and normalize the single Frame field.
+  */
+  .right-ui-rail {
+    top: 18px;
+    right: 18px;
+    width: clamp(320px, 23vw, 390px);
+    height: auto;
+    max-height: calc(100vh - 36px);
+  }
+
+  .right-ui-rail > .control-card .select-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .right-ui-rail > .control-card .select-row > label {
+    width: 100%;
+  }
+
+  .alert-details-dock.is-open {
+    flex: 0 0 min(33vh, 310px);
+    height: min(33vh, 310px);
+    max-height: min(33vh, 310px);
+  }
+}
+
+/*
+  Narrow desktop / tablet landscape:
+  preserve a usable map instead of letting the rail dominate.
+*/
+@media (min-width: 721px) and (max-width: 1100px) {
+  .right-ui-rail {
+    top: 14px;
+    right: 14px;
+    width: min(360px, calc(100vw - 40px));
+    max-height: calc(100vh - 28px);
+  }
+
+  .alert-details-dock.is-open {
+    flex-basis: min(28vh, 240px);
+    height: min(28vh, 240px);
+    max-height: min(28vh, 240px);
+  }
+}
+</style>
+
+<style id="level2-desktop-rail-half-split">
+@media (min-width: 721px) {
+  /*
+    Width correction:
+    100% now includes each card's padding and borders.
+    This stops Radar + Alerts from extending farther right
+    than Alert Details.
+  */
+  .right-ui-rail > .panel {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+  }
+
+  /*
+    When details are open, split the usable right rail
+    evenly between controls and the inspector.
+  */
+  .right-ui-rail:has(.alert-details-dock.is-open) {
+    height: calc(100dvh - 28px);
+    max-height: calc(100dvh - 28px);
+  }
+
+  .right-ui-rail:has(.alert-details-dock.is-open) > .control-card,
+  .right-ui-rail:has(.alert-details-dock.is-open) > .alert-details-dock.is-open {
+    flex: 1 1 0;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+  }
+
+  .right-ui-rail:has(.alert-details-dock.is-open) > .control-card {
+    overflow-y: auto;
+  }
+
+  .right-ui-rail:has(.alert-details-dock.is-open) > .alert-details-dock.is-open {
+    display: flex;
+  }
+}
+</style>
+
+<style id="level2-desktop-rail-edge-pin">
+@media (min-width: 721px) {
+  /*
+    Keep the two-panel split, but remove the outer viewport gutter.
+  */
+  .right-ui-rail,
+  .right-ui-rail:has(.alert-details-dock.is-open) {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    height: 100dvh;
+    max-height: 100dvh;
+  }
+
+  /*
+    Make the outer rail edges actually meet the viewport cleanly.
+  */
+  .right-ui-rail > .control-card {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+  }
+
+  .right-ui-rail > .alert-details-dock.is-open {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+}
+</style>
 </head>
 <body>
   <div id="map"></div>
