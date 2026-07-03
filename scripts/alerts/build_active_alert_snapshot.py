@@ -428,9 +428,13 @@ def build_snapshot(
 
         if not fallback_parts:
             listed_only_alerts.append({
-                "id": parent_alert_id,
-                "event": properties.get("event") or "",
-                "headline": properties.get("headline") or "",
+                "type": "Feature",
+                "id": feature.get("id") or parent_alert_id,
+                "geometry": None,
+                "properties": {
+                    **properties,
+                    "_snapshotListedOnly": True,
+                },
             })
             continue
 
@@ -461,7 +465,7 @@ def build_snapshot(
 
     return {
         "type": "FeatureCollection",
-        "schemaVersion": 2,
+        "schemaVersion": 3,
         "generatedAt": generated_at,
         "requestedAreas": areas,
         "features": resolved_features,

@@ -5120,16 +5120,18 @@ body.alert-type-filter-popup-open {
     }
 
     async function fetchNwsAlertsForAreas() {
-      const proxyUrl = new URL(
-        "https://zacharologistwx.com/api/nws-alerts"
+      const snapshotUrl = new URL(
+        "https://zacharologistwx.com/api/nws-alert-snapshot"
       );
 
-      proxyUrl.searchParams.set(
-        "areas",
-        NWS_ALERT_AREAS.join(",")
+      // A stable per-minute key allows a completed snapshot to stay reusable
+      // while still moving to the newest published version quickly.
+      snapshotUrl.searchParams.set(
+        "v",
+        String(Math.floor(Date.now() / 60000))
       );
 
-      const response = await fetch(proxyUrl.toString(), {
+      const response = await fetch(snapshotUrl.toString(), {
         headers: {
           Accept: "application/geo+json, application/json"
         },
@@ -5137,7 +5139,7 @@ body.alert-type-filter-popup-open {
       });
 
       if (!response.ok) {
-        throw new Error(`NWS alert proxy HTTP ${response.status}`);
+        throw new Error(`NWS alert snapshot HTTP ${response.status}`);
       }
 
       const collection = await response.json();
@@ -5146,15 +5148,21 @@ body.alert-type-filter-popup-open {
         throw new Error(String(collection.error));
       }
 
-      return Array.isArray(collection?.features)
+      const mapFeatures = Array.isArray(collection?.features)
         ? collection.features
         : [];
+
+      const listedOnlyFeatures = Array.isArray(
+        collection?.listedOnlyAlerts
+      )
+        ? collection.listedOnlyAlerts
+        : [];
+
+      return [...mapFeatures, ...listedOnlyFeatures];
     }
     async function applyLevel2AlertTypeFilters(
       fetchedFeatures = level2FetchedAlertFeatures
     ) {
-      const applyToken = ++level2AlertFilterApplyToken;
-
       const activeFetchedFeatures = (
         Array.isArray(fetchedFeatures) ? fetchedFeatures : []
       ).filter((feature) => {
@@ -5170,8 +5178,6 @@ body.alert-type-filter-popup-open {
       const selectedFeatures = activeFetchedFeatures.filter(
         isLevel2AlertFeatureEnabled
       );
-
-      updateLevel2AlertTypeFilterUi(activeFetchedFeatures);
 
       const normalizedFetchedFeatures = selectedFeatures
         .map(normalizeAlertFeature)
@@ -5189,7 +5195,7 @@ body.alert-type-filter-popup-open {
         )
       );
 
-      const normalizedFeaturesWithoutGeometry = dedupeAlertFeaturesById(
+      const listedOnlyFeatures = dedupeAlertFeaturesById(
         normalizedFetchedFeatures.filter((feature) =>
           !isValidGeometry(feature.geometry) &&
           !directGeometryAlertIds.has(feature.properties?._alertId)
@@ -5215,71 +5221,31 @@ body.alert-type-filter-popup-open {
         drawAlertOverlay();
       };
 
-      // First paint: direct NWS polygons show immediately.
+      // The snapshot already contains merged county/zone geometry.
+      // Publish one complete dataset; never clear counties while resolving them.
       activeAlertFeatures = [...featuresWithGeometry];
-      activeAlertsWithoutGeometry = [];
+      activeAlertsWithoutGeometry = [...listedOnlyFeatures];
+
       publishMapboxAlerts();
 
-      const directStormCount = activeAlertFeatures.filter(
+      const stormCount = activeAlertFeatures.filter(
         (feature) => feature.properties?._visibleStormPolygon === true
+      ).length;
+
+      const fallbackCount = activeAlertFeatures.filter(
+        (feature) => feature.properties?._fallbackGeometry === true
       ).length;
 
       if (alertsStatusRow) {
         alertsStatusRow.textContent =
           `Map alert filters: ${selectedFeatures.length} shown of ` +
           `${activeFetchedFeatures.length} active - ` +
-          `${directStormCount} direct polygons ready - ` +
-          `resolving zone fallback`;
+          `${stormCount} storm polygons - ` +
+          `${fallbackCount} snapshot fallback - ` +
+          `${activeAlertsWithoutGeometry.length} listed only`;
       }
 
-      // Second paint: all fallback zone geometry arrives together.
-      // Do not await this here; the map should never sit empty while it resolves.
-      resolveFallbackAlertGeometries(normalizedFeaturesWithoutGeometry)
-        .then(({ fallbackFeatures, listedOnlyFeatures }) => {
-          if (applyToken !== level2AlertFilterApplyToken) return;
-
-          activeAlertFeatures = [
-            ...featuresWithGeometry,
-            ...fallbackFeatures
-          ];
-
-          activeAlertsWithoutGeometry = listedOnlyFeatures;
-          publishMapboxAlerts();
-
-          const stormCount = activeAlertFeatures.filter(
-            (feature) => feature.properties?._visibleStormPolygon === true
-          ).length;
-
-          const fallbackCount = activeAlertFeatures.filter(
-            (feature) => feature.properties?._fallbackGeometry === true
-          ).length;
-
-          if (alertsStatusRow) {
-            alertsStatusRow.textContent =
-              `Map alert filters: ${selectedFeatures.length} shown of ` +
-              `${activeFetchedFeatures.length} active - ` +
-              `${stormCount} storm polygons - ` +
-              `${fallbackCount} zone fallback - ` +
-              `${activeAlertsWithoutGeometry.length} listed only`;
-          }
-
-          updateLevel2AlertTypeFilterUi(activeFetchedFeatures);
-        })
-        .catch((error) => {
-          if (applyToken !== level2AlertFilterApplyToken) return;
-
-          console.warn("Alert fallback resolution failed:", error);
-
-          activeAlertsWithoutGeometry = normalizedFeaturesWithoutGeometry;
-
-          if (alertsStatusRow) {
-            alertsStatusRow.textContent =
-              `Map alert filters: ${selectedFeatures.length} shown of ` +
-              `${activeFetchedFeatures.length} active - ` +
-              `${directStormCount} direct polygons ready - ` +
-              `zone fallback temporarily unavailable`;
-          }
-        });
+      updateLevel2AlertTypeFilterUi(activeFetchedFeatures);
     }
     async function loadAlerts() {
       const fetchedFeatures = await fetchNwsAlertsForAreas();
