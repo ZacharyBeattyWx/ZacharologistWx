@@ -4460,6 +4460,11 @@ body.alert-type-filter-popup-open {
       // Keep outlines for direct polygons only. Fallback zones remain fill-only
       // so broad watches do not rebuild the old county-slab clutter.
       if (map.getLayer(ALERT_LINE_LAYER_ID)) {
+        map.setPaintProperty(
+          ALERT_LINE_LAYER_ID,
+          "line-emissive-strength",
+          1
+        );
         map.setPaintProperty(ALERT_LINE_LAYER_ID, "line-opacity", [
           "case",
 
@@ -4898,33 +4903,76 @@ body.alert-type-filter-popup-open {
 
     // Homepage source-of-truth event color mapping (index.html getAlertColor).
     function alertColor(eventName) {
-      const event = String(eventName || "");
-      if (!event) return "#58b7ff";
+      const event = String(eventName || "").trim();
+      if (!event) return "#58B7FF";
 
-      if (event.includes("Tornado Emergency")) return "#ff00ff";
+      // Storm
+      if (event.includes("Tornado Emergency")) return "#FF00FF";
+      if (event.includes("Tornado Warning") || event.includes("Particularly Dangerous Situation")) return "#E01E37";
+      if (event.includes("Severe Thunderstorm Warning")) return "#FFD900";
+      if (event.includes("Special Marine Warning")) return "#FF9D00";
       if (event.includes("Tornado Watch")) return "#A11D33";
       if (event.includes("Severe Thunderstorm Watch")) return "#FFBB00";
+      if (event.includes("Severe Weather Statement")) return "#58D7FF";
 
+      // Hydro
+      if (event.includes("Flash Flood Warning") || event.includes("Flash Flood Statement")) return "#00C4A7";
+      if (event.includes("Flash Flood Watch")) return "#2FCF79";
+      if (event.includes("Flash Flood Advisory")) return "#62E586";
+      if (event.includes("Flood Warning") || event.includes("Flood Statement")) return "#00AA08";
+      if (event.includes("Flood Watch")) return "#2FCF79";
+      if (event.includes("Flood Advisory")) return "#62E586";
+
+      // Tropical
+      if (event.includes("Storm Surge Warning")) return "#B55AEF";
+      if (event.includes("Hurricane Warning") || event.includes("Hurricane Force Wind Warning")) return "#D34588";
+      if (event.includes("Tropical Storm Warning")) return "#BF3479";
+      if (event.includes("Storm Surge Watch")) return "#CD89F4";
+      if (event.includes("Hurricane Watch") || event.includes("Hurricane Force Wind Watch")) return "#F080C6";
+      if (event.includes("Tropical Storm Watch")) return "#E96FAC";
+
+      // Winter / cold
+      if (event.includes("Blizzard Warning")) return "#748CFF";
+      if (event.includes("Snow Squall Warning")) return "#E754C8";
+      if (event.includes("Ice Storm Warning")) return "#C875FF";
+      if (event.includes("Winter Storm Warning")) return "#DF74D7";
+      if (event.includes("Lake Effect Snow Warning")) return "#55C7D0";
       if (
-        event.includes("Tornado Warning") ||
-        event.includes("Particularly Dangerous Situation")
-      ) {
-        return "#E01E37";
-      }
+        event.includes("Winter Weather Advisory") ||
+        event.includes("Freezing Rain Advisory") ||
+        event.includes("Lake Effect Snow Advisory")
+      ) return "#AB7CFF";
+      if (event.includes("Freeze Warning") || event.includes("Freeze Watch")) return "#6EDCE4";
+      if (event.includes("Frost Advisory")) return "#4E8DE6";
+      if (event.includes("Extreme Cold Warning") || event.includes("Wind Chill Warning")) return "#59A6FF";
+      if (event.includes("Extreme Cold Watch") || event.includes("Wind Chill Watch")) return "#72B7FF";
+      if (event.includes("Cold Weather Advisory") || event.includes("Wind Chill Advisory")) return "#8BC7FF";
 
-      if (event.includes("Severe Thunderstorm")) return "#FFD900";
-      if (event.includes("Flash Flood")) return "#00c4a7";
-      if (event.includes("Flood")) return "#00aa08";
+      // Heat / wind / fire
+      if (event.includes("Extreme Heat Warning") || event.includes("Excessive Heat Warning")) return "#C71585";
+      if (event.includes("Extreme Heat Watch") || event.includes("Excessive Heat Watch")) return "#A51466";
+      if (event.includes("Heat Advisory")) return "#FF7F50";
+      if (event.includes("High Wind Warning")) return "#E2AE38";
+      if (event.includes("High Wind Watch")) return "#D09225";
+      if (event.includes("Wind Advisory") || event.includes("Lake Wind Advisory")) return "#E7BE63";
+      if (event.includes("Red Flag Warning")) return "#FF5D00";
+      if (event.includes("Fire Weather Watch")) return "#FF9840";
 
-      if (event.includes("Winter Storm")) return "#df74d7";
-      if (event.includes("Winter Weather")) return "#ab7cff";
-      if (event.includes("Freeze")) return "#6edce4";
-      if (event.includes("Frost")) return "#4e8de6";
-      if (event.includes("Blizzard")) return "#748cff";
+      // Marine / visibility / general
+      if (event.includes("High Surf")) return "#49C995";
+      if (event.includes("Rip Current") || event.includes("Beach Hazards")) return "#45D7E8";
+      if (event.includes("Gale")) return "#C887E9";
+      if (event.includes("Hazardous Seas")) return "#8D7AE8";
+      if (event.includes("Small Craft") || event.includes("Brisk Wind")) return "#B5A0E8";
+      if (event.includes("Dense Fog")) return "#A7B3C7";
+      if (event.includes("Dense Smoke")) return "#D7C47D";
+      if (event.includes("Air Quality") || event.includes("Air Stagnation")) return "#B1B7C3";
+      if (event.includes("Marine Weather Statement") || event.includes("Special Weather Statement")) return "#58B7FF";
 
-      if (event.includes("Red Flag") || event.includes("Fire Weather")) return "#ff5d00";
-
-      return "#58b7ff";
+      if (event.includes("Warning")) return "#FF9D00";
+      if (event.includes("Watch")) return "#FFBB00";
+      if (event.includes("Advisory")) return "#58B7FF";
+      return "#58B7FF";
     }
 
     function alertFallbackStyle(eventName) {
