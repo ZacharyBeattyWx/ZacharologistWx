@@ -5217,19 +5217,7 @@ body.alert-type-filter-popup-open {
           : renderedFeatures;
         if (!clickedFeatures.length) return;
 
-        const dedupedByAlert = [];
-        const seenAlertKeys = new Set();
-        clickedFeatures.forEach((feature, index) => {
-          const props = feature?.properties || {};
-          const dedupeKey = String(
-            props._alertId ||
-            props.id ||
-            `${props.event || "alert"}|${props.effective || ""}|${props.expires || props.ends || ""}`
-          );
-          if (seenAlertKeys.has(dedupeKey)) return;
-          seenAlertKeys.add(dedupeKey);
-          dedupedByAlert.push(feature);
-        });
+        const dedupedByAlert = dedupeAlertProductsById(clickedFeatures);
         if (!dedupedByAlert.length) return;
         const eventPriority = (eventName) => {
           const value = String(eventName || "");
@@ -5811,20 +5799,60 @@ body.alert-type-filter-popup-open {
       return expiresDate.getTime() <= Date.now();
     }
 
+    function canonicalNwsAlertId(feature) {
+      const properties = feature?.properties || {};
+
+      // Preserve canonical identity after Mapbox returns a source feature.
+      if (properties._hasCanonicalAlertId === true) {
+        return String(properties._alertId || "").trim();
+      }
+
+      // Synthetic fallback IDs are not NWS identities.
+      if (properties._hasCanonicalAlertId === false) return "";
+
+      for (const candidate of [
+        properties.id,
+        properties.identifier,
+        feature?.id,
+        feature?.identifier
+      ]) {
+        const value = String(candidate || "").trim();
+        if (value) return value;
+      }
+
+      return "";
+    }
+
+    function alertGeometryFingerprint(geometry) {
+      if (!geometry) return "__no_geometry__";
+
+      try {
+        return JSON.stringify(geometry);
+      } catch {
+        return "__unserializable__";
+      }
+    }
+
     function normalizeAlertFeature(feature, index) {
       if (isTestOrExerciseAlertFeature(feature) || isExpiredAlertFeature(feature)) {
         return null;
       }
+
       const properties = feature.properties || {};
-      const alertId = String(feature.id || properties.id || `${properties.event || "alert"}-${index}`);
+      const canonicalAlertId = canonicalNwsAlertId(feature);
+      const mapFeatureId = canonicalAlertId
+        ? `${canonicalAlertId}::${index}`
+        : `__missing__:${index}`;
       const fallbackStyle = alertFallbackStyle(properties.event || "");
       const drawRank = alertDrawRank(properties.event || "");
+
       return {
         ...feature,
-        id: alertId,
+        id: mapFeatureId,
         properties: {
           ...properties,
-          _alertId: alertId,
+          _alertId: canonicalAlertId || mapFeatureId,
+          _hasCanonicalAlertId: Boolean(canonicalAlertId),
           _alertColor: alertColor(properties.event || ""),
           _alertFallbackFillColor: fallbackStyle.fill,
           _alertFillColor: fallbackStyle.fill,
@@ -5839,12 +5867,39 @@ body.alert-type-filter-popup-open {
       };
     }
 
+    // Keep distinct geometry fragments for one NWS product.
+    // Remove only literal same-ID + same-geometry copies.
     function dedupeAlertFeaturesById(features) {
       const seen = new Set();
+
       return features.filter((feature) => {
-        const alertId = feature.properties?._alertId || feature.id;
-        if (!alertId || seen.has(alertId)) return false;
-        seen.add(alertId);
+        const canonicalAlertId = canonicalNwsAlertId(feature);
+
+        if (!canonicalAlertId) return true;
+
+        const dedupeKey =
+          `${canonicalAlertId}\u001f${alertGeometryFingerprint(feature.geometry)}`;
+
+        if (seen.has(dedupeKey)) return false;
+
+        seen.add(dedupeKey);
+        return true;
+      });
+    }
+
+    // Popup cards/details show one entry per canonical NWS product.
+    function dedupeAlertProductsById(features) {
+      const seenCanonicalIds = new Set();
+
+      return (Array.isArray(features) ? features : []).filter((feature) => {
+        const canonicalAlertId = canonicalNwsAlertId(feature);
+
+        // Never merge identity-less alerts by event, time, county, or geometry.
+        if (!canonicalAlertId) return true;
+
+        if (seenCanonicalIds.has(canonicalAlertId)) return false;
+
+        seenCanonicalIds.add(canonicalAlertId);
         return true;
       });
     }
