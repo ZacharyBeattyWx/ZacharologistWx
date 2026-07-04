@@ -4437,7 +4437,7 @@ body.alert-type-filter-popup-open {
 
           // All fallback zone geometry: quiet but visible.
           ["==", ["get", "_fallbackGeometry"], true],
-          0.14 * opacity,
+          0.30 * opacity,
 
           // Direct polygons render in dedicated visual layers below.
           0
@@ -4454,7 +4454,7 @@ body.alert-type-filter-popup-open {
         map.setPaintProperty(
           ALERT_DIRECT_FILL_LAYER_ID,
           "fill-opacity",
-          0.20 * opacity
+          0.48 * opacity
         );
       }
 
@@ -4467,7 +4467,7 @@ body.alert-type-filter-popup-open {
         map.setPaintProperty(
           ALERT_DIRECT_LINE_LAYER_ID,
           "line-opacity",
-          0.82 * opacity
+          1.00 * opacity
         );
       }
 
@@ -4482,7 +4482,7 @@ body.alert-type-filter-popup-open {
         map.setPaintProperty(
           ALERT_STORM_HITBOX_LAYER_ID,
           "fill-opacity",
-          0.24 * opacity
+          0.52 * opacity
         );
       }
 
@@ -4501,7 +4501,7 @@ body.alert-type-filter-popup-open {
           0,
 
           ["==", ["get", "_visibleStormPolygon"], true],
-          0.96 * opacity,
+          1.00 * opacity,
 
           0.55 * opacity
         ]);
@@ -5205,7 +5205,7 @@ body.alert-type-filter-popup-open {
         paint: {
           "line-color": ["coalesce", ["get", "_alertColor"], "#ffffff"],
           "line-opacity": 0,
-          "line-width": ["interpolate", ["linear"], ["zoom"], 4, 1.2, 8, 2.1]
+          "line-width": ["interpolate", ["linear"], ["zoom"], 4, 1.5, 8, 2.6]
         }
       });
       map.addLayer({
@@ -5240,7 +5240,7 @@ body.alert-type-filter-popup-open {
         paint: {
           "line-color": ["coalesce", ["get", "_alertColor"], "#ffffff"],
           "line-opacity": 0,
-          "line-width": ["interpolate", ["linear"], ["zoom"], 4, 1.5, 8, 2.8]
+          "line-width": ["interpolate", ["linear"], ["zoom"], 4, 1.7, 8, 3.3]
         }
       });
       positionLevel2WeatherLayers();
