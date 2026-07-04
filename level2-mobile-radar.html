@@ -2649,6 +2649,8 @@ body.alert-type-filter-popup-open {
 
     const ALERT_SOURCE_ID = "nws-alert-polygons";
     const ALERT_FILL_LAYER_ID = "nws-alert-polygons-fill-hitbox";
+    const ALERT_DIRECT_FILL_LAYER_ID = "nws-alert-polygons-direct-fill";
+    const ALERT_DIRECT_LINE_LAYER_ID = "nws-alert-polygons-direct-line";
     const ALERT_STORM_HITBOX_LAYER_ID = "nws-alert-polygons-storm-hitbox";
     const ALERT_LINE_LAYER_ID = "nws-alert-polygons-line";
     // Match the homepage Active Weather Alerts fetch scope.
@@ -4213,6 +4215,8 @@ body.alert-type-filter-popup-open {
         LEVEL2_MAPBOX_TILE_LAYER_ID,
         LEVEL2_MANUAL_RADAR_LAYER_ID,
         ALERT_FILL_LAYER_ID,
+        ALERT_DIRECT_FILL_LAYER_ID,
+        ALERT_DIRECT_LINE_LAYER_ID,
         ALERT_STORM_HITBOX_LAYER_ID,
         ALERT_LINE_LAYER_ID
       ]);
@@ -4277,6 +4281,8 @@ body.alert-type-filter-popup-open {
       moveLayerIfPresent(LEVEL2_MAPBOX_TILE_LAYER_ID, beforeLayerId);
 
       moveLayerIfPresent(ALERT_FILL_LAYER_ID, beforeLayerId);
+      moveLayerIfPresent(ALERT_DIRECT_FILL_LAYER_ID, beforeLayerId);
+      moveLayerIfPresent(ALERT_DIRECT_LINE_LAYER_ID, beforeLayerId);
       moveLayerIfPresent(ALERT_STORM_HITBOX_LAYER_ID, beforeLayerId);
       moveLayerIfPresent(ALERT_LINE_LAYER_ID, beforeLayerId);
     }
@@ -4433,13 +4439,36 @@ body.alert-type-filter-popup-open {
           ["==", ["get", "_fallbackGeometry"], true],
           0.14 * opacity,
 
-          // Direct non-storm polygons: visible but lighter than warnings.
-          ["!=", ["get", "_visibleStormPolygon"], true],
-          0.12 * opacity,
-
-          // Direct storm polygons render in the dedicated storm layer below.
+          // Direct polygons render in dedicated visual layers below.
           0
         ]);
+      }
+
+      // Direct non-storm polygons stay distinct from broad county/zone fills.
+      if (map.getLayer(ALERT_DIRECT_FILL_LAYER_ID)) {
+        map.setPaintProperty(
+          ALERT_DIRECT_FILL_LAYER_ID,
+          "fill-emissive-strength",
+          1
+        );
+        map.setPaintProperty(
+          ALERT_DIRECT_FILL_LAYER_ID,
+          "fill-opacity",
+          0.20 * opacity
+        );
+      }
+
+      if (map.getLayer(ALERT_DIRECT_LINE_LAYER_ID)) {
+        map.setPaintProperty(
+          ALERT_DIRECT_LINE_LAYER_ID,
+          "line-emissive-strength",
+          1
+        );
+        map.setPaintProperty(
+          ALERT_DIRECT_LINE_LAYER_ID,
+          "line-opacity",
+          0.82 * opacity
+        );
       }
 
       // Direct tornado / severe / flash-flood warning polygons get stronger fills.
@@ -5140,6 +5169,43 @@ body.alert-type-filter-popup-open {
         paint: {
           "fill-color": ["coalesce", ["get", "_alertColor"], "#ffffff"],
           "fill-opacity": 0
+        }
+      });
+      // Direct polygons such as Flood Advisories/Watches and SWS:
+      // clearer than county/zone fallback fills, weaker than storm polygons.
+      map.addLayer({
+        id: ALERT_DIRECT_FILL_LAYER_ID,
+        type: "fill",
+        source: ALERT_SOURCE_ID,
+        filter: [
+          "all",
+          ["!=", ["get", "_fallbackGeometry"], true],
+          ["!=", ["get", "_visibleStormPolygon"], true]
+        ],
+        layout: {
+          "fill-sort-key": ["coalesce", ["get", "_alertDrawRank"], 0]
+        },
+        paint: {
+          "fill-color": ["coalesce", ["get", "_alertColor"], "#ffffff"],
+          "fill-opacity": 0
+        }
+      });
+      map.addLayer({
+        id: ALERT_DIRECT_LINE_LAYER_ID,
+        type: "line",
+        source: ALERT_SOURCE_ID,
+        filter: [
+          "all",
+          ["!=", ["get", "_fallbackGeometry"], true],
+          ["!=", ["get", "_visibleStormPolygon"], true]
+        ],
+        layout: {
+          "line-sort-key": ["coalesce", ["get", "_alertDrawRank"], 0]
+        },
+        paint: {
+          "line-color": ["coalesce", ["get", "_alertColor"], "#ffffff"],
+          "line-opacity": 0,
+          "line-width": ["interpolate", ["linear"], ["zoom"], 4, 1.2, 8, 2.1]
         }
       });
       map.addLayer({
