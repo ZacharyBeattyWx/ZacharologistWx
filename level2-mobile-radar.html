@@ -2406,6 +2406,182 @@ body.alert-type-filter-popup-open {
   }
 }
 </style>
+<style id="level2-alert-type-filter-viewport-lock">
+  /*
+    Final popup containment:
+    Header, search field, and Apply button stay visible.
+    Only the alert category list scrolls.
+  */
+  .alert-type-filter-popup {
+    box-sizing: border-box !important;
+    align-items: center !important;
+    padding: 8px !important;
+  }
+
+  .alert-type-filter-popup-panel {
+    box-sizing: border-box !important;
+    height: min(90dvh, 900px) !important;
+    max-height: calc(100dvh - 16px) !important;
+    min-height: 0 !important;
+  }
+
+  .alert-type-filter-popup-header {
+    flex: 0 0 auto !important;
+  }
+
+  .alert-type-filter-popup-main {
+    display: flex !important;
+    flex: 1 1 0 !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  #level2AlertTypeFilterPopupContent {
+    display: flex !important;
+    flex: 1 1 0 !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  #level2AlertTypeFilterPopupContent > .alert-type-filter-shell-body {
+    display: flex !important;
+    flex: 1 1 0 !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    padding-bottom: 0 !important;
+  }
+
+  #level2AlertTypeFilterPopupContent .alert-type-filter-list {
+    display: block !important;
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+    padding-bottom: 20px !important;
+    scrollbar-width: thin;
+  }
+
+  @media (max-width: 768px) {
+    .alert-type-filter-popup {
+      align-items: flex-end !important;
+      padding: 0 !important;
+    }
+
+    .alert-type-filter-popup-panel {
+      height: min(92dvh, 900px) !important;
+      max-height: min(92dvh, 900px) !important;
+    }
+  }
+</style>
+<style id="level2-alert-catalog-controller-layout">
+  /*
+    The static catalog is the sole popup owner.
+    Header and search remain fixed; only categories scroll.
+  */
+  #level2AlertTypeFilterPopup .alert-type-filter-popup-panel {
+    display: flex !important;
+    flex-direction: column !important;
+    height: min(90dvh, 900px) !important;
+    max-height: calc(100dvh - 28px) !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  #level2AlertTypeFilterPopup .alert-type-filter-popup-main {
+    display: flex !important;
+    flex: 1 1 0 !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    padding: 14px 20px 18px !important;
+  }
+
+  #level2AlertTypeFilterPopup .alert-type-filter-search-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex: 0 0 auto;
+    margin-bottom: 9px;
+  }
+
+  #level2AlertTypeFilterPopup
+    .alert-type-filter-search-heading
+    .alert-type-filter-search-label {
+    margin: 0 !important;
+  }
+
+  #level2AlertTypeFilterPopup .level2-static-alert-inline-defaults {
+    min-height: 32px;
+    padding: 7px 12px;
+    border: 1px solid rgba(118, 177, 216, 0.5);
+    border-radius: 6px;
+    background:
+      linear-gradient(135deg, rgba(28, 67, 103, 0.94), rgba(9, 31, 57, 0.98));
+    color: #d9efff;
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.74rem;
+    font-weight: 900;
+  }
+
+  #level2AlertTypeFilterPopup #level2AlertTypeFilterPopupContent {
+    display: flex !important;
+    flex: 1 1 0 !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  #level2AlertTypeFilterPopup
+    #level2AlertTypeFilterPopupContent
+    > [data-level2-static-catalog-host] {
+    display: flex !important;
+    flex: 1 1 0 !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  #level2AlertTypeFilterPopup
+    #level2AlertTypeFilterPopupContent
+    > [data-level2-static-catalog-host]
+    > .level2-static-alert-catalog {
+    display: flex !important;
+    flex: 1 1 0 !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    padding: 14px 0 0 !important;
+  }
+
+  #level2AlertTypeFilterPopup .level2-static-alert-scroll {
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    padding: 0 8px 20px 0 !important;
+    scrollbar-width: thin;
+  }
+
+  @media (max-width: 768px) {
+    #level2AlertTypeFilterPopup .alert-type-filter-popup-main {
+      padding: 14px 16px 16px !important;
+    }
+
+    #level2AlertTypeFilterPopup .level2-static-alert-scroll {
+      padding-right: 4px !important;
+    }
+  }
+</style>
 </head>
 <body>
   <div id="map"></div>
@@ -2949,6 +3125,128 @@ body.alert-type-filter-popup-open {
     let activeAlertsWithoutGeometry = [];
     let level2FetchedAlertFeatures = [];
     let level2AlertFilterApplyToken = 0;
+    const DESKTOP_RADAR_PERF_ENABLED =
+      new URLSearchParams(window.location.search).has("perf") &&
+      !window.matchMedia("(max-width: 760px)").matches;
+
+    const desktopRadarPerfStats = new Map();
+    let desktopRadarPerfIdleToken = 0;
+
+    function desktopRadarPerfStart() {
+      return DESKTOP_RADAR_PERF_ENABLED ? performance.now() : 0;
+    }
+
+    function desktopRadarPerfEnd(name, startedAt, details = {}) {
+      if (!DESKTOP_RADAR_PERF_ENABLED || !startedAt) return;
+
+      const elapsedMs = performance.now() - startedAt;
+      const item = desktopRadarPerfStats.get(name) || {
+        calls: 0,
+        totalMs: 0,
+        maxMs: 0,
+        lastMs: 0,
+        details: ""
+      };
+
+      item.calls += 1;
+      item.totalMs += elapsedMs;
+      item.maxMs = Math.max(item.maxMs, elapsedMs);
+      item.lastMs = elapsedMs;
+      item.details = Object.entries(details)
+        .map(([key, value]) => `${key}=${value}`)
+        .join(" ");
+
+      desktopRadarPerfStats.set(name, item);
+    }
+
+    function desktopRadarPerfTrackMapIdle(label) {
+      if (
+        !DESKTOP_RADAR_PERF_ENABLED ||
+        typeof map === "undefined" ||
+        !map ||
+        typeof map.once !== "function"
+      ) {
+        return;
+      }
+
+      const token = ++desktopRadarPerfIdleToken;
+      const startedAt = performance.now();
+
+      map.once("idle", () => {
+        if (token !== desktopRadarPerfIdleToken) return;
+
+        desktopRadarPerfEnd(`${label} → Mapbox idle`, startedAt);
+      });
+    }
+
+    function desktopRadarPerfPatchMapbox() {
+      if (!DESKTOP_RADAR_PERF_ENABLED) return;
+
+      const prototype = window.mapboxgl?.Map?.prototype;
+
+      if (!prototype || prototype.__desktopRadarPerfPatched) return;
+
+      Object.defineProperty(prototype, "__desktopRadarPerfPatched", {
+        value: true,
+        configurable: true
+      });
+
+      [
+        "setPaintProperty",
+        "setLayoutProperty",
+        "setFilter",
+        "moveLayer",
+        "addLayer",
+        "removeLayer",
+        "addSource",
+        "removeSource"
+      ].forEach((methodName) => {
+        const original = prototype[methodName];
+
+        if (typeof original !== "function") return;
+
+        prototype[methodName] = function (...args) {
+          const startedAt = performance.now();
+
+          try {
+            return original.apply(this, args);
+          } finally {
+            desktopRadarPerfEnd(
+              `Mapbox.${methodName}`,
+              startedAt,
+              { target: String(args[0] ?? "") }
+            );
+          }
+        };
+      });
+    }
+
+    window.__desktopRadarPerfReset = () => {
+      desktopRadarPerfStats.clear();
+      console.info("[Desktop radar perf] counters cleared");
+    };
+
+    window.__desktopRadarPerfReport = () => {
+      const rows = [...desktopRadarPerfStats.entries()]
+        .map(([phase, item]) => ({
+          phase,
+          calls: item.calls,
+          totalMs: Number(item.totalMs.toFixed(1)),
+          avgMs: Number((item.totalMs / Math.max(1, item.calls)).toFixed(1)),
+          maxMs: Number(item.maxMs.toFixed(1)),
+          lastMs: Number(item.lastMs.toFixed(1)),
+          lastDetails: item.details
+        }))
+        .sort((left, right) => right.totalMs - left.totalMs);
+
+      console.group("[Desktop Radar + Alerts] performance report");
+      console.table(rows);
+      console.groupEnd();
+
+      return rows;
+    };
+
+    desktopRadarPerfPatchMapbox();
 
     const LEVEL2_ALERT_FILTER_STORAGE_KEY =
       "zach-level2-alert-type-filters-v1";
@@ -4309,6 +4607,8 @@ body.alert-type-filter-popup-open {
 
 
     async function updateManualLevel2RadarEngineFrame(frame) {
+      const desktopManualRadarStartedAt = desktopRadarPerfStart();
+
       if (!shouldUseManualLevel2RadarEngine()) return false;
       if (!frame?.tileTemplate) return false;
 
@@ -4328,7 +4628,31 @@ body.alert-type-filter-popup-open {
 
       engine.setFrames(level2Frames);
       engine.setOpacity(Number(opacitySlider?.value ?? 1));
+
+      const desktopEngineSetFrameStartedAt = desktopRadarPerfStart();
+
       await engine.setFrame(currentFrameIndex);
+
+      desktopRadarPerfEnd(
+        "desktop radar engine.setFrame",
+        desktopEngineSetFrameStartedAt,
+        {
+          site: selectedLevel2Site(),
+          frameIndex: currentFrameIndex,
+          frameCount: level2Frames.length
+        }
+      );
+
+      desktopRadarPerfEnd(
+        "desktop manual radar rebuild",
+        desktopManualRadarStartedAt,
+        {
+          site: selectedLevel2Site(),
+          frameIndex: currentFrameIndex
+        }
+      );
+
+      desktopRadarPerfTrackMapIdle("desktop radar frame");
 
       positionLevel2WeatherLayers();
       syncMapboxAlertLayerVisibility();
@@ -6294,6 +6618,7 @@ body.alert-type-filter-popup-open {
     async function applyLevel2AlertTypeFilters(
       fetchedFeatures = level2FetchedAlertFeatures
     ) {
+      const desktopAlertApplyStartedAt = desktopRadarPerfStart();
       const activeFetchedFeatures = (
         Array.isArray(fetchedFeatures) ? fetchedFeatures : []
       ).filter((feature) => {
@@ -6337,10 +6662,18 @@ body.alert-type-filter-popup-open {
         const alertSource = map?.getSource?.(ALERT_SOURCE_ID);
 
         if (alertSource) {
+          const desktopAlertSetDataStartedAt = desktopRadarPerfStart();
+
           alertSource.setData({
             type: "FeatureCollection",
             features: activeAlertFeatures
           });
+
+          desktopRadarPerfEnd(
+            "desktop alert source setData",
+            desktopAlertSetDataStartedAt,
+            { features: activeAlertFeatures.length }
+          );
         }
 
         positionLevel2WeatherLayers();
@@ -6350,6 +6683,17 @@ body.alert-type-filter-popup-open {
         }
 
         drawAlertOverlay();
+
+        desktopRadarPerfEnd(
+          "desktop alert apply",
+          desktopAlertApplyStartedAt,
+          {
+            activeFeatures: activeAlertFeatures.length,
+            listedOnly: activeAlertsWithoutGeometry.length
+          }
+        );
+
+        desktopRadarPerfTrackMapIdle("desktop alerts");
       };
 
       // The snapshot already contains merged county/zone geometry.
@@ -6379,7 +6723,16 @@ body.alert-type-filter-popup-open {
       updateLevel2AlertTypeFilterUi(activeFetchedFeatures);
     }
     async function loadAlerts() {
+      const desktopAlertRebuildStartedAt = desktopRadarPerfStart();
+      const desktopAlertFetchStartedAt = desktopRadarPerfStart();
+
       const fetchedFeatures = await fetchNwsAlertsForAreas();
+
+      desktopRadarPerfEnd(
+        "desktop alerts snapshot fetch",
+        desktopAlertFetchStartedAt,
+        { features: fetchedFeatures.length }
+      );
 
       level2FetchedAlertFeatures = fetchedFeatures.filter((feature) => {
         const event = String(feature?.properties?.event || "").trim();
@@ -6392,6 +6745,12 @@ body.alert-type-filter-popup-open {
       });
 
       await applyLevel2AlertTypeFilters(level2FetchedAlertFeatures);
+
+      desktopRadarPerfEnd(
+        "desktop alerts full rebuild",
+        desktopAlertRebuildStartedAt,
+        { fetchedFeatures: level2FetchedAlertFeatures.length }
+      );
     }
 
     function initializeMap() {
@@ -6928,10 +7287,18 @@ body.alert-type-filter-popup-open {
     </header>
 
     <div class="alert-type-filter-popup-main">
-      <label class="alert-type-filter-search-label"
-             for="level2AlertTypeFilterSearch">
-        Find alert type
-      </label>
+      <div class="alert-type-filter-search-heading">
+        <label class="alert-type-filter-search-label"
+               for="level2AlertTypeFilterSearch">
+          Find alert type
+        </label>
+
+        <button type="button"
+                class="level2-static-alert-inline-defaults"
+                data-level2-static-reset>
+          Defaults
+        </button>
+      </div>
 
       <input id="level2AlertTypeFilterSearch"
              class="alert-type-filter-search"
@@ -6949,494 +7316,395 @@ body.alert-type-filter-popup-open {
 
   const shell = document.getElementById("alertTypeFilterShell");
   const summary = shell?.querySelector("summary");
-  const shellBody = shell?.querySelector(".alert-type-filter-shell-body");
   const modal = document.getElementById("level2AlertTypeFilterPopup");
-  const modalContent = document.getElementById(
-    "level2AlertTypeFilterPopupContent"
-  );
   const searchInput = document.getElementById(
     "level2AlertTypeFilterSearch"
   );
 
-  if (
-    !shell ||
-    !summary ||
-    !shellBody ||
-    !modal ||
-    !modalContent ||
-    !searchInput ||
-    typeof updateLevel2AlertTypeFilterUi !== "function"
-  ) {
-    return;
+  if (!shell || !summary || !modal) return;
+
+  function popupIsOpen() {
+    return !modal.hidden &&
+      modal.getAttribute("aria-hidden") !== "true";
   }
-
-  const nativeRenderAlertTypeUi = updateLevel2AlertTypeFilterUi;
-  let draftSettings = null;
-  let popupIsOpen = false;
-
-  const GROUP_ORDER = [
-    "Storm",
-    "Flood",
-    "Tropical",
-    "Winter",
-    "Fire & Smoke",
-    "Marine & Coastal",
-    "Heat, Wind & Visibility",
-    "Other"
-  ];
-
-  function cloneSettings(source) {
-    return {
-      version: 1,
-      showAll: source?.showAll === true,
-      events: {
-        ...(source?.events || {})
-      }
-    };
-  }
-
-  function groupForEvent(eventName) {
-    const event = String(eventName || "");
-
-    if (/Tornado|Thunderstorm|Severe Weather|Snow Squall/i.test(event)) {
-      return "Storm";
-    }
-
-    if (/Flash Flood|Flood|Hydrologic|Coastal Flood/i.test(event)) {
-      return "Flood";
-    }
-
-    if (/Hurricane|Tropical|Storm Surge/i.test(event)) {
-      return "Tropical";
-    }
-
-    if (/Winter|Blizzard|Ice Storm|Freeze|Frost|Snow|Wind Chill|Avalanche/i.test(event)) {
-      return "Winter";
-    }
-
-    if (/Red Flag|Fire Weather|Fire Warning|Smoke/i.test(event)) {
-      return "Fire & Smoke";
-    }
-
-    if (/Marine|Gale|Hazardous Seas|Small Craft|Brisk Wind|High Surf|Rip Current|Beach Hazards/i.test(event)) {
-      return "Marine & Coastal";
-    }
-
-    if (/Heat|Wind|Fog|Dust|Air Quality|Air Stagnation/i.test(event)) {
-      return "Heat, Wind & Visibility";
-    }
-
-    return "Other";
-  }
-
-  function groupAlertTypeRows() {
-    const list = document.getElementById("alertTypeFilterList");
-    const eventsRoot = list?.querySelector(".alert-type-filter-events");
-
-    if (!eventsRoot || eventsRoot.dataset.popupGrouped === "true") {
-      return;
-    }
-
-    const rows = Array.from(
-      eventsRoot.querySelectorAll(".alert-type-filter-event")
-    );
-
-    if (!rows.length) {
-      eventsRoot.dataset.popupGrouped = "true";
-      return;
-    }
-
-    const groups = new Map(
-      GROUP_ORDER.map((name) => [name, []])
-    );
-
-    rows.forEach((row) => {
-      const name = row.querySelector("span")?.textContent || "";
-      groups.get(groupForEvent(name)).push(row);
-    });
-
-    eventsRoot.innerHTML = "";
-
-    GROUP_ORDER.forEach((groupName) => {
-      const groupRows = groups.get(groupName) || [];
-
-      if (!groupRows.length) return;
-
-      const section = document.createElement("section");
-      section.className = "alert-type-filter-group";
-      section.dataset.alertTypeGroup = groupName;
-
-      const header = document.createElement("div");
-      header.className = "alert-type-filter-group-title";
-      header.innerHTML = `
-        <span>${groupName}</span>
-        <em>${groupRows.length}</em>
-      `;
-
-      const rowContainer = document.createElement("div");
-
-      groupRows.forEach((row) => {
-        rowContainer.appendChild(row);
-      });
-
-      section.append(header, rowContainer);
-      eventsRoot.appendChild(section);
-    });
-
-    eventsRoot.dataset.popupGrouped = "true";
-  }
-
-  function applySearchFilter() {
-    const query = String(searchInput.value || "")
-      .trim()
-      .toLowerCase();
-
-    const list = document.getElementById("alertTypeFilterList");
-
-    if (!list) return;
-
-    list.querySelectorAll(".alert-type-filter-event").forEach((row) => {
-      const text = String(row.textContent || "").toLowerCase();
-      row.hidden = Boolean(query) && !text.includes(query);
-    });
-
-    list.querySelectorAll(".alert-type-filter-group").forEach((group) => {
-      const hasVisibleRow = Array.from(
-        group.querySelectorAll(".alert-type-filter-event")
-      ).some((row) => !row.hidden);
-
-      group.hidden = !hasVisibleRow;
-    });
-  }
-
-  function renderWithSettings(settings, features) {
-    const committedSettings = level2AlertFilterSettings;
-
-    level2AlertFilterSettings = cloneSettings(settings);
-
-    try {
-      nativeRenderAlertTypeUi(
-        Array.isArray(features)
-          ? features
-          : level2FetchedAlertFeatures
-      );
-
-      groupAlertTypeRows();
-      applySearchFilter();
-    } finally {
-      level2AlertFilterSettings = committedSettings;
-    }
-  }
-
-  function renderCommittedSettings() {
-    nativeRenderAlertTypeUi(level2FetchedAlertFeatures);
-    groupAlertTypeRows();
-    applySearchFilter();
-  }
-
-  updateLevel2AlertTypeFilterUi = function (features) {
-    if (popupIsOpen && draftSettings) {
-      renderWithSettings(draftSettings, features);
-      return;
-    }
-
-    nativeRenderAlertTypeUi(features);
-    groupAlertTypeRows();
-    applySearchFilter();
-  };
 
   function openPopup() {
-    draftSettings = cloneSettings(level2AlertFilterSettings);
-    popupIsOpen = true;
-
     shell.open = false;
     summary.setAttribute("aria-expanded", "true");
 
     modal.hidden = false;
     modal.setAttribute("aria-hidden", "false");
-    document.body.classList.add("alert-type-filter-popup-open");
 
-    renderWithSettings(draftSettings, level2FetchedAlertFeatures);
+    document.body.classList.add("alert-type-filter-popup-open");
+    document.dispatchEvent(new CustomEvent("level2-static-catalog-open"));
 
     window.requestAnimationFrame(() => {
-      searchInput.focus();
+      searchInput?.focus?.();
     });
   }
 
   function closePopup() {
-    popupIsOpen = false;
-    draftSettings = null;
+    if (!popupIsOpen()) return;
 
     modal.hidden = true;
     modal.setAttribute("aria-hidden", "true");
+
     document.body.classList.remove("alert-type-filter-popup-open");
+    document.dispatchEvent(new CustomEvent("level2-static-catalog-close"));
 
-    searchInput.value = "";
-    summary.setAttribute("aria-expanded", "false");
-
-    renderCommittedSettings();
-    summary.focus();
-  }
-
-  function applyPopupFilters() {
-    if (!draftSettings) {
-      closePopup();
-      return;
+    if (searchInput) {
+      searchInput.value = "";
     }
 
-    level2AlertFilterSettings = cloneSettings(draftSettings);
-    saveLevel2AlertFilterSettings();
-
-    popupIsOpen = false;
-    draftSettings = null;
-
-    modal.hidden = true;
-    modal.setAttribute("aria-hidden", "true");
-    document.body.classList.remove("alert-type-filter-popup-open");
-
-    searchInput.value = "";
     summary.setAttribute("aria-expanded", "false");
-
-    refreshLevel2AlertTypesFromCache();
-    summary.focus();
+    summary.focus?.();
   }
-
-  modalContent.appendChild(shellBody);
-
-  shell.open = false;
-  summary.setAttribute("role", "button");
-  summary.setAttribute("tabindex", "0");
-  summary.setAttribute("aria-haspopup", "dialog");
-  summary.setAttribute("aria-expanded", "false");
 
   summary.addEventListener("click", (event) => {
     event.preventDefault();
-    event.stopPropagation();
-    openPopup();
-  });
 
-  summary.addEventListener("keydown", (event) => {
-    if (event.key !== "Enter" && event.key !== " ") return;
-
-    event.preventDefault();
-    openPopup();
-  });
-
-  searchInput.addEventListener("input", applySearchFilter);
-
-  document.addEventListener("change", (event) => {
-    const control = event.target;
-
-    if (
-      !popupIsOpen ||
-      !(control instanceof HTMLInputElement) ||
-      !modal.contains(control)
-    ) {
-      return;
-    }
-
-    if (control.matches("[data-level2-alert-filter-show-all]")) {
-      event.stopImmediatePropagation();
-
-      draftSettings.showAll = control.checked;
-      renderWithSettings(draftSettings, level2FetchedAlertFeatures);
-      return;
-    }
-
-    if (control.matches("[data-level2-alert-filter-event]")) {
-      event.stopImmediatePropagation();
-
-      let eventName = "";
-
-      try {
-        eventName = decodeURIComponent(
-          control.dataset.level2AlertFilterEvent || ""
-        );
-      } catch (_error) {
-        return;
-      }
-
-      if (!eventName) return;
-
-      draftSettings.events[eventName] = control.checked;
-      renderWithSettings(draftSettings, level2FetchedAlertFeatures);
-    }
-  }, true);
-
-  document.addEventListener("click", (event) => {
-    const target = event.target instanceof Element ? event.target : null;
-
-    if (!target) return;
-
-    const resetButton = target.closest(
-      "[data-level2-alert-filter-reset]"
-    );
-
-    if (popupIsOpen && resetButton && modal.contains(resetButton)) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-
-      draftSettings = {
-        version: 1,
-        showAll: false,
-        events: {}
-      };
-
-      renderWithSettings(draftSettings, level2FetchedAlertFeatures);
-      return;
-    }
-
-    const applyButton = target.closest(
-      "[data-level2-alert-popup-apply]"
-    );
-
-    if (popupIsOpen && applyButton) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      applyPopupFilters();
-      return;
-    }
-
-    const closeButton = target.closest(
-      "[data-level2-alert-popup-close]"
-    );
-
-    if (popupIsOpen && closeButton) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
+    if (popupIsOpen()) {
       closePopup();
-    }
-  }, true);
-
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && popupIsOpen) {
-      event.preventDefault();
-      closePopup();
+    } else {
+      openPopup();
     }
   });
-})();
-</script>
-<script id="level2-alert-type-filter-group-select-all-runtime">
-(() => {
-  "use strict";
 
-  const popup = document.getElementById("level2AlertTypeFilterPopup");
-  const popupContent = document.getElementById(
-    "level2AlertTypeFilterPopupContent"
-  );
-
-  if (!popup || !popupContent) return;
-
-  let decorateFrame = null;
-
-  function groupInputs(group) {
-    return Array.from(
-      group.querySelectorAll("[data-level2-alert-filter-event]")
-    );
-  }
-
-  function updateGroupButton(group) {
-    const button = group.querySelector(
-      "[data-level2-alert-filter-group-toggle]"
-    );
-
-    if (!button) return;
-
-    const inputs = groupInputs(group);
-    const allSelected =
-      inputs.length > 0 && inputs.every((input) => input.checked);
-
-    button.textContent = allSelected ? "Deselect All" : "Select All";
-    button.dataset.level2AlertFilterGroupMode = allSelected
-      ? "deselect"
-      : "select";
-    button.disabled = inputs.length === 0;
-  }
-
-  function decorateGroups() {
-    decorateFrame = null;
-
-    popup.querySelectorAll(".alert-type-filter-group").forEach((group) => {
-      const header = group.querySelector(".alert-type-filter-group-title");
-
-      if (!header) return;
-
-      let button = header.querySelector(
-        "[data-level2-alert-filter-group-toggle]"
-      );
-
-      if (!button) {
-        button = document.createElement("button");
-        button.type = "button";
-        button.className = "alert-type-filter-group-toggle";
-        button.dataset.level2AlertFilterGroupToggle = "true";
-        header.appendChild(button);
-      }
-
-      updateGroupButton(group);
-    });
-  }
-
-  function scheduleDecorateGroups() {
-    if (decorateFrame !== null) return;
-
-    decorateFrame = window.requestAnimationFrame(decorateGroups);
-  }
-
-  popup.addEventListener("click", (event) => {
-    const button = event.target instanceof Element
-      ? event.target.closest("[data-level2-alert-filter-group-toggle]")
+  modal.addEventListener("click", (event) => {
+    const closeButton = event.target instanceof Element
+      ? event.target.closest("[data-level2-alert-popup-close]")
       : null;
 
-    if (!button) return;
-
-    event.preventDefault();
-    event.stopPropagation();
-
-    const group = button.closest(".alert-type-filter-group");
-
-    if (!group) return;
-
-    const shouldSelect =
-      button.dataset.level2AlertFilterGroupMode !== "deselect";
-
-    const encodedEvents = groupInputs(group)
-      .map((input) => input.dataset.level2AlertFilterEvent || "")
-      .filter(Boolean);
-
-    encodedEvents.forEach((encodedEvent) => {
-      const liveInput = Array.from(
-        popup.querySelectorAll("[data-level2-alert-filter-event]")
-      ).find(
-        (input) =>
-          input.dataset.level2AlertFilterEvent === encodedEvent
-      );
-
-      if (!liveInput || liveInput.checked === shouldSelect) return;
-
-      liveInput.checked = shouldSelect;
-
-      liveInput.dispatchEvent(
-        new Event("change", {
-          bubbles: true
-        })
-      );
-    });
-
-    scheduleDecorateGroups();
+    if (closeButton) {
+      event.preventDefault();
+      closePopup();
+    }
   });
 
-  const observer = new MutationObserver(scheduleDecorateGroups);
-
-  observer.observe(popupContent, {
-    childList: true,
-    subtree: true
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && popupIsOpen()) {
+      event.preventDefault();
+      closePopup();
+    }
   });
-
-  scheduleDecorateGroups();
 })();
 </script>
-<script id="level2-alert-type-filter-master-row-runtime">
+<style id="level2-static-alert-catalog-styles">
+  #level2AlertTypeFilterPopupContent > .level2-static-alert-catalog {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    min-height: 0;
+    width: 100%;
+    overflow: hidden;
+    padding: 20px 28px 24px;
+    box-sizing: border-box;
+  }
+
+  .level2-static-alert-catalog-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex: 0 0 auto;
+    margin-bottom: 14px;
+    padding-bottom: 13px;
+    border-bottom: 1px solid rgba(113, 174, 219, 0.18);
+  }
+
+  .level2-static-alert-catalog-copy {
+    min-width: 0;
+  }
+
+  .level2-static-alert-catalog-copy strong {
+    display: block;
+    color: #dcefff;
+    font-size: 0.9rem;
+    font-weight: 900;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+  }
+
+  .level2-static-alert-catalog-copy small {
+    display: block;
+    margin-top: 5px;
+    color: #a9c2d8;
+    font-size: 0.78rem;
+    line-height: 1.35;
+  }
+
+  .level2-static-alert-catalog-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    flex: 0 0 auto;
+  }
+
+  .level2-static-alert-catalog-actions button {
+    min-height: 34px;
+    padding: 7px 11px;
+    border: 1px solid rgba(130, 174, 211, 0.42);
+    border-radius: 6px;
+    background: rgba(55, 118, 167, 0.18);
+    color: #d8edff;
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+  }
+
+  .level2-static-alert-catalog-actions button[data-level2-static-apply] {
+    border-color: rgba(92, 193, 255, 0.7);
+    background: #38aef5;
+    color: #04121e;
+  }
+
+  .level2-static-alert-scroll {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 4px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(115, 176, 217, 0.38) transparent;
+  }
+
+  .level2-static-alert-scroll::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .level2-static-alert-scroll::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background: rgba(115, 176, 217, 0.38);
+    background-clip: content-box;
+  }
+
+  .level2-static-alert-group {
+    margin: 0 0 13px;
+    overflow: hidden;
+    border: 1px solid rgba(112, 166, 207, 0.2);
+    border-radius: 10px;
+    background: rgba(58, 107, 145, 0.06);
+  }
+
+  .level2-static-alert-group[hidden] {
+    display: none !important;
+  }
+
+  .level2-static-alert-group-head {
+    display: flex;
+    align-items: center;
+    min-height: 48px;
+    border-bottom: 1px solid rgba(112, 166, 207, 0.14);
+    background: rgba(56, 114, 157, 0.14);
+  }
+
+  .level2-static-alert-group-head-button {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto 18px;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    flex: 1 1 auto;
+    min-height: 48px;
+    padding: 0 13px;
+    border: 0;
+    background: transparent;
+    color: #d9ecff;
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+  }
+
+  .level2-static-alert-group-head-button strong {
+    overflow: hidden;
+    color: #e5f2ff;
+    font-size: 0.86rem;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .level2-static-alert-group-head-button em {
+    color: #9ebbd2;
+    font-size: 0.8rem;
+    font-style: normal;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+
+  .level2-static-alert-chevron {
+    color: #b6d7ee;
+    font-size: 1.15rem;
+    font-weight: 900;
+    line-height: 1;
+    text-align: center;
+  }
+
+  .level2-static-alert-group-toggle,
+  .level2-static-alert-row-toggle,
+  .level2-static-alert-master-toggle {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+  }
+
+  .level2-static-alert-group-toggle {
+    flex: 0 0 auto;
+    padding-right: 13px;
+  }
+
+  .level2-static-alert-group-toggle input,
+  .level2-static-alert-row-toggle input,
+  .level2-static-alert-master-toggle input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .level2-static-alert-switch {
+    position: relative;
+    display: inline-block;
+    width: 42px;
+    height: 24px;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.55);
+    transition: background 120ms ease;
+  }
+
+  .level2-static-alert-switch::after {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #eef6ff;
+    content: "";
+    transition: transform 120ms ease;
+  }
+
+  input:checked + .level2-static-alert-switch {
+    background: #18a8e8;
+  }
+
+  input:checked + .level2-static-alert-switch::after {
+    transform: translateX(18px);
+  }
+
+  .level2-static-alert-products {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .level2-static-alert-products[hidden] {
+    display: none !important;
+  }
+
+  .level2-static-alert-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+    min-height: 50px;
+    padding: 8px 13px;
+    border-bottom: 1px solid rgba(105, 148, 184, 0.12);
+    color: #e1edf8;
+    cursor: pointer;
+  }
+
+  .level2-static-alert-row:nth-child(odd) {
+    border-right: 1px solid rgba(105, 148, 184, 0.14);
+  }
+
+  .level2-static-alert-row[hidden] {
+    display: none !important;
+  }
+
+  .level2-static-alert-row span:first-child {
+    min-width: 0;
+    font-size: 0.86rem;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  .level2-static-alert-master-toggle {
+    gap: 8px;
+    color: #dcecff;
+    font-size: 0.78rem;
+    font-weight: 850;
+    white-space: nowrap;
+  }
+
+  .level2-static-alert-master-toggle .level2-static-alert-switch {
+    width: 36px;
+    height: 21px;
+  }
+
+  .level2-static-alert-master-toggle .level2-static-alert-switch::after {
+    width: 15px;
+    height: 15px;
+  }
+
+  .level2-static-alert-master-toggle input:checked + .level2-static-alert-switch::after {
+    transform: translateX(15px);
+  }
+
+  @media (max-width: 768px) {
+    #level2AlertTypeFilterPopupContent > .level2-static-alert-catalog {
+      padding: 16px 18px 18px;
+    }
+
+    .level2-static-alert-catalog-toolbar {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    .level2-static-alert-catalog-actions {
+      width: 100%;
+      justify-content: stretch;
+    }
+
+    .level2-static-alert-catalog-actions button {
+      flex: 1 1 0;
+    }
+
+    .level2-static-alert-products {
+      grid-template-columns: 1fr;
+    }
+
+    .level2-static-alert-row:nth-child(odd) {
+      border-right: 0;
+    }
+
+    .level2-static-alert-group-head-button {
+      padding-left: 11px;
+      padding-right: 10px;
+    }
+
+    .level2-static-alert-row {
+      min-height: 54px;
+      padding-left: 12px;
+      padding-right: 12px;
+    }
+
+    .level2-static-alert-row span:first-child {
+      font-size: 0.92rem;
+    }
+  }
+</style>
+
+<script id="level2-static-alert-catalog-runtime">
 (() => {
   "use strict";
 
@@ -7444,379 +7712,954 @@ body.alert-type-filter-popup-open {
   const popupContent = document.getElementById(
     "level2AlertTypeFilterPopupContent"
   );
-
-  if (!popup || !popupContent) return;
-
-  let relocateFrame = null;
-
-  function relocateMasterRow() {
-    relocateFrame = null;
-
-    const body = popup.querySelector(
-      ".alert-type-filter-shell-body"
-    );
-
-    const headingRow = body?.querySelector(
-      ".alert-type-filter-heading-row"
-    );
-
-    const actions = body?.querySelector(
-      ".alert-type-filter-list > .alert-type-filter-actions"
-    );
-
-    if (!body || !headingRow || !actions) return;
-
-    if (headingRow.nextElementSibling !== actions) {
-      headingRow.insertAdjacentElement("afterend", actions);
-    }
-  }
-
-  function scheduleRelocate() {
-    if (relocateFrame !== null) return;
-
-    relocateFrame = window.requestAnimationFrame(
-      relocateMasterRow
-    );
-  }
-
-  const observer = new MutationObserver(scheduleRelocate);
-
-  observer.observe(popupContent, {
-    childList: true,
-    subtree: true
-  });
-
-  scheduleRelocate();
-})();
-</script>
-<script id="level2-alert-type-filter-master-row-dedupe">
-(() => {
-  "use strict";
-
-  const popup = document.getElementById("level2AlertTypeFilterPopup");
-  const popupContent = document.getElementById(
-    "level2AlertTypeFilterPopupContent"
-  );
-
-  if (!popup || !popupContent) return;
-
-  let queued = false;
-
-  function reconcileMasterRow() {
-    queued = false;
-
-    const body = popup.querySelector(
-      ".alert-type-filter-shell-body"
-    );
-
-    const headingRow = body?.querySelector(
-      ".alert-type-filter-heading-row"
-    );
-
-    const list = body?.querySelector(
-      ".alert-type-filter-list"
-    );
-
-    if (!body || !headingRow || !list) return;
-
-    const actionRows = Array.from(
-      body.querySelectorAll(".alert-type-filter-actions")
-    );
-
-    if (!actionRows.length) return;
-
-    const actionInsideList = Array.from(list.children).find(
-      (child) =>
-        child.classList?.contains("alert-type-filter-actions")
-    );
-
-    const actionNextToHeading =
-      headingRow.nextElementSibling?.classList?.contains(
-        "alert-type-filter-actions"
-      )
-        ? headingRow.nextElementSibling
-        : null;
-
-    const keeper =
-      actionInsideList ||
-      actionNextToHeading ||
-      actionRows[actionRows.length - 1];
-
-    actionRows.forEach((row) => {
-      if (row !== keeper) {
-        row.remove();
-      }
-    });
-
-    if (headingRow.nextElementSibling !== keeper) {
-      headingRow.insertAdjacentElement("afterend", keeper);
-    }
-  }
-
-  function scheduleReconcile() {
-    if (queued) return;
-
-    queued = true;
-    window.requestAnimationFrame(reconcileMasterRow);
-  }
-
-  const observer = new MutationObserver(scheduleReconcile);
-
-  observer.observe(popupContent, {
-    childList: true,
-    subtree: true
-  });
-
-  scheduleReconcile();
-})();
-</script>
-<script id="level2-alert-type-filter-no-jump-runtime">
-(() => {
-  "use strict";
-
-  const popup = document.getElementById("level2AlertTypeFilterPopup");
   const shell = document.getElementById("alertTypeFilterShell");
   const searchInput = document.getElementById(
     "level2AlertTypeFilterSearch"
   );
 
-  if (!popup || !shell) return;
+  if (!popup || !popupContent || !shell) return;
+
+  const catalog = [
+    {
+      id: "storm",
+      label: "Storm-Based",
+      defaultEnabled: true,
+      products: [
+        ["tornado-warning", "Tornado Warning", "Tornado Warning"],
+        ["severe-thunderstorm-warning", "Severe Thunderstorm Warning", "Severe Thunderstorm Warning"],
+        ["flash-flood-warning", "Flash Flood Warning", "Flash Flood Warning"],
+        ["special-marine-warning", "Special Marine Warning", "Special Marine Warning"],
+        ["sws-storm", "Special Weather Statement (Storm-Based)", "Special Weather Statement"],
+        ["sws-county", "Special Weather Statement (County/UGC)", "Special Weather Statement"],
+        ["tornado-watch", "Tornado Watch", "Tornado Watch"],
+        ["severe-thunderstorm-watch", "Severe Thunderstorm Watch", "Severe Thunderstorm Watch"],
+        ["flash-flood-watch", "Flash Flood Watch", "Flash Flood Watch"]
+      ]
+    },
+    {
+      id: "tropical",
+      label: "Tropical",
+      defaultEnabled: false,
+      products: [
+        ["hurricane-warning", "Hurricane Warning", "Hurricane Warning"],
+        ["tropical-storm-warning", "Tropical Storm Warning", "Tropical Storm Warning"],
+        ["storm-surge-warning", "Storm Surge Warning", "Storm Surge Warning"],
+        ["hurricane-watch", "Hurricane Watch", "Hurricane Watch"],
+        ["tropical-storm-watch", "Tropical Storm Watch", "Tropical Storm Watch"],
+        ["storm-surge-watch", "Storm Surge Watch", "Storm Surge Watch"]
+      ]
+    },
+    {
+      id: "winter",
+      label: "Winter",
+      defaultEnabled: true,
+      products: [
+        ["blizzard-warning", "Blizzard Warning", "Blizzard Warning"],
+        ["winter-storm-warning", "Winter Storm Warning", "Winter Storm Warning"],
+        ["ice-storm-warning", "Ice Storm Warning", "Ice Storm Warning"],
+        ["snow-squall-warning", "Snow Squall Warning", "Snow Squall Warning"],
+        ["winter-weather-advisory", "Winter Weather Advisory", "Winter Weather Advisory"],
+        ["freezing-fog-advisory", "Freezing Fog Advisory", "Freezing Fog Advisory"],
+        ["winter-storm-watch", "Winter Storm Watch", "Winter Storm Watch"],
+        ["extreme-cold-watch", "Extreme Cold Watch", "Extreme Cold Watch"],
+        ["extreme-cold-warning", "Extreme Cold Warning", "Extreme Cold Warning"],
+        ["cold-weather-advisory", "Cold Weather Advisory", "Cold Weather Advisory"],
+        ["freeze-warning", "Freeze Warning", "Freeze Warning"],
+        ["freeze-watch", "Freeze Watch", "Freeze Watch"],
+        ["lake-effect-snow-warning", "Lake Effect Snow Warning", "Lake Effect Snow Warning"],
+        ["frost-advisory", "Frost Advisory", "Frost Advisory"]
+      ]
+    },
+    {
+      id: "nonprecip",
+      label: "Non-Precip",
+      defaultEnabled: true,
+      products: [
+        ["extreme-wind-warning", "Extreme Wind Warning", "Extreme Wind Warning"],
+        ["hurricane-force-wind-warning-land", "Hurricane Force Wind Warning", "Hurricane Force Wind Warning"],
+        ["high-wind-warning", "High Wind Warning", "High Wind Warning"],
+        ["high-wind-watch", "High Wind Watch", "High Wind Watch"],
+        ["wind-advisory", "Wind Advisory", "Wind Advisory"],
+        ["extreme-heat-warning", "Extreme Heat Warning", "Extreme Heat Warning"],
+        ["extreme-heat-watch", "Extreme Heat Watch", "Extreme Heat Watch"],
+        ["heat-advisory", "Heat Advisory", "Heat Advisory"],
+        ["dense-fog-advisory", "Dense Fog Advisory", "Dense Fog Advisory"],
+        ["air-quality-alert", "Air Quality Alert", "Air Quality Alert"],
+        ["rip-current-statement", "Rip Current Statement", "Rip Current Statement"],
+        ["high-surf-advisory", "High Surf Advisory", "High Surf Advisory"],
+        ["beach-hazards-statement", "Beach Hazards Statement", "Beach Hazards Statement"]
+      ]
+    },
+    {
+      id: "hydro",
+      label: "Hydro",
+      defaultEnabled: true,
+      products: [
+        ["flood-warning", "Flood Warning", "Flood Warning"],
+        ["flood-watch", "Flood Watch", "Flood Watch"],
+        ["flood-advisory", "Flood Advisory", "Flood Advisory"],
+        ["coastal-flood-warning", "Coastal Flood Warning", "Coastal Flood Warning"],
+        ["coastal-flood-watch", "Coastal Flood Watch", "Coastal Flood Watch"],
+        ["coastal-flood-advisory", "Coastal Flood Advisory", "Coastal Flood Advisory"]
+      ]
+    },
+    {
+      id: "fire",
+      label: "Fire",
+      defaultEnabled: true,
+      products: [
+        ["fire-warning", "Fire Warning", "Fire Warning"],
+        ["red-flag-warning", "Red Flag Warning", "Red Flag Warning"],
+        ["extreme-fire-danger", "Extreme Fire Danger", "Extreme Fire Danger"],
+        ["fire-weather-watch", "Fire Weather Watch", "Fire Weather Watch"]
+      ]
+    },
+    {
+      id: "marine",
+      label: "Marine",
+      defaultEnabled: false,
+      products: [
+        ["gale-warning", "Gale Warning", "Gale Warning"],
+        ["gale-watch", "Gale Watch", "Gale Watch"],
+        ["small-craft-advisory", "Small Craft Advisory", "Small Craft Advisory"],
+        ["low-water-advisory", "Low Water Advisory", "Low Water Advisory"],
+        ["marine-hurricane-warning", "Marine Hurricane Warning", "Hurricane Warning"],
+        ["marine-hurricane-watch", "Marine Hurricane Watch", "Hurricane Watch"],
+        ["marine-tropical-storm-warning", "Marine Tropical Storm Warning", "Tropical Storm Warning"],
+        ["marine-tropical-storm-watch", "Marine Tropical Storm Watch", "Tropical Storm Watch"],
+        ["hurricane-force-wind-warning-marine", "Hurricane Force Wind Warning", "Hurricane Force Wind Warning"],
+        ["storm-warning", "Storm Warning", "Storm Warning"],
+        ["hazardous-seas-warning", "Hazardous Seas Warning", "Hazardous Seas Warning"],
+        ["heavy-freezing-spray-warning", "Heavy Freezing Spray Warning", "Heavy Freezing Spray Warning"],
+        ["marine-weather-statement", "Marine Weather Statement", "Marine Weather Statement"],
+        ["freezing-spray-advisory", "Freezing Spray Advisory", "Freezing Spray Advisory"]
+      ]
+    }
+  ].map((group) => ({
+    ...group,
+    products: group.products.map(([id, label, event]) => ({
+      id,
+      label,
+      event,
+      groupId: group.id,
+      defaultEnabled: group.defaultEnabled
+    }))
+  }));
+
+  const productById = new Map(
+    catalog.flatMap((group) => group.products).map((product) => [product.id, product])
+  );
+
+  let catalogRoot = null;
+  let draft = null;
+  let allowNativeCloseOnce = false;
+  const expandedGroups = new Set(["storm"]);
 
   function popupIsOpen() {
     return !popup.hidden &&
       popup.getAttribute("aria-hidden") !== "true";
   }
 
-  function getMasterInput() {
-    return popup.querySelector(
-      "[data-level2-alert-filter-show-all]"
-    );
+  function cloneSettings(settings) {
+    return {
+      version: 1,
+      showAll: settings?.showAll === true,
+      events: settings?.events && typeof settings.events === "object"
+        ? { ...settings.events }
+        : {}
+    };
   }
 
-  function getEventInputs() {
-    return Array.from(
-      popup.querySelectorAll(
-        "[data-level2-alert-filter-event]"
-      )
-    );
-  }
+  function currentDraft() {
+    if (draft) return draft;
 
-  function eventNameFromInput(input) {
-    try {
-      return decodeURIComponent(
-        input.dataset.level2AlertFilterEvent || ""
-      );
-    } catch (_error) {
-      return "";
-    }
-  }
-
-  function defaultEnabledForEvent(eventName) {
-    if (
-      typeof HOMEPAGE_RADAR_ALERT_EVENTS !== "undefined" &&
-      HOMEPAGE_RADAR_ALERT_EVENTS?.has(eventName)
-    ) {
-      return true;
-    }
-
-    return eventName === "Special Weather Statement";
-  }
-
-  function updateGroupButtons() {
-    popup.querySelectorAll(
-      ".alert-type-filter-group"
-    ).forEach((group) => {
-      const button = group.querySelector(
-        "[data-level2-alert-filter-group-toggle]"
-      );
-
-      const inputs = Array.from(
-        group.querySelectorAll(
-          "[data-level2-alert-filter-event]"
-        )
-      );
-
-      if (!button || !inputs.length) return;
-
-      const allChecked = inputs.every(
-        (input) => input.checked
-      );
-
-      button.textContent = allChecked
-        ? "Deselect All"
-        : "Select All";
-
-      button.dataset.level2AlertFilterGroupMode = allChecked
-        ? "deselect"
-        : "select";
-    });
-  }
-
-  function updateStagedSummary() {
-    const hint = document.getElementById(
-      "alertTypeFilterHint"
+    draft = cloneSettings(
+      typeof level2AlertFilterSettings === "object"
+        ? level2AlertFilterSettings
+        : null
     );
 
-    if (!hint) return;
+    return draft;
+  }
 
-    let total = 0;
-    let selected = 0;
+  function productChecked(product) {
+    const settings = currentDraft();
+    const override = settings.events?.[product.event];
 
-    getEventInputs().forEach((input) => {
-      const row = input.closest(
-        ".alert-type-filter-event"
+    if (typeof override === "boolean") return override;
+    if (settings.showAll) return true;
+
+    return product.defaultEnabled;
+  }
+
+  function selectedCount(group) {
+    return group.products.filter(productChecked).length;
+  }
+
+  function normalizeSearch(value) {
+    return String(value || "").trim().toLowerCase();
+  }
+
+  function catalogMarkup() {
+    return `
+      <section class="level2-static-alert-catalog"
+               data-level2-static-alert-catalog
+               aria-label="Weather alert settings"><div class="level2-static-alert-scroll">
+          ${catalog.map((group) => `
+            <section class="level2-static-alert-group"
+                     data-level2-static-group="${group.id}">
+              <div class="level2-static-alert-group-head">
+                <button type="button"
+                        class="level2-static-alert-group-head-button"
+                        data-level2-static-group-expand="${group.id}"
+                        aria-expanded="${expandedGroups.has(group.id) ? "true" : "false"}">
+                  <strong>${group.label}</strong>
+                  <em data-level2-static-group-count="${group.id}"></em>
+                  <span class="level2-static-alert-chevron"
+                        data-level2-static-group-chevron="${group.id}">⌄</span>
+                </button>
+
+                <label class="level2-static-alert-group-toggle"
+                       title="Toggle all ${group.label} alerts">
+                  <input type="checkbox"
+                         data-level2-static-group-toggle="${group.id}">
+                  <span class="level2-static-alert-switch" aria-hidden="true"></span>
+                </label>
+              </div>
+
+              <div class="level2-static-alert-products"
+                   data-level2-static-group-products="${group.id}"
+                   ${expandedGroups.has(group.id) ? "" : "hidden"}>
+                ${group.products.map((product) => `
+                  <label class="level2-static-alert-row"
+                         data-level2-static-product-row="${product.id}">
+                    <span>${product.label}</span>
+                    <span class="level2-static-alert-row-toggle">
+                      <input type="checkbox"
+                             data-level2-static-product="${product.id}">
+                      <span class="level2-static-alert-switch" aria-hidden="true"></span>
+                    </span>
+                  </label>
+                `).join("")}
+              </div>
+            </section>
+          `).join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  function syncCatalogUi() {
+    if (!catalogRoot) return;
+
+    const query = normalizeSearch(searchInput?.value);
+
+    catalog.forEach((group) => {
+      const groupElement = catalogRoot.querySelector(
+        `[data-level2-static-group="${group.id}"]`
       );
 
-      const countText = row?.querySelector("em")?.textContent || "";
-      const count = Number.parseInt(countText, 10) || 0;
+      const groupToggle = catalogRoot.querySelector(
+        `[data-level2-static-group-toggle="${group.id}"]`
+      );
 
-      total += count;
+      const count = catalogRoot.querySelector(
+        `[data-level2-static-group-count="${group.id}"]`
+      );
 
-      if (input.checked) {
-        selected += count;
+      const productsElement = catalogRoot.querySelector(
+        `[data-level2-static-group-products="${group.id}"]`
+      );
+
+      const expandButton = catalogRoot.querySelector(
+        `[data-level2-static-group-expand="${group.id}"]`
+      );
+
+      const chevron = catalogRoot.querySelector(
+        `[data-level2-static-group-chevron="${group.id}"]`
+      );
+
+      const allSelected = group.products.every(productChecked);
+      const matchesInGroup = group.products.filter((product) => {
+        const text = `${group.label} ${product.label} ${product.event}`.toLowerCase();
+        return !query || text.includes(query);
+      });
+
+      if (groupToggle) {
+        groupToggle.checked = allSelected;
+        groupToggle.indeterminate = !allSelected &&
+          group.products.some(productChecked);
+      }
+
+      if (count) {
+        count.textContent = `${selectedCount(group)} / ${group.products.length}`;
+      }
+
+      group.products.forEach((product) => {
+        const input = catalogRoot.querySelector(
+          `[data-level2-static-product="${product.id}"]`
+        );
+
+        const row = catalogRoot.querySelector(
+          `[data-level2-static-product-row="${product.id}"]`
+        );
+
+        if (input) input.checked = productChecked(product);
+
+        if (row) {
+          const text = `${group.label} ${product.label} ${product.event}`.toLowerCase();
+          row.hidden = Boolean(query) && !text.includes(query);
+        }
+      });
+
+      const shouldExpand = Boolean(query) || expandedGroups.has(group.id);
+
+      if (productsElement) {
+        productsElement.hidden = !shouldExpand;
+      }
+
+      if (expandButton) {
+        expandButton.setAttribute("aria-expanded", String(shouldExpand));
+      }
+
+      if (chevron) {
+        chevron.textContent = shouldExpand ? "⌃" : "⌄";
+      }
+
+      if (groupElement) {
+        groupElement.hidden = Boolean(query) && matchesInGroup.length === 0;
       }
     });
 
-    if (total > 0) {
+    const hint = document.getElementById("alertTypeFilterHint");
+
+    if (hint) {
+      const enabledProducts = catalog
+        .flatMap((group) => group.products)
+        .filter(productChecked)
+        .length;
+
+      const totalProducts = catalog
+        .reduce((sum, group) => sum + group.products.length, 0);
+
       hint.textContent =
-        `${selected} of ${total} active NWS alerts are staged for this map.`;
+        `${enabledProducts} of ${totalProducts} alert products are enabled for this map.`;
     }
   }
 
-  function syncInPlace() {
-    updateGroupButtons();
-    updateStagedSummary();
+  function renderCatalog() {
+    if (!catalogRoot) return;
+
+    const scroll = catalogRoot.querySelector(".level2-static-alert-scroll");
+    const priorScrollTop = scroll?.scrollTop || 0;
+
+    catalogRoot.innerHTML = catalogMarkup();
+    syncCatalogUi();
+
+    const nextScroll = catalogRoot.querySelector(".level2-static-alert-scroll");
+
+    if (nextScroll) {
+      nextScroll.scrollTop = priorScrollTop;
+    }
   }
 
-  function commitCurrentPopupChoices() {
-    const master = getMasterInput();
-    const showAll = master?.checked === true;
-    const events = {};
+    function ensureCatalog() {
+    if (!popupIsOpen()) {
+      cleanupCatalog();
+      return;
+    }
 
-    getEventInputs().forEach((input) => {
-      const eventName = eventNameFromInput(input);
+    if (catalogRoot?.isConnected) {
+      syncCatalogUi();
+      return;
+    }
 
-      if (!eventName) return;
+    draft = cloneSettings(
+      typeof level2AlertFilterSettings === "object"
+        ? level2AlertFilterSettings
+        : null
+    );
 
-      const baseline = showAll
-        ? true
-        : defaultEnabledForEvent(eventName);
+    popupContent.replaceChildren();
 
-      if (input.checked !== baseline) {
-        events[eventName] = input.checked;
+    catalogRoot = document.createElement("div");
+    catalogRoot.dataset.level2StaticCatalogHost = "true";
+
+    popupContent.appendChild(catalogRoot);
+    renderCatalog();
+  }
+
+  function cleanupCatalog() {
+    if (catalogRoot?.isConnected) {
+      catalogRoot.remove();
+    }
+
+    popupContent.replaceChildren();
+
+    catalogRoot = null;
+    draft = null;
+  }
+
+  function applyDraft() {
+    const settings = currentDraft();
+    const mergedEvents = {
+      ...(settings.events || {})
+    };
+
+    const rawEventStates = new Map();
+
+    catalog.flatMap((group) => group.products).forEach((product) => {
+      const selected = productChecked(product);
+
+      if (!rawEventStates.has(product.event)) {
+        rawEventStates.set(product.event, selected);
+        return;
       }
+
+      /*
+        A few NWS event names occur in more than one visible category.
+        Keep the map enabled when any linked catalog product is enabled.
+      */
+      rawEventStates.set(
+        product.event,
+        rawEventStates.get(product.event) || selected
+      );
+    });
+
+    rawEventStates.forEach((selected, eventName) => {
+      mergedEvents[eventName] = selected;
     });
 
     level2AlertFilterSettings = {
       version: 1,
-      showAll,
-      events
+      showAll: settings.showAll === true,
+      events: mergedEvents
     };
 
-    saveLevel2AlertFilterSettings();
+    if (typeof saveLevel2AlertFilterSettings === "function") {
+      saveLevel2AlertFilterSettings();
+    }
+
+    if (typeof refreshLevel2AlertTypesFromCache === "function") {
+      refreshLevel2AlertTypesFromCache();
+    }
   }
 
-  function closePopupAfterApply() {
-    popup.hidden = true;
-    popup.setAttribute("aria-hidden", "true");
-
-    document.body.classList.remove(
-      "alert-type-filter-popup-open"
+  function requestNativeClose() {
+    const closeButton = popup.querySelector(
+      "[data-level2-alert-popup-close]"
     );
 
-    if (searchInput) {
-      searchInput.value = "";
-    }
+    if (!closeButton) return;
 
-    const summary = shell.querySelector("summary");
-
-    if (summary) {
-      summary.setAttribute("aria-expanded", "false");
-      summary.focus();
-    }
+    allowNativeCloseOnce = true;
+    closeButton.click();
   }
 
-  /*
-    Window capture runs before the older document-level popup handler.
-    That prevents a full list rerender after every checkbox click.
-  */
+    function handleStaticChange(input) {
+    const settings = currentDraft();
+
+    if (input.matches("[data-level2-static-group-toggle]")) {
+      const group = catalog.find(
+        (item) => item.id === input.dataset.level2StaticGroupToggle
+      );
+
+      if (!group) return;
+
+      group.products.forEach((product) => {
+        settings.events[product.event] = input.checked;
+      });
+    } else if (input.matches("[data-level2-static-product]")) {
+      const product = productById.get(
+        input.dataset.level2StaticProduct
+      );
+
+      if (!product) return;
+
+      settings.events[product.event] = input.checked;
+    } else {
+      return;
+    }
+
+    syncCatalogUi();
+    applyDraft();
+  }
+
   window.addEventListener("change", (event) => {
     const input = event.target;
 
     if (
       !popupIsOpen() ||
       !(input instanceof HTMLInputElement) ||
-      !popup.contains(input)
+      !catalogRoot?.contains(input)
     ) {
       return;
     }
 
-    if (input.matches("[data-level2-alert-filter-show-all]")) {
-      event.stopImmediatePropagation();
-
-      const checked = input.checked;
-
-      getEventInputs().forEach((eventInput) => {
-        eventInput.checked = checked;
-      });
-
-      syncInPlace();
+    if (
+      !input.matches(
+        "[data-level2-static-group-toggle], [data-level2-static-product]"
+      )
+    ) {
       return;
     }
 
-    if (input.matches("[data-level2-alert-filter-event]")) {
-      event.stopImmediatePropagation();
-      syncInPlace();
-    }
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    event.stopPropagation();
+
+    handleStaticChange(input);
   }, true);
 
-  window.addEventListener("click", (event) => {
-    const target = event.target instanceof Element
-      ? event.target
+  window.addEventListener("input", (event) => {
+    if (
+      !popupIsOpen() ||
+      !searchInput ||
+      event.target !== searchInput
+    ) {
+      return;
+    }
+
+    event.stopImmediatePropagation();
+    event.stopPropagation();
+    syncCatalogUi();
+  }, true);
+
+    window.addEventListener("click", (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+
+    if (!target || !popupIsOpen()) return;
+
+    const expandButton = catalogRoot?.contains(target)
+      ? target.closest("[data-level2-static-group-expand]")
       : null;
 
-    if (!popupIsOpen() || !target) return;
+    if (expandButton) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      event.stopPropagation();
+
+      const groupId = expandButton.dataset.level2StaticGroupExpand;
+
+      if (expandedGroups.has(groupId)) {
+        expandedGroups.delete(groupId);
+      } else {
+        expandedGroups.add(groupId);
+      }
+
+      syncCatalogUi();
+      return;
+    }
 
     const resetButton = target.closest(
-      "[data-level2-alert-filter-reset]"
+      "[data-level2-static-reset]"
     );
 
     if (resetButton && popup.contains(resetButton)) {
       event.preventDefault();
       event.stopImmediatePropagation();
+      event.stopPropagation();
 
-      const master = getMasterInput();
+      draft = {
+        version: 1,
+        showAll: false,
+        events: {}
+      };
 
-      if (master) {
-        master.checked = false;
-      }
-
-      getEventInputs().forEach((input) => {
-        const eventName = eventNameFromInput(input);
-
-        input.checked = defaultEnabledForEvent(eventName);
-      });
-
-      syncInPlace();
-      return;
-    }
-
-    const applyButton = target.closest(
-      "[data-level2-alert-popup-apply]"
-    );
-
-    if (applyButton && popup.contains(applyButton)) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-
-      commitCurrentPopupChoices();
-      closePopupAfterApply();
-
-      refreshLevel2AlertTypesFromCache();
+      applyDraft();
+      renderCatalog();
     }
   }, true);
+
+  const observer = new MutationObserver(() => {
+    window.requestAnimationFrame(ensureCatalog);
+  });
+
+  observer.observe(popup, {
+    attributes: true,
+    attributeFilter: ["hidden", "aria-hidden"],
+    childList: true,
+    subtree: true
+  });
+
+  window.requestAnimationFrame(ensureCatalog);
 })();
 </script>
+<style id="level2-alert-catalog-first-image-theme">
+  /*
+    Alert catalog visual theme — based on approved first visual mockup.
+    Visual CSS only: no alert data, filtering, radar, or catalog logic changes.
+  */
+  #level2AlertTypeFilterPopup {
+    --zwx-cyan: #31b9ff;
+    --zwx-ice: #b9e9ff;
+    --zwx-panel: #071b34;
+    --zwx-panel-deep: #031126;
+    --zwx-border: rgba(82, 180, 239, 0.38);
+    --zwx-text-soft: #abc8dc;
+  }
+
+  #level2AlertTypeFilterPopup .alert-type-filter-popup-panel {
+    border-color: rgba(62, 177, 244, 0.58) !important;
+    background:
+      radial-gradient(900px 340px at 80% -8%, rgba(31, 138, 255, 0.22), transparent 68%),
+      radial-gradient(560px 280px at 8% 96%, rgba(8, 95, 160, 0.16), transparent 76%),
+      linear-gradient(145deg, #082442 0%, #04172d 48%, #031124 100%) !important;
+    box-shadow:
+      0 28px 80px rgba(0, 0, 0, 0.62),
+      0 0 0 1px rgba(107, 204, 255, 0.08),
+      inset 0 1px 0 rgba(205, 241, 255, 0.12) !important;
+  }
+
+  #level2AlertTypeFilterPopup .alert-type-filter-popup-header {
+    position: relative;
+    overflow: hidden;
+    border-bottom-color: rgba(87, 190, 255, 0.32) !important;
+    background:
+      radial-gradient(620px 180px at 88% 0%, rgba(34, 130, 245, 0.18), transparent 72%),
+      linear-gradient(90deg, rgba(3, 20, 42, 0.96), rgba(7, 39, 76, 0.9)) !important;
+  }
+
+  #level2AlertTypeFilterPopup .alert-type-filter-popup-header::after {
+    position: absolute;
+    inset: auto 0 0;
+    height: 1px;
+    content: "";
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(62, 192, 255, 0.92),
+      transparent
+    );
+    box-shadow: 0 0 16px rgba(48, 181, 255, 0.55);
+    pointer-events: none;
+  }
+
+  #level2AlertTypeFilterPopup #level2AlertTypeFilterSearch {
+    border-color: rgba(59, 175, 242, 0.58) !important;
+    background:
+      linear-gradient(135deg, rgba(8, 30, 56, 0.96), rgba(2, 15, 31, 0.98)) !important;
+    box-shadow:
+      inset 0 1px 0 rgba(185, 234, 255, 0.07),
+      0 0 0 1px rgba(19, 112, 180, 0.12) !important;
+  }
+
+  #level2AlertTypeFilterPopup #level2AlertTypeFilterSearch:focus {
+    border-color: #42c1ff !important;
+    box-shadow:
+      0 0 0 3px rgba(54, 184, 255, 0.15),
+      0 0 20px rgba(39, 166, 245, 0.18) !important;
+  }
+
+  #level2AlertTypeFilterPopup [data-level2-alert-popup-apply],
+  #level2AlertTypeFilterPopup [data-level2-static-apply] {
+    border-color: rgba(106, 215, 255, 0.9) !important;
+    background:
+      linear-gradient(135deg, #48c7ff 0%, #1698eb 55%, #0879c6 100%) !important;
+    color: #031426 !important;
+    box-shadow:
+      0 8px 18px rgba(8, 125, 207, 0.28),
+      inset 0 1px 0 rgba(255, 255, 255, 0.42) !important;
+  }
+
+  #level2AlertTypeFilterPopup [data-level2-alert-popup-apply]:hover,
+  #level2AlertTypeFilterPopup [data-level2-static-apply]:hover {
+    filter: brightness(1.09);
+    box-shadow:
+      0 10px 24px rgba(8, 147, 234, 0.4),
+      0 0 20px rgba(58, 195, 255, 0.22) !important;
+  }
+
+  #level2AlertTypeFilterPopup [data-level2-static-reset],
+  #level2AlertTypeFilterPopup [data-level2-alert-filter-reset] {
+    border-color: rgba(118, 177, 216, 0.48) !important;
+    background:
+      linear-gradient(135deg, rgba(28, 67, 103, 0.88), rgba(9, 31, 57, 0.94)) !important;
+    color: #d5ecff !important;
+    box-shadow: inset 0 1px 0 rgba(198, 236, 255, 0.09);
+  }
+
+  #level2AlertTypeFilterPopup .level2-static-alert-catalog-toolbar {
+    margin-bottom: 16px;
+    padding: 14px 15px;
+    border: 1px solid rgba(89, 177, 230, 0.18);
+    border-radius: 12px;
+    background:
+      linear-gradient(100deg, rgba(13, 48, 82, 0.48), rgba(5, 25, 49, 0.22));
+    box-shadow:
+      inset 0 1px 0 rgba(194, 235, 255, 0.06),
+      0 10px 24px rgba(0, 0, 0, 0.14);
+  }
+
+  #level2AlertTypeFilterPopup .level2-static-alert-catalog-copy strong {
+    color: var(--zwx-ice);
+    text-shadow: 0 0 16px rgba(78, 193, 255, 0.22);
+  }
+
+  #level2AlertTypeFilterPopup .level2-static-alert-catalog-copy small {
+    color: var(--zwx-text-soft);
+  }
+
+  #level2AlertTypeFilterPopup .level2-static-alert-group {
+    --group-accent: #4dc5ff;
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    margin-bottom: 14px;
+    border: 1px solid color-mix(in srgb, var(--group-accent) 62%, #1b466c);
+    border-radius: 12px;
+    background:
+      linear-gradient(110deg, rgba(7, 29, 54, 0.94), rgba(10, 44, 80, 0.72));
+    box-shadow:
+      0 10px 22px rgba(0, 0, 0, 0.18),
+      inset 0 1px 0 rgba(206, 239, 255, 0.06);
+  }
+
+  #level2AlertTypeFilterPopup .level2-static-alert-group::before {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    content: "";
+    opacity: 0.95;
+    pointer-events: none;
+  }
+
+  #level2AlertTypeFilterPopup .level2-static-alert-group > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  #level2AlertTypeFilterPopup .level2-static-alert-group-head {
+    min-height: 56px;
+    border-bottom-color: rgba(171, 222, 255, 0.12);
+    border-left: 3px solid var(--group-accent);
+    background:
+      linear-gradient(90deg, rgba(4, 24, 46, 0.86), rgba(15, 52, 89, 0.36));
+    box-shadow:
+      inset 0 -1px 0 rgba(127, 202, 246, 0.08),
+      inset 0 1px 0 rgba(224, 245, 255, 0.05);
+  }
+
+  #level2AlertTypeFilterPopup .level2-static-alert-group-head-button {
+    min-height: 56px;
+  }
+
+  #level2AlertTypeFilterPopup .level2-static-alert-group-head-button strong {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    color: #ecf7ff;
+    font-size: 0.92rem;
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.34);
+  }
+
+  #level2AlertTypeFilterPopup .level2-static-alert-group-head-button strong::before {
+    display: inline-grid;
+    width: 26px;
+    height: 26px;
+    place-items: center;
+    border: 1px solid color-mix(in srgb, var(--group-accent) 58%, transparent);
+    border-radius: 8px;
+    color: var(--group-accent);
+    background: color-mix(in srgb, var(--group-accent) 12%, transparent);
+    box-shadow:
+      0 0 14px color-mix(in srgb, var(--group-accent) 24%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    font-family: "Segoe UI Symbol", "Arial Unicode MS", sans-serif;
+    font-size: 1rem;
+    line-height: 1;
+  }
+
+  #level2AlertTypeFilterPopup .level2-static-alert-group-head-button em,
+  #level2AlertTypeFilterPopup .level2-static-alert-chevron {
+    color: var(--group-accent);
+    text-shadow: 0 0 12px color-mix(in srgb, var(--group-accent) 36%, transparent);
+  }
+
+  #level2AlertTypeFilterPopup .level2-static-alert-products {
+    background:
+      linear-gradient(180deg, rgba(1, 15, 31, 0.46), rgba(7, 31, 55, 0.64));
+  }
+
+  #level2AlertTypeFilterPopup .level2-static-alert-row {
+    min-height: 54px;
+    border-bottom-color: rgba(134, 195, 236, 0.1);
+    background: linear-gradient(90deg, rgba(7, 28, 51, 0.12), transparent);
+    transition:
+      background 150ms ease,
+      box-shadow 150ms ease;
+  }
+
+  #level2AlertTypeFilterPopup .level2-static-alert-row:hover {
+    background:
+      linear-gradient(90deg, color-mix(in srgb, var(--group-accent) 12%, rgba(6, 30, 54, 0.8)), rgba(8, 33, 58, 0.28));
+    box-shadow: inset 3px 0 0 var(--group-accent);
+  }
+
+  #level2AlertTypeFilterPopup .level2-static-alert-row span:first-child {
+    color: #dceeff;
+    font-weight: 760;
+  }
+
+  #level2AlertTypeFilterPopup .level2-static-alert-switch {
+    border: 1px solid rgba(176, 232, 255, 0.22);
+    background: rgba(117, 144, 168, 0.55);
+    box-shadow:
+      inset 0 1px 2px rgba(0, 0, 0, 0.28),
+      0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  #level2AlertTypeFilterPopup input:checked + .level2-static-alert-switch {
+    background:
+      linear-gradient(135deg, #4dd1ff, #1198e9) !important;
+    box-shadow:
+      0 0 14px rgba(40, 185, 255, 0.34),
+      inset 0 1px 0 rgba(255, 255, 255, 0.38) !important;
+  }
+
+  #level2AlertTypeFilterPopup .level2-static-alert-switch::after {
+    box-shadow:
+      0 2px 5px rgba(0, 0, 0, 0.38),
+      inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  }
+
+  /* Category identity — blue remains the primary language, accents add hierarchy. */
+  #level2AlertTypeFilterPopup [data-level2-static-group="storm"] {
+    --group-accent: #ffd65a;
+  }
+
+  #level2AlertTypeFilterPopup [data-level2-static-group="storm"]::before {
+    background:
+      radial-gradient(360px 125px at 72% 52%, rgba(71, 166, 255, 0.25), transparent 72%),
+      linear-gradient(96deg, rgba(255, 206, 67, 0.14), transparent 42%);
+  }
+
+  #level2AlertTypeFilterPopup [data-level2-static-group="storm"] strong::before {
+    content: "\26A1";
+  }
+
+  #level2AlertTypeFilterPopup [data-level2-static-group="tropical"] {
+    --group-accent: #cc85ff;
+  }
+
+  #level2AlertTypeFilterPopup [data-level2-static-group="tropical"]::before {
+    background:
+      radial-gradient(260px 120px at 74% 52%, rgba(195, 100, 255, 0.22), transparent 74%),
+      linear-gradient(96deg, rgba(250, 132, 181, 0.14), transparent 44%);
+  }
+
+  #level2AlertTypeFilterPopup [data-level2-static-group="tropical"] strong::before {
+    content: "\21BB";
+  }
+
+  #level2AlertTypeFilterPopup [data-level2-static-group="winter"] {
+    --group-accent: #72d7ff;
+  }
+
+  #level2AlertTypeFilterPopup [data-level2-static-group="winter"]::before {
+    background:
+      radial-gradient(280px 150px at 68% 50%, rgba(100, 211, 255, 0.2), transparent 72%),
+      linear-gradient(96deg, rgba(102, 194, 255, 0.1), transparent 44%);
+  }
+
+  #level2AlertTypeFilterPopup [data-level2-static-group="winter"] strong::before {
+    content: "\2744";
+  }
+
+  #level2AlertTypeFilterPopup [data-level2-static-group="nonprecip"] {
+    --group-accent: #9fc9ef;
+  }
+
+  #level2AlertTypeFilterPopup [data-level2-static-group="nonprecip"]::before {
+    background:
+      radial-gradient(320px 110px at 74% 55%, rgba(104, 162, 207, 0.18), transparent 72%),
+      linear-gradient(96deg, rgba(116, 178, 219, 0.1), transparent 44%);
+  }
+
+  #level2AlertTypeFilterPopup [data-level2-static-group="nonprecip"] strong::before {
+    content: "\224B";
+  }
+
+  #level2AlertTypeFilterPopup [data-level2-static-group="hydro"] {
+    --group-accent: #38e1dc;
+  }
+
+  #level2AlertTypeFilterPopup [data-level2-static-group="hydro"]::before {
+    background:
+      radial-gradient(310px 130px at 70% 52%, rgba(16, 206, 202, 0.2), transparent 72%),
+      linear-gradient(96deg, rgba(20, 191, 207, 0.11), transparent 44%);
+  }
+
+  #level2AlertTypeFilterPopup [data-level2-static-group="hydro"] strong::before {
+    content: "\25C7";
+  }
+
+  #level2AlertTypeFilterPopup [data-level2-static-group="fire"] {
+    --group-accent: #ff9a4e;
+  }
+
+  #level2AlertTypeFilterPopup [data-level2-static-group="fire"]::before {
+    background:
+      radial-gradient(300px 120px at 72% 55%, rgba(255, 104, 45, 0.2), transparent 72%),
+      linear-gradient(96deg, rgba(255, 129, 51, 0.13), transparent 44%);
+  }
+
+  #level2AlertTypeFilterPopup [data-level2-static-group="fire"] strong::before {
+    content: "\2726";
+  }
+
+  #level2AlertTypeFilterPopup [data-level2-static-group="marine"] {
+    --group-accent: #59b4ff;
+  }
+
+  #level2AlertTypeFilterPopup [data-level2-static-group="marine"]::before {
+    background:
+      radial-gradient(300px 125px at 70% 55%, rgba(53, 137, 255, 0.2), transparent 72%),
+      linear-gradient(96deg, rgba(30, 121, 234, 0.12), transparent 44%);
+  }
+
+  #level2AlertTypeFilterPopup [data-level2-static-group="marine"] strong::before {
+    content: "\2248";
+  }
+
+  @media (max-width: 768px) {
+    #level2AlertTypeFilterPopup .alert-type-filter-popup-panel {
+      background:
+        radial-gradient(440px 220px at 86% -2%, rgba(34, 142, 255, 0.21), transparent 70%),
+        linear-gradient(160deg, #092440 0%, #04172d 55%, #031124 100%) !important;
+    }
+
+    #level2AlertTypeFilterPopup .level2-static-alert-catalog-toolbar {
+      padding: 12px;
+    }
+
+    #level2AlertTypeFilterPopup .level2-static-alert-group {
+      border-radius: 11px;
+    }
+
+    #level2AlertTypeFilterPopup .level2-static-alert-group-head,
+    #level2AlertTypeFilterPopup .level2-static-alert-group-head-button {
+      min-height: 58px;
+    }
+
+    #level2AlertTypeFilterPopup .level2-static-alert-group-head-button strong {
+      gap: 9px;
+      font-size: 0.88rem;
+    }
+
+    #level2AlertTypeFilterPopup .level2-static-alert-group-head-button strong::before {
+      width: 24px;
+      height: 24px;
+      border-radius: 7px;
+      font-size: 0.92rem;
+    }
+
+    #level2AlertTypeFilterPopup .level2-static-alert-row {
+      min-height: 58px;
+      background: linear-gradient(90deg, rgba(7, 28, 51, 0.38), rgba(7, 28, 51, 0.08));
+    }
+  }
+</style>
 </body>
 </html>
 
