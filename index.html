@@ -11054,10 +11054,27 @@ body {
 </style>
 <style id="desktop-alerts-spc-bottom-lock-css">
   /*
-    Desktop: the alerts column ends exactly at the SPC card bottom.
-    Outer rails continue using --ops-reference-height.
+    Desktop: every column ends at the SPC card's exact bottom edge.
+    Each column is measured from its own top edge.
   */
   @media (min-width: 1600px) {
+    .forecast-dashboard .ops-reference-left,
+    .forecast-dashboard .ops-reference-right {
+      align-self: start !important;
+      min-height: 0 !important;
+      overflow: hidden !important;
+    }
+
+    .forecast-dashboard .ops-reference-left {
+      height: var(--ops-left-rail-height, var(--ops-reference-height, auto)) !important;
+      max-height: var(--ops-left-rail-height, var(--ops-reference-height, none)) !important;
+    }
+
+    .forecast-dashboard .ops-reference-right {
+      height: var(--ops-right-rail-height, var(--ops-reference-height, auto)) !important;
+      max-height: var(--ops-right-rail-height, var(--ops-reference-height, none)) !important;
+    }
+
     .forecast-dashboard .ops-right-column {
       display: grid !important;
       grid-template-rows: auto minmax(0, 1fr) !important;
@@ -16124,26 +16141,32 @@ const threats = [
   function syncRailHeight() {
     const layout = document.querySelector(".ops-reference-layout");
     const spc = document.querySelector(".spc-card");
-    const alertsColumn = document.querySelector(".ops-right-column");
 
     if (!layout || !spc) return;
 
-    const layoutTop = layout.getBoundingClientRect().top;
     const spcBottom = spc.getBoundingClientRect().bottom;
+    const layoutTop = layout.getBoundingClientRect().top;
 
+    // Preserve the original shared height for any older rail rules.
     layout.style.setProperty(
       "--ops-reference-height",
       `${Math.max(0, Math.round(spcBottom - layoutTop))}px`
     );
 
-    if (alertsColumn) {
-      const alertsTop = alertsColumn.getBoundingClientRect().top;
+    [
+      [".ops-reference-left", "--ops-left-rail-height"],
+      [".ops-reference-right", "--ops-right-rail-height"],
+      [".ops-right-column", "--ops-alerts-height"]
+    ].forEach(([selector, variable]) => {
+      const column = layout.querySelector(selector);
+
+      if (!column) return;
 
       layout.style.setProperty(
-        "--ops-alerts-height",
-        `${Math.max(0, Math.round(spcBottom - alertsTop))}px`
+        variable,
+        `${Math.max(0, Math.round(spcBottom - column.getBoundingClientRect().top))}px`
       );
-    }
+    });
   }
 
   async function render() {
