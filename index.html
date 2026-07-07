@@ -11110,6 +11110,30 @@ body {
     }
   }
 </style>
+<style id="nws-alert-map-current-warnings-overlay-css">
+  /*
+    CurrentWarnings is drawn above the broad WWA layer so short-fuse
+    tornado, severe thunderstorm, flash-flood, and marine warnings stay visible.
+  */
+  .forecast-dashboard .ops-nws-alert-map-warnings {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+    opacity: 1;
+    filter: saturate(1.55) contrast(1.2) brightness(1.14)
+      drop-shadow(0 0 2px rgba(255, 255, 255, 0.42));
+  }
+
+  @media (min-width: 1600px) {
+    .forecast-dashboard .ops-nws-alert-map-warnings {
+      object-fit: contain;
+    }
+  }
+</style>
 </head>
 
 <body>
@@ -15384,15 +15408,16 @@ setInterval(loadSPCImages, 10 * 60 * 1000);
   }
 
   function getNwsAlertMapUrls() {
+    const alertService =
+      "https://mapservices.weather.noaa.gov/eventdriven/rest/services/WWA/watch_warn_adv/MapServer";
+
     return {
       base: buildNwsMapExportUrl(
         "https://mapservices.weather.noaa.gov/static/rest/services/nws_reference_maps/nws_reference_map/MapServer",
         "3"
       ),
-      alerts: buildNwsMapExportUrl(
-        "https://mapservices.weather.noaa.gov/eventdriven/rest/services/WWA/watch_warn_adv/MapServer",
-        "0,1"
-      )
+      alerts: buildNwsMapExportUrl(alertService, "1"),
+      currentWarnings: buildNwsMapExportUrl(alertService, "0")
     };
   }
 
@@ -15852,6 +15877,10 @@ setInterval(loadSPCImages, 10 * 60 * 1000);
             <img class="ops-nws-alert-map-alerts"
               src="${esc(nwsAlertMap.alerts)}"
               alt="Current National Weather Service watches, warnings, and advisories">
+            <img class="ops-nws-alert-map-warnings"
+              src="${esc(nwsAlertMap.currentWarnings)}"
+              alt=""
+              aria-hidden="true">
           </div>
 
           <a class="ops-reference-button ops-nws-alert-map-button"
