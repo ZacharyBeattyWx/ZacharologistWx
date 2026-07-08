@@ -11,3 +11,10 @@ database_id = "1ac719e5-fca1-43fb-903f-bd90a2d85528"
 [[r2_buckets]]
 binding = "RADAR_BUCKET"
 bucket_name = "zacharologist-radar"
+[[durable_objects.bindings]]
+name = "LIVE_ALERT_HUB"
+class_name = "LiveAlertHub"
+
+[[migrations]]
+tag = "live_alert_hub_v1"
+new_sqlite_classes = ["LiveAlertHub"]

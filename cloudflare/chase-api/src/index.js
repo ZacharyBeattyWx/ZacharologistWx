@@ -1,3 +1,4 @@
+export { LiveAlertHub } from "./live-alert-hub.js";
 function jsonResponse(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -1192,6 +1193,37 @@ export default {
 
     if (request.method === "OPTIONS") {
       return jsonResponse({ ok: true });
+    }
+
+    if (url.pathname.startsWith("/api/live-alerts/")) {
+      try {
+        if (!env.LIVE_ALERT_HUB) {
+          return opsJsonResponse(
+            {
+              error: "Live alert hub is not configured",
+              generatedAt: new Date().toISOString()
+            },
+            503,
+            15
+          );
+        }
+
+        const hubId = env.LIVE_ALERT_HUB.idFromName("global-alert-hub");
+        const hub = env.LIVE_ALERT_HUB.get(hubId);
+
+        return await hub.fetch(request);
+      } catch (error) {
+        console.error("Live alert hub failed:", error);
+
+        return opsJsonResponse(
+          {
+            error: "Live alert hub is temporarily unavailable",
+            generatedAt: new Date().toISOString()
+          },
+          503,
+          15
+        );
+      }
     }
     if (url.pathname === "/api/nws-alert-snapshot" && request.method === "GET") {
       try {
