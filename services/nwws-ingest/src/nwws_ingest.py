@@ -5,6 +5,7 @@ import re
 import signal
 import sys
 import time
+import xml.etree.ElementTree as ET
 import requests
 from datetime import datetime, timezone
 
@@ -222,59 +223,193 @@ def headline_for_product(text, event):
     return event
 
 
+def xml_local_name(tag):
+    return str(tag).split("}", 1)[-1]
+
+
+def child_text(element, local_name):
+    if element is None:
+        return ""
+
+    for child in element.iter():
+        if xml_local_name(child.tag) == local_name:
+            return compact_text(child.text or "")
+
+    return ""
+
+
+def parse_iso_to_utc(value):
+    value = str(value or "").strip()
+    if not value:
+        return ""
+
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    except Exception:
+        return ""
+
+
+def parse_cap_polygon_text(value):
+    tokens = compact_text(value).split()
+    coordinates = []
+
+    for token in tokens:
+        if "," not in token:
+            continue
+
+        try:
+            lat_text, lon_text = token.split(",", 1)
+            lat = float(lat_text)
+            lon = float(lon_text)
+            coordinates.append([lon, lat])
+        except Exception:
+            return None
+
+    if len(coordinates) < 3:
+        return None
+
+    if coordinates[0] != coordinates[-1]:
+        coordinates.append(coordinates[0])
+
+    return coordinates
+
+
+def parse_cap_geometry(root):
+    rings = []
+
+    for element in root.iter():
+        if xml_local_name(element.tag) != "polygon":
+            continue
+
+        ring = parse_cap_polygon_text(element.text or "")
+        if ring:
+            rings.append(ring)
+
+    if not rings:
+        return None
+
+    if len(rings) == 1:
+        return {
+            "type": "Polygon",
+            "coordinates": [rings[0]],
+        }
+
+    return {
+        "type": "MultiPolygon",
+        "coordinates": [[ring] for ring in rings],
+    }
+
+
+def parse_cap_alert(text):
+    text = str(text or "")
+    start_candidates = [idx for idx in (text.find("<?xml"), text.find("<alert")) if idx >= 0]
+
+    if not start_candidates:
+        return None
+
+    xml_text = text[min(start_candidates):].strip()
+
+    try:
+        root = ET.fromstring(xml_text)
+    except Exception:
+        return None
+
+    info = next((element for element in root.iter() if xml_local_name(element.tag) == "info"), None)
+    area_desc = ""
+
+    if info is not None:
+        area = next((element for element in info.iter() if xml_local_name(element.tag) == "area"), None)
+        area_desc = child_text(area, "areaDesc")
+
+    return {
+        "identifier": child_text(root, "identifier"),
+        "sender": child_text(root, "sender"),
+        "sent": parse_iso_to_utc(child_text(root, "sent")),
+        "status": child_text(root, "status"),
+        "msgType": child_text(root, "msgType"),
+        "event": child_text(info, "event"),
+        "effective": parse_iso_to_utc(child_text(info, "effective")),
+        "onset": parse_iso_to_utc(child_text(info, "onset")),
+        "expires": parse_iso_to_utc(child_text(info, "expires")),
+        "senderName": child_text(info, "senderName"),
+        "headline": child_text(info, "headline"),
+        "description": child_text(info, "description"),
+        "instruction": child_text(info, "instruction"),
+        "areaDesc": area_desc,
+        "geometry": parse_cap_geometry(root),
+    }
+
 def parse_alert_payload(product):
     attrs = product.get("attrs") or {}
     text = product.get("text") or ""
     product_id = product_id_from_attrs(attrs, text)
+    cap = parse_cap_alert(text)
     entries = [match.groupdict() for match in VTEC_RE.finditer(text)]
 
     if not entries:
         return None
 
-    geometry = parse_latlon_polygon(text)
+    geometry = (cap or {}).get("geometry") or parse_latlon_polygon(text)
     features = []
     delete_ids = []
 
     for entry in entries:
         alert_id = canonical_alert_id(entry)
         action = entry["action"]
-        event = event_name(entry["phenom"], entry["sig"])
-        effective = parse_vtec_time(entry["begin"])
-        expires = parse_vtec_time(entry["end"])
+        event = (cap or {}).get("event") or event_name(entry["phenom"], entry["sig"])
+        effective = (cap or {}).get("effective") or parse_vtec_time(entry["begin"])
+        expires = (cap or {}).get("expires") or parse_vtec_time(entry["end"])
+        sent = (cap or {}).get("sent") or attrs.get("issue") or effective or utc_now_iso()
 
         if action in DELETE_ACTIONS:
             delete_ids.append(alert_id)
             continue
 
+        properties = {
+            "id": alert_id,
+            "identifier": alert_id,
+            "event": event,
+            "headline": (cap or {}).get("headline") or headline_for_product(text, event),
+            "description": (cap or {}).get("description") or text,
+            "sent": sent,
+            "effective": effective,
+            "expires": expires,
+            "ends": expires,
+            "status": (cap or {}).get("status") or "Actual",
+            "messageType": action,
+            "source": "NWWS-OI",
+            "senderName": (cap or {}).get("senderName") or entry["office"],
+            "office": entry["office"],
+            "phenomenon": entry["phenom"],
+            "significance": entry["sig"],
+            "eventTrackingNumber": entry["etn"],
+            "vtecAction": action,
+            "nwwsProductId": product_id,
+            "_alertId": alert_id,
+            "_liveAlert": True,
+            "_liveSource": "nwws-oi",
+            "_liveUpdatedAt": utc_now_iso(),
+        }
+
+        if cap:
+            properties.update({
+                "capIdentifier": cap.get("identifier") or "",
+                "capSender": cap.get("sender") or "",
+                "capMsgType": cap.get("msgType") or "",
+                "areaDesc": cap.get("areaDesc") or "",
+            })
+
+            if cap.get("instruction"):
+                properties["instruction"] = cap["instruction"]
+
         features.append({
             "type": "Feature",
             "id": alert_id,
             "geometry": geometry,
-            "properties": {
-                "id": alert_id,
-                "identifier": alert_id,
-                "event": event,
-                "headline": headline_for_product(text, event),
-                "description": text,
-                "sent": attrs.get("issue") or effective or utc_now_iso(),
-                "effective": effective,
-                "expires": expires,
-                "ends": expires,
-                "status": "Actual",
-                "messageType": action,
-                "source": "NWWS-OI",
-                "senderName": entry["office"],
-                "office": entry["office"],
-                "phenomenon": entry["phenom"],
-                "significance": entry["sig"],
-                "eventTrackingNumber": entry["etn"],
-                "vtecAction": action,
-                "nwwsProductId": product_id,
-                "_alertId": alert_id,
-                "_liveAlert": True,
-                "_liveSource": "nwws-oi",
-                "_liveUpdatedAt": utc_now_iso(),
-            },
+            "properties": properties,
         })
 
     return {
@@ -285,10 +420,10 @@ def parse_alert_payload(product):
             "id": product_id,
             "attrs": attrs,
             "hasGeometry": geometry is not None,
+            "capParsed": cap is not None,
             "vtecCount": len(entries),
         },
     }
-
 
 class CloudflarePoster:
     def __init__(self, ingest_url, token, dry_run=False, timeout=10):
