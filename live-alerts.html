@@ -1,0 +1,1204 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Live NWWS-OI weather alerts from Zacharologist Wx.">
+  <title>Live Alerts | Zacharologist Wx</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #06111f;
+      --panel: rgba(12, 25, 43, 0.88);
+      --panel-strong: rgba(15, 34, 58, 0.96);
+      --text: #eef7ff;
+      --muted: #9bb2c8;
+      --line: rgba(148, 191, 255, 0.2);
+      --blue: #58b7ff;
+      --green: #00d084;
+      --yellow: #ffd84d;
+      --orange: #ff9f43;
+      --red: #ff4d5e;
+      --purple: #d889ff;
+      --shadow: 0 24px 70px rgba(0, 0, 0, 0.38);
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top left, rgba(88, 183, 255, 0.16), transparent 34rem),
+        radial-gradient(circle at top right, rgba(255, 216, 77, 0.11), transparent 28rem),
+        linear-gradient(135deg, #06111f, #081a2e 42%, #050b14);
+      color: var(--text);
+    }
+
+    a {
+      color: inherit;
+    }
+
+    .page {
+      width: min(1180px, calc(100% - 28px));
+      margin: 0 auto;
+      padding: 18px 0 44px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text);
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(88, 183, 255, 0.25), rgba(0, 208, 132, 0.13));
+      border: 1px solid rgba(130, 197, 255, 0.34);
+      box-shadow: 0 0 26px rgba(88, 183, 255, 0.12);
+    }
+
+    .nav-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .nav-button,
+    .control-button {
+      border: 1px solid rgba(145, 196, 255, 0.24);
+      background: rgba(9, 22, 40, 0.78);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-weight: 800;
+      font-size: 0.82rem;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.7fr);
+      gap: 16px;
+      align-items: stretch;
+      margin-bottom: 16px;
+    }
+
+    .hero-card,
+    .status-card,
+    .controls,
+    .alerts-panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .hero-card {
+      padding: 24px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .hero-card::before {
+      content: "";
+      position: absolute;
+      inset: -80px auto auto -80px;
+      width: 220px;
+      height: 220px;
+      border-radius: 999px;
+      background: rgba(88, 183, 255, 0.12);
+      filter: blur(4px);
+      pointer-events: none;
+    }
+
+    .eyebrow {
+      color: var(--blue);
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      font-size: 0.74rem;
+      margin: 0 0 10px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 5vw, 4.2rem);
+      line-height: 0.96;
+      letter-spacing: -0.07em;
+    }
+
+    .hero-card p {
+      color: var(--muted);
+      font-size: 1rem;
+      line-height: 1.6;
+      max-width: 62ch;
+      margin: 16px 0 0;
+    }
+
+    .status-card {
+      padding: 18px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .status-main {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .metric {
+      border: 1px solid rgba(145, 196, 255, 0.18);
+      border-radius: 18px;
+      padding: 14px;
+      background: rgba(5, 13, 25, 0.42);
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 1.8rem;
+      line-height: 1;
+    }
+
+    .connection {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(5, 13, 25, 0.42);
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--orange);
+      box-shadow: 0 0 18px rgba(255, 159, 67, 0.8);
+    }
+
+    .dot.online {
+      background: var(--green);
+      box-shadow: 0 0 18px rgba(0, 208, 132, 0.82);
+    }
+
+    .dot.offline {
+      background: var(--red);
+      box-shadow: 0 0 18px rgba(255, 77, 94, 0.82);
+    }
+
+    .controls {
+      padding: 14px;
+      margin-bottom: 16px;
+      display: grid;
+      grid-template-columns: minmax(180px, 1.1fr) minmax(170px, 0.5fr) auto;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .search,
+    .select {
+      width: 100%;
+      border: 1px solid rgba(145, 196, 255, 0.22);
+      background: rgba(5, 13, 25, 0.66);
+      color: var(--text);
+      border-radius: 16px;
+      padding: 12px 14px;
+      font: inherit;
+      font-weight: 700;
+      outline: none;
+    }
+
+    .alert-summary {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .summary-pill {
+      border: 1px solid rgba(145, 196, 255, 0.18);
+      background: rgba(10, 24, 43, 0.72);
+      border-radius: 999px;
+      padding: 8px 11px;
+      color: var(--muted);
+      font-weight: 900;
+      font-size: 0.76rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .alerts-panel {
+      padding: 14px;
+      min-height: 320px;
+    }
+
+    .alerts-grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .alert-card {
+      border: 1px solid rgba(145, 196, 255, 0.16);
+      background: linear-gradient(135deg, rgba(8, 19, 35, 0.9), rgba(14, 32, 56, 0.76));
+      border-radius: 20px;
+      padding: 14px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .alert-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 5px;
+      background: var(--accent, var(--blue));
+      box-shadow: 0 0 24px var(--accent, var(--blue));
+    }
+
+    .alert-head {
+      display: flex;
+      gap: 12px;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-left: 4px;
+    }
+
+    .alert-title {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .alert-title h2 {
+      margin: 0;
+      font-size: 1rem;
+      line-height: 1.24;
+      letter-spacing: -0.02em;
+    }
+
+    .area {
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.35;
+    }
+
+    .badges {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .badge {
+      border: 1px solid rgba(145, 196, 255, 0.18);
+      border-radius: 999px;
+      padding: 6px 8px;
+      font-size: 0.68rem;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text);
+      background: rgba(5, 13, 25, 0.62);
+      white-space: nowrap;
+    }
+
+    .badge.live {
+      border-color: rgba(0, 208, 132, 0.4);
+      color: #c9ffe8;
+    }
+
+    .badge.expires {
+      border-color: rgba(255, 216, 77, 0.32);
+      color: #fff1ad;
+    }
+
+    .alert-body {
+      margin: 12px 0 0 4px;
+      color: #cfe0f4;
+      line-height: 1.52;
+      font-size: 0.92rem;
+      display: grid;
+      gap: 10px;
+    }
+
+    .alert-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 800;
+    }
+
+    .empty {
+      min-height: 240px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .empty strong {
+      display: block;
+      color: var(--text);
+      font-size: 1.2rem;
+      margin-bottom: 8px;
+    }
+
+
+    .alerts-layout {
+      display: grid;
+      grid-template-columns: minmax(320px, 0.85fr) minmax(360px, 1.15fr);
+      gap: 12px;
+      align-items: start;
+      min-height: min(680px, calc(100vh - 310px));
+    }
+
+    .alerts-grid {
+      max-height: min(720px, calc(100vh - 300px));
+      overflow: auto;
+      padding-right: 4px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(88, 183, 255, 0.42) rgba(5, 13, 25, 0.35);
+    }
+
+    .alerts-grid::-webkit-scrollbar,
+    .alert-detail-panel::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .alerts-grid::-webkit-scrollbar-track,
+    .alert-detail-panel::-webkit-scrollbar-track {
+      background: rgba(5, 13, 25, 0.35);
+      border-radius: 999px;
+    }
+
+    .alerts-grid::-webkit-scrollbar-thumb,
+    .alert-detail-panel::-webkit-scrollbar-thumb {
+      background: rgba(88, 183, 255, 0.42);
+      border-radius: 999px;
+    }
+
+    .alert-card {
+      cursor: pointer;
+      transition: border-color 160ms ease, transform 160ms ease, background 160ms ease;
+    }
+
+    .alert-card:hover,
+    .alert-card.is-selected {
+      border-color: rgba(88, 183, 255, 0.5);
+      background: linear-gradient(135deg, rgba(12, 30, 54, 0.96), rgba(18, 42, 72, 0.84));
+    }
+
+    .alert-card.is-selected {
+      transform: translateX(3px);
+    }
+
+    .alert-card .alert-body {
+      display: none;
+    }
+
+    .alert-card .alert-title h2 {
+      font-size: 0.96rem;
+    }
+
+    .alert-card .area {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .alert-card .badges {
+      min-width: max-content;
+    }
+
+    .alert-detail-panel {
+      position: sticky;
+      top: 14px;
+      max-height: min(720px, calc(100vh - 300px));
+      overflow: auto;
+      border: 1px solid rgba(145, 196, 255, 0.16);
+      background:
+        radial-gradient(circle at top right, rgba(88, 183, 255, 0.13), transparent 20rem),
+        rgba(5, 13, 25, 0.5);
+      border-radius: 20px;
+      padding: 18px;
+      min-height: 360px;
+    }
+
+    .detail-empty {
+      min-height: 320px;
+    }
+
+    .detail-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .detail-header h2 {
+      margin: 0;
+      font-size: clamp(1.35rem, 2.2vw, 2rem);
+      letter-spacing: -0.045em;
+      line-height: 1.05;
+    }
+
+    .detail-area {
+      color: var(--muted);
+      line-height: 1.5;
+      margin: 8px 0 0;
+      font-weight: 750;
+    }
+
+    .detail-section {
+      border-top: 1px solid rgba(145, 196, 255, 0.14);
+      padding-top: 14px;
+      margin-top: 14px;
+      color: #d7e8f8;
+      line-height: 1.58;
+      overflow-wrap: anywhere;
+    }
+
+    .detail-section h3 {
+      margin: 0 0 8px;
+      color: var(--text);
+      font-size: 0.78rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .detail-meta-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .detail-meta-item {
+      border: 1px solid rgba(145, 196, 255, 0.14);
+      border-radius: 14px;
+      background: rgba(5, 13, 25, 0.5);
+      padding: 10px;
+      min-width: 0;
+    }
+
+    .detail-meta-item span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.68rem;
+      font-weight: 900;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+
+    .detail-meta-item strong {
+      display: block;
+      font-size: 0.84rem;
+      overflow-wrap: anywhere;
+    }
+
+
+    @media (max-width: 820px) {
+      .page {
+        width: min(100% - 18px, 1180px);
+        padding-top: 10px;
+      }
+
+      .topbar,
+      .hero,
+      .controls {
+        grid-template-columns: 1fr;
+      }
+
+      .topbar {
+        align-items: flex-start;
+      }
+
+      .nav-actions {
+        width: 100%;
+        justify-content: flex-start;
+      }
+
+      .status-main {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .controls {
+        gap: 8px;
+      }
+
+      .alert-head {
+        flex-direction: column;
+      }
+
+      .badges {
+        justify-content: flex-start;
+      }
+
+      .alerts-layout {
+        grid-template-columns: 1fr;
+        min-height: auto;
+      }
+
+      .alerts-grid,
+      .alert-detail-panel {
+        max-height: none;
+        overflow: visible;
+      }
+
+      .alert-detail-panel {
+        position: static;
+      }
+
+      .detail-meta-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <nav class="topbar" aria-label="Page navigation">
+      <a class="brand" href="index.html">
+        <span class="brand-mark">ZW</span>
+        <span>Zacharologist Wx</span>
+      </a>
+      <div class="nav-actions">
+        <a class="nav-button" href="index.html">Home</a>
+        <a class="nav-button" href="level2-mobile-radar.html?perf=1">Radar + Alerts</a>
+      </div>
+    </nav>
+
+    <section class="hero">
+      <div class="hero-card">
+        <p class="eyebrow">Live NWWS-OI Feed</p>
+        <h1>Live Alerts</h1>
+        <p>
+          A cost-safe text feed of live weather alerts from the Zacharologist Wx alert hub.
+          No radar tiles, no Mapbox, no paid map rendering.
+        </p>
+      </div>
+
+      <aside class="status-card">
+        <div class="status-main">
+          <div class="metric">
+            <span>Total Alerts</span>
+            <strong id="totalCount">0</strong>
+          </div>
+          <div class="metric">
+            <span>With Geometry</span>
+            <strong id="geometryCount">0</strong>
+          </div>
+        </div>
+        <div class="connection">
+          <span class="dot" id="connectionDot"></span>
+          <span id="connectionText">Connecting to live alert stream...</span>
+        </div>
+        <div class="connection">
+          <span>Last update:</span>
+          <span id="lastUpdated">Waiting for data</span>
+        </div>
+      </aside>
+    </section>
+
+    <section class="controls" aria-label="Alert controls">
+      <input class="search" id="searchInput" type="search" placeholder="Search event, area, office, headline..." autocomplete="off">
+      <select class="select" id="typeFilter">
+        <option value="all">All active alerts</option>
+        <option value="warnings">Warnings</option>
+        <option value="watches">Watches</option>
+        <option value="advisories">Advisories</option>
+        <option value="storm">Storm alerts</option>
+        <option value="hydro">Flood and hydro</option>
+        <option value="fire">Fire weather</option>
+        <option value="heat">Heat</option>
+        <option value="geometry">Geometry only</option>
+      </select>
+      <button class="control-button" id="refreshButton" type="button">Refresh Now</button>
+    </section>
+
+    <div class="alert-summary" id="alertSummary"></div>
+
+    <section class="alerts-panel">
+      <div class="alerts-layout">
+        <div class="alerts-grid" id="alertsGrid">
+          <div class="empty">
+            <div>
+              <strong>Loading live alerts...</strong>
+              <span>Connecting to the Zacharologist Wx live alert hub.</span>
+            </div>
+          </div>
+        </div>
+
+        <aside class="alert-detail-panel" id="alertDetailPanel">
+          <div class="empty detail-empty">
+            <div>
+              <strong>Select an alert</strong>
+              <span>Click any alert on the left to view full details here.</span>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const LIVE_ALERTS_CURRENT_URL = location.hostname === "localhost" || location.hostname === "127.0.0.1"
+      ? "https://zacharologistwx.com/api/live-alerts/current"
+      : "/api/live-alerts/current";
+
+    function streamUrlFromCurrentUrl(value) {
+      const url = new URL(value, window.location.origin);
+      url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+      url.pathname = url.pathname.replace(/\/current$/, "/stream");
+      return url.toString();
+    }
+
+    const LIVE_ALERTS_STREAM_URL = streamUrlFromCurrentUrl(LIVE_ALERTS_CURRENT_URL);
+
+    const totalCountEl = document.getElementById("totalCount");
+    const geometryCountEl = document.getElementById("geometryCount");
+    const connectionDot = document.getElementById("connectionDot");
+    const connectionText = document.getElementById("connectionText");
+    const lastUpdatedEl = document.getElementById("lastUpdated");
+    const searchInput = document.getElementById("searchInput");
+    const typeFilter = document.getElementById("typeFilter");
+    const refreshButton = document.getElementById("refreshButton");
+    const alertSummary = document.getElementById("alertSummary");
+    const alertsGrid = document.getElementById("alertsGrid");
+    const alertDetailPanel = document.getElementById("alertDetailPanel");
+
+    let liveFeatures = [];
+    let selectedAlertId = "";
+    let lastSequence = 0;
+    let socket = null;
+    let reconnectTimer = null;
+    let reconnectDelayMs = 3000;
+    let renderTimer = null;
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function cleanText(value) {
+      return String(value || "").replace(/\s+/g, " ").trim();
+    }
+
+    function expiresText(expires) {
+      if (!expires) return "Unknown";
+
+      const end = Date.parse(expires);
+      if (!Number.isFinite(end)) return "Unknown";
+
+      const diff = end - Date.now();
+      if (diff <= 0) return "Expired";
+
+      const mins = Math.floor(diff / 60000);
+      const hrs = Math.floor(mins / 60);
+      const days = Math.floor(hrs / 24);
+
+      if (days > 0) return `${days}d ${hrs % 24}h`;
+      if (hrs > 0) return `${hrs}h ${mins % 60}m`;
+      return `${Math.max(mins, 1)}m`;
+    }
+
+    function eventAccent(event) {
+      const text = String(event || "").toLowerCase();
+
+      if (text.includes("tornado")) return "#ff4d5e";
+      if (text.includes("severe thunderstorm")) return "#ffd84d";
+      if (text.includes("flash flood")) return "#00d084";
+      if (text.includes("flood")) return "#00b36b";
+      if (text.includes("fire") || text.includes("red flag")) return "#ff9f43";
+      if (text.includes("winter") || text.includes("ice") || text.includes("snow") || text.includes("blizzard")) return "#d889ff";
+      if (text.includes("heat")) return "#ff7a45";
+      return "#58b7ff";
+    }
+
+    function severityRank(feature) {
+      const event = String(feature?.properties?.event || "").toLowerCase();
+
+      if (event.includes("tornado warning")) return 1;
+      if (event.includes("severe thunderstorm warning")) return 2;
+      if (event.includes("flash flood warning")) return 3;
+      if (event.includes("warning")) return 4;
+      if (event.includes("watch")) return 5;
+      if (event.includes("advisory")) return 6;
+      return 7;
+    }
+
+    function isExpired(feature) {
+      const expires = feature?.properties?.expires || feature?.properties?.ends || feature?.properties?.end;
+      if (!expires) return false;
+
+      const end = Date.parse(expires);
+      return Number.isFinite(end) && end <= Date.now();
+    }
+
+    function hasGeometry(feature) {
+      return Boolean(
+        feature?.geometry &&
+        feature.geometry.type &&
+        Array.isArray(feature.geometry.coordinates) &&
+        feature.geometry.coordinates.length
+      );
+    }
+
+    function matchesType(feature, type) {
+      if (type === "all") return true;
+
+      const event = String(feature?.properties?.event || "").toLowerCase();
+
+      if (type === "warnings") return event.includes("warning");
+      if (type === "watches") return event.includes("watch");
+      if (type === "advisories") return event.includes("advisory");
+      if (type === "storm") return event.includes("tornado") || event.includes("severe thunderstorm") || event.includes("special marine");
+      if (type === "hydro") return event.includes("flood") || event.includes("hydro");
+      if (type === "fire") return event.includes("fire") || event.includes("red flag");
+      if (type === "heat") return event.includes("heat");
+      if (type === "geometry") return hasGeometry(feature);
+
+      return true;
+    }
+
+    function searchableText(feature) {
+      const props = feature?.properties || {};
+
+      return [
+        feature?.id,
+        props.event,
+        props.areaDesc,
+        props.office,
+        props.headline,
+        props.description,
+        props.instruction,
+        props.senderName
+      ].map(cleanText).join(" ").toLowerCase();
+    }
+
+    function filteredFeatures() {
+      const query = searchInput.value.trim().toLowerCase();
+      const type = typeFilter.value;
+
+      return liveFeatures
+        .filter((feature) => !isExpired(feature))
+        .filter((feature) => matchesType(feature, type))
+        .filter((feature) => !query || searchableText(feature).includes(query))
+        .sort((a, b) => {
+          const rankDiff = severityRank(a) - severityRank(b);
+          if (rankDiff) return rankDiff;
+
+          const aExpires = Date.parse(a?.properties?.expires || "") || Infinity;
+          const bExpires = Date.parse(b?.properties?.expires || "") || Infinity;
+          return aExpires - bExpires;
+        });
+    }
+
+    function normalizeFeature(feature, index) {
+      if (!feature || feature.type !== "Feature") return null;
+
+      const props = feature.properties || {};
+      const id = String(feature.id || props._alertId || props.id || `live-alert-${index}`).trim();
+
+      return {
+        ...feature,
+        id,
+        properties: {
+          ...props,
+          event: cleanText(props.event || "NWS Alert"),
+          areaDesc: cleanText(props.areaDesc || "Area not listed"),
+          headline: cleanText(props.headline || ""),
+          description: cleanText(props.description || ""),
+          instruction: cleanText(props.instruction || ""),
+          office: cleanText(props.office || ""),
+          expires: props.expires || props.ends || props.end || "",
+          _liveNwwsFastLane: true
+        }
+      };
+    }
+
+    function setConnection(state, text) {
+      connectionDot.classList.remove("online", "offline");
+
+      if (state === "online") connectionDot.classList.add("online");
+      if (state === "offline") connectionDot.classList.add("offline");
+
+      connectionText.textContent = text;
+    }
+
+    function updateSummary(features) {
+      const counts = new Map();
+
+      features.forEach((feature) => {
+        const event = feature?.properties?.event || "NWS Alert";
+        counts.set(event, (counts.get(event) || 0) + 1);
+      });
+
+      const top = [...counts.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8);
+
+      alertSummary.innerHTML = top.length
+        ? top.map(([event, count]) => `
+            <span class="summary-pill">${escapeHtml(event)}: ${count}</span>
+          `).join("")
+        : `<span class="summary-pill">No matching alerts</span>`;
+    }
+
+
+    function selectedFeatureFrom(features) {
+      if (!features.length) return null;
+
+      const selected = features.find((feature) => feature.id === selectedAlertId);
+
+      if (selected) return selected;
+
+      selectedAlertId = features[0].id;
+      return features[0];
+    }
+
+    function renderAlertDetail(feature) {
+      if (!feature) {
+        alertDetailPanel.innerHTML = `
+          <div class="empty detail-empty">
+            <div>
+              <strong>No alert selected</strong>
+              <span>Select an alert from the list.</span>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      const props = feature.properties || {};
+      const event = props.event || "NWS Alert";
+      const area = props.areaDesc || "Area not listed";
+      const headline = props.headline || "";
+      const description = props.description || "";
+      const instruction = props.instruction || "";
+      const geometry = hasGeometry(feature) ? feature.geometry.type : "No geometry";
+      const office = props.office || "Unknown office";
+      const source = props._liveSource || props.source || "nwws-oi";
+      const expires = expiresText(props.expires);
+      const sent = props.sent ? new Date(props.sent).toLocaleString() : "Unknown";
+      const effective = props.effective ? new Date(props.effective).toLocaleString() : "Unknown";
+
+      alertDetailPanel.innerHTML = `
+        <div class="detail-header">
+          <div>
+            <h2>${escapeHtml(event)}</h2>
+            <div class="detail-area">${escapeHtml(area)}</div>
+          </div>
+          <div class="badges">
+            <span class="badge live">Live NWWS</span>
+            <span class="badge expires">Expires ${escapeHtml(expires)}</span>
+            <span class="badge">${escapeHtml(geometry)}</span>
+          </div>
+        </div>
+
+        ${headline ? `
+          <div class="detail-section">
+            <h3>Headline</h3>
+            <div><strong>${escapeHtml(headline)}</strong></div>
+          </div>
+        ` : ""}
+
+        ${description ? `
+          <div class="detail-section">
+            <h3>Description</h3>
+            <div>${escapeHtml(description)}</div>
+          </div>
+        ` : ""}
+
+        ${instruction ? `
+          <div class="detail-section">
+            <h3>Instruction</h3>
+            <div>${escapeHtml(instruction)}</div>
+          </div>
+        ` : ""}
+
+        <div class="detail-meta-grid">
+          <div class="detail-meta-item">
+            <span>Office</span>
+            <strong>${escapeHtml(office)}</strong>
+          </div>
+          <div class="detail-meta-item">
+            <span>Source</span>
+            <strong>${escapeHtml(source)}</strong>
+          </div>
+          <div class="detail-meta-item">
+            <span>Sent</span>
+            <strong>${escapeHtml(sent)}</strong>
+          </div>
+          <div class="detail-meta-item">
+            <span>Effective</span>
+            <strong>${escapeHtml(effective)}</strong>
+          </div>
+          <div class="detail-meta-item">
+            <span>Expires</span>
+            <strong>${escapeHtml(expires)}</strong>
+          </div>
+          <div class="detail-meta-item">
+            <span>ID</span>
+            <strong>${escapeHtml(feature.id)}</strong>
+          </div>
+        </div>
+      `;
+    }
+
+
+    function render() {
+      const features = filteredFeatures();
+      const geometryCount = liveFeatures.filter(hasGeometry).length;
+
+      totalCountEl.textContent = String(liveFeatures.length);
+      geometryCountEl.textContent = String(geometryCount);
+      updateSummary(features);
+
+      if (!features.length) {
+        alertsGrid.innerHTML = `
+          <div class="empty">
+            <div>
+              <strong>No matching live alerts</strong>
+              <span>Try changing the filter or search terms.</span>
+            </div>
+          </div>
+        `;
+        renderAlertDetail(null);
+        return;
+      }
+
+      const selectedFeature = selectedFeatureFrom(features);
+      renderAlertDetail(selectedFeature);
+
+      alertsGrid.innerHTML = features.map((feature) => {
+        const props = feature.properties || {};
+        const event = props.event || "NWS Alert";
+        const area = props.areaDesc || "Area not listed";
+        const expires = expiresText(props.expires);
+        const geometry = hasGeometry(feature) ? feature.geometry.type : "No geometry";
+        const selectedClass = feature.id === selectedAlertId ? " is-selected" : "";
+
+        return `
+          <article class="alert-card${selectedClass}" data-alert-id="${escapeHtml(feature.id)}" style="--accent: ${eventAccent(event)}">
+            <div class="alert-head">
+              <div class="alert-title">
+                <h2>${escapeHtml(event)}</h2>
+                <div class="area">${escapeHtml(area)}</div>
+              </div>
+              <div class="badges">
+                <span class="badge expires">${escapeHtml(expires)}</span>
+                <span class="badge">${escapeHtml(geometry)}</span>
+              </div>
+            </div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function scheduleRender() {
+      if (renderTimer !== null) {
+        window.clearTimeout(renderTimer);
+      }
+
+      renderTimer = window.setTimeout(() => {
+        renderTimer = null;
+        render();
+      }, 120);
+    }
+
+    async function loadCurrentAlerts() {
+      const response = await fetch(LIVE_ALERTS_CURRENT_URL, {
+        cache: "no-store",
+        headers: {
+          "Accept": "application/geo+json, application/json"
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Live alerts HTTP ${response.status}`);
+      }
+
+      const collection = await response.json();
+      const features = Array.isArray(collection?.features) ? collection.features : [];
+
+      lastSequence = Number(collection?.sequence || lastSequence || 0);
+      lastUpdatedEl.textContent = collection?.generatedAt
+        ? new Date(collection.generatedAt).toLocaleString()
+        : new Date().toLocaleString();
+
+      liveFeatures = features
+        .map(normalizeFeature)
+        .filter(Boolean)
+        .filter((feature) => !isExpired(feature));
+
+      render();
+    }
+
+    function connectStream() {
+      if (!("WebSocket" in window)) {
+        setConnection("offline", "Live stream unsupported, using manual refresh.");
+        return;
+      }
+
+      if (socket && [WebSocket.OPEN, WebSocket.CONNECTING].includes(socket.readyState)) {
+        return;
+      }
+
+      try {
+        socket = new WebSocket(LIVE_ALERTS_STREAM_URL);
+      } catch (error) {
+        setConnection("offline", "Live stream unavailable, retrying...");
+        scheduleReconnect();
+        return;
+      }
+
+      socket.addEventListener("open", () => {
+        reconnectDelayMs = 3000;
+        setConnection("online", "Connected to live alert stream.");
+      });
+
+      socket.addEventListener("message", async (event) => {
+        let payload;
+
+        try {
+          payload = JSON.parse(event.data);
+        } catch {
+          return;
+        }
+
+        const sequence = Number(payload?.sequence || 0);
+
+        if (sequence && sequence <= lastSequence) return;
+        if (sequence) lastSequence = sequence;
+
+        if (payload?.generatedAt) {
+          lastUpdatedEl.textContent = new Date(payload.generatedAt).toLocaleString();
+        }
+
+        await loadCurrentAlerts().catch((error) => {
+          console.warn("Live alert reload failed", error);
+        });
+      });
+
+      socket.addEventListener("close", () => {
+        setConnection("offline", "Live stream disconnected, retrying...");
+        socket = null;
+        scheduleReconnect();
+      });
+
+      socket.addEventListener("error", () => {
+        try {
+          socket.close();
+        } catch {
+          scheduleReconnect();
+        }
+      });
+    }
+
+    function scheduleReconnect() {
+      if (reconnectTimer !== null) return;
+
+      reconnectTimer = window.setTimeout(() => {
+        reconnectTimer = null;
+        connectStream();
+      }, reconnectDelayMs);
+
+      reconnectDelayMs = Math.min(30000, Math.round(reconnectDelayMs * 1.6));
+    }
+
+    searchInput.addEventListener("input", scheduleRender);
+    typeFilter.addEventListener("change", render);
+    refreshButton.addEventListener("click", () => {
+      loadCurrentAlerts().catch((error) => {
+        console.error("Manual live alert refresh failed", error);
+        setConnection("offline", "Manual refresh failed.");
+      });
+    });
+
+    alertsGrid.addEventListener("click", (event) => {
+      const card = event.target.closest("[data-alert-id]");
+
+      if (!card) return;
+
+      selectedAlertId = card.dataset.alertId || "";
+      render();
+    });
+
+    window.addEventListener("beforeunload", () => {
+      if (socket) {
+        try {
+          socket.close(1000, "Page closing");
+        } catch {
+          // Ignore close errors.
+        }
+      }
+    });
+
+    loadCurrentAlerts()
+      .then(() => {
+        connectStream();
+      })
+      .catch((error) => {
+        console.error("Initial live alert load failed", error);
+        setConnection("offline", "Initial live alert load failed.");
+        alertsGrid.innerHTML = `
+          <div class="empty">
+            <div>
+              <strong>Live alerts unavailable</strong>
+              <span>The live alert hub did not respond.</span>
+            </div>
+          </div>
+        `;
+        connectStream();
+      });
+  </script>
+</body>
+</html>
