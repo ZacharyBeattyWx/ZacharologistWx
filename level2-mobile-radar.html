@@ -2839,6 +2839,7 @@ body.alert-type-filter-popup-open {
     ];
 
     const LIVE_ALERTS_CURRENT_URL = "https://zacharologistwx.com/api/live-alerts/current";
+    const LIVE_ALERTS_STREAM_URL = LIVE_ALERTS_CURRENT_URL.replace(/^http/, "ws").replace(/\/current$/, "/stream");
 
     const SITE_SOURCE_ID = "weatherwise-radar-sites";
     const SITE_CIRCLE_LAYER_ID = "weatherwise-radar-sites-circle";
@@ -3127,6 +3128,13 @@ body.alert-type-filter-popup-open {
     let activeAlertsWithoutGeometry = [];
     let level2FetchedAlertFeatures = [];
     let level2AlertFilterApplyToken = 0;
+    let liveAlertStreamSocket = null;
+    let liveAlertStreamReloadTimer = null;
+    let liveAlertStreamReconnectTimer = null;
+    let liveAlertStreamLastSequence = 0;
+    let liveAlertStreamReconnectDelayMs = 3000;
+    let liveAlertStreamUnloadBound = false;
+
     const DESKTOP_RADAR_PERF_ENABLED =
       new URLSearchParams(window.location.search).has("perf") &&
       !window.matchMedia("(max-width: 760px)").matches;
@@ -4431,6 +4439,136 @@ body.alert-type-filter-popup-open {
       }, FRAME_REFRESH_MS);
     }
 
+
+    function scheduleLiveAlertStreamReload() {
+      if (liveAlertStreamReloadTimer !== null) {
+        window.clearTimeout(liveAlertStreamReloadTimer);
+      }
+
+      liveAlertStreamReloadTimer = window.setTimeout(async () => {
+        liveAlertStreamReloadTimer = null;
+
+        try {
+          await loadAlerts();
+        } catch (error) {
+          console.warn("Live alert stream refresh failed", error);
+        }
+      }, 1000);
+    }
+
+    function stopLiveAlertStream() {
+      if (liveAlertStreamReconnectTimer !== null) {
+        window.clearTimeout(liveAlertStreamReconnectTimer);
+        liveAlertStreamReconnectTimer = null;
+      }
+
+      if (liveAlertStreamReloadTimer !== null) {
+        window.clearTimeout(liveAlertStreamReloadTimer);
+        liveAlertStreamReloadTimer = null;
+      }
+
+      if (liveAlertStreamSocket) {
+        const socket = liveAlertStreamSocket;
+        liveAlertStreamSocket = null;
+
+        try {
+          socket.close(1000, "Radar page closing");
+        } catch {
+          // Ignore close failures.
+        }
+      }
+    }
+
+    function scheduleLiveAlertStreamReconnect() {
+      if (liveAlertStreamReconnectTimer !== null) return;
+
+      liveAlertStreamReconnectTimer = window.setTimeout(() => {
+        liveAlertStreamReconnectTimer = null;
+        startLiveAlertStream();
+      }, liveAlertStreamReconnectDelayMs);
+
+      liveAlertStreamReconnectDelayMs = Math.min(
+        30000,
+        Math.round(liveAlertStreamReconnectDelayMs * 1.6)
+      );
+    }
+
+    function startLiveAlertStream() {
+      if (!("WebSocket" in window)) return;
+
+      if (liveAlertStreamSocket) {
+        const readyState = liveAlertStreamSocket.readyState;
+
+        if (
+          readyState === WebSocket.OPEN ||
+          readyState === WebSocket.CONNECTING
+        ) {
+          return;
+        }
+      }
+
+      if (!liveAlertStreamUnloadBound) {
+        window.addEventListener("beforeunload", stopLiveAlertStream);
+        liveAlertStreamUnloadBound = true;
+      }
+
+      let socket;
+
+      try {
+        socket = new WebSocket(LIVE_ALERTS_STREAM_URL);
+      } catch (error) {
+        console.warn("Live alert stream unavailable", error);
+        scheduleLiveAlertStreamReconnect();
+        return;
+      }
+
+      liveAlertStreamSocket = socket;
+
+      socket.addEventListener("open", () => {
+        liveAlertStreamReconnectDelayMs = 3000;
+      });
+
+      socket.addEventListener("message", (event) => {
+        let payload;
+
+        try {
+          payload = JSON.parse(event.data);
+        } catch {
+          return;
+        }
+
+        const payloadType = String(payload?.type || "");
+        const sequence = Number(payload?.sequence || 0);
+
+        if (sequence && sequence <= liveAlertStreamLastSequence) return;
+        if (sequence) liveAlertStreamLastSequence = sequence;
+
+        // Initial socket snapshot is just connection state. The page already
+        // loads alerts normally on startup.
+        if (payloadType === "live-alerts:snapshot") return;
+
+        if (payloadType && payloadType !== "live-alerts:update") return;
+
+        scheduleLiveAlertStreamReload();
+      });
+
+      socket.addEventListener("close", () => {
+        if (liveAlertStreamSocket !== socket) return;
+
+        liveAlertStreamSocket = null;
+        scheduleLiveAlertStreamReconnect();
+      });
+
+      socket.addEventListener("error", () => {
+        try {
+          socket.close();
+        } catch {
+          // The close handler handles fallback reconnect.
+        }
+      });
+    }
+
+
     function startAlertRefresh() {
       if (alertRefreshTimer !== null) {
         window.clearInterval(alertRefreshTimer);
@@ -4443,6 +4581,8 @@ body.alert-type-filter-popup-open {
           alertsStatusRow.textContent = "Alerts: refresh failed";
         }
       }, ALERT_REFRESH_MS);
+
+      startLiveAlertStream();
     }
 
     function syncLevel2RadarMapLayer() {
