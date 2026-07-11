@@ -11134,6 +11134,71 @@ body {
     }
   }
 </style>
+
+<style id="homepage-live-alerts-link-css">
+  .forecast-dashboard .live-alerts-home-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .forecast-dashboard .live-alerts-feed-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+    max-width: 100%;
+    margin: 0 auto 12px;
+    padding: 9px 13px;
+    border: 1px solid rgba(0, 208, 132, 0.42);
+    border-radius: 999px;
+    background: linear-gradient(135deg, rgba(0, 208, 132, 0.16), rgba(88, 183, 255, 0.10));
+    color: #d8fff0;
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    text-decoration: none;
+    box-shadow: 0 0 22px rgba(0, 208, 132, 0.10);
+  }
+
+  .forecast-dashboard .live-alerts-feed-link:hover {
+    border-color: rgba(0, 208, 132, 0.72);
+    color: #ffffff;
+  }
+
+  .forecast-dashboard .live-alerts-home-actions .dashboard-button {
+    width: 100%;
+  }
+
+  @media (max-width: 768px) {
+    .forecast-dashboard .live-alerts-feed-link {
+      width: 100%;
+      margin-bottom: 10px;
+    }
+  }
+</style>
+
+
+
+<style id="homepage-dashboard-gutter-cleanup-css">
+  @media (min-width: 769px) {
+    .forecast-dashboard .ops-dashboard-grid,
+    .forecast-dashboard .ops-column {
+      background: transparent !important;
+      box-shadow: none !important;
+    }
+
+    .forecast-dashboard .dashboard-card {
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.025),
+        0 6px 14px rgba(0,0,0,0.16) !important;
+    }
+  }
+</style>
+
+
 </head>
 
 <body>
@@ -11427,6 +11492,7 @@ body {
 
   <article class="dashboard-card mini-card alerts-card">
     <h2 id="alertsTitle">Active Alerts</h2>
+    <a class="live-alerts-feed-link" href="live-alerts.html">Open Live Alerts Feed</a>
 
     <div class="alert-tabs-wrapper">
       <div class="alert-tabs">
