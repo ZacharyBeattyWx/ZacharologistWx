@@ -2838,6 +2838,8 @@ body.alert-type-filter-popup-open {
       "MD", "DE", "NJ", "CT", "RI", "MA"
     ];
 
+    const LIVE_ALERTS_CURRENT_URL = "https://zacharologistwx.com/api/live-alerts/current";
+
     const SITE_SOURCE_ID = "weatherwise-radar-sites";
     const SITE_CIRCLE_LAYER_ID = "weatherwise-radar-sites-circle";
     const SITE_LABEL_LAYER_ID = "weatherwise-radar-sites-label";
@@ -6189,6 +6191,84 @@ body.alert-type-filter-popup-open {
       return expiresDate.getTime() <= Date.now();
     }
 
+    function alertParameterValues(parameters, key) {
+      if (!parameters || typeof parameters !== "object") return [];
+
+      const wantedKey = String(key || "").toLowerCase();
+
+      for (const [parameterKey, value] of Object.entries(parameters)) {
+        if (String(parameterKey || "").toLowerCase() !== wantedKey) continue;
+
+        if (Array.isArray(value)) {
+          return value
+            .flatMap((entry) => Array.isArray(entry) ? entry : [entry])
+            .map((entry) => String(entry || "").trim())
+            .filter(Boolean);
+        }
+
+        const singleValue = String(value || "").trim();
+        return singleValue ? [singleValue] : [];
+      }
+
+      return [];
+    }
+
+    function canonicalNwwsVtecAlertIdFromValue(value) {
+      const match = String(value || "")
+        .trim()
+        .match(/^nwws:([A-Z0-9]{4}):([A-Z]{2})\.([A-Z]):(\d{4})$/i);
+
+      if (!match) return "";
+
+      const [, office, phenom, sig, etn] = match;
+
+      return `vtec:${office.toUpperCase()}:${phenom.toUpperCase()}.${sig.toUpperCase()}:${etn}`;
+    }
+
+    function canonicalVtecAlertIdFromText(value) {
+      const match = String(value || "")
+        .trim()
+        .match(/\/[A-Z]\.([A-Z]{3})\.([A-Z0-9]{4})\.([A-Z]{2})\.([A-Z])\.(\d{4})\./i);
+
+      if (!match) return "";
+
+      const [, _action, office, phenom, sig, etn] = match;
+
+      return `vtec:${office.toUpperCase()}:${phenom.toUpperCase()}.${sig.toUpperCase()}:${etn}`;
+    }
+
+    function canonicalVtecAlertIdFromProperties(properties = {}) {
+      for (const candidate of [
+        properties._alertId,
+        properties.id,
+        properties.identifier,
+        properties.capId
+      ]) {
+        const nwwsId = canonicalNwwsVtecAlertIdFromValue(candidate);
+        if (nwwsId) return nwwsId;
+
+        const vtecId = canonicalVtecAlertIdFromText(candidate);
+        if (vtecId) return vtecId;
+      }
+
+      for (const candidate of [
+        properties.vtec,
+        properties.VTEC,
+        properties.rawVtec,
+        properties._vtec
+      ]) {
+        const vtecId = canonicalVtecAlertIdFromText(candidate);
+        if (vtecId) return vtecId;
+      }
+
+      for (const candidate of alertParameterValues(properties.parameters, "VTEC")) {
+        const vtecId = canonicalVtecAlertIdFromText(candidate);
+        if (vtecId) return vtecId;
+      }
+
+      return "";
+    }
+
     function canonicalNwsAlertId(feature) {
       const properties = feature?.properties || {};
 
@@ -6199,6 +6279,15 @@ body.alert-type-filter-popup-open {
 
       // Synthetic fallback IDs are not NWS identities.
       if (properties._hasCanonicalAlertId === false) return "";
+
+      const vtecAlertId =
+        canonicalVtecAlertIdFromProperties(properties) ||
+        canonicalNwwsVtecAlertIdFromValue(feature?.id) ||
+        canonicalNwwsVtecAlertIdFromValue(feature?.identifier) ||
+        canonicalVtecAlertIdFromText(feature?.id) ||
+        canonicalVtecAlertIdFromText(feature?.identifier);
+
+      if (vtecAlertId) return vtecAlertId;
 
       for (const candidate of [
         properties.id,
@@ -6574,6 +6663,103 @@ body.alert-type-filter-popup-open {
       };
     }
 
+    function normalizeLiveAlertFeature(feature, index) {
+      if (!feature || isTestOrExerciseAlertFeature(feature) || isExpiredAlertFeature(feature)) {
+        return null;
+      }
+
+      if (!isValidGeometry(feature.geometry)) {
+        return null;
+      }
+
+      const properties = feature.properties || {};
+      const event = String(properties.event || "").trim();
+
+      if (!event) return null;
+
+      const vtecAlertId =
+        canonicalVtecAlertIdFromProperties(properties) ||
+        canonicalNwwsVtecAlertIdFromValue(feature.id) ||
+        canonicalNwwsVtecAlertIdFromValue(feature.identifier);
+
+      const rawAlertId = String(
+        feature.id ||
+        feature.identifier ||
+        properties.id ||
+        properties.identifier ||
+        ""
+      ).trim();
+
+      const alertId = vtecAlertId || rawAlertId || `live-alert-${index}`;
+      const hasCanonicalAlertId = Boolean(vtecAlertId || rawAlertId);
+
+      return {
+        ...feature,
+        id: `live:${alertId}:${index}`,
+        properties: {
+          ...properties,
+          id: properties.id || rawAlertId || alertId,
+          _alertId: alertId,
+          _hasCanonicalAlertId: hasCanonicalAlertId,
+          _liveNwwsFastLane: true,
+          _liveSource: properties.source || "nwws-oi"
+        }
+      };
+    }
+
+    async function fetchLiveAlertFeatures() {
+      const liveUrl = new URL(LIVE_ALERTS_CURRENT_URL);
+      liveUrl.searchParams.set("v", String(Date.now()));
+
+      try {
+        const response = await fetch(liveUrl.toString(), {
+          headers: {
+            Accept: "application/geo+json, application/json"
+          },
+          cache: "no-store"
+        });
+
+        if (!response.ok) {
+          throw new Error(`NWWS live alerts HTTP ${response.status}`);
+        }
+
+        const collection = await response.json();
+        const liveFeatures = Array.isArray(collection?.features)
+          ? collection.features
+          : [];
+
+        return liveFeatures
+          .map(normalizeLiveAlertFeature)
+          .filter(Boolean);
+      } catch (error) {
+        console.warn("NWWS live alert fast lane failed", error);
+        return [];
+      }
+    }
+
+    function mergeSnapshotAndLiveAlertFeatures(snapshotFeatures, liveFeatures) {
+      const liveGeometryFeatures = (Array.isArray(liveFeatures) ? liveFeatures : [])
+        .filter((feature) => isValidGeometry(feature.geometry));
+
+      if (!liveGeometryFeatures.length) {
+        return Array.isArray(snapshotFeatures) ? snapshotFeatures : [];
+      }
+
+      const liveCanonicalIds = new Set(
+        liveGeometryFeatures
+          .map(canonicalNwsAlertId)
+          .filter(Boolean)
+      );
+
+      const snapshotFeaturesToKeep = (Array.isArray(snapshotFeatures) ? snapshotFeatures : [])
+        .filter((feature) => {
+          const snapshotAlertId = canonicalNwsAlertId(feature);
+          return !snapshotAlertId || !liveCanonicalIds.has(snapshotAlertId);
+        });
+
+      return [...liveGeometryFeatures, ...snapshotFeaturesToKeep];
+    }
+
     async function fetchNwsAlertsForAreas() {
       const snapshotUrl = new URL(
         "https://zacharologistwx.com/api/nws-alert-snapshot"
@@ -6586,35 +6772,41 @@ body.alert-type-filter-popup-open {
         String(Math.floor(Date.now() / 60000))
       );
 
-      const response = await fetch(snapshotUrl.toString(), {
-        headers: {
-          Accept: "application/geo+json, application/json"
-        },
-        cache: "no-store"
-      });
+      const [snapshotFeatures, liveFeatures] = await Promise.all([
+        fetch(snapshotUrl.toString(), {
+          headers: {
+            Accept: "application/geo+json, application/json"
+          },
+          cache: "no-store"
+        }).then(async (response) => {
+          if (!response.ok) {
+            throw new Error(`NWS alert snapshot HTTP ${response.status}`);
+          }
 
-      if (!response.ok) {
-        throw new Error(`NWS alert snapshot HTTP ${response.status}`);
-      }
+          const collection = await response.json();
 
-      const collection = await response.json();
+          if (collection?.error) {
+            throw new Error(String(collection.error));
+          }
 
-      if (collection?.error) {
-        throw new Error(String(collection.error));
-      }
+          const mapFeatures = Array.isArray(collection?.features)
+            ? collection.features
+            : [];
 
-      const mapFeatures = Array.isArray(collection?.features)
-        ? collection.features
-        : [];
+          const listedOnlyFeatures = Array.isArray(
+            collection?.listedOnlyAlerts
+          )
+            ? collection.listedOnlyAlerts
+            : [];
 
-      const listedOnlyFeatures = Array.isArray(
-        collection?.listedOnlyAlerts
-      )
-        ? collection.listedOnlyAlerts
-        : [];
+          return [...mapFeatures, ...listedOnlyFeatures];
+        }),
+        fetchLiveAlertFeatures()
+      ]);
 
-      return [...mapFeatures, ...listedOnlyFeatures];
+      return mergeSnapshotAndLiveAlertFeatures(snapshotFeatures, liveFeatures);
     }
+
     async function applyLevel2AlertTypeFilters(
       fetchedFeatures = level2FetchedAlertFeatures
     ) {
@@ -6711,11 +6903,17 @@ body.alert-type-filter-popup-open {
         (feature) => feature.properties?._fallbackGeometry === true
       ).length;
 
+
+      const liveFastLaneCount = activeAlertFeatures.filter(
+        (feature) => feature.properties?._liveNwwsFastLane === true
+      ).length;
+
       if (alertsStatusRow) {
         alertsStatusRow.textContent =
           `Map alert filters: ${selectedFeatures.length} shown of ` +
           `${activeFetchedFeatures.length} active - ` +
           `${stormCount} storm polygons - ` +
+          `${liveFastLaneCount} live NWWS - ` +
           `${fallbackCount} snapshot fallback - ` +
           `${activeAlertsWithoutGeometry.length} listed only`;
       }
