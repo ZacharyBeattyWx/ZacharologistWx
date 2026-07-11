@@ -11681,6 +11681,97 @@ const alertUrls = [
   "https://api.weather.gov/alerts/active?area=MA"
 ];
 
+const LIVE_HOMEPAGE_ALERTS_CURRENT_URL = "https://zacharologistwx.com/api/live-alerts/current";
+const HOMEPAGE_ALERT_STATES = new Set(
+  alertUrls
+    .map((url) => {
+      try {
+        return new URL(url).searchParams.get("area");
+      } catch {
+        return "";
+      }
+    })
+    .filter(Boolean)
+);
+
+const HOMEPAGE_ALERT_OFFICE_STATES = {
+  ABR: "SD",
+  AKQ: "VA",
+  ALY: "NY",
+  APX: "MI",
+  ARX: "WI",
+  BGM: "NY",
+  BIS: "ND",
+  BMX: "AL",
+  BOU: "CO",
+  BOX: "MA",
+  BUF: "NY",
+  CAE: "SC",
+  CAR: "ME",
+  CHS: "SC",
+  CLE: "OH",
+  CRP: "TX",
+  CTP: "PA",
+  DDC: "KS",
+  DLH: "MN",
+  DMX: "IA",
+  DTX: "MI",
+  DVN: "IA",
+  EAX: "MO",
+  EKA: "CA",
+  EPZ: "TX",
+  FFC: "GA",
+  FGF: "ND",
+  FSD: "SD",
+  FWD: "TX",
+  GID: "NE",
+  GJT: "CO",
+  GLD: "KS",
+  GRB: "WI",
+  GRR: "MI",
+  GSP: "SC",
+  HGX: "TX",
+  HUN: "AL",
+  ICT: "KS",
+  ILM: "NC",
+  ILN: "OH",
+  ILX: "IL",
+  IND: "IN",
+  JKL: "KY",
+  JAN: "MS",
+  KEY: "FL",
+  LCH: "LA",
+  LIX: "LA",
+  LMK: "KY",
+  LOT: "IL",
+  LUB: "TX",
+  LWX: "VA",
+  MAF: "TX",
+  MEG: "TN",
+  MFL: "FL",
+  MKX: "WI",
+  MOB: "AL",
+  MPX: "MN",
+  MQT: "MI",
+  MRX: "TN",
+  OAX: "NE",
+  OHX: "TN",
+  OUN: "OK",
+  PAH: "KY",
+  PBZ: "PA",
+  PHI: "PA",
+  RAH: "NC",
+  RLX: "WV",
+  RNK: "VA",
+  SGF: "MO",
+  SHV: "LA",
+  SJT: "TX",
+  SJT: "TX",
+  TSA: "OK",
+  TOP: "KS",
+  UNR: "SD"
+};
+
 let allHomepageAlerts = [];
 let currentCategory = "storm";
 let knownAlertIds = new Set();
@@ -11705,12 +11796,56 @@ function getExpiresText(expires) {
   return hrs > 0 ? `${hrs}h left` : `${mins}m left`;
 }
 
+function homepageAreaDescStates(alert) {
+  const areaDesc = String(alert?.properties?.areaDesc || "");
+
+  if (!areaDesc) return [];
+
+  return [...areaDesc.matchAll(/\b([A-Z]{2})\b/g)]
+    .map((match) => match[1])
+    .filter((state) => HOMEPAGE_ALERT_STATES.has(state));
+}
+
+function homepageAlertOfficeCode(alert) {
+  const properties = alert?.properties || {};
+  const rawOffice =
+    properties.office ||
+    properties.senderName ||
+    properties.sender ||
+    alert?.id ||
+    "";
+
+  const text = String(rawOffice || "").toUpperCase();
+
+  const nwwsMatch = text.match(/NWWS:K?([A-Z0-9]{3})/);
+  if (nwwsMatch) return nwwsMatch[1];
+
+  const officeMatch = text.match(/\bK?([A-Z0-9]{3})\b/);
+  if (officeMatch) return officeMatch[1];
+
+  return "";
+}
+
+function homepageOfficeState(alert) {
+  const office = homepageAlertOfficeCode(alert);
+  return HOMEPAGE_ALERT_OFFICE_STATES[office] || "";
+}
+
+
 function getStateFromAlert(alert) {
   const geocode = alert.properties?.geocode;
 
   if (geocode?.UGC?.length) {
     return geocode.UGC[0].slice(0, 2);
   }
+
+  const areaState = homepageAreaDescStates(alert)[0];
+
+  if (areaState) return areaState;
+
+  const officeState = homepageOfficeState(alert);
+
+  if (officeState) return officeState;
 
   return "??";
 }
@@ -12166,12 +12301,186 @@ function fetchWithTimeout(url, timeout = 6000) {
   }, timeout);
 
   return fetch(url, {
+    cache: "no-store",
     headers: {
-      "Accept": "application/geo+json"
+      "Accept": "application/geo+json, application/json"
     },
     signal: controller.signal
   }).finally(() => clearTimeout(timer));
 }
+
+function homepageAlertParameterValues(parameters, key) {
+  const value = parameters?.[key];
+
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => String(item || "").trim())
+      .filter(Boolean);
+  }
+
+  const text = String(value || "").trim();
+  return text ? [text] : [];
+}
+
+function canonicalHomepageVtecAlertIdFromValue(value) {
+  const text = String(value || "").trim();
+
+  if (!text) return "";
+
+  const match = text.match(/[A-Z]\.[A-Z]{3}\.[A-Z]{4}\.[A-Z]{2}\.[A-Z]\.\d{4}/);
+  return match ? match[0] : "";
+}
+
+function canonicalHomepageAlertId(alert) {
+  const properties = alert?.properties || {};
+  const parameters = properties.parameters || {};
+
+  for (const value of [
+    ...homepageAlertParameterValues(parameters, "VTEC"),
+    ...homepageAlertParameterValues(parameters, "vtec"),
+    properties.VTEC,
+    properties.vtec,
+    properties._alertId,
+    properties.id,
+    properties.identifier,
+    alert?.id,
+    alert?.identifier
+  ]) {
+    const vtecId = canonicalHomepageVtecAlertIdFromValue(value);
+
+    if (vtecId) return vtecId;
+  }
+
+  for (const value of [
+    properties._alertId,
+    properties.id,
+    properties.identifier,
+    alert?.id,
+    alert?.identifier
+  ]) {
+    const text = String(value || "").trim();
+
+    if (text) return text;
+  }
+
+  return "";
+}
+
+function homepageAlertUgcs(alert) {
+  const properties = alert?.properties || {};
+  const geocode = properties.geocode || {};
+  const values = geocode.UGC || geocode.ugc || properties.UGC || properties.ugc || [];
+
+  if (Array.isArray(values)) {
+    return values
+      .map((value) => String(value || "").trim())
+      .filter(Boolean);
+  }
+
+  const text = String(values || "").trim();
+  return text ? [text] : [];
+}
+
+function isHomepageAlertInMonitoringArea(alert) {
+  const ugcs = homepageAlertUgcs(alert);
+
+  if (ugcs.some((ugc) => {
+    const state = String(ugc || "").slice(0, 2).toUpperCase();
+    return HOMEPAGE_ALERT_STATES.has(state);
+  })) {
+    return true;
+  }
+
+  if (homepageAreaDescStates(alert).length) return true;
+
+  const officeState = homepageOfficeState(alert);
+  return Boolean(officeState && HOMEPAGE_ALERT_STATES.has(officeState));
+}
+
+function isExpiredHomepageAlert(alert) {
+  const properties = alert?.properties || {};
+  const expiresValue = properties.expires || properties.ends || properties.end;
+
+  if (!expiresValue) return false;
+
+  const expiresTime = Date.parse(expiresValue);
+
+  if (!Number.isFinite(expiresTime)) return false;
+
+  return expiresTime <= Date.now();
+}
+
+function normalizeHomepageLiveAlertFeature(feature, index) {
+  if (!feature || feature.type !== "Feature") return null;
+
+  const properties = feature.properties || {};
+  const event = String(properties.event || "").trim();
+
+  if (!event || isExpiredHomepageAlert(feature)) return null;
+  if (!isHomepageAlertInMonitoringArea(feature)) return null;
+
+  const alertId =
+    canonicalHomepageAlertId(feature) ||
+    `live-homepage-alert-${Date.now()}-${index}`;
+
+  return {
+    ...feature,
+    id: alertId,
+    properties: {
+      ...properties,
+      id: properties.id || alertId,
+      _alertId: alertId,
+      _liveNwwsFastLane: true,
+      _liveSource: properties.source || "nwws-oi"
+    }
+  };
+}
+
+async function fetchHomepageLiveAlertFeatures() {
+  try {
+    const response = await fetchWithTimeout(
+      LIVE_HOMEPAGE_ALERTS_CURRENT_URL,
+      3500
+    );
+
+    if (!response.ok) {
+      throw new Error(`Live NWWS alerts HTTP ${response.status}`);
+    }
+
+    const collection = await response.json();
+    const features = Array.isArray(collection?.features)
+      ? collection.features
+      : [];
+
+    return features
+      .map(normalizeHomepageLiveAlertFeature)
+      .filter(Boolean);
+  } catch (error) {
+    console.warn("Homepage live NWWS alerts unavailable", error);
+    return [];
+  }
+}
+
+function mergeHomepageAlertFeatures(snapshotFeatures, liveFeatures) {
+  const mergedById = new Map();
+
+  function addFeature(feature) {
+    if (!feature || isExpiredHomepageAlert(feature)) return;
+
+    const key = canonicalHomepageAlertId(feature) || String(feature.id || "").trim();
+
+    if (!key) return;
+
+    mergedById.set(key, feature);
+  }
+
+  snapshotFeatures.forEach(addFeature);
+  liveFeatures.forEach(addFeature);
+
+  return Array.from(mergedById.values());
+}
+
+
 async function fetchHomepageAlerts() {
 
   if (isFetchingAlerts) return;
@@ -12209,18 +12518,26 @@ try {
       .filter(result => result.status === "fulfilled" && result.value.ok)
       .map(result => result.value);
 
-    if (!goodResponses.length) {
+    const liveFeatures = await fetchHomepageLiveAlertFeatures();
+
+    if (!goodResponses.length && !liveFeatures.length) {
       throw new Error("All NWS alert requests failed");
     }
 
-    const dataSets = await Promise.all(
-      goodResponses.map(response => response.json())
-    );
+    const dataSets = goodResponses.length
+      ? await Promise.all(goodResponses.map(response => response.json()))
+      : [];
 
-    const allFeatures = dataSets.flatMap(data => data.features || []);
+    const snapshotFeatures = dataSets.flatMap(data => data.features || []);
+    const allFeatures = mergeHomepageAlertFeatures(snapshotFeatures, liveFeatures);
 
     const uniqueFeatures = Array.from(
-      new Map(allFeatures.map(item => [item.id, item])).values()
+      new Map(
+        allFeatures.map(item => [
+          canonicalHomepageAlertId(item) || item.id,
+          item
+        ])
+      ).values()
     );
 
     const uniqueAlerts = uniqueFeatures.filter(alert => {
@@ -12260,11 +12577,16 @@ try {
       ].includes(event);
     });
 
-    const currentIds = new Set(uniqueAlerts.map(alert => alert.id));
+    const currentIds = new Set(
+      uniqueAlerts.map(alert => canonicalHomepageAlertId(alert) || alert.id)
+    );
 
     const hasNewAlert =
       hasLoadedAlertsOnce &&
-      uniqueAlerts.some(alert => !knownAlertIds.has(alert.id));
+      uniqueAlerts.some(alert => {
+        const alertId = canonicalHomepageAlertId(alert) || alert.id;
+        return !knownAlertIds.has(alertId);
+      });
 
     knownAlertIds = currentIds;
     hasLoadedAlertsOnce = true;
