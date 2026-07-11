@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -243,6 +243,125 @@
       font: inherit;
       font-weight: 700;
       outline: none;
+    }
+
+
+    .filter-stack {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 12px;
+      padding: 12px;
+      border: 1px solid rgba(145, 196, 255, 0.18);
+      border-radius: 20px;
+      background: rgba(8, 20, 36, 0.68);
+      box-shadow: 0 16px 42px rgba(0, 0, 0, 0.18);
+      backdrop-filter: blur(14px);
+    }
+
+    .filter-row {
+      display: grid;
+      grid-template-columns: 78px minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .filter-label {
+      color: var(--muted);
+      font-size: 0.7rem;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .filter-chips {
+      display: flex;
+      gap: 7px;
+      min-width: 0;
+      overflow-x: auto;
+      padding: 2px 2px 5px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(88, 183, 255, 0.38) transparent;
+    }
+
+    .filter-chip {
+      flex: 0 0 auto;
+      border: 1px solid rgba(145, 196, 255, 0.2);
+      border-radius: 999px;
+      background: rgba(5, 13, 25, 0.58);
+      color: var(--muted);
+      padding: 8px 11px;
+      font: inherit;
+      font-size: 0.74rem;
+      font-weight: 900;
+      cursor: pointer;
+      white-space: nowrap;
+      transition:
+        border-color 150ms ease,
+        background 150ms ease,
+        color 150ms ease,
+        transform 150ms ease;
+    }
+
+    .filter-chip:hover {
+      border-color: rgba(88, 183, 255, 0.55);
+      color: var(--text);
+    }
+
+    .filter-chip.is-active {
+      border-color: rgba(88, 183, 255, 0.72);
+      background: rgba(40, 124, 190, 0.28);
+      color: #f4fbff;
+      box-shadow: 0 0 20px rgba(88, 183, 255, 0.12);
+    }
+
+    .filter-chip-count {
+      display: inline-block;
+      margin-left: 5px;
+      color: var(--blue);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .clear-filters {
+      border: 0;
+      background: transparent;
+      color: var(--blue);
+      padding: 7px 5px;
+      font: inherit;
+      font-size: 0.74rem;
+      font-weight: 900;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .clear-filters:disabled {
+      color: var(--muted);
+      cursor: default;
+      opacity: 0.48;
+    }
+
+    @media (max-width: 820px) {
+      .filter-stack {
+        padding: 10px;
+      }
+
+      .filter-row {
+        grid-template-columns: 1fr auto;
+      }
+
+      .filter-label {
+        grid-column: 1;
+      }
+
+      .filter-chips {
+        grid-column: 1 / -1;
+        grid-row: 2;
+      }
+
+      .clear-filters {
+        grid-column: 2;
+        grid-row: 1;
+      }
     }
 
     .alert-summary {
@@ -650,6 +769,7 @@
         <option value="warnings">Warnings</option>
         <option value="watches">Watches</option>
         <option value="advisories">Advisories</option>
+        <option value="statements">Statements</option>
         <option value="storm">Storm alerts</option>
         <option value="hydro">Flood and hydro</option>
         <option value="fire">Fire weather</option>
@@ -657,6 +777,19 @@
         <option value="geometry">Geometry only</option>
       </select>
       <button class="control-button" id="refreshButton" type="button">Refresh Now</button>
+    </section>
+
+    <section class="filter-stack" aria-label="Quick alert filters">
+      <div class="filter-row">
+        <span class="filter-label">Event</span>
+        <div class="filter-chips" id="eventChips" role="group" aria-label="Event filters"></div>
+        <button class="clear-filters" id="clearFiltersButton" type="button">Clear All</button>
+      </div>
+
+      <div class="filter-row" id="stateFilterGroup">
+        <span class="filter-label">State</span>
+        <div class="filter-chips" id="stateChips" role="group" aria-label="State filters"></div>
+      </div>
     </section>
 
     <div class="alert-summary" id="alertSummary"></div>
@@ -706,6 +839,10 @@
     const searchInput = document.getElementById("searchInput");
     const typeFilter = document.getElementById("typeFilter");
     const refreshButton = document.getElementById("refreshButton");
+    const eventChips = document.getElementById("eventChips");
+    const stateChips = document.getElementById("stateChips");
+    const stateFilterGroup = document.getElementById("stateFilterGroup");
+    const clearFiltersButton = document.getElementById("clearFiltersButton");
     const alertSummary = document.getElementById("alertSummary");
     const alertsGrid = document.getElementById("alertsGrid");
     const alertDetailPanel = document.getElementById("alertDetailPanel");
@@ -717,6 +854,20 @@
     let reconnectTimer = null;
     let reconnectDelayMs = 3000;
     let renderTimer = null;
+    let activeState = "all";
+
+    const EVENT_FILTERS = [
+      { value: "all", label: "All" },
+      { value: "warnings", label: "Warnings" },
+      { value: "watches", label: "Watches" },
+      { value: "advisories", label: "Advisories" },
+      { value: "statements", label: "Statements" },
+      { value: "storm", label: "Storm" },
+      { value: "hydro", label: "Flood" },
+      { value: "fire", label: "Fire" },
+      { value: "heat", label: "Heat" },
+      { value: "geometry", label: "Geometry" }
+    ];
 
     function escapeHtml(value) {
       return String(value ?? "")
@@ -791,6 +942,49 @@
       );
     }
 
+    function statesForFeature(feature) {
+      const props = feature?.properties || {};
+      const states = new Set();
+
+      const addState = (value) => {
+        const state = String(value || "").trim().toUpperCase();
+
+        if (/^[A-Z]{2}$/.test(state)) {
+          states.add(state);
+        }
+      };
+
+      const providedStates = Array.isArray(props.states)
+        ? props.states
+        : String(props.states || props.state || "")
+            .split(/[\s,;]+/)
+            .filter(Boolean);
+
+      providedStates.forEach(addState);
+
+      const ugcValues = Array.isArray(props?.geocode?.UGC)
+        ? props.geocode.UGC
+        : props?.geocode?.UGC
+          ? [props.geocode.UGC]
+          : [];
+
+      ugcValues.forEach((value) => {
+        const text = String(value || "").toUpperCase();
+
+        for (const match of text.matchAll(/(?:^|[^A-Z])([A-Z]{2})[CZ]\d{3}/g)) {
+          addState(match[1]);
+        }
+      });
+
+      const area = String(props.areaDesc || "");
+
+      for (const match of area.matchAll(/,\s*([A-Z]{2})(?=\s*(?:;|$))/g)) {
+        addState(match[1]);
+      }
+
+      return [...states].sort();
+    }
+
     function matchesType(feature, type) {
       if (type === "all") return true;
 
@@ -799,6 +993,7 @@
       if (type === "warnings") return event.includes("warning");
       if (type === "watches") return event.includes("watch");
       if (type === "advisories") return event.includes("advisory");
+      if (type === "statements") return event.includes("statement");
       if (type === "storm") return event.includes("tornado") || event.includes("severe thunderstorm") || event.includes("special marine");
       if (type === "hydro") return event.includes("flood") || event.includes("hydro");
       if (type === "fire") return event.includes("fire") || event.includes("red flag");
@@ -830,6 +1025,7 @@
       return liveFeatures
         .filter((feature) => !isExpired(feature))
         .filter((feature) => matchesType(feature, type))
+        .filter((feature) => activeState === "all" || statesForFeature(feature).includes(activeState))
         .filter((feature) => !query || searchableText(feature).includes(query))
         .sort((a, b) => {
           const rankDiff = severityRank(a) - severityRank(b);
@@ -847,7 +1043,7 @@
       const props = feature.properties || {};
       const id = String(feature.id || props._alertId || props.id || `live-alert-${index}`).trim();
 
-      return {
+      const normalized = {
         ...feature,
         id,
         properties: {
@@ -862,6 +1058,9 @@
           _liveNwwsFastLane: true
         }
       };
+
+      normalized.properties.states = statesForFeature(normalized);
+      return normalized;
     }
 
     function setConnection(state, text) {
@@ -890,6 +1089,92 @@
             <span class="summary-pill">${escapeHtml(event)}: ${count}</span>
           `).join("")
         : `<span class="summary-pill">No matching alerts</span>`;
+    }
+
+
+    function renderFilterChips() {
+      const query = searchInput.value.trim().toLowerCase();
+      const selectedType = typeFilter.value;
+
+      const searchedFeatures = liveFeatures
+        .filter((feature) => !isExpired(feature))
+        .filter((feature) => !query || searchableText(feature).includes(query));
+
+      const stateScopedFeatures = searchedFeatures.filter(
+        (feature) => activeState === "all" || statesForFeature(feature).includes(activeState)
+      );
+
+      eventChips.innerHTML = EVENT_FILTERS.map(({ value, label }) => {
+        const count = stateScopedFeatures.filter((feature) => matchesType(feature, value)).length;
+        const active = selectedType === value;
+
+        return `
+          <button
+            class="filter-chip${active ? " is-active" : ""}"
+            type="button"
+            data-event-filter="${escapeHtml(value)}"
+            aria-pressed="${active}"
+          >
+            ${escapeHtml(label)}
+            <span class="filter-chip-count">${count}</span>
+          </button>
+        `;
+      }).join("");
+
+      const eventScopedFeatures = searchedFeatures.filter(
+        (feature) => matchesType(feature, selectedType)
+      );
+
+      const stateCounts = new Map();
+
+      eventScopedFeatures.forEach((feature) => {
+        statesForFeature(feature).forEach((state) => {
+          stateCounts.set(state, (stateCounts.get(state) || 0) + 1);
+        });
+      });
+
+      if (activeState !== "all" && !stateCounts.has(activeState)) {
+        stateCounts.set(activeState, 0);
+      }
+
+      const stateEntries = [...stateCounts.entries()]
+        .sort((a, b) => a[0].localeCompare(b[0]));
+
+      stateChips.innerHTML = [
+        `
+          <button
+            class="filter-chip${activeState === "all" ? " is-active" : ""}"
+            type="button"
+            data-state-filter="all"
+            aria-pressed="${activeState === "all"}"
+          >
+            All States
+            <span class="filter-chip-count">${eventScopedFeatures.length}</span>
+          </button>
+        `,
+        ...stateEntries.map(([state, count]) => {
+          const active = activeState === state;
+
+          return `
+            <button
+              class="filter-chip${active ? " is-active" : ""}"
+              type="button"
+              data-state-filter="${escapeHtml(state)}"
+              aria-pressed="${active}"
+            >
+              ${escapeHtml(state)}
+              <span class="filter-chip-count">${count}</span>
+            </button>
+          `;
+        })
+      ].join("");
+
+      stateFilterGroup.hidden = stateEntries.length === 0 && activeState === "all";
+
+      clearFiltersButton.disabled =
+        !searchInput.value &&
+        selectedType === "all" &&
+        activeState === "all";
     }
 
 
@@ -927,6 +1212,7 @@
       const office = props.office || "Unknown office";
       const source = props._liveSource || props.source || "nwws-oi";
       const expires = expiresText(props.expires);
+      const states = statesForFeature(feature);
       const sent = props.sent ? new Date(props.sent).toLocaleString() : "Unknown";
       const effective = props.effective ? new Date(props.effective).toLocaleString() : "Unknown";
 
@@ -940,6 +1226,7 @@
             <span class="badge live">Live NWWS</span>
             <span class="badge expires">Expires ${escapeHtml(expires)}</span>
             <span class="badge">${escapeHtml(geometry)}</span>
+            ${states.length ? `<span class="badge">${escapeHtml(states.join(", "))}</span>` : ""}
           </div>
         </div>
 
@@ -995,6 +1282,8 @@
 
 
     function render() {
+      renderFilterChips();
+
       const features = filteredFeatures();
       const geometryCount = liveFeatures.filter(hasGeometry).length;
 
@@ -1024,6 +1313,7 @@
         const area = props.areaDesc || "Area not listed";
         const expires = expiresText(props.expires);
         const geometry = hasGeometry(feature) ? feature.geometry.type : "No geometry";
+        const states = statesForFeature(feature);
         const selectedClass = feature.id === selectedAlertId ? " is-selected" : "";
 
         return `
@@ -1036,6 +1326,7 @@
               <div class="badges">
                 <span class="badge expires">${escapeHtml(expires)}</span>
                 <span class="badge">${escapeHtml(geometry)}</span>
+                ${states.length ? `<span class="badge">${escapeHtml(states.join(", "))}</span>` : ""}
               </div>
             </div>
           </article>
@@ -1155,7 +1446,36 @@
     }
 
     searchInput.addEventListener("input", scheduleRender);
+
     typeFilter.addEventListener("change", render);
+
+    eventChips.addEventListener("click", (event) => {
+      const chip = event.target.closest("[data-event-filter]");
+
+      if (!chip) return;
+
+      typeFilter.value = chip.dataset.eventFilter || "all";
+      render();
+    });
+
+    stateChips.addEventListener("click", (event) => {
+      const chip = event.target.closest("[data-state-filter]");
+
+      if (!chip) return;
+
+      activeState = chip.dataset.stateFilter || "all";
+      selectedAlertId = "";
+      render();
+    });
+
+    clearFiltersButton.addEventListener("click", () => {
+      searchInput.value = "";
+      typeFilter.value = "all";
+      activeState = "all";
+      selectedAlertId = "";
+      render();
+    });
+
     refreshButton.addEventListener("click", () => {
       loadCurrentAlerts().catch((error) => {
         console.error("Manual live alert refresh failed", error);

@@ -238,6 +238,43 @@ def child_text(element, local_name):
     return ""
 
 
+def parse_cap_geocodes(area):
+    geocodes = {}
+
+    if area is None:
+        return geocodes
+
+    for element in area.iter():
+        if xml_local_name(element.tag) != "geocode":
+            continue
+
+        value_name = child_text(element, "valueName").upper()
+        value = child_text(element, "value")
+
+        if not value_name or not value:
+            continue
+
+        values = geocodes.setdefault(value_name, [])
+
+        if value not in values:
+            values.append(value)
+
+    return geocodes
+
+
+def states_from_geocodes(geocodes):
+    states = set()
+
+    for value in geocodes.get("UGC", []):
+        for match in re.finditer(
+            r"(?<![A-Z])([A-Z]{2})[CZ]\d{3}",
+            str(value or "").upper(),
+        ):
+            states.add(match.group(1))
+
+    return sorted(states)
+
+
 def parse_iso_to_utc(value):
     value = str(value or "").strip()
     if not value:
@@ -318,11 +355,28 @@ def parse_cap_alert(text):
         return None
 
     info = next((element for element in root.iter() if xml_local_name(element.tag) == "info"), None)
-    area_desc = ""
+    area_descs = []
+    geocodes = {}
 
     if info is not None:
-        area = next((element for element in info.iter() if xml_local_name(element.tag) == "area"), None)
-        area_desc = child_text(area, "areaDesc")
+        areas = [
+            element
+            for element in info.iter()
+            if xml_local_name(element.tag) == "area"
+        ]
+
+        for area in areas:
+            area_desc = child_text(area, "areaDesc")
+
+            if area_desc and area_desc not in area_descs:
+                area_descs.append(area_desc)
+
+            for value_name, values in parse_cap_geocodes(area).items():
+                destination = geocodes.setdefault(value_name, [])
+
+                for value in values:
+                    if value not in destination:
+                        destination.append(value)
 
     return {
         "identifier": child_text(root, "identifier"),
@@ -338,7 +392,9 @@ def parse_cap_alert(text):
         "headline": child_text(info, "headline"),
         "description": child_text(info, "description"),
         "instruction": child_text(info, "instruction"),
-        "areaDesc": area_desc,
+        "areaDesc": "; ".join(area_descs),
+        "geocode": geocodes,
+        "states": states_from_geocodes(geocodes),
         "geometry": parse_cap_geometry(root),
     }
 
@@ -400,6 +456,8 @@ def parse_alert_payload(product):
                 "capSender": cap.get("sender") or "",
                 "capMsgType": cap.get("msgType") or "",
                 "areaDesc": cap.get("areaDesc") or "",
+                "geocode": cap.get("geocode") or {},
+                "states": cap.get("states") or [],
             })
 
             if cap.get("instruction"):
