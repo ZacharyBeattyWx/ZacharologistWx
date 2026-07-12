@@ -10,6 +10,7 @@ param(
 
     [switch]$PlanOnly,
     [switch]$AllowDirty,
+    [switch]$ForceBuild,
     [switch]$UseExistingImage,
     [switch]$NoPrompt,
     [switch]$SkipEndpointCheck,
@@ -361,6 +362,144 @@ $RepositoryUri = [string]$RepoInfo.repositoryUri
 $RegistryUri = ($RepositoryUri -split "/")[0]
 $TaggedImageUri = "${RepositoryUri}:${CommitTag}"
 
+$ApplicationPaths = @(
+    "services/nwws-ingest/Dockerfile",
+    "services/nwws-ingest/.dockerignore",
+    "services/nwws-ingest/requirements.txt",
+    "services/nwws-ingest/src"
+)
+
+$StopBeforeBuild = $false
+$ProductionCommit = $null
+$ApplicationChanges = @()
+
+Write-Section "NWWS APPLICATION CHANGE CHECK"
+
+$RunningImageDetails = @(
+    (
+        Invoke-NativeJson "aws" @(
+            "ecr", "describe-images",
+            "--repository-name", $EcrRepository,
+            "--image-ids", "imageDigest=$CurrentRunningDigest",
+            "--region", $Region,
+            "--output", "json",
+            "--no-cli-pager"
+        )
+    ).imageDetails
+)
+
+$RunningImageDetail = $RunningImageDetails |
+    Select-Object -First 1
+
+$RunningImageTags = @()
+
+if ($RunningImageDetail) {
+    $RunningImageTags = @(
+        $RunningImageDetail.imageTags |
+            Where-Object {
+                -not [string]::IsNullOrWhiteSpace([string]$_)
+            }
+    )
+}
+
+$CommitLikeImageTags = @(
+    $RunningImageTags |
+        Where-Object {
+            [string]$_ -match "^[0-9a-fA-F]{7,40}$"
+        }
+)
+
+$ResolvedRunningCommits = @(
+    @(
+        foreach ($ImageTag in $CommitLikeImageTags) {
+            $ResolvedCommitOutput = @(
+                & git rev-parse `
+                    --verify `
+                    "${ImageTag}^{commit}" `
+                    2>$null
+            )
+
+            if (
+                $LASTEXITCODE -eq 0 -and
+                $ResolvedCommitOutput.Count -gt 0
+            ) {
+                $ResolvedCommitOutput[0].Trim()
+            }
+        }
+    ) | Sort-Object -Unique
+)
+
+if ($ResolvedRunningCommits.Count -eq 1) {
+    $ProductionCommit = $ResolvedRunningCommits[0]
+
+    Write-Host (
+        "Running image tags: {0}" -f (
+            ($RunningImageTags | Sort-Object -Unique) -join ", "
+        )
+    )
+    Write-Host "Production commit: $ProductionCommit"
+    Write-Host "Current commit:    $FullCommit"
+    Write-Host ""
+
+    $ApplicationDiffArguments = @(
+        "diff",
+        "--name-status",
+        "--find-renames",
+        $ProductionCommit,
+        $FullCommit,
+        "--"
+    ) + $ApplicationPaths
+
+    $ApplicationChanges = @(
+        & git @ApplicationDiffArguments
+    )
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "Unable to compare production NWWS inputs against the current commit."
+    }
+
+    if ($ApplicationChanges.Count -gt 0) {
+        Write-Host "Deployable NWWS application files changed:" -ForegroundColor Yellow
+
+        $ApplicationChanges |
+            ForEach-Object {
+                Write-Host "  $_"
+            }
+    } else {
+        Write-Host "No NWWS application changes detected." -ForegroundColor Green
+
+        if ($ForceBuild) {
+            Write-Host (
+                "ForceBuild was specified. Continuing without requiring NWWS application changes."
+            ) -ForegroundColor Yellow
+        } else {
+            $StopBeforeBuild = $true
+        }
+    }
+} else {
+    if ($ResolvedRunningCommits.Count -gt 1) {
+        $ResolutionMessage = (
+            "The running production image tags resolved to multiple Git commits."
+        )
+    } else {
+        $ResolutionMessage = (
+            "Could not determine the Git commit represented by the running production image."
+        )
+    }
+
+    if (-not $ForceBuild) {
+        throw (
+            "$ResolutionMessage " +
+            "No Docker or AWS write operations were performed. " +
+            "Use -ForceBuild only for an intentional rebuild."
+        )
+    }
+
+    Write-Host (
+        "$ResolutionMessage ForceBuild was specified, so the build may continue."
+    ) -ForegroundColor Yellow
+}
+
 $RollbackCommand = @(
     ('aws ecs update-service --cluster "{0}" --service "{1}" --task-definition "{2}" --region "{3}"' -f $Cluster, $Service, $CurrentTaskDefinitionArn, $Region)
     ('aws ecs wait services-stable --cluster "{0}" --services "{1}" --region "{2}"' -f $Cluster, $Service, $Region)
@@ -391,6 +530,12 @@ Write-Host $RollbackCommand -ForegroundColor Yellow
 if ($PlanOnly) {
     Write-Host ""
     Write-Host "PLAN ONLY COMPLETE - no AWS or Docker changes were made." -ForegroundColor Green
+    return
+}
+
+if ($StopBeforeBuild) {
+    Write-Host ""
+    Write-Host "BUILD SKIPPED - no Docker, ECR image, or ECS task-definition changes were made." -ForegroundColor Green
     return
 }
 
