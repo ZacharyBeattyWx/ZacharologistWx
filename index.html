@@ -11214,6 +11214,188 @@ body {
 </style>
 
 
+<style id="alert-radar-modal-cleanup-css">
+/*
+  Desktop alert-card radar modal cleanup.
+  Mobile radar controls remain governed by the existing mobile rules.
+*/
+@media (min-width: 769px) {
+  #radarModal[data-mode="raw"] #singleSiteRadarViewer,
+  #radarModal[data-mode="highres"] #singleSiteRadarViewer {
+    display: grid !important;
+    grid-template-rows: auto minmax(0, 1fr) !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  #radarModal[data-mode="raw"] #singleSiteRadarViewer > .single-radar-toolbar,
+  #radarModal[data-mode="highres"] #singleSiteRadarViewer > .single-radar-toolbar {
+    position: relative !important;
+    inset: auto !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    transform: none !important;
+
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 10px 12px !important;
+
+    display: grid !important;
+    grid-template-columns:
+      minmax(250px, 1.25fr)
+      minmax(220px, 1fr)
+      minmax(220px, 1fr)
+      auto !important;
+    grid-template-areas:
+      "search site product refresh"
+      "controls controls controls controls" !important;
+    gap: 8px 10px !important;
+    align-items: center !important;
+
+    border: 0 !important;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.22) !important;
+    border-radius: 0 !important;
+    background: rgba(5, 10, 18, 0.97) !important;
+    box-shadow: none !important;
+    backdrop-filter: blur(12px) !important;
+    z-index: 1000 !important;
+  }
+
+  #radarModal[data-mode="raw"] .radar-location-search,
+  #radarModal[data-mode="highres"] .radar-location-search {
+    grid-area: search !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: 7px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    flex-wrap: nowrap !important;
+  }
+
+  #radarModal[data-mode="raw"] .radar-location-search input,
+  #radarModal[data-mode="highres"] .radar-location-search input {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    height: 36px !important;
+  }
+
+  #radarModal[data-mode="raw"] .radar-location-search button,
+  #radarModal[data-mode="highres"] .radar-location-search button,
+  #radarModal[data-mode="raw"] #radarRefreshBtn,
+  #radarModal[data-mode="highres"] #radarRefreshBtn {
+    height: 36px !important;
+    white-space: nowrap !important;
+  }
+
+  #radarModal[data-mode="raw"] .radar-site-control,
+  #radarModal[data-mode="highres"] .radar-site-control {
+    grid-area: site !important;
+  }
+
+  #radarModal[data-mode="raw"] .radar-product-control,
+  #radarModal[data-mode="highres"] .radar-product-control {
+    grid-area: product !important;
+  }
+
+  #radarModal[data-mode="raw"] #radarRefreshBtn,
+  #radarModal[data-mode="highres"] #radarRefreshBtn {
+    grid-area: refresh !important;
+  }
+
+  #radarModal[data-mode="raw"] .radar-site-control,
+  #radarModal[data-mode="raw"] .radar-product-control,
+  #radarModal[data-mode="highres"] .radar-site-control,
+  #radarModal[data-mode="highres"] .radar-product-control {
+    display: grid !important;
+    grid-template-columns: auto minmax(0, 1fr) !important;
+    gap: 7px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    align-items: center !important;
+  }
+
+  #radarModal[data-mode="raw"] .single-radar-toolbar select,
+  #radarModal[data-mode="highres"] .single-radar-toolbar select {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    height: 36px !important;
+  }
+
+  #radarModal[data-mode="raw"] .radar-loop-controls,
+  #radarModal[data-mode="highres"] .radar-loop-controls {
+    grid-area: controls !important;
+    position: static !important;
+    inset: auto !important;
+
+    display: grid !important;
+    grid-template-columns:
+      42px
+      minmax(84px, auto)
+      42px
+      minmax(130px, 1fr)
+      minmax(170px, 220px) !important;
+    align-items: center !important;
+    gap: 8px !important;
+
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 8px 0 0 !important;
+
+    border: 0 !important;
+    border-top: 1px solid rgba(148, 163, 184, 0.14) !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+
+  #radarModal[data-mode="raw"] .radar-loop-controls button,
+  #radarModal[data-mode="highres"] .radar-loop-controls button {
+    height: 34px !important;
+    min-width: 0 !important;
+    padding: 6px 10px !important;
+  }
+
+  #radarModal[data-mode="raw"] .radar-frame-time,
+  #radarModal[data-mode="highres"] .radar-frame-time {
+    width: 100% !important;
+    min-width: 0 !important;
+    padding: 0 8px !important;
+    text-align: left !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  #radarModal[data-mode="raw"] .radar-speed-control,
+  #radarModal[data-mode="highres"] .radar-speed-control {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    margin: 0 !important;
+  }
+
+  #radarModal[data-mode="raw"] #singleSiteMap,
+  #radarModal[data-mode="highres"] #singleSiteMap {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+  }
+
+  #radarModal[data-mode="raw"] .radar-legend,
+  #radarModal[data-mode="highres"] .radar-legend {
+    right: 12px !important;
+    bottom: 12px !important;
+  }
+}
+</style>
 </head>
 
 <body>
@@ -11622,7 +11804,7 @@ body {
     <div class="radar-modal-header">
       <div>
         <h2>Storm Radar</h2>
-        <p>Clean radar and CONUS reflectivity views</p>
+        <p>Regional and high-resolution site radar</p>
       </div>
 
       <button class="radar-modal-close" type="button" aria-label="Close radar viewer">×</button>
@@ -11630,17 +11812,13 @@ body {
 
     <div class="radar-mode-buttons">
       <button class="radar-mode-btn active" type="button" data-radar-mode="clean">
-        Clean Radar
+        Regional Radar
       </button>
 
       <button class="radar-mode-btn" type="button" data-radar-mode="raw">
-        Zach Radar
+        Site Radar
       </button>
 
-      <!-- PHASE 1: add a separate high-res site radar mode -->
-      <button class="radar-mode-btn" type="button" data-radar-mode="highres">
-        Hi-Res Site Radar
-      </button>
     </div>
 
     <div class="radar-frame-wrap">
@@ -11713,7 +11891,7 @@ body {
     </div>
 
     <div class="radar-modal-note">
-      Zach Radar uses IEM RIDGE NEXRAD single-site products for high-detail base data.
+      Site Radar uses IEM RIDGE NEXRAD single-site products for high-detail base data.
     </div>
   </div>
 </div>
@@ -12919,18 +13097,23 @@ async function focusSingleSiteRadarOnAlert(alert, options = {}) {
   if (polygonLatLngs) {
     alertPolygonLayer = L.polygon(polygonLatLngs, {
       color: getAlertColor(alert.properties?.event),
-      weight: 3,
-      opacity: 0.95,
+      weight: 2,
+      opacity: 0.9,
       fillColor: getAlertColor(alert.properties?.event),
-      fillOpacity: 0.16,
+      fillOpacity: 0.055,
       pane: "alertPane"
     }).addTo(singleSiteMap);
 
     if (!skipFitBounds) {
-      singleSiteMap.fitBounds(alertPolygonLayer.getBounds(), {
-        padding: [36, 36],
-        maxZoom: 11
-      });
+      const alertBounds = alertPolygonLayer.getBounds();
+      const calculatedZoom = singleSiteMap.getBoundsZoom(
+        alertBounds,
+        false,
+        [36, 36]
+      );
+      const focusedZoom = Math.max(6, Math.min(8, calculatedZoom));
+
+      singleSiteMap.setView(alertBounds.getCenter(), focusedZoom);
     }
   } else {
     alertCenterMarker = L.marker([center.lat, center.lon], {
@@ -13401,13 +13584,13 @@ const RADAR_ADAPTER_KEYS = {
 
 const RADAR_MODE_ARCHITECTURE = {
   clean: {
-    label: "Clean Radar",
+    label: "Regional Radar",
     currentAdapter: RADAR_ADAPTER_KEYS.windy,
     futureAdapter: RADAR_ADAPTER_KEYS.windy,
     playback: false
   },
   raw: {
-    label: "Zach Radar",
+    label: "Site Radar",
     currentAdapter: RADAR_ADAPTER_KEYS.iem,
     futureAdapter: RADAR_ADAPTER_KEYS.customFrames,
     playback: true
@@ -13624,6 +13807,8 @@ function closeRadarModal() {
   radarModal.classList.remove("is-open");
   document.body.style.overflow = "";
   currentRadarMode = "clean";
+  radarModal.dataset.mode = "clean";
+  pendingRadarAlert = null;
 
   if (singleSiteRadarViewer) {
     singleSiteRadarViewer.style.display = "none";
@@ -13641,6 +13826,10 @@ function setRadarMode(mode) {
   const previousMode = currentRadarMode;
 
   currentRadarMode = selectedMode;
+
+  if (radarModal) {
+    radarModal.dataset.mode = selectedMode;
+  }
 
   if (previousMode !== selectedMode) {
     cleanupSingleSiteRadarRuntime({
@@ -14716,10 +14905,15 @@ async function tryLoadCustomSingleSiteRadarLoopFrames({ site, product, mode, req
       });
 
       if (alertPolygonLayer) {
-        singleSiteMap.fitBounds(alertPolygonLayer.getBounds(), {
-          padding: [48, 48],
-          maxZoom: 7
-        });
+        const alertBounds = alertPolygonLayer.getBounds();
+        const calculatedZoom = singleSiteMap.getBoundsZoom(
+          alertBounds,
+          false,
+          [48, 48]
+        );
+        const focusedZoom = Math.max(6, Math.min(8, calculatedZoom));
+
+        singleSiteMap.setView(alertBounds.getCenter(), focusedZoom);
       } else if (activeFrame && singleSiteMap) {
         singleSiteMap.fitBounds(L.latLngBounds(activeFrame.bounds), {
           padding: [24, 24],
@@ -14736,7 +14930,7 @@ async function tryLoadCustomSingleSiteRadarLoopFrames({ site, product, mode, req
     const frameTime = document.getElementById("radarFrameTime");
 
     if (frameTime) {
-      frameTime.textContent = `Zach Radar · ${site}`;
+      frameTime.textContent = `Site Radar · ${site}`;
     }
 
     logZachRadarFrame("Showing Zach Radar frame", {
