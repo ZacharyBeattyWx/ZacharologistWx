@@ -9469,6 +9469,21 @@ body {
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
   }
 
+  .ops-sunmoon-moon-canvas {
+    overflow: hidden;
+    background: #050812;
+    box-shadow: none;
+  }
+
+
+
+
+
+
+
+
+
+
   .ops-sunmoon-moon-fallback {
     width: 62px;
     height: 62px;
@@ -16043,13 +16058,16 @@ setInterval(loadSPCImages, 10 * 60 * 1000);
   }
 
   function moonData() {
+    const location = getDaylightLocation();
+    const now = new Date();
     const month = 29.530588853;
     const reference = Date.UTC(2000, 0, 6, 18, 14);
-    const age = (((Date.now() - reference) / 86400000) % month + month) % month;
+    const age = (((now.getTime() - reference) / 86400000) % month + month) % month;
     const fraction = age / month;
     const illumination = Math.round(
       ((1 - Math.cos(2 * Math.PI * fraction)) / 2) * 100
     );
+    const isWaxing = fraction < 0.5;
 
     let phase = "New Moon";
 
@@ -16061,7 +16079,14 @@ setInterval(loadSPCImages, 10 * 60 * 1000);
     else if (fraction < 0.78) phase = "Last Quarter";
     else if (fraction < 0.97) phase = "Waning Crescent";
 
-    return { phase, illumination };
+    return {
+      phase,
+      illumination,
+      isWaxing,
+      date: now.toISOString(),
+      latitude: location.latitude,
+      locationName: location.locationName
+    };
   }
 
   function briefingText() {
@@ -16238,7 +16263,13 @@ setInterval(loadSPCImages, 10 * 60 * 1000);
         "Current Moon",
         moon.phase,
         `
-          <div class="ops-moon-row">
+          <div class="ops-moon-row"
+            data-moon-phase="${esc(moon.phase)}"
+            data-moon-illumination="${esc(moon.illumination)}"
+            data-moon-waxing="${moon.isWaxing ? "true" : "false"}"
+            data-moon-date="${esc(moon.date)}"
+            data-moon-latitude="${esc(moon.latitude)}"
+            data-moon-location="${esc(moon.locationName)}">
             <span class="ops-moon-disc" aria-hidden="true">
               <i class="ops-moon-shadow"></i>
             </span>
@@ -17136,6 +17167,301 @@ const threats = [
     return match ? match[0].toUpperCase().replace(/\s+/g, " ") : fallback;
   }
 
+  function numericMoonIllumination(value) {
+    const match = String(value ?? "").match(/\b\d{1,3}(?:\.\d+)?\b/);
+    if (!match) return null;
+
+    const percent = Number(match[0]);
+    return Number.isFinite(percent)
+      ? Math.min(100, Math.max(0, percent))
+      : null;
+  }
+
+  function inferWaxingFromPhase(phase) {
+    if (/waxing|first quarter/i.test(phase)) return true;
+    if (/waning|last quarter|third quarter/i.test(phase)) return false;
+    return null;
+  }
+
+  const MOON_TEXTURE_SRC = "assets/moon/moon-surface.webp";
+  const MOON_DISPLAY_SIZE = 62;
+  const MOON_MIN_RENDER_SIZE = 256;
+  let moonTextureImage = null;
+  let moonTextureLoadPromise = null;
+  let moonTexturePixels = null;
+
+  function illuminationContext(illumination, isWaxing, latitude, phaseName) {
+    const illuminationProvided =
+      illumination !== null &&
+      illumination !== undefined &&
+      String(illumination).trim() !== "";
+    const numericIllumination = Number(illumination);
+    const hasIllumination =
+      illuminationProvided &&
+      Number.isFinite(numericIllumination);
+    const percent = hasIllumination
+      ? Math.min(100, Math.max(0, numericIllumination))
+      : 0;
+    const waxing =
+      typeof isWaxing === "boolean" ? isWaxing : inferWaxingFromPhase(phaseName);
+    const southernHemisphere = Number.isFinite(Number(latitude)) && Number(latitude) < 0;
+    const illuminationSide = ((waxing ?? true) ? 1 : -1) * (southernHemisphere ? -1 : 1);
+
+    return {
+      hasIllumination,
+      percent,
+      illuminationSide
+    };
+  }
+
+  function loadMoonTexture() {
+    if (moonTextureImage?.complete && moonTextureImage.naturalWidth) {
+      return Promise.resolve(moonTextureImage);
+    }
+
+    if (moonTextureLoadPromise) return moonTextureLoadPromise;
+
+    moonTextureImage = new Image();
+    moonTextureImage.decoding = "async";
+    moonTextureImage.src = MOON_TEXTURE_SRC;
+
+    moonTextureLoadPromise = new Promise((resolve, reject) => {
+      moonTextureImage.onload = () => resolve(moonTextureImage);
+      moonTextureImage.onerror = reject;
+    });
+
+    return moonTextureLoadPromise;
+  }
+
+  function smoothstep(edge0, edge1, value) {
+    const t = Math.min(1, Math.max(0, (value - edge0) / (edge1 - edge0)));
+    return t * t * (3 - (2 * t));
+  }
+
+  function getMoonTexturePixels(texture) {
+    if (moonTexturePixels) return moonTexturePixels;
+
+    const textureCanvas = document.createElement("canvas");
+    textureCanvas.width = texture.naturalWidth || texture.width;
+    textureCanvas.height = texture.naturalHeight || texture.height;
+    const textureCtx = textureCanvas.getContext("2d", { willReadFrequently: true });
+    textureCtx.imageSmoothingEnabled = true;
+    textureCtx.imageSmoothingQuality = "high";
+    textureCtx.drawImage(texture, 0, 0);
+
+    moonTexturePixels = {
+      width: textureCanvas.width,
+      height: textureCanvas.height,
+      data: textureCtx.getImageData(0, 0, textureCanvas.width, textureCanvas.height).data
+    };
+
+    return moonTexturePixels;
+  }
+
+  function sampleMoonTexture(texturePixels, u, v) {
+    const sourceX = Math.min(texturePixels.width - 1, Math.max(0, u * (texturePixels.width - 1)));
+    const sourceY = Math.min(texturePixels.height - 1, Math.max(0, v * (texturePixels.height - 1)));
+    const x0 = Math.floor(sourceX);
+    const y0 = Math.floor(sourceY);
+    const x1 = Math.min(texturePixels.width - 1, x0 + 1);
+    const y1 = Math.min(texturePixels.height - 1, y0 + 1);
+    const tx = sourceX - x0;
+    const ty = sourceY - y0;
+    const topWeight = 1 - ty;
+    const leftWeight = 1 - tx;
+    const i00 = ((y0 * texturePixels.width) + x0) * 4;
+    const i10 = ((y0 * texturePixels.width) + x1) * 4;
+    const i01 = ((y1 * texturePixels.width) + x0) * 4;
+    const i11 = ((y1 * texturePixels.width) + x1) * 4;
+    const data = texturePixels.data;
+    const rgba = [0, 0, 0, 0];
+
+    for (let channel = 0; channel < 4; channel += 1) {
+      const top = (data[i00 + channel] * leftWeight) + (data[i10 + channel] * tx);
+      const bottom = (data[i01 + channel] * leftWeight) + (data[i11 + channel] * tx);
+      rgba[channel] = (top * topWeight) + (bottom * ty);
+    }
+
+    return rgba;
+  }
+
+  function drawMoonCanvas(canvas, texture) {
+    const phaseName = canvas.dataset.phaseName || "Moon Phase";
+    const illumination = canvas.dataset.illumination;
+    const isWaxing = canvas.dataset.isWaxing === "true"
+      ? true
+      : canvas.dataset.isWaxing === "false"
+        ? false
+        : null;
+    const latitude = Number(canvas.dataset.latitude);
+    const context = illuminationContext(
+      illumination,
+      isWaxing,
+      Number.isFinite(latitude) ? latitude : null,
+      phaseName
+    );
+    const cssSize = Number(canvas.dataset.displaySize) || MOON_DISPLAY_SIZE;
+    const dpr = Math.max(2, window.devicePixelRatio || 1);
+    const size = Math.max(MOON_MIN_RENDER_SIZE, Math.round(cssSize * dpr * 2));
+    const radius = (size * 0.5) - 1;
+    const center = (size - 1) / 2;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+    canvas.width = size;
+    canvas.height = size;
+    canvas.style.width = `${cssSize}px`;
+    canvas.style.height = `${cssSize}px`;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+
+    const texturePixels = getMoonTexturePixels(texture);
+    const output = ctx.createImageData(size, size);
+    const out = output.data;
+    const k = context.percent / 100;
+    const lightZ = (2 * k) - 1;
+    const lightX = Math.sqrt(Math.max(0, 1 - (lightZ * lightZ))) * context.illuminationSide;
+    const terminatorSoftness = 0.045;
+    const earthshine = 0.10;
+
+    for (let y = 0; y < size; y += 1) {
+      const ny = (center - y) / radius;
+
+      for (let x = 0; x < size; x += 1) {
+        const nx = (x - center) / radius;
+        const rr = (nx * nx) + (ny * ny);
+        const index = ((y * size) + x) * 4;
+
+        if (rr > 1) {
+          out[index + 3] = 0;
+          continue;
+        }
+
+        const nz = Math.sqrt(Math.max(0, 1 - rr));
+        const source = sampleMoonTexture(
+          texturePixels,
+          x / (size - 1),
+          y / (size - 1)
+        );
+        const sourceAlpha = source[3] / 255;
+
+        if (sourceAlpha <= 0.01) {
+          out[index + 3] = 0;
+          continue;
+        }
+
+        const incidence = (nx * lightX) + (nz * lightZ);
+        const litMask = context.hasIllumination
+          ? smoothstep(-terminatorSoftness, terminatorSoftness, incidence)
+          : 0;
+        const lambert = Math.max(0, incidence);
+        const limb = Math.pow(nz, 0.42);
+        const darkBrightness = earthshine * (0.72 + (0.28 * limb));
+        const litBrightness = (0.78 + (0.62 * Math.pow(lambert, 0.35))) * (0.94 + (0.06 * limb));
+        const brightness = darkBrightness + (litMask * (litBrightness - darkBrightness));
+        const warm = context.hasIllumination ? 1 : 0.78;
+
+        out[index] = Math.min(255, Math.pow(source[0] / 255, 0.82) * 255 * brightness * 1.10 * warm);
+        out[index + 1] = Math.min(253, Math.pow(source[1] / 255, 0.82) * 255 * brightness * 1.07 * warm);
+        out[index + 2] = Math.min(248, Math.pow(source[2] / 255, 0.82) * 255 * brightness * 1.02 * warm);
+        out[index + 3] = Math.round(255 * sourceAlpha);
+      }
+    }
+
+    ctx.clearRect(0, 0, size, size);
+    ctx.putImageData(output, 0, 0);
+  }
+
+  function drawMoonFallback(canvas) {
+    const cssSize = Number(canvas.dataset.displaySize) || MOON_DISPLAY_SIZE;
+    const dpr = Math.max(2, window.devicePixelRatio || 1);
+    const size = Math.max(MOON_MIN_RENDER_SIZE, Math.round(cssSize * dpr * 2));
+    const radius = (size * 0.5) - 1;
+    const center = (size - 1) / 2;
+    const ctx = canvas.getContext("2d");
+
+    canvas.width = size;
+    canvas.height = size;
+    canvas.style.width = `${cssSize}px`;
+    canvas.style.height = `${cssSize}px`;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.clearRect(0, 0, size, size);
+    ctx.beginPath();
+    ctx.arc(center, center, radius, 0, Math.PI * 2);
+    ctx.clip();
+    const gradient = ctx.createRadialGradient(
+      center - (radius * 0.22),
+      center - (radius * 0.28),
+      radius * 0.1,
+      center,
+      center,
+      radius
+    );
+    gradient.addColorStop(0, "#27303a");
+    gradient.addColorStop(0.68, "#111821");
+    gradient.addColorStop(1, "#060910");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, size, size);
+  }
+
+  function drawMoonPhaseCanvases(root = document) {
+    const canvases = Array.from(root.querySelectorAll("[data-moon-canvas]"));
+    if (!canvases.length) return;
+
+    loadMoonTexture()
+      .then((texture) => {
+        canvases.forEach((canvas) => drawMoonCanvas(canvas, texture));
+      })
+      .catch(() => {
+        canvases.forEach(drawMoonFallback);
+      });
+  }
+
+  function renderMoonPhase({
+    illumination,
+    isWaxing,
+    latitude,
+    phaseName,
+    displaySize = MOON_DISPLAY_SIZE
+  } = {}) {
+    const illuminationProvided =
+      illumination !== null &&
+      illumination !== undefined &&
+      String(illumination).trim() !== "";
+    const numericIllumination = Number(illumination);
+    const hasIllumination =
+      illuminationProvided &&
+      Number.isFinite(numericIllumination);
+    const percent = hasIllumination
+      ? Math.min(100, Math.max(0, numericIllumination))
+      : "";
+    const waxing =
+      typeof isWaxing === "boolean" ? isWaxing : inferWaxingFromPhase(phaseName);
+    const southernHemisphere = Number.isFinite(Number(latitude)) && Number(latitude) < 0;
+    const illuminationSide = ((waxing ?? true) ? 1 : -1) * (southernHemisphere ? -1 : 1);
+    const labelPhase = phaseName || "Moon Phase";
+    const label = hasIllumination
+      ? `${labelPhase}, ${Math.round(percent)}% illuminated`
+      : "Moon phase unavailable";
+    const latitudeValue = Number.isFinite(Number(latitude)) ? Number(latitude) : "";
+    const cssSize = Number(displaySize) || MOON_DISPLAY_SIZE;
+
+    return `
+      <canvas class="ops-sunmoon-moon-thumb ops-sunmoon-moon-canvas"
+        width="${MOON_MIN_RENDER_SIZE}"
+        height="${MOON_MIN_RENDER_SIZE}"
+        role="img"
+        aria-label="${esc(label)}"
+        data-moon-canvas="true"
+        data-illumination="${esc(percent)}"
+        data-is-waxing="${waxing === null ? "" : waxing ? "true" : "false"}"
+        data-latitude="${esc(latitudeValue)}"
+        data-illumination-side="${illuminationSide}"
+        data-display-size="${esc(cssSize)}"
+        data-phase-name="${esc(labelPhase)}"></canvas>
+    `;
+  }
+
   function getRailCards() {
     return Array.from(document.querySelectorAll(".ops-reference-card"));
   }
@@ -17174,16 +17500,23 @@ const threats = [
       return {
         phase: "Moon Phase",
         illumination: "",
+        illuminationValue: null,
+        isWaxing: null,
+        latitude: null,
+        date: "",
+        locationName: "",
         subtext: "Astronomical phase",
         imgSrc: ""
       };
     }
 
     const text = textOf(card);
+    const moonRow = card.querySelector("[data-moon-phase]");
     const phaseMatch = text.match(MOON_PHASE_REGEX);
     const illuminationMatch = text.match(/\b\d{1,3}%\s*illuminated\b/i);
 
     let phase =
+      moonRow?.dataset.moonPhase ||
       textOf(card.querySelector(".ops-reference-title")) ||
       (phaseMatch ? phaseMatch[1] : "Moon Phase");
 
@@ -17193,19 +17526,46 @@ const threats = [
 
     const img = card.querySelector("img");
     const imgSrc = img ? img.getAttribute("src") || "" : "";
+    const illuminationValue = numericMoonIllumination(
+      moonRow?.dataset.moonIllumination || illuminationMatch?.[0]
+    );
+    const waxingValue = moonRow?.dataset.moonWaxing;
+    const isWaxing = waxingValue === "true"
+      ? true
+      : waxingValue === "false"
+        ? false
+        : inferWaxingFromPhase(phase);
+    const latitude = Number(moonRow?.dataset.moonLatitude);
 
     return {
       phase: phase || "Moon Phase",
-      illumination: illuminationMatch ? illuminationMatch[0] : "",
+      illumination: illuminationValue !== null
+        ? `${Math.round(illuminationValue)}% illuminated`
+        : illuminationMatch ? illuminationMatch[0] : "",
+      illuminationValue,
+      isWaxing,
+      latitude: Number.isFinite(latitude) ? latitude : null,
+      date: moonRow?.dataset.moonDate || "",
+      locationName: moonRow?.dataset.moonLocation || "",
       subtext: "Calculated astronomical phase for tonight.",
       imgSrc
     };
   }
 
   function buildSunMoonMarkup(day, moon) {
-    const moonVisual = moon.imgSrc
-      ? `<img class="ops-sunmoon-moon-thumb" src="${esc(moon.imgSrc)}" alt="${esc(moon.phase)}">`
-      : `<div class="ops-sunmoon-moon-fallback" aria-hidden="true"></div>`;
+    const moonVisual = moon.illuminationValue !== null
+      ? renderMoonPhase({
+          illumination: moon.illuminationValue,
+          isWaxing: moon.isWaxing,
+          latitude: moon.latitude,
+          phaseName: moon.phase
+        })
+      : renderMoonPhase({
+          illumination: null,
+          isWaxing: null,
+          latitude: null,
+          phaseName: ""
+        });
 
     const illuminationLine = moon.illumination
       ? `<div class="ops-sunmoon-moon-meta">${esc(moon.illumination)}</div>`
@@ -17266,6 +17626,7 @@ const threats = [
       ${iconHtml}
       ${buildSunMoonMarkup(day, moon)}
     `;
+    drawMoonPhaseCanvases(daylightCard);
 
     const kicker = daylightCard.querySelector(".ops-reference-kicker");
     if (kicker) kicker.textContent = "SUN & MOON";
