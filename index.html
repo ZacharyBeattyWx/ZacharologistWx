@@ -11396,6 +11396,117 @@ body {
   }
 }
 </style>
+<style id="mobile-alert-radar-final-qa-css">
+/*
+  Final mobile alert-radar QA refinements:
+  - preserves the full-height radar view
+  - gives the radar-site selector enough room
+  - tightens the playback dock without shrinking touch targets
+*/
+@media (max-width: 768px) {
+  #radarModal.is-open .radar-modal-box {
+    width: calc(100vw - 12px) !important;
+    height: calc(100dvh - 12px) !important;
+    max-height: none !important;
+    margin: 6px auto !important;
+  }
+
+  #radarModal.is-open .radar-modal-header {
+    min-height: 64px !important;
+    padding: 9px 12px !important;
+  }
+
+  #radarModal.is-open .radar-modal-header h2 {
+    font-size: 1.08rem !important;
+    line-height: 1.15 !important;
+  }
+
+  #radarModal.is-open .radar-modal-header p {
+    margin-top: 3px !important;
+    font-size: 0.76rem !important;
+    line-height: 1.2 !important;
+  }
+
+  #radarModal.is-open .radar-modal-close {
+    flex: 0 0 44px !important;
+    width: 44px !important;
+    height: 44px !important;
+  }
+
+  #radarModal.is-open
+  #singleSiteRadarViewer.single-site-radar-viewer
+  > .single-radar-toolbar {
+    left: 10px !important;
+    right: 10px !important;
+    bottom: max(10px, env(safe-area-inset-bottom)) !important;
+    gap: 6px !important;
+    padding: 9px 11px calc(9px + env(safe-area-inset-bottom)) !important;
+    border-radius: 18px !important;
+  }
+
+  #radarModal.is-open #singleSiteRadarViewer .radar-loop-controls {
+    gap: 5px !important;
+  }
+
+  #radarModal.is-open #singleSiteRadarViewer .radar-speed-control {
+    gap: 1px !important;
+  }
+
+  #radarModal.is-open
+  #singleSiteRadarViewer
+  .radar-speed-control input[type="range"] {
+    min-height: 30px !important;
+  }
+
+  #radarModal.is-open #singleSiteRadarViewer #radarFrameTime {
+    margin: 0 !important;
+    line-height: 1 !important;
+  }
+}
+
+@media (max-width: 560px) {
+  #radarModal.is-open
+  #singleSiteRadarViewer.single-site-radar-viewer
+  > .single-radar-toolbar {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-areas:
+      "search"
+      "site"
+      "controls" !important;
+  }
+
+  #radarModal.is-open #singleSiteRadarViewer .radar-site-control {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  #radarModal.is-open #singleSiteRadarViewer #radarSiteSelect {
+    width: 100% !important;
+    height: 36px !important;
+    padding: 6px 34px 6px 10px !important;
+    font-size: 0.8rem !important;
+    text-overflow: ellipsis !important;
+  }
+}
+
+@media (max-width: 768px) and (max-height: 720px) {
+  #radarModal.is-open .radar-modal-header {
+    min-height: 56px !important;
+    padding-block: 7px !important;
+  }
+
+  #radarModal.is-open
+  #singleSiteRadarViewer.single-site-radar-viewer
+  > .single-radar-toolbar {
+    padding-top: 7px !important;
+    gap: 4px !important;
+  }
+
+  #radarModal.is-open #singleSiteRadarViewer .radar-speed-label {
+    font-size: 11px !important;
+  }
+}
+</style>
 </head>
 
 <body>
