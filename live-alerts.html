@@ -715,7 +715,752 @@
         grid-template-columns: 1fr;
       }
     }
-  </style>
+    /* Mobile alerts redesign: stage 1 */
+
+    .mobile-filter-toggle,
+    .mobile-filter-backdrop,
+    .mobile-filter-sheet-head,
+    .mobile-filter-sheet-actions {
+      display: none;
+    }
+
+    @media (max-width: 820px) {
+      body.filters-open {
+        overflow: hidden;
+      }
+
+      .page {
+        width: 100%;
+        padding:
+          calc(env(safe-area-inset-top) + 8px)
+          0
+          calc(env(safe-area-inset-bottom) + 28px);
+      }
+
+      .topbar {
+        margin: 0 12px 12px;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .brand {
+        gap: 9px;
+        font-size: 0.76rem;
+        white-space: nowrap;
+      }
+
+      .brand-mark {
+        width: 36px;
+        height: 36px;
+        border-radius: 12px;
+      }
+
+      .nav-actions {
+        width: auto;
+        margin-left: auto;
+        flex-wrap: nowrap;
+      }
+
+      .nav-actions .nav-button:first-child {
+        display: none;
+      }
+
+      .nav-button {
+        padding: 9px 11px;
+        font-size: 0.72rem;
+      }
+
+      .hero {
+        display: block;
+        margin: 0 12px 10px;
+      }
+
+      .hero-card {
+        display: none;
+      }
+
+      .status-card {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 7px 12px;
+        padding: 14px;
+        border-radius: 20px;
+      }
+
+      .status-card::before {
+        content: "LIVE ALERTS";
+        flex-basis: 100%;
+        color: var(--blue);
+        font-size: 0.7rem;
+        font-weight: 900;
+        letter-spacing: 0.15em;
+      }
+
+      .status-main {
+        display: block;
+        flex-basis: 100%;
+      }
+
+      .status-main .metric:first-child {
+        display: flex;
+        align-items: baseline;
+        gap: 9px;
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+      }
+
+      .status-main .metric:first-child strong {
+        order: -1;
+        font-size: 2rem;
+        line-height: 1;
+      }
+
+      .status-main .metric:first-child span {
+        margin: 0;
+        color: var(--text);
+        font-size: 1rem;
+        letter-spacing: -0.015em;
+        text-transform: none;
+      }
+
+      .status-main .metric + .metric {
+        display: none;
+      }
+
+      .connection {
+        min-width: 0;
+        padding: 0;
+        border-radius: 0;
+        background: transparent;
+        font-size: 0.7rem;
+        line-height: 1.35;
+      }
+
+      .connection:last-child {
+        flex: 1 1 100%;
+      }
+
+      .dot {
+        width: 8px;
+        height: 8px;
+        flex: 0 0 auto;
+      }
+
+      .controls {
+        position: sticky;
+        top: calc(env(safe-area-inset-top) + 6px);
+        z-index: 30;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px;
+        margin: 0 12px 10px;
+        padding: 9px;
+        border-radius: 18px;
+        box-shadow: 0 14px 35px rgba(0, 0, 0, 0.34);
+      }
+
+      .search {
+        grid-column: 1 / -1;
+        min-height: 44px;
+        padding: 10px 12px;
+        border-radius: 13px;
+        font-size: 0.88rem;
+      }
+
+      .controls .select {
+        display: none;
+      }
+
+      .mobile-filter-toggle {
+        display: flex;
+        min-height: 42px;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        border: 1px solid rgba(145, 196, 255, 0.22);
+        border-radius: 13px;
+        background: rgba(5, 13, 25, 0.66);
+        color: var(--text);
+        padding: 9px 12px;
+        font: inherit;
+        font-size: 0.82rem;
+        font-weight: 900;
+        cursor: pointer;
+      }
+
+      .mobile-filter-status {
+        color: var(--blue);
+        font-size: 0.7rem;
+      }
+
+      #refreshButton {
+        min-height: 42px;
+        padding: 9px 12px;
+        border-radius: 13px;
+        white-space: nowrap;
+      }
+
+      .mobile-filter-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 899;
+        display: block;
+        background: rgba(0, 5, 13, 0.72);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 180ms ease;
+        backdrop-filter: blur(5px);
+      }
+
+      .mobile-filter-backdrop.is-open {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .mobile-filter-backdrop[hidden] {
+        display: none;
+      }
+
+      .filter-stack {
+        position: fixed;
+        z-index: 900;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        max-height: min(82dvh, 720px);
+        margin: 0;
+        padding:
+          14px
+          14px
+          calc(env(safe-area-inset-bottom) + 14px);
+        overflow-y: auto;
+        border-width: 1px 0 0;
+        border-radius: 24px 24px 0 0;
+        background:
+          radial-gradient(
+            circle at top right,
+            rgba(88, 183, 255, 0.14),
+            transparent 20rem
+          ),
+          #081523;
+        box-shadow: 0 -24px 70px rgba(0, 0, 0, 0.55);
+        transform: translateY(110%);
+        transition: transform 200ms ease;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .filter-stack.is-open {
+        transform: translateY(0);
+      }
+
+      .mobile-filter-sheet-head {
+        position: sticky;
+        top: -14px;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        margin: -14px -14px 12px;
+        padding: 16px 14px 13px;
+        border-bottom: 1px solid rgba(145, 196, 255, 0.15);
+        background: rgba(8, 21, 35, 0.96);
+        backdrop-filter: blur(18px);
+      }
+
+      .mobile-filter-sheet-head span,
+      .mobile-filter-sheet-head strong {
+        display: block;
+      }
+
+      .mobile-filter-sheet-head span {
+        margin-bottom: 4px;
+        color: var(--blue);
+        font-size: 0.68rem;
+        font-weight: 900;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+      }
+
+      .mobile-filter-close {
+        display: grid;
+        flex: 0 0 auto;
+        width: 42px;
+        height: 42px;
+        place-items: center;
+        border: 1px solid rgba(145, 196, 255, 0.2);
+        border-radius: 999px;
+        background: rgba(145, 196, 255, 0.1);
+        color: var(--text);
+        font: inherit;
+        font-size: 1.55rem;
+        cursor: pointer;
+      }
+
+      .filter-row {
+        grid-template-columns: 1fr auto;
+        padding: 5px 0 10px;
+      }
+
+      .mobile-filter-sheet-actions {
+        position: sticky;
+        bottom: calc(env(safe-area-inset-bottom) * -1);
+        z-index: 2;
+        display: block;
+        margin: 8px -14px calc(env(safe-area-inset-bottom) * -1);
+        padding:
+          12px
+          14px
+          calc(env(safe-area-inset-bottom) + 12px);
+        border-top: 1px solid rgba(145, 196, 255, 0.15);
+        background: rgba(8, 21, 35, 0.96);
+        backdrop-filter: blur(18px);
+      }
+
+      .mobile-filter-done {
+        width: 100%;
+        min-height: 46px;
+        border: 1px solid rgba(88, 183, 255, 0.5);
+        border-radius: 14px;
+        background: rgba(40, 124, 190, 0.28);
+        color: var(--text);
+        font: inherit;
+        font-weight: 900;
+        cursor: pointer;
+      }
+
+      .alert-summary {
+        display: none;
+      }
+
+      .alerts-panel {
+        margin: 0 12px;
+      }
+    }
+    /* Mobile alerts redesign: stage 2 */
+
+    .detail-mobile-content,
+    .detail-close,
+    .detail-actions,
+    .area-compact {
+      display: none;
+    }
+
+    .detail-desktop-content {
+      display: block;
+    }
+
+    @media (max-width: 820px) {
+      body.detail-open {
+        overflow: hidden;
+      }
+
+      /* Refine compact feed status */
+
+      .status-main .metric:first-child span {
+        font-size: 0;
+      }
+
+      .status-main .metric:first-child span::after {
+        content: "Active Alerts";
+        font-size: 1rem;
+      }
+
+      .connection {
+        font-size: 0;
+      }
+
+      #connectionText {
+        font-size: 0.72rem;
+      }
+
+      #connectionText::before {
+        content: "Connecting...";
+      }
+
+      .dot.online + #connectionText::before {
+        content: "Connected";
+      }
+
+      .dot.offline + #connectionText::before {
+        content: "Reconnecting...";
+      }
+
+      .connection:last-child {
+        font-size: 0.7rem;
+      }
+
+      .connection:last-child span {
+        font-size: 0.7rem;
+      }
+
+      /* Compact alert list */
+
+      .alerts-panel {
+        min-height: 0;
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+        backdrop-filter: none;
+      }
+
+      .alerts-layout {
+        display: block;
+        min-height: 0;
+      }
+
+      .alerts-grid {
+        gap: 10px;
+        max-height: none;
+        padding: 0;
+        overflow: visible;
+      }
+
+      .alert-card {
+        min-height: 0;
+        padding: 14px 14px 14px 18px;
+        border-radius: 18px;
+      }
+
+      .alert-card:hover,
+      .alert-card.is-selected {
+        transform: none;
+      }
+
+      .alert-card:active {
+        transform: scale(0.992);
+      }
+
+      .alert-head {
+        flex-direction: column;
+        gap: 10px;
+        margin-left: 0;
+      }
+
+      .alert-card .alert-title {
+        gap: 5px;
+      }
+
+      .alert-card .alert-title h2 {
+        font-size: 1rem;
+        line-height: 1.2;
+      }
+
+      .area-full {
+        display: none !important;
+      }
+
+      .area-compact {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 1;
+        overflow: hidden;
+      }
+
+      .alert-card .badges {
+        min-width: 0;
+        justify-content: flex-start;
+      }
+
+      .badge {
+        padding: 6px 8px;
+        font-size: 0.64rem;
+      }
+
+      /* Hide inline detail panel until a card is opened */
+
+      .alert-detail-panel {
+        display: none;
+      }
+
+      body.detail-open .alert-detail-panel {
+        position: fixed;
+        z-index: 1000;
+        inset: 0;
+        display: block;
+        min-height: 100dvh;
+        max-height: none;
+        padding:
+          calc(env(safe-area-inset-top) + 12px)
+          16px
+          calc(env(safe-area-inset-bottom) + 18px);
+        overflow-x: hidden;
+        overflow-y: auto;
+        border: 0;
+        border-radius: 0;
+        background:
+          radial-gradient(
+            circle at top right,
+            rgba(88, 183, 255, 0.15),
+            transparent 23rem
+          ),
+          #06111f;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .detail-desktop-content {
+        display: none;
+      }
+
+      .detail-mobile-content {
+        display: block;
+      }
+
+      .detail-close {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        display: grid;
+        width: 44px;
+        height: 44px;
+        margin: 0 0 12px auto;
+        place-items: center;
+        border: 1px solid rgba(145, 196, 255, 0.22);
+        border-radius: 999px;
+        background: rgba(21, 41, 65, 0.96);
+        color: var(--text);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.34);
+        font: inherit;
+        font-size: 1.7rem;
+        line-height: 1;
+        cursor: pointer;
+        backdrop-filter: blur(18px);
+      }
+
+      .detail-mobile-title {
+        margin: 0;
+        max-width: 15ch;
+        font-size: clamp(1.7rem, 8vw, 2.35rem);
+        line-height: 1.04;
+        letter-spacing: -0.045em;
+      }
+
+      .detail-mobile-content > .badges {
+        justify-content: flex-start;
+        margin-top: 14px;
+      }
+
+      .detail-mobile-headline {
+        margin-top: 18px;
+        padding: 15px;
+        border: 1px solid rgba(145, 196, 255, 0.16);
+        border-radius: 17px;
+        background: rgba(12, 29, 49, 0.72);
+      }
+
+      .detail-mobile-headline span {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--blue);
+        font-size: 0.67rem;
+        font-weight: 900;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+      }
+
+      .detail-mobile-headline strong {
+        display: block;
+        font-size: 0.98rem;
+        line-height: 1.48;
+      }
+
+      .detail-accordion {
+        margin-top: 10px;
+        overflow: hidden;
+        border: 1px solid rgba(145, 196, 255, 0.16);
+        border-radius: 16px;
+        background: rgba(8, 20, 36, 0.72);
+      }
+
+      .detail-accordion summary {
+        display: flex;
+        min-height: 50px;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        padding: 13px 14px;
+        color: var(--text);
+        font-size: 0.76rem;
+        font-weight: 900;
+        letter-spacing: 0.1em;
+        list-style: none;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+
+      .detail-accordion summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .detail-accordion summary::after {
+        content: "+";
+        color: var(--blue);
+        font-size: 1.25rem;
+        line-height: 1;
+      }
+
+      .detail-accordion[open] summary::after {
+        content: "\2212";
+      }
+
+      .detail-accordion-body {
+        padding: 0 14px 15px;
+        color: #d7e8f8;
+        font-size: 0.94rem;
+        line-height: 1.58;
+        overflow-wrap: anywhere;
+        white-space: pre-wrap;
+      }
+
+      .detail-mobile-content .detail-meta-grid {
+        grid-template-columns: 1fr;
+        margin-top: 0;
+      }
+
+      .detail-mobile-content .detail-meta-item {
+        white-space: normal;
+      }
+
+      .detail-actions {
+        position: sticky;
+        bottom: calc(env(safe-area-inset-bottom) * -1);
+        z-index: 4;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 9px;
+        margin:
+          18px
+          -16px
+          calc(env(safe-area-inset-bottom) * -1);
+        padding:
+          12px
+          16px
+          calc(env(safe-area-inset-bottom) + 12px);
+        border-top: 1px solid rgba(145, 196, 255, 0.16);
+        background: rgba(6, 17, 31, 0.96);
+        backdrop-filter: blur(18px);
+      }
+
+      .detail-action-link,
+      .detail-action-button {
+        display: grid;
+        min-height: 46px;
+        place-items: center;
+        border: 1px solid rgba(145, 196, 255, 0.22);
+        border-radius: 14px;
+        color: var(--text);
+        font: inherit;
+        font-size: 0.82rem;
+        font-weight: 900;
+        text-align: center;
+        text-decoration: none;
+        cursor: pointer;
+      }
+
+      .detail-action-link {
+        border-color: rgba(0, 208, 132, 0.42);
+        background: rgba(0, 208, 132, 0.14);
+        color: #c9ffe8;
+      }
+
+      .detail-action-button {
+        background: rgba(145, 196, 255, 0.1);
+      }
+    }
+    /* Mobile alerts redesign: stage 1 polish */
+
+    @media (max-width: 820px) {
+      .status-card {
+        gap: 6px 10px;
+      }
+
+      .status-main .metric:first-child {
+        gap: 8px;
+      }
+
+      .status-main .metric:first-child strong {
+        font-size: 2.15rem;
+      }
+
+      .status-main .metric:first-child span {
+        font-size: 1rem;
+        font-weight: 850;
+      }
+
+      /*
+       * Keep the live stream's real status available in the DOM,
+       * but present a short mobile status based on the dot class.
+       */
+
+      .status-card .connection:first-of-type #connectionText {
+        font-size: 0;
+      }
+
+      .status-card .connection:first-of-type #connectionText::after {
+        content: "Connecting...";
+        font-size: 0.72rem;
+        font-weight: 850;
+      }
+
+      .status-card .connection:first-of-type:has(.dot.online) #connectionText::after {
+        content: "Connected";
+      }
+
+      .status-card .connection:first-of-type:has(.dot.offline) #connectionText::after {
+        content: "Reconnecting...";
+      }
+
+      .status-card .connection:last-child {
+        gap: 5px;
+        opacity: 0.82;
+      }
+
+      .status-card .connection:last-child > span:first-child {
+        font-size: 0;
+      }
+
+      .status-card .connection:last-child > span:first-child::after {
+        content: "Updated";
+        font-size: 0.7rem;
+        font-weight: 800;
+      }
+
+      .mobile-filter-status {
+        max-width: 120px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+
+    /* Mobile status dedupe override v3 */
+
+    @media (max-width: 820px) {
+      .status-main .metric:first-child span::before,
+      .status-main .metric:first-child span::after,
+      #connectionText::before,
+      #connectionText::after {
+        content: none !important;
+        display: none !important;
+      }
+
+      .status-main .metric:first-child span {
+        display: inline !important;
+        font-size: 1rem !important;
+      }
+
+      .status-card .connection:first-of-type #connectionText {
+        display: inline !important;
+        font-size: 0.72rem !important;
+        font-weight: 850 !important;
+      }
+    }
+</style>
 </head>
 <body>
   <main class="page">
@@ -743,7 +1488,7 @@
       <aside class="status-card">
         <div class="status-main">
           <div class="metric">
-            <span>Total Alerts</span>
+            <span>Active Alerts</span>
             <strong id="totalCount">0</strong>
           </div>
           <div class="metric">
@@ -753,7 +1498,7 @@
         </div>
         <div class="connection">
           <span class="dot" id="connectionDot"></span>
-          <span id="connectionText">Connecting to live alert stream...</span>
+          <span id="connectionText">Connecting...</span>
         </div>
         <div class="connection">
           <span>Last update:</span>
@@ -763,7 +1508,18 @@
     </section>
 
     <section class="controls" aria-label="Alert controls">
-      <input class="search" id="searchInput" type="search" placeholder="Search event, area, office, headline..." autocomplete="off">
+      <input class="search" id="searchInput" type="search" placeholder="Search county, city, office, or event..." autocomplete="off">
+      <button
+        class="mobile-filter-toggle"
+        id="mobileFilterToggle"
+        type="button"
+        aria-expanded="false"
+        aria-controls="mobileFilterSheet"
+      >
+        <span>Filters</span>
+        <span class="mobile-filter-status" id="mobileFilterStatus">All alerts</span>
+      </button>
+
       <select class="select" id="typeFilter">
         <option value="all">All active alerts</option>
         <option value="warnings">Warnings</option>
@@ -779,7 +1535,33 @@
       <button class="control-button" id="refreshButton" type="button">Refresh Now</button>
     </section>
 
-    <section class="filter-stack" aria-label="Quick alert filters">
+    <div
+      class="mobile-filter-backdrop"
+      id="mobileFilterBackdrop"
+      hidden
+    ></div>
+
+    <section
+      class="filter-stack"
+      id="mobileFilterSheet"
+      aria-label="Quick alert filters"
+      aria-hidden="true"
+    >
+      <div class="mobile-filter-sheet-head">
+        <div>
+          <span>Alert Filters</span>
+          <strong>Refine the live alert feed</strong>
+        </div>
+
+        <button
+          class="mobile-filter-close"
+          id="mobileFilterClose"
+          type="button"
+          aria-label="Close alert filters"
+        >
+          &times;
+        </button>
+      </div>
       <div class="filter-row">
         <span class="filter-label">Event</span>
         <div class="filter-chips" id="eventChips" role="group" aria-label="Event filters"></div>
@@ -790,6 +1572,17 @@
         <span class="filter-label">State</span>
         <div class="filter-chips" id="stateChips" role="group" aria-label="State filters"></div>
       </div>
+
+      <div class="mobile-filter-sheet-actions">
+        <button
+          class="mobile-filter-done"
+          id="mobileFilterDone"
+          type="button"
+        >
+          Show Alerts
+        </button>
+      </div>
+
     </section>
 
     <div class="alert-summary" id="alertSummary"></div>
@@ -818,7 +1611,15 @@
   </main>
 
   <script>
-    const LIVE_ALERTS_CURRENT_URL = location.hostname === "localhost" || location.hostname === "127.0.0.1"
+    const IS_LOCAL_DEV_HOST =
+      location.hostname === "localhost" ||
+      location.hostname === "127.0.0.1" ||
+      location.hostname === "::1" ||
+      /^192\.168\.\d{1,3}\.\d{1,3}$/.test(location.hostname) ||
+      /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(location.hostname) ||
+      /^172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}$/.test(location.hostname);
+
+    const LIVE_ALERTS_CURRENT_URL = IS_LOCAL_DEV_HOST
       ? "https://zacharologistwx.com/api/live-alerts/current"
       : "/api/live-alerts/current";
 
@@ -846,6 +1647,13 @@
     const alertSummary = document.getElementById("alertSummary");
     const alertsGrid = document.getElementById("alertsGrid");
     const alertDetailPanel = document.getElementById("alertDetailPanel");
+
+    const mobileFilterToggle = document.getElementById("mobileFilterToggle");
+    const mobileFilterStatus = document.getElementById("mobileFilterStatus");
+    const mobileFilterSheet = document.getElementById("mobileFilterSheet");
+    const mobileFilterBackdrop = document.getElementById("mobileFilterBackdrop");
+    const mobileFilterClose = document.getElementById("mobileFilterClose");
+    const mobileFilterDone = document.getElementById("mobileFilterDone");
 
     let liveFeatures = [];
     let selectedAlertId = "";
@@ -1066,12 +1874,28 @@
     function setConnection(state, text) {
       connectionDot.classList.remove("online", "offline");
 
-      if (state === "online") connectionDot.classList.add("online");
-      if (state === "offline") connectionDot.classList.add("offline");
+      if (state === "online") {
+        connectionDot.classList.add("online");
+        connectionText.textContent = "Connected";
+        return;
+      }
 
-      connectionText.textContent = text;
+      if (state === "offline") {
+        connectionDot.classList.add("offline");
+      }
+
+      const sourceText = String(text || "");
+
+      if (/unsupported/i.test(sourceText)) {
+        connectionText.textContent = "Manual refresh only";
+      } else if (/failed/i.test(sourceText)) {
+        connectionText.textContent = "Refresh failed";
+      } else if (state === "offline") {
+        connectionText.textContent = "Reconnecting...";
+      } else {
+        connectionText.textContent = "Connecting...";
+      }
     }
-
     function updateSummary(features) {
       const counts = new Map();
 
@@ -1095,6 +1919,16 @@
     function renderFilterChips() {
       const query = searchInput.value.trim().toLowerCase();
       const selectedType = typeFilter.value;
+
+      if (mobileFilterStatus) {
+        const activeFilterCount =
+          Number(selectedType !== "all") +
+          Number(activeState !== "all");
+
+        mobileFilterStatus.textContent = activeFilterCount
+          ? `${activeFilterCount} active`
+          : "All alerts";
+      }
 
       const searchedFeatures = liveFeatures
         .filter((feature) => !isExpired(feature))
@@ -1176,6 +2010,27 @@
         selectedType === "all" &&
         activeState === "all";
     }
+    function compactAreaText(value, visibleCount = 3) {
+      const areas = String(value || "")
+        .split(";")
+        .map((part) => part.trim())
+        .filter(Boolean);
+
+      if (!areas.length) {
+        return "Area not listed";
+      }
+
+      if (areas.length <= visibleCount) {
+        return areas.join("; ");
+      }
+
+      const visible = areas.slice(0, visibleCount);
+      const remaining = areas.length - visible.length;
+
+      return `${visible.join("; ")} +${remaining} more`;
+    }
+
+
 
 
     function selectedFeatureFrom(features) {
@@ -1208,78 +2063,181 @@
       const headline = props.headline || "";
       const description = props.description || "";
       const instruction = props.instruction || "";
-      const geometry = hasGeometry(feature) ? feature.geometry.type : "No geometry";
+      const geometry = hasGeometry(feature)
+        ? feature.geometry.type
+        : "No geometry";
       const office = props.office || "Unknown office";
       const source = props._liveSource || props.source || "nwws-oi";
       const expires = expiresText(props.expires);
       const states = statesForFeature(feature);
-      const sent = props.sent ? new Date(props.sent).toLocaleString() : "Unknown";
-      const effective = props.effective ? new Date(props.effective).toLocaleString() : "Unknown";
+      const sent = props.sent
+        ? new Date(props.sent).toLocaleString()
+        : "Unknown";
+      const effective = props.effective
+        ? new Date(props.effective).toLocaleString()
+        : "Unknown";
 
-      alertDetailPanel.innerHTML = `
-        <div class="detail-header">
-          <div>
-            <h2>${escapeHtml(event)}</h2>
-            <div class="detail-area">${escapeHtml(area)}</div>
-          </div>
-          <div class="badges">
-            <span class="badge live">Live NWWS</span>
-            <span class="badge expires">Expires ${escapeHtml(expires)}</span>
-            <span class="badge">${escapeHtml(geometry)}</span>
-            ${states.length ? `<span class="badge">${escapeHtml(states.join(", "))}</span>` : ""}
-          </div>
+      const badgesHtml = `
+        <div class="badges">
+          <span class="badge live">Live NWWS</span>
+          <span class="badge expires">
+            Expires ${escapeHtml(expires)}
+          </span>
+          <span class="badge">${escapeHtml(geometry)}</span>
+          ${states.length
+            ? `<span class="badge">${escapeHtml(states.join(", "))}</span>`
+            : ""}
         </div>
+      `;
 
-        ${headline ? `
-          <div class="detail-section">
-            <h3>Headline</h3>
-            <div><strong>${escapeHtml(headline)}</strong></div>
-          </div>
-        ` : ""}
-
-        ${description ? `
-          <div class="detail-section">
-            <h3>Description</h3>
-            <div>${escapeHtml(description)}</div>
-          </div>
-        ` : ""}
-
-        ${instruction ? `
-          <div class="detail-section">
-            <h3>Instruction</h3>
-            <div>${escapeHtml(instruction)}</div>
-          </div>
-        ` : ""}
-
+      const metaHtml = `
         <div class="detail-meta-grid">
           <div class="detail-meta-item">
             <span>Office</span>
             <strong>${escapeHtml(office)}</strong>
           </div>
+
           <div class="detail-meta-item">
             <span>Source</span>
             <strong>${escapeHtml(source)}</strong>
           </div>
+
           <div class="detail-meta-item">
             <span>Sent</span>
             <strong>${escapeHtml(sent)}</strong>
           </div>
+
           <div class="detail-meta-item">
             <span>Effective</span>
             <strong>${escapeHtml(effective)}</strong>
           </div>
+
           <div class="detail-meta-item">
             <span>Expires</span>
             <strong>${escapeHtml(expires)}</strong>
           </div>
+
           <div class="detail-meta-item">
             <span>ID</span>
             <strong>${escapeHtml(feature.id)}</strong>
           </div>
         </div>
       `;
-    }
 
+      alertDetailPanel.innerHTML = `
+        <button
+          class="detail-close"
+          type="button"
+          data-close-detail
+          aria-label="Close alert details"
+        >
+          &times;
+        </button>
+
+        <div class="detail-desktop-content">
+          <div class="detail-header">
+            <div>
+              <h2>${escapeHtml(event)}</h2>
+              <div class="detail-area">${escapeHtml(area)}</div>
+            </div>
+
+            ${badgesHtml}
+          </div>
+
+          ${headline ? `
+            <div class="detail-section">
+              <h3>Headline</h3>
+              <div>
+                <strong>${escapeHtml(headline)}</strong>
+              </div>
+            </div>
+          ` : ""}
+
+          ${description ? `
+            <div class="detail-section">
+              <h3>Description</h3>
+              <div>${escapeHtml(description)}</div>
+            </div>
+          ` : ""}
+
+          ${instruction ? `
+            <div class="detail-section">
+              <h3>Instruction</h3>
+              <div>${escapeHtml(instruction)}</div>
+            </div>
+          ` : ""}
+
+          ${metaHtml}
+        </div>
+
+        <div class="detail-mobile-content">
+          <p class="eyebrow">Alert Detail</p>
+
+          <h2 class="detail-mobile-title">
+            ${escapeHtml(event)}
+          </h2>
+
+          ${badgesHtml}
+
+          ${headline ? `
+            <section class="detail-mobile-headline">
+              <span>Headline</span>
+              <strong>${escapeHtml(headline)}</strong>
+            </section>
+          ` : ""}
+
+          <details class="detail-accordion">
+            <summary>Affected Areas</summary>
+            <div class="detail-accordion-body">
+              ${escapeHtml(area)}
+            </div>
+          </details>
+
+          ${description ? `
+            <details class="detail-accordion">
+              <summary>Description</summary>
+              <div class="detail-accordion-body">
+                ${escapeHtml(description)}
+              </div>
+            </details>
+          ` : ""}
+
+          ${instruction ? `
+            <details class="detail-accordion">
+              <summary>Instructions</summary>
+              <div class="detail-accordion-body">
+                ${escapeHtml(instruction)}
+              </div>
+            </details>
+          ` : ""}
+
+          <details class="detail-accordion">
+            <summary>Additional Information</summary>
+
+            <div class="detail-accordion-body">
+              ${metaHtml}
+            </div>
+          </details>
+        </div>
+
+        <div class="detail-actions">
+          <a
+            class="detail-action-link"
+            href="level2-mobile-radar.html?perf=1"
+          >
+            Open Radar
+          </a>
+
+          <button
+            class="detail-action-button"
+            type="button"
+            data-close-detail
+          >
+            Back to Alerts
+          </button>
+        </div>
+      `;
+    }
 
     function render() {
       renderFilterChips();
@@ -1301,6 +2259,7 @@
           </div>
         `;
         renderAlertDetail(null);
+        document.body.classList.remove("detail-open");
         return;
       }
 
@@ -1311,17 +2270,28 @@
         const props = feature.properties || {};
         const event = props.event || "NWS Alert";
         const area = props.areaDesc || "Area not listed";
+        const compactArea = compactAreaText(area);
         const expires = expiresText(props.expires);
         const geometry = hasGeometry(feature) ? feature.geometry.type : "No geometry";
         const states = statesForFeature(feature);
         const selectedClass = feature.id === selectedAlertId ? " is-selected" : "";
 
         return `
-          <article class="alert-card${selectedClass}" data-alert-id="${escapeHtml(feature.id)}" style="--accent: ${eventAccent(event)}">
+          <article
+            class="alert-card${selectedClass}"
+            data-alert-id="${escapeHtml(feature.id)}"
+            style="--accent: ${eventAccent(event)}"
+            role="button"
+            tabindex="0"
+            aria-label="Open details for ${escapeHtml(event)}"
+          >
             <div class="alert-head">
               <div class="alert-title">
                 <h2>${escapeHtml(event)}</h2>
-                <div class="area">${escapeHtml(area)}</div>
+                <div class="area area-full">${escapeHtml(area)}</div>
+                <div class="area area-compact">
+                  ${escapeHtml(compactArea)}
+                </div>
               </div>
               <div class="badges">
                 <span class="badge expires">${escapeHtml(expires)}</span>
@@ -1444,6 +2414,33 @@
 
       reconnectDelayMs = Math.min(30000, Math.round(reconnectDelayMs * 1.6));
     }
+    function setMobileFiltersOpen(open) {
+      if (!mobileFilterSheet || !mobileFilterBackdrop) return;
+
+      mobileFilterSheet.classList.toggle("is-open", open);
+      mobileFilterBackdrop.hidden = !open;
+      mobileFilterBackdrop.classList.toggle("is-open", open);
+      mobileFilterSheet.setAttribute("aria-hidden", String(!open));
+      mobileFilterToggle?.setAttribute("aria-expanded", String(open));
+      document.body.classList.toggle("filters-open", open);
+    }
+
+    mobileFilterToggle?.addEventListener("click", () => {
+      setMobileFiltersOpen(true);
+    });
+
+    mobileFilterClose?.addEventListener("click", () => {
+      setMobileFiltersOpen(false);
+    });
+
+    mobileFilterDone?.addEventListener("click", () => {
+      setMobileFiltersOpen(false);
+    });
+
+    mobileFilterBackdrop?.addEventListener("click", () => {
+      setMobileFiltersOpen(false);
+    });
+
 
     searchInput.addEventListener("input", scheduleRender);
 
@@ -1483,15 +2480,47 @@
       });
     });
 
-    alertsGrid.addEventListener("click", (event) => {
-      const card = event.target.closest("[data-alert-id]");
-
+    function openAlertCard(card) {
       if (!card) return;
 
       selectedAlertId = card.dataset.alertId || "";
       render();
+
+      if (window.matchMedia("(max-width: 820px)").matches) {
+        document.body.classList.add("detail-open");
+
+        window.requestAnimationFrame(() => {
+          alertDetailPanel.scrollTop = 0;
+        });
+      }
+    }
+
+    alertsGrid.addEventListener("click", (event) => {
+      openAlertCard(event.target.closest("[data-alert-id]"));
     });
 
+    alertsGrid.addEventListener("keydown", (event) => {
+      if (!["Enter", " "].includes(event.key)) return;
+
+      const card = event.target.closest("[data-alert-id]");
+      if (!card) return;
+
+      event.preventDefault();
+      openAlertCard(card);
+    });
+
+    alertDetailPanel.addEventListener("click", (event) => {
+      if (!event.target.closest("[data-close-detail]")) return;
+
+      document.body.classList.remove("detail-open");
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+
+      setMobileFiltersOpen(false);
+      document.body.classList.remove("detail-open");
+    });
     window.addEventListener("beforeunload", () => {
       if (socket) {
         try {
