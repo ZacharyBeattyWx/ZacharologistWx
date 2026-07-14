@@ -1460,6 +1460,297 @@
         font-weight: 850 !important;
       }
     }
+
+    /* Mobile alerts redesign: stage 3 */
+
+    @media (max-width: 820px) {
+      .detail-urgent-card {
+        margin-top: 14px;
+        padding: 15px;
+        border: 1px solid rgba(255, 77, 94, 0.5);
+        border-radius: 18px;
+        background:
+          linear-gradient(
+            135deg,
+            rgba(255, 77, 94, 0.16),
+            rgba(95, 24, 34, 0.12)
+          ),
+          rgba(11, 22, 37, 0.86);
+        box-shadow:
+          inset 4px 0 0 rgba(255, 77, 94, 0.92),
+          0 16px 34px rgba(0, 0, 0, 0.22);
+      }
+
+      .detail-card-heading {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 11px;
+      }
+
+      .detail-card-heading h3 {
+        margin: 0;
+        color: var(--text);
+        font-size: 1.05rem;
+        letter-spacing: -0.02em;
+      }
+
+      .detail-urgent-icon {
+        display: grid;
+        flex: 0 0 auto;
+        width: 31px;
+        height: 31px;
+        place-items: center;
+        border-radius: 999px;
+        background: rgba(255, 77, 94, 0.2);
+        color: #ffadb5;
+        font-size: 1rem;
+        font-weight: 950;
+      }
+
+      .detail-action-list {
+        margin: 0;
+        padding-left: 20px;
+        color: #f0f6fc;
+        font-size: 0.94rem;
+        line-height: 1.5;
+      }
+
+      .detail-action-list li + li {
+        margin-top: 8px;
+      }
+
+      .detail-action-fallback {
+        margin: 0;
+        color: #d7e8f8;
+        font-size: 0.9rem;
+        line-height: 1.5;
+      }
+
+      .detail-top-actions {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 9px;
+        margin-top: 10px;
+      }
+
+      .detail-top-actions .detail-action-link,
+      .detail-top-actions .detail-action-button {
+        width: 100%;
+        min-width: 0;
+      }
+
+      .detail-hazard-card {
+        margin-top: 10px;
+        padding: 15px;
+        border: 1px solid rgba(255, 216, 77, 0.3);
+        border-radius: 18px;
+        background:
+          radial-gradient(
+            circle at top right,
+            rgba(255, 216, 77, 0.11),
+            transparent 16rem
+          ),
+          rgba(8, 20, 36, 0.78);
+      }
+
+      .detail-hazard-card .detail-card-heading {
+        margin-bottom: 10px;
+      }
+
+      .detail-hazard-list {
+        display: grid;
+        gap: 9px;
+      }
+
+      .detail-hazard-row {
+        display: grid;
+        grid-template-columns: 68px minmax(0, 1fr);
+        gap: 10px;
+        align-items: start;
+        font-size: 0.9rem;
+        line-height: 1.42;
+      }
+
+      .detail-hazard-label {
+        color: #ffe98b;
+        font-size: 0.68rem;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .detail-hazard-value {
+        min-width: 0;
+        color: #e5f1fc;
+        overflow-wrap: anywhere;
+      }
+
+      .detail-area-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+      }
+
+      .detail-area-chip {
+        border: 1px solid rgba(88, 183, 255, 0.28);
+        border-radius: 999px;
+        background: rgba(88, 183, 255, 0.11);
+        color: #eaf6ff;
+        padding: 7px 10px;
+        font-size: 0.78rem;
+        font-weight: 800;
+      }
+
+      .detail-mobile-headline {
+        margin-top: 10px;
+      }
+
+      .detail-accordion-body .detail-meta-grid {
+        gap: 8px;
+      }
+
+      .detail-accordion-body .detail-meta-item {
+        padding: 10px;
+      }
+
+      .detail-actions {
+        display: none;
+      }
+    }
+
+    /* Mobile alerts redesign: stage 4 */
+
+    @media (max-width: 820px) {
+      .detail-top-actions {
+        grid-template-columns: minmax(0, 1.45fr) minmax(0, 0.85fr);
+      }
+
+      .detail-top-actions .detail-action-link {
+        min-height: 54px;
+        border-color: rgba(0, 208, 132, 0.68);
+        background:
+          linear-gradient(
+            135deg,
+            rgba(0, 208, 132, 0.3),
+            rgba(0, 118, 91, 0.18)
+          );
+        color: #e7fff5;
+        box-shadow:
+          0 0 0 1px rgba(0, 208, 132, 0.08),
+          0 14px 30px rgba(0, 208, 132, 0.12);
+        font-size: 0.92rem;
+      }
+
+      .detail-top-actions .detail-action-button {
+        min-height: 54px;
+        background: rgba(145, 196, 255, 0.08);
+        color: #dbeaf8;
+      }
+
+      .badge.expires.expiry-low {
+        border-color: rgba(0, 208, 132, 0.52);
+        background: rgba(0, 208, 132, 0.11);
+        color: #caffea;
+      }
+
+      .badge.expires.expiry-watch {
+        border-color: rgba(255, 216, 77, 0.62);
+        background: rgba(255, 216, 77, 0.1);
+        color: #fff0a2;
+      }
+
+      .badge.expires.expiry-elevated {
+        border-color: rgba(255, 159, 67, 0.68);
+        background: rgba(255, 159, 67, 0.12);
+        color: #ffd4aa;
+      }
+
+      .badge.expires.expiry-critical {
+        border-color: rgba(255, 77, 94, 0.78);
+        background: rgba(255, 77, 94, 0.16);
+        color: #ffc1c8;
+        box-shadow: 0 0 18px rgba(255, 77, 94, 0.14);
+      }
+
+      .detail-share-feedback {
+        position: fixed;
+        z-index: 1200;
+        right: 18px;
+        bottom: calc(env(safe-area-inset-bottom) + 18px);
+        left: 18px;
+        padding: 13px 16px;
+        border: 1px solid rgba(88, 183, 255, 0.35);
+        border-radius: 14px;
+        background: rgba(8, 24, 42, 0.97);
+        color: var(--text);
+        box-shadow: 0 18px 45px rgba(0, 0, 0, 0.46);
+        font-size: 0.82rem;
+        font-weight: 850;
+        text-align: center;
+        opacity: 0;
+        transform: translateY(18px);
+        pointer-events: none;
+        transition:
+          opacity 170ms ease,
+          transform 170ms ease;
+      }
+
+      .detail-share-feedback.is-visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Mobile alerts redesign: stage 5 */
+
+    @media (max-width: 820px) {
+      .detail-close {
+        position: fixed;
+        top: calc(env(safe-area-inset-top) + 14px);
+        right: 16px;
+        z-index: 1100;
+        margin: 0;
+        width: 46px;
+        height: 46px;
+        background: rgba(21, 41, 65, 0.98);
+        box-shadow:
+          0 12px 28px rgba(0, 0, 0, 0.44),
+          0 0 0 1px rgba(145, 196, 255, 0.08);
+      }
+
+      body.detail-open .alert-detail-panel {
+        padding-top: calc(env(safe-area-inset-top) + 24px);
+      }
+
+      .detail-top-actions .detail-action-link {
+        min-height: 58px;
+        font-size: 0.96rem;
+        letter-spacing: -0.01em;
+        border-color: rgba(0, 224, 142, 0.82);
+        background:
+          linear-gradient(
+            135deg,
+            rgba(0, 224, 142, 0.36),
+            rgba(0, 128, 94, 0.22)
+          );
+        box-shadow:
+          0 0 0 1px rgba(0, 224, 142, 0.1),
+          0 16px 34px rgba(0, 208, 132, 0.18);
+      }
+
+      .detail-top-actions .detail-action-link::before {
+        content: "◉";
+        margin-right: 8px;
+        color: #9fffd3;
+        font-size: 1rem;
+      }
+
+      .controls .search {
+        min-height: 40px;
+        padding: 9px 12px;
+      }
+    }
 </style>
 </head>
 <body>
@@ -1610,6 +1901,12 @@
     </section>
   </main>
 
+  <div
+    class="detail-share-feedback"
+    id="detailShareFeedback"
+    role="status"
+    aria-live="polite"
+  ></div>
   <script>
     const IS_LOCAL_DEV_HOST =
       location.hostname === "localhost" ||
@@ -2044,6 +2341,228 @@
       return features[0];
     }
 
+    function expiryUrgencyClass(expiresValue) {
+      const expiresAt = new Date(expiresValue).getTime();
+
+      if (!Number.isFinite(expiresAt)) {
+        return "expiry-watch";
+      }
+
+      const remainingMinutes =
+        Math.max(0, (expiresAt - Date.now()) / 60000);
+
+      if (remainingMinutes <= 15) {
+        return "expiry-critical";
+      }
+
+      if (remainingMinutes <= 30) {
+        return "expiry-elevated";
+      }
+
+      if (remainingMinutes <= 60) {
+        return "expiry-watch";
+      }
+
+      return "expiry-low";
+    }
+    function normalizeDetailText(value) {
+      return String(value || "")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function shortenDetailText(value, maximumLength = 170) {
+      const text = normalizeDetailText(value);
+
+      if (text.length <= maximumLength) {
+        return text;
+      }
+
+      return `${text.slice(0, maximumLength - 3).trim()}...`;
+    }
+
+    function actionItemsForAlert(instruction) {
+      const text = normalizeDetailText(instruction);
+
+      if (!text) {
+        return [];
+      }
+
+      const sentences =
+        text.match(/[^.!?]+(?:[.!?]+|$)/g) || [];
+
+      const actionPattern =
+        /\b(move|seek|shelter|stay|avoid|do not|never|turn around|evacuate|indoors|keep away|monitor|remain|protect)\b/i;
+
+      const prioritized = [
+        ...sentences.filter((sentence) =>
+          actionPattern.test(sentence)
+        ),
+        ...sentences.filter((sentence) =>
+          !actionPattern.test(sentence)
+        )
+      ];
+
+      const results = [];
+      const seen = new Set();
+
+      for (const sentence of prioritized) {
+        const cleaned = normalizeDetailText(sentence)
+          .replace(/^[-*]+\s*/, "");
+
+        if (!cleaned) {
+          continue;
+        }
+
+        const key = cleaned.toLowerCase();
+
+        if (seen.has(key)) {
+          continue;
+        }
+
+        seen.add(key);
+
+        results.push(
+          shortenDetailText(cleaned, 155)
+        );
+
+        if (results.length >= 3) {
+          break;
+        }
+      }
+
+      return results;
+    }
+
+    function bulletinLabelValue(value, label) {
+      const text = normalizeDetailText(value);
+
+      if (!text) {
+        return "";
+      }
+
+      const pattern = new RegExp(
+        `${label}\\.{2,}\\s*([\\s\\S]*?)(?=` +
+        `\\s+(?:HAZARD|SOURCE|IMPACT)\\.{2,}` +
+        `|\\s+\\*\\s+Locations impacted include` +
+        `|\\s+This includes` +
+        `|\\s+PRECAUTIONARY` +
+        `|\\s+&&` +
+        `|$)`,
+        "i"
+      );
+
+      const match = text.match(pattern);
+
+      return match
+        ? shortenDetailText(match[1], 165)
+        : "";
+    }
+
+    function hazardItemsForAlert(description) {
+      const text = normalizeDetailText(description);
+      const items = [];
+
+      if (!text) {
+        return items;
+      }
+
+      const hazard = bulletinLabelValue(
+        text,
+        "HAZARD"
+      );
+
+      const source = bulletinLabelValue(
+        text,
+        "SOURCE"
+      );
+
+      const impact = bulletinLabelValue(
+        text,
+        "IMPACT"
+      );
+
+      const movementMatch = text.match(
+        /\bmoving\s+[a-z-]+(?:\s+[a-z-]+){0,2}\s+at\s+\d+\s*mph\b/i
+      );
+
+      if (hazard) {
+        items.push({
+          label: "Hazard",
+          value: hazard
+        });
+      }
+
+      if (movementMatch) {
+        items.push({
+          label: "Motion",
+          value: movementMatch[0]
+        });
+      }
+
+      if (source) {
+        items.push({
+          label: "Source",
+          value: source
+        });
+      }
+
+      if (impact) {
+        items.push({
+          label: "Impact",
+          value: impact
+        });
+      }
+
+      const seen = new Set();
+
+      return items
+        .filter((item) => {
+          const key =
+            `${item.label}:${item.value}`.toLowerCase();
+
+          if (seen.has(key)) {
+            return false;
+          }
+
+          seen.add(key);
+          return true;
+        })
+        .slice(0, 4);
+    }
+
+    function areaChipHtml(value) {
+      const areas = String(value || "")
+        .split(";")
+        .map((area) => area.trim())
+        .filter(Boolean);
+
+      if (!areas.length) {
+        return `
+          <span class="detail-area-chip">
+            Area not listed
+          </span>
+        `;
+      }
+
+      const visibleAreas = areas.slice(0, 8);
+      const remaining =
+        areas.length - visibleAreas.length;
+
+      return `
+        ${visibleAreas.map((area) => `
+          <span class="detail-area-chip">
+            ${escapeHtml(area)}
+          </span>
+        `).join("")}
+
+        ${remaining > 0 ? `
+          <span class="detail-area-chip">
+            +${remaining} more
+          </span>
+        ` : ""}
+      `;
+    }
     function renderAlertDetail(feature) {
       if (!feature) {
         alertDetailPanel.innerHTML = `
@@ -2063,29 +2582,62 @@
       const headline = props.headline || "";
       const description = props.description || "";
       const instruction = props.instruction || "";
+
       const geometry = hasGeometry(feature)
         ? feature.geometry.type
         : "No geometry";
-      const office = props.office || "Unknown office";
-      const source = props._liveSource || props.source || "nwws-oi";
-      const expires = expiresText(props.expires);
-      const states = statesForFeature(feature);
+
+      const office =
+        props.office || "Unknown office";
+
+      const source =
+        props._liveSource ||
+        props.source ||
+        "nwws-oi";
+
+      const expires =
+        expiresText(props.expires);
+
+      const expiryClass =
+        expiryUrgencyClass(props.expires);
+
+      const states =
+        statesForFeature(feature);
+
       const sent = props.sent
         ? new Date(props.sent).toLocaleString()
         : "Unknown";
+
       const effective = props.effective
         ? new Date(props.effective).toLocaleString()
         : "Unknown";
 
+      const actionItems =
+        actionItemsForAlert(instruction);
+
+      const hazardItems =
+        hazardItemsForAlert(description);
+
       const badgesHtml = `
         <div class="badges">
-          <span class="badge live">Live NWWS</span>
-          <span class="badge expires">
+          <span class="badge live">
+            Live NWWS
+          </span>
+
+          <span class="badge expires ${expiryClass}">
             Expires ${escapeHtml(expires)}
           </span>
-          <span class="badge">${escapeHtml(geometry)}</span>
+
+          <span class="badge">
+            ${escapeHtml(geometry)}
+          </span>
+
           ${states.length
-            ? `<span class="badge">${escapeHtml(states.join(", "))}</span>`
+            ? `
+              <span class="badge">
+                ${escapeHtml(states.join(", "))}
+              </span>
+            `
             : ""}
         </div>
       `;
@@ -2124,6 +2676,54 @@
         </div>
       `;
 
+      const actionHtml = actionItems.length
+        ? `
+          <ul class="detail-action-list">
+            ${actionItems.map((item) => `
+              <li>${escapeHtml(item)}</li>
+            `).join("")}
+          </ul>
+        `
+        : `
+          <p class="detail-action-fallback">
+            No specific action statement was included
+            with this alert. Review the complete bulletin
+            and continue monitoring updates from the
+            issuing weather office.
+          </p>
+        `;
+
+      const hazardsHtml = hazardItems.length
+        ? `
+          <section class="detail-hazard-card">
+            <div class="detail-card-heading">
+              <span
+                class="detail-urgent-icon"
+                aria-hidden="true"
+              >
+                !
+              </span>
+
+              <h3>Hazards and Movement</h3>
+            </div>
+
+            <div class="detail-hazard-list">
+              ${hazardItems.map(({ label, value }) => `
+                <div class="detail-hazard-row">
+                  <span class="detail-hazard-label">
+                    ${escapeHtml(label)}
+                  </span>
+
+                  <span class="detail-hazard-value">
+                    ${escapeHtml(value)}
+                  </span>
+                </div>
+              `).join("")}
+            </div>
+          </section>
+        `
+        : "";
+
       alertDetailPanel.innerHTML = `
         <button
           class="detail-close"
@@ -2138,7 +2738,10 @@
           <div class="detail-header">
             <div>
               <h2>${escapeHtml(event)}</h2>
-              <div class="detail-area">${escapeHtml(area)}</div>
+
+              <div class="detail-area">
+                ${escapeHtml(area)}
+              </div>
             </div>
 
             ${badgesHtml}
@@ -2147,8 +2750,11 @@
           ${headline ? `
             <div class="detail-section">
               <h3>Headline</h3>
+
               <div>
-                <strong>${escapeHtml(headline)}</strong>
+                <strong>
+                  ${escapeHtml(headline)}
+                </strong>
               </div>
             </div>
           ` : ""}
@@ -2171,7 +2777,9 @@
         </div>
 
         <div class="detail-mobile-content">
-          <p class="eyebrow">Alert Detail</p>
+          <p class="eyebrow">
+            Alert Detail
+          </p>
 
           <h2 class="detail-mobile-title">
             ${escapeHtml(event)}
@@ -2179,23 +2787,64 @@
 
           ${badgesHtml}
 
+          <section class="detail-urgent-card">
+            <div class="detail-card-heading">
+              <span
+                class="detail-urgent-icon"
+                aria-hidden="true"
+              >
+                !
+              </span>
+
+              <h3>What should I do?</h3>
+            </div>
+
+            ${actionHtml}
+          </section>
+
+          <div class="detail-top-actions">
+            <a
+              class="detail-action-link"
+              href="level2-mobile-radar.html?perf=1"
+            >
+              View on Radar
+            </a>
+
+            <button
+              class="detail-action-button"
+              type="button"
+              data-share-alert
+            >
+              Share Alert
+            </button>
+          </div>
+
+          ${hazardsHtml}
+
           ${headline ? `
-            <section class="detail-mobile-headline">
-              <span>Headline</span>
-              <strong>${escapeHtml(headline)}</strong>
-            </section>
+            <details class="detail-accordion">
+              <summary>Headline</summary>
+
+              <div class="detail-accordion-body">
+                <strong>${escapeHtml(headline)}</strong>
+              </div>
+            </details>
           ` : ""}
 
           <details class="detail-accordion">
             <summary>Affected Areas</summary>
+
             <div class="detail-accordion-body">
-              ${escapeHtml(area)}
+              <div class="detail-area-chips">
+                ${areaChipHtml(area)}
+              </div>
             </div>
           </details>
 
           ${description ? `
             <details class="detail-accordion">
-              <summary>Description</summary>
+              <summary>Full Description</summary>
+
               <div class="detail-accordion-body">
                 ${escapeHtml(description)}
               </div>
@@ -2204,7 +2853,10 @@
 
           ${instruction ? `
             <details class="detail-accordion">
-              <summary>Instructions</summary>
+              <summary>
+                Full Safety Instructions
+              </summary>
+
               <div class="detail-accordion-body">
                 ${escapeHtml(instruction)}
               </div>
@@ -2212,29 +2864,12 @@
           ` : ""}
 
           <details class="detail-accordion">
-            <summary>Additional Information</summary>
+            <summary>Technical Details</summary>
 
             <div class="detail-accordion-body">
               ${metaHtml}
             </div>
           </details>
-        </div>
-
-        <div class="detail-actions">
-          <a
-            class="detail-action-link"
-            href="level2-mobile-radar.html?perf=1"
-          >
-            Open Radar
-          </a>
-
-          <button
-            class="detail-action-button"
-            type="button"
-            data-close-detail
-          >
-            Back to Alerts
-          </button>
         </div>
       `;
     }
@@ -2414,6 +3049,101 @@
 
       reconnectDelayMs = Math.min(30000, Math.round(reconnectDelayMs * 1.6));
     }
+    const detailShareFeedback =
+      document.getElementById("detailShareFeedback");
+
+    let detailShareFeedbackTimer = null;
+
+    function showDetailShareFeedback(message) {
+      if (!detailShareFeedback) return;
+
+      detailShareFeedback.textContent = message;
+      detailShareFeedback.classList.add("is-visible");
+
+      if (detailShareFeedbackTimer !== null) {
+        window.clearTimeout(detailShareFeedbackTimer);
+      }
+
+      detailShareFeedbackTimer = window.setTimeout(() => {
+        detailShareFeedback.classList.remove("is-visible");
+        detailShareFeedbackTimer = null;
+      }, 2200);
+    }
+
+    async function shareSelectedAlert() {
+      const feature = liveFeatures.find(
+        (candidate) => candidate.id === selectedAlertId
+      );
+
+      if (!feature) {
+        showDetailShareFeedback("Alert could not be found.");
+        return;
+      }
+
+      const props = feature.properties || {};
+      const eventName = props.event || "NWS Alert";
+
+      const areaText = compactAreaText(
+        props.areaDesc || "Area not listed",
+        4
+      );
+
+      const expirationText =
+        expiresText(props.expires);
+
+      const shareBody =
+        `${eventName}\n` +
+        `${areaText}\n` +
+        `Expires ${expirationText}`;
+
+      try {
+        if (navigator.share) {
+          await navigator.share({
+            title: eventName,
+            text: shareBody,
+            url: window.location.href
+          });
+
+          return;
+        }
+
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(
+            `${shareBody}\n${window.location.href}`
+          );
+
+          showDetailShareFeedback(
+            "Alert copied to clipboard."
+          );
+
+          return;
+        }
+
+        throw new Error("Sharing unavailable");
+      } catch (error) {
+        if (error?.name === "AbortError") {
+          return;
+        }
+
+        showDetailShareFeedback(
+          "Unable to share this alert on this device."
+        );
+      }
+    }
+
+    document.addEventListener("click", (event) => {
+      if (!event.target.closest("[data-share-alert]")) {
+        return;
+      }
+
+      shareSelectedAlert().catch((error) => {
+        console.error("Alert share failed", error);
+
+        showDetailShareFeedback(
+          "Unable to share this alert on this device."
+        );
+      });
+    });
     function setMobileFiltersOpen(open) {
       if (!mobileFilterSheet || !mobileFilterBackdrop) return;
 
