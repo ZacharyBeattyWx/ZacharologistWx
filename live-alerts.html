@@ -2907,6 +2907,9 @@
         const area = props.areaDesc || "Area not listed";
         const compactArea = compactAreaText(area);
         const expires = expiresText(props.expires);
+
+        const expiryClass =
+          expiryUrgencyClass(props.expires);
         const geometry = hasGeometry(feature) ? feature.geometry.type : "No geometry";
         const states = statesForFeature(feature);
         const selectedClass = feature.id === selectedAlertId ? " is-selected" : "";
@@ -2929,7 +2932,9 @@
                 </div>
               </div>
               <div class="badges">
-                <span class="badge expires">${escapeHtml(expires)}</span>
+                <span class="badge expires ${expiryClass}">
+                  ${escapeHtml(expires)}
+                </span>
                 <span class="badge">${escapeHtml(geometry)}</span>
                 ${states.length ? `<span class="badge">${escapeHtml(states.join(", "))}</span>` : ""}
               </div>
