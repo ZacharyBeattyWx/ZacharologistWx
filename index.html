@@ -1103,128 +1103,39 @@ color: white;
   background: #ff00ea;
 }
 
-.warning-detail-card {
-  background: #2b2d2f;
-  border-radius: 0;
-  overflow: hidden;
-  color: white;
-  border: 1px solid rgba(255,255,255,0.08);
-  .warning-detail-card {
-  max-height: 75vh;
-  overflow-y: visible;
-}
-}
-.warning-detail-card strong {
-  background: transparent !important;
-  color: white;
-}
 
-.warning-detail-card h4 {
-  margin: 0;
-  padding: 14px 16px 6px;
-  color: #ffb000;
-  text-shadow: none;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  font-size: 0.82rem;
-}
 
-.warning-hazards {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin: 8px 0 14px;
-}
 
-.storm-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin: 18px 0 14px;
-}
 
-.storm-tag {
-  background:rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 999px;
-  padding: 8px 14px;
-  font-weight:700;
-  letter-spacing: 0.03em;
-  color: #f5f5f5;
-  backdrop-filter: blur(6px);
-  box-shadow: 0 0 12px rgba(255,255,255,0.05);
-  text-transform: uppercase;
-  font-size: 0.78rem;
-  letter-spacing: 0.04em;
-}
 
-.storm-tag.tornado {
-  color: #ff73ff;
-  border-color: rgba(255,115,255,0.35);
-  background: rgba(255,115,255,0.08);
-}
 
-.storm-tag.tornado.observed {
-  color: #ff4d4d;
-  border-color: rgba(255,77,77,0.45);
-  background: rgba(255,77,77,0.12);
-  box-shadow: 0 0 14px rgba(255,77,77,0.25);
-}
 
-.storm-tag.hail{
-  color: #ffd24d;
-}
 
-.storm-tag.wind{
-  color: #ffb347;
-}
 
-.storm-tag.source{
-  color: #7fd2dd;
-}
 
-.hazard-box {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
-  padding: 14px 12px;
-  min-height: 58px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
 
-.hazard-box .hazard-label {
-  font-size: 0.72rem;
-  margin-bottom: 4px;
-}
 
-.hazard-box .hazard-value {
-  font-size: 0.95rem;
-  font-weight: 800;
-}
-.hazard-box .hazard-label {
-  color: #b8c4d6;
-}
 
-.hazard-box .hazard-value {
-  color: #ffffff;
-}
 
-.warning-detail-card .hazard-box strong,
-.warning-detail-card .hazard-value strong {
-  color: #ffffff;
-}
 
-.warning-summary {
-  white-space: pre-line;
-  font-size: 1rem;
-  line-height: 1.55;
-  color: rgba(255,255,255,0.88);
-  margin: 14px 0 0;
-  max-width: 100%;
-  overflow-wrap: break-word;
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 .warning-metrics {
   display: grid;
@@ -1253,46 +1164,19 @@ color: white;
   font-size: 1rem;
 }
 
-.warning-info {
-  border-top: 1px solid rgba(255,255,255,0.08);
-  padding: 12px 16px;
-}
 
-.warning-info p {
-  margin: 8px 0;
-}
 
-.warning-info span {
-  color: #aab5c7;
-  margin-right: 6px;
-}
 
-.warning-impacts {
-  border-top: 1px solid rgba(255,255,255,0.08);
-  padding: 14px 16px;
-}
 
-.warning-impacts strong {
-  color: #ffb21c;
-  text-transform: uppercase;
-}
 
-.warning-impacts p {
-  margin-top: 10px;
-  line-height: 1.6;
-}
 
-.warning-bottom {
-  background: rgba(255,255,255,0.05);
-  padding: 10px 16px;
-  text-align: center;
-  color: #ffe100;
-  font-weight: 700;
-  display: flex;
-  justify-content: center;
-  gap: 24px
 
-}
+
+
+
+
+
+
 .alert-details-btn {
   border: none;
   border-radius: 10px;
@@ -1303,124 +1187,35 @@ color: white;
   cursor: pointer;
 }
 
-.alert-modal {
-  display: none;
-  position: fixed;
-  inset: 0;
-  z-index: 999999;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-}
-.alert-modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
 
-  padding: 22px 24px 18px;
 
-  color: white;
 
-  border-bottom: 1px solid rgba(255,255,255,0.08);
 
-  border-top-left-radius: 18px;
-  border-top-right-radius: 18px;
-  overflow: hidden;
-}
 
-.alert-modal-header-text h2 {
-  margin: 0;
 
-  font-size: 2rem;
-  font-weight: 800;
-  line-height: 1.05;
 
-  text-shadow:
-    0 2px 10px rgba(0,0,0,0.35);
-}
 
-.alert-modal-title {
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
-}
 
-.alert-modal-header-text p {
-  margin: 6px 0 0;
 
-  font-size: 1.05rem;
-  opacity: 0.95;
-}
 
-.alert-modal-close {
-  background: rgba(0,0,0,0.18);
-  border: none;
-  color: white;
 
-  font-size: 1.4rem;
-  line-height: 1;
 
-  border-radius: 10px;
-  padding: 6px 11px;
 
-  cursor: pointer;
-  flex-shrink: 0;
-}
 
-.alert-modal-close:hover {
-  opacity: 0.75;
-}
 
-.alert-modal.is-open {
-  display: flex;
-}
 
-.alert-modal-box {
-  position: relative;
-  z-index: 2;
 
-  width: min(92vw, 780px);
-  max-height: 88vh;
 
-  overflow-y: visible;
 
-  background: #2b2d2f;
-  border-radius: 18px;
-
-  box-shadow:
-    0 18px 50px rgba(0,0,0,0.55);
-
-}
-
-.alert-modal .warning-detail-card {
-  margin-top: 0;
-}
-
-.alert-modal-close:hover {
-  opacity: 0.75;
-}
 
 /* Remove faint modal outline / border */
-.alert-modal-box {
-  border: none !important;
-  outline: none !important;
-  box-shadow: none !important;
-  overflow: hidden;
-}
+
 
 /* Remove divider/shadow around the blue header */
-.alert-modal-header {
-  border: none !important;
-  border-bottom: none !important;
-  box-shadow: none !important;
-}
+
 
 /* Just in case a pseudo-layer is creating the faint edge */
-.alert-modal-box::before,
-.alert-modal-box::after,
-.alert-modal-header::before,
-.alert-modal-header::after {
-  border: none !important;
-  box-shadow: none !important;
-}
+
 
 .compact-alert-list {
   display: grid;
@@ -2055,28 +1850,22 @@ main,
   display: none;
 }
 
- .warning-hazards {
-    grid-template-columns: 1fr;
-  }
 
-  .hazard-box {
-    min-height: auto;
-    padding: 9px 10px;
-  }
+
+
 
 
   .forecast-dashboard,
-  .dashboard-grid,
-  .dashboard-card,
-  .briefing-card,
-  .warning-detail-card,
-  .alerts-section,
-  .alerts-card,
-  .radar-section,
-  .radar-card,
-  .map-card,
-  iframe,
-  img {
+.dashboard-grid,
+.dashboard-card,
+.briefing-card,
+.alerts-section,
+.alerts-card,
+.radar-section,
+.radar-card,
+.map-card,
+iframe,
+img {
     max-width: 100%;
   }
 
@@ -2104,9 +1893,7 @@ main,
   overflow: hidden;
 }
 
-.warning-hazards {
-  max-width: 100%;
-}
+
 
 .alert-item {
     background: rgba(255,255,255,0.06);
@@ -2132,8 +1919,7 @@ main,
 
 
   .alert-item,
-.warning-card,
-.alert-modal .warning-detail-card {
+.warning-card {
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -2253,44 +2039,15 @@ main,
 }
 
 
-.alert-modal {
-  position: fixed !important;
-  inset: 0;
-  z-index: 999999;
 
-  display: none;
 
-  align-items: center !important;
-  justify-content: center !important;
 
-  overflow: hidden;
-  padding: 12px;
-}
 
-.alert-modal.is-open {
-  display: flex;
-}
 
-.alert-modal-box {
-  width: 92vw;
-  max-width: 92vw;
 
-  max-height: 90vh;
 
-  overflow-y: visible;
-  margin: auto;
-  border-radius: 22px;
-}
 
-.alert-modal .warning-detail-card {
-  max-height: none;
-  overflow: visible;
-}
 
-.warning-detail-card {
-  max-height: none;
-  overflow: visible;
-}
 
 .alert-tabs button::before {
   transition: none !important;
@@ -2423,199 +2180,59 @@ main,
 
 }
 
-.warning-detail-card.winter-mode {
-  background:
-    linear-gradient(
-      180deg,
-      rgba(48,48,52,0.98),
-      rgba(30,30,34,0.98)
-    );
 
-  border: 1px solid rgba(255,255,255,0.08);
 
-  box-shadow:
-    0 12px 42px rgba(0,0,0,0.45),
-    0 0 0 1px rgba(255,255,255,0.03);
 
-  backdrop-filter: blur(18px);
-}
 
-.warning-detail-card.winter-mode h4 {
-  color: #69bbff;
-  letter-spacing: 1px;
-  font-size: 0.95rem;
-}
 
-.warning-detail-card.winter-mode .warning-summary {
-  color: #eeeeee !important;
-  line-height: 1.5;
-  font-size: 1.08rem;
-}
 
-.warning-detail-card.winter-mode .warning-hazards {
-  margin-top: 20px;
-}
 
-.warning-detail-card.winter-mode .hazard-box {
-  background: rgba(255,255,255,0.035);
-  border: 1px solid rgba(255,255,255,0.07);
-  border-radius: 14px;
-  min-height: 72px;
 
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
 
-.warning-detail-card.winter-mode .hazard-label {
-  color: #8ad4ff;
-  font-size: 0.88rem;
-}
 
-.warning-detail-card.winter-mode .hazard-box strong,
-.warning-detail-card.winter-mode .hazard-value {
-  font-size: 1.4rem;
-  color: #ffffff;
-  font-weight: 700;
-}
 
-.warning-detail-card.winter-mode .warning-info {
-  border-top: 1px solid rgba(255,255,255,0.08);
-  border-bottom: 1px solid rgba(255,255,255,0.08);
 
-  margin: 18px 0;
-  padding: 16px 0;
-}
 
-.warning-detail-card.winter-mode .warning-info p {
-  color: #d9d9d9;
-}
 
-.warning-detail-card.winter-mode .warning-info span:first-child {
-  color: #9fa7b5;
-}
 
-.warning-detail-card.winter-mode .warning-impacts strong {
-  color: #ffb32c;
-  font-size: 1.05rem;
-}
 
-.warning-detail-card.winter-mode .warning-impacts p {
-  color: #ececec;
-  line-height: 1.55;
-}
+
+
+
+
+
+
+
 
 /* FINAL ALERT MODAL SIZE + SCROLL FIX */
-.alert-modal {
-  position: fixed !important;
-  inset: 0 !important;
-  z-index: 999999 !important;
 
-  display: none;
-  align-items: center !important;
-  justify-content: center !important;
 
-  padding: 16px !important;
-  overflow: hidden !important;
-}
 
-.alert-modal.is-open {
-  display: flex !important;
-}
 
-.alert-modal-box {
-  width: min(92vw, 640px) !important;
-  max-height: 86vh !important;
 
-  display: flex !important;
-  flex-direction: column !important;
 
-  overflow: hidden !important;
-  border-radius: 22px !important;
-  background: #2b2d2f !important;
-}
 
-.alert-modal-header {
-  flex: 0 0 auto !important;
-  border-radius: 22px 22px 0 0 !important;
-}
 
-.alert-modal .warning-detail-card {
-  flex: 1 1 auto !important;
-  min-height: 0 !important;
-  max-height: none !important;
 
-  overflow-y: visible !important;
-  overflow-x: hidden !important;
 
-  border-radius: 0 0 22px 22px !important;
-  padding: 0 !important;
 
-  -webkit-overflow-scrolling: touch;
-}
 
-.alert-modal .warning-detail-card h4 {
-  padding: 16px 18px 8px !important;
-}
 
-.alert-modal .storm-tags,
-.alert-modal .warning-hazards,
-.alert-modal .warning-info,
-.alert-modal .warning-impacts,
-.alert-modal .warning-bottom,
-.alert-modal .warning-summary {
-  margin-left: 16px !important;
-  margin-right: 16px !important;
-}
 
-.alert-modal .warning-summary {
-  display: block !important;
 
-  white-space: pre-line !important;
-  overflow-wrap: break-word !important;
-
-  background: rgba(8, 12, 18, 0.22);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 16px;
-
-  padding: 14px 16px;
-  margin-top: 16px !important;
-  margin-bottom: 18px !important;
-
-  font-size: 1rem;
-  line-height: 1.55;
-  color: rgba(255,255,255,0.9) !important;
-}
 
 @media (max-width: 768px) {
-  .alert-modal {
-    padding: 10px !important;
-  }
 
-  .alert-modal-box {
-    width: 94vw !important;
-    max-width: 94vw !important;
-    max-height: 84dvh !important;
-  }
 
-  .alert-modal-header {
-    padding: 18px 18px 14px !important;
-  }
 
-  .alert-modal-header-text h2 {
-    font-size: 1.55rem !important;
-    line-height: 1.05 !important;
-  }
 
-  .alert-modal-header-text p {
-    font-size: 0.95rem !important;
-  }
 
-  .alert-modal .warning-summary {
-    font-size: 0.94rem !important;
-    line-height: 1.5 !important;
-    padding: 12px 13px;
-  }
+
+
+
+
+
+
 
   .dashboard-column {
   display: flex !important;
@@ -2624,37 +2241,12 @@ main,
 }
 }
 
-.alert-modal .warning-impacts p {
-  white-space: pre-line !important;
-  line-height: 1.55 !important;
-  color: rgba(255,255,255,0.9) !important;
-  margin-top: 12px !important;
-}
-.alert-full-text {
-  border-top: 1px solid rgba(255,255,255,0.08);
-  padding: 16px 20px 22px;
-}
 
-.alert-full-text strong {
-  display: block;
-  color: #ffb21c;
-  text-transform: uppercase;
-  margin-bottom: 14px;
-  letter-spacing: 0.03em;
-}
 
-.alert-raw-text {
-  margin: 0;
-  white-space: pre-wrap;
-  overflow-wrap: break-word;
 
-  font-family: Arial, sans-serif;
-  font-size: 0.98rem;
-  line-height: 1.48;
 
-  color: rgba(255,255,255,0.94);
-  background: transparent;
-}
+
+
 
 .dashboard-column {
   display: flex !important;
@@ -11712,67 +11304,6 @@ body {
 </div>
 </main>
 
-<div class="alert-modal" id="stormModal">
-  <div class="alert-modal-backdrop"></div>
-
-  <div class="alert-modal-box">
-
-  <div class="alert-modal-header">
-    <div class="alert-modal-header-text">
-      <h2 class="alert-modal-title">Weather Alert</h2>
-      <p class="alert-modal-office">National Weather Service</p>
-    </div>
-
-    <button class="alert-modal-close" type="button" aria-label="Close alert details">×</button>
-  </div>
-
-<div class="warning-detail-card">
-  <h4>What to Expect</h4>
-
-  <p class="warning-summary"></p>
-
-  <div class="storm-tags"></div>
-
-  <div class="warning-hazards">
-    <div class="hazard-box">
-      <span class="hazard-label">🌬️ Max Wind</span>
-      <span class="hazard-value hazard-wind-value"></span>
-    </div>
-
-    <div class="hazard-box">
-      <span class="hazard-label">Max Hail</span>
-      <span class="hazard-value hazard-hail-value"></span>
-    </div>
-
-    <div class="hazard-box">
-      <span class="hazard-label">Source</span>
-      <span class="hazard-value hazard-source-value"></span>
-    </div>
-  </div>
-
-  <div class="warning-info">
-    <p><span>Where:</span> <span class="alert-where"></span></p>
-    <p><span>When:</span> <span class="alert-when"></span></p>
-  </div>
-
- <div class="warning-impacts">
-  <strong>⚠️ Expected Impacts</strong>
-  <p></p>
-</div>
-
-<div class="alert-full-text">
-  <strong>Alert Details</strong>
-  <pre class="alert-raw-text"></pre>
-</div>
-
-<div class="warning-bottom">
-    <span>Hail: <strong class="bottom-hail-value"></strong></span>
-    <span>Wind: <strong class="bottom-wind-value"></strong></span>
- </div>
-</div>
-</div>
-</div>
-
 <div class="radar-modal" id="radarModal">
   <div class="radar-modal-backdrop"></div>
 
@@ -12721,14 +12252,6 @@ async function fetchHomepageAlerts() {
   if (isFetchingAlerts) return;
 isFetchingAlerts = true;
 
-const modalOpen = document
-  .getElementById("stormModal")
-  ?.classList.contains("is-open");
-
-if (modalOpen) {
-  isFetchingAlerts = false;
-  return;
-}
 
 if (!alertsList) {
   isFetchingAlerts = false;
@@ -12884,22 +12407,92 @@ document.querySelectorAll(".alert-tabs button").forEach(button => {
   });
 });
 
+/* Homepage alert details deep link */
+
+function homepageAlertDetailsUrl(alert) {
+  const props = alert?.properties || {};
+
+  const url = new URL(
+    "live-alerts.html",
+    window.location.href
+  );
+
+  const identity =
+    canonicalHomepageAlertId(alert) ||
+    String(alert?.id || "").trim();
+
+  if (identity) {
+    url.searchParams.set(
+      "alert",
+      identity
+    );
+  }
+
+  if (props.event) {
+    url.searchParams.set(
+      "event",
+      String(props.event)
+    );
+  }
+
+  if (props.sent) {
+    url.searchParams.set(
+      "sent",
+      String(props.sent)
+    );
+  }
+
+  if (props.areaDesc) {
+    url.searchParams.set(
+      "area",
+      String(props.areaDesc).slice(0, 180)
+    );
+  }
+
+  return url.toString();
+}
+
 function handleDetailsButtonTap(event) {
-  const btn = event.target.closest(".compact-details-btn");
-  if (!btn) return;
+  const btn =
+    event.target.closest(
+      ".compact-details-btn"
+    );
+
+  if (!btn) {
+    return;
+  }
 
   event.preventDefault();
   event.stopPropagation();
 
-  const alertId = btn.dataset.alertId;
-  const alert = allHomepageAlerts.find(a => a.id === alertId);
+  const alertId =
+    String(btn.dataset.alertId || "");
+
+  const alert =
+    allHomepageAlerts.find(
+      (candidate) =>
+        String(candidate?.id || "") === alertId
+    ) ||
+    allHomepageAlerts.find(
+      (candidate) =>
+        canonicalHomepageAlertId(candidate) ===
+        alertId
+    );
 
   if (!alert) {
-    console.warn("No alert found for details button:", alertId);
+    console.warn(
+      "No alert found for details button:",
+      alertId
+    );
+
+    window.location.href =
+      "live-alerts.html";
+
     return;
   }
 
-  openAlertModal(alert);
+  window.location.href =
+    homepageAlertDetailsUrl(alert);
 }
 
 function handleRadarButtonTap(event) {
@@ -12921,16 +12514,6 @@ function handleRadarButtonTap(event) {
 document.addEventListener("pointerup", handleDetailsButtonTap);
 document.addEventListener("pointerup", handleRadarButtonTap);
 
-document.addEventListener("click", function (e) {
-  if (
-    e.target.closest(".alert-modal-close") ||
-    e.target.classList.contains("alert-modal-backdrop")
-  ) {
-    document.querySelectorAll(".alert-modal").forEach(modal => {
-      modal.classList.remove("is-open");
-    });
-  }
-});
 
 let pendingRadarAlert = null;
 let alertPolygonLayer = null;
@@ -13099,375 +12682,6 @@ async function focusSingleSiteRadarOnAlert(alert, options = {}) {
       .bindPopup(alert.properties?.event || "Weather Alert")
       .openPopup();
   }
-}
-
-function openAlertModal(alert) {
-  const props = alert.properties || {};
-  const params = props.parameters || {};
-
-  console.log(params);
-
-  const event = props.event || "Weather Alert";
-  const description = props.description || "";
-  const isTornadoEmergency =
-  description.toLowerCase().includes("tornado emergency");
-  const headline = props.headline || "";
-  const instruction = props.instruction || "";
-  const areas = props.areaDesc || "Not listed";
-
-const expires = props.expires
-  ? `UNTIL ${new Date(props.expires).toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      timeZone: "America/Chicago",
-      timeZoneName: "short"
-    })}`
-  : "Unknown";
-
-  const isWinterAlert =
-    event.includes("Winter") ||
-    event.includes("Freeze") ||
-    event.includes("Frost") ||
-    event.includes("Snow") ||
-    event.includes("Ice") ||
-    event.includes("Blizzard");
-
-  const isWatch =
-    event.includes("Tornado Watch") ||
-    event.includes("Severe Thunderstorm Watch");
-
-  const isStormAlert =
-    event.includes("Tornado") ||
-    event.includes("Severe Thunderstorm") ||
-    event.includes("Special Weather Statement");
-
-    const headerColor = isTornadoEmergency
-    ? "#ff00ff"
-   : getAlertColor(event);
-    console.log(event, headerColor);
-
-const snowMatch = description.match(/snow accumulations?.*?(\d+.*?)\./i);
-
-const modalMetrics = getCompactAlertMetrics(alert);
-
-const wind =
-  modalMetrics.wind && modalMetrics.wind !== "—"
-    ? modalMetrics.wind.replace("MPH", " MPH")
-    : null;
-
-const hail =
-  modalMetrics.hail && modalMetrics.hail !== "—"
-    ? modalMetrics.hail.replace("IN", " IN")
-    : null;
-
-const tornado =
-  params.tornadoDetection?.[0] || null;
-
-const hailThreat =
-  params.hailThreat?.[0] || null;
-
-const snow = snowMatch ? snowMatch[1] : null;
-
-const alertSource =
-  params.hailThreat?.[0] ||
-  params.windThreat?.[0] ||
-  params.thunderstormDamageThreat?.[0] ||
-  (description.toLowerCase().includes("radar indicated")
-    ? "RADAR INDICATED"
-    : "NWS ISSUED");
-
-const modal = document.getElementById("stormModal");
-const modalBox = modal.querySelector(".alert-modal-box");
-const header = modal.querySelector(".alert-modal-header");
-const detailCard = modal.querySelector(".warning-detail-card");
-const hazardSection = modal.querySelector(".warning-hazards");
-const stormTags = modal.querySelector(".storm-tags");
-const warningInfo = modal.querySelector(".warning-info");
-const warningImpacts = modal.querySelector(".warning-impacts");
-const alertFullText = modal.querySelector(".alert-full-text");
-const alertRawText = modal.querySelector(".alert-raw-text");
-const warningBottom = modal.querySelector(".warning-bottom");
-const summary = modal.querySelector(".warning-summary");
-const titleEl = modal.querySelector(".warning-detail-card h4");
-
-if (!summary) {
-  console.error("Missing .warning-summary inside storm modal");
-  return;
-}
-
-modal.querySelector(".alert-modal-title").textContent =
-  description.toLowerCase().includes("tornado emergency")
-    ? "Tornado Emergency"
-    : event;
-
-  modal.querySelector(".alert-modal-office").textContent =
-    props.senderName || "National Weather Service";
-
-  if (header) {
-    header.style.background = headerColor;
-  }
-
-  if (modalBox) {
-    modalBox.style.borderTop = `6px solid ${headerColor}`;
-  }
-
-  if (titleEl) {
-    titleEl.textContent = isWatch ? "WATCH DETAILS" : "WHAT TO EXPECT";
-  }
-
-  detailCard.classList.toggle("winter-mode", isWinterAlert);
-
-  summary.style.color = "#eaeaea";
-  warningInfo.style.display = "block";
-  warningImpacts.style.display = "block";
-  warningBottom.style.display = "flex";
-  hazardSection.style.display = "grid";
-
-stormTags.innerHTML = "";
-
-/* Keep tornado tag only.
-   Remove duplicate hail/wind/source pills from the top tag row. */
-if (tornado) {
-  const tornadoClass =
-    tornado.includes("OBSERVED")
-      ? "storm-tag tornado observed"
-      : "storm-tag tornado";
-
-  stormTags.innerHTML += `
-    <div class="${tornadoClass}">
-      Tornado: ${tornado}
-    </div>
-  `;
-}
-
-/* Hide the tag row unless tornado info exists */
-stormTags.style.display = stormTags.innerHTML.trim() ? "flex" : "none";
-
-  if (isWatch) {
-    summary.innerHTML = `
-      <div class="watch-section">
-        <h5>SUMMARY</h5>
-        <p>${extractWatchSummary(description, headline)}</p>
-      </div>
-
-      <div class="watch-section">
-        <h5>REMEMBER</h5>
-        <p>${extractWatchRemember(description, instruction)}</p>
-      </div>
-    `;
-
-    hazardSection.style.display = "none";
-    warningInfo.style.display = "none";
-    warningImpacts.style.display = "none";
-    warningBottom.style.display = "none";
-
-   if (alertFullText) {
-    alertFullText.style.display = "none";
-    }
-
-    modal.classList.add("is-open");
-    return;
-  }
-
-summary.textContent =
-  extractSection(description, "WHAT") ||
-  headline ||
-  event ||
-  "No summary listed.";
-
-modal.querySelector(".alert-where").textContent =
-  extractSection(description, "WHERE") || areas;
-
-modal.querySelector(".alert-when").textContent =
-  extractSection(description, "WHEN") || expires;
-
-const expectedImpacts = extractExpectedImpactsText(description, instruction);
-
-if (expectedImpacts) {
-  warningImpacts.style.display = "block";
-  warningImpacts.querySelector("strong").textContent = "⚠️ Expected Impacts";
-  warningImpacts.querySelector("p").textContent = expectedImpacts;
-} else {
-  warningImpacts.style.display = "none";
-  warningImpacts.querySelector("p").textContent = "";
-}
-
-const cleanedDetails = cleanAlertDetailsText(description);
-
-if (alertFullText && alertRawText) {
-  if (cleanedDetails) {
-    alertFullText.style.display = "block";
-    alertRawText.textContent = cleanedDetails;
-  } else {
-    alertFullText.style.display = "none";
-    alertRawText.textContent = "";
-  }
-}
-
-warningBottom.style.display = "none";
-
-  if (isWinterAlert) {
-    hazardSection.innerHTML = "";
-
-    warningBottom.style.display = "none";
-
-    if (snow) {
-      hazardSection.innerHTML += `
-        <div class="hazard-box">
-          <span class="hazard-label">❄️ SNOW</span>
-          <strong>${snow}</strong>
-        </div>
-      `;
-    }
-
-    if (wind) {
-      hazardSection.innerHTML += `
-        <div class="hazard-box">
-          <span class="hazard-label">WIND</span>
-          <strong>${wind}</strong>
-        </div>
-      `;
-    }
-
-} else if (isStormAlert) {
-  let hazardHTML = "";
-
-  if (wind) {
-    hazardHTML += `
-      <div class="hazard-box">
-        <span class="hazard-label">🌬️ Max Wind</span>
-        <span class="hazard-value hazard-wind-value">${wind}</span>
-      </div>
-    `;
-  }
-
-  if (hail) {
-    hazardHTML += `
-      <div class="hazard-box">
-        <span class="hazard-label">Max Hail</span>
-        <span class="hazard-value hazard-hail-value">${hail}</span>
-      </div>
-    `;
-  }
-
-  if (alertSource) {
-    hazardHTML += `
-      <div class="hazard-box">
-        <span class="hazard-label">Source</span>
-        <span class="hazard-value hazard-source-value">${alertSource}</span>
-      </div>
-    `;
-  }
-
-  hazardSection.innerHTML = hazardHTML;
-  hazardSection.style.display = hazardHTML ? "grid" : "none";
-
-warningBottom.style.display = "none";
-warningBottom.innerHTML = "";
-
-} else {
-  hazardSection.style.display = "none";
-  warningBottom.style.display = "none";
-}
-
-  modal.classList.add("is-open");
-}
-
-function cleanNwsInlineText(text) {
-  if (!text) return "";
-
-  return text
-    .replace(/\*/g, "")
-    .replace(/\n/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function extractExpectedImpactsText(description, instruction) {
-  if (!description) return instruction || "";
-
-  const formalImpacts = extractSection(description, "IMPACTS");
-
-  if (formalImpacts) {
-    return formalImpacts;
-  }
-
-  const rawImpactLine = description.match(
-    /IMPACT\.\.\.([\s\S]*?)(?=\n[A-Z ]+\.\.\.|$)/i
-  );
-
-  if (rawImpactLine) {
-    return cleanNwsInlineText(rawImpactLine[1]);
-  }
-
-  const weakeningMessage = description.match(
-    /(The storm which prompted[\s\S]*?)(?=\n\n|A Severe Thunderstorm Watch|Remember,|PRECAUTIONARY|$)/i
-  );
-
-  if (weakeningMessage) {
-    return cleanNwsInlineText(weakeningMessage[1]);
-  }
-
-  if (instruction) {
-    return cleanNwsInlineText(instruction);
-  }
-
-  return "";
-}
-
-function extractWatchSummary(text, headline) {
-  const match = text.match(/SUMMARY\.*\s*([\s\S]*?)(?=REMEMBER|AVIATION|PRECAUTIONARY|$)/i);
-
-  if (match) {
-    return match[1].replace(/\n/g, " ").replace(/\s+/g, " ").trim();
-  }
-
-  return headline || "Thunderstorms may become capable of tornadoes, damaging winds, and hail within the watch area.";
-}
-
-function extractWatchRemember(text, instruction) {
-  const match = text.match(/REMEMBER\.*\s*([\s\S]*?)(?=AVIATION|PRECAUTIONARY|$)/i);
-
-  if (match) {
-    return match[1].replace(/\n/g, " ").replace(/\s+/g, " ").trim();
-  }
-
-  return instruction || "Stay alert for future warnings and statements.";
-}
-
-function cleanAlertDetailsText(text) {
-  if (!text) return "";
-
-  return text
-    // Remove WHAT / WHERE / WHEN / IMPACTS sections only
-    .replace(
-      /\n?\*\s*(WHAT|WHERE|WHEN|IMPACTS)\.\.\.[\s\S]*?(?=\n\s*\*\s*(WHAT|WHERE|WHEN|IMPACTS|ADDITIONAL DETAILS)\.\.\.|$)/gi,
-      ""
-    )
-
-    // Clean extra blank lines
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
-
-function extractSection(text, label) {
-  if (!text) return "";
-
-  const cleanLabel = label.toUpperCase();
-
-  const pattern = new RegExp(
-    `\\*\\s*${cleanLabel}S?\\.\\.\\.([\\s\\S]*?)(?=\\s*\\*\\s*[A-Z ]+\\.\\.\\.|$)`,
-    "i"
-  );
-
-  const match = text.match(pattern);
-
-  return match
-    ? match[1]
-        .replace(/\n/g, " ")
-        .replace(/\s+/g, " ")
-        .trim()
-    : "";
 }
 
 const defaultAlertsCard = document.querySelector(".alerts-card");

@@ -2981,6 +2981,37 @@
     let locationAlertFeatures = null;
     let locationSearchLabel = "";
 
+    /* Homepage alert deep-link support */
+
+    const alertDeepLinkParams =
+      new URLSearchParams(
+        window.location.search
+      );
+
+    const requestedAlertId =
+      String(
+        alertDeepLinkParams.get("alert") || ""
+      ).trim();
+
+    const requestedAlertEvent =
+      String(
+        alertDeepLinkParams.get("event") || ""
+      ).trim();
+
+    const requestedAlertSent =
+      String(
+        alertDeepLinkParams.get("sent") || ""
+      ).trim();
+
+    const requestedAlertArea =
+      String(
+        alertDeepLinkParams.get("area") || ""
+      ).trim();
+
+    let alertDeepLinkHandled =
+      !requestedAlertId &&
+      !requestedAlertEvent;
+
     const EVENT_FILTERS = [
       { value: "all", label: "All" },
       { value: "warnings", label: "Warnings" },
@@ -4687,6 +4718,231 @@
         </section>
       `;
     }
+    function alertIdentityValues(feature) {
+      const props =
+        feature?.properties || {};
+
+      const parameters =
+        props.parameters || {};
+
+      const rawValues = [
+        feature?.id,
+        feature?.identifier,
+        props._alertId,
+        props.id,
+        props.identifier,
+        props.VTEC,
+        props.vtec,
+        parameters.VTEC,
+        parameters.vtec
+      ];
+
+      return rawValues
+        .flatMap((value) =>
+          Array.isArray(value)
+            ? value
+            : [value]
+        )
+        .map((value) =>
+          String(value || "").trim()
+        )
+        .filter(Boolean);
+    }
+
+    function canonicalAlertVtec(value) {
+      const text =
+        String(value || "")
+          .trim()
+          .toUpperCase();
+
+      if (!text) {
+        return "";
+      }
+
+      const match = text.match(
+        /[A-Z]\.[A-Z]{3}\.[A-Z]{4}\.[A-Z]{2}\.[A-Z]\.\d{4}/
+      );
+
+      return match ? match[0] : "";
+    }
+
+    function alertDeepLinkFeature() {
+      if (alertDeepLinkHandled) {
+        return null;
+      }
+
+      const requestedIdentity =
+        requestedAlertId.toLowerCase();
+
+      const requestedVtec =
+        canonicalAlertVtec(
+          requestedAlertId
+        );
+
+      let match = null;
+
+      if (requestedIdentity) {
+        match = liveFeatures.find(
+          (feature) => {
+            const identities =
+              alertIdentityValues(feature);
+
+            return identities.some(
+              (identity) =>
+                identity.toLowerCase() ===
+                requestedIdentity
+            );
+          }
+        );
+      }
+
+      if (!match && requestedVtec) {
+        match = liveFeatures.find(
+          (feature) =>
+            alertIdentityValues(feature)
+              .some(
+                (identity) =>
+                  canonicalAlertVtec(identity) ===
+                  requestedVtec
+              )
+        );
+      }
+
+      if (!match && requestedAlertEvent) {
+        const expectedEvent =
+          cleanText(
+            requestedAlertEvent
+          ).toLowerCase();
+
+        const expectedArea =
+          cleanText(
+            requestedAlertArea
+          ).toLowerCase();
+
+        const expectedSentTime =
+          Date.parse(requestedAlertSent);
+
+        match = liveFeatures.find(
+          (feature) => {
+            const props =
+              feature?.properties || {};
+
+            const candidateEvent =
+              cleanText(
+                props.event || ""
+              ).toLowerCase();
+
+            if (
+              candidateEvent !==
+              expectedEvent
+            ) {
+              return false;
+            }
+
+            if (
+              Number.isFinite(
+                expectedSentTime
+              )
+            ) {
+              const candidateSentTime =
+                Date.parse(
+                  props.sent || ""
+                );
+
+              if (
+                !Number.isFinite(
+                  candidateSentTime
+                ) ||
+                Math.abs(
+                  candidateSentTime -
+                  expectedSentTime
+                ) > 60000
+              ) {
+                return false;
+              }
+            }
+
+            if (expectedArea) {
+              const candidateArea =
+                cleanText(
+                  props.areaDesc || ""
+                ).toLowerCase();
+
+              const areaMatches =
+                candidateArea.includes(
+                  expectedArea
+                ) ||
+                expectedArea.includes(
+                  candidateArea
+                );
+
+              if (!areaMatches) {
+                return false;
+              }
+            }
+
+            return true;
+          }
+        );
+      }
+
+      return match;
+    }
+
+    function applyAlertDeepLink() {
+      if (alertDeepLinkHandled) {
+        return false;
+      }
+
+      const feature =
+        alertDeepLinkFeature();
+
+      if (!feature) {
+        return false;
+      }
+
+      alertDeepLinkHandled = true;
+
+      locationAlertFeatures = null;
+      locationSearchLabel = "";
+
+      searchInput.value = "";
+      typeFilter.value = "all";
+
+      selectedAlertId =
+        feature.id;
+
+      const states =
+        statesForFeature(feature);
+
+      activeState =
+        states[0] || "all";
+
+      render();
+
+      document.body.classList.add(
+        "detail-open"
+      );
+
+      window.requestAnimationFrame(
+        () => {
+          alertDetailPanel.scrollTop = 0;
+
+          if (
+            !window.matchMedia(
+              "(max-width: 820px)"
+            ).matches
+          ) {
+            alertDetailPanel.scrollIntoView({
+              behavior: "smooth",
+              block: "start"
+            });
+          }
+        }
+      );
+
+      return true;
+    }
     function render() {
       renderFilterChips();
 
@@ -4700,7 +4956,8 @@
       const mobileStateOverviewActive =
         isMobileAlertsView() &&
         activeState === "all" &&
-        !Array.isArray(locationAlertFeatures);
+        !Array.isArray(locationAlertFeatures) &&
+        !selectedAlertId;
 
       document.body.classList.toggle(
         "state-overview-open",
@@ -4900,7 +5157,9 @@
         .filter(Boolean)
         .filter((feature) => !isExpired(feature));
 
-      render();
+      if (!applyAlertDeepLink()) {
+        render();
+      }
     }
 
     function connectStream() {
