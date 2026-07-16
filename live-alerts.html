@@ -1751,6 +1751,846 @@
         padding: 9px 12px;
       }
     }
+
+    /* Mobile alerts drill-down: level 1 states */
+
+    @media (max-width: 820px) {
+      body.state-overview-open .alert-summary {
+        display: none;
+      }
+
+      #stateFilterGroup {
+        display: none !important;
+      }
+
+      .mobile-state-overview {
+        grid-column: 1 / -1;
+        width: 100%;
+        overflow: hidden;
+        border: 1px solid rgba(145, 196, 255, 0.18);
+        border-radius: 22px;
+        background:
+          radial-gradient(
+            circle at top right,
+            rgba(88, 183, 255, 0.11),
+            transparent 18rem
+          ),
+          linear-gradient(
+            145deg,
+            rgba(7, 19, 34, 0.97),
+            rgba(8, 25, 44, 0.91)
+          );
+        box-shadow:
+          0 20px 48px rgba(0, 0, 0, 0.3),
+          inset 0 1px 0 rgba(255, 255, 255, 0.025);
+      }
+
+      .mobile-state-overview-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 20px 18px 17px;
+        border-bottom: 1px solid rgba(145, 196, 255, 0.13);
+      }
+
+      .mobile-state-overview-copy {
+        min-width: 0;
+      }
+
+      .mobile-state-overview-kicker {
+        display: block;
+        margin-bottom: 5px;
+        color: #58b7ff;
+        font-size: 0.68rem;
+        font-weight: 900;
+        letter-spacing: 0.17em;
+        text-transform: uppercase;
+      }
+
+      .mobile-state-overview-title {
+        margin: 0;
+        color: var(--text);
+        font-size: 1.18rem;
+        line-height: 1.1;
+      }
+
+      .mobile-state-overview-meta {
+        display: block;
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 0.78rem;
+        line-height: 1.35;
+      }
+
+      .mobile-state-overview-icon {
+        display: grid;
+        flex: 0 0 auto;
+        width: 46px;
+        height: 46px;
+        place-items: center;
+        border: 1px solid rgba(88, 183, 255, 0.3);
+        border-radius: 50%;
+        background: rgba(88, 183, 255, 0.08);
+        color: #91caff;
+        font-size: 0.72rem;
+        font-weight: 950;
+        letter-spacing: 0.08em;
+        box-shadow: 0 0 24px rgba(88, 183, 255, 0.08);
+      }
+
+      .mobile-state-list {
+        display: grid;
+      }
+
+      .mobile-state-row {
+        position: relative;
+        display: grid;
+        width: 100%;
+        min-height: 61px;
+        grid-template-columns: minmax(0, 1fr) auto 22px;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 15px 12px 18px;
+        overflow: hidden;
+        border: 0;
+        border-bottom: 1px solid rgba(145, 196, 255, 0.11);
+        background: transparent;
+        color: var(--text);
+        font: inherit;
+        text-align: left;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .mobile-state-row:last-child {
+        border-bottom: 0;
+      }
+
+      .mobile-state-row::before {
+        content: "";
+        position: absolute;
+        inset: 9px auto 9px 0;
+        width: 3px;
+        border-radius: 0 999px 999px 0;
+        background: var(--state-tone, #58b7ff);
+        box-shadow: 0 0 18px var(--state-tone, #58b7ff);
+        opacity: 0.92;
+      }
+
+      .mobile-state-row:active {
+        background: rgba(88, 183, 255, 0.08);
+      }
+
+      .mobile-state-row:focus-visible {
+        outline: 2px solid rgba(88, 183, 255, 0.8);
+        outline-offset: -3px;
+      }
+
+      .mobile-state-row.tone-warning {
+        --state-tone: #ff4d5e;
+      }
+
+      .mobile-state-row.tone-watch {
+        --state-tone: #ff9f43;
+      }
+
+      .mobile-state-row.tone-advisory {
+        --state-tone: #58b7ff;
+      }
+
+      .mobile-state-row.tone-statement {
+        --state-tone: #9eb1c6;
+      }
+
+      .mobile-state-name {
+        min-width: 0;
+      }
+
+      .mobile-state-name strong {
+        display: block;
+        overflow: hidden;
+        color: var(--text);
+        font-size: 0.93rem;
+        font-weight: 850;
+        line-height: 1.2;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .mobile-state-name small {
+        display: block;
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 0.66rem;
+        font-weight: 800;
+        letter-spacing: 0.11em;
+        text-transform: uppercase;
+      }
+
+      .mobile-state-count {
+        color: var(--state-tone, #58b7ff);
+        font-size: 0.79rem;
+        font-weight: 900;
+        white-space: nowrap;
+      }
+
+      .mobile-state-arrow {
+        color: #d9edff;
+        font-size: 1.35rem;
+        font-weight: 400;
+        line-height: 1;
+        text-align: center;
+        opacity: 0.9;
+      }
+
+      .mobile-state-overview-note {
+        display: flex;
+        gap: 9px;
+        align-items: flex-start;
+        padding: 14px 17px 16px;
+        border-top: 1px solid rgba(145, 196, 255, 0.12);
+        background: rgba(88, 183, 255, 0.035);
+        color: var(--muted);
+        font-size: 0.72rem;
+        line-height: 1.45;
+      }
+
+      .mobile-state-overview-note::before {
+        content: "i";
+        display: grid;
+        flex: 0 0 auto;
+        width: 18px;
+        height: 18px;
+        place-items: center;
+        border: 1px solid rgba(88, 183, 255, 0.55);
+        border-radius: 50%;
+        color: #58b7ff;
+        font-size: 0.65rem;
+        font-weight: 950;
+      }
+
+      .mobile-state-selection {
+        grid-column: 1 / -1;
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        margin-bottom: 2px;
+        padding: 14px;
+        border: 1px solid rgba(145, 196, 255, 0.17);
+        border-radius: 18px;
+        background:
+          linear-gradient(
+            135deg,
+            rgba(8, 22, 39, 0.96),
+            rgba(12, 33, 56, 0.85)
+          );
+      }
+
+      .mobile-state-back {
+        display: inline-flex;
+        flex: 0 0 auto;
+        min-height: 42px;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        padding: 0 12px;
+        border: 1px solid rgba(88, 183, 255, 0.28);
+        border-radius: 13px;
+        background: rgba(88, 183, 255, 0.07);
+        color: #a9d8ff;
+        font: inherit;
+        font-size: 0.76rem;
+        font-weight: 850;
+        cursor: pointer;
+      }
+
+      .mobile-state-selection-copy {
+        min-width: 0;
+      }
+
+      .mobile-state-selection-copy span,
+      .mobile-state-selection-copy small {
+        display: block;
+      }
+
+      .mobile-state-selection-copy span {
+        margin-bottom: 3px;
+        color: #58b7ff;
+        font-size: 0.61rem;
+        font-weight: 900;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .mobile-state-selection-copy strong {
+        display: block;
+        overflow: hidden;
+        color: var(--text);
+        font-size: 1rem;
+        line-height: 1.15;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .mobile-state-selection-copy small {
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 0.7rem;
+      }
+    }
+
+    /* Mobile Level 1 neutral polish */
+
+    @media (max-width: 820px) {
+      .mobile-state-overview {
+        border-color: rgba(145, 196, 255, 0.16);
+        background:
+          linear-gradient(
+            145deg,
+            rgba(7, 19, 34, 0.97),
+            rgba(8, 25, 44, 0.91)
+          );
+        box-shadow:
+          0 16px 38px rgba(0, 0, 0, 0.25),
+          inset 0 1px 0 rgba(255, 255, 255, 0.02);
+      }
+
+      .mobile-state-overview-head {
+        min-height: 0;
+        padding: 18px 18px 16px;
+      }
+
+      .mobile-state-overview-copy {
+        width: 100%;
+      }
+
+      .mobile-state-overview-title {
+        font-size: 1.12rem;
+        font-weight: 850;
+        letter-spacing: -0.015em;
+      }
+
+      .mobile-state-overview-meta {
+        margin-top: 5px;
+        color: #9fb0c3;
+        font-size: 0.76rem;
+      }
+
+      .mobile-state-overview-kicker,
+      .mobile-state-overview-icon {
+        display: none !important;
+      }
+
+      .mobile-state-row {
+        min-height: 58px;
+        grid-template-columns: minmax(0, 1fr) auto 20px;
+        gap: 10px;
+        padding: 12px 14px 12px 18px;
+      }
+
+      .mobile-state-row::before {
+        display: none;
+      }
+
+      .mobile-state-row,
+      .mobile-state-row.tone-warning,
+      .mobile-state-row.tone-watch,
+      .mobile-state-row.tone-advisory,
+      .mobile-state-row.tone-statement {
+        --state-tone: #9fb0c3;
+      }
+
+      .mobile-state-row:active {
+        background: rgba(88, 183, 255, 0.055);
+      }
+
+      .mobile-state-name strong {
+        color: #f1f7ff;
+        font-size: 0.92rem;
+        font-weight: 800;
+      }
+
+      .mobile-state-name small {
+        display: none;
+      }
+
+      .mobile-state-count {
+        color: #b8c8d9;
+        font-size: 0.76rem;
+        font-weight: 800;
+      }
+
+      .mobile-state-arrow {
+        color: #8fa5ba;
+        font-size: 1.2rem;
+        opacity: 0.85;
+      }
+
+      .mobile-state-overview-note {
+        padding: 13px 16px 15px;
+        color: #8fa2b7;
+        background: rgba(88, 183, 255, 0.02);
+        font-size: 0.69rem;
+      }
+
+      .mobile-state-overview-note::before {
+        border-color: rgba(145, 196, 255, 0.36);
+        color: #91c4ff;
+      }
+    }
+
+    /* Mobile Level 1 final polish */
+
+    @media (max-width: 820px) {
+      .mobile-state-name strong {
+        display: flex;
+        min-width: 0;
+        align-items: baseline;
+        gap: 7px;
+      }
+
+      .mobile-state-name strong small {
+        display: inline;
+        flex: 0 0 auto;
+        margin: 0;
+        color: #74899f;
+        font-size: 0.62rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        line-height: 1;
+        text-transform: uppercase;
+      }
+
+      .mobile-state-count {
+        display: inline-flex;
+        min-height: 24px;
+        align-items: center;
+        justify-content: flex-end;
+        line-height: 1;
+      }
+
+      .mobile-state-arrow {
+        display: inline-flex;
+        height: 24px;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+      }
+
+      .mobile-state-selection {
+        min-height: 76px;
+        gap: 12px;
+        padding: 12px 14px;
+      }
+
+      .mobile-state-back {
+        min-height: 38px;
+        padding: 0 10px;
+        border-color: rgba(88, 183, 255, 0.22);
+        border-radius: 11px;
+        background: rgba(88, 183, 255, 0.045);
+        color: #a9d8ff;
+        font-size: 0.72rem;
+        font-weight: 800;
+      }
+
+      .mobile-state-selection-copy span {
+        display: none;
+      }
+
+      .mobile-state-selection-copy strong {
+        font-size: 1.05rem;
+        font-weight: 850;
+      }
+
+      .mobile-state-selection-copy small {
+        margin-top: 5px;
+        color: #96a9bc;
+        font-size: 0.72rem;
+      }
+
+      body.state-selection-open .mobile-filter-status {
+        display: none;
+      }
+
+      body.state-selection-open #mobileFilterToggle {
+        justify-content: flex-start;
+      }
+    }
+
+    /* Mobile state context above controls */
+
+    @media (max-width: 820px) {
+      /*
+        Remove the entire large active-alert status section.
+        Desktop remains unchanged.
+      */
+      .hero {
+        display: none !important;
+      }
+
+      .status-card {
+        display: none !important;
+      }
+
+      .mobile-state-context {
+        display: block;
+        margin: 0 0 12px;
+      }
+
+      .mobile-state-context[hidden] {
+        display: none !important;
+      }
+
+      .mobile-state-context .mobile-state-selection {
+        min-height: 68px;
+        margin: 0;
+        padding: 10px 14px;
+      }
+
+      .mobile-state-context .mobile-state-back {
+        min-height: 38px;
+      }
+
+      .mobile-state-context +
+      .controls {
+        margin-top: 0;
+      }
+
+      body.state-selection-open .mobile-state-context {
+        animation: mobile-state-context-in 180ms ease-out;
+      }
+
+      @keyframes mobile-state-context-in {
+        from {
+          opacity: 0;
+          transform: translateY(-5px);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    }
+
+    @media (min-width: 821px) {
+      .mobile-state-context {
+        display: none !important;
+      }
+    }
+
+    /* Mobile Level 1 context polish */
+
+    @media (max-width: 820px) {
+      .mobile-state-context {
+        margin-bottom: 10px;
+      }
+
+      .mobile-state-context .mobile-state-selection {
+        min-height: 58px;
+        gap: 10px;
+        padding: 8px 12px;
+        border-radius: 17px;
+      }
+
+      .mobile-state-context .mobile-state-back {
+        min-height: 34px;
+        padding: 0 9px;
+        border-radius: 10px;
+        font-size: 0.69rem;
+      }
+
+      .mobile-state-context
+      .mobile-state-selection-copy strong {
+        font-size: 0.98rem;
+        line-height: 1.1;
+      }
+
+      .mobile-state-context
+      .mobile-state-selection-copy small {
+        margin-top: 3px;
+        font-size: 0.68rem;
+        line-height: 1.1;
+      }
+
+      body.state-selection-open
+      .alert-card
+      .state-badge {
+        display: none;
+      }
+    }
+
+    /* Mobile Level 1 state and search merge */
+
+    @media (max-width: 820px) {
+      /*
+        Visually connect the selected-state context and controls.
+        The DOM stays separate so existing listeners remain intact.
+      */
+
+      body.state-selection-open .mobile-state-context {
+        margin-bottom: 0;
+      }
+
+      body.state-selection-open
+      .mobile-state-context
+      .mobile-state-selection {
+        min-height: 52px;
+        gap: 10px;
+        margin: 0;
+        padding: 6px 12px;
+        border-bottom-color: transparent;
+        border-radius: 20px 20px 0 0;
+        background:
+          linear-gradient(
+            145deg,
+            rgba(7, 20, 36, 0.98),
+            rgba(10, 30, 51, 0.92)
+          );
+        box-shadow: none;
+      }
+
+      body.state-selection-open
+      .mobile-state-context
+      .mobile-state-back {
+        min-height: 32px;
+        padding: 0 9px;
+        border-radius: 9px;
+        font-size: 0.68rem;
+      }
+
+      body.state-selection-open
+      .mobile-state-context
+      .mobile-state-selection-copy strong {
+        font-size: 0.96rem;
+        line-height: 1.05;
+      }
+
+      body.state-selection-open
+      .mobile-state-context
+      .mobile-state-selection-copy small {
+        margin-top: 3px;
+        font-size: 0.66rem;
+        line-height: 1.05;
+      }
+
+      body.state-selection-open
+      .mobile-state-context + .controls {
+        margin-top: -1px;
+        padding-top: 10px;
+        border-top-color: rgba(145, 196, 255, 0.1);
+        border-radius: 0 0 20px 20px;
+      }
+
+      body.state-selection-open
+      .mobile-state-context + .controls
+      .search {
+        margin-top: 0;
+      }
+
+      body.state-selection-open
+      #mobileFilterToggle {
+        justify-content: space-between;
+      }
+
+      body.state-selection-open
+      #mobileFilterToggle
+      .mobile-filter-status {
+        display: inline;
+        margin-left: auto;
+        color: #58b7ff;
+      }
+    }
+
+    /* Mobile Level 1 tight spacing */
+
+    @media (max-width: 820px) {
+      body.state-selection-open .mobile-state-context {
+        position: relative;
+        z-index: 2;
+        margin: 0 20px -1px;
+      }
+
+      body.state-selection-open
+      .mobile-state-context
+      .mobile-state-selection {
+        min-height: 48px;
+        gap: 9px;
+        padding: 5px 10px;
+        border-bottom-color: transparent;
+        border-radius: 18px 18px 0 0;
+      }
+
+      body.state-selection-open
+      .mobile-state-context
+      .mobile-state-back {
+        min-height: 31px;
+        padding: 0 8px;
+        border-radius: 9px;
+        font-size: 0.67rem;
+      }
+
+      body.state-selection-open
+      .mobile-state-context
+      .mobile-state-selection-copy strong {
+        font-size: 0.94rem;
+        line-height: 1.05;
+      }
+
+      body.state-selection-open
+      .mobile-state-context
+      .mobile-state-selection-copy small {
+        margin-top: 2px;
+        font-size: 0.64rem;
+        line-height: 1;
+      }
+
+      body.state-selection-open
+      .mobile-state-context + .controls {
+        position: relative;
+        z-index: 1;
+        margin-top: 0 !important;
+        padding-top: 9px;
+        border-top-color: rgba(145, 196, 255, 0.1);
+        border-radius: 0 0 20px 20px;
+      }
+
+      body.state-selection-open
+      .mobile-state-context + .controls
+      .search {
+        min-height: 48px;
+        padding-block: 8px;
+      }
+
+      body.state-selection-open
+      .mobile-state-context + .controls
+      .mobile-control-row {
+        gap: 9px;
+      }
+
+      body.state-selection-open
+      .mobile-state-context + .controls
+      #mobileFilterToggle,
+      body.state-selection-open
+      .mobile-state-context + .controls
+      #refreshButton {
+        min-height: 48px;
+      }
+
+      body.state-selection-open .alerts-panel {
+        margin-top: 12px;
+      }
+    }
+
+    /* Mobile affected-area chip polish */
+
+    @media (max-width: 820px) {
+      .detail-area-accordion[open]
+      .detail-accordion-body {
+        display: block;
+        min-height: 0;
+        padding: 14px 16px 17px;
+        text-align: left;
+      }
+
+      .detail-area-chips {
+        display: flex;
+        width: 100%;
+        align-items: flex-start;
+        align-content: flex-start;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .detail-area-chip {
+        display: inline-flex;
+        flex: 0 1 auto;
+        width: auto;
+        min-width: 0;
+        min-height: 34px;
+        max-width: 100%;
+        align-items: center;
+        justify-content: center;
+        margin: 0;
+        padding: 8px 12px;
+        border: 1px solid rgba(88, 183, 255, 0.3);
+        border-radius: 999px;
+        background: rgba(88, 183, 255, 0.1);
+        color: #eaf6ff;
+        font: inherit;
+        font-size: 0.73rem;
+        font-weight: 800;
+        line-height: 1.15;
+        overflow-wrap: anywhere;
+        text-align: center;
+        white-space: normal;
+      }
+
+      button.detail-area-chip {
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .detail-area-chip.is-more {
+        border-style: dashed;
+        border-color: rgba(145, 196, 255, 0.38);
+        background: rgba(145, 196, 255, 0.055);
+        color: #9fc9ec;
+      }
+
+      .detail-area-chip.is-more:active {
+        background: rgba(88, 183, 255, 0.14);
+      }
+
+      .detail-area-chip.is-empty {
+        color: #9fb0c3;
+        font-weight: 750;
+      }
+
+      .detail-area-chip[hidden] {
+        display: none !important;
+      }
+
+      .detail-area-chips.is-expanded
+      .detail-area-chip.is-overflow {
+        display: inline-flex !important;
+      }
+    }
+
+    /* Mobile affected-area height fix */
+
+    @media (max-width: 820px) {
+      .detail-area-accordion,
+      .detail-area-accordion[open] {
+        min-height: 0 !important;
+        height: auto !important;
+      }
+
+      .detail-area-accordion[open]
+      .detail-accordion-body {
+        display: block !important;
+        min-height: 0 !important;
+        height: auto !important;
+        padding: 14px 16px 17px !important;
+        align-items: flex-start !important;
+        justify-content: flex-start !important;
+      }
+
+      .detail-area-accordion
+      .detail-area-chips {
+        min-height: 0 !important;
+        height: auto !important;
+        margin: 0 !important;
+      }
+
+      .detail-area-accordion[open]
+      .detail-area-chips:empty {
+        display: none;
+      }
+    }
 </style>
 </head>
 <body>
@@ -1798,7 +2638,13 @@
       </aside>
     </section>
 
-    <section class="controls" aria-label="Alert controls">
+        <div
+      class="mobile-state-context"
+      id="mobileStateContext"
+      aria-live="polite"
+      hidden
+    ></div>
+<section class="controls" aria-label="Alert controls">
       <input class="search" id="searchInput" type="search" placeholder="Search county, city, office, or event..." autocomplete="off">
       <button
         class="mobile-filter-toggle"
@@ -1942,6 +2788,8 @@
     const stateFilterGroup = document.getElementById("stateFilterGroup");
     const clearFiltersButton = document.getElementById("clearFiltersButton");
     const alertSummary = document.getElementById("alertSummary");
+    const mobileStateContext =
+      document.getElementById("mobileStateContext");
     const alertsGrid = document.getElementById("alertsGrid");
     const alertDetailPanel = document.getElementById("alertDetailPanel");
 
@@ -2130,7 +2978,7 @@
       return liveFeatures
         .filter((feature) => !isExpired(feature))
         .filter((feature) => matchesType(feature, type))
-        .filter((feature) => activeState === "all" || statesForFeature(feature).includes(activeState))
+        .filter((feature) => featureMatchesActiveState(feature))
         .filter((feature) => !query || searchableText(feature).includes(query))
         .sort((a, b) => {
           const rankDiff = severityRank(a) - severityRank(b);
@@ -2232,7 +3080,7 @@
         .filter((feature) => !query || searchableText(feature).includes(query));
 
       const stateScopedFeatures = searchedFeatures.filter(
-        (feature) => activeState === "all" || statesForFeature(feature).includes(activeState)
+        (feature) => featureMatchesActiveState(feature)
       );
 
       eventChips.innerHTML = EVENT_FILTERS.map(({ value, label }) => {
@@ -2539,15 +3387,15 @@
 
       if (!areas.length) {
         return `
-          <span class="detail-area-chip">
+          <span class="detail-area-chip is-empty">
             Area not listed
           </span>
         `;
       }
 
       const visibleAreas = areas.slice(0, 8);
-      const remaining =
-        areas.length - visibleAreas.length;
+      const hiddenAreas = areas.slice(8);
+      const remaining = hiddenAreas.length;
 
       return `
         ${visibleAreas.map((area) => `
@@ -2556,10 +3404,24 @@
           </span>
         `).join("")}
 
-        ${remaining > 0 ? `
-          <span class="detail-area-chip">
-            +${remaining} more
+        ${hiddenAreas.map((area) => `
+          <span
+            class="detail-area-chip is-overflow"
+            hidden
+          >
+            ${escapeHtml(area)}
           </span>
+        `).join("")}
+
+        ${remaining > 0 ? `
+          <button
+            class="detail-area-chip is-more"
+            type="button"
+            data-area-more
+            aria-expanded="false"
+          >
+            +${remaining} more
+          </button>
         ` : ""}
       `;
     }
@@ -2831,7 +3693,7 @@
             </details>
           ` : ""}
 
-          <details class="detail-accordion">
+          <details class="detail-accordion detail-area-accordion">
             <summary>Affected Areas</summary>
 
             <div class="detail-accordion-body">
@@ -2874,6 +3736,265 @@
       `;
     }
 
+    const MOBILE_STATE_NAMES = Object.freeze({
+      AL: "Alabama",
+      AK: "Alaska",
+      AZ: "Arizona",
+      AR: "Arkansas",
+      CA: "California",
+      CO: "Colorado",
+      CT: "Connecticut",
+      DE: "Delaware",
+      FL: "Florida",
+      GA: "Georgia",
+      HI: "Hawaii",
+      ID: "Idaho",
+      IL: "Illinois",
+      IN: "Indiana",
+      IA: "Iowa",
+      KS: "Kansas",
+      KY: "Kentucky",
+      LA: "Louisiana",
+      ME: "Maine",
+      MD: "Maryland",
+      MA: "Massachusetts",
+      MI: "Michigan",
+      MN: "Minnesota",
+      MS: "Mississippi",
+      MO: "Missouri",
+      MT: "Montana",
+      NE: "Nebraska",
+      NV: "Nevada",
+      NH: "New Hampshire",
+      NJ: "New Jersey",
+      NM: "New Mexico",
+      NY: "New York",
+      NC: "North Carolina",
+      ND: "North Dakota",
+      OH: "Ohio",
+      OK: "Oklahoma",
+      OR: "Oregon",
+      PA: "Pennsylvania",
+      RI: "Rhode Island",
+      SC: "South Carolina",
+      SD: "South Dakota",
+      TN: "Tennessee",
+      TX: "Texas",
+      UT: "Utah",
+      VT: "Vermont",
+      VA: "Virginia",
+      WA: "Washington",
+      WV: "West Virginia",
+      WI: "Wisconsin",
+      WY: "Wyoming",
+      DC: "District of Columbia",
+      PR: "Puerto Rico",
+      VI: "U.S. Virgin Islands",
+      GU: "Guam",
+      MP: "Northern Mariana Islands",
+      AS: "American Samoa"
+    });
+
+    function isMobileAlertsView() {
+      return window.matchMedia("(max-width: 820px)").matches;
+    }
+
+    function recognizedStatesForFeature(feature) {
+      return statesForFeature(feature).filter(
+        (state) => Boolean(MOBILE_STATE_NAMES[state])
+      );
+    }
+
+    function featureMatchesActiveState(feature) {
+      if (activeState === "all") {
+        return true;
+      }
+
+      if (activeState === "other") {
+        return recognizedStatesForFeature(feature).length === 0;
+      }
+
+      return statesForFeature(feature).includes(activeState);
+    }
+
+    function mobileStateDisplayName(state) {
+      if (state === "other") {
+        return "National & Marine";
+      }
+
+      return MOBILE_STATE_NAMES[state] || state;
+    }
+
+    function mobileStateTone(features) {
+      if (features.some((feature) => matchesType(feature, "warnings"))) {
+        return "tone-warning";
+      }
+
+      if (features.some((feature) => matchesType(feature, "watches"))) {
+        return "tone-watch";
+      }
+
+      if (features.some((feature) => matchesType(feature, "advisories"))) {
+        return "tone-advisory";
+      }
+
+      return "tone-statement";
+    }
+
+    function mobileStateGroups(features) {
+      const groups = new Map();
+
+      features.forEach((feature) => {
+        const recognizedStates =
+          recognizedStatesForFeature(feature);
+
+        const stateKeys = recognizedStates.length
+          ? recognizedStates
+          : ["other"];
+
+        stateKeys.forEach((state) => {
+          if (!groups.has(state)) {
+            groups.set(state, []);
+          }
+
+          groups.get(state).push(feature);
+        });
+      });
+
+      return [...groups.entries()]
+        .map(([state, stateFeatures]) => ({
+          state,
+          features: stateFeatures,
+          count: stateFeatures.length,
+          name: mobileStateDisplayName(state),
+          tone: mobileStateTone(stateFeatures)
+        }))
+        .sort((a, b) => {
+          const countDifference = b.count - a.count;
+
+          if (countDifference) {
+            return countDifference;
+          }
+
+          return a.name.localeCompare(b.name);
+        });
+    }
+
+    function renderMobileStateOverview(features) {
+      const groups = mobileStateGroups(features);
+
+      const actualStateCount = groups.filter(
+        (group) => group.state !== "other"
+      ).length;
+
+      const hasOtherGroup = groups.some(
+        (group) => group.state === "other"
+      );
+
+      const stateLabel =
+        `${actualStateCount} ` +
+        `${actualStateCount === 1 ? "state" : "states"}` +
+        `${hasOtherGroup ? " + national/coastal" : ""}`;
+
+      const alertLabel =
+        `${features.length} active ` +
+        `${features.length === 1 ? "alert" : "alerts"}`;
+
+      const rows = groups.map((group) => {
+        const abbreviation =
+          group.state === "other"
+            ? "US"
+            : group.state;
+
+        const countLabel =
+          `${group.count} ` +
+          `${group.count === 1 ? "alert" : "alerts"}`;
+
+        return `
+          <button
+            class="mobile-state-row ${group.tone}"
+            type="button"
+            data-level1-state="${escapeHtml(group.state)}"
+            aria-label="Open ${escapeHtml(group.name)}, ${escapeHtml(countLabel)}"
+          >
+            <span class="mobile-state-name">
+              <strong>
+                ${escapeHtml(group.name)}
+                <small>${escapeHtml(abbreviation)}</small>
+              </strong>
+            </span>
+
+            <span class="mobile-state-count">
+              ${escapeHtml(countLabel)}
+            </span>
+
+            <span class="mobile-state-arrow" aria-hidden="true">
+              &rsaquo;
+            </span>
+          </button>
+        `;
+      }).join("");
+
+      return `
+        <section
+          class="mobile-state-overview"
+          aria-labelledby="mobileStateOverviewTitle"
+        >
+          <header class="mobile-state-overview-head">
+            <div class="mobile-state-overview-copy">
+
+              <h2
+                class="mobile-state-overview-title"
+                id="mobileStateOverviewTitle"
+              >
+                Alerts by State
+              </h2>
+
+              <span class="mobile-state-overview-meta">
+                ${escapeHtml(stateLabel)}
+                &bull;
+                ${escapeHtml(alertLabel)}
+              </span>
+            </div>
+
+          </header>
+
+          <div class="mobile-state-list">
+            ${rows}
+          </div>
+
+          <footer class="mobile-state-overview-note">
+            Counts include all active alerts matching the current
+            search and alert filters. Multi-state alerts appear in
+            each affected state.
+          </footer>
+        </section>
+      `;
+    }
+
+    function renderMobileStateSelection(state, count) {
+      const name = mobileStateDisplayName(state);
+
+      const countLabel =
+        `${count} ${count === 1 ? "alert" : "alerts"}`;
+
+      return `
+        <section class="mobile-state-selection">
+          <button
+            class="mobile-state-back"
+            type="button"
+            data-level1-back
+          >
+            &lsaquo; States
+          </button>
+
+          <div class="mobile-state-selection-copy">
+            <strong>${escapeHtml(name)}</strong>
+            <small>${escapeHtml(countLabel)}</small>
+          </div>
+        </section>
+      `;
+    }
     function render() {
       renderFilterChips();
 
@@ -2884,6 +4005,54 @@
       geometryCountEl.textContent = String(geometryCount);
       updateSummary(features);
 
+      const mobileStateOverviewActive =
+        isMobileAlertsView() && activeState === "all";
+
+      document.body.classList.toggle(
+        "state-overview-open",
+        mobileStateOverviewActive
+      );
+
+      const mobileSelectedStateActive =
+        isMobileAlertsView() && activeState !== "all";
+
+      document.body.classList.toggle(
+        "state-selection-open",
+        mobileSelectedStateActive
+      );
+
+      if (mobileStateContext) {
+        mobileStateContext.hidden =
+          !mobileSelectedStateActive;
+
+        mobileStateContext.innerHTML =
+          mobileSelectedStateActive
+            ? renderMobileStateSelection(
+                activeState,
+                features.length
+              )
+            : "";
+      }
+
+      searchInput.placeholder =
+        mobileSelectedStateActive
+          ? `Search alerts in ${mobileStateDisplayName(activeState)}...`
+          : "Search county, city, office, or event...";
+
+      if (mobileFilterStatus && mobileSelectedStateActive) {
+        const selectedTypeValue =
+          typeFilter.value || "all";
+
+        const selectedTypeLabel =
+          EVENT_FILTERS.find(
+            ({ value }) => value === selectedTypeValue
+          )?.label || "All";
+
+        mobileFilterStatus.textContent =
+          selectedTypeValue === "all"
+            ? "All types"
+            : selectedTypeLabel;
+      }
       if (!features.length) {
         alertsGrid.innerHTML = `
           <div class="empty">
@@ -2898,10 +4067,22 @@
         return;
       }
 
+      if (mobileStateOverviewActive) {
+        selectedAlertId = "";
+        renderAlertDetail(null);
+        document.body.classList.remove("detail-open");
+
+        alertsGrid.innerHTML =
+          renderMobileStateOverview(features);
+
+        return;
+      }
+
       const selectedFeature = selectedFeatureFrom(features);
       renderAlertDetail(selectedFeature);
 
-      alertsGrid.innerHTML = features.map((feature) => {
+      alertsGrid.innerHTML =
+        features.map((feature) => {
         const props = feature.properties || {};
         const event = props.event || "NWS Alert";
         const area = props.areaDesc || "Area not listed";
@@ -2936,7 +4117,9 @@
                   ${escapeHtml(expires)}
                 </span>
                 <span class="badge">${escapeHtml(geometry)}</span>
-                ${states.length ? `<span class="badge">${escapeHtml(states.join(", "))}</span>` : ""}
+                ${states.length ? `<span class="badge state-badge">
+                  ${escapeHtml(states.join(", "))}
+                </span>` : ""}
               </div>
             </div>
           </article>
@@ -3230,8 +4413,68 @@
       }
     }
 
+    mobileStateContext?.addEventListener("click", (event) => {
+      if (!event.target.closest("[data-level1-back]")) {
+        return;
+      }
+
+      activeState = "all";
+      selectedAlertId = "";
+
+      document.body.classList.remove("detail-open");
+
+      render();
+
+      window.requestAnimationFrame(() => {
+        document.querySelector(".alerts-panel")
+          ?.scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+          });
+      });
+    });
     alertsGrid.addEventListener("click", (event) => {
-      openAlertCard(event.target.closest("[data-alert-id]"));
+      const stateChoice =
+        event.target.closest("[data-level1-state]");
+
+      if (stateChoice) {
+        activeState =
+          stateChoice.dataset.level1State || "all";
+
+        selectedAlertId = "";
+        setMobileFiltersOpen(false);
+        render();
+
+        window.requestAnimationFrame(() => {
+          mobileStateContext?.scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+          });
+        });
+
+        return;
+      }
+
+      if (event.target.closest("[data-level1-back]")) {
+        activeState = "all";
+        selectedAlertId = "";
+        document.body.classList.remove("detail-open");
+        render();
+
+        window.requestAnimationFrame(() => {
+          document.querySelector(".alerts-panel")
+            ?.scrollIntoView({
+              behavior: "smooth",
+              block: "start"
+            });
+        });
+
+        return;
+      }
+
+      openAlertCard(
+        event.target.closest("[data-alert-id]")
+      );
     });
 
     alertsGrid.addEventListener("keydown", (event) => {
@@ -3244,6 +4487,31 @@
       openAlertCard(card);
     });
 
+    alertDetailPanel.addEventListener("click", (event) => {
+      const moreButton =
+        event.target.closest("[data-area-more]");
+
+      if (!moreButton) {
+        return;
+      }
+
+      const chipGroup =
+        moreButton.closest(".detail-area-chips");
+
+      if (!chipGroup) {
+        return;
+      }
+
+      chipGroup
+        .querySelectorAll(".detail-area-chip.is-overflow")
+        .forEach((chip) => {
+          chip.hidden = false;
+        });
+
+      chipGroup.classList.add("is-expanded");
+      moreButton.setAttribute("aria-expanded", "true");
+      moreButton.remove();
+    });
     alertDetailPanel.addEventListener("click", (event) => {
       if (!event.target.closest("[data-close-detail]")) return;
 

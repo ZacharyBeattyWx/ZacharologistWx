@@ -11507,6 +11507,221 @@ body {
   }
 }
 </style>
+<script src="mapbox-token.js"></script>
+<style id="active-alert-location-search-css">
+/* Active Alerts location search */
+
+.alerts-location-check {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  body.mobile-alerts-page
+  .forecast-dashboard
+  .alerts-location-check {
+    display: grid !important;
+    gap: 11px;
+    margin: 0 0 14px;
+    padding: 15px;
+    border: 1px solid rgba(112, 196, 255, 0.2);
+    border-radius: 18px;
+    background:
+      linear-gradient(
+        145deg,
+        rgba(7, 24, 43, 0.96),
+        rgba(9, 31, 53, 0.86)
+      );
+    box-shadow:
+      0 16px 34px rgba(0, 0, 0, 0.2);
+  }
+
+  .alerts-location-heading {
+    display: grid;
+    gap: 4px;
+  }
+
+  .alerts-location-heading strong {
+    color: #f1f8ff;
+    font-size: 0.95rem;
+    font-weight: 900;
+  }
+
+  .alerts-location-heading span {
+    color: #91a8bd;
+    font-size: 0.69rem;
+    line-height: 1.42;
+  }
+
+  .alerts-location-form {
+    display: grid;
+    gap: 9px;
+  }
+
+  .alerts-location-input-row {
+    display: grid;
+    grid-template-columns:
+      minmax(0, 1fr)
+      auto;
+    gap: 8px;
+  }
+
+  .alerts-location-input {
+    width: 100%;
+    min-width: 0;
+    min-height: 46px;
+    padding: 10px 13px;
+    border: 1px solid rgba(126, 190, 235, 0.26);
+    border-radius: 13px;
+    outline: none;
+    background: rgba(3, 12, 24, 0.82);
+    color: #eef8ff;
+    font: inherit;
+    font-size: 0.79rem;
+    font-weight: 750;
+  }
+
+  .alerts-location-input::placeholder {
+    color: #7f91a5;
+  }
+
+  .alerts-location-input:focus {
+    border-color: rgba(77, 190, 255, 0.78);
+    box-shadow:
+      0 0 0 3px rgba(77, 190, 255, 0.1);
+  }
+
+  .alerts-location-submit,
+  .alerts-location-gps,
+  .alerts-location-clear {
+    border: 1px solid rgba(82, 190, 255, 0.34);
+    border-radius: 13px;
+    background: rgba(58, 155, 225, 0.11);
+    color: #e6f6ff;
+    font: inherit;
+    font-size: 0.74rem;
+    font-weight: 900;
+    cursor: pointer;
+  }
+
+  .alerts-location-submit {
+    min-height: 46px;
+    padding: 0 15px;
+    border-color: rgba(0, 208, 132, 0.5);
+    background: rgba(0, 208, 132, 0.13);
+    color: #dcffef;
+  }
+
+  .alerts-location-gps {
+    width: 100%;
+    min-height: 43px;
+  }
+
+  .alerts-location-status-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .alerts-location-status {
+    min-width: 0;
+    color: #93a8bc;
+    font-size: 0.66rem;
+    line-height: 1.35;
+  }
+
+  .alerts-location-clear {
+    flex: 0 0 auto;
+    min-height: 30px;
+    padding: 0 10px;
+    border-radius: 10px;
+  }
+
+  .alerts-location-form.is-loading {
+    opacity: 0.76;
+  }
+
+  .alerts-location-form :disabled {
+    cursor: progress;
+    opacity: 0.68;
+  }
+
+  body.homepage-location-results-open
+  .forecast-dashboard
+  .alerts-card
+  .alert-tabs-wrapper {
+    display: none !important;
+  }
+
+  body.homepage-location-results-open
+  .forecast-dashboard
+  .alerts-card
+  .live-alerts-feed-link {
+    display: none !important;
+  }
+
+  body.homepage-location-results-open
+  #alertsList
+  .state-alert-dropdown,
+  body.homepage-location-results-open
+  #alertsList
+  .state-alert-group {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+  }
+
+  body.homepage-location-results-open
+  #alertsList
+  .state-alert-dropdown > summary,
+  body.homepage-location-results-open
+  #alertsList
+  .state-alert-group > summary {
+    display: none !important;
+  }
+
+  body.homepage-location-results-open
+  #alertsList
+  .ro-alert-card {
+    margin-bottom: 10px !important;
+  }
+
+  .homepage-location-empty {
+    display: grid;
+    justify-items: center;
+    gap: 8px;
+    padding: 28px 16px;
+    border: 1px solid rgba(0, 208, 132, 0.25);
+    border-radius: 18px;
+    background: rgba(0, 208, 132, 0.055);
+    text-align: center;
+  }
+
+  .homepage-location-empty-icon {
+    display: grid;
+    width: 46px;
+    height: 46px;
+    place-items: center;
+    border: 1px solid rgba(0, 208, 132, 0.5);
+    border-radius: 50%;
+    color: #75f0b6;
+    font-size: 1.25rem;
+    font-weight: 900;
+  }
+
+  .homepage-location-empty strong {
+    color: #eafff5;
+    font-size: 0.92rem;
+  }
+
+  .homepage-location-empty span:last-child {
+    color: #98adbf;
+    font-size: 0.72rem;
+  }
+}
+</style>
 </head>
 
 <body>
@@ -11800,6 +12015,73 @@ body {
 
   <article class="dashboard-card mini-card alerts-card">
     <h2 id="alertsTitle">Active Alerts</h2>
+
+    <section
+      class="alerts-location-check"
+      data-homepage-location-search
+      aria-label="Check alerts for a location"
+    >
+      <div class="alerts-location-heading">
+        <strong>Check alerts for a location</strong>
+        <span>
+          Enter a city, ZIP code, or address to see alerts
+          affecting that exact point.
+        </span>
+      </div>
+
+      <form
+        class="alerts-location-form"
+        data-homepage-location-form
+      >
+        <div class="alerts-location-input-row">
+          <input
+            class="alerts-location-input"
+            type="search"
+            inputmode="search"
+            autocomplete="street-address"
+            placeholder="City, ZIP, or address..."
+            aria-label="City, ZIP code, or address"
+            data-homepage-location-query
+          >
+
+          <button
+            class="alerts-location-submit"
+            type="submit"
+          >
+            Check
+          </button>
+        </div>
+
+        <button
+          class="alerts-location-gps"
+          type="button"
+          data-homepage-use-location
+        >
+          Use My Location
+        </button>
+      </form>
+
+      <div class="alerts-location-status-row">
+        <span
+          class="alerts-location-status"
+          data-homepage-location-status
+          role="status"
+          aria-live="polite"
+        >
+          Search for the alerts affecting one location.
+        </span>
+
+        <button
+          class="alerts-location-clear"
+          type="button"
+          data-homepage-location-clear
+          hidden
+        >
+          Clear
+        </button>
+      </div>
+    </section>
+
     <a class="live-alerts-feed-link" href="live-alerts.html">Open Live Alerts Feed</a>
 
     <div class="alert-tabs-wrapper">
@@ -12150,6 +12432,10 @@ let alertGlowTimer = null;
 let openDropdownStates = [];
 let dropdownMemory = {};
 let isFetchingAlerts = false;
+
+let locationHomepageAlerts = null;
+let locationHomepageLabel = "";
+let locationHomepageCoordinates = null;
 
 function getExpiresText(expires) {
   if (!expires) return "Unknown";
@@ -12851,6 +13137,636 @@ function mergeHomepageAlertFeatures(snapshotFeatures, liveFeatures) {
 }
 
 
+/* Active Alerts location search */
+
+function homepageLocationFormElement() {
+  return document.querySelector(
+    "[data-homepage-location-form]"
+  );
+}
+
+function homepageLocationStatusElement() {
+  return document.querySelector(
+    "[data-homepage-location-status]"
+  );
+}
+
+function homepageLocationClearElement() {
+  return document.querySelector(
+    "[data-homepage-location-clear]"
+  );
+}
+
+function homepageMapboxToken() {
+  return String(
+    window.MAPBOX_PUBLIC_TOKEN || ""
+  ).trim();
+}
+
+function setHomepageLocationBusy(
+  busy,
+  message
+) {
+  const form = homepageLocationFormElement();
+
+  if (form) {
+    form.classList.toggle(
+      "is-loading",
+      Boolean(busy)
+    );
+
+    form
+      .querySelectorAll("input, button")
+      .forEach((control) => {
+        control.disabled = Boolean(busy);
+      });
+  }
+
+  const status =
+    homepageLocationStatusElement();
+
+  if (status && message) {
+    status.textContent = message;
+  }
+}
+
+function homepageLocationFeatureLabel(
+  feature,
+  fallback
+) {
+  const props = feature?.properties || {};
+
+  const directLabel =
+    props.full_address ||
+    props.name_preferred ||
+    props.name ||
+    feature?.place_name ||
+    "";
+
+  const contextLabel =
+    props.place_formatted ||
+    props.context?.place?.name ||
+    "";
+
+  if (directLabel && contextLabel) {
+    const directText =
+      String(directLabel).toLowerCase();
+
+    const contextText =
+      String(contextLabel).toLowerCase();
+
+    if (!directText.includes(contextText)) {
+      return `${directLabel}, ${contextLabel}`;
+    }
+  }
+
+  return (
+    directLabel ||
+    contextLabel ||
+    fallback ||
+    "Selected location"
+  );
+}
+
+function homepageLocationCoordinates(feature) {
+  const props = feature?.properties || {};
+
+  const longitude = Number(
+    props.coordinates?.longitude ??
+    feature?.geometry?.coordinates?.[0]
+  );
+
+  const latitude = Number(
+    props.coordinates?.latitude ??
+    feature?.geometry?.coordinates?.[1]
+  );
+
+  if (
+    !Number.isFinite(latitude) ||
+    !Number.isFinite(longitude)
+  ) {
+    throw new Error(
+      "The selected location did not contain valid coordinates."
+    );
+  }
+
+  return {
+    latitude,
+    longitude
+  };
+}
+
+async function geocodeHomepageAlertLocation(
+  query
+) {
+  const token = homepageMapboxToken();
+
+  if (!token) {
+    throw new Error(
+      "Location search is unavailable because the Mapbox token was not loaded."
+    );
+  }
+
+  const url = new URL(
+    "https://api.mapbox.com/search/geocode/v6/forward"
+  );
+
+  url.searchParams.set("q", query);
+  url.searchParams.set("country", "us");
+  url.searchParams.set("language", "en");
+  url.searchParams.set("limit", "1");
+  url.searchParams.set("autocomplete", "false");
+  url.searchParams.set(
+    "access_token",
+    token
+  );
+
+  const response = await fetch(url, {
+    cache: "no-store"
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Location lookup failed with status ${response.status}.`
+    );
+  }
+
+  const data = await response.json();
+  const feature = data?.features?.[0];
+
+  if (!feature) {
+    throw new Error(
+      "No matching United States location was found."
+    );
+  }
+
+  return {
+    ...homepageLocationCoordinates(feature),
+    label: homepageLocationFeatureLabel(
+      feature,
+      query
+    )
+  };
+}
+
+async function reverseGeocodeHomepageLocation(
+  latitude,
+  longitude
+) {
+  const token = homepageMapboxToken();
+
+  if (!token) {
+    return "Your location";
+  }
+
+  const url = new URL(
+    "https://api.mapbox.com/search/geocode/v6/reverse"
+  );
+
+  url.searchParams.set(
+    "latitude",
+    String(latitude)
+  );
+
+  url.searchParams.set(
+    "longitude",
+    String(longitude)
+  );
+
+  url.searchParams.set("country", "us");
+  url.searchParams.set("language", "en");
+  url.searchParams.set(
+    "types",
+    "address,street,postcode,place"
+  );
+
+  url.searchParams.set("limit", "1");
+
+  url.searchParams.set(
+    "access_token",
+    token
+  );
+
+  try {
+    const response = await fetch(url, {
+      cache: "no-store"
+    });
+
+    if (!response.ok) {
+      return "Your location";
+    }
+
+    const data = await response.json();
+    const feature = data?.features?.[0];
+
+    return feature
+      ? homepageLocationFeatureLabel(
+          feature,
+          "Your location"
+        )
+      : "Your location";
+  } catch {
+    return "Your location";
+  }
+}
+
+function normalizeHomepagePointAlert(
+  feature,
+  index
+) {
+  if (
+    !feature ||
+    feature.type !== "Feature"
+  ) {
+    return null;
+  }
+
+  const properties =
+    feature.properties || {};
+
+  const event =
+    String(properties.event || "").trim();
+
+  if (
+    !event ||
+    isExpiredHomepageAlert(feature)
+  ) {
+    return null;
+  }
+
+  const alertId =
+    canonicalHomepageAlertId(feature) ||
+    `homepage-point-alert-${index}`;
+
+  return {
+    ...feature,
+    id: alertId,
+    properties: {
+      ...properties,
+      id: properties.id || alertId,
+      _alertId: alertId,
+      _locationPointResult: true
+    }
+  };
+}
+
+async function fetchHomepageAlertsForPoint(
+  latitude,
+  longitude
+) {
+  const url = new URL(
+    "https://api.weather.gov/alerts/active"
+  );
+
+  url.searchParams.set(
+    "point",
+    `${latitude.toFixed(4)},${longitude.toFixed(4)}`
+  );
+
+  const response = await fetch(url, {
+    cache: "no-store",
+    headers: {
+      Accept:
+        "application/geo+json, application/json"
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `NWS alert lookup failed with status ${response.status}.`
+    );
+  }
+
+  const data = await response.json();
+
+  const normalized = (
+    Array.isArray(data?.features)
+      ? data.features
+      : []
+  )
+    .map(normalizeHomepagePointAlert)
+    .filter(Boolean);
+
+  const deduplicated = new Map();
+
+  normalized.forEach((alert) => {
+    const key =
+      canonicalHomepageAlertId(alert) ||
+      String(alert.id || "");
+
+    if (key) {
+      deduplicated.set(key, alert);
+    }
+  });
+
+  return [...deduplicated.values()];
+}
+
+function findHomepageAlertById(alertId) {
+  const targetId = String(alertId || "");
+
+  const sources = [
+    ...(Array.isArray(locationHomepageAlerts)
+      ? locationHomepageAlerts
+      : []),
+    ...allHomepageAlerts
+  ];
+
+  return sources.find((alert) => {
+    const directId =
+      String(alert?.id || "");
+
+    const canonicalId =
+      String(
+        canonicalHomepageAlertId(alert) || ""
+      );
+
+    return (
+      directId === targetId ||
+      canonicalId === targetId
+    );
+  });
+}
+
+function renderHomepageLocationAlerts() {
+  if (!Array.isArray(locationHomepageAlerts)) {
+    return;
+  }
+
+  const count =
+    locationHomepageAlerts.length;
+
+  const countText =
+    `${count} active ` +
+    `${count === 1 ? "alert" : "alerts"}`;
+
+  document.body.classList.add(
+    "homepage-location-results-open"
+  );
+
+  const alertsCard =
+    document.querySelector(".alerts-card");
+
+  alertsCard?.classList.add(
+    "location-active"
+  );
+
+  const status =
+    homepageLocationStatusElement();
+
+  if (status) {
+    status.textContent =
+      count > 0
+        ? `${countText} affect ${locationHomepageLabel}.`
+        : `No active alerts affect ${locationHomepageLabel}.`;
+  }
+
+  const clearButton =
+    homepageLocationClearElement();
+
+  if (clearButton) {
+    clearButton.hidden = false;
+  }
+
+  if (!count) {
+    alertsList.innerHTML = `
+      <div class="homepage-location-empty">
+        <span class="homepage-location-empty-icon">
+          &#10003;
+        </span>
+
+        <strong>
+          No active alerts affect this location
+        </strong>
+
+        <span>
+          ${escapeAlertChipText(
+            locationHomepageLabel
+          )}
+        </span>
+      </div>
+    `;
+
+    return;
+  }
+
+  renderCompactAlerts(
+    locationHomepageAlerts,
+    "location"
+  );
+
+  requestAnimationFrame(() => {
+    alertsList
+      .querySelectorAll(
+        ".state-alert-dropdown, .state-alert-group"
+      )
+      .forEach((details) => {
+        details.open = true;
+      });
+  });
+}
+
+async function showHomepageAlertsForLocation(
+  latitude,
+  longitude,
+  label
+) {
+  const pointAlerts =
+    await fetchHomepageAlertsForPoint(
+      latitude,
+      longitude
+    );
+
+  locationHomepageAlerts = pointAlerts;
+
+  locationHomepageLabel =
+    String(label || "Selected location");
+
+  locationHomepageCoordinates = {
+    latitude,
+    longitude
+  };
+
+  renderHomepageLocationAlerts();
+
+  setHomepageLocationBusy(
+    false,
+    pointAlerts.length
+      ? `${pointAlerts.length} active ${
+          pointAlerts.length === 1
+            ? "alert affects"
+            : "alerts affect"
+        } ${locationHomepageLabel}.`
+      : `No active alerts affect ${locationHomepageLabel}.`
+  );
+
+  const queryInput = document.querySelector(
+    "[data-homepage-location-query]"
+  );
+
+  if (queryInput) {
+    queryInput.value =
+      locationHomepageLabel;
+  }
+
+  requestAnimationFrame(() => {
+    alertsList?.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+  });
+}
+
+async function runHomepageLocationSearch(
+  query
+) {
+  const normalizedQuery =
+    String(query || "").trim();
+
+  if (!normalizedQuery) {
+    throw new Error(
+      "Enter a city, ZIP code, or address."
+    );
+  }
+
+  setHomepageLocationBusy(
+    true,
+    "Finding this location..."
+  );
+
+  const result =
+    await geocodeHomepageAlertLocation(
+      normalizedQuery
+    );
+
+  setHomepageLocationBusy(
+    true,
+    "Checking active NWS alerts..."
+  );
+
+  await showHomepageAlertsForLocation(
+    result.latitude,
+    result.longitude,
+    result.label
+  );
+}
+
+function getHomepageBrowserLocation() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(
+        new Error(
+          "Location services are unavailable in this browser."
+        )
+      );
+
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      resolve,
+      (error) => {
+        if (error.code === 1) {
+          reject(
+            new Error(
+              "Location permission was denied."
+            )
+          );
+
+          return;
+        }
+
+        reject(
+          new Error(
+            "Your location could not be determined."
+          )
+        );
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 12000,
+        maximumAge: 300000
+      }
+    );
+  });
+}
+
+async function runHomepageCurrentLocationSearch() {
+  setHomepageLocationBusy(
+    true,
+    "Getting your location..."
+  );
+
+  const position =
+    await getHomepageBrowserLocation();
+
+  const latitude =
+    position.coords.latitude;
+
+  const longitude =
+    position.coords.longitude;
+
+  setHomepageLocationBusy(
+    true,
+    "Checking active NWS alerts..."
+  );
+
+  const label =
+    await reverseGeocodeHomepageLocation(
+      latitude,
+      longitude
+    );
+
+  await showHomepageAlertsForLocation(
+    latitude,
+    longitude,
+    label
+  );
+}
+
+function clearHomepageLocationSearch() {
+  locationHomepageAlerts = null;
+  locationHomepageLabel = "";
+  locationHomepageCoordinates = null;
+
+  document.body.classList.remove(
+    "homepage-location-results-open"
+  );
+
+  const alertsCard =
+    document.querySelector(".alerts-card");
+
+  alertsCard?.classList.remove(
+    "location-active"
+  );
+
+  const clearButton =
+    homepageLocationClearElement();
+
+  if (clearButton) {
+    clearButton.hidden = true;
+  }
+
+  const status =
+    homepageLocationStatusElement();
+
+  if (status) {
+    status.textContent =
+      "Search for the alerts affecting one location.";
+  }
+
+  const queryInput = document.querySelector(
+    "[data-homepage-location-query]"
+  );
+
+  if (queryInput) {
+    queryInput.value = "";
+  }
+
+  renderCategory(
+    currentCategory || "storm"
+  );
+}
 async function fetchHomepageAlerts() {
 
   if (isFetchingAlerts) return;
@@ -12970,7 +13886,12 @@ try {
 updateTabAlertStates();
 
 currentCategory = currentCategory || "storm";
-renderCategory(currentCategory);
+
+if (Array.isArray(locationHomepageAlerts)) {
+  renderHomepageLocationAlerts();
+} else {
+  renderCategory(currentCategory);
+}
 
   } catch (error) {
     console.error("NWS alert loading error:", error);
@@ -13019,6 +13940,72 @@ document.querySelectorAll(".alert-tabs button").forEach(button => {
   });
 });
 
+const homepageLocationForm =
+  homepageLocationFormElement();
+
+homepageLocationForm?.addEventListener(
+  "submit",
+  (event) => {
+    event.preventDefault();
+
+    const input =
+      homepageLocationForm.querySelector(
+        "[data-homepage-location-query]"
+      );
+
+    runHomepageLocationSearch(
+      input?.value || ""
+    ).catch((error) => {
+      console.error(
+        "Active Alerts location search failed",
+        error
+      );
+
+      setHomepageLocationBusy(
+        false,
+        error.message ||
+          "The location could not be checked."
+      );
+    });
+  }
+);
+
+document
+  .querySelector(
+    "[data-homepage-use-location]"
+  )
+  ?.addEventListener("click", () => {
+    runHomepageCurrentLocationSearch()
+      .catch((error) => {
+        console.error(
+          "Active Alerts current-location search failed",
+          error
+        );
+
+        setHomepageLocationBusy(
+          false,
+          error.message ||
+            "Your location could not be checked."
+        );
+      });
+  });
+
+document.addEventListener(
+  "click",
+  (event) => {
+    const clearButton =
+      event.target.closest(
+        "[data-homepage-location-clear]"
+      );
+
+    if (!clearButton) {
+      return;
+    }
+
+    event.preventDefault();
+    clearHomepageLocationSearch();
+  }
+);
 function handleDetailsButtonTap(event) {
   const btn = event.target.closest(".compact-details-btn");
   if (!btn) return;
@@ -13027,7 +14014,7 @@ function handleDetailsButtonTap(event) {
   event.stopPropagation();
 
   const alertId = btn.dataset.alertId;
-  const alert = allHomepageAlerts.find(a => a.id === alertId);
+  const alert = findHomepageAlertById(alertId);
 
   if (!alert) {
     console.warn("No alert found for details button:", alertId);
@@ -13135,7 +14122,7 @@ function getAlertPolygonLatLngs(alert) {
 }
 
 async function openRadarForAlert(alertId, mode = "raw") {
-  const alert = allHomepageAlerts.find(item => item.id === alertId);
+  const alert = findHomepageAlertById(alertId);
 
   if (!alert) {
     console.warn("No alert found for radar button:", alertId);
