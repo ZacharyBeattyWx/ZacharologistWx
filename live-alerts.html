@@ -2759,6 +2759,585 @@
         padding: 0 14px;
       }
     }
+
+    /* Desktop progressive alerts flow */
+
+    .overview-category-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0 0 14px;
+    }
+
+    .overview-category-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 42px;
+      border: 1px solid rgba(145, 196, 255, 0.2);
+      border-radius: 14px;
+      background: rgba(5, 13, 25, 0.56);
+      color: var(--muted);
+      padding: 9px 12px;
+      font: inherit;
+      font-size: 0.78rem;
+      font-weight: 900;
+      cursor: pointer;
+      transition:
+        border-color 150ms ease,
+        background 150ms ease,
+        color 150ms ease,
+        transform 150ms ease;
+    }
+
+    .overview-category-button:hover {
+      border-color: rgba(88, 183, 255, 0.56);
+      color: var(--text);
+      transform: translateY(-1px);
+    }
+
+    .overview-category-button strong {
+      color: var(--blue);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .overview-category-button.is-active {
+      border-color: rgba(88, 183, 255, 0.7);
+      background: rgba(40, 124, 190, 0.26);
+      color: #f5fbff;
+      box-shadow: 0 0 22px rgba(88, 183, 255, 0.1);
+    }
+
+    .overview-state-empty {
+      grid-column: 1 / -1;
+      padding: 32px 18px;
+      border: 1px dashed rgba(145, 196, 255, 0.2);
+      border-radius: 16px;
+      color: var(--muted);
+      text-align: center;
+      font-weight: 800;
+    }
+
+    /* Desktop state results cleanup */
+
+    @media (min-width: 821px) {
+      /*
+       * The alert cards contain both full and compact area text.
+       * Results mode should display only the compact version.
+       */
+
+      body.alert-results-open
+      .alert-card
+      .area-full {
+        display: none !important;
+      }
+
+      body.alert-results-open
+      .alert-card
+      .area-compact {
+        display: block !important;
+      }
+
+      /*
+       * State context is already shown above the results, so repeating
+       * the same state on every card and in the filter conveyor adds
+       * unnecessary clutter.
+       */
+
+      body.single-state-results
+      #stateFilterGroup {
+        display: none !important;
+      }
+
+      body.single-state-results
+      .alert-card
+      .state-badge {
+        display: none !important;
+      }
+
+      /*
+       * The event count pills repeat the information already available
+       * in the event filter row.
+       */
+
+      body.alert-results-open
+      .alert-summary {
+        display: none !important;
+      }
+    }
+
+    @media (min-width: 821px) {
+      .hero {
+        grid-template-columns:
+          minmax(0, 1fr)
+          minmax(320px, 0.48fr);
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+
+      .hero-card {
+        padding: 20px 22px;
+      }
+
+      .hero-card h1 {
+        font-size: clamp(2.25rem, 4vw, 3.25rem);
+        line-height: 0.98;
+      }
+
+      .hero-card p {
+        max-width: 68ch;
+        margin-top: 12px;
+        line-height: 1.5;
+      }
+
+      .status-card {
+        padding: 14px;
+        gap: 9px;
+      }
+
+      .metric {
+        padding: 12px;
+      }
+
+      .metric strong {
+        font-size: 1.65rem;
+      }
+
+      body.state-overview-open
+      .status-card
+      .connection:last-child {
+        display: none;
+      }
+
+      body.state-overview-open .controls,
+      body.state-overview-open .filter-stack,
+      body.state-overview-open .alert-summary {
+        display: none;
+      }
+
+      body.state-overview-open .alerts-panel {
+        min-height: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+        backdrop-filter: none;
+      }
+
+      body.state-overview-open .alerts-layout {
+        display: block;
+        min-height: 0;
+      }
+
+      body.state-overview-open .alerts-grid {
+        display: block;
+        max-height: none;
+        overflow: visible;
+        padding-right: 0;
+      }
+
+      body.state-overview-open .alert-detail-panel {
+        display: none;
+      }
+
+      .mobile-state-overview {
+        padding: 22px;
+        border: 1px solid rgba(145, 196, 255, 0.2);
+        border-radius: 24px;
+        background:
+          radial-gradient(
+            circle at top left,
+            rgba(88, 183, 255, 0.12),
+            transparent 28rem
+          ),
+          rgba(10, 24, 43, 0.82);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(18px);
+      }
+
+      .mobile-state-overview-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 18px;
+        margin-bottom: 16px;
+      }
+
+      .mobile-state-overview-title {
+        margin: 0;
+        font-size: 1.55rem;
+        letter-spacing: -0.04em;
+      }
+
+      .mobile-state-overview-meta {
+        display: block;
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 0.82rem;
+        font-weight: 800;
+      }
+
+      .mobile-location-check {
+        display: grid;
+        grid-template-columns:
+          minmax(220px, 0.72fr)
+          minmax(360px, 1.28fr)
+          auto;
+        gap: 12px;
+        align-items: center;
+        margin-bottom: 18px;
+        padding: 16px;
+        border: 1px solid rgba(0, 208, 132, 0.24);
+        border-radius: 18px;
+        background:
+          linear-gradient(
+            135deg,
+            rgba(0, 208, 132, 0.1),
+            rgba(9, 28, 43, 0.34)
+          );
+      }
+
+      .mobile-location-check-heading {
+        min-width: 0;
+      }
+
+      .mobile-location-check-heading strong {
+        display: block;
+        color: var(--text);
+        font-size: 1rem;
+        margin-bottom: 4px;
+      }
+
+      .mobile-location-check-heading span {
+        display: block;
+        color: var(--muted);
+        font-size: 0.78rem;
+        line-height: 1.4;
+      }
+
+      .mobile-location-check-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px;
+      }
+
+      .mobile-location-input {
+        width: 100%;
+        min-width: 0;
+        border: 1px solid rgba(145, 196, 255, 0.24);
+        border-radius: 14px;
+        background: rgba(5, 13, 25, 0.7);
+        color: var(--text);
+        padding: 12px 13px;
+        font: inherit;
+        font-weight: 750;
+        outline: none;
+      }
+
+      .mobile-location-submit,
+      .mobile-location-gps {
+        border: 1px solid rgba(0, 208, 132, 0.38);
+        border-radius: 14px;
+        background: rgba(0, 208, 132, 0.14);
+        color: #d9fff0;
+        padding: 11px 15px;
+        font: inherit;
+        font-size: 0.8rem;
+        font-weight: 900;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+
+      .mobile-location-gps {
+        min-height: 44px;
+      }
+
+      .mobile-location-status {
+        grid-column: 2 / -1;
+        color: var(--muted);
+        font-size: 0.74rem;
+      }
+
+      .mobile-state-list {
+        display: grid;
+        grid-template-columns:
+          repeat(
+            auto-fit,
+            minmax(260px, 1fr)
+          );
+        gap: 9px;
+      }
+
+      .mobile-state-row {
+        display: grid;
+        grid-template-columns:
+          minmax(0, 1fr)
+          auto
+          18px;
+        gap: 10px;
+        align-items: center;
+        min-height: 58px;
+        border: 1px solid rgba(145, 196, 255, 0.17);
+        border-radius: 16px;
+        background: rgba(5, 13, 25, 0.54);
+        color: var(--text);
+        padding: 11px 13px;
+        text-align: left;
+        font: inherit;
+        cursor: pointer;
+        transition:
+          transform 150ms ease,
+          border-color 150ms ease,
+          background 150ms ease;
+      }
+
+      .mobile-state-row:hover {
+        transform: translateY(-1px);
+        border-color: rgba(88, 183, 255, 0.5);
+        background: rgba(15, 38, 65, 0.76);
+      }
+
+      .mobile-state-name strong {
+        display: flex;
+        align-items: baseline;
+        gap: 7px;
+        min-width: 0;
+        font-size: 0.9rem;
+      }
+
+      .mobile-state-name small {
+        color: var(--blue);
+        font-size: 0.68rem;
+        letter-spacing: 0.08em;
+      }
+
+      .mobile-state-count {
+        color: var(--muted);
+        font-size: 0.75rem;
+        font-weight: 850;
+        white-space: nowrap;
+      }
+
+      .mobile-state-arrow {
+        color: var(--blue);
+        font-size: 1.25rem;
+      }
+
+      .mobile-state-overview-note {
+        margin-top: 14px;
+        color: rgba(155, 178, 200, 0.78);
+        font-size: 0.72rem;
+        line-height: 1.45;
+      }
+
+      .mobile-state-context:not([hidden]) {
+        display: block;
+        margin-bottom: 12px;
+      }
+
+      .mobile-state-selection {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        min-height: 62px;
+        padding: 12px 16px;
+        border: 1px solid rgba(145, 196, 255, 0.2);
+        border-radius: 18px;
+        background: rgba(10, 24, 43, 0.8);
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+      }
+
+      .mobile-state-back {
+        flex: 0 0 auto;
+        border: 1px solid rgba(88, 183, 255, 0.3);
+        border-radius: 999px;
+        background: rgba(88, 183, 255, 0.1);
+        color: #eaf7ff;
+        padding: 9px 13px;
+        font: inherit;
+        font-size: 0.78rem;
+        font-weight: 900;
+        cursor: pointer;
+      }
+
+      .mobile-state-selection-copy {
+        min-width: 0;
+      }
+
+      .mobile-state-selection-copy strong {
+        display: block;
+        font-size: 1rem;
+      }
+
+      .mobile-state-selection-copy small {
+        display: block;
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 0.76rem;
+      }
+
+      body.alert-results-open:not(.detail-open)
+      .alerts-layout {
+        grid-template-columns: 1fr;
+      }
+
+      body.alert-results-open:not(.detail-open)
+      .alert-detail-panel {
+        display: none;
+      }
+
+      body.alert-results-open:not(.detail-open)
+      .alerts-grid {
+        grid-template-columns:
+          repeat(
+            2,
+            minmax(0, 1fr)
+          );
+      }
+
+      body.alert-results-open.detail-open
+      .alerts-layout {
+        grid-template-columns:
+          minmax(320px, 0.85fr)
+          minmax(360px, 1.15fr);
+      }
+    }
+
+    @media (min-width: 821px) and (max-width: 1040px) {
+      .mobile-location-check {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .mobile-location-check-heading {
+        grid-column: 1 / -1;
+      }
+
+      .mobile-location-status {
+        grid-column: 1 / -1;
+      }
+    }
+
+    /* Desktop alerts final polish */
+
+    .detail-close-label {
+      display: none;
+    }
+
+    .overview-national-marine {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-top: 14px;
+      padding: 13px 14px;
+      border: 1px solid rgba(88, 183, 255, 0.22);
+      border-radius: 16px;
+      background:
+        linear-gradient(
+          135deg,
+          rgba(88, 183, 255, 0.1),
+          rgba(8, 20, 36, 0.66)
+        );
+    }
+
+    .overview-national-marine-copy {
+      min-width: 0;
+    }
+
+    .overview-national-marine-copy strong {
+      display: block;
+      color: var(--text);
+      font-size: 0.9rem;
+    }
+
+    .overview-national-marine-copy span {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 0.74rem;
+      line-height: 1.4;
+    }
+
+    .overview-national-marine-button {
+      display: inline-flex;
+      flex: 0 0 auto;
+      align-items: center;
+      gap: 6px;
+      min-height: 40px;
+      border: 1px solid rgba(88, 183, 255, 0.32);
+      border-radius: 999px;
+      background: rgba(88, 183, 255, 0.11);
+      color: #eaf7ff;
+      padding: 8px 12px;
+      font: inherit;
+      font-size: 0.76rem;
+      font-weight: 850;
+      cursor: pointer;
+    }
+
+    .overview-national-marine-button strong {
+      color: var(--blue);
+      font-size: 0.9rem;
+    }
+
+    @media (min-width: 821px) {
+      body.detail-open .detail-close {
+        position: sticky !important;
+        z-index: 20;
+        top: 0 !important;
+        right: auto !important;
+        bottom: auto !important;
+        left: auto !important;
+        display: inline-flex !important;
+        width: max-content;
+        min-width: 0;
+        min-height: 38px;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        margin:
+          0
+          0
+          12px
+          auto;
+        padding: 8px 12px;
+        border: 1px solid rgba(145, 196, 255, 0.3);
+        border-radius: 999px;
+        background: rgba(7, 20, 36, 0.96);
+        color: var(--text);
+        box-shadow:
+          0 8px 24px rgba(0, 0, 0, 0.32);
+        font: inherit;
+        font-size: 0.76rem;
+        font-weight: 900;
+        cursor: pointer;
+        backdrop-filter: blur(16px);
+      }
+
+      body.detail-open
+      .detail-close:hover {
+        border-color: rgba(88, 183, 255, 0.62);
+        background: rgba(18, 44, 73, 0.98);
+      }
+
+      body.detail-open
+      .detail-close-label {
+        display: inline;
+      }
+    }
+
+    @media (max-width: 820px) {
+      .overview-national-marine {
+        align-items: flex-start;
+        padding: 12px;
+      }
+
+      .overview-national-marine-button {
+        min-height: 38px;
+        padding: 8px 10px;
+      }
+    }
 </style>
   <script src="mapbox-token.js"></script>
 </head>
@@ -2777,11 +3356,11 @@
 
     <section class="hero">
       <div class="hero-card">
-        <p class="eyebrow">Live NWWS-OI Feed</p>
-        <h1>Live Alerts</h1>
+        <p class="eyebrow">Live NWS Alert Network</p>
+        <h1>Active Alerts</h1>
         <p>
-          Real-time weather alerts delivered directly from the Zacharologist Wx live alert network.
-          Browse active warnings, watches, advisories, and statements as they are issued.
+          Check alerts for a specific location or browse active warnings,
+          watches, advisories, and statements by state.
         </p>
       </div>
 
@@ -2792,7 +3371,7 @@
             <strong id="totalCount">0</strong>
           </div>
           <div class="metric">
-            <span>With Geometry</span>
+            <span>Affected States</span>
             <strong id="geometryCount">0</strong>
           </div>
         </div>
@@ -3851,14 +4430,16 @@
 
 
     function selectedFeatureFrom(features) {
-      if (!features.length) return null;
+      if (!features.length || !selectedAlertId) {
+        return null;
+      }
 
-      const selected = features.find((feature) => feature.id === selectedAlertId);
-
-      if (selected) return selected;
-
-      selectedAlertId = features[0].id;
-      return features[0];
+      return (
+        features.find(
+          (feature) =>
+            feature.id === selectedAlertId
+        ) || null
+      );
     }
 
     function expiryUrgencyClass(expiresValue) {
@@ -4265,7 +4846,13 @@
           data-close-detail
           aria-label="Close alert details"
         >
-          &times;
+          <span aria-hidden="true">
+            &times;
+          </span>
+
+          <span class="detail-close-label">
+            Close Details
+          </span>
         </button>
 
         <div class="detail-desktop-content">
@@ -4555,24 +5142,79 @@
     function renderMobileStateOverview(features) {
       const groups = mobileStateGroups(features);
 
-      const actualStateCount = groups.filter(
-        (group) => group.state !== "other"
-      ).length;
+      const stateGroups =
+        groups.filter(
+          (group) =>
+            group.state !== "other"
+        );
 
-      const hasOtherGroup = groups.some(
-        (group) => group.state === "other"
-      );
+      const nationalMarineGroup =
+        groups.find(
+          (group) =>
+            group.state === "other"
+        ) || null;
+
+      const actualStateCount =
+        stateGroups.length;
 
       const stateLabel =
         `${actualStateCount} ` +
-        `${actualStateCount === 1 ? "state" : "states"}` +
-        `${hasOtherGroup ? " + national/coastal" : ""}`;
+        `${actualStateCount === 1 ? "state" : "states"}`;
 
       const alertLabel =
         `${features.length} active ` +
         `${features.length === 1 ? "alert" : "alerts"}`;
 
-      const rows = groups.map((group) => {
+      const overviewFilterValues = [
+        "all",
+        "warnings",
+        "watches",
+        "storm",
+        "hydro",
+        "fire",
+        "heat"
+      ];
+
+      const overviewSourceFeatures =
+        activeFeatureSource()
+          .filter(
+            (feature) => !isExpired(feature)
+          );
+
+      const overviewFiltersHtml =
+        overviewFilterValues
+          .map((value) => {
+            const label =
+              EVENT_FILTERS.find(
+                (entry) =>
+                  entry.value === value
+              )?.label || value;
+
+            const count =
+              overviewSourceFeatures.filter(
+                (feature) =>
+                  matchesType(feature, value)
+              ).length;
+
+            const active =
+              (typeFilter.value || "all") ===
+              value;
+
+            return `
+              <button
+                class="overview-category-button${active ? " is-active" : ""}"
+                type="button"
+                data-overview-filter="${escapeHtml(value)}"
+                aria-pressed="${active}"
+              >
+                <span>${escapeHtml(label)}</span>
+                <strong>${count}</strong>
+              </button>
+            `;
+          })
+          .join("");
+
+      const rows = stateGroups.map((group) => {
         const abbreviation =
           group.state === "other"
             ? "US"
@@ -4607,6 +5249,39 @@
         `;
       }).join("");
 
+      const nationalMarineHtml =
+        nationalMarineGroup
+          ? `
+            <section class="overview-national-marine">
+              <div class="overview-national-marine-copy">
+                <strong>National &amp; Marine Alerts</strong>
+
+                <span>
+                  Coastal, offshore, marine, and national products
+                </span>
+              </div>
+
+              <button
+                class="overview-national-marine-button"
+                type="button"
+                data-level1-state="other"
+                aria-label="Open National and Marine alerts"
+              >
+                <strong>
+                  ${nationalMarineGroup.count}
+                </strong>
+
+                <span>
+                  ${nationalMarineGroup.count === 1 ? "alert" : "alerts"}
+                </span>
+
+                <span aria-hidden="true">
+                  &rsaquo;
+                </span>
+              </button>
+            </section>
+          `
+          : "";
       return `
         <section
           class="mobile-state-overview"
@@ -4630,6 +5305,14 @@
             </div>
 
           </header>
+
+          <div
+            class="overview-category-strip"
+            role="group"
+            aria-label="Alert category overview"
+          >
+            ${overviewFiltersHtml}
+          </div>
 
           <form
             class="mobile-location-check"
@@ -4683,8 +5366,21 @@
             </span>
           </form>
           <div class="mobile-state-list">
-            ${rows}
+            ${
+              rows ||
+              (
+                !nationalMarineHtml
+                  ? `
+                    <div class="overview-state-empty">
+                      No active alerts match this category.
+                    </div>
+                  `
+                  : ""
+              )
+            }
           </div>
+
+          ${nationalMarineHtml}
 
           <footer class="mobile-state-overview-note">
             Counts include all active alerts matching the current
@@ -4708,7 +5404,7 @@
             type="button"
             data-level1-back
           >
-            &lsaquo; States
+            &lsaquo; Overview
           </button>
 
           <div class="mobile-state-selection-copy">
@@ -4947,14 +5643,23 @@
       renderFilterChips();
 
       const features = filteredFeatures();
-      const geometryCount = liveFeatures.filter(hasGeometry).length;
 
-      totalCountEl.textContent = String(liveFeatures.length);
-      geometryCountEl.textContent = String(geometryCount);
+      const affectedStateCount =
+        mobileStateGroups(liveFeatures)
+          .filter(
+            (group) =>
+              group.state !== "other"
+          ).length;
+
+      totalCountEl.textContent =
+        String(liveFeatures.length);
+
+      geometryCountEl.textContent =
+        String(affectedStateCount);
+
       updateSummary(features);
 
       const mobileStateOverviewActive =
-        isMobileAlertsView() &&
         activeState === "all" &&
         !Array.isArray(locationAlertFeatures) &&
         !selectedAlertId;
@@ -4964,12 +5669,20 @@
         mobileStateOverviewActive
       );
 
+      document.body.classList.toggle(
+        "alert-results-open",
+        !mobileStateOverviewActive
+      );
+
+      document.body.classList.toggle(
+        "single-state-results",
+        activeState !== "all"
+      );
+
       const mobileSelectedStateActive =
-        isMobileAlertsView() &&
         activeState !== "all";
 
       const mobileLocationResultsActive =
-        isMobileAlertsView() &&
         Array.isArray(locationAlertFeatures);
 
       const mobileContextActive =
@@ -5047,6 +5760,19 @@
 
         return;
       }
+      if (mobileStateOverviewActive) {
+        selectedAlertId = "";
+        renderAlertDetail(null);
+        document.body.classList.remove(
+          "detail-open"
+        );
+
+        alertsGrid.innerHTML =
+          renderMobileStateOverview(features);
+
+        return;
+      }
+
       if (!features.length) {
         alertsGrid.innerHTML = `
           <div class="empty">
@@ -5056,24 +5782,26 @@
             </div>
           </div>
         `;
-        renderAlertDetail(null);
-        document.body.classList.remove("detail-open");
-        return;
-      }
 
-      if (mobileStateOverviewActive) {
-        selectedAlertId = "";
         renderAlertDetail(null);
-        document.body.classList.remove("detail-open");
 
-        alertsGrid.innerHTML =
-          renderMobileStateOverview(features);
+        document.body.classList.remove(
+          "detail-open"
+        );
 
         return;
       }
 
-      const selectedFeature = selectedFeatureFrom(features);
+      const selectedFeature =
+        selectedFeatureFrom(features);
+
       renderAlertDetail(selectedFeature);
+
+      if (!selectedFeature) {
+        document.body.classList.remove(
+          "detail-open"
+        );
+      }
 
       alertsGrid.innerHTML =
         features.map((feature) => {
@@ -5358,14 +6086,30 @@
 
     searchInput.addEventListener("input", scheduleRender);
 
-    typeFilter.addEventListener("change", render);
+    typeFilter.addEventListener("change", () => {
+      selectedAlertId = "";
+
+      document.body.classList.remove(
+        "detail-open"
+      );
+
+      render();
+    });
 
     eventChips.addEventListener("click", (event) => {
       const chip = event.target.closest("[data-event-filter]");
 
       if (!chip) return;
 
-      typeFilter.value = chip.dataset.eventFilter || "all";
+      typeFilter.value =
+        chip.dataset.eventFilter || "all";
+
+      selectedAlertId = "";
+
+      document.body.classList.remove(
+        "detail-open"
+      );
+
       render();
     });
 
@@ -5374,8 +6118,15 @@
 
       if (!chip) return;
 
-      activeState = chip.dataset.stateFilter || "all";
+      activeState =
+        chip.dataset.stateFilter || "all";
+
       selectedAlertId = "";
+
+      document.body.classList.remove(
+        "detail-open"
+      );
+
       render();
     });
 
@@ -5397,16 +6148,29 @@
     function openAlertCard(card) {
       if (!card) return;
 
-      selectedAlertId = card.dataset.alertId || "";
+      selectedAlertId =
+        card.dataset.alertId || "";
+
+      document.body.classList.add(
+        "detail-open"
+      );
+
       render();
 
-      if (window.matchMedia("(max-width: 820px)").matches) {
-        document.body.classList.add("detail-open");
+      window.requestAnimationFrame(() => {
+        alertDetailPanel.scrollTop = 0;
 
-        window.requestAnimationFrame(() => {
-          alertDetailPanel.scrollTop = 0;
-        });
-      }
+        if (
+          !window.matchMedia(
+            "(max-width: 820px)"
+          ).matches
+        ) {
+          alertDetailPanel.scrollIntoView({
+            behavior: "smooth",
+            block: "nearest"
+          });
+        }
+      });
     }
 
     mobileStateContext?.addEventListener("click", (event) => {
@@ -5522,6 +6286,28 @@
       }
     );
     alertsGrid.addEventListener("click", (event) => {
+      const overviewFilter =
+        event.target.closest(
+          "[data-overview-filter]"
+        );
+
+      if (overviewFilter) {
+        event.preventDefault();
+
+        typeFilter.value =
+          overviewFilter.dataset.overviewFilter ||
+          "all";
+
+        selectedAlertId = "";
+
+        document.body.classList.remove(
+          "detail-open"
+        );
+
+        render();
+        return;
+      }
+
       const stateChoice =
         event.target.closest("[data-level1-state]");
 
@@ -5601,9 +6387,30 @@
       moreButton.remove();
     });
     alertDetailPanel.addEventListener("click", (event) => {
-      if (!event.target.closest("[data-close-detail]")) return;
+      if (
+        !event.target.closest(
+          "[data-close-detail]"
+        )
+      ) {
+        return;
+      }
 
-      document.body.classList.remove("detail-open");
+      selectedAlertId = "";
+
+      document.body.classList.remove(
+        "detail-open"
+      );
+
+      render();
+
+      window.requestAnimationFrame(() => {
+        document
+          .querySelector(".alerts-panel")
+          ?.scrollIntoView({
+            behavior: "smooth",
+            block: "nearest"
+          });
+      });
     });
 
     document.addEventListener("keydown", (event) => {
