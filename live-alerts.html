@@ -5810,6 +5810,947 @@
           ) !important;
       }
     }
+
+    /* Smoky graphite depth pass */
+
+    body {
+      position: relative;
+
+      background:
+        radial-gradient(
+          ellipse at 14% -4%,
+          rgba(255, 255, 255, 0.075),
+          transparent 34rem
+        ),
+        radial-gradient(
+          ellipse at 84% 4%,
+          rgba(255, 196, 0, 0.04),
+          transparent 31rem
+        ),
+        radial-gradient(
+          ellipse at 50% 92%,
+          rgba(70, 88, 105, 0.075),
+          transparent 42rem
+        ),
+        linear-gradient(
+          145deg,
+          #080b0f,
+          #10151b 45%,
+          #090c10
+        ) !important;
+    }
+
+    /*
+     * Add a faint technical grid behind the page.
+     * It is deliberately neutral and does not color the states.
+     */
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+
+      background-image:
+        linear-gradient(
+          rgba(255, 255, 255, 0.018) 1px,
+          transparent 1px
+        ),
+        linear-gradient(
+          90deg,
+          rgba(255, 255, 255, 0.018) 1px,
+          transparent 1px
+        );
+
+      background-size:
+        34px 34px;
+
+      mask-image:
+        radial-gradient(
+          ellipse at center,
+          black 15%,
+          transparent 82%
+        );
+
+      -webkit-mask-image:
+        radial-gradient(
+          ellipse at center,
+          black 15%,
+          transparent 82%
+        );
+    }
+
+    .page {
+      position: relative;
+      isolation: isolate;
+    }
+
+    /*
+     * Major panels now have a visible hierarchy instead of one
+     * uniform charcoal rectangle.
+     */
+
+    .hero-card {
+      background:
+        radial-gradient(
+          circle at 10% 0%,
+          rgba(255, 255, 255, 0.065),
+          transparent 18rem
+        ),
+        linear-gradient(
+          145deg,
+          #1a2027,
+          #11161c 58%,
+          #0d1116
+        ) !important;
+
+      border-color:
+        rgba(255, 255, 255, 0.18) !important;
+
+      box-shadow:
+        inset 0 1px 0
+        rgba(255, 255, 255, 0.055),
+        0 24px 55px
+        rgba(0, 0, 0, 0.3) !important;
+    }
+
+    .status-card {
+      background:
+        linear-gradient(
+          145deg,
+          #181e25,
+          #10151a
+        ) !important;
+
+      border-color:
+        rgba(255, 255, 255, 0.17) !important;
+
+      box-shadow:
+        inset 0 1px 0
+        rgba(255, 255, 255, 0.045),
+        0 22px 48px
+        rgba(0, 0, 0, 0.28) !important;
+    }
+
+    .alerts-panel {
+      background:
+        radial-gradient(
+          circle at 9% 0%,
+          rgba(255, 255, 255, 0.055),
+          transparent 24rem
+        ),
+        radial-gradient(
+          circle at 92% 12%,
+          rgba(255, 196, 0, 0.025),
+          transparent 22rem
+        ),
+        linear-gradient(
+          145deg,
+          #181e25,
+          #11161c 54%,
+          #0d1217
+        ) !important;
+
+      border-color:
+        rgba(255, 255, 255, 0.18) !important;
+
+      box-shadow:
+        inset 0 1px 0
+        rgba(255, 255, 255, 0.055),
+        0 28px 72px
+        rgba(0, 0, 0, 0.34) !important;
+    }
+
+    .mobile-state-overview {
+      background:
+        linear-gradient(
+          150deg,
+          rgba(24, 30, 37, 0.96),
+          rgba(14, 18, 23, 0.98)
+        ) !important;
+
+      border-color:
+        rgba(255, 255, 255, 0.13) !important;
+
+      box-shadow:
+        inset 0 1px 0
+        rgba(255, 255, 255, 0.04) !important;
+    }
+
+    .mobile-state-overview-title {
+      text-shadow:
+        0 2px 16px
+        rgba(0, 0, 0, 0.42);
+    }
+
+    /*
+     * The location checker becomes an inset tool surface.
+     */
+
+    .mobile-location-check {
+      background:
+        radial-gradient(
+          circle at 0% 0%,
+          rgba(255, 255, 255, 0.045),
+          transparent 18rem
+        ),
+        linear-gradient(
+          145deg,
+          #171d24,
+          #0d1217
+        ) !important;
+
+      border-color:
+        rgba(255, 255, 255, 0.22) !important;
+
+      box-shadow:
+        inset 0 1px 0
+        rgba(255, 255, 255, 0.055),
+        inset 0 -18px 35px
+        rgba(0, 0, 0, 0.13),
+        0 12px 28px
+        rgba(0, 0, 0, 0.17) !important;
+    }
+
+    .mobile-location-input {
+      background:
+        linear-gradient(
+          145deg,
+          #0c1015,
+          #080b0f
+        ) !important;
+
+      box-shadow:
+        inset 0 1px 0
+        rgba(255, 255, 255, 0.025) !important;
+    }
+
+    .mobile-location-submit,
+    .mobile-location-gps {
+      background:
+        linear-gradient(
+          145deg,
+          #151a20,
+          #0b0f13
+        ) !important;
+
+      box-shadow:
+        inset 0 1px 0
+        rgba(255, 255, 255, 0.045) !important;
+    }
+
+    /*
+     * State tiles stay completely neutral, but gain height,
+     * highlights and shadows.
+     */
+
+    .mobile-state-list {
+      gap: 10px;
+    }
+
+    .mobile-state-row {
+      position: relative;
+
+      background:
+        radial-gradient(
+          circle at 0% 0%,
+          rgba(255, 255, 255, 0.035),
+          transparent 10rem
+        ),
+        linear-gradient(
+          145deg,
+          #151a20,
+          #0d1217
+        ) !important;
+
+      border-color:
+        rgba(255, 255, 255, 0.14) !important;
+
+      box-shadow:
+        inset 0 1px 0
+        rgba(255, 255, 255, 0.045),
+        0 8px 18px
+        rgba(0, 0, 0, 0.16) !important;
+
+      transition:
+        transform 150ms ease,
+        border-color 150ms ease,
+        background 150ms ease,
+        box-shadow 150ms ease;
+    }
+
+    .mobile-state-row::before {
+      content: "";
+      position: absolute;
+      top: 7px;
+      bottom: 7px;
+      left: 0;
+      width: 2px;
+      border-radius: 999px;
+
+      background:
+        rgba(255, 255, 255, 0.13);
+
+      opacity:
+        0.6;
+    }
+
+    .mobile-state-row:hover {
+      transform:
+        translateY(-2px);
+
+      background:
+        linear-gradient(
+          145deg,
+          #1d232b,
+          #12171d
+        ) !important;
+
+      border-color:
+        rgba(255, 255, 255, 0.3) !important;
+
+      box-shadow:
+        inset 0 1px 0
+        rgba(255, 255, 255, 0.065),
+        0 13px 27px
+        rgba(0, 0, 0, 0.24) !important;
+    }
+
+    .mobile-state-name strong {
+      color:
+        #f7f7f4;
+    }
+
+    .mobile-state-name small,
+    .mobile-state-count,
+    .mobile-state-arrow {
+      color:
+        #aeb5bd !important;
+    }
+
+    /*
+     * National and Marine gets a distinct neutral footer card.
+     */
+
+    .overview-national-marine {
+      background:
+        radial-gradient(
+          circle at 0% 0%,
+          rgba(255, 255, 255, 0.04),
+          transparent 15rem
+        ),
+        linear-gradient(
+          145deg,
+          #181e25,
+          #10151a
+        ) !important;
+
+      border-color:
+        rgba(255, 255, 255, 0.2) !important;
+
+      box-shadow:
+        inset 0 1px 0
+        rgba(255, 255, 255, 0.05),
+        0 10px 24px
+        rgba(0, 0, 0, 0.18) !important;
+    }
+
+    .overview-national-marine-button {
+      background:
+        linear-gradient(
+          145deg,
+          #1a2027,
+          #10151a
+        ) !important;
+
+      box-shadow:
+        inset 0 1px 0
+        rgba(255, 255, 255, 0.045) !important;
+    }
+
+    .mobile-state-overview-note {
+      margin-top:
+        14px;
+
+      padding-top:
+        14px;
+
+      border-top:
+        1px solid
+        rgba(255, 255, 255, 0.08);
+
+      color:
+        #8e98a3;
+    }
+
+    /*
+     * Results cards use the same smoky-graphite layering.
+     */
+
+    .alert-card {
+      background:
+        radial-gradient(
+          circle at 0% 0%,
+          color-mix(
+            in srgb,
+            var(--accent) 5%,
+            transparent
+          ),
+          transparent 14rem
+        ),
+        linear-gradient(
+          145deg,
+          #171d23,
+          #0e1318
+        ) !important;
+
+      border-color:
+        rgba(255, 255, 255, 0.14) !important;
+
+      box-shadow:
+        inset 0 1px 0
+        rgba(255, 255, 255, 0.04),
+        0 9px 22px
+        rgba(0, 0, 0, 0.18) !important;
+    }
+
+    .alert-card:hover,
+    .alert-card.is-selected {
+      background:
+        radial-gradient(
+          circle at 0% 0%,
+          color-mix(
+            in srgb,
+            var(--accent) 8%,
+            transparent
+          ),
+          transparent 17rem
+        ),
+        linear-gradient(
+          145deg,
+          #202730,
+          #141a20
+        ) !important;
+
+      box-shadow:
+        inset 0 1px 0
+        rgba(255, 255, 255, 0.065),
+        0 15px 32px
+        rgba(0, 0, 0, 0.25) !important;
+    }
+
+    /*
+     * Keep controls neutral, but no longer visually flat.
+     */
+
+    .controls,
+    .mobile-state-selection {
+      background:
+        linear-gradient(
+          145deg,
+          rgba(24, 30, 37, 0.98),
+          rgba(13, 17, 22, 0.98)
+        ) !important;
+
+      box-shadow:
+        inset 0 1px 0
+        rgba(255, 255, 255, 0.045),
+        0 15px 34px
+        rgba(0, 0, 0, 0.22) !important;
+    }
+
+    .filter-chip,
+    .overview-category-button {
+      box-shadow:
+        inset 0 1px 0
+        rgba(255, 255, 255, 0.04) !important;
+    }
+
+    /*
+     * Mobile uses less shadow so the interface stays fast and
+     * does not look excessively embossed.
+     */
+
+    @media (max-width: 820px) {
+      body::before {
+        opacity:
+          0.5;
+
+        background-size:
+          28px 28px;
+      }
+
+      .alerts-panel,
+      .mobile-state-overview {
+        box-shadow:
+          none !important;
+      }
+
+      .mobile-state-row {
+        transform:
+          none !important;
+
+        box-shadow:
+          inset 0 1px 0
+          rgba(255, 255, 255, 0.035) !important;
+      }
+
+      .mobile-state-row::before {
+        display:
+          none;
+      }
+
+      .mobile-location-check {
+        box-shadow:
+          inset 0 1px 0
+          rgba(255, 255, 255, 0.045) !important;
+      }
+
+      .alert-card {
+        box-shadow:
+          inset 0 1px 0
+          rgba(255, 255, 255, 0.035) !important;
+      }
+    }
+
+    /* Branded radar mark and section identity palette */
+
+    /*
+     * Blue/silver radar emblem.
+     */
+
+    .brand-mark {
+      overflow:
+        hidden;
+
+      padding:
+        0;
+
+      background:
+        #03070c !important;
+
+      border-color:
+        rgba(63, 163, 255, 0.58) !important;
+
+      box-shadow:
+        inset 0 0 0 1px
+        rgba(255, 255, 255, 0.08),
+        0 0 20px
+        rgba(40, 145, 255, 0.18) !important;
+    }
+
+    .brand-mark img {
+      display:
+        block;
+
+      width:
+        100%;
+
+      height:
+        100%;
+
+      object-fit:
+        cover;
+
+      transform:
+        scale(1.08);
+    }
+
+    .brand > span:last-child {
+      color:
+        #edf5fc;
+
+      text-shadow:
+        0 0 16px
+        rgba(54, 157, 255, 0.12);
+    }
+
+    /*
+     * Hero/title section: restrained radar blue.
+     */
+
+    .hero-card {
+      border-color:
+        rgba(65, 154, 255, 0.28) !important;
+
+      background:
+        radial-gradient(
+          circle at 84% 22%,
+          rgba(34, 135, 255, 0.13),
+          transparent 20rem
+        ),
+        linear-gradient(
+          145deg,
+          #142231,
+          #101820 58%,
+          #0c1218
+        ) !important;
+
+      box-shadow:
+        inset 3px 0 0
+        rgba(55, 151, 255, 0.82),
+        inset 0 1px 0
+        rgba(255, 255, 255, 0.045),
+        0 24px 55px
+        rgba(0, 0, 0, 0.3) !important;
+    }
+
+    .hero-card .eyebrow {
+      color:
+        #70b8ff !important;
+    }
+
+    /*
+     * Status metrics carry their own restrained identity.
+     */
+
+    .status-main .metric:first-child {
+      border-color:
+        rgba(255, 54, 72, 0.65) !important;
+
+      background:
+        linear-gradient(
+          145deg,
+          rgba(72, 18, 27, 0.64),
+          #12151a
+        ) !important;
+
+      box-shadow:
+        inset 0 1px 0
+        rgba(255, 255, 255, 0.04),
+        0 0 22px
+        rgba(255, 40, 58, 0.07) !important;
+    }
+
+    .status-main .metric:first-child span {
+      color:
+        #ff7e8a !important;
+    }
+
+    .status-main .metric:nth-child(2) {
+      border-color:
+        rgba(28, 205, 137, 0.48) !important;
+
+      background:
+        linear-gradient(
+          145deg,
+          rgba(15, 61, 49, 0.66),
+          #11161a
+        ) !important;
+
+      box-shadow:
+        inset 0 1px 0
+        rgba(255, 255, 255, 0.04),
+        0 0 22px
+        rgba(0, 208, 132, 0.06) !important;
+    }
+
+    .status-main .metric:nth-child(2) span {
+      color:
+        #75dcb6 !important;
+    }
+
+    /*
+     * Main overview: cool slate frame.
+     */
+
+    .alerts-panel,
+    .mobile-state-overview {
+      border-color:
+        rgba(72, 130, 184, 0.25) !important;
+
+      background:
+        radial-gradient(
+          circle at 4% 0%,
+          rgba(64, 143, 214, 0.065),
+          transparent 25rem
+        ),
+        linear-gradient(
+          145deg,
+          #172029,
+          #111820 58%,
+          #0e141a
+        ) !important;
+    }
+
+    /*
+     * Location checker: subtle teal tool identity.
+     */
+
+    .mobile-location-check {
+      border-color:
+        rgba(52, 193, 187, 0.36) !important;
+
+      background:
+        radial-gradient(
+          circle at 2% 0%,
+          rgba(34, 190, 183, 0.11),
+          transparent 18rem
+        ),
+        linear-gradient(
+          145deg,
+          #143033,
+          #101d21 54%,
+          #0c1519
+        ) !important;
+
+      box-shadow:
+        inset 3px 0 0
+        rgba(53, 206, 197, 0.7),
+        inset 0 1px 0
+        rgba(255, 255, 255, 0.045),
+        0 12px 28px
+        rgba(0, 0, 0, 0.18) !important;
+    }
+
+    .mobile-location-check-heading strong {
+      color:
+        #e8fffd !important;
+    }
+
+    .mobile-location-submit {
+      border-color:
+        rgba(52, 205, 197, 0.58) !important;
+
+      color:
+        #dffffc !important;
+    }
+
+    .mobile-location-submit:hover {
+      background:
+        rgba(43, 191, 183, 0.1) !important;
+    }
+
+    /*
+     * State rows stay neutral.
+     */
+
+    .mobile-state-row {
+      border-color:
+        rgba(255, 255, 255, 0.13) !important;
+
+      background:
+        linear-gradient(
+          145deg,
+          #181d23,
+          #10151a
+        ) !important;
+    }
+
+    .mobile-state-row::before {
+      background:
+        linear-gradient(
+          to bottom,
+          rgba(106, 167, 220, 0.4),
+          rgba(255, 255, 255, 0.08)
+        ) !important;
+    }
+
+    /*
+     * National and Marine: muted navy.
+     */
+
+    .overview-national-marine {
+      border-color:
+        rgba(62, 133, 235, 0.38) !important;
+
+      background:
+        radial-gradient(
+          circle at 0% 0%,
+          rgba(48, 126, 236, 0.16),
+          transparent 20rem
+        ),
+        linear-gradient(
+          145deg,
+          #142a48,
+          #101c2c 58%,
+          #0c151f
+        ) !important;
+
+      box-shadow:
+        inset 3px 0 0
+        rgba(62, 139, 255, 0.75),
+        inset 0 1px 0
+        rgba(255, 255, 255, 0.045),
+        0 12px 28px
+        rgba(0, 0, 0, 0.2) !important;
+    }
+
+    .overview-national-marine-copy strong {
+      color:
+        #e7f2ff !important;
+    }
+
+    .overview-national-marine-copy span {
+      color:
+        #9fbbd9 !important;
+    }
+
+    .overview-national-marine-button {
+      border-color:
+        rgba(81, 153, 255, 0.5) !important;
+
+      background:
+        rgba(28, 67, 119, 0.34) !important;
+    }
+
+    /*
+     * Results controls: cool steel rather than another gray block.
+     */
+
+    .controls,
+    .mobile-state-selection {
+      border-color:
+        rgba(94, 136, 173, 0.25) !important;
+
+      background:
+        linear-gradient(
+          145deg,
+          #18232d,
+          #111920
+        ) !important;
+    }
+
+    .mobile-state-back {
+      border-color:
+        rgba(74, 157, 235, 0.42) !important;
+
+      color:
+        #cce8ff !important;
+    }
+
+    /*
+     * Keep every semantic hazard color unchanged.
+     */
+
+    @media (max-width: 820px) {
+      .brand-mark {
+        width:
+          48px !important;
+
+        height:
+          48px !important;
+
+        border-radius:
+          50% !important;
+      }
+
+      .hero-card {
+        box-shadow:
+          inset 3px 0 0
+          rgba(55, 151, 255, 0.82) !important;
+      }
+
+      .mobile-location-check,
+      .overview-national-marine {
+        box-shadow:
+          inset 3px 0 0
+          currentColor,
+          inset 0 1px 0
+          rgba(255, 255, 255, 0.04) !important;
+      }
+
+      .mobile-state-row::before {
+        display:
+          none;
+      }
+    }
+
+    /* Radar emblem size refinement */
+
+    .brand-mark {
+      width:
+        44px !important;
+
+      height:
+        44px !important;
+
+      min-width:
+        44px;
+
+      flex:
+        0 0 44px;
+
+      border-radius:
+        50% !important;
+
+      box-shadow:
+        inset 0 0 0 1px
+        rgba(255, 255, 255, 0.08),
+        0 0 14px
+        rgba(40, 145, 255, 0.16) !important;
+    }
+
+    .brand-mark img {
+      width:
+        100%;
+
+      height:
+        100%;
+
+      object-fit:
+        cover;
+
+      transform:
+        scale(1) !important;
+
+      filter:
+        contrast(1.06)
+        brightness(1.05);
+
+      image-rendering:
+        auto;
+    }
+
+    @media (max-width: 820px) {
+      .brand-mark {
+        width:
+          52px !important;
+
+        height:
+          52px !important;
+
+        min-width:
+          52px;
+
+        flex-basis:
+          52px;
+      }
+    }
+
+    /* Alphabetical states and highlighted totals */
+
+    .mobile-state-count {
+      color:
+        #ffb83e !important;
+
+      font-weight:
+        900 !important;
+
+      letter-spacing:
+        0.015em;
+
+      text-shadow:
+        0 0 12px
+        rgba(255, 184, 62, 0.12);
+    }
+
+    .overview-national-marine-button {
+      color:
+        #ffb83e !important;
+
+      font-weight:
+        900 !important;
+    }
+
+    .mobile-state-name small {
+      color:
+        #aeb7c1 !important;
+
+      font-weight:
+        800;
+    }
 </style>
   <script src="mapbox-token.js"></script>
 </head>
@@ -5817,7 +6758,12 @@
   <main class="page">
     <nav class="topbar" aria-label="Page navigation">
       <a class="brand" href="index.html">
-        <span class="brand-mark">ZW</span>
+        <span class="brand-mark" aria-hidden="true">
+          <img
+            src="assets/zacharologist-wx-radar-mark.png"
+            alt=""
+          >
+        </span>
         <span>Zacharologist Wx</span>
       </a>
       <div class="nav-actions">
@@ -7698,13 +8644,21 @@
           tone: mobileStateTone(stateFeatures)
         }))
         .sort((a, b) => {
-          const countDifference = b.count - a.count;
-
-          if (countDifference) {
-            return countDifference;
+          if (a.state === "other") {
+            return 1;
           }
 
-          return a.name.localeCompare(b.name);
+          if (b.state === "other") {
+            return -1;
+          }
+
+          return a.name.localeCompare(
+            b.name,
+            "en",
+            {
+              sensitivity: "base"
+            }
+          );
         });
     }
 
