@@ -11597,21 +11597,129 @@ function homepageOfficeState(alert) {
   return HOMEPAGE_ALERT_OFFICE_STATES[office] || "";
 }
 
+/* National tropical homepage product support */
 
-function getStateFromAlert(alert) {
-  const geocode = alert.properties?.geocode;
+function isHomepageNationalTropicalAlert(alert) {
+  const properties =
+    alert?.properties || {};
 
-  if (geocode?.UGC?.length) {
-    return geocode.UGC[0].slice(0, 2);
+  const event =
+    String(properties.event || "");
+
+  if (
+    !/(hurricane|tropical storm|storm surge|typhoon)/i
+      .test(event)
+  ) {
+    return false;
   }
 
-  const areaState = homepageAreaDescStates(alert)[0];
+  const identityText = [
+    properties.nwwsProductId,
+    properties.office,
+    properties.senderName,
+    properties.sender,
+    properties.headline,
+    properties.description,
+    properties.identifier,
+    properties._alertId,
+    alert?.id
+  ]
+    .map((value) =>
+      String(value || "").toUpperCase()
+    )
+    .join(" ");
+
+  return (
+    /\bTCV(?:AT|EP|CP)\d\b/
+      .test(identityText) ||
+    /\bKNHC\b/
+      .test(identityText) ||
+    /\bNHC\b/
+      .test(identityText) ||
+    identityText.includes(
+      "NATIONAL HURRICANE CENTER"
+    )
+  );
+}
+
+
+const HOMEPAGE_MARINE_ZONE_PREFIXES =
+  new Set([
+    "AM",
+    "AN",
+    "GM",
+    "LC",
+    "LE",
+    "LH",
+    "LM",
+    "LO",
+    "LS",
+    "PH",
+    "PK",
+    "PM",
+    "PS",
+    "PZ",
+    "SL"
+  ]);
+
+function getStateFromAlert(alert) {
+  const properties =
+    alert?.properties || {};
+
+  const geocode =
+    properties.geocode || {};
+
+  const rawUgcs =
+    geocode.UGC ||
+    geocode.ugc ||
+    properties.UGC ||
+    properties.ugc ||
+    [];
+
+  const ugcs =
+    Array.isArray(rawUgcs)
+      ? rawUgcs
+      : String(rawUgcs || "")
+          .split(/[\s,;]+/)
+          .filter(Boolean);
+
+  const firstUgc =
+    String(ugcs[0] || "")
+      .trim()
+      .toUpperCase();
+
+  const zonePrefix =
+    firstUgc.slice(0, 2);
+
+  if (
+    zonePrefix &&
+    HOMEPAGE_ALERT_STATES.has(zonePrefix)
+  ) {
+    return zonePrefix;
+  }
+
+  if (
+    zonePrefix &&
+    HOMEPAGE_MARINE_ZONE_PREFIXES.has(
+      zonePrefix
+    )
+  ) {
+    return "National / Marine";
+  }
+
+  const areaState =
+    homepageAreaDescStates(alert)[0];
 
   if (areaState) return areaState;
 
-  const officeState = homepageOfficeState(alert);
+  const officeState =
+    homepageOfficeState(alert);
 
   if (officeState) return officeState;
+
+  if (isHomepageNationalTropicalAlert(alert)) {
+    return "National / Marine";
+  }
 
   return "??";
 }
@@ -11651,6 +11759,15 @@ function getAlertColor(event) {
 
   if (event.includes("Red Flag") || event.includes("Fire Weather")) return "#ff5d00";
 
+  if (
+    event.includes("Hurricane") ||
+    event.includes("Tropical Storm") ||
+    event.includes("Storm Surge") ||
+    event.includes("Typhoon")
+  ) {
+    return "#c94f9d";
+  }
+
   return "#58b7ff";
 }
 
@@ -11679,8 +11796,13 @@ function getFilteredAlertsForCategory(category) {
     if (category === "tropical") {
       return [
         "Hurricane Warning",
+        "Hurricane Watch",
         "Tropical Storm Warning",
-        "Storm Surge Warning"
+        "Tropical Storm Watch",
+        "Storm Surge Warning",
+        "Storm Surge Watch",
+        "Typhoon Warning",
+        "Typhoon Watch"
       ].includes(event);
     }
 
@@ -11724,6 +11846,22 @@ function getCompactAlertMetrics(alert) {
   const props = alert.properties || {};
   const params = props.parameters || {};
   const description = props.description || "";
+  const event = String(props.event || "");
+
+  /*
+   * Tropical bulletins often mention the cyclone's intensity,
+   * which is not necessarily the expected wind at every warned
+   * coastal or marine zone. Do not present that as an area impact.
+   */
+  if (
+    /(hurricane|tropical storm|storm surge|typhoon)/i
+      .test(event)
+  ) {
+    return {
+      wind: "—",
+      hail: "—"
+    };
+  }
 
   function formatWindNumber(value) {
     if (!value) return "—";
@@ -11947,7 +12085,15 @@ stateDetails.addEventListener("toggle", () => {
       card.className = "compact-alert-item ro-alert-card";
       card.style.setProperty("--alert-color", alertColor);
       const metrics = getCompactAlertMetrics(alert);
-const areaChips = (props.areaDesc || "Area unavailable")
+const homepageAreaText =
+  props.areaDesc ||
+  (
+    isHomepageNationalTropicalAlert(alert)
+      ? "National Hurricane Center product"
+      : "Area unavailable"
+  );
+
+const areaChips = homepageAreaText
   .split(";")
   .map(area => area.trim())
   .filter(Boolean);
@@ -11964,6 +12110,26 @@ const metaChipsHtml = [
   .join("");
 
 
+
+const radarActionsHtml = hasValidPolygon(alert)
+  ? `
+      <button
+        class="globe-button alert-radar-btn"
+        type="button"
+        data-radar-mode="clean"
+        data-alert-id="${alert.id}">
+        Radar
+      </button>
+
+      <button
+        class="raw-radar-button alert-radar-btn"
+        type="button"
+        data-radar-mode="raw"
+        data-alert-id="${alert.id}">
+        HI-RES
+      </button>
+    `
+  : "";
 
 card.innerHTML = `
   <div class="ro-alert-title-row" style="--alert-color:${alertColor};">
@@ -11996,22 +12162,7 @@ card.innerHTML = `
   </div>
 
   <div class="ro-alert-bottom-row">
-<button
-  class="globe-button alert-radar-btn"
-  type="button"
-  data-radar-mode="clean"
-  data-alert-id="${alert.id}">
-  Radar
-</button>
-
-<button
-  class="raw-radar-button alert-radar-btn"
-  type="button"
-  data-radar-mode="raw"
-  data-alert-id="${alert.id}">
-  HI-RES
-</button>
-
+    ${radarActionsHtml}
 
     <button class="compact-details-btn" data-alert-id="${alert.id}" type="button">
       DETAILS
@@ -12088,13 +12239,43 @@ function homepageAlertParameterValues(parameters, key) {
   return text ? [text] : [];
 }
 
+/* Canonical tropical snapshot and marine grouping */
+
 function canonicalHomepageVtecAlertIdFromValue(value) {
-  const text = String(value || "").trim();
+  const text =
+    String(value || "").trim();
 
   if (!text) return "";
 
-  const match = text.match(/[A-Z]\.[A-Z]{3}\.[A-Z]{4}\.[A-Z]{2}\.[A-Z]\.\d{4}/);
-  return match ? match[0] : "";
+  const liveMatch =
+    text.match(
+      /nwws:([A-Z0-9]{4}):([A-Z]{2})\.([A-Z]):(\d{4})/i
+    );
+
+  if (liveMatch) {
+    return (
+      `nwws:${liveMatch[1].toUpperCase()}:` +
+      `${liveMatch[2].toUpperCase()}.` +
+      `${liveMatch[3].toUpperCase()}:` +
+      `${liveMatch[4]}`
+    );
+  }
+
+  const vtecMatch =
+    text.match(
+      /[A-Z]\.[A-Z]{3}\.([A-Z0-9]{4})\.([A-Z]{2})\.([A-Z])\.(\d{4})/i
+    );
+
+  if (!vtecMatch) {
+    return "";
+  }
+
+  return (
+    `nwws:${vtecMatch[1].toUpperCase()}:` +
+    `${vtecMatch[2].toUpperCase()}.` +
+    `${vtecMatch[3].toUpperCase()}:` +
+    `${vtecMatch[4]}`
+  );
 }
 
 function canonicalHomepageAlertId(alert) {
@@ -12183,7 +12364,13 @@ function normalizeHomepageLiveAlertFeature(feature, index) {
   const event = String(properties.event || "").trim();
 
   if (!event || isExpiredHomepageAlert(feature)) return null;
-  if (!isHomepageAlertInMonitoringArea(feature)) return null;
+
+  if (
+    !isHomepageNationalTropicalAlert(feature) &&
+    !isHomepageAlertInMonitoringArea(feature)
+  ) {
+    return null;
+  }
 
   const alertId =
     canonicalHomepageAlertId(feature) ||
@@ -12331,7 +12518,15 @@ try {
         "High Wind Warning",
         "Dense Fog Advisory",
         "Heat Advisory",
-        "Excessive Heat Warning"
+        "Excessive Heat Warning",
+        "Hurricane Warning",
+        "Hurricane Watch",
+        "Tropical Storm Warning",
+        "Tropical Storm Watch",
+        "Storm Surge Warning",
+        "Storm Surge Watch",
+        "Typhoon Warning",
+        "Typhoon Watch"
       ].includes(event);
     });
 
@@ -17257,7 +17452,3 @@ const threats = [
 </script>
 </body>
 </html>
-
-
-
-

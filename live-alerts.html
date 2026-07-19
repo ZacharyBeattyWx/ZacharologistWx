@@ -6751,6 +6751,150 @@
       font-weight:
         800;
     }
+
+    /* Location results filter clarity */
+
+    /*
+     * A point-specific location search does not need a state filter.
+     * When the point has no alerts, remove every irrelevant control
+     * and show only the compact location result.
+     */
+
+    body.location-results-empty
+    .controls,
+
+    body.location-results-empty
+    .filter-stack,
+
+    body.location-results-empty
+    .alert-summary {
+      display:
+        none !important;
+    }
+
+    body.location-results-empty
+    .alert-detail-panel {
+      display:
+        none !important;
+    }
+
+    body.location-results-empty
+    .alerts-panel,
+
+    body.location-results-empty
+    .alerts-layout,
+
+    body.location-results-empty
+    .alerts-grid {
+      min-height:
+        0 !important;
+    }
+
+    body.location-results-empty
+    .alerts-layout {
+      display:
+        block !important;
+
+      grid-template-columns:
+        minmax(0, 1fr) !important;
+    }
+
+    body.location-results-empty
+    .alerts-panel {
+      padding:
+        16px !important;
+    }
+
+    body.location-results-empty
+    .alerts-grid {
+      padding:
+        0 !important;
+    }
+
+    body.location-results-empty
+    .location-alert-empty {
+      min-height:
+        0 !important;
+
+      padding:
+        24px !important;
+
+      border:
+        1px solid
+        rgba(55, 205, 195, 0.26);
+
+      border-radius:
+        16px;
+
+      background:
+        linear-gradient(
+          145deg,
+          rgba(23, 64, 63, 0.34),
+          rgba(10, 17, 21, 0.96)
+        );
+    }
+
+    body.location-results-open:not(.location-results-empty)
+    .filter-stack
+    .filter-row:first-of-type
+    .filter-label {
+      color:
+        #69ddd5 !important;
+    }
+
+    @media (max-width: 820px) {
+      body.location-results-empty
+      .alerts-panel {
+        padding:
+          12px !important;
+      }
+
+      body.location-results-empty
+      .location-alert-empty {
+        padding:
+          20px 16px !important;
+      }
+    }
+
+    /* National tropical product presentation */
+
+    .badge.national-product {
+      border-color:
+        rgba(201, 79, 157, 0.72) !important;
+
+      background:
+        rgba(201, 79, 157, 0.11) !important;
+
+      color:
+        #ffc4e9 !important;
+
+      box-shadow:
+        0 0 14px
+        rgba(201, 79, 157, 0.1);
+    }
+
+    .national-tropical-bulletin {
+      margin-top:
+        14px;
+    }
+
+    .national-tropical-bulletin
+    .detail-accordion-body {
+      white-space:
+        pre-wrap;
+
+      overflow-wrap:
+        anywhere;
+    }
+
+    .alert-card
+    .badge.national-product {
+      max-width:
+        11rem;
+
+      text-align:
+        center;
+    }
 </style>
   <script src="mapbox-token.js"></script>
 </head>
@@ -7057,6 +7201,217 @@
       return `${Math.max(mins, 1)}m`;
     }
 
+    /* National tropical product presentation */
+
+    function isNationalTropicalProduct(feature) {
+      const props =
+        feature?.properties || {};
+
+      const event =
+        String(props.event || "");
+
+      if (
+        !/(hurricane|tropical storm|storm surge|typhoon)/i
+          .test(event)
+      ) {
+        return false;
+      }
+
+      const identityText = [
+        props.nwwsProductId,
+        props.office,
+        props.senderName,
+        props.sender,
+        props.headline,
+        props.description,
+        props.identifier,
+        props._alertId,
+        feature?.id
+      ]
+        .map((value) =>
+          String(value || "").toUpperCase()
+        )
+        .join(" ");
+
+      return (
+        /\bTCV(?:AT|EP|CP)\d\b/
+          .test(identityText) ||
+        /\bKNHC\b/
+          .test(identityText) ||
+        /\bNHC\b/
+          .test(identityText) ||
+        identityText.includes(
+          "NATIONAL HURRICANE CENTER"
+        )
+      );
+    }
+
+    /* Marine-zone tropical presentation */
+
+    const MARINE_ZONE_PREFIXES =
+      new Set([
+        "AM",
+        "AN",
+        "GM",
+        "LC",
+        "LE",
+        "LH",
+        "LM",
+        "LO",
+        "LS",
+        "PH",
+        "PK",
+        "PM",
+        "PS",
+        "PZ",
+        "SL"
+      ]);
+
+    function marineZoneCodesForFeature(feature) {
+      const props =
+        feature?.properties || {};
+
+      const geocode =
+        props.geocode || {};
+
+      const rawCodes =
+        geocode.UGC ||
+        geocode.ugc ||
+        props.UGC ||
+        props.ugc ||
+        [];
+
+      const codes =
+        Array.isArray(rawCodes)
+          ? rawCodes
+          : String(rawCodes || "")
+              .split(/[\s,;]+/)
+              .filter(Boolean);
+
+      return codes
+        .map((value) =>
+          String(value || "")
+            .trim()
+            .toUpperCase()
+        )
+        .filter(Boolean);
+    }
+
+    function isMarineZoneProduct(feature) {
+      return marineZoneCodesForFeature(feature)
+        .some((code) =>
+          MARINE_ZONE_PREFIXES.has(
+            code.slice(0, 2)
+          )
+        );
+    }
+
+    function displayGeometryForFeature(feature) {
+      if (hasGeometry(feature)) {
+        return feature.geometry.type;
+      }
+
+      if (isNationalTropicalProduct(feature)) {
+        return "National / Marine";
+      }
+
+      if (isMarineZoneProduct(feature)) {
+        return "Marine Zones";
+      }
+
+      return "No geometry";
+    }
+    function displayAreaForFeature(feature) {
+      const rawArea =
+        cleanText(
+          feature?.properties?.areaDesc || ""
+        );
+
+      if (
+        rawArea &&
+        !/^area not listed$/i.test(rawArea)
+      ) {
+        return rawArea;
+      }
+
+      if (isNationalTropicalProduct(feature)) {
+        return (
+          "National / Marine · " +
+          "National Hurricane Center"
+        );
+      }
+
+      return "Area not listed";
+    }
+
+    function displayExpiryForFeature(feature) {
+      const expires =
+        feature?.properties?.expires || "";
+
+      if (expires) {
+        return expiresText(expires);
+      }
+
+      if (isNationalTropicalProduct(feature)) {
+        return "No expiry listed";
+      }
+
+      return "Unknown";
+    }
+
+    function displayHeadlineForFeature(feature) {
+      const props =
+        feature?.properties || {};
+
+      const event =
+        props.event || "NWS Alert";
+
+      const headline =
+        cleanText(props.headline || "");
+
+      const wmoHeader =
+        /^[A-Z]{4}\d{2}\s+K[A-Z]{3}\s+\d{6}$/i;
+
+      if (
+        isNationalTropicalProduct(feature) &&
+        (
+          !headline ||
+          wmoHeader.test(headline)
+        )
+      ) {
+        return (
+          `${event} product from the ` +
+          "National Hurricane Center"
+        );
+      }
+
+      return headline;
+    }
+
+    function displayDescriptionForFeature(feature) {
+      const props =
+        feature?.properties || {};
+
+      const rawDescription =
+        props.description || "";
+
+      if (!isNationalTropicalProduct(feature)) {
+        return rawDescription;
+      }
+
+      const event =
+        String(
+          props.event || "tropical alert"
+        ).toLowerCase();
+
+      return (
+        `The National Hurricane Center has an active ${event} product. ` +
+        "This national bulletin summarizes the coastal extent of " +
+        "tropical cyclone watches and warnings. Review the latest " +
+        "NHC public advisory for precise locations and updates."
+      );
+    }
+
     function eventAccent(event) {
       /* Semantic alert colors */
       const semanticEvent =
@@ -7135,14 +7490,44 @@
       );
     }
 
+    /* Strict alert state code validation */
+
+    const VALID_ALERT_STATE_CODES =
+      new Set([
+        "AL", "AK", "AZ", "AR", "CA",
+        "CO", "CT", "DE", "FL", "GA",
+        "HI", "ID", "IL", "IN", "IA",
+        "KS", "KY", "LA", "ME", "MD",
+        "MA", "MI", "MN", "MS", "MO",
+        "MT", "NE", "NV", "NH", "NJ",
+        "NM", "NY", "NC", "ND", "OH",
+        "OK", "OR", "PA", "RI", "SC",
+        "SD", "TN", "TX", "UT", "VT",
+        "VA", "WA", "WV", "WI", "WY",
+        "DC",
+        "PR",
+        "VI",
+        "GU",
+        "MP",
+        "AS",
+        "FM",
+        "MH",
+        "PW"
+      ]);
+
     function statesForFeature(feature) {
       const props = feature?.properties || {};
       const states = new Set();
 
       const addState = (value) => {
-        const state = String(value || "").trim().toUpperCase();
+        const state =
+          String(value || "")
+            .trim()
+            .toUpperCase();
 
-        if (/^[A-Z]{2}$/.test(state)) {
+        if (
+          VALID_ALERT_STATE_CODES.has(state)
+        ) {
           states.add(state);
         }
       };
@@ -7822,6 +8207,21 @@
 
 
     function renderFilterChips() {
+      const locationModeActive =
+        Array.isArray(locationAlertFeatures);
+
+      const eventFilterLabel =
+        mobileFilterSheet?.querySelector(
+          ".filter-row .filter-label"
+        );
+
+      if (eventFilterLabel) {
+        eventFilterLabel.textContent =
+          locationModeActive
+            ? "Location Alerts"
+            : "Event";
+      }
+
       const query = searchInput.value.trim().toLowerCase();
       const selectedType = typeFilter.value;
 
@@ -7908,7 +8308,12 @@
         })
       ].join("");
 
-      stateFilterGroup.hidden = stateEntries.length === 0 && activeState === "all";
+      stateFilterGroup.hidden =
+        locationModeActive ||
+        (
+          stateEntries.length === 0 &&
+          activeState === "all"
+        );
 
       clearFiltersButton.disabled =
         !searchInput.value &&
@@ -8208,14 +8613,48 @@
         "--detail-accent",
         detailAccent
       );
-      const area = props.areaDesc || "Area not listed";
-      const headline = props.headline || "";
-      const description = props.description || "";
-      const instruction = props.instruction || "";
+      const nationalTropicalProduct =
+        isNationalTropicalProduct(feature);
 
-      const geometry = hasGeometry(feature)
-        ? feature.geometry.type
-        : "No geometry";
+      const marineZoneProduct =
+        isMarineZoneProduct(feature);
+
+      const area =
+        displayAreaForFeature(feature);
+
+      const headline =
+        displayHeadlineForFeature(feature);
+
+      const fullDescription =
+        props.description || "";
+
+      const description =
+        displayDescriptionForFeature(feature);
+
+      const instruction =
+        props.instruction || "";
+
+      const hasAlertGeometry =
+        hasGeometry(feature);
+
+      const geometry =
+        displayGeometryForFeature(feature);
+
+      const geometryBadgeHtml =
+        (
+          nationalTropicalProduct ||
+          marineZoneProduct
+        )
+          ? `
+              <span class="badge national-product">
+                ${escapeHtml(geometry)}
+              </span>
+            `
+          : `
+              <span class="badge">
+                ${escapeHtml(geometry)}
+              </span>
+            `;
 
       const office =
         props.office || "Unknown office";
@@ -8226,7 +8665,13 @@
         "nwws-oi";
 
       const expires =
-        expiresText(props.expires);
+        displayExpiryForFeature(feature);
+
+      const expiryBadgeText =
+        nationalTropicalProduct &&
+        !props.expires
+          ? expires
+          : `Expires ${expires}`;
 
       const expiryClass =
         expiryUrgencyClass(props.expires);
@@ -8246,7 +8691,24 @@
         actionItemsForAlert(instruction);
 
       const hazardItems =
-        hazardItemsForAlert(description);
+        hazardItemsForAlert(fullDescription);
+
+      const fullBulletinHtml =
+        nationalTropicalProduct &&
+        fullDescription &&
+        fullDescription !== description
+          ? `
+              <details
+                class="detail-accordion national-tropical-bulletin"
+              >
+                <summary>Full NHC Bulletin</summary>
+
+                <div class="detail-accordion-body">
+                  ${escapeHtml(fullDescription)}
+                </div>
+              </details>
+            `
+          : "";
 
       const badgesHtml = `
         <div class="badges">
@@ -8255,12 +8717,10 @@
           </span>
 
           <span class="badge expires ${expiryClass}">
-            Expires ${escapeHtml(expires)}
+            ${escapeHtml(expiryBadgeText)}
           </span>
 
-          <span class="badge">
-            ${escapeHtml(geometry)}
-          </span>
+          ${geometryBadgeHtml}
 
           ${states.length
             ? `
@@ -8402,6 +8862,8 @@
             </div>
           ` : ""}
 
+          ${fullBulletinHtml}
+
           ${instruction ? `
             <div class="detail-section">
               <h3>Instruction</h3>
@@ -8439,12 +8901,16 @@
           </section>
 
           <div class="detail-top-actions">
-            <a
-              class="detail-action-link"
-              href="level2-mobile-radar.html?perf=1"
-            >
-              View on Radar
-            </a>
+            ${hasAlertGeometry
+              ? `
+                <a
+                  class="detail-action-link"
+                  href="level2-mobile-radar.html?perf=1"
+                >
+                  View on Radar
+                </a>
+              `
+              : ""}
 
             <button
               class="detail-action-button"
@@ -8477,12 +8943,18 @@
             </div>
           </details>
 
-          ${description ? `
+          ${fullDescription ? `
             <details class="detail-accordion">
-              <summary>Full Description</summary>
+              <summary>
+                ${
+                  nationalTropicalProduct
+                    ? "Full NHC Bulletin"
+                    : "Full Description"
+                }
+              </summary>
 
               <div class="detail-accordion-body">
-                ${escapeHtml(description)}
+                ${escapeHtml(fullDescription)}
               </div>
             </details>
           ` : ""}
@@ -9108,6 +9580,31 @@
       return match;
     }
 
+    /* Alert deep-link category context */
+
+    function deepLinkTypeForFeature(feature) {
+      const preferredTypes = [
+        "tropical",
+        "severe",
+        "hydro",
+        "fire",
+        "heat",
+        "winter",
+        "warnings",
+        "watches",
+        "advisories",
+        "statements"
+      ];
+
+      return (
+        preferredTypes.find(
+          (type) =>
+            matchesType(feature, type)
+        ) ||
+        "all"
+      );
+    }
+
     function applyAlertDeepLink() {
       if (alertDeepLinkHandled) {
         return false;
@@ -9126,7 +9623,9 @@
       locationSearchLabel = "";
 
       searchInput.value = "";
-      typeFilter.value = "all";
+
+      typeFilter.value =
+        deepLinkTypeForFeature(feature);
 
       selectedAlertId =
         feature.id;
@@ -9208,6 +9707,10 @@
       const mobileLocationResultsActive =
         Array.isArray(locationAlertFeatures);
 
+      const mobileLocationResultsEmpty =
+        mobileLocationResultsActive &&
+        locationAlertFeatures.length === 0;
+
       const mobileContextActive =
         mobileSelectedStateActive ||
         mobileLocationResultsActive;
@@ -9220,6 +9723,11 @@
       document.body.classList.toggle(
         "location-results-open",
         mobileLocationResultsActive
+      );
+
+      document.body.classList.toggle(
+        "location-results-empty",
+        mobileLocationResultsEmpty
       );
 
       if (mobileStateContext) {
@@ -9330,13 +9838,28 @@
         features.map((feature) => {
         const props = feature.properties || {};
         const event = props.event || "NWS Alert";
-        const area = props.areaDesc || "Area not listed";
-        const compactArea = compactAreaText(area);
-        const expires = expiresText(props.expires);
+
+        const nationalTropicalProduct =
+          isNationalTropicalProduct(feature);
+
+        const marineZoneProduct =
+          isMarineZoneProduct(feature);
+
+        const area =
+          displayAreaForFeature(feature);
+
+        const compactArea =
+          compactAreaText(area);
+
+        const expires =
+          displayExpiryForFeature(feature);
 
         const expiryClass =
           expiryUrgencyClass(props.expires);
-        const geometry = hasGeometry(feature) ? feature.geometry.type : "No geometry";
+
+        const geometry =
+          displayGeometryForFeature(feature);
+
         const states = statesForFeature(feature);
         const selectedClass = feature.id === selectedAlertId ? " is-selected" : "";
 
@@ -9361,7 +9884,11 @@
                 <span class="badge expires ${expiryClass}">
                   ${escapeHtml(expires)}
                 </span>
-                <span class="badge">${escapeHtml(geometry)}</span>
+                <span
+                  class="badge${nationalTropicalProduct || marineZoneProduct ? " national-product" : ""}"
+                >
+                  ${escapeHtml(geometry)}
+                </span>
                 ${states.length ? `<span class="badge state-badge">
                   ${escapeHtml(states.join(", "))}
                 </span>` : ""}
@@ -9519,12 +10046,12 @@
       const eventName = props.event || "NWS Alert";
 
       const areaText = compactAreaText(
-        props.areaDesc || "Area not listed",
+        displayAreaForFeature(feature),
         4
       );
 
       const expirationText =
-        expiresText(props.expires);
+        displayExpiryForFeature(feature);
 
       const shareBody =
         `${eventName}\n` +
