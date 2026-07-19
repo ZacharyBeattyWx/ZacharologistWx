@@ -5489,6 +5489,327 @@
           );
       }
     }
+
+    /* Balanced charcoal and severe overview */
+
+    :root {
+      --charcoal-page: #090c10;
+      --charcoal-panel: #12161b;
+      --charcoal-panel-strong: #171c22;
+      --charcoal-card: #0e1217;
+      --charcoal-card-hover: #181d24;
+      --charcoal-input: #0a0d11;
+    }
+
+    body {
+      background:
+        radial-gradient(
+          circle at 18% 0%,
+          rgba(255, 255, 255, 0.045),
+          transparent 32rem
+        ),
+        radial-gradient(
+          circle at 88% 5%,
+          rgba(255, 196, 0, 0.035),
+          transparent 27rem
+        ),
+        linear-gradient(
+          135deg,
+          #080b0f,
+          #0d1116 48%,
+          #07090c
+        ) !important;
+    }
+
+    .hero-card,
+    .status-card,
+    .controls,
+    .alerts-panel,
+    .filter-stack,
+    .mobile-state-overview {
+      background:
+        linear-gradient(
+          145deg,
+          rgba(23, 28, 34, 0.98),
+          rgba(14, 18, 23, 0.98)
+        ) !important;
+
+      border-color:
+        rgba(255, 255, 255, 0.14) !important;
+
+      box-shadow:
+        0 20px 52px
+        rgba(0, 0, 0, 0.38) !important;
+    }
+
+    .metric,
+    .connection {
+      background:
+        linear-gradient(
+          145deg,
+          #11151a,
+          #0b0e12
+        ) !important;
+    }
+
+    .search,
+    .select,
+    .mobile-location-input,
+    .detail-meta-item {
+      background:
+        var(--charcoal-input) !important;
+
+      border-color:
+        rgba(255, 255, 255, 0.17) !important;
+    }
+
+    .mobile-location-check {
+      background:
+        linear-gradient(
+          145deg,
+          #14191f,
+          #0c1014
+        ) !important;
+
+      border-color:
+        rgba(255, 255, 255, 0.2) !important;
+    }
+
+    .mobile-state-row {
+      background:
+        linear-gradient(
+          145deg,
+          #11151a,
+          #0b0e12
+        ) !important;
+
+      border-color:
+        rgba(255, 255, 255, 0.12) !important;
+    }
+
+    .mobile-state-row:hover {
+      background:
+        var(--charcoal-card-hover) !important;
+
+      border-color:
+        rgba(255, 255, 255, 0.31) !important;
+    }
+
+    .overview-national-marine {
+      background:
+        linear-gradient(
+          145deg,
+          #12161b,
+          #0b0e12
+        ) !important;
+    }
+
+    .overview-national-marine-button {
+      background:
+        #11151a !important;
+    }
+
+    .alert-card {
+      background:
+        linear-gradient(
+          145deg,
+          #12161b,
+          #0b0f13
+        ) !important;
+
+      border-color:
+        rgba(255, 255, 255, 0.13) !important;
+    }
+
+    .alert-card:hover,
+    .alert-card.is-selected {
+      background:
+        linear-gradient(
+          145deg,
+          #1a2027,
+          #11161c
+        ) !important;
+    }
+
+    .mobile-state-selection {
+      background:
+        linear-gradient(
+          145deg,
+          #14191f,
+          #0d1116
+        ) !important;
+    }
+
+    .mobile-filter-toggle,
+    #refreshButton,
+    .control-button,
+    .nav-button {
+      background:
+        linear-gradient(
+          145deg,
+          #11151a,
+          #0a0d11
+        ) !important;
+    }
+
+    .filter-chip,
+    .overview-category-button {
+      background:
+        #0d1116 !important;
+    }
+
+    .filter-chip:hover,
+    .overview-category-button:hover {
+      background:
+        #181d24 !important;
+    }
+
+    /*
+     * The Severe category represents severe-convective products.
+     * Individual alerts still retain their own red or amber color.
+     */
+
+    [data-overview-filter="severe"],
+    [data-event-filter="severe"] {
+      border-color:
+        rgba(255, 178, 28, 0.76) !important;
+    }
+
+    [data-overview-filter="severe"] strong,
+    [data-event-filter="severe"]
+    .filter-chip-count {
+      color:
+        var(--warning-amber) !important;
+    }
+
+    [data-overview-filter="severe"].is-active,
+    [data-event-filter="severe"].is-active {
+      border-color:
+        var(--warning-amber) !important;
+
+      background:
+        rgba(255, 178, 28, 0.1) !important;
+
+      color:
+        #fff0bc !important;
+
+      box-shadow:
+        0 0 17px
+        rgba(255, 178, 28, 0.13) !important;
+    }
+
+    [data-overview-filter="winter"],
+    [data-event-filter="winter"] {
+      border-color:
+        rgba(155, 124, 255, 0.7) !important;
+    }
+
+    [data-overview-filter="winter"] strong,
+    [data-event-filter="winter"]
+    .filter-chip-count {
+      color:
+        var(--winter-purple) !important;
+    }
+
+    [data-overview-filter="winter"].is-active,
+    [data-event-filter="winter"].is-active {
+      background:
+        rgba(155, 124, 255, 0.1) !important;
+
+      border-color:
+        var(--winter-purple) !important;
+
+      color:
+        #eee8ff !important;
+    }
+
+    [data-overview-filter="tropical"],
+    [data-event-filter="tropical"] {
+      border-color:
+        rgba(201, 79, 157, 0.72) !important;
+    }
+
+    [data-overview-filter="tropical"] strong,
+    [data-event-filter="tropical"]
+    .filter-chip-count {
+      color:
+        var(--tropical-magenta) !important;
+    }
+
+    [data-overview-filter="tropical"].is-active,
+    [data-event-filter="tropical"].is-active {
+      background:
+        rgba(201, 79, 157, 0.1) !important;
+
+      border-color:
+        var(--tropical-magenta) !important;
+
+      color:
+        #ffe5f5 !important;
+    }
+
+    /*
+     * Lift the alert-detail surfaces slightly without weakening
+     * their semantic hazard accents.
+     */
+
+    body.detail-open .alert-detail-panel {
+      background:
+        radial-gradient(
+          circle at 18% 0%,
+          color-mix(
+            in srgb,
+            var(--detail-accent) 11%,
+            transparent
+          ),
+          transparent 22rem
+        ),
+        #090c10 !important;
+    }
+
+    .detail-accordion,
+    .detail-mobile-headline,
+    .detail-meta-item,
+    .detail-area-chip {
+      background:
+        #101419 !important;
+    }
+
+    .detail-accordion-body {
+      background:
+        #0c1014 !important;
+    }
+
+    .detail-top-actions
+    .detail-action-button {
+      background:
+        #101419 !important;
+    }
+
+    @media (max-width: 820px) {
+      .controls {
+        background:
+          linear-gradient(
+            145deg,
+            rgba(20, 25, 31, 0.98),
+            rgba(11, 14, 18, 0.98)
+          ) !important;
+      }
+
+      .mobile-state-row {
+        background:
+          #0e1217 !important;
+      }
+
+      .alert-card {
+        background:
+          linear-gradient(
+            145deg,
+            #11161b,
+            #0b0f13
+          ) !important;
+      }
+    }
 </style>
   <script src="mapbox-token.js"></script>
 </head>
@@ -5562,10 +5883,12 @@
         <option value="watches">Watches</option>
         <option value="advisories">Advisories</option>
         <option value="statements">Statements</option>
-        <option value="storm">Storm alerts</option>
+        <option value="severe">Severe weather</option>
         <option value="hydro">Flood and hydro</option>
         <option value="fire">Fire weather</option>
         <option value="heat">Heat</option>
+        <option value="winter">Winter weather</option>
+        <option value="tropical">Tropical weather</option>
         <option value="geometry">Geometry only</option>
       </select>
       <button class="control-button" id="refreshButton" type="button">Refresh Now</button>
@@ -5748,10 +6071,12 @@
       { value: "watches", label: "Watches" },
       { value: "advisories", label: "Advisories" },
       { value: "statements", label: "Statements" },
-      { value: "storm", label: "Storm" },
+      { value: "severe", label: "Severe" },
       { value: "hydro", label: "Flood" },
       { value: "fire", label: "Fire" },
       { value: "heat", label: "Heat" },
+      { value: "winter", label: "Winter" },
+      { value: "tropical", label: "Tropical" },
       { value: "geometry", label: "Geometry" }
     ];
 
@@ -5916,10 +6241,61 @@
       if (type === "watches") return event.includes("watch");
       if (type === "advisories") return event.includes("advisory");
       if (type === "statements") return event.includes("statement");
-      if (type === "storm") return event.includes("tornado") || event.includes("severe thunderstorm") || event.includes("special marine");
-      if (type === "hydro") return event.includes("flood") || event.includes("hydro");
-      if (type === "fire") return event.includes("fire") || event.includes("red flag");
-      if (type === "heat") return event.includes("heat");
+
+      if (type === "severe" || type === "storm") {
+        return (
+          event.includes("tornado") ||
+          event.includes("severe thunderstorm") ||
+          event.includes("severe weather statement") ||
+          event.includes("special marine warning") ||
+          (
+            event.includes("special weather statement") &&
+            hasGeometry(feature)
+          )
+        );
+      }
+
+      if (type === "hydro") {
+        return (
+          event.includes("flood") ||
+          event.includes("hydro")
+        );
+      }
+
+      if (type === "fire") {
+        return (
+          event.includes("fire") ||
+          event.includes("red flag")
+        );
+      }
+
+      if (type === "heat") {
+        return (
+          event.includes("heat") ||
+          event.includes("excessive heat")
+        );
+      }
+
+      if (type === "winter") {
+        return (
+          event.includes("winter") ||
+          event.includes("snow") ||
+          event.includes("ice") ||
+          event.includes("blizzard") ||
+          event.includes("freeze") ||
+          event.includes("frost") ||
+          event.includes("cold weather")
+        );
+      }
+
+      if (type === "tropical") {
+        return (
+          event.includes("hurricane") ||
+          event.includes("tropical") ||
+          event.includes("storm surge")
+        );
+      }
+
       if (type === "geometry") return hasGeometry(feature);
 
       return true;
@@ -7360,12 +7736,12 @@
 
       const overviewFilterValues = [
         "all",
-        "warnings",
-        "watches",
-        "storm",
+        "severe",
         "hydro",
         "fire",
-        "heat"
+        "heat",
+        "winter",
+        "tropical"
       ];
 
       const overviewSourceFeatures =
