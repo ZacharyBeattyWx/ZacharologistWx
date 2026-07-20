@@ -6895,6 +6895,236 @@
       text-align:
         center;
     }
+  /* Structured NWS bulletin readability */
+
+  .bulletin-readable {
+    display: grid;
+    gap: 0.85rem;
+    margin-top: 0.35rem;
+  }
+
+  .bulletin-section-card {
+    padding: 0.9rem 1rem;
+    border:
+      1px solid
+      rgba(148, 163, 184, 0.18);
+    border-left:
+      3px solid
+      var(--detail-accent, #58b7ff);
+    border-radius: 0.7rem;
+    background:
+      linear-gradient(
+        135deg,
+        rgba(22, 32, 44, 0.9),
+        rgba(6, 11, 18, 0.94)
+      );
+  }
+
+  .bulletin-section-title {
+    margin: 0 0 0.55rem;
+    color: #8fd3ff;
+    font-size: 0.76rem;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    line-height: 1.3;
+    text-transform: uppercase;
+  }
+
+  .bulletin-section-copy {
+    color: #e4edf7;
+    font-size: 0.95rem;
+    line-height: 1.65;
+  }
+
+  .bulletin-section-copy p {
+    margin: 0;
+  }
+
+  .bulletin-list {
+    display: grid;
+    gap: 0.46rem;
+    margin: 0;
+    padding-left: 1.25rem;
+  }
+
+  .bulletin-list li {
+    padding-left: 0.15rem;
+  }
+
+  .bulletin-list li::marker {
+    color:
+      var(--detail-accent, #58b7ff);
+  }
+
+  .bulletin-subitems {
+    display: grid;
+    gap: 0.65rem;
+    margin: 0.75rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .bulletin-subitems li {
+    display: grid;
+    gap: 0.2rem;
+    padding: 0.65rem 0.75rem;
+    border-left:
+      2px solid
+      rgba(88, 183, 255, 0.58);
+    border-radius:
+      0 0.45rem 0.45rem 0;
+    background:
+      rgba(1, 7, 13, 0.62);
+  }
+
+  .bulletin-subitems strong {
+    color: #ffffff;
+    font-size: 0.74rem;
+    font-weight: 900;
+    letter-spacing: 0.065em;
+    text-transform: uppercase;
+  }
+
+  .bulletin-subitems span {
+    color: #d9e4ef;
+  }
+
+  .full-nws-bulletin {
+    margin-top: 1rem;
+  }
+
+  .full-nws-bulletin > summary {
+    color: #b8c7d8;
+    font-weight: 800;
+  }
+
+  .bulletin-raw {
+    max-width: 100%;
+    margin: 0;
+    padding: 0.9rem;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    border-radius: 0.65rem;
+    background:
+      rgba(0, 0, 0, 0.3);
+    color: #cdd8e5;
+    font: inherit;
+    font-size: 0.84rem;
+    line-height: 1.55;
+  }
+
+  .bulletin-unavailable {
+    margin: 0;
+    color: #9caec0;
+    font-style: italic;
+  }
+
+  @media (max-width: 820px) {
+    .bulletin-section-card {
+      padding: 0.8rem 0.85rem;
+    }
+
+    .bulletin-section-copy {
+      font-size: 0.91rem;
+      line-height: 1.58;
+    }
+
+    .bulletin-subitems li {
+      padding: 0.58rem 0.65rem;
+    }
+  }
+  /* Bulletin readability polish */
+
+  /* Static close-control correction */
+
+  #alertDetailPanel {
+    scroll-padding-top: 0.75rem;
+  }
+
+  .detail-sticky-toolbar {
+    position: static;
+    z-index: 1;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    min-height: 0;
+    padding: 0.72rem 1rem 0.25rem;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+
+  .detail-sticky-toolbar .detail-close {
+    position: static !important;
+    inset: auto !important;
+    z-index: auto;
+    margin: 0;
+    transform: none !important;
+    background: rgba(5, 9, 14, 0.94);
+    box-shadow:
+      0 0.35rem 0.8rem
+      rgba(0, 0, 0, 0.25);
+  }
+
+  .bulletin-section-card {
+    background:
+      linear-gradient(
+        135deg,
+        rgba(18, 29, 41, 0.76),
+        rgba(7, 13, 20, 0.82)
+      );
+  }
+
+  .bulletin-subitems {
+    gap: 0;
+    margin-top: 0.72rem;
+    border-top:
+      1px solid
+      rgba(148, 163, 184, 0.1);
+  }
+
+  .bulletin-subitems > li {
+    gap: 0.25rem;
+    padding: 0.72rem 0.2rem 0.72rem 0.82rem;
+    border: 0;
+    border-left:
+      2px solid
+      rgba(88, 183, 255, 0.64);
+    border-bottom:
+      1px solid
+      rgba(148, 163, 184, 0.1);
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .bulletin-subitems > li:last-child {
+    border-bottom: 0;
+  }
+
+  .bulletin-subitem-copy {
+    color: #d9e4ef;
+  }
+
+  .bulletin-subitem-copy p {
+    margin: 0;
+  }
+
+  .bulletin-subitem-copy .bulletin-list {
+    margin-top: 0.18rem;
+  }
+
+  .bulletin-subitem-copy .bulletin-list li {
+    margin-bottom: 0.26rem;
+  }
+
+  @media (max-width: 820px) {
+    .detail-sticky-toolbar {
+      padding:
+        0.62rem 0.75rem 0.18rem;
+    }
+  }
 </style>
   <script src="mapbox-token.js"></script>
 </head>
@@ -7181,6 +7411,18 @@
 
     function cleanText(value) {
       return String(value || "").replace(/\s+/g, " ").trim();
+    }
+
+    /* Structured NWS bulletin readability */
+
+    function preserveBulletinText(value) {
+      return String(value || "")
+        .replace(/\r\n?/g, "\n")
+        .replace(/\u00a0/g, " ")
+        .replace(/[ \t]+\n/g, "\n")
+        .replace(/\n[ \t]+/g, "\n")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
     }
 
     function expiresText(expires) {
@@ -8149,8 +8391,8 @@
           event: cleanText(props.event || "NWS Alert"),
           areaDesc: cleanText(props.areaDesc || "Area not listed"),
           headline: cleanText(props.headline || ""),
-          description: cleanText(props.description || ""),
-          instruction: cleanText(props.instruction || ""),
+          description: preserveBulletinText(props.description || ""),
+          instruction: preserveBulletinText(props.instruction || ""),
           office: cleanText(props.office || ""),
           expires: props.expires || props.ends || props.end || "",
           _liveNwwsFastLane: true
@@ -8592,6 +8834,354 @@
         ` : ""}
       `;
     }
+    function bulletinSectionTitle(value) {
+      const key =
+        String(value || "")
+          .trim()
+          .toUpperCase();
+
+      const titles = {
+        "WHAT": "What is happening",
+        "WHERE": "Affected area",
+        "WHEN": "Timing",
+        "WIND": "Wind",
+        "STORM SURGE": "Storm surge",
+        "TORNADO": "Tornado threat",
+        "FLOODING RAIN": "Flooding rain",
+        "IMPACTS": "Expected impacts",
+        "POTENTIAL IMPACTS": "Potential impacts",
+        "LOCATIONS AFFECTED": "Locations affected",
+        "OTHER COASTAL HAZARDS":
+          "Other coastal hazards",
+        "PRECAUTIONARY/PREPAREDNESS ACTIONS":
+          "Safety and preparedness",
+        "LATEST LOCAL FORECAST":
+          "Latest local forecast",
+        "PEAK WIND FORECAST":
+          "Peak wind forecast",
+        "THREAT TO LIFE AND PROPERTY THAT INCLUDES":
+          "Threat level",
+        "THREAT LEVEL":
+          "Threat level",
+        "FOR MORE INFORMATION":
+          "Additional information",
+        "PLAN": "Plan",
+        "PREPARE": "Prepare",
+        "ACT": "Act now"
+      };
+
+      return (
+        titles[key] ||
+        key
+          .toLowerCase()
+          .replace(
+            /\b\w/g,
+            (letter) => letter.toUpperCase()
+          )
+      );
+    }
+
+    function expandedBulletinText(value) {
+      let text =
+        preserveBulletinText(value);
+
+      if (!text) {
+        return "";
+      }
+
+      /*
+       * Tropical local statements commonly combine these two
+       * phrases into one long sentence. Convert them into a
+       * useful subsection before the rest of the parser runs.
+       */
+      text = text.replace(
+        /THREAT TO LIFE AND PROPERTY THAT INCLUDES\s+TYPICAL FORECAST UNCERTAINTY IN TRACK,\s*SIZE AND INTENSITY\s*:\s*/gi,
+        "THREAT LEVEL: "
+      );
+
+      text = text.replace(
+        /\s+\*\s*(?=(?:PRECAUTIONARY\/PREPAREDNESS ACTIONS|LOCATIONS AFFECTED|OTHER COASTAL HAZARDS|FLOODING RAIN|STORM SURGE|POTENTIAL IMPACTS|FOR MORE INFORMATION|TORNADO|IMPACTS|WHERE|WHEN|WHAT|WIND)\b)/gi,
+        "\n* "
+      );
+
+      text = text.replace(
+        /\s+-\s+(?=(?:THREAT LEVEL|LATEST LOCAL FORECAST|PEAK WIND FORECAST|POTENTIAL IMPACTS|PREPARE|PLAN|ACT)\s*:)/gi,
+        "\n- "
+      );
+
+      return text.trim();
+    }
+    function bulletinSections(value) {
+      const text =
+        expandedBulletinText(value);
+
+      if (!text) {
+        return [];
+      }
+
+      const sectionPattern =
+        /(?:^|\n)\s*\*\s*(PRECAUTIONARY\/PREPAREDNESS ACTIONS|LOCATIONS AFFECTED|OTHER COASTAL HAZARDS|FLOODING RAIN|STORM SURGE|POTENTIAL IMPACTS|FOR MORE INFORMATION|TORNADO|IMPACTS|WHERE|WHEN|WHAT|WIND)\s*(?:\.\.\.|-|:)\s*/gim;
+
+      const matches =
+        [...text.matchAll(sectionPattern)];
+
+      if (!matches.length) {
+        return [
+          {
+            title: "Bulletin details",
+            body: text
+          }
+        ];
+      }
+
+      const sections = [];
+
+      const introduction =
+        text
+          .slice(0, matches[0].index)
+          .replace(/^\s*\*+\s*/, "")
+          .trim();
+
+      if (introduction) {
+        sections.push({
+          title: "Summary",
+          body: introduction
+        });
+      }
+
+      matches.forEach((match, index) => {
+        const bodyStart =
+          match.index + match[0].length;
+
+        const bodyEnd =
+          matches[index + 1]?.index ??
+          text.length;
+
+        const body =
+          text
+            .slice(bodyStart, bodyEnd)
+            .replace(/^\s*[-*]\s*/, "")
+            .replace(/\s*\*+\s*$/, "")
+            .trim();
+
+        if (!body) {
+          return;
+        }
+
+        sections.push({
+          title:
+            bulletinSectionTitle(match[1]),
+          body
+        });
+      });
+
+      return sections;
+    }
+    function renderBulletinTextFragments(value) {
+      const source =
+        preserveBulletinText(value)
+          .replace(/\s*\*+\s*$/, "")
+          .trim();
+
+      if (!source) {
+        return "";
+      }
+
+      const parts =
+        source
+          .split(/\s+-\s+/)
+          .map((part) =>
+            part
+              .replace(/^\s*[-*]\s*/, "")
+              .trim()
+          )
+          .filter(Boolean);
+
+      if (parts.length > 1) {
+        return `
+          <ul class="bulletin-list">
+            ${parts
+              .map(
+                (part) => `
+                  <li>
+                    ${escapeHtml(part)}
+                  </li>
+                `
+              )
+              .join("")}
+          </ul>
+        `;
+      }
+
+      return `
+        <p>${escapeHtml(source)}</p>
+      `;
+    }
+
+    function renderBulletinSectionBody(value) {
+      const source =
+        preserveBulletinText(value)
+          .replace(/\n+/g, " ")
+          .trim();
+
+      if (!source) {
+        return "";
+      }
+
+      const subsectionPattern =
+        /(?:^|\s+-\s+)(THREAT LEVEL|LATEST LOCAL FORECAST|PEAK WIND FORECAST|POTENTIAL IMPACTS|PREPARE|PLAN|ACT)\s*:\s*/gi;
+
+      const matches =
+        [...source.matchAll(
+          subsectionPattern
+        )];
+
+      if (matches.length) {
+        const output = [];
+
+        const introduction =
+          source
+            .slice(0, matches[0].index)
+            .replace(/^\s*-\s*/, "")
+            .trim();
+
+        if (introduction) {
+          output.push(
+            renderBulletinTextFragments(
+              introduction
+            )
+          );
+        }
+
+        const items =
+          matches
+            .map((match, index) => {
+              const bodyStart =
+                match.index +
+                match[0].length;
+
+              const bodyEnd =
+                matches[index + 1]?.index ??
+                source.length;
+
+              const body =
+                source
+                  .slice(bodyStart, bodyEnd)
+                  .replace(/^\s*-\s*/, "")
+                  .trim();
+
+              if (!body) {
+                return "";
+              }
+
+              return `
+                <li>
+                  <strong>
+                    ${escapeHtml(
+                      bulletinSectionTitle(
+                        match[1]
+                      )
+                    )}
+                  </strong>
+
+                  <div class="bulletin-subitem-copy">
+                    ${renderBulletinTextFragments(
+                      body
+                    )}
+                  </div>
+                </li>
+              `;
+            })
+            .filter(Boolean)
+            .join("");
+
+        if (items) {
+          output.push(`
+            <ul class="bulletin-subitems">
+              ${items}
+            </ul>
+          `);
+        }
+
+        return output.join("");
+      }
+
+      return renderBulletinTextFragments(
+        source
+      );
+    }
+    function renderStructuredBulletin(value) {
+      const sections =
+        bulletinSections(value);
+
+      if (!sections.length) {
+        return `
+          <p class="bulletin-unavailable">
+            No detailed bulletin text was provided.
+          </p>
+        `;
+      }
+
+      return `
+        <div class="bulletin-readable">
+          ${sections
+            .map(
+              ({ title, body }) => `
+                <section class="bulletin-section-card">
+                  <h4 class="bulletin-section-title">
+                    ${escapeHtml(title)}
+                  </h4>
+
+                  <div class="bulletin-section-copy">
+                    ${renderBulletinSectionBody(body)}
+                  </div>
+                </section>
+              `
+            )
+            .join("")}
+        </div>
+      `;
+    }
+
+    function renderRawBulletin(value) {
+      return `
+        <pre class="bulletin-raw">${escapeHtml(
+          preserveBulletinText(value)
+        )}</pre>
+      `;
+    }
+
+    function resetAlertDetailScroll() {
+      if (!alertDetailPanel) {
+        return;
+      }
+
+      const reset = () => {
+        const targets = [
+          alertDetailPanel,
+          alertDetailPanel.querySelector(
+            ".detail-desktop-content"
+          ),
+          alertDetailPanel.querySelector(
+            ".detail-mobile-content"
+          )
+        ].filter(Boolean);
+
+        targets.forEach((target) => {
+          target.scrollTop = 0;
+        });
+      };
+
+      reset();
+
+      window.requestAnimationFrame(() => {
+        reset();
+
+        window.requestAnimationFrame(
+          reset
+        );
+      });
+    }
     function renderAlertDetail(feature) {
       if (!feature) {
         alertDetailPanel.style.removeProperty("--detail-accent");
@@ -8693,18 +9283,29 @@
       const hazardItems =
         hazardItemsForAlert(fullDescription);
 
+      const readableDescriptionHtml =
+        renderStructuredBulletin(
+          fullDescription || description
+        );
+
       const fullBulletinHtml =
-        nationalTropicalProduct &&
-        fullDescription &&
-        fullDescription !== description
+        fullDescription
           ? `
               <details
-                class="detail-accordion national-tropical-bulletin"
+                class="detail-accordion full-nws-bulletin"
               >
-                <summary>Full NHC Bulletin</summary>
+                <summary>
+                  ${
+                    nationalTropicalProduct
+                      ? "View raw NHC bulletin"
+                      : "View raw NWS bulletin"
+                  }
+                </summary>
 
                 <div class="detail-accordion-body">
-                  ${escapeHtml(fullDescription)}
+                  ${renderRawBulletin(
+                    fullDescription
+                  )}
                 </div>
               </details>
             `
@@ -8815,20 +9416,22 @@
         : "";
 
       alertDetailPanel.innerHTML = `
-        <button
-          class="detail-close"
-          type="button"
-          data-close-detail
-          aria-label="Close alert details"
-        >
-          <span aria-hidden="true">
-            &times;
-          </span>
+        <div class="detail-sticky-toolbar">
+          <button
+            class="detail-close"
+            type="button"
+            data-close-detail
+            aria-label="Close alert details"
+          >
+            <span aria-hidden="true">
+              &times;
+            </span>
 
-          <span class="detail-close-label">
-            Close Details
-          </span>
-        </button>
+            <span class="detail-close-label">
+              Close Details
+            </span>
+          </button>
+        </div>
 
         <div class="detail-desktop-content">
           <div class="detail-header">
@@ -8858,7 +9461,7 @@
           ${description ? `
             <div class="detail-section">
               <h3>Description</h3>
-              <div>${escapeHtml(description)}</div>
+              <div>${readableDescriptionHtml}</div>
             </div>
           ` : ""}
 
@@ -8867,7 +9470,7 @@
           ${instruction ? `
             <div class="detail-section">
               <h3>Instruction</h3>
-              <div>${escapeHtml(instruction)}</div>
+              <div>${renderStructuredBulletin(instruction)}</div>
             </div>
           ` : ""}
 
@@ -8954,7 +9557,7 @@
               </summary>
 
               <div class="detail-accordion-body">
-                ${escapeHtml(fullDescription)}
+                ${renderStructuredBulletin(fullDescription)}
               </div>
             </details>
           ` : ""}
@@ -8966,7 +9569,7 @@
               </summary>
 
               <div class="detail-accordion-body">
-                ${escapeHtml(instruction)}
+                ${renderStructuredBulletin(instruction)}
               </div>
             </details>
           ` : ""}
@@ -9644,7 +10247,7 @@
 
       window.requestAnimationFrame(
         () => {
-          alertDetailPanel.scrollTop = 0;
+          resetAlertDetailScroll();
 
           if (
             !window.matchMedia(
@@ -10208,7 +10811,7 @@
       render();
 
       window.requestAnimationFrame(() => {
-        alertDetailPanel.scrollTop = 0;
+        resetAlertDetailScroll();
 
         if (
           !window.matchMedia(
