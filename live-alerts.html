@@ -7125,6 +7125,415 @@
         0.62rem 0.75rem 0.18rem;
     }
   }
+  /* Alert-colored bulletin accents */
+
+  #alertDetailPanel {
+    --bulletin-accent:
+      var(--detail-accent, #58b7ff);
+
+    --bulletin-accent-strong:
+      var(--detail-accent, #58b7ff);
+
+    --bulletin-accent-soft:
+      var(--detail-accent, #58b7ff);
+  }
+
+  @supports (
+    color:
+      color-mix(
+        in srgb,
+        red 50%,
+        transparent
+      )
+  ) {
+    #alertDetailPanel {
+      --bulletin-accent-strong:
+        color-mix(
+          in srgb,
+          var(--detail-accent, #58b7ff) 82%,
+          white
+        );
+
+      --bulletin-accent-soft:
+        color-mix(
+          in srgb,
+          var(--detail-accent, #58b7ff) 58%,
+          transparent
+        );
+    }
+  }
+
+  .bulletin-section-card {
+    border-left-color:
+      var(--bulletin-accent);
+  }
+
+  .bulletin-section-title {
+    color:
+      var(--bulletin-accent-strong);
+  }
+
+  .bulletin-subitems strong {
+    color:
+      var(--bulletin-accent-strong);
+  }
+
+  .bulletin-list li::marker {
+    color:
+      var(--bulletin-accent);
+  }
+
+  .bulletin-subitems > li,
+  .bulletin-subitems li,
+  .bulletin-list > li,
+  .bulletin-subitem-copy .bulletin-list > li {
+    border-left-color:
+      var(--bulletin-accent-soft);
+  }
+  /* Operational alert detail cards */
+
+  .detail-desktop-content {
+    padding-top: 0.4rem;
+  }
+
+  .detail-header {
+    position: relative;
+    overflow: hidden;
+    padding: 1rem 1.1rem;
+    border:
+      1px solid
+      color-mix(
+        in srgb,
+        var(--detail-accent, #58b7ff) 65%,
+        transparent
+      );
+    border-radius: 0.75rem;
+    background:
+      linear-gradient(
+        135deg,
+        color-mix(
+          in srgb,
+          var(--detail-accent, #58b7ff) 78%,
+          #080b10
+        ),
+        color-mix(
+          in srgb,
+          var(--detail-accent, #58b7ff) 48%,
+          #080b10
+        )
+      );
+    box-shadow:
+      0 0.6rem 1.2rem
+      rgba(0, 0, 0, 0.28);
+  }
+
+  .detail-header::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(
+        110deg,
+        rgba(255, 255, 255, 0.08),
+        transparent 42%
+      );
+  }
+
+  .detail-header h2,
+  .detail-header .detail-area {
+    position: relative;
+    z-index: 1;
+    color: #ffffff;
+    text-shadow:
+      0 1px 2px
+      rgba(0, 0, 0, 0.7);
+  }
+
+  .detail-header .badges {
+    position: relative;
+    z-index: 1;
+  }
+
+  .detail-header .badge {
+    border-color:
+      rgba(255, 255, 255, 0.24);
+    background:
+      rgba(3, 7, 12, 0.68);
+    color: #ffffff;
+  }
+
+  .operational-alert-card {
+    display: grid;
+    gap: 0.9rem;
+    margin: 1rem 0;
+    padding: 1rem;
+    border:
+      1px solid
+      rgba(148, 163, 184, 0.2);
+    border-top:
+      3px solid
+      var(--detail-accent, #58b7ff);
+    border-radius: 0.75rem;
+    background:
+      linear-gradient(
+        145deg,
+        rgba(43, 43, 43, 0.96),
+        rgba(27, 27, 29, 0.98)
+      );
+    box-shadow:
+      0 0.75rem 1.5rem
+      rgba(0, 0, 0, 0.3);
+  }
+
+  .operational-card-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+  }
+
+  .operational-card-heading h3,
+  .operational-impact-section h3,
+  .operational-action-section h3 {
+    margin: 0;
+    color:
+      var(--detail-accent, #58b7ff);
+    font-size: 0.82rem;
+    font-weight: 950;
+    letter-spacing: 0.055em;
+    text-transform: uppercase;
+  }
+
+  .operational-heading-icon {
+    display: inline-grid;
+    width: 1.25rem;
+    height: 1.25rem;
+    place-items: center;
+    border-radius: 50%;
+    background:
+      var(--detail-accent, #58b7ff);
+    color: #080b10;
+    font-size: 0.8rem;
+    font-weight: 950;
+  }
+
+  .operational-summary {
+    margin: 0;
+    color: #ffffff;
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.55;
+  }
+
+  .operational-metric-grid {
+    display: grid;
+    grid-template-columns:
+      repeat(
+        2,
+        minmax(0, 1fr)
+      );
+    gap: 0.65rem;
+  }
+
+  .operational-metric {
+    display: grid;
+    gap: 0.28rem;
+    min-height: 4.1rem;
+    place-content: center;
+    padding: 0.72rem;
+    border:
+      1px solid
+      rgba(255, 255, 255, 0.12);
+    border-radius: 0.55rem;
+    background:
+      rgba(255, 255, 255, 0.055);
+    text-align: center;
+  }
+
+  .operational-metric-label {
+    color:
+      color-mix(
+        in srgb,
+        var(--detail-accent, #58b7ff) 82%,
+        white
+      );
+    font-size: 0.72rem;
+    font-weight: 850;
+    letter-spacing: 0.035em;
+    text-transform: uppercase;
+  }
+
+  .operational-metric strong {
+    color: #ffffff;
+    font-size: 0.88rem;
+    line-height: 1.3;
+  }
+
+  .operational-context {
+    display: grid;
+    gap: 0.58rem;
+    padding-top: 0.8rem;
+    border-top:
+      1px solid
+      rgba(255, 255, 255, 0.13);
+  }
+
+  .operational-context-row {
+    display: grid;
+    grid-template-columns:
+      1rem 3.1rem minmax(0, 1fr);
+    align-items: start;
+    gap: 0.48rem;
+    color: #edf3fa;
+    font-size: 0.88rem;
+    line-height: 1.45;
+  }
+
+  .operational-context-icon {
+    color:
+      var(--detail-accent, #58b7ff);
+  }
+
+  .operational-context-label {
+    color: #aeb8c5;
+    font-weight: 800;
+  }
+
+  .operational-context-row strong {
+    color: #ffffff;
+    font-weight: 600;
+  }
+
+  .operational-impact-section,
+  .operational-action-section {
+    display: grid;
+    gap: 0.6rem;
+    padding-top: 0.85rem;
+    border-top:
+      1px solid
+      rgba(255, 255, 255, 0.13);
+  }
+
+  .operational-impact-list,
+  .operational-action-list {
+    display: grid;
+    gap: 0.48rem;
+    margin: 0;
+    padding-left: 1.15rem;
+    color: #f0f4f8;
+    line-height: 1.5;
+  }
+
+  .operational-impact-list li::marker,
+  .operational-action-list li::marker {
+    color:
+      var(--detail-accent, #58b7ff);
+  }
+
+  .detail-section > h3 {
+    color:
+      var(--detail-accent, #58b7ff);
+  }
+
+  @media (max-width: 820px) {
+    .operational-alert-card {
+      padding: 0.85rem;
+    }
+
+    .operational-metric-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .operational-context-row {
+      grid-template-columns:
+        1rem 2.8rem minmax(0, 1fr);
+    }
+  }
+  /* Simplified operational alert details */
+
+  .standalone-nws-bulletin {
+    display: grid;
+    gap: 0.75rem;
+    margin: 1rem 0;
+    padding-top: 1rem;
+    border-top:
+      1px solid
+      rgba(148, 163, 184, 0.18);
+  }
+
+  .standalone-nws-bulletin > h3 {
+    margin: 0;
+    color:
+      var(--detail-accent, #58b7ff);
+    font-size: 0.78rem;
+    font-weight: 950;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+
+  .standalone-nws-bulletin .bulletin-raw {
+    padding: 1rem;
+    border:
+      1px solid
+      rgba(148, 163, 184, 0.17);
+    border-left:
+      3px solid
+      var(--detail-accent, #58b7ff);
+    border-radius: 0.65rem;
+    background:
+      rgba(5, 10, 16, 0.72);
+    color: #e4edf7;
+    font-size: 0.91rem;
+    line-height: 1.62;
+  }
+
+  .mobile-nws-bulletin[open] > summary {
+    margin-bottom: 0.7rem;
+  }
+
+  .operational-alert-card {
+    gap: 0.78rem;
+  }
+
+  .operational-impact-list,
+  .operational-action-list {
+    gap: 0.38rem;
+  }
+  /* Statements filter category color */
+
+  .filter-chip[data-event-filter="statements"] {
+    border-color:
+      rgba(88, 183, 255, 0.72);
+    color: #8fd3ff;
+  }
+
+  .filter-chip[data-event-filter="statements"]
+  .filter-chip-count {
+    color: #8fd3ff;
+  }
+
+  .filter-chip[data-event-filter="statements"]:hover {
+    border-color: #58b7ff;
+    background:
+      rgba(88, 183, 255, 0.1);
+  }
+
+  .filter-chip[data-event-filter="statements"].is-active {
+    border-color: #58b7ff;
+    background:
+      rgba(88, 183, 255, 0.18);
+    color: #d6efff;
+    box-shadow:
+      0 0 0 1px
+      rgba(88, 183, 255, 0.24),
+      0 0 0.8rem
+      rgba(88, 183, 255, 0.12);
+  }
+
+  .filter-chip[data-event-filter="statements"].is-active
+  .filter-chip-count {
+    color: #ffffff;
+  }
 </style>
   <script src="mapbox-token.js"></script>
 </head>
@@ -7201,7 +7610,6 @@
         <option value="all">All active alerts</option>
         <option value="warnings">Warnings</option>
         <option value="watches">Watches</option>
-        <option value="advisories">Advisories</option>
         <option value="statements">Statements</option>
         <option value="severe">Severe weather</option>
         <option value="hydro">Flood and hydro</option>
@@ -7389,7 +7797,6 @@
       { value: "all", label: "All" },
       { value: "warnings", label: "Warnings" },
       { value: "watches", label: "Watches" },
-      { value: "advisories", label: "Advisories" },
       { value: "statements", label: "Statements" },
       { value: "severe", label: "Severe" },
       { value: "hydro", label: "Flood" },
@@ -7805,24 +8212,113 @@
       return [...states].sort();
     }
 
+    /* Hazard-routed advisory filters */
+
+    function advisoryHazardCategory(eventValue) {
+      const event =
+        String(eventValue || "")
+          .trim()
+          .toLowerCase();
+
+      if (!event.includes("advisory")) {
+        return "";
+      }
+
+      if (
+        /(?:flood|hydrologic|high water|low water)/
+          .test(event)
+      ) {
+        return "hydro";
+      }
+
+      if (
+        /(?:heat|excessive heat)/
+          .test(event)
+      ) {
+        return "heat";
+      }
+
+      if (
+        /(?:winter|snow|ice|freez|frost|cold|blizzard|wind chill|lake effect)/
+          .test(event)
+      ) {
+        return "winter";
+      }
+
+      if (
+        /(?:hurricane|tropical|storm surge)/
+          .test(event)
+      ) {
+        return "tropical";
+      }
+
+      if (
+        /(?:fire|red flag|smoke|air stagnation)/
+          .test(event)
+      ) {
+        return "fire";
+      }
+
+      /*
+       * Wind, fog, marine, small-craft, high-surf,
+       * beach-hazard and any otherwise unmatched
+       * advisory product use the storm/severe bucket.
+       * This guarantees no advisory disappears.
+       */
+      return "severe";
+    }
+
     function matchesType(feature, type) {
       if (type === "all") return true;
 
-      const event = String(feature?.properties?.event || "").toLowerCase();
+      const event =
+        String(
+          feature?.properties?.event || ""
+        ).toLowerCase();
 
-      if (type === "warnings") return event.includes("warning");
-      if (type === "watches") return event.includes("watch");
-      if (type === "advisories") return event.includes("advisory");
-      if (type === "statements") return event.includes("statement");
+      const advisoryCategory =
+        advisoryHazardCategory(event);
 
-      if (type === "severe" || type === "storm") {
+      if (type === "warnings") {
+        return event.includes("warning");
+      }
+
+      if (type === "watches") {
+        return event.includes("watch");
+      }
+
+      /*
+       * Internal-only support for advisory styling.
+       * Advisories are no longer exposed as a user filter.
+       */
+      if (type === "advisories") {
+        return event.includes("advisory");
+      }
+
+      if (type === "statements") {
+        return event.includes("statement");
+      }
+
+      if (
+        type === "severe" ||
+        type === "storm"
+      ) {
         return (
+          advisoryCategory === "severe" ||
           event.includes("tornado") ||
-          event.includes("severe thunderstorm") ||
-          event.includes("severe weather statement") ||
-          event.includes("special marine warning") ||
+          event.includes(
+            "severe thunderstorm"
+          ) ||
+          event.includes(
+            "severe weather statement"
+          ) ||
+          event.includes(
+            "special marine warning"
+          ) ||
           (
-            event.includes("special weather statement") &&
+            event.includes(
+              "special weather statement"
+            ) &&
             hasGeometry(feature)
           )
         );
@@ -7830,6 +8326,7 @@
 
       if (type === "hydro") {
         return (
+          advisoryCategory === "hydro" ||
           event.includes("flood") ||
           event.includes("hydro")
         );
@@ -7837,6 +8334,7 @@
 
       if (type === "fire") {
         return (
+          advisoryCategory === "fire" ||
           event.includes("fire") ||
           event.includes("red flag")
         );
@@ -7844,36 +8342,44 @@
 
       if (type === "heat") {
         return (
+          advisoryCategory === "heat" ||
           event.includes("heat") ||
-          event.includes("excessive heat")
+          event.includes(
+            "excessive heat"
+          )
         );
       }
 
       if (type === "winter") {
         return (
+          advisoryCategory === "winter" ||
           event.includes("winter") ||
           event.includes("snow") ||
           event.includes("ice") ||
           event.includes("blizzard") ||
           event.includes("freeze") ||
           event.includes("frost") ||
-          event.includes("cold weather")
+          event.includes(
+            "cold weather"
+          )
         );
       }
 
       if (type === "tropical") {
         return (
+          advisoryCategory === "tropical" ||
           event.includes("hurricane") ||
           event.includes("tropical") ||
           event.includes("storm surge")
         );
       }
 
-      if (type === "geometry") return hasGeometry(feature);
+      if (type === "geometry") {
+        return hasGeometry(feature);
+      }
 
       return true;
     }
-
     function searchableText(feature) {
       const props = feature?.properties || {};
 
@@ -8485,22 +8991,63 @@
         (feature) => featureMatchesActiveState(feature)
       );
 
-      eventChips.innerHTML = EVENT_FILTERS.map(({ value, label }) => {
-        const count = stateScopedFeatures.filter((feature) => matchesType(feature, value)).length;
-        const active = selectedType === value;
+      /* Compact location alert filter bar */
+      /* Compact scoped alert filter bar */
 
-        return `
-          <button
-            class="filter-chip${active ? " is-active" : ""}"
-            type="button"
-            data-event-filter="${escapeHtml(value)}"
-            aria-pressed="${active}"
-          >
-            ${escapeHtml(label)}
-            <span class="filter-chip-count">${count}</span>
-          </button>
-        `;
-      }).join("");
+      const compactFilterContext =
+        locationModeActive ||
+        activeState !== "all";
+
+      const visibleEventFilters =
+        EVENT_FILTERS
+          .map(({ value, label }) => ({
+            value,
+            label,
+            count:
+              stateScopedFeatures.filter(
+                (feature) =>
+                  matchesType(feature, value)
+              ).length
+          }))
+          .filter(
+            ({ value, count }) => {
+              if (!compactFilterContext) {
+                return true;
+              }
+
+              if (value === "geometry") {
+                return false;
+              }
+
+              return (
+                value === "all" ||
+                count > 0 ||
+                value === selectedType
+              );
+            }
+          );
+
+      eventChips.innerHTML =
+        visibleEventFilters
+          .map(({ value, label, count }) => {
+            const active =
+              selectedType === value;
+
+            return `
+              <button
+                class="filter-chip${active ? " is-active" : ""}"
+                type="button"
+                data-event-filter="${escapeHtml(value)}"
+                aria-pressed="${active}"
+              >
+                ${escapeHtml(label)}
+                <span class="filter-chip-count">
+                  ${count}
+                </span>
+              </button>
+            `;
+          })
+          .join("");
 
       const eventScopedFeatures = searchedFeatures.filter(
         (feature) => matchesType(feature, selectedType)
@@ -8561,6 +9108,10 @@
         !searchInput.value &&
         selectedType === "all" &&
         activeState === "all";
+
+      clearFiltersButton.hidden =
+        compactFilterContext &&
+        clearFiltersButton.disabled;
     }
     function compactAreaText(value, visibleCount = 3) {
       const areas = String(value || "")
@@ -9182,6 +9733,530 @@
         );
       });
     }
+    /* Operational alert detail cards */
+
+    function operationalNormalizedText(value) {
+      return String(value || "")
+        .replace(/\r\n?/g, "\n")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function escapeRegexText(value) {
+      return String(value || "")
+        .replace(
+          /[.*+?^${}()|[\]\\]/g,
+          "\\$&"
+        );
+    }
+
+    function operationalBulletinField(
+      value,
+      label
+    ) {
+      const text =
+        operationalNormalizedText(value);
+
+      if (!text) {
+        return "";
+      }
+
+      const escapedLabel =
+        escapeRegexText(label);
+
+      const nextLabels = [
+        "WHAT",
+        "HAZARD",
+        "SOURCE",
+        "IMPACT",
+        "IMPACTS",
+        "TIME",
+        "WHERE",
+        "WHEN",
+        "LOCATION",
+        "LOCATIONS IMPACTED INCLUDE",
+        "ADDITIONAL DETAILS",
+        "PRECAUTIONARY/PREPAREDNESS ACTIONS"
+      ]
+        .map(escapeRegexText)
+        .join("|");
+
+      const pattern =
+        new RegExp(
+          `${escapedLabel}` +
+          `\\s*(?:\\.{2,}|:)\\s*` +
+          `([\\s\\S]*?)` +
+          `(?=\\s+(?:${nextLabels})` +
+          `\\s*(?:\\.{2,}|:)|$)`,
+          "i"
+        );
+
+      const match =
+        text.match(pattern);
+
+      return match
+        ? match[1].trim()
+        : "";
+    }
+
+    function operationalFirstSentence(value) {
+      const text =
+        operationalNormalizedText(value)
+          .replace(
+            /^\s*\*?\s*WHAT\s*(?:\.{2,}|:)\s*/i,
+            ""
+          )
+          .replace(
+            /\s+\*\s*(?:WHERE|WHEN|IMPACTS|ADDITIONAL DETAILS)\s*(?:\.{2,}|:)[\s\S]*$/i,
+            ""
+          )
+          .replace(
+            /\b(?:HAZARD|SOURCE|IMPACT|IMPACTS)\s*\.{2,}[\s\S]*$/i,
+            ""
+          )
+          .trim();
+
+      if (!text) {
+        return "";
+      }
+
+      const sentence =
+        text.match(
+          /^(.+?[.!?])(?:\s|$)/
+        );
+
+      return (
+        sentence?.[1] ||
+        text
+      ).trim();
+    }
+    function operationalLocations(
+      feature,
+      value
+    ) {
+      const text =
+        operationalNormalizedText(value);
+
+      const match =
+        text.match(
+          /locations impacted include\s*\.{2,}\s*([\s\S]*?)(?=(?:\s+\*|\s+(?:HAZARD|SOURCE|IMPACT)\s*\.{2,})|$)/i
+        );
+
+      if (match?.[1]) {
+        return match[1]
+          .replace(/\.$/, "")
+          .trim();
+      }
+
+      return displayAreaForFeature(feature);
+    }
+
+    function operationalListItems(
+      value,
+      maximumItems = 6
+    ) {
+      const text =
+        operationalNormalizedText(value);
+
+      if (!text) {
+        return [];
+      }
+
+      const pieces =
+        text
+          .split(
+            /(?:\s+-\s+)|(?<=[.!?])\s+(?=[A-Z0-9])/
+          )
+          .map((item) =>
+            item
+              .replace(/^[*-]\s*/, "")
+              .trim()
+          )
+          .filter(
+            (item) =>
+              item.length >= 8
+          );
+
+      return [
+        ...new Set(pieces)
+      ].slice(0, maximumItems);
+    }
+
+    function operationalHailMetric(value) {
+      const text =
+        operationalNormalizedText(value);
+
+      if (
+        !text ||
+        !/\bhail\b/i.test(text)
+      ) {
+        return "";
+      }
+
+      const explicit =
+        text.match(
+          /(\d+(?:\.\d+)?)\s*(?:inch(?:es)?|in)\b/i
+        );
+
+      if (explicit) {
+        return `${Number(
+          explicit[1]
+        ).toFixed(2)} IN`;
+      }
+
+      if (/quarter[- ]size hail/i.test(text)) {
+        return "1.00 IN";
+      }
+
+      if (/golf ball[- ]size hail/i.test(text)) {
+        return "1.75 IN";
+      }
+
+      if (/baseball[- ]size hail/i.test(text)) {
+        return "2.75 IN";
+      }
+
+      return "";
+    }
+    function operationalWindMetric(value) {
+      const text =
+        operationalNormalizedText(value);
+
+      const range =
+        text.match(
+          /(\d{2,3})\s*(?:to|-)\s*(\d{2,3})\s*mph/i
+        );
+
+      if (range) {
+        return `${range[1]}–${range[2]} MPH`;
+      }
+
+      const gust =
+        text.match(
+          /gusts?(?:\s+up)?\s+to\s+(\d{2,3})\s*mph/i
+        );
+
+      if (gust) {
+        return `${gust[1]} MPH GUST`;
+      }
+
+      const single =
+        text.match(
+          /(\d{2,3})\s*mph/i
+        );
+
+      return single
+        ? `${single[1]} MPH`
+        : "";
+    }
+
+    function operationalMotionMetric(value) {
+      const text =
+        operationalNormalizedText(value);
+
+      const match =
+        text.match(
+          /moving\s+([a-z]+)\s+at\s+(\d{1,3})\s*mph/i
+        );
+
+      if (!match) {
+        return "";
+      }
+
+      return (
+        `${match[1].toUpperCase()} ` +
+        `${match[2]} MPH`
+      );
+    }
+
+    function operationalMetricCards(
+      feature,
+      description
+    ) {
+      const hazard =
+        operationalBulletinField(
+          description,
+          "HAZARD"
+        );
+
+      const source =
+        operationalBulletinField(
+          description,
+          "SOURCE"
+        );
+
+      const hail =
+        operationalHailMetric(
+          hazard
+        );
+
+      const wind =
+        operationalWindMetric(
+          `${hazard} ${description}`
+        );
+
+      const motion =
+        operationalMotionMetric(
+          description
+        );
+
+      const metrics = [];
+
+      if (hail) {
+        metrics.push({
+          icon: "◆",
+          label: "Max Hail",
+          value: hail
+        });
+      }
+
+      if (wind) {
+        metrics.push({
+          icon: "↗",
+          label: "Wind",
+          value: wind
+        });
+      }
+
+      if (motion) {
+        metrics.push({
+          icon: "➜",
+          label: "Movement",
+          value: motion
+        });
+      }
+
+      if (source) {
+        metrics.push({
+          icon: "⌁",
+          label: "Source",
+          value: source
+        });
+      }
+
+
+      if (!metrics.length) {
+        return "";
+      }
+
+      return `
+        <div class="operational-metric-grid">
+          ${metrics
+            .slice(0, 4)
+            .map(
+              ({ icon, label, value }) => `
+                <div class="operational-metric">
+                  <span class="operational-metric-label">
+                    <span aria-hidden="true">
+                      ${escapeHtml(icon)}
+                    </span>
+
+                    ${escapeHtml(label)}
+                  </span>
+
+                  <strong>
+                    ${escapeHtml(value)}
+                  </strong>
+                </div>
+              `
+            )
+            .join("")}
+        </div>
+      `;
+    }
+
+    function operationalListHtml(
+      items,
+      className
+    ) {
+      if (!items.length) {
+        return "";
+      }
+
+      return `
+        <ul class="${escapeHtml(className)}">
+          ${items
+            .map(
+              (item) => `
+                <li>${escapeHtml(item)}</li>
+              `
+            )
+            .join("")}
+        </ul>
+      `;
+    }
+
+    function renderOperationalAlertCard(
+      feature,
+      description,
+      instruction
+    ) {
+      const props =
+        feature?.properties || {};
+
+      const event =
+        props.event || "NWS Alert";
+
+      const hazard =
+        operationalBulletinField(
+          description,
+          "HAZARD"
+        );
+
+      const what =
+        operationalBulletinField(
+          description,
+          "WHAT"
+        );
+
+      const impact =
+        operationalBulletinField(
+          description,
+          "IMPACT"
+        ) ||
+        operationalBulletinField(
+          description,
+          "IMPACTS"
+        );
+
+      const summary =
+        hazard ||
+        what ||
+        operationalFirstSentence(
+          description
+        ) ||
+        displayHeadlineForFeature(feature) ||
+        event;
+
+      const locations =
+        operationalLocations(
+          feature,
+          description
+        );
+
+      const expires =
+        displayExpiryForFeature(feature);
+
+      const compactProduct =
+        /(advisory|statement)/i.test(
+          event
+        );
+
+      const impactLimit =
+        compactProduct
+          ? 2
+          : 4;
+
+      const actionLimit =
+        compactProduct
+          ? 2
+          : 4;
+
+      const impactItems =
+        operationalListItems(
+          impact,
+          impactLimit
+        );
+
+      const fallbackImpactItems =
+        impactItems.length
+          ? impactItems
+          : [];
+
+      const actionItems =
+        actionItemsForAlert(instruction)
+          .slice(0, actionLimit);
+
+      const metricHtml =
+        operationalMetricCards(
+          feature,
+          description
+        );
+
+      return `
+        <section class="operational-alert-card">
+          <div class="operational-card-heading">
+            <span class="operational-heading-icon">
+              !
+            </span>
+
+            <h3>What to Expect</h3>
+          </div>
+
+          <p class="operational-summary">
+            ${escapeHtml(summary)}
+          </p>
+
+          ${metricHtml}
+
+          <div class="operational-context">
+            <div class="operational-context-row">
+              <span
+                class="operational-context-icon"
+                aria-hidden="true"
+              >
+                ●
+              </span>
+
+              <span class="operational-context-label">
+                Where
+              </span>
+
+              <strong>
+                ${escapeHtml(locations)}
+              </strong>
+            </div>
+
+            <div class="operational-context-row">
+              <span
+                class="operational-context-icon"
+                aria-hidden="true"
+              >
+                ◷
+              </span>
+
+              <span class="operational-context-label">
+                When
+              </span>
+
+              <strong>
+                ${escapeHtml(expires)}
+              </strong>
+            </div>
+          </div>
+
+          ${
+            fallbackImpactItems.length
+              ? `
+                <section class="operational-impact-section">
+                  <h3>Expected Impacts</h3>
+
+                  ${operationalListHtml(
+                    fallbackImpactItems,
+                    "operational-impact-list"
+                  )}
+                </section>
+              `
+              : ""
+          }
+
+          ${
+            actionItems.length
+              ? `
+                <section class="operational-action-section">
+                  <h3>What to Do</h3>
+
+                  ${operationalListHtml(
+                    actionItems,
+                    "operational-action-list"
+                  )}
+                </section>
+              `
+              : ""
+          }
+        </section>
+      `;
+    }
     function renderAlertDetail(feature) {
       if (!feature) {
         alertDetailPanel.style.removeProperty("--detail-accent");
@@ -9223,6 +10298,28 @@
 
       const instruction =
         props.instruction || "";
+
+      /* Simplified operational alert details */
+
+      const tropicalDetailProduct =
+        matchesType(
+          feature,
+          "tropical"
+        );
+
+      const showStructuredDescription =
+        tropicalDetailProduct &&
+        !nationalTropicalProduct &&
+        Boolean(description);
+
+      const showStructuredInstruction =
+        tropicalDetailProduct &&
+        !nationalTropicalProduct &&
+        Boolean(instruction);
+
+      const showStandaloneNwsBulletin =
+        !tropicalDetailProduct &&
+        Boolean(fullDescription);
 
       const hasAlertGeometry =
         hasGeometry(feature);
@@ -9283,6 +10380,13 @@
       const hazardItems =
         hazardItemsForAlert(fullDescription);
 
+      const operationalAlertCardHtml =
+        renderOperationalAlertCard(
+          feature,
+          fullDescription || description,
+          instruction
+        );
+
       const readableDescriptionHtml =
         renderStructuredBulletin(
           fullDescription || description
@@ -9290,25 +10394,35 @@
 
       const fullBulletinHtml =
         fullDescription
-          ? `
-              <details
-                class="detail-accordion full-nws-bulletin"
-              >
-                <summary>
-                  ${
-                    nationalTropicalProduct
-                      ? "View raw NHC bulletin"
-                      : "View raw NWS bulletin"
-                  }
-                </summary>
+          ? showStandaloneNwsBulletin
+            ? `
+                <section class="standalone-nws-bulletin">
+                  <h3>NWS Bulletin</h3>
 
-                <div class="detail-accordion-body">
                   ${renderRawBulletin(
                     fullDescription
                   )}
-                </div>
-              </details>
-            `
+                </section>
+              `
+            : `
+                <details
+                  class="detail-accordion full-nws-bulletin"
+                >
+                  <summary>
+                    ${
+                      nationalTropicalProduct
+                        ? "View raw NHC bulletin"
+                        : "View raw NWS bulletin"
+                    }
+                  </summary>
+
+                  <div class="detail-accordion-body">
+                    ${renderRawBulletin(
+                      fullDescription
+                    )}
+                  </div>
+                </details>
+              `
           : "";
 
       const badgesHtml = `
@@ -9458,7 +10572,9 @@
             </div>
           ` : ""}
 
-          ${description ? `
+          ${operationalAlertCardHtml}
+
+          ${showStructuredDescription ? `
             <div class="detail-section">
               <h3>Description</h3>
               <div>${readableDescriptionHtml}</div>
@@ -9467,7 +10583,7 @@
 
           ${fullBulletinHtml}
 
-          ${instruction ? `
+          ${showStructuredInstruction ? `
             <div class="detail-section">
               <h3>Instruction</h3>
               <div>${renderStructuredBulletin(instruction)}</div>
@@ -9547,22 +10663,25 @@
           </details>
 
           ${fullDescription ? `
-            <details class="detail-accordion">
+            <details
+              class="detail-accordion mobile-nws-bulletin"
+              ${showStandaloneNwsBulletin ? "open" : ""}
+            >
               <summary>
                 ${
                   nationalTropicalProduct
                     ? "Full NHC Bulletin"
-                    : "Full Description"
+                    : "NWS Bulletin"
                 }
               </summary>
 
               <div class="detail-accordion-body">
-                ${renderStructuredBulletin(fullDescription)}
+                ${renderRawBulletin(fullDescription)}
               </div>
             </details>
           ` : ""}
 
-          ${instruction ? `
+          ${showStructuredInstruction ? `
             <details class="detail-accordion">
               <summary>
                 Full Safety Instructions
@@ -10195,7 +11314,6 @@
         "winter",
         "warnings",
         "watches",
-        "advisories",
         "statements"
       ];
 
