@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
   "use strict";
 
   const DEFAULT_LAYER_ID = "level2-manual-radar-layer";
@@ -6,7 +6,6 @@
   const DEFAULT_MAX_VISIBLE_TILES = 2000;
   const DEFAULT_TILE_TIMEOUT_MS = 2200;
   const DEFAULT_CACHE_LIMIT = 5000;
-  const DEFAULT_INITIAL_TILE_COUNT = 4;
 
   function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
@@ -75,15 +74,12 @@
       this.maxVisibleTiles = options.maxVisibleTiles ?? DEFAULT_MAX_VISIBLE_TILES;
       this.tileTimeoutMs = options.tileTimeoutMs ?? DEFAULT_TILE_TIMEOUT_MS;
       this.cacheLimit = options.cacheLimit ?? DEFAULT_CACHE_LIMIT;
-      this.initialTileCount =
-        options.initialTileCount ?? DEFAULT_INITIAL_TILE_COUNT;
 
       this.frames = [];
       this.currentFrameIndex = -1;
       this.currentTileKeys = [];
       this.tileCache = new Map();
       this.textureCache = new Map();
-      this.frameLoadToken = 0;
 
       this.gl = null;
       this.program = null;
@@ -116,7 +112,6 @@
 
     removeFromMap() {
       if (!this.map) return;
-      this.frameLoadToken += 1;
       if (this.map.getLayer(this.layerId)) this.map.removeLayer(this.layerId);
       this.tileCache.clear();
       this.textureCache.clear();
@@ -140,234 +135,49 @@
       this.trimCaches();
     }
 
-    /* Progressive radar frame loading */
-
-    frameIdentity(frame, frameIndex) {
-      return String(
-        frame?.path ||
-        frame?.tileTemplate ||
-        frame?.validTime ||
-        `frame-${frameIndex}`
-      );
-    }
-
-    async loadTileIntoCache(
-      frame,
-      frameIndex,
-      tile,
-      token
-    ) {
-      const key = this.tileKey(
-        frame,
-        frameIndex,
-        tile.z,
-        tile.x,
-        tile.y
-      );
-
-      if (this.tileCache.has(key)) {
-        return key;
-      }
-
-      const image =
-        await this.loadTile(tile.url);
-
-      if (token !== this.frameLoadToken) {
-        return key;
-      }
-
-      this.tileCache.set(key, {
-        ...tile,
-        frameIndex,
-        frameIdentity:
-          this.frameIdentity(
-            frame,
-            frameIndex
-          ),
-        image,
-        failed: !image
-      });
-
-      return key;
-    }
-
     async setFrame(frameIndex) {
       if (!this.frames.length) return false;
 
-      const index =
-        (
-          (
-            frameIndex %
-            this.frames.length
-          ) +
-          this.frames.length
-        ) %
-        this.frames.length;
-
+      const index = ((frameIndex % this.frames.length) + this.frames.length) % this.frames.length;
       const frame = this.frames[index];
-      const token = ++this.frameLoadToken;
 
       this.addToMap();
+      this.status(`warming radar engine frame ${index + 1}/${this.frames.length}`);
 
-      const tiles =
-        this.visibleTilesForFrame(frame);
+      const tileKeys = await this.prefetchVisibleFrame(frame, index);
 
-      const tileKeys =
-        tiles.map((tile) =>
-          this.tileKey(
-            frame,
-            index,
-            tile.z,
-            tile.x,
-            tile.y
-          )
-        );
-
-      const uncachedTiles =
-        tiles.filter((tile) =>
-          !this.tileCache.has(
-            this.tileKey(
-              frame,
-              index,
-              tile.z,
-              tile.x,
-              tile.y
-            )
-          )
-        );
-
-      this.status(
-        `warming radar engine frame ${index + 1}/${this.frames.length}`
-      );
-
-      /*
-       * visibleTilesForFrame() is already ordered
-       * center-first. Wait only for the nearest
-       * small group before displaying the frame.
-       */
-      const initialTiles =
-        uncachedTiles.slice(
-          0,
-          Math.max(
-            1,
-            Number(this.initialTileCount) ||
-              DEFAULT_INITIAL_TILE_COUNT
-          )
-        );
-
-      await Promise.allSettled(
-        initialTiles.map((tile) =>
-          this.loadTileIntoCache(
-            frame,
-            index,
-            tile,
-            token
-          )
-        )
-      );
-
-      if (token !== this.frameLoadToken) {
-        return false;
-      }
-
+      // Do not switch the active frame until the engine has finished its own readiness pass.
       this.currentFrameIndex = index;
       this.currentTileKeys = tileKeys;
-
-      this.trimCaches();
-
-      this.status(
-        `manual radar engine ready ${index + 1}/${this.frames.length}`
-      );
-
+      this.status(`manual radar engine ready ${index + 1}/${this.frames.length}`);
       this.map?.triggerRepaint();
-
-      const initialKeys =
-        new Set(
-          initialTiles.map((tile) =>
-            this.tileKey(
-              frame,
-              index,
-              tile.z,
-              tile.x,
-              tile.y
-            )
-          )
-        );
-
-      const remainingTiles =
-        uncachedTiles.filter((tile) =>
-          !initialKeys.has(
-            this.tileKey(
-              frame,
-              index,
-              tile.z,
-              tile.x,
-              tile.y
-            )
-          )
-        );
-
-      /*
-       * Finish the outer portion without blocking
-       * the visible frame change. Each completed
-       * tile becomes available to the renderer.
-       */
-      if (remainingTiles.length) {
-        void Promise.allSettled(
-          remainingTiles.map((tile) =>
-            this.loadTileIntoCache(
-              frame,
-              index,
-              tile,
-              token
-            )
-          )
-        ).then(() => {
-          if (token !== this.frameLoadToken) {
-            return;
-          }
-
-          this.trimCaches();
-          this.map?.triggerRepaint();
-        });
-      }
 
       return true;
     }
 
-    async prefetchVisibleFrame(
-      frame,
-      frameIndex,
-      token = this.frameLoadToken
-    ) {
-      const tiles =
-        this.visibleTilesForFrame(frame);
+    async prefetchVisibleFrame(frame, frameIndex) {
+      const tiles = this.visibleTilesForFrame(frame);
+      const keys = [];
 
-      const keys =
-        tiles.map((tile) =>
-          this.tileKey(
-            frame,
-            frameIndex,
-            tile.z,
-            tile.x,
-            tile.y
-          )
-        );
+      const jobs = tiles.map(async (tile) => {
+        const key = this.tileKey(frameIndex, tile.z, tile.x, tile.y);
+        keys.push(key);
+        if (this.tileCache.has(key)) return;
 
-      await Promise.allSettled(
-        tiles.map((tile) =>
-          this.loadTileIntoCache(
-            frame,
-            frameIndex,
-            tile,
-            token
-          )
-        )
-      );
+        const image = await this.loadTile(tile.url);
+        this.tileCache.set(key, {
+          ...tile,
+          frameIndex,
+          image,
+          failed: !image
+        });
+      });
 
+      await Promise.allSettled(jobs);
       this.trimCaches();
       return keys;
     }
+
     visibleTilesForFrame(frame) {
       if (!this.map || !frame?.tileTemplate) return [];
 
@@ -473,13 +283,8 @@
       });
     }
 
-    tileKey(frame, frameIndex, z, x, y) {
-      return `${
-        this.frameIdentity(
-          frame,
-          frameIndex
-        )
-      }:${z}:${x}:${y}`;
+    tileKey(frameIndex, z, x, y) {
+      return `${frameIndex}:${z}:${x}:${y}`;
     }
 
     tileExistsInFrameIndex(frame, z, x, y) {
