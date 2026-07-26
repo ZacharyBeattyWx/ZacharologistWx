@@ -66,7 +66,7 @@ MOBILE_WEBP_MAX_SIZE = 2048
 MOBILE_WEBP_QUALITY = 90
 DESKTOP_WEBP_DIR = "desktop"
 DESKTOP_WEBP_MAX_SIZE = 3072
-DESKTOP_WEBP_QUALITY = 92
+DESKTOP_WEBP_LOSSLESS = True
 LEVEL2_TILE_DIR = "tiles"
 LEVEL2_TILE_SIZE = 256
 LEVEL2_TILE_MIN_ZOOM = 5
@@ -798,7 +798,7 @@ def write_desktop_webp(path: Path, grid: np.ndarray, nodata: float) -> None:
     sampled = downsample_grid_nearest(grid, DESKTOP_WEBP_MAX_SIZE)
     rgba = colorize_dbz_grid(sampled, nodata)
     image = Image.fromarray(rgba, mode="RGBA")
-    image.save(path, format="WEBP", quality=DESKTOP_WEBP_QUALITY, method=4)
+    image.save(path, format="WEBP", lossless=DESKTOP_WEBP_LOSSLESS, method=4)
 
 
 
@@ -851,12 +851,7 @@ def sample_grid_for_tile(
     nodata: float,
     tile_size: int = LEVEL2_TILE_SIZE,
 ) -> np.ndarray:
-    """Sample the projected dBZ grid into one map tile.
-
-    This uses nodata-aware bilinear sampling instead of nearest-neighbor sampling.
-    It keeps the radar locked to the map but removes the harsh block/gap look that
-    becomes obvious when the browser displays max-zoom radar tiles.
-    """
+    """Sample the projected dBZ grid with nearest-neighbor radar-bin preservation."""
     west, south, east, north = bounds
     height, width = grid.shape
 
@@ -877,56 +872,15 @@ def sample_grid_for_tile(
     if not np.any(in_bounds):
         return sampled
 
-    # Convert tile pixel lon/lat into projected raster pixel coordinates.
-    # The -0.5 aligns sampling to raster cell centers.
+    # Rounding selects one source radar bin without blending neighboring bins.
     src_x = ((lon_grid - west) / (east - west)) * width - 0.5
     src_y = ((north - lat_grid) / (north - south)) * height - 0.5
+    nearest_x = np.clip(np.rint(src_x), 0, width - 1).astype(np.int32)
+    nearest_y = np.clip(np.rint(src_y), 0, height - 1).astype(np.int32)
 
-    src_x = np.clip(src_x, 0.0, float(width - 1))
-    src_y = np.clip(src_y, 0.0, float(height - 1))
-
-    x0 = np.floor(src_x).astype(np.int32)
-    y0 = np.floor(src_y).astype(np.int32)
-    x1 = np.clip(x0 + 1, 0, width - 1)
-    y1 = np.clip(y0 + 1, 0, height - 1)
-
-    wx = (src_x - x0).astype(np.float32)
-    wy = (src_y - y0).astype(np.float32)
-
-    g00 = grid[y0, x0]
-    g10 = grid[y0, x1]
-    g01 = grid[y1, x0]
-    g11 = grid[y1, x1]
-
-    valid00 = np.isfinite(g00) & (g00 != nodata)
-    valid10 = np.isfinite(g10) & (g10 != nodata)
-    valid01 = np.isfinite(g01) & (g01 != nodata)
-    valid11 = np.isfinite(g11) & (g11 != nodata)
-
-    w00 = (1.0 - wx) * (1.0 - wy)
-    w10 = wx * (1.0 - wy)
-    w01 = (1.0 - wx) * wy
-    w11 = wx * wy
-
-    w00 = np.where(valid00, w00, 0.0)
-    w10 = np.where(valid10, w10, 0.0)
-    w01 = np.where(valid01, w01, 0.0)
-    w11 = np.where(valid11, w11, 0.0)
-
-    weight_sum = w00 + w10 + w01 + w11
-
-    weighted_sum = (
-        np.where(valid00, g00, 0.0) * w00
-        + np.where(valid10, g10, 0.0) * w10
-        + np.where(valid01, g01, 0.0) * w01
-        + np.where(valid11, g11, 0.0) * w11
-    )
-
-    blended = np.full((tile_size, tile_size), nodata, dtype=np.float32)
-    np.divide(weighted_sum, weight_sum, out=blended, where=weight_sum > 0)
-
-    has_value = in_bounds & (weight_sum > 0)
-    sampled[has_value] = blended[has_value]
+    nearest_values = grid[nearest_y, nearest_x]
+    has_value = in_bounds & np.isfinite(nearest_values) & (nearest_values != nodata)
+    sampled[has_value] = nearest_values[has_value]
     return sampled
 
 
