@@ -2820,6 +2820,10 @@ body.alert-type-filter-popup-open {
     const LEVEL2_ENGINE_MODE = new URLSearchParams(window.location.search).get("level2Engine");
     const USE_MANUAL_LEVEL2_RADAR_ENGINE =
       LEVEL2_ENGINE_MODE !== "legacy" && LEVEL2_ENGINE_MODE !== "off";
+    const USE_WEBP_LEVEL2_PLAYBACK = true;
+    const LEVEL2_PLAYBACK_PRELOAD_COUNT = 4;
+    const LEVEL2_PLAYBACK_PRELOAD_CONCURRENCY = 2;
+    const PAUSED_TILE_RESTORE_DELAY_MS = 300;
     const LEVEL2_MANUAL_RADAR_LAYER_ID = "level2-manual-radar-layer";
     const PALETTE_SOURCE_FILE = "scripts/radar/radar_config.json";
 
@@ -3326,6 +3330,12 @@ body.alert-type-filter-popup-open {
     let pendingOverlayRedrawQuality = "full";
     let level2RadarEngine = null;
     let manualLevel2RadarViewRefreshTimer = null;
+    let isWebpPlaybackActive = false;
+    let webpPlaybackDisplayToken = 0;
+    let pausedTileRestoreTimer = null;
+    let webpPlaybackPreloadInProgress = false;
+    let webpPlaybackPreloadRequestedIndex = null;
+    const webpPlaybackLoadPromises = new Map();
 
     function clamp255(value) {
       return Math.max(0, Math.min(255, Math.round(value)));
@@ -4213,9 +4223,193 @@ body.alert-type-filter-popup-open {
       return previousLatestPath !== (level2Frames[level2Frames.length - 1]?.path || "");
     }
 
-    async function renderCurrentFrame() {
+    /* Hybrid WebP Level II playback v2 */
+
+    function removeManualLevel2RadarLayerForPlayback() {
+      if (!map?.getLayer?.(LEVEL2_MANUAL_RADAR_LAYER_ID)) return;
+      map.removeLayer(LEVEL2_MANUAL_RADAR_LAYER_ID);
+    }
+
+    function webpPlaybackFrameStillAvailable(frame) {
+      const key = level2FrameCacheKey(frame);
+      if (!key) return false;
+
+      return level2Frames.some(
+        (candidate) => level2FrameCacheKey(candidate) === key
+      );
+    }
+
+    async function loadWebpPlaybackFrameIntoCache(frame) {
+      const key = level2FrameCacheKey(frame);
+      if (!key || !frame?.imagePath) return false;
+      if (renderedFrameCache.has(key)) return true;
+
+      let promise = webpPlaybackLoadPromises.get(key);
+
+      if (!promise) {
+        promise = (async () => {
+          const surface = await buildLevel2RenderedSurface(
+            frame,
+            { logDiagnostics: false }
+          );
+
+          if (!webpPlaybackFrameStillAvailable(frame)) {
+            return false;
+          }
+
+          storeRenderedFrameSurface(frame, surface);
+          return true;
+        })().finally(() => {
+          webpPlaybackLoadPromises.delete(key);
+        });
+
+        webpPlaybackLoadPromises.set(key, promise);
+      }
+
+      return promise;
+    }
+
+    async function scheduleWebpPlaybackPreload(startIndex = currentFrameIndex) {
+      webpPlaybackPreloadRequestedIndex = startIndex;
+
+      if (webpPlaybackPreloadInProgress) return;
+
+      webpPlaybackPreloadInProgress = true;
+
+      try {
+        while (
+          isPlaying &&
+          webpPlaybackPreloadRequestedIndex !== null
+        ) {
+          const requestedIndex = webpPlaybackPreloadRequestedIndex;
+          webpPlaybackPreloadRequestedIndex = null;
+
+          const indexes = [];
+
+          for (
+            let offset = 1;
+            offset <= LEVEL2_PLAYBACK_PRELOAD_COUNT;
+            offset += 1
+          ) {
+            const index =
+              (requestedIndex + offset) %
+              Math.max(1, level2Frames.length);
+
+            if (!indexes.includes(index)) {
+              indexes.push(index);
+            }
+          }
+
+          let cursor = 0;
+
+          const worker = async () => {
+            while (cursor < indexes.length && isPlaying) {
+              const index = indexes[cursor];
+              cursor += 1;
+
+              const frame = level2Frames[index];
+              if (!frame?.imagePath) continue;
+
+              try {
+                await loadWebpPlaybackFrameIntoCache(frame);
+              } catch (error) {
+                console.warn(
+                  "Level II WebP playback preload failed",
+                  error
+                );
+              }
+            }
+          };
+
+          const workerCount = Math.min(
+            LEVEL2_PLAYBACK_PRELOAD_CONCURRENCY,
+            indexes.length
+          );
+
+          await Promise.all(
+            Array.from(
+              { length: workerCount },
+              () => worker()
+            )
+          );
+        }
+      } finally {
+        webpPlaybackPreloadInProgress = false;
+      }
+    }
+
+    async function renderWebpPlaybackFrame(frame) {
+      if (!frame?.imagePath) {
+        throw new Error("This radar frame has no WebP playback image.");
+      }
+
+      const displayToken = ++webpPlaybackDisplayToken;
+
+      const loaded = await loadWebpPlaybackFrameIntoCache(frame);
+
+      if (
+        displayToken !== webpPlaybackDisplayToken ||
+        !isPlaying
+      ) {
+        return false;
+      }
+
+      if (!loaded) {
+        throw new Error("The WebP playback frame could not be prepared.");
+      }
+
+      removeMapboxLevel2TileLayer();
+
+      if (map.getLayer(LEVEL2_MAPBOX_IMAGE_LAYER_ID)) {
+        map.removeLayer(LEVEL2_MAPBOX_IMAGE_LAYER_ID);
+      }
+
+      if (map.getSource(LEVEL2_MAPBOX_IMAGE_SOURCE_ID)) {
+        map.removeSource(LEVEL2_MAPBOX_IMAGE_SOURCE_ID);
+      }
+
+      removeManualLevel2RadarLayerForPlayback();
+
+      isWebpPlaybackActive = true;
+
+      if (radarOverlayCanvas) {
+        radarOverlayCanvas.style.display = "";
+      }
+
+      const renderMode = await renderLevel2Dbz(frame);
+
+      if (
+        displayToken !== webpPlaybackDisplayToken ||
+        !isPlaying
+      ) {
+        return false;
+      }
+
+      positionLevel2WeatherLayers();
+      syncMapboxAlertLayerVisibility();
+      drawAlertOverlay();
+
+      setStatusText(
+        `WebP playback frame ready ${currentFrameIndex + 1}/${level2Frames.length}`
+      );
+
+      void scheduleWebpPlaybackPreload(currentFrameIndex);
+
+      return renderMode || "webp-playback";
+    }
+    async function renderCurrentFrame(options = {}) {
       const frame = currentFrame();
       if (!frame) return null;
+
+      if (
+        options.playback === true &&
+        USE_WEBP_LEVEL2_PLAYBACK
+      ) {
+        return renderWebpPlaybackFrame(frame);
+      }
+
+      webpPlaybackDisplayToken += 1;
+      isWebpPlaybackActive = false;
 
       if (await updateManualLevel2RadarEngineFrame(frame)) {
         return "manual-radar-engine";
@@ -4269,19 +4463,96 @@ body.alert-type-filter-popup-open {
 
       return renderMode;
     }
+    async function stepFrame(direction, options = {}) {
+      if (!level2Frames.length) return null;
 
-    async function stepFrame(direction) {
-      if (!level2Frames.length) return;
-      currentFrameIndex = (currentFrameIndex + direction + level2Frames.length) % level2Frames.length;
-      await renderCurrentFrame();
+      const previousFrameIndex = currentFrameIndex;
+      const targetFrameIndex =
+        (
+          currentFrameIndex +
+          direction +
+          level2Frames.length
+        ) %
+        level2Frames.length;
+
+      currentFrameIndex = targetFrameIndex;
+
+      try {
+        const result = await renderCurrentFrame(options);
+
+        if (!result) {
+          throw new Error("Radar frame rendering was canceled.");
+        }
+
+        return result;
+      } catch (error) {
+        currentFrameIndex = previousFrameIndex;
+        syncFrameSelect();
+        updateFrameInfoRow();
+        throw error;
+      }
     }
 
-    function stopPlayback() {
+    function stopPlayback(options = {}) {
       clearPlaybackTimer();
+
       isPlaying = false;
       updatePlaybackButton();
-    }
 
+      webpPlaybackDisplayToken += 1;
+      webpPlaybackPreloadRequestedIndex = null;
+      isWebpPlaybackActive = false;
+
+      if (pausedTileRestoreTimer !== null) {
+        window.clearTimeout(pausedTileRestoreTimer);
+        pausedTileRestoreTimer = null;
+      }
+
+      syncMapboxAlertLayerVisibility();
+      drawAlertOverlay();
+
+      const restoreTiles = options.restoreTiles !== false;
+
+      if (
+        !restoreTiles ||
+        !shouldUseManualLevel2RadarEngine() ||
+        !currentFrame()?.tileTemplate
+      ) {
+        return;
+      }
+
+      const restoreFrameIndex = currentFrameIndex;
+
+      pausedTileRestoreTimer = window.setTimeout(
+        async () => {
+          pausedTileRestoreTimer = null;
+
+          if (
+            isPlaying ||
+            restoreFrameIndex !== currentFrameIndex
+          ) {
+            return;
+          }
+
+          try {
+            setStatusText("loading high-resolution paused radar");
+            await renderCurrentFrame();
+          } catch (error) {
+            console.warn(
+              "Paused high-resolution radar restore failed",
+              error
+            );
+
+            if (!isPlaying) {
+              setStatusText(
+                "paused on WebP frame; high-resolution radar unavailable"
+              );
+            }
+          }
+        },
+        PAUSED_TILE_RESTORE_DELAY_MS
+      );
+    }
     async function startMobileLoopLoadAfterPlay() {
       if (!isMobileLevel2Mode() || !mobileLoopLoadRequested || mobileLoopLoadInProgress) return;
       if (shouldUseMapboxLevel2TileLayer() || shouldUseMapboxLevel2ImageLayer()) {
@@ -4345,27 +4616,73 @@ body.alert-type-filter-popup-open {
 
     async function playbackTick() {
       if (!isPlaying) return;
-      if (level2Frames.length > 1) {
-        await stepFrame(1);
+
+      const tickStartedAt = performance.now();
+
+      try {
+        if (level2Frames.length > 1) {
+          await stepFrame(1, { playback: true });
+        }
+      } catch (error) {
+        if (!isPlaying) return;
+
+        console.warn("Level II playback frame failed", error);
+        stopPlayback();
+        return;
       }
+
       if (!isPlaying) return;
+
+      const renderElapsedMs = performance.now() - tickStartedAt;
+      const nextDelayMs = Math.max(
+        16,
+        playbackIntervalMs - renderElapsedMs
+      );
+
       clearPlaybackTimer();
-      playbackTimer = window.setTimeout(playbackTick, playbackIntervalMs);
+      playbackTimer = window.setTimeout(
+        playbackTick,
+        nextDelayMs
+      );
     }
 
     function startPlayback(options = {}) {
       const userRequested = options && options.userRequested === true;
       if (!userRequested && !playbackWasUserRequested) return;
       if (isPlaying || level2Frames.length < 2) return;
+
       playbackWasUserRequested = true;
-      if (isMobileLevel2Mode() && !USE_MAPBOX_LEVEL2_IMAGE_LAYER && !USE_MAPBOX_LEVEL2_TILE_LAYER) {
+
+      if (pausedTileRestoreTimer !== null) {
+        window.clearTimeout(pausedTileRestoreTimer);
+        pausedTileRestoreTimer = null;
+      }
+
+      webpPlaybackDisplayToken += 1;
+      webpPlaybackPreloadRequestedIndex = null;
+
+      isPlaying = true;
+      updatePlaybackButton();
+
+      if (
+        USE_WEBP_LEVEL2_PLAYBACK &&
+        level2Frames.some((frame) => Boolean(frame?.imagePath))
+      ) {
+        void scheduleWebpPlaybackPreload(currentFrameIndex);
+      } else if (
+        isMobileLevel2Mode() &&
+        !USE_MAPBOX_LEVEL2_IMAGE_LAYER &&
+        !USE_MAPBOX_LEVEL2_TILE_LAYER
+      ) {
         mobileLoopLoadRequested = true;
         startMobileLoopLoadAfterPlay();
       }
-      isPlaying = true;
-      updatePlaybackButton();
+
       clearPlaybackTimer();
-      playbackTimer = window.setTimeout(playbackTick, playbackIntervalMs);
+      playbackTimer = window.setTimeout(
+        playbackTick,
+        playbackIntervalMs
+      );
     }
 
     function togglePlayback() {
@@ -4375,11 +4692,10 @@ body.alert-type-filter-popup-open {
         startPlayback({ userRequested: true });
       }
     }
-
     async function changeLevel2Site(site) {
       const nextSite = persistSelectedLevel2Site(site);
       if (siteSelect) siteSelect.value = nextSite;
-      stopPlayback();
+      stopPlayback({ restoreTiles: false });
       renderedFrameCache.clear();
       if (level2RadarEngine) {
         level2RadarEngine.removeFromMap();
@@ -4421,12 +4737,18 @@ body.alert-type-filter-popup-open {
       frameRefreshTimer = window.setInterval(async () => {
         const latestChanged = await refreshLevel2Frames();
         if (latestChanged && level2Frames.length > 0) {
+          const previousFrameIndex = currentFrameIndex;
           currentFrameIndex = level2Frames.length - 1;
           resetMobileLoopLoadState();
-          syncFrameSelect();
-          updateFrameInfoRow();
 
-          await renderCurrentFrame();
+          try {
+            await renderCurrentFrame({ playback: isPlaying });
+          } catch (error) {
+            currentFrameIndex = previousFrameIndex;
+            syncFrameSelect();
+            updateFrameInfoRow();
+            throw error;
+          }
 
           if (isPlaying && isMobileLevel2Mode() && !USE_MAPBOX_LEVEL2_IMAGE_LAYER && !USE_MAPBOX_LEVEL2_TILE_LAYER) {
             mobileLoopLoadRequested = true;
@@ -4728,7 +5050,13 @@ body.alert-type-filter-popup-open {
     }
 
     function shouldUseMapboxAlertVisualLayers() {
-      return shouldUseMapboxLevel2TileLayer() || shouldUseManualLevel2RadarEngine();
+      return (
+        !isWebpPlaybackActive &&
+        (
+          shouldUseMapboxLevel2TileLayer() ||
+          shouldUseManualLevel2RadarEngine()
+        )
+      );
     }
 
     function ensureLevel2RadarEngine() {
@@ -7554,16 +7882,16 @@ body.alert-type-filter-popup-open {
 
 
     previousFrameButton.addEventListener("click", async () => {
-      stopPlayback();
+      stopPlayback({ restoreTiles: false });
       await stepFrame(-1);
     });
     nextFrameButton.addEventListener("click", async () => {
-      stopPlayback();
+      stopPlayback({ restoreTiles: false });
       await stepFrame(1);
     });
     playPauseButton.addEventListener("click", togglePlayback);
     frameSelect?.addEventListener("change", async () => {
-      stopPlayback();
+      stopPlayback({ restoreTiles: false });
       currentFrameIndex = Math.max(0, Math.min(level2Frames.length - 1, Number(frameSelect.value) || 0));
       await renderCurrentFrame();
     });
@@ -9000,4 +9328,3 @@ body.alert-type-filter-popup-open {
 </style>
 </body>
 </html>
-
