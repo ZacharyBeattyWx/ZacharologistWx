@@ -17,6 +17,11 @@ on:
         description: "Number of final Level II frames to publish"
         required: false
         default: "25"
+      force_render:
+        description: "Rebuild existing radar outputs instead of reusing restored files"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -215,11 +220,23 @@ jobs:
         shell: bash
         run: |
           set +e
+
+          render_args=(
+            --site "${{ matrix.site }}"
+            --fetch-latest
+            --source-count "${{ needs.prepare-matrix.outputs.source_count }}"
+            --max-sources "${{ needs.prepare-matrix.outputs.frame_count }}"
+          )
+
+          if [[ "${{ github.event.inputs.force_render || 'false' }}" == "true" ]]; then
+            render_args+=(--force)
+            echo "forceRender=true"
+          else
+            echo "forceRender=false"
+          fi
+
           python scripts/radar/render_level2_reflectivity.py \
-            --site "${{ matrix.site }}" \
-            --fetch-latest \
-            --source-count "${{ needs.prepare-matrix.outputs.source_count }}" \
-            --max-sources "${{ needs.prepare-matrix.outputs.frame_count }}" \
+            "${render_args[@]}" \
             2>&1 | grep -v '^Unknown message: 32$'
           status=${PIPESTATUS[0]}
           set -e
