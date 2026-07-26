@@ -7493,15 +7493,28 @@ body.alert-type-filter-popup-open {
           // scheduleLevel2FrameWarmup({ aroundIndex: currentFrameIndex, delayMs: 900 });
         }
       });
+      /* WebP live map anchoring v1
+       * Keep playback advancing normally while synchronizing the external
+       * radar canvas with Mapbox's current render frame during pan and zoom.
+       */
       map.on("move", () => {
-        requestOverlayRedraw({ quality: "interaction" });
+        if (!isWebpPlaybackActive) {
+          requestOverlayRedraw({ quality: "interaction" });
+        }
         requestAlertOverlayRedraw();
       });
       map.on("zoom", () => {
-        requestOverlayRedraw({ quality: "interaction" });
+        if (!isWebpPlaybackActive) {
+          requestOverlayRedraw({ quality: "interaction" });
+        }
         requestAlertOverlayRedraw();
       });
       map.on("render", () => {
+        if (isWebpPlaybackActive && isMapInteracting) {
+          redrawRadarOverlay({
+            stripCount: RADAR_OVERLAY_INTERACTION_VERTICAL_STRIPS
+          });
+        }
         requestAlertOverlayRedraw();
       });
       map.on("resize", () => {
