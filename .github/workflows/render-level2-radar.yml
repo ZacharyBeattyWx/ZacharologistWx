@@ -204,6 +204,7 @@ jobs:
               --include "*.tif" \
               --include "*.json" \
               --include "mobile/*.webp" \
+              --include "desktop/*.webp" \
               --include "tiles/*/*/*/*.png" \
               --endpoint-url "$R2_ENDPOINT"
           else
@@ -235,6 +236,7 @@ jobs:
           manifest = base / "frames.json"
           latest = base / "latest.json"
           mobile = base / "mobile"
+          desktop = base / "desktop"
           tiles = base / "tiles"
 
           frames = json.loads(manifest.read_text(encoding="utf-8"))
@@ -246,6 +248,7 @@ jobs:
           print(f"jsonFiles={len(list(base.glob('*.json')))}")
           print(f"tifFiles={len(list(base.glob('*.tif')))}")
           print(f"mobileWebpFiles={len(list(mobile.glob('*.webp'))) if mobile.exists() else 0}")
+          print(f"desktopWebpFiles={len(list(desktop.glob('*.webp'))) if desktop.exists() else 0}")
           print(f"tileFrameDirs={sum(1 for p in tiles.iterdir() if p.is_dir()) if tiles.exists() else 0}")
           PY
       - name: Upload Level II radar to Cloudflare R2
@@ -269,6 +272,7 @@ jobs:
             --exclude "*" \
             --include "*.tif" \
             --include "mobile/*.webp" \
+            --include "desktop/*.webp" \
             --include "tiles/*/*/*/*.png" \
             --delete \
             --endpoint-url "$R2_ENDPOINT"

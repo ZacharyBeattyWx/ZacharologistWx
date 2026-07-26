@@ -64,6 +64,9 @@ MIN_VALID_LEVEL2_PIXELS = 0
 MOBILE_WEBP_DIR = "mobile"
 MOBILE_WEBP_MAX_SIZE = 2048
 MOBILE_WEBP_QUALITY = 90
+DESKTOP_WEBP_DIR = "desktop"
+DESKTOP_WEBP_MAX_SIZE = 3072
+DESKTOP_WEBP_QUALITY = 92
 LEVEL2_TILE_DIR = "tiles"
 LEVEL2_TILE_SIZE = 256
 LEVEL2_TILE_MIN_ZOOM = 5
@@ -448,6 +451,7 @@ def build_level2_frames_manifest(
             {
                 "path": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{frame_file.name}",
                 "imagePath": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{MOBILE_WEBP_DIR}/{frame_file.stem}.webp",
+                "desktopImagePath": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{DESKTOP_WEBP_DIR}/{frame_file.stem}.webp",
                 "tileTemplate": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{LEVEL2_TILE_DIR}/{frame_file.stem}/{{z}}/{{x}}/{{y}}.png",
                 "tileIndex": tile_index_for_geotiff(output_root, frame_file),
                 "tileMinZoom": LEVEL2_TILE_MIN_ZOOM,
@@ -684,6 +688,10 @@ def mobile_webp_path_for_geotiff(output_root: Path, geotiff_path: Path) -> Path:
     return output_root / MOBILE_WEBP_DIR / f"{geotiff_path.stem}.webp"
 
 
+def desktop_webp_path_for_geotiff(output_root: Path, geotiff_path: Path) -> Path:
+    return output_root / DESKTOP_WEBP_DIR / f"{geotiff_path.stem}.webp"
+
+
 def downsample_grid_nearest(grid: np.ndarray, max_size: int = MOBILE_WEBP_MAX_SIZE) -> np.ndarray:
     height, width = grid.shape
     largest = max(height, width)
@@ -779,10 +787,18 @@ def colorize_dbz_grid_for_tiles(grid: np.ndarray, nodata: float) -> np.ndarray:
 
 def write_mobile_webp(path: Path, grid: np.ndarray, nodata: float) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    sampled = downsample_grid_nearest(grid)
+    sampled = downsample_grid_nearest(grid, MOBILE_WEBP_MAX_SIZE)
     rgba = colorize_dbz_grid(sampled, nodata)
     image = Image.fromarray(rgba, mode="RGBA")
     image.save(path, format="WEBP", quality=MOBILE_WEBP_QUALITY, method=4)
+
+
+def write_desktop_webp(path: Path, grid: np.ndarray, nodata: float) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    sampled = downsample_grid_nearest(grid, DESKTOP_WEBP_MAX_SIZE)
+    rgba = colorize_dbz_grid(sampled, nodata)
+    image = Image.fromarray(rgba, mode="RGBA")
+    image.save(path, format="WEBP", quality=DESKTOP_WEBP_QUALITY, method=4)
 
 
 
@@ -1019,12 +1035,33 @@ def ensure_mobile_webps(output_root: Path, nodata: float) -> None:
         write_mobile_webp(webp_path, grid, float(source_nodata))
 
 
+def ensure_desktop_webps(output_root: Path, nodata: float) -> None:
+    for geotiff_path in sorted(output_root.glob("*_projected_dbz.tif")):
+        webp_path = desktop_webp_path_for_geotiff(output_root, geotiff_path)
+        if webp_path.exists():
+            continue
+        with rasterio.open(geotiff_path) as src:
+            grid = src.read(1).astype(np.float32)
+            source_nodata = src.nodata if src.nodata is not None else nodata
+        write_desktop_webp(webp_path, grid, float(source_nodata))
+
+
 def prune_orphan_mobile_webps(output_root: Path) -> None:
     mobile_root = output_root / MOBILE_WEBP_DIR
     if not mobile_root.exists():
         return
     valid_stems = {frame_file.stem for frame_file in output_root.glob("*_projected_dbz.tif")}
     for webp_path in mobile_root.glob("*.webp"):
+        if webp_path.stem not in valid_stems:
+            webp_path.unlink(missing_ok=True)
+
+
+def prune_orphan_desktop_webps(output_root: Path) -> None:
+    desktop_root = output_root / DESKTOP_WEBP_DIR
+    if not desktop_root.exists():
+        return
+    valid_stems = {frame_file.stem for frame_file in output_root.glob("*_projected_dbz.tif")}
+    for webp_path in desktop_root.glob("*.webp"):
         if webp_path.stem not in valid_stems:
             webp_path.unlink(missing_ok=True)
 
@@ -1164,6 +1201,7 @@ def main() -> int:
 
             write_geotiff(path=output_path, grid=grid, bounds=bounds, nodata=args.nodata)
             write_mobile_webp(mobile_webp_path_for_geotiff(output_root, output_path), grid, args.nodata)
+            write_desktop_webp(desktop_webp_path_for_geotiff(output_root, output_path), grid, args.nodata)
             tile_count = write_level2_png_tiles(output_root, output_path, grid, bounds, args.nodata)
             print(f"tileCount={tile_count}")
 
@@ -1200,8 +1238,10 @@ def main() -> int:
 
     prune_level2_output_frames(output_root, MAX_LEVEL2_FRAMES)
     ensure_mobile_webps(output_root, args.nodata)
+    ensure_desktop_webps(output_root, args.nodata)
     ensure_level2_png_tiles(output_root, bounds, args.nodata)
     prune_orphan_mobile_webps(output_root)
+    prune_orphan_desktop_webps(output_root)
     prune_orphan_level2_tiles(output_root)
 
     latest_json = output_root / "latest.json"
@@ -1221,6 +1261,7 @@ def main() -> int:
                 },
                 "path": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{latest_output_path.name}",
                 "imagePath": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{MOBILE_WEBP_DIR}/{latest_output_path.stem}.webp",
+                "desktopImagePath": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{DESKTOP_WEBP_DIR}/{latest_output_path.stem}.webp",
                 "tileTemplate": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{LEVEL2_TILE_DIR}/{latest_output_path.stem}/{{z}}/{{x}}/{{y}}.png",
                 "tileIndex": tile_index_for_geotiff(output_root, latest_output_path),
                 "tileMinZoom": LEVEL2_TILE_MIN_ZOOM,

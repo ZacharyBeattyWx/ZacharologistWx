@@ -3480,6 +3480,7 @@ body.alert-type-filter-popup-open {
       return {
         path: level2DataUrl(meta.path),
         imagePath: meta.imagePath ? level2DataUrl(meta.imagePath) : null,
+        desktopImagePath: meta.desktopImagePath ? level2DataUrl(meta.desktopImagePath) : null,
         tileTemplate: meta.tileTemplate ? level2DataUrl(meta.tileTemplate) : null,
         tileIndex: meta.tileIndex && typeof meta.tileIndex === "object" ? meta.tileIndex : null,
         tileMinZoom: Number.isFinite(Number(meta.tileMinZoom)) ? Number(meta.tileMinZoom) : 5,
@@ -3679,10 +3680,18 @@ body.alert-type-filter-popup-open {
       });
     }
 
-    async function buildMobileLevel2ImageSurface(frame = currentFrame(), options = {}) {
-      if (!frame?.imagePath) return null;
+    function level2PlaybackImagePath(frame = currentFrame()) {
+      if (!isMobileLevel2Mode() && frame?.desktopImagePath) {
+        return frame.desktopImagePath;
+      }
+      return frame?.imagePath || null;
+    }
 
-      const image = await loadRadarImageElement(frame.imagePath);
+    async function buildMobileLevel2ImageSurface(frame = currentFrame(), options = {}) {
+      const imagePath = level2PlaybackImagePath(frame);
+      if (!imagePath) return null;
+
+      const image = await loadRadarImageElement(imagePath);
       const width = Math.max(1, image.naturalWidth || image.width || 1);
       const height = Math.max(1, image.naturalHeight || image.height || 1);
 
@@ -3699,7 +3708,7 @@ body.alert-type-filter-popup-open {
         width,
         height,
         bounds: frame?.bounds || radarBounds,
-        path: frame.imagePath,
+        path: imagePath,
         validTime: frame?.validTime || ""
       };
     }
