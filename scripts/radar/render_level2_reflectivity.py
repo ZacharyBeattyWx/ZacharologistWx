@@ -46,7 +46,7 @@ except Exception as exc:  # pragma: no cover
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parents[1]
 LEVEL2_SOURCE_BASE = REPO_ROOT / "radar" / "source" / "level2"
-LEVEL2_OUTPUT_BASE = REPO_ROOT / "radar" / "tilesets" / "test"
+LEVEL2_TILESETS_BASE = REPO_ROOT / "radar" / "tilesets"
 FRAMES_JSON = REPO_ROOT / "radar" / "frames.json"
 DEFAULT_SITE = "KFCX"
 LEVEL2_PRODUCT = "LEVEL2_REF0"
@@ -428,6 +428,7 @@ def fetch_latest_source_scans(
 
 def build_level2_frames_manifest(
     output_root: Path,
+    output_namespace: str,
     site: str,
     product: str,
     bounds: tuple[float, float, float, float],
@@ -450,10 +451,10 @@ def build_level2_frames_manifest(
             valid_time = infer_valid_time_from_name(frame_file) or ""
         frames.append(
             {
-                "path": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{frame_file.name}",
-                "imagePath": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{MOBILE_WEBP_DIR}/{frame_file.stem}.webp",
-                "desktopImagePath": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{DESKTOP_WEBP_DIR}/{frame_file.stem}.webp",
-                "tileTemplate": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{LEVEL2_TILE_DIR}/{frame_file.stem}/{{z}}/{{x}}/{{y}}.png",
+                "path": f"/radar/tilesets/{output_namespace}/{site}/LEVEL2/REF0/{frame_file.name}",
+                "imagePath": f"/radar/tilesets/{output_namespace}/{site}/LEVEL2/REF0/{MOBILE_WEBP_DIR}/{frame_file.stem}.webp",
+                "desktopImagePath": f"/radar/tilesets/{output_namespace}/{site}/LEVEL2/REF0/{DESKTOP_WEBP_DIR}/{frame_file.stem}.webp",
+                "tileTemplate": f"/radar/tilesets/{output_namespace}/{site}/LEVEL2/REF0/{LEVEL2_TILE_DIR}/{frame_file.stem}/{{z}}/{{x}}/{{y}}.png",
                 "tileIndex": tile_index_for_geotiff(output_root, frame_file),
                 "tileMinZoom": LEVEL2_TILE_MIN_ZOOM,
                 "tileMaxZoom": LEVEL2_TILE_MAX_ZOOM,
@@ -1154,15 +1155,33 @@ def main() -> int:
     )
     parser.add_argument("--output-size", type=int, default=OUTPUT_SIZE)
     parser.add_argument("--nodata", type=float, default=NODATA)
+    parser.add_argument(
+        "--output-namespace",
+        default="test",
+        help="Namespace beneath radar/tilesets and in published manifest URLs.",
+    )
     args = parser.parse_args()
 
     site = args.site.strip().upper()
     if not re.fullmatch(r"K[A-Z0-9]{3}", site):
         raise SystemExit(f"Unsupported Level II radar site ID: {site}")
 
+    output_namespace = str(args.output_namespace or "").strip().strip("/")
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", output_namespace):
+        raise SystemExit(
+            f"Unsupported Level II output namespace: {output_namespace!r}"
+        )
+
     input_dir = args.input_dir or (LEVEL2_SOURCE_BASE / site)
-    output_root = LEVEL2_OUTPUT_BASE / site / "LEVEL2" / "REF0"
+    output_root = (
+        LEVEL2_TILESETS_BASE /
+        output_namespace /
+        site /
+        "LEVEL2" /
+        "REF0"
+    )
     level2_frames_manifest = output_root / "frames.json"
+    print(f"outputNamespace={output_namespace}")
 
     if args.fetch_latest:
         fetch_latest_source_scans(
@@ -1308,10 +1327,10 @@ def main() -> int:
                     "east": bounds[2],
                     "north": bounds[3],
                 },
-                "path": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{latest_output_path.name}",
-                "imagePath": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{MOBILE_WEBP_DIR}/{latest_output_path.stem}.webp",
-                "desktopImagePath": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{DESKTOP_WEBP_DIR}/{latest_output_path.stem}.webp",
-                "tileTemplate": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{LEVEL2_TILE_DIR}/{latest_output_path.stem}/{{z}}/{{x}}/{{y}}.png",
+                "path": f"/radar/tilesets/{output_namespace}/{site}/LEVEL2/REF0/{latest_output_path.name}",
+                "imagePath": f"/radar/tilesets/{output_namespace}/{site}/LEVEL2/REF0/{MOBILE_WEBP_DIR}/{latest_output_path.stem}.webp",
+                "desktopImagePath": f"/radar/tilesets/{output_namespace}/{site}/LEVEL2/REF0/{DESKTOP_WEBP_DIR}/{latest_output_path.stem}.webp",
+                "tileTemplate": f"/radar/tilesets/{output_namespace}/{site}/LEVEL2/REF0/{LEVEL2_TILE_DIR}/{latest_output_path.stem}/{{z}}/{{x}}/{{y}}.png",
                 "tileIndex": tile_index_for_geotiff(output_root, latest_output_path),
                 "tileMinZoom": LEVEL2_TILE_MIN_ZOOM,
                 "tileMaxZoom": LEVEL2_TILE_MAX_ZOOM,
@@ -1326,6 +1345,7 @@ def main() -> int:
 
     frames_manifest = build_level2_frames_manifest(
         output_root=output_root,
+        output_namespace=output_namespace,
         site=site,
         product=LEVEL2_PRODUCT,
         bounds=bounds,

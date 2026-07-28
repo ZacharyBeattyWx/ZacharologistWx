@@ -33,6 +33,7 @@ jobs:
       sites: ${{ steps.sites.outputs.sites }}
       source_count: ${{ steps.sites.outputs.source_count }}
       frame_count: ${{ steps.sites.outputs.frame_count }}
+      output_namespace: ${{ steps.sites.outputs.output_namespace }}
 
     steps:
       - name: Build Level II site matrix
@@ -46,7 +47,8 @@ jobs:
           FRAME_COUNT_INPUT="${{ github.event.inputs.frame_count || github.event.client_payload.frame_count || '' }}"
           EVENT_NAME="${{ github.event_name }}"
           EVENT_ACTION="${{ github.event.action || '' }}"
-          export SITE_INPUT SOURCE_COUNT_INPUT FRAME_COUNT_INPUT EVENT_NAME EVENT_ACTION
+          REF_NAME="${{ github.ref_name }}"
+          export SITE_INPUT SOURCE_COUNT_INPUT FRAME_COUNT_INPUT EVENT_NAME EVENT_ACTION REF_NAME
 
           python - <<'PY'
           import json
@@ -58,6 +60,7 @@ jobs:
 
           event_name = os.environ.get("EVENT_NAME", "").strip()
           event_action = os.environ.get("EVENT_ACTION", "").strip()
+          ref_name = os.environ.get("REF_NAME", "").strip()
           site_input = os.environ.get("SITE_INPUT", "").strip().upper()
           source_count_input = os.environ.get("SOURCE_COUNT_INPUT", "").strip()
           frame_count_input = os.environ.get("FRAME_COUNT_INPUT", "").strip()
@@ -136,6 +139,18 @@ jobs:
 
           frame_count = parse_positive_int(frame_count_input, 25)
 
+          # Manual non-main branch runs own an isolated R2 dataset so the
+          # default-branch repository_dispatch feed cannot overwrite test assets.
+          output_namespace = (
+              "test"
+              if event_name == "repository_dispatch" or ref_name == "main"
+              else "hq-test"
+          )
+          if not re.fullmatch(r"[A-Za-z0-9_-]+", output_namespace):
+              raise SystemExit(
+                  f"Unsupported Level II output namespace: {output_namespace!r}"
+              )
+
           # Keep a deeper raw Level II source buffer than the displayed loop.
           # This prevents SAILS/partial newest scans from starving the renderer.
           minimum_source_count = frame_count * 3
@@ -152,18 +167,20 @@ jobs:
           print(f"Level II sites: {sites}")
           print(f"Level II source_count: {source_count}")
           print(f"Level II frame_count: {frame_count}")
+          print(f"Level II output_namespace: {output_namespace}")
 
           with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as output:
               print(f"sites={json.dumps(sites)}", file=output)
               print(f"source_count={source_count}", file=output)
               print(f"frame_count={frame_count}", file=output)
+              print(f"output_namespace={output_namespace}", file=output)
           PY
   render-level2:
     needs: prepare-matrix
     runs-on: ubuntu-latest
 
     concurrency:
-      group: level2-radar-${{ matrix.site }}
+      group: level2-radar-${{ needs.prepare-matrix.outputs.output_namespace }}-${{ matrix.site }}
       cancel-in-progress: false
 
     strategy:
@@ -198,8 +215,9 @@ jobs:
 
           R2_ENDPOINT="https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com"
           SITE="${{ matrix.site }}"
-          LOCAL_DIR="radar/tilesets/test/${SITE}/LEVEL2/REF0"
-          REMOTE_DIR="s3://${{ secrets.R2_BUCKET }}/radar/tilesets/test/${SITE}/LEVEL2/REF0"
+          NAMESPACE="${{ needs.prepare-matrix.outputs.output_namespace }}"
+          LOCAL_DIR="radar/tilesets/${NAMESPACE}/${SITE}/LEVEL2/REF0"
+          REMOTE_DIR="s3://${{ secrets.R2_BUCKET }}/radar/tilesets/${NAMESPACE}/${SITE}/LEVEL2/REF0"
 
           mkdir -p "$LOCAL_DIR"
 
@@ -223,6 +241,7 @@ jobs:
 
           render_args=(
             --site "${{ matrix.site }}"
+            --output-namespace "${{ needs.prepare-matrix.outputs.output_namespace }}"
             --fetch-latest
             --source-count "${{ needs.prepare-matrix.outputs.source_count }}"
             --max-sources "${{ needs.prepare-matrix.outputs.frame_count }}"
@@ -249,7 +268,8 @@ jobs:
           from pathlib import Path
 
           site = "${{ matrix.site }}"
-          base = Path(f"radar/tilesets/test/{site}/LEVEL2/REF0")
+          namespace = "${{ needs.prepare-matrix.outputs.output_namespace }}"
+          base = Path(f"radar/tilesets/{namespace}/{site}/LEVEL2/REF0")
           manifest = base / "frames.json"
           latest = base / "latest.json"
           mobile = base / "mobile"
@@ -280,8 +300,9 @@ jobs:
 
           R2_ENDPOINT="https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com"
           SITE="${{ matrix.site }}"
-          LOCAL_DIR="radar/tilesets/test/${SITE}/LEVEL2/REF0"
-          REMOTE_DIR="s3://${{ secrets.R2_BUCKET }}/radar/tilesets/test/${SITE}/LEVEL2/REF0"
+          NAMESPACE="${{ needs.prepare-matrix.outputs.output_namespace }}"
+          LOCAL_DIR="radar/tilesets/${NAMESPACE}/${SITE}/LEVEL2/REF0"
+          REMOTE_DIR="s3://${{ secrets.R2_BUCKET }}/radar/tilesets/${NAMESPACE}/${SITE}/LEVEL2/REF0"
 
           # Upload heavy radar assets first. Keep manifests out of this sync so
           # browsers never see a new frames.json before its tile PNGs exist.

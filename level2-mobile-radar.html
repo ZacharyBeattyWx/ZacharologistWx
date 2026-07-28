@@ -2965,6 +2965,14 @@ body.alert-type-filter-popup-open {
     const LEVEL2_SELECTED_SITE_STORAGE_KEY = "zach-level2-selected-site";
     const LEVEL2_PRODUCT = "LEVEL2_REF0";
     const LEVEL2_REMOTE_BASE_URL = "https://radar.zacharologistwx.com";
+    const LEVEL2_DATA_NAMESPACE = (() => {
+      const requested = new URLSearchParams(window.location.search)
+        .get("level2Namespace");
+
+      return requested && /^[A-Za-z0-9_-]+$/.test(requested)
+        ? requested
+        : "test";
+    })();
     const FRAME_REFRESH_MS = 60000;
     const ALERT_REFRESH_MS = 60000;
     const PLAYBACK_INTERVAL_MS = 900;
@@ -3190,11 +3198,17 @@ body.alert-type-filter-popup-open {
     }
 
     function level2MetaUrl(site = selectedLevel2Site()) {
-      return level2DataUrl(`/radar/tilesets/test/${sanitizeLevel2Site(site)}/LEVEL2/REF0/latest.json`);
+      return level2DataUrl(
+        `/radar/tilesets/${LEVEL2_DATA_NAMESPACE}/` +
+        `${sanitizeLevel2Site(site)}/LEVEL2/REF0/latest.json`
+      );
     }
 
     function level2FramesUrl(site = selectedLevel2Site()) {
-      return level2DataUrl(`/radar/tilesets/test/${sanitizeLevel2Site(site)}/LEVEL2/REF0/frames.json`);
+      return level2DataUrl(
+        `/radar/tilesets/${LEVEL2_DATA_NAMESPACE}/` +
+        `${sanitizeLevel2Site(site)}/LEVEL2/REF0/frames.json`
+      );
     }
 
     // Copied from ZacharologistWx main radar renderer color table
