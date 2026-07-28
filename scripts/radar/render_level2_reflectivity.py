@@ -1245,7 +1245,12 @@ def main() -> int:
 
             write_geotiff(path=output_path, grid=grid, bounds=bounds, nodata=args.nodata)
             write_mobile_webp(mobile_webp_path_for_geotiff(output_root, output_path), grid, args.nodata)
-            write_desktop_webp(desktop_webp_path_for_geotiff(output_root, output_path), grid, args.nodata)
+            write_desktop_webp(
+                desktop_webp_path_for_geotiff(output_root, output_path),
+                grid,
+                args.nodata,
+                bounds,
+            )
             tile_count = write_level2_png_tiles(output_root, output_path, grid, bounds, args.nodata)
             print(f"tileCount={tile_count}")
 
