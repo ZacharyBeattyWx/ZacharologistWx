@@ -65,7 +65,7 @@ MOBILE_WEBP_DIR = "mobile"
 MOBILE_WEBP_MAX_SIZE = 2048
 MOBILE_WEBP_QUALITY = 90
 DESKTOP_WEBP_DIR = "desktop"
-DESKTOP_WEBP_MAX_SIZE = 3072
+DESKTOP_WEBP_MAX_SIZE = 5120
 DESKTOP_WEBP_LOSSLESS = True
 LEVEL2_TILE_DIR = "tiles"
 LEVEL2_TILE_SIZE = 256
@@ -794,9 +794,10 @@ def write_mobile_webp(path: Path, grid: np.ndarray, nodata: float) -> None:
 
 
 def write_desktop_webp(path: Path, grid: np.ndarray, nodata: float) -> None:
+    """Write the full-resolution desktop loop image using the paused-tile colors."""
     path.parent.mkdir(parents=True, exist_ok=True)
     sampled = downsample_grid_nearest(grid, DESKTOP_WEBP_MAX_SIZE)
-    rgba = colorize_dbz_grid(sampled, nodata)
+    rgba = colorize_dbz_grid_for_tiles(sampled, nodata)
     image = Image.fromarray(rgba, mode="RGBA")
     image.save(path, format="WEBP", lossless=DESKTOP_WEBP_LOSSLESS, method=4)
 

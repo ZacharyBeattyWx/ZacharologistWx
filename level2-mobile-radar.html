@@ -2798,7 +2798,7 @@ body.alert-type-filter-popup-open {
     const PLAYBACK_INTERVAL_MS = 900;
     const MOBILE_LEVEL2_RASTER_SCALE = 0.5;
     const MOBILE_LEVEL2_RENDER_CACHE_LIMIT = 12;
-    const DESKTOP_LEVEL2_RENDER_CACHE_LIMIT = 6;
+    const DESKTOP_LEVEL2_RENDER_CACHE_LIMIT = 2;
     const MOBILE_UNCACHED_FRAME_MIN_INTERVAL_MS = 1800;
     const DISPLAY_MIN_DBZ = -32;
     const DEBUG_ALERT_STACKING = false;
@@ -2821,8 +2821,10 @@ body.alert-type-filter-popup-open {
     const USE_MANUAL_LEVEL2_RADAR_ENGINE =
       LEVEL2_ENGINE_MODE !== "legacy" && LEVEL2_ENGINE_MODE !== "off";
     const USE_WEBP_LEVEL2_PLAYBACK = true;
-    const LEVEL2_PLAYBACK_PRELOAD_COUNT = 4;
-    const LEVEL2_PLAYBACK_PRELOAD_CONCURRENCY = 2;
+    const MOBILE_LEVEL2_PLAYBACK_PRELOAD_COUNT = 4;
+    const MOBILE_LEVEL2_PLAYBACK_PRELOAD_CONCURRENCY = 2;
+    const DESKTOP_LEVEL2_PLAYBACK_PRELOAD_COUNT = 1;
+    const DESKTOP_LEVEL2_PLAYBACK_PRELOAD_CONCURRENCY = 1;
     const PAUSED_TILE_RESTORE_DELAY_MS = 300;
     const LEVEL2_MANUAL_RADAR_LAYER_ID = "level2-manual-radar-layer";
     const PALETTE_SOURCE_FILE = "scripts/radar/radar_config.json";
@@ -3332,6 +3334,7 @@ body.alert-type-filter-popup-open {
     let manualLevel2RadarViewRefreshTimer = null;
     let isWebpPlaybackActive = false;
     let webpPlaybackDisplayToken = 0;
+    let webpPlaybackLoadGeneration = 0;
     let pausedTileRestoreTimer = null;
     let webpPlaybackPreloadInProgress = false;
     let webpPlaybackPreloadRequestedIndex = null;
@@ -3676,7 +3679,9 @@ body.alert-type-filter-popup-open {
         image.onerror = () => {
           reject(new Error(`radar image failed to load: ${url}`));
         };
-        image.src = cacheBustUrl(url);
+        // Radar frame filenames contain their scan timestamp and are immutable.
+        // Preserve the browser's compressed-image cache across repeated loops.
+        image.src = url;
       });
     }
 
@@ -4248,12 +4253,45 @@ body.alert-type-filter-popup-open {
       );
     }
 
+    function releaseRenderedSurfaceCanvas(surface) {
+      const canvas = surface?.canvas;
+      if (!canvas || canvas === radarCanvas) return;
+
+      canvas.width = 1;
+      canvas.height = 1;
+    }
+
+    function releaseDesktopWebpPlaybackSurface(frame) {
+      if (isMobileLevel2Mode()) return;
+
+      const key = level2FrameCacheKey(frame);
+      if (!key) return;
+
+      const cached = renderedFrameCache.get(key);
+      renderedFrameCache.delete(key);
+      releaseRenderedSurfaceCanvas(cached);
+    }
+
+    function clearDesktopWebpPlaybackCache() {
+      if (isMobileLevel2Mode()) return;
+
+      for (const cached of renderedFrameCache.values()) {
+        releaseRenderedSurfaceCanvas(cached);
+      }
+
+      renderedFrameCache.clear();
+    }
+
     async function loadWebpPlaybackFrameIntoCache(frame) {
       const key = level2FrameCacheKey(frame);
-      if (!key || !frame?.imagePath) return false;
+      const imagePath = level2PlaybackImagePath(frame);
+
+      if (!key || !imagePath) return false;
       if (renderedFrameCache.has(key)) return true;
 
-      let promise = webpPlaybackLoadPromises.get(key);
+      const generation = webpPlaybackLoadGeneration;
+      const promiseKey = `${generation}:${key}`;
+      let promise = webpPlaybackLoadPromises.get(promiseKey);
 
       if (!promise) {
         promise = (async () => {
@@ -4262,17 +4300,22 @@ body.alert-type-filter-popup-open {
             { logDiagnostics: false }
           );
 
-          if (!webpPlaybackFrameStillAvailable(frame)) {
+          if (
+            generation !== webpPlaybackLoadGeneration ||
+            !isPlaying ||
+            !webpPlaybackFrameStillAvailable(frame)
+          ) {
+            releaseRenderedSurfaceCanvas(surface);
             return false;
           }
 
           storeRenderedFrameSurface(frame, surface);
           return true;
         })().finally(() => {
-          webpPlaybackLoadPromises.delete(key);
+          webpPlaybackLoadPromises.delete(promiseKey);
         });
 
-        webpPlaybackLoadPromises.set(key, promise);
+        webpPlaybackLoadPromises.set(promiseKey, promise);
       }
 
       return promise;
@@ -4293,11 +4336,19 @@ body.alert-type-filter-popup-open {
           const requestedIndex = webpPlaybackPreloadRequestedIndex;
           webpPlaybackPreloadRequestedIndex = null;
 
+          const preloadCount = isMobileLevel2Mode()
+            ? MOBILE_LEVEL2_PLAYBACK_PRELOAD_COUNT
+            : DESKTOP_LEVEL2_PLAYBACK_PRELOAD_COUNT;
+
+          const preloadConcurrency = isMobileLevel2Mode()
+            ? MOBILE_LEVEL2_PLAYBACK_PRELOAD_CONCURRENCY
+            : DESKTOP_LEVEL2_PLAYBACK_PRELOAD_CONCURRENCY;
+
           const indexes = [];
 
           for (
             let offset = 1;
-            offset <= LEVEL2_PLAYBACK_PRELOAD_COUNT;
+            offset <= preloadCount;
             offset += 1
           ) {
             const index =
@@ -4317,7 +4368,7 @@ body.alert-type-filter-popup-open {
               cursor += 1;
 
               const frame = level2Frames[index];
-              if (!frame?.imagePath) continue;
+              if (!level2PlaybackImagePath(frame)) continue;
 
               try {
                 await loadWebpPlaybackFrameIntoCache(frame);
@@ -4331,7 +4382,7 @@ body.alert-type-filter-popup-open {
           };
 
           const workerCount = Math.min(
-            LEVEL2_PLAYBACK_PRELOAD_CONCURRENCY,
+            preloadConcurrency,
             indexes.length
           );
 
@@ -4347,8 +4398,20 @@ body.alert-type-filter-popup-open {
       }
     }
 
+    window.__desktopWebpPlaybackState = () => ({
+      active: isWebpPlaybackActive,
+      generation: webpPlaybackLoadGeneration,
+      currentFrameIndex,
+      currentFramePath: level2PlaybackImagePath(currentFrame()),
+      displayCanvas: `${radarCanvas.width}x${radarCanvas.height}`,
+      decodedCacheFrames: renderedFrameCache.size,
+      pendingLoads: webpPlaybackLoadPromises.size,
+      preloadRequestedIndex: webpPlaybackPreloadRequestedIndex,
+      preloadInProgress: webpPlaybackPreloadInProgress
+    });
+
     async function renderWebpPlaybackFrame(frame) {
-      if (!frame?.imagePath) {
+      if (!level2PlaybackImagePath(frame)) {
         throw new Error("This radar frame has no WebP playback image.");
       }
 
@@ -4393,6 +4456,10 @@ body.alert-type-filter-popup-open {
       ) {
         return false;
       }
+
+      // The radarCanvas now owns the displayed desktop frame. Release the
+      // duplicate cached canvas so memory contains only display + next frame.
+      releaseDesktopWebpPlaybackSurface(frame);
 
       positionLevel2WeatherLayers();
       syncMapboxAlertLayerVisibility();
@@ -4509,8 +4576,11 @@ body.alert-type-filter-popup-open {
       updatePlaybackButton();
 
       webpPlaybackDisplayToken += 1;
+      webpPlaybackLoadGeneration += 1;
       webpPlaybackPreloadRequestedIndex = null;
+      webpPlaybackLoadPromises.clear();
       isWebpPlaybackActive = false;
+      clearDesktopWebpPlaybackCache();
 
       if (pausedTileRestoreTimer !== null) {
         window.clearTimeout(pausedTileRestoreTimer);
@@ -4668,7 +4738,10 @@ body.alert-type-filter-popup-open {
       }
 
       webpPlaybackDisplayToken += 1;
+      webpPlaybackLoadGeneration += 1;
       webpPlaybackPreloadRequestedIndex = null;
+      webpPlaybackLoadPromises.clear();
+      clearDesktopWebpPlaybackCache();
 
       isPlaying = true;
       updatePlaybackButton();
