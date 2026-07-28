@@ -3666,6 +3666,42 @@ body.alert-type-filter-popup-open {
       drawAlertOverlay();
     }
 
+    function deriveDesktopLevel2ImagePath(meta) {
+      if (typeof meta?.desktopImagePath === "string" && meta.desktopImagePath.trim()) {
+        return meta.desktopImagePath.trim();
+      }
+
+      const rawFramePath =
+        typeof meta?.path === "string" ? meta.path.trim() : "";
+
+      const framePathMatch = rawFramePath.match(
+        /^(.*\/)([^/?]+)\.tif(?:\?.*)?$/i
+      );
+
+      if (framePathMatch) {
+        return (
+          `${framePathMatch[1]}desktop/` +
+          `${framePathMatch[2]}.webp`
+        );
+      }
+
+      const rawMobilePath =
+        typeof meta?.imagePath === "string" ? meta.imagePath.trim() : "";
+
+      const mobilePathMatch = rawMobilePath.match(
+        /^(.*\/)mobile\/([^/?]+)\.webp(?:\?.*)?$/i
+      );
+
+      if (mobilePathMatch) {
+        return (
+          `${mobilePathMatch[1]}desktop/` +
+          `${mobilePathMatch[2]}.webp`
+        );
+      }
+
+      return null;
+    }
+
     function normalizeLevel2Frame(meta) {
       if (!meta?.path) return null;
       const bounds = meta?.bounds;
@@ -3675,10 +3711,12 @@ body.alert-type-filter-popup-open {
         Number.isFinite(bounds.east) &&
         Number.isFinite(bounds.north);
       const validTimeDate = new Date(meta.validTime || "");
+      const desktopImagePath = deriveDesktopLevel2ImagePath(meta);
       return {
         path: level2DataUrl(meta.path),
         imagePath: meta.imagePath ? level2DataUrl(meta.imagePath) : null,
-        desktopImagePath: meta.desktopImagePath ? level2DataUrl(meta.desktopImagePath) : null,
+        desktopImagePath:
+          desktopImagePath ? level2DataUrl(desktopImagePath) : null,
         tileTemplate: meta.tileTemplate ? level2DataUrl(meta.tileTemplate) : null,
         tileIndex: meta.tileIndex && typeof meta.tileIndex === "object" ? meta.tileIndex : null,
         tileMinZoom: Number.isFinite(Number(meta.tileMinZoom)) ? Number(meta.tileMinZoom) : 5,
