@@ -67,6 +67,7 @@ MOBILE_WEBP_QUALITY = 90
 DESKTOP_WEBP_DIR = "desktop"
 DESKTOP_WEBP_MAX_SIZE = 5120
 DESKTOP_WEBP_LOSSLESS = True
+DESKTOP_WEBP_MERCATOR = True
 LEVEL2_TILE_DIR = "tiles"
 LEVEL2_TILE_SIZE = 256
 LEVEL2_TILE_MIN_ZOOM = 5
@@ -785,6 +786,69 @@ def colorize_dbz_grid_for_tiles(grid: np.ndarray, nodata: float) -> np.ndarray:
     return rgba
 
 
+def sample_grid_mercator_nearest(
+    grid: np.ndarray,
+    bounds: tuple[float, float, float, float],
+    max_size: int,
+) -> np.ndarray:
+    """Resample an EPSG:4326 grid into one seam-free Web Mercator image."""
+    west, south, east, north = bounds
+    source_height, source_width = grid.shape
+    largest = max(source_height, source_width)
+
+    if largest <= max_size:
+        output_width = source_width
+        output_height = source_height
+    else:
+        scale = max_size / float(largest)
+        output_width = max(1, int(round(source_width * scale)))
+        output_height = max(1, int(round(source_height * scale)))
+
+    pixel_x = (
+        np.arange(output_width, dtype=np.float64) + 0.5
+    ) / float(output_width)
+    lon_cols = west + (east - west) * pixel_x
+
+    def mercator_y(latitude: float) -> float:
+        clamped = max(-85.05112878, min(85.05112878, float(latitude)))
+        radians = math.radians(clamped)
+        return (
+            1.0 - math.asinh(math.tan(radians)) / math.pi
+        ) / 2.0
+
+    north_y = mercator_y(north)
+    south_y = mercator_y(south)
+    pixel_y = (
+        np.arange(output_height, dtype=np.float64) + 0.5
+    ) / float(output_height)
+    mercator_rows = north_y + (south_y - north_y) * pixel_y
+    lat_rows = np.degrees(
+        np.arctan(
+            np.sinh(math.pi * (1.0 - 2.0 * mercator_rows))
+        )
+    )
+
+    source_x = (
+        ((lon_cols - west) / (east - west)) * source_width - 0.5
+    )
+    source_y = (
+        ((north - lat_rows) / (north - south)) * source_height - 0.5
+    )
+
+    nearest_x = np.clip(
+        np.rint(source_x),
+        0,
+        source_width - 1,
+    ).astype(np.int32)
+    nearest_y = np.clip(
+        np.rint(source_y),
+        0,
+        source_height - 1,
+    ).astype(np.int32)
+
+    return grid[np.ix_(nearest_y, nearest_x)]
+
+
 def write_mobile_webp(path: Path, grid: np.ndarray, nodata: float) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     sampled = downsample_grid_nearest(grid, MOBILE_WEBP_MAX_SIZE)
@@ -793,13 +857,27 @@ def write_mobile_webp(path: Path, grid: np.ndarray, nodata: float) -> None:
     image.save(path, format="WEBP", quality=MOBILE_WEBP_QUALITY, method=4)
 
 
-def write_desktop_webp(path: Path, grid: np.ndarray, nodata: float) -> None:
-    """Write the full-resolution desktop loop image using the paused-tile colors."""
+def write_desktop_webp(
+    path: Path,
+    grid: np.ndarray,
+    nodata: float,
+    bounds: tuple[float, float, float, float],
+) -> None:
+    """Write one full-resolution Web Mercator texture for desktop playback."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    sampled = downsample_grid_nearest(grid, DESKTOP_WEBP_MAX_SIZE)
+    sampled = sample_grid_mercator_nearest(
+        grid,
+        bounds,
+        DESKTOP_WEBP_MAX_SIZE,
+    )
     rgba = colorize_dbz_grid_for_tiles(sampled, nodata)
     image = Image.fromarray(rgba, mode="RGBA")
-    image.save(path, format="WEBP", lossless=DESKTOP_WEBP_LOSSLESS, method=4)
+    image.save(
+        path,
+        format="WEBP",
+        lossless=DESKTOP_WEBP_LOSSLESS,
+        method=4,
+    )
 
 
 
@@ -998,7 +1076,18 @@ def ensure_desktop_webps(output_root: Path, nodata: float) -> None:
         with rasterio.open(geotiff_path) as src:
             grid = src.read(1).astype(np.float32)
             source_nodata = src.nodata if src.nodata is not None else nodata
-        write_desktop_webp(webp_path, grid, float(source_nodata))
+            source_bounds = (
+                float(src.bounds.left),
+                float(src.bounds.bottom),
+                float(src.bounds.right),
+                float(src.bounds.top),
+            )
+        write_desktop_webp(
+            webp_path,
+            grid,
+            float(source_nodata),
+            source_bounds,
+        )
 
 
 def prune_orphan_mobile_webps(output_root: Path) -> None:
