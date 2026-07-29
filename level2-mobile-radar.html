@@ -3925,7 +3925,24 @@ body.alert-type-filter-popup-open {
       if (!response.ok) throw new Error(`frames catalog fetch failed (${response.status})`);
       const payload = await response.json();
       const rawFrames = Array.isArray(payload?.frames) ? payload.frames : [];
-      return rawFrames.map(normalizeLevel2Frame).filter(Boolean);
+      return rawFrames
+        .map(normalizeLevel2Frame)
+        .filter(Boolean)
+        .sort((left, right) => {
+          const leftTime = Number.isFinite(
+            left?.validTimeDate?.getTime?.()
+          )
+            ? left.validTimeDate.getTime()
+            : 0;
+
+          const rightTime = Number.isFinite(
+            right?.validTimeDate?.getTime?.()
+          )
+            ? right.validTimeDate.getTime()
+            : 0;
+
+          return leftTime - rightTime;
+        });
     }
 
     function currentFrame() {
@@ -4690,6 +4707,14 @@ body.alert-type-filter-popup-open {
 
       const signature = desktopHqLoopSignature();
       const token = ++desktopHqPrepareToken;
+      const latestFrameIndex = Math.max(
+        0,
+        level2Frames.length - 1
+      );
+      const playbackStartIndex =
+        currentFrameIndex >= latestFrameIndex
+          ? 0
+          : currentFrameIndex;
 
       desktopHqLoopPreparing = true;
       setDesktopHqControlsLocked(true);
@@ -4705,7 +4730,7 @@ body.alert-type-filter-popup-open {
       try {
         const prepared = await engine.prepare(
           level2Frames,
-          currentFrameIndex
+          playbackStartIndex
         );
 
         if (
@@ -4718,6 +4743,16 @@ body.alert-type-filter-popup-open {
         desktopHqLoopReadySignature = signature;
 
         clearDesktopHqFallbackLayersForPlayback();
+
+        currentFrameIndex = Math.max(
+          0,
+          Math.min(
+            playbackStartIndex,
+            level2Frames.length - 1
+          )
+        );
+        syncFrameSelect();
+        updateFrameInfoRow();
 
         const displayed = await engine.displayFrame(
           currentFrameIndex
@@ -4737,9 +4772,9 @@ body.alert-type-filter-popup-open {
           stage: "ready",
           completed: level2Frames.length,
           total: level2Frames.length,
-          label: "All high-resolution frames are ready"
+          label: "Oldest scan loaded; loop advances forward"
         });
-        setStatusText("HQ radar loop ready");
+        setStatusText("HQ radar loop ready - oldest to newest");
 
         window.setTimeout(() => {
           if (
@@ -4836,6 +4871,7 @@ body.alert-type-filter-popup-open {
       readySignatureMatches:
         desktopHqLoopReadySignature === desktopHqLoopSignature(),
       frame: `${currentFrameIndex + 1}/${level2Frames.length}`,
+      direction: "oldest-to-newest",
       engine: desktopHqPlaybackEngine?.debugState?.() || null
     });
 
