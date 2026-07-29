@@ -821,7 +821,10 @@
 
       gl.bindTexture(gl.TEXTURE_2D, this.texture);
       gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
-      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+
+      // ImageBitmap keeps the source image's top-left row order.
+      // Map that row explicitly to the north edge in vertexData().
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
       gl.texImage2D(
         gl.TEXTURE_2D,
         0,
@@ -858,13 +861,15 @@
         lat: bounds.south
       });
 
+      // The desktop WebP is encoded north-to-south from top to bottom.
+      // ImageBitmap uploads preserve that row order, so v=0 is the image top.
       return new Float32Array([
-        nw.x, nw.y, 0, 1,
-        ne.x, ne.y, 1, 1,
-        se.x, se.y, 1, 0,
-        nw.x, nw.y, 0, 1,
-        se.x, se.y, 1, 0,
-        sw.x, sw.y, 0, 0
+        nw.x, nw.y, 0, 0,
+        ne.x, ne.y, 1, 0,
+        se.x, se.y, 1, 1,
+        nw.x, nw.y, 0, 0,
+        se.x, se.y, 1, 1,
+        sw.x, sw.y, 0, 1
       ]);
     }
 
@@ -947,6 +952,7 @@
             ? `${this.textureWidth}x${this.textureHeight}`
             : "",
         maxTextureSize: this.maxTextureSize,
+        textureOrientation: "north-up",
         bufferAhead: this.bufferAhead,
         downloadConcurrency: this.downloadConcurrency,
         decodeConcurrency: this.decodeConcurrency,
