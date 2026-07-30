@@ -861,15 +861,15 @@
         lat: bounds.south
       });
 
-      // Empirically verified in Chrome: the rendered WebP north edge is
-      // sampled at texture v=1 for the ImageBitmap upload path.
+      // The active Chrome ImageBitmap path is vertically inverted when north
+      // is assigned to v=1. Map the WebP top edge to north explicitly at v=0.
       return new Float32Array([
-        nw.x, nw.y, 0, 1,
-        ne.x, ne.y, 1, 1,
-        se.x, se.y, 1, 0,
-        nw.x, nw.y, 0, 1,
-        se.x, se.y, 1, 0,
-        sw.x, sw.y, 0, 0
+        nw.x, nw.y, 0, 0,
+        ne.x, ne.y, 1, 0,
+        se.x, se.y, 1, 1,
+        nw.x, nw.y, 0, 0,
+        se.x, se.y, 1, 1,
+        sw.x, sw.y, 0, 1
       ]);
     }
 
@@ -952,8 +952,8 @@
             ? `${this.textureWidth}x${this.textureHeight}`
             : "",
         maxTextureSize: this.maxTextureSize,
-        textureOrientation: "north-up-v2",
-        textureNorthV: 1,
+        textureOrientation: "north-up-v3",
+        textureNorthV: 0,
         bufferAhead: this.bufferAhead,
         downloadConcurrency: this.downloadConcurrency,
         decodeConcurrency: this.decodeConcurrency,
