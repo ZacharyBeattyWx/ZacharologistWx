@@ -60,7 +60,21 @@ MAX_LEVEL2_FRAMES = 25
 LEVEL2_CANDIDATE_MULTIPLIER = 3
 TARGET_LOW_LEVEL_SWEEP_DEG = 0.5
 MAX_LOW_LEVEL_SWEEP_DEG = 0.8
-MIN_VALID_LEVEL2_PIXELS = 0
+
+# Reject partial low-level cuts before they enter a playback loop.
+MIN_VALID_LEVEL2_PIXELS = 1000
+MIN_LOW_LEVEL_SWEEP_RAYS = 300
+MIN_LOW_LEVEL_AZIMUTH_COVERAGE_DEG = 356.0
+MAX_LOW_LEVEL_AZIMUTH_GAP_DEG = 4.0
+MIN_LOW_LEVEL_NATIVE_RANGE_KM = 440.0
+
+# Lock every rendered frame to one stable coverage footprint. The final
+# 20 km gradually requires stronger dBZ so weak far-range noise cannot
+# flash as a broad outer ring while stronger echoes remain available.
+LEVEL2_TRUSTED_RENDER_RANGE_KM = 440.0
+LEVEL2_EDGE_FILTER_START_KM = 420.0
+LEVEL2_EDGE_FILTER_MAX_MIN_DBZ = 10.0
+
 MOBILE_WEBP_DIR = "mobile"
 MOBILE_WEBP_MAX_SIZE = 2048
 MOBILE_WEBP_QUALITY = 90
@@ -239,6 +253,10 @@ class SweepData:
     elevation_deg: float
     site_lat: float
     site_lon: float
+    ray_count: int
+    azimuth_coverage_deg: float
+    max_azimuth_gap_deg: float
+    native_range_km: float
 
 
 def infer_valid_time_from_name(path: Path) -> str | None:
@@ -520,15 +538,38 @@ def load_bounds_from_frames_json(site: str = DEFAULT_SITE) -> tuple[float, float
     return fallback
 
 
+def sweep_azimuth_quality(azimuth_deg: np.ndarray) -> tuple[float, float]:
+    azimuths = np.asarray(azimuth_deg, dtype=np.float64)
+    azimuths = azimuths[np.isfinite(azimuths)]
+
+    if azimuths.size < 2:
+        return 0.0, 360.0
+
+    ordered = np.sort(np.mod(azimuths, 360.0))
+    wrapped = np.concatenate((ordered, [ordered[0] + 360.0]))
+    gaps = np.diff(wrapped)
+
+    max_gap = float(np.max(gaps))
+    coverage = max(0.0, 360.0 - max_gap)
+    return coverage, max_gap
+
+
 def extract_lowest_reflectivity_sweep(level2: Level2File) -> SweepData:
     best: SweepData | None = None
-    best_distance = math.inf
+    best_quality: tuple[float, float, float] | None = None
+    rejected_candidates: list[str] = []
 
     for sweep in level2.sweeps:
         if not sweep:
             continue
 
-        rays_with_ref = [ray for ray in sweep if isinstance(ray, tuple) and len(ray) >= 5 and b"REF" in ray[4]]
+        rays_with_ref = [
+            ray
+            for ray in sweep
+            if isinstance(ray, tuple)
+            and len(ray) >= 5
+            and b"REF" in ray[4]
+        ]
         if not rays_with_ref:
             continue
 
@@ -541,16 +582,71 @@ def extract_lowest_reflectivity_sweep(level2: Level2File) -> SweepData:
         if elevation > MAX_LOW_LEVEL_SWEEP_DEG:
             continue
 
-        ref_hdr = first_ray[4][b"REF"][0]
-        num_gates = int(ref_hdr.num_gates)
-        ref_rows = []
-        azimuths = []
+        ray_count = len(rays_with_ref)
+        azimuths = np.asarray(
+            [float(ray[0].az_angle) for ray in rays_with_ref],
+            dtype=np.float32,
+        )
+        azimuth_coverage_deg, max_azimuth_gap_deg = sweep_azimuth_quality(
+            azimuths
+        )
 
+        ref_headers = [ray[4][b"REF"][0] for ray in rays_with_ref]
+        gate_counts = np.asarray(
+            [int(header.num_gates) for header in ref_headers],
+            dtype=np.int32,
+        )
+        first_gates = np.asarray(
+            [float(header.first_gate) for header in ref_headers],
+            dtype=np.float64,
+        )
+        gate_widths = np.asarray(
+            [float(header.gate_width) for header in ref_headers],
+            dtype=np.float64,
+        )
+
+        num_gates = int(round(float(np.median(gate_counts))))
+        first_gate_km = float(np.median(first_gates))
+        gate_width_km = float(np.median(gate_widths))
+        native_range_km = (
+            first_gate_km +
+            gate_width_km * max(0, num_gates - 1)
+        )
+
+        rejection_reasons = []
+        if ray_count < MIN_LOW_LEVEL_SWEEP_RAYS:
+            rejection_reasons.append(
+                f"rays={ray_count}<{MIN_LOW_LEVEL_SWEEP_RAYS}"
+            )
+        if azimuth_coverage_deg < MIN_LOW_LEVEL_AZIMUTH_COVERAGE_DEG:
+            rejection_reasons.append(
+                f"coverage={azimuth_coverage_deg:.2f}"
+            )
+        if max_azimuth_gap_deg > MAX_LOW_LEVEL_AZIMUTH_GAP_DEG:
+            rejection_reasons.append(
+                f"gap={max_azimuth_gap_deg:.2f}"
+            )
+        if native_range_km < MIN_LOW_LEVEL_NATIVE_RANGE_KM:
+            rejection_reasons.append(
+                f"range={native_range_km:.2f}"
+            )
+
+        if rejection_reasons:
+            rejected_candidates.append(
+                f"elev={elevation:.3f} " +
+                ",".join(rejection_reasons)
+            )
+            continue
+
+        ref_rows = []
         for ray in rays_with_ref:
-            azimuths.append(float(ray[0].az_angle))
             row = np.asarray(ray[4][b"REF"][1], dtype=np.float32)
             if row.shape[0] < num_gates:
-                padded = np.full((num_gates,), np.nan, dtype=np.float32)
+                padded = np.full(
+                    (num_gates,),
+                    np.nan,
+                    dtype=np.float32,
+                )
                 padded[: row.shape[0]] = row
                 row = padded
             elif row.shape[0] > num_gates:
@@ -558,28 +654,46 @@ def extract_lowest_reflectivity_sweep(level2: Level2File) -> SweepData:
             ref_rows.append(row)
 
         ref = np.stack(ref_rows, axis=0)
-        az = np.asarray(azimuths, dtype=np.float32)
         site_lat = float(first_ray[1].lat)
         site_lon = float(first_ray[1].lon)
 
         current = SweepData(
             reflectivity=ref,
-            azimuth_deg=az,
-            first_gate_km=float(ref_hdr.first_gate),
-            gate_width_km=float(ref_hdr.gate_width),
+            azimuth_deg=azimuths,
+            first_gate_km=first_gate_km,
+            gate_width_km=gate_width_km,
             elevation_deg=elevation,
             site_lat=site_lat,
             site_lon=site_lon,
+            ray_count=ray_count,
+            azimuth_coverage_deg=azimuth_coverage_deg,
+            max_azimuth_gap_deg=max_azimuth_gap_deg,
+            native_range_km=native_range_km,
         )
 
-        distance = abs(current.elevation_deg - TARGET_LOW_LEVEL_SWEEP_DEG)
-        if best is None or distance < best_distance:
+        distance = abs(
+            current.elevation_deg -
+            TARGET_LOW_LEVEL_SWEEP_DEG
+        )
+        quality = (
+            distance,
+            -current.azimuth_coverage_deg,
+            current.max_azimuth_gap_deg,
+        )
+
+        if best is None or best_quality is None or quality < best_quality:
             best = current
-            best_distance = distance
+            best_quality = quality
 
     if best is None:
+        details = (
+            "; ".join(rejected_candidates[:8])
+            if rejected_candidates
+            else "no reflectivity candidates"
+        )
         raise RuntimeError(
-            f"No low-level reflectivity moments found at or below {MAX_LOW_LEVEL_SWEEP_DEG:.2f} degrees"
+            "No complete low-level reflectivity sweep found at or below "
+            f"{MAX_LOW_LEVEL_SWEEP_DEG:.2f} degrees: {details}"
         )
 
     return best
@@ -624,7 +738,21 @@ def build_projected_dbz_grid(
     tx = Transformer.from_crs("EPSG:4326", aeqd, always_xy=True)
 
     num_gates = sweep.reflectivity.shape[1]
-    max_range_km = sweep.first_gate_km + sweep.gate_width_km * (num_gates - 1)
+    native_max_range_km = (
+        sweep.first_gate_km +
+        sweep.gate_width_km * (num_gates - 1)
+    )
+    render_max_range_km = min(
+        LEVEL2_TRUSTED_RENDER_RANGE_KM,
+        native_max_range_km,
+    )
+
+    if render_max_range_km < LEVEL2_TRUSTED_RENDER_RANGE_KM:
+        raise RuntimeError(
+            "Selected reflectivity sweep does not reach the trusted "
+            f"{LEVEL2_TRUSTED_RENDER_RANGE_KM:.1f} km render radius "
+            f"(native={native_max_range_km:.1f} km)"
+        )
 
     for y0 in range(0, output_size, row_chunk):
         y1 = min(output_size, y0 + row_chunk)
@@ -641,15 +769,60 @@ def build_projected_dbz_grid(
         range_km = np.hypot(x_m, y_m) / 1000.0
         azimuth = (np.degrees(np.arctan2(x_m, y_m)) + 360.0) % 360.0
 
-        gate_idx = np.rint((range_km - sweep.first_gate_km) / sweep.gate_width_km).astype(np.int32)
-        in_range = (gate_idx >= 0) & (gate_idx < num_gates) & (range_km <= max_range_km)
+        gate_idx = np.rint(
+            (range_km - sweep.first_gate_km) /
+            sweep.gate_width_km
+        ).astype(np.int32)
+        in_range = (
+            (gate_idx >= 0) &
+            (gate_idx < num_gates) &
+            (range_km <= render_max_range_km)
+        )
 
-        chunk_vals = np.full(flat_lon.shape[0], nodata, dtype=np.float32)
+        chunk_vals = np.full(
+            flat_lon.shape[0],
+            nodata,
+            dtype=np.float32,
+        )
         if np.any(in_range):
-            az_idx = circular_nearest_indices(sweep.azimuth_deg, azimuth[in_range])
-            sample = sweep.reflectivity[az_idx, gate_idx[in_range]]
+            in_range_distance_km = range_km[in_range]
+            az_idx = circular_nearest_indices(
+                sweep.azimuth_deg,
+                azimuth[in_range],
+            )
+            sample = sweep.reflectivity[
+                az_idx,
+                gate_idx[in_range],
+            ]
             sample = np.asarray(sample, dtype=np.float32)
             valid = np.isfinite(sample)
+
+            edge = (
+                in_range_distance_km >
+                LEVEL2_EDGE_FILTER_START_KM
+            )
+            if np.any(edge):
+                edge_fraction = np.clip(
+                    (
+                        in_range_distance_km -
+                        LEVEL2_EDGE_FILTER_START_KM
+                    ) /
+                    (
+                        render_max_range_km -
+                        LEVEL2_EDGE_FILTER_START_KM
+                    ),
+                    0.0,
+                    1.0,
+                )
+                edge_min_dbz = (
+                    TILE_DISPLAY_MIN_DBZ +
+                    edge_fraction *
+                    (
+                        LEVEL2_EDGE_FILTER_MAX_MIN_DBZ -
+                        TILE_DISPLAY_MIN_DBZ
+                    )
+                )
+                valid &= (~edge) | (sample >= edge_min_dbz)
 
             idx_in = np.flatnonzero(in_range)
             valid_positions = idx_in[valid]
@@ -1283,6 +1456,12 @@ def main() -> int:
             print(f"radarSite={site}")
             print(f"validTime={valid_time}")
             print(f"sweepElevationDeg={sweep.elevation_deg:.3f}")
+            print(f"sweepRayCount={sweep.ray_count}")
+            print(f"sweepAzimuthCoverageDeg={sweep.azimuth_coverage_deg:.3f}")
+            print(f"sweepMaxAzimuthGapDeg={sweep.max_azimuth_gap_deg:.3f}")
+            print(f"sweepNativeRangeKm={sweep.native_range_km:.3f}")
+            print(f"renderRangeKm={LEVEL2_TRUSTED_RENDER_RANGE_KM:.3f}")
+            print(f"edgeFilterStartKm={LEVEL2_EDGE_FILTER_START_KM:.3f}")
             print(f"sourceShape={sweep.reflectivity.shape[0]}x{sweep.reflectivity.shape[1]}")
             print(f"outputShape={grid.shape[0]}x{grid.shape[1]}")
             print(f"finiteMinDbz={min_dbz if np.isfinite(min_dbz) else 'nan'}")
