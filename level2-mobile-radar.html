@@ -3011,6 +3011,7 @@ body.alert-type-filter-popup-open {
     const DESKTOP_LEVEL2_PLAYBACK_PRELOAD_COUNT = 1;
     const DESKTOP_LEVEL2_PLAYBACK_PRELOAD_CONCURRENCY = 1;
     const PAUSED_TILE_RESTORE_DELAY_MS = 300;
+    const DESKTOP_HQ_MAP_INTERACTION_FRAME_INTERVAL_MS = 225;
     const LEVEL2_MANUAL_RADAR_LAYER_ID = "level2-manual-radar-layer";
     const PALETTE_SOURCE_FILE = "scripts/radar/radar_config.json";
 
@@ -4872,6 +4873,13 @@ body.alert-type-filter-popup-open {
         desktopHqLoopReadySignature === desktopHqLoopSignature(),
       frame: `${currentFrameIndex + 1}/${level2Frames.length}`,
       direction: "oldest-to-newest",
+      mapInteractionThrottled: Boolean(
+        isMapInteracting ||
+        map?.isMoving?.()
+      ),
+      interactionSkippedFrames: Number(
+        playbackTick.hqInteractionState?.skippedFrames || 0
+      ),
       engine: desktopHqPlaybackEngine?.debugState?.() || null
     });
 
@@ -5115,11 +5123,19 @@ body.alert-type-filter-popup-open {
       const frame = currentFrame();
       if (!frame) return null;
 
+      const preparedDesktopHqAvailable = (
+        shouldUseDesktopHqPlayback(frame) &&
+        desktopHqPlaybackEngine?.isPrepared?.() &&
+        desktopHqLoopReadySignature === desktopHqLoopSignature()
+      );
+
       if (
-        options.playback === true &&
-        shouldUseDesktopHqPlayback(frame)
+        options.playback === true ||
+        preparedDesktopHqAvailable
       ) {
-        return renderDesktopHqPlaybackFrame(frame);
+        if (shouldUseDesktopHqPlayback(frame)) {
+          return renderDesktopHqPlaybackFrame(frame);
+        }
       }
 
       if (
@@ -5220,6 +5236,7 @@ body.alert-type-filter-popup-open {
 
       isPlaying = false;
       updatePlaybackButton();
+      delete playbackTick.hqInteractionState;
 
       webpPlaybackDisplayToken += 1;
       webpPlaybackLoadGeneration += 1;
@@ -5235,6 +5252,27 @@ body.alert-type-filter-popup-open {
 
       syncMapboxAlertLayerVisibility();
       drawAlertOverlay();
+
+      const preserveDesktopHqFrame = (
+        options.restoreTiles !== false &&
+        !isMobileLevel2Mode() &&
+        shouldUseDesktopHqPlayback() &&
+        desktopHqPlaybackEngine?.isPrepared?.() &&
+        desktopHqPlaybackEngine?.isActive?.() &&
+        desktopHqLoopReadySignature === desktopHqLoopSignature()
+      );
+
+      if (preserveDesktopHqFrame) {
+        if (desktopHqLoopPrep) {
+          desktopHqLoopPrep.hidden = true;
+        }
+
+        setStatusText(
+          `HQ radar paused on frame ` +
+          `${currentFrameIndex + 1}/${level2Frames.length}`
+        );
+        return;
+      }
 
       const restoreTiles = options.restoreTiles !== false;
 
@@ -5344,10 +5382,72 @@ body.alert-type-filter-popup-open {
       if (!isPlaying) return;
 
       const tickStartedAt = performance.now();
+      const desktopHqMapInteractionActive = (
+        !isMobileLevel2Mode() &&
+        shouldUseDesktopHqPlayback() &&
+        (
+          isMapInteracting ||
+          Boolean(map?.isMoving?.())
+        )
+      );
+
+      const hqInteractionState = (
+        playbackTick.hqInteractionState ||
+        (
+          playbackTick.hqInteractionState = {
+            lastDisplayAt: 0,
+            skippedFrames: 0
+          }
+        )
+      );
+
+      let stepDirection = 1;
+
+      if (desktopHqMapInteractionActive) {
+        const elapsedSinceInteractionFrame = (
+          tickStartedAt -
+          hqInteractionState.lastDisplayAt
+        );
+
+        if (
+          hqInteractionState.lastDisplayAt > 0 &&
+          elapsedSinceInteractionFrame <
+            DESKTOP_HQ_MAP_INTERACTION_FRAME_INTERVAL_MS
+        ) {
+          hqInteractionState.skippedFrames = Math.min(
+            Math.max(0, level2Frames.length - 1),
+            hqInteractionState.skippedFrames + 1
+          );
+
+          const remainingMs = Math.max(
+            16,
+            DESKTOP_HQ_MAP_INTERACTION_FRAME_INTERVAL_MS -
+              elapsedSinceInteractionFrame
+          );
+
+          clearPlaybackTimer();
+          playbackTimer = window.setTimeout(
+            playbackTick,
+            Math.max(
+              16,
+              Math.min(playbackIntervalMs, remainingMs)
+            )
+          );
+          return;
+        }
+
+        stepDirection += hqInteractionState.skippedFrames;
+        hqInteractionState.skippedFrames = 0;
+        hqInteractionState.lastDisplayAt = tickStartedAt;
+      } else {
+        stepDirection += hqInteractionState.skippedFrames;
+        hqInteractionState.skippedFrames = 0;
+        hqInteractionState.lastDisplayAt = 0;
+      }
 
       try {
         if (level2Frames.length > 1) {
-          await stepFrame(1, { playback: true });
+          await stepFrame(stepDirection, { playback: true });
         }
       } catch (error) {
         if (!isPlaying) return;
