@@ -480,11 +480,33 @@
       const length = this.frames.length;
       const start = normalizedIndex(startIndex, length);
       const count = Math.min(this.bufferAhead, length);
+      const indexes = [start];
 
-      return Array.from(
-        { length: count },
-        (_, offset) => normalizedIndex(start + offset, length)
-      );
+      // Keep the existing bitmap budget, but distribute it around the
+      // current playback position. Forward playback stays buffered while
+      // Prev can reuse already-decoded frames instead of stalling on a
+      // full 5120px WebP decode for every click.
+      for (
+        let distance = 1;
+        indexes.length < count && distance < length;
+        distance += 1
+      ) {
+        const forward = normalizedIndex(start + distance, length);
+
+        if (!indexes.includes(forward)) {
+          indexes.push(forward);
+        }
+
+        if (indexes.length >= count) break;
+
+        const backward = normalizedIndex(start - distance, length);
+
+        if (!indexes.includes(backward)) {
+          indexes.push(backward);
+        }
+      }
+
+      return indexes;
     }
 
     pruneDecodedBuffer(keepIndexes) {

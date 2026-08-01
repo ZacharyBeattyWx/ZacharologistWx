@@ -2725,8 +2725,74 @@ body.alert-type-filter-popup-open {
         }
       }
     }
-  </style>
-</head>
+  </style>  <style id="desktop-hq-loop-compact-progress-style">
+    @media (min-width: 761px) {
+      .desktop-hq-loop-prep {
+        left: 0;
+        right: 0;
+        top: 0;
+        bottom: auto;
+        width: auto;
+        height: 4px;
+        padding: 0;
+        overflow: hidden;
+        transform: none;
+        border: 0;
+        border-radius: 12px 12px 0 0;
+        background: transparent;
+        box-shadow: none;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+      }
+
+      .desktop-hq-loop-prep-head,
+      .desktop-hq-loop-prep-meta {
+        display: none;
+      }
+
+      .desktop-hq-loop-prep-track {
+        height: 4px;
+        border: 0;
+        border-radius: 12px 12px 0 0;
+        background: rgba(2, 8, 23, 0.72);
+      }
+
+      .desktop-hq-loop-prep-fill {
+        border-radius: inherit;
+        box-shadow: none;
+        transition: width 120ms linear;
+      }
+
+      .desktop-hq-loop-prep[data-state="error"] {
+        left: 50%;
+        right: auto;
+        top: auto;
+        bottom: calc(100% + 8px);
+        width: min(360px, calc(100vw - 48px));
+        height: auto;
+        padding: 9px 11px;
+        overflow: visible;
+        transform: translateX(-50%);
+        border: 1px solid rgba(248, 113, 113, 0.58);
+        border-radius: 10px;
+        background: rgba(27, 8, 14, 0.96);
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.34);
+      }
+
+      .desktop-hq-loop-prep[data-state="error"]
+        .desktop-hq-loop-prep-head,
+      .desktop-hq-loop-prep[data-state="error"]
+        .desktop-hq-loop-prep-meta {
+        display: flex;
+      }
+
+      .desktop-hq-loop-prep[data-state="error"]
+        .desktop-hq-loop-prep-track {
+        height: 4px;
+        border-radius: 999px;
+      }
+    }
+  </style></head>
 <body>
   <div id="map"></div>
   <canvas id="radarOverlayCanvas"></canvas>
@@ -4594,7 +4660,10 @@ body.alert-type-filter-popup-open {
         canceled: "HQ Loop Canceled"
       };
 
-      desktopHqLoopPrep.hidden = stage === "canceled";
+      desktopHqLoopPrep.hidden = (
+        stage === "canceled" ||
+        stage === "ready"
+      );
       desktopHqLoopPrep.dataset.state = stage;
       desktopHqLoopPrepTitle.textContent =
         titleByStage[stage] || "Preparing HQ Loop";
@@ -4777,15 +4846,6 @@ body.alert-type-filter-popup-open {
         });
         setStatusText("HQ radar loop ready - oldest to newest");
 
-        window.setTimeout(() => {
-          if (
-            desktopHqLoopPrep &&
-            !desktopHqLoopPreparing &&
-            desktopHqLoopReadySignature === signature
-          ) {
-            desktopHqLoopPrep.hidden = true;
-          }
-        }, 1100);
 
         return true;
       } catch (error) {
@@ -5254,7 +5314,10 @@ body.alert-type-filter-popup-open {
       drawAlertOverlay();
 
       const preserveDesktopHqFrame = (
-        options.restoreTiles !== false &&
+        (
+          options.restoreTiles !== false ||
+          options.preserveHqFrame === true
+        ) &&
         !isMobileLevel2Mode() &&
         shouldUseDesktopHqPlayback() &&
         desktopHqPlaybackEngine?.isPrepared?.() &&
@@ -8746,11 +8809,17 @@ body.alert-type-filter-popup-open {
 
 
     previousFrameButton.addEventListener("click", async () => {
-      stopPlayback({ restoreTiles: false });
+      stopPlayback({
+        restoreTiles: false,
+        preserveHqFrame: true
+      });
       await stepFrame(-1);
     });
     nextFrameButton.addEventListener("click", async () => {
-      stopPlayback({ restoreTiles: false });
+      stopPlayback({
+        restoreTiles: false,
+        preserveHqFrame: true
+      });
       await stepFrame(1);
     });
     playPauseButton.addEventListener("click", togglePlayback);
