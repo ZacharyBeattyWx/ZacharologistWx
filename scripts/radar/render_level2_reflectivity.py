@@ -68,12 +68,11 @@ MIN_LOW_LEVEL_AZIMUTH_COVERAGE_DEG = 356.0
 MAX_LOW_LEVEL_AZIMUTH_GAP_DEG = 4.0
 MIN_LOW_LEVEL_NATIVE_RANGE_KM = 440.0
 
-# Lock every rendered frame to one stable coverage footprint. The final
-# 20 km gradually requires stronger dBZ so weak far-range noise cannot
-# flash as a broad outer ring while stronger echoes remain available.
-LEVEL2_TRUSTED_RENDER_RANGE_KM = 440.0
-LEVEL2_EDGE_FILTER_START_KM = 420.0
-LEVEL2_EDGE_FILTER_MAX_MIN_DBZ = 10.0
+# Keep the native-sweep quality requirement at 440 km, but publish every
+# display product with one fixed 420 km radial cutoff. Do not alter the
+# minimum visible dBZ by distance; that made weak outer coverage appear
+# to expand and contract from frame to frame.
+LEVEL2_DISPLAY_CUTOFF_RANGE_KM = 420.0
 
 MOBILE_WEBP_DIR = "mobile"
 MOBILE_WEBP_MAX_SIZE = 2048
@@ -743,14 +742,14 @@ def build_projected_dbz_grid(
         sweep.gate_width_km * (num_gates - 1)
     )
     render_max_range_km = min(
-        LEVEL2_TRUSTED_RENDER_RANGE_KM,
+        LEVEL2_DISPLAY_CUTOFF_RANGE_KM,
         native_max_range_km,
     )
 
-    if render_max_range_km < LEVEL2_TRUSTED_RENDER_RANGE_KM:
+    if render_max_range_km < LEVEL2_DISPLAY_CUTOFF_RANGE_KM:
         raise RuntimeError(
-            "Selected reflectivity sweep does not reach the trusted "
-            f"{LEVEL2_TRUSTED_RENDER_RANGE_KM:.1f} km render radius "
+            "Selected reflectivity sweep does not reach the fixed "
+            f"{LEVEL2_DISPLAY_CUTOFF_RANGE_KM:.1f} km display radius "
             f"(native={native_max_range_km:.1f} km)"
         )
 
@@ -785,7 +784,6 @@ def build_projected_dbz_grid(
             dtype=np.float32,
         )
         if np.any(in_range):
-            in_range_distance_km = range_km[in_range]
             az_idx = circular_nearest_indices(
                 sweep.azimuth_deg,
                 azimuth[in_range],
@@ -796,33 +794,6 @@ def build_projected_dbz_grid(
             ]
             sample = np.asarray(sample, dtype=np.float32)
             valid = np.isfinite(sample)
-
-            edge = (
-                in_range_distance_km >
-                LEVEL2_EDGE_FILTER_START_KM
-            )
-            if np.any(edge):
-                edge_fraction = np.clip(
-                    (
-                        in_range_distance_km -
-                        LEVEL2_EDGE_FILTER_START_KM
-                    ) /
-                    (
-                        render_max_range_km -
-                        LEVEL2_EDGE_FILTER_START_KM
-                    ),
-                    0.0,
-                    1.0,
-                )
-                edge_min_dbz = (
-                    TILE_DISPLAY_MIN_DBZ +
-                    edge_fraction *
-                    (
-                        LEVEL2_EDGE_FILTER_MAX_MIN_DBZ -
-                        TILE_DISPLAY_MIN_DBZ
-                    )
-                )
-                valid &= (~edge) | (sample >= edge_min_dbz)
 
             idx_in = np.flatnonzero(in_range)
             valid_positions = idx_in[valid]
@@ -1460,8 +1431,8 @@ def main() -> int:
             print(f"sweepAzimuthCoverageDeg={sweep.azimuth_coverage_deg:.3f}")
             print(f"sweepMaxAzimuthGapDeg={sweep.max_azimuth_gap_deg:.3f}")
             print(f"sweepNativeRangeKm={sweep.native_range_km:.3f}")
-            print(f"renderRangeKm={LEVEL2_TRUSTED_RENDER_RANGE_KM:.3f}")
-            print(f"edgeFilterStartKm={LEVEL2_EDGE_FILTER_START_KM:.3f}")
+            print(f"displayCutoffRangeKm={LEVEL2_DISPLAY_CUTOFF_RANGE_KM:.3f}")
+            print("rangeMaskMode=fixed-hard-cutoff")
             print(f"sourceShape={sweep.reflectivity.shape[0]}x{sweep.reflectivity.shape[1]}")
             print(f"outputShape={grid.shape[0]}x{grid.shape[1]}")
             print(f"finiteMinDbz={min_dbz if np.isfinite(min_dbz) else 'nan'}")
