@@ -46,7 +46,7 @@ except Exception as exc:  # pragma: no cover
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parents[1]
 LEVEL2_SOURCE_BASE = REPO_ROOT / "radar" / "source" / "level2"
-LEVEL2_OUTPUT_BASE = REPO_ROOT / "radar" / "tilesets" / "test"
+LEVEL2_TILESETS_BASE = REPO_ROOT / "radar" / "tilesets"
 FRAMES_JSON = REPO_ROOT / "radar" / "frames.json"
 DEFAULT_SITE = "KFCX"
 LEVEL2_PRODUCT = "LEVEL2_REF0"
@@ -60,10 +60,28 @@ MAX_LEVEL2_FRAMES = 25
 LEVEL2_CANDIDATE_MULTIPLIER = 3
 TARGET_LOW_LEVEL_SWEEP_DEG = 0.5
 MAX_LOW_LEVEL_SWEEP_DEG = 0.8
-MIN_VALID_LEVEL2_PIXELS = 0
+
+# Reject partial low-level cuts before they enter a playback loop.
+MIN_VALID_LEVEL2_PIXELS = 1000
+MIN_LOW_LEVEL_SWEEP_RAYS = 300
+MIN_LOW_LEVEL_AZIMUTH_COVERAGE_DEG = 356.0
+MAX_LOW_LEVEL_AZIMUTH_GAP_DEG = 4.0
+MIN_LOW_LEVEL_NATIVE_RANGE_KM = 440.0
+
+# Lock every rendered frame to one stable coverage footprint. The final
+# 20 km gradually requires stronger dBZ so weak far-range noise cannot
+# flash as a broad outer ring while stronger echoes remain available.
+LEVEL2_TRUSTED_RENDER_RANGE_KM = 440.0
+LEVEL2_EDGE_FILTER_START_KM = 420.0
+LEVEL2_EDGE_FILTER_MAX_MIN_DBZ = 10.0
+
 MOBILE_WEBP_DIR = "mobile"
 MOBILE_WEBP_MAX_SIZE = 2048
 MOBILE_WEBP_QUALITY = 90
+DESKTOP_WEBP_DIR = "desktop"
+DESKTOP_WEBP_MAX_SIZE = 5120
+DESKTOP_WEBP_LOSSLESS = True
+DESKTOP_WEBP_MERCATOR = True
 LEVEL2_TILE_DIR = "tiles"
 LEVEL2_TILE_SIZE = 256
 LEVEL2_TILE_MIN_ZOOM = 5
@@ -235,6 +253,10 @@ class SweepData:
     elevation_deg: float
     site_lat: float
     site_lon: float
+    ray_count: int
+    azimuth_coverage_deg: float
+    max_azimuth_gap_deg: float
+    native_range_km: float
 
 
 def infer_valid_time_from_name(path: Path) -> str | None:
@@ -424,6 +446,7 @@ def fetch_latest_source_scans(
 
 def build_level2_frames_manifest(
     output_root: Path,
+    output_namespace: str,
     site: str,
     product: str,
     bounds: tuple[float, float, float, float],
@@ -446,9 +469,10 @@ def build_level2_frames_manifest(
             valid_time = infer_valid_time_from_name(frame_file) or ""
         frames.append(
             {
-                "path": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{frame_file.name}",
-                "imagePath": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{MOBILE_WEBP_DIR}/{frame_file.stem}.webp",
-                "tileTemplate": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{LEVEL2_TILE_DIR}/{frame_file.stem}/{{z}}/{{x}}/{{y}}.png",
+                "path": f"/radar/tilesets/{output_namespace}/{site}/LEVEL2/REF0/{frame_file.name}",
+                "imagePath": f"/radar/tilesets/{output_namespace}/{site}/LEVEL2/REF0/{MOBILE_WEBP_DIR}/{frame_file.stem}.webp",
+                "desktopImagePath": f"/radar/tilesets/{output_namespace}/{site}/LEVEL2/REF0/{DESKTOP_WEBP_DIR}/{frame_file.stem}.webp",
+                "tileTemplate": f"/radar/tilesets/{output_namespace}/{site}/LEVEL2/REF0/{LEVEL2_TILE_DIR}/{frame_file.stem}/{{z}}/{{x}}/{{y}}.png",
                 "tileIndex": tile_index_for_geotiff(output_root, frame_file),
                 "tileMinZoom": LEVEL2_TILE_MIN_ZOOM,
                 "tileMaxZoom": LEVEL2_TILE_MAX_ZOOM,
@@ -514,15 +538,38 @@ def load_bounds_from_frames_json(site: str = DEFAULT_SITE) -> tuple[float, float
     return fallback
 
 
+def sweep_azimuth_quality(azimuth_deg: np.ndarray) -> tuple[float, float]:
+    azimuths = np.asarray(azimuth_deg, dtype=np.float64)
+    azimuths = azimuths[np.isfinite(azimuths)]
+
+    if azimuths.size < 2:
+        return 0.0, 360.0
+
+    ordered = np.sort(np.mod(azimuths, 360.0))
+    wrapped = np.concatenate((ordered, [ordered[0] + 360.0]))
+    gaps = np.diff(wrapped)
+
+    max_gap = float(np.max(gaps))
+    coverage = max(0.0, 360.0 - max_gap)
+    return coverage, max_gap
+
+
 def extract_lowest_reflectivity_sweep(level2: Level2File) -> SweepData:
     best: SweepData | None = None
-    best_distance = math.inf
+    best_quality: tuple[float, float, float] | None = None
+    rejected_candidates: list[str] = []
 
     for sweep in level2.sweeps:
         if not sweep:
             continue
 
-        rays_with_ref = [ray for ray in sweep if isinstance(ray, tuple) and len(ray) >= 5 and b"REF" in ray[4]]
+        rays_with_ref = [
+            ray
+            for ray in sweep
+            if isinstance(ray, tuple)
+            and len(ray) >= 5
+            and b"REF" in ray[4]
+        ]
         if not rays_with_ref:
             continue
 
@@ -535,16 +582,71 @@ def extract_lowest_reflectivity_sweep(level2: Level2File) -> SweepData:
         if elevation > MAX_LOW_LEVEL_SWEEP_DEG:
             continue
 
-        ref_hdr = first_ray[4][b"REF"][0]
-        num_gates = int(ref_hdr.num_gates)
-        ref_rows = []
-        azimuths = []
+        ray_count = len(rays_with_ref)
+        azimuths = np.asarray(
+            [float(ray[0].az_angle) for ray in rays_with_ref],
+            dtype=np.float32,
+        )
+        azimuth_coverage_deg, max_azimuth_gap_deg = sweep_azimuth_quality(
+            azimuths
+        )
 
+        ref_headers = [ray[4][b"REF"][0] for ray in rays_with_ref]
+        gate_counts = np.asarray(
+            [int(header.num_gates) for header in ref_headers],
+            dtype=np.int32,
+        )
+        first_gates = np.asarray(
+            [float(header.first_gate) for header in ref_headers],
+            dtype=np.float64,
+        )
+        gate_widths = np.asarray(
+            [float(header.gate_width) for header in ref_headers],
+            dtype=np.float64,
+        )
+
+        num_gates = int(round(float(np.median(gate_counts))))
+        first_gate_km = float(np.median(first_gates))
+        gate_width_km = float(np.median(gate_widths))
+        native_range_km = (
+            first_gate_km +
+            gate_width_km * max(0, num_gates - 1)
+        )
+
+        rejection_reasons = []
+        if ray_count < MIN_LOW_LEVEL_SWEEP_RAYS:
+            rejection_reasons.append(
+                f"rays={ray_count}<{MIN_LOW_LEVEL_SWEEP_RAYS}"
+            )
+        if azimuth_coverage_deg < MIN_LOW_LEVEL_AZIMUTH_COVERAGE_DEG:
+            rejection_reasons.append(
+                f"coverage={azimuth_coverage_deg:.2f}"
+            )
+        if max_azimuth_gap_deg > MAX_LOW_LEVEL_AZIMUTH_GAP_DEG:
+            rejection_reasons.append(
+                f"gap={max_azimuth_gap_deg:.2f}"
+            )
+        if native_range_km < MIN_LOW_LEVEL_NATIVE_RANGE_KM:
+            rejection_reasons.append(
+                f"range={native_range_km:.2f}"
+            )
+
+        if rejection_reasons:
+            rejected_candidates.append(
+                f"elev={elevation:.3f} " +
+                ",".join(rejection_reasons)
+            )
+            continue
+
+        ref_rows = []
         for ray in rays_with_ref:
-            azimuths.append(float(ray[0].az_angle))
             row = np.asarray(ray[4][b"REF"][1], dtype=np.float32)
             if row.shape[0] < num_gates:
-                padded = np.full((num_gates,), np.nan, dtype=np.float32)
+                padded = np.full(
+                    (num_gates,),
+                    np.nan,
+                    dtype=np.float32,
+                )
                 padded[: row.shape[0]] = row
                 row = padded
             elif row.shape[0] > num_gates:
@@ -552,28 +654,46 @@ def extract_lowest_reflectivity_sweep(level2: Level2File) -> SweepData:
             ref_rows.append(row)
 
         ref = np.stack(ref_rows, axis=0)
-        az = np.asarray(azimuths, dtype=np.float32)
         site_lat = float(first_ray[1].lat)
         site_lon = float(first_ray[1].lon)
 
         current = SweepData(
             reflectivity=ref,
-            azimuth_deg=az,
-            first_gate_km=float(ref_hdr.first_gate),
-            gate_width_km=float(ref_hdr.gate_width),
+            azimuth_deg=azimuths,
+            first_gate_km=first_gate_km,
+            gate_width_km=gate_width_km,
             elevation_deg=elevation,
             site_lat=site_lat,
             site_lon=site_lon,
+            ray_count=ray_count,
+            azimuth_coverage_deg=azimuth_coverage_deg,
+            max_azimuth_gap_deg=max_azimuth_gap_deg,
+            native_range_km=native_range_km,
         )
 
-        distance = abs(current.elevation_deg - TARGET_LOW_LEVEL_SWEEP_DEG)
-        if best is None or distance < best_distance:
+        distance = abs(
+            current.elevation_deg -
+            TARGET_LOW_LEVEL_SWEEP_DEG
+        )
+        quality = (
+            distance,
+            -current.azimuth_coverage_deg,
+            current.max_azimuth_gap_deg,
+        )
+
+        if best is None or best_quality is None or quality < best_quality:
             best = current
-            best_distance = distance
+            best_quality = quality
 
     if best is None:
+        details = (
+            "; ".join(rejected_candidates[:8])
+            if rejected_candidates
+            else "no reflectivity candidates"
+        )
         raise RuntimeError(
-            f"No low-level reflectivity moments found at or below {MAX_LOW_LEVEL_SWEEP_DEG:.2f} degrees"
+            "No complete low-level reflectivity sweep found at or below "
+            f"{MAX_LOW_LEVEL_SWEEP_DEG:.2f} degrees: {details}"
         )
 
     return best
@@ -618,7 +738,21 @@ def build_projected_dbz_grid(
     tx = Transformer.from_crs("EPSG:4326", aeqd, always_xy=True)
 
     num_gates = sweep.reflectivity.shape[1]
-    max_range_km = sweep.first_gate_km + sweep.gate_width_km * (num_gates - 1)
+    native_max_range_km = (
+        sweep.first_gate_km +
+        sweep.gate_width_km * (num_gates - 1)
+    )
+    render_max_range_km = min(
+        LEVEL2_TRUSTED_RENDER_RANGE_KM,
+        native_max_range_km,
+    )
+
+    if render_max_range_km < LEVEL2_TRUSTED_RENDER_RANGE_KM:
+        raise RuntimeError(
+            "Selected reflectivity sweep does not reach the trusted "
+            f"{LEVEL2_TRUSTED_RENDER_RANGE_KM:.1f} km render radius "
+            f"(native={native_max_range_km:.1f} km)"
+        )
 
     for y0 in range(0, output_size, row_chunk):
         y1 = min(output_size, y0 + row_chunk)
@@ -635,15 +769,60 @@ def build_projected_dbz_grid(
         range_km = np.hypot(x_m, y_m) / 1000.0
         azimuth = (np.degrees(np.arctan2(x_m, y_m)) + 360.0) % 360.0
 
-        gate_idx = np.rint((range_km - sweep.first_gate_km) / sweep.gate_width_km).astype(np.int32)
-        in_range = (gate_idx >= 0) & (gate_idx < num_gates) & (range_km <= max_range_km)
+        gate_idx = np.rint(
+            (range_km - sweep.first_gate_km) /
+            sweep.gate_width_km
+        ).astype(np.int32)
+        in_range = (
+            (gate_idx >= 0) &
+            (gate_idx < num_gates) &
+            (range_km <= render_max_range_km)
+        )
 
-        chunk_vals = np.full(flat_lon.shape[0], nodata, dtype=np.float32)
+        chunk_vals = np.full(
+            flat_lon.shape[0],
+            nodata,
+            dtype=np.float32,
+        )
         if np.any(in_range):
-            az_idx = circular_nearest_indices(sweep.azimuth_deg, azimuth[in_range])
-            sample = sweep.reflectivity[az_idx, gate_idx[in_range]]
+            in_range_distance_km = range_km[in_range]
+            az_idx = circular_nearest_indices(
+                sweep.azimuth_deg,
+                azimuth[in_range],
+            )
+            sample = sweep.reflectivity[
+                az_idx,
+                gate_idx[in_range],
+            ]
             sample = np.asarray(sample, dtype=np.float32)
             valid = np.isfinite(sample)
+
+            edge = (
+                in_range_distance_km >
+                LEVEL2_EDGE_FILTER_START_KM
+            )
+            if np.any(edge):
+                edge_fraction = np.clip(
+                    (
+                        in_range_distance_km -
+                        LEVEL2_EDGE_FILTER_START_KM
+                    ) /
+                    (
+                        render_max_range_km -
+                        LEVEL2_EDGE_FILTER_START_KM
+                    ),
+                    0.0,
+                    1.0,
+                )
+                edge_min_dbz = (
+                    TILE_DISPLAY_MIN_DBZ +
+                    edge_fraction *
+                    (
+                        LEVEL2_EDGE_FILTER_MAX_MIN_DBZ -
+                        TILE_DISPLAY_MIN_DBZ
+                    )
+                )
+                valid &= (~edge) | (sample >= edge_min_dbz)
 
             idx_in = np.flatnonzero(in_range)
             valid_positions = idx_in[valid]
@@ -682,6 +861,10 @@ def write_geotiff(
 
 def mobile_webp_path_for_geotiff(output_root: Path, geotiff_path: Path) -> Path:
     return output_root / MOBILE_WEBP_DIR / f"{geotiff_path.stem}.webp"
+
+
+def desktop_webp_path_for_geotiff(output_root: Path, geotiff_path: Path) -> Path:
+    return output_root / DESKTOP_WEBP_DIR / f"{geotiff_path.stem}.webp"
 
 
 def downsample_grid_nearest(grid: np.ndarray, max_size: int = MOBILE_WEBP_MAX_SIZE) -> np.ndarray:
@@ -777,12 +960,98 @@ def colorize_dbz_grid_for_tiles(grid: np.ndarray, nodata: float) -> np.ndarray:
     return rgba
 
 
+def sample_grid_mercator_nearest(
+    grid: np.ndarray,
+    bounds: tuple[float, float, float, float],
+    max_size: int,
+) -> np.ndarray:
+    """Resample an EPSG:4326 grid into one seam-free Web Mercator image."""
+    west, south, east, north = bounds
+    source_height, source_width = grid.shape
+    largest = max(source_height, source_width)
+
+    if largest <= max_size:
+        output_width = source_width
+        output_height = source_height
+    else:
+        scale = max_size / float(largest)
+        output_width = max(1, int(round(source_width * scale)))
+        output_height = max(1, int(round(source_height * scale)))
+
+    pixel_x = (
+        np.arange(output_width, dtype=np.float64) + 0.5
+    ) / float(output_width)
+    lon_cols = west + (east - west) * pixel_x
+
+    def mercator_y(latitude: float) -> float:
+        clamped = max(-85.05112878, min(85.05112878, float(latitude)))
+        radians = math.radians(clamped)
+        return (
+            1.0 - math.asinh(math.tan(radians)) / math.pi
+        ) / 2.0
+
+    north_y = mercator_y(north)
+    south_y = mercator_y(south)
+    pixel_y = (
+        np.arange(output_height, dtype=np.float64) + 0.5
+    ) / float(output_height)
+    mercator_rows = north_y + (south_y - north_y) * pixel_y
+    lat_rows = np.degrees(
+        np.arctan(
+            np.sinh(math.pi * (1.0 - 2.0 * mercator_rows))
+        )
+    )
+
+    source_x = (
+        ((lon_cols - west) / (east - west)) * source_width - 0.5
+    )
+    source_y = (
+        ((north - lat_rows) / (north - south)) * source_height - 0.5
+    )
+
+    nearest_x = np.clip(
+        np.rint(source_x),
+        0,
+        source_width - 1,
+    ).astype(np.int32)
+    nearest_y = np.clip(
+        np.rint(source_y),
+        0,
+        source_height - 1,
+    ).astype(np.int32)
+
+    return grid[np.ix_(nearest_y, nearest_x)]
+
+
 def write_mobile_webp(path: Path, grid: np.ndarray, nodata: float) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    sampled = downsample_grid_nearest(grid)
+    sampled = downsample_grid_nearest(grid, MOBILE_WEBP_MAX_SIZE)
     rgba = colorize_dbz_grid(sampled, nodata)
     image = Image.fromarray(rgba, mode="RGBA")
     image.save(path, format="WEBP", quality=MOBILE_WEBP_QUALITY, method=4)
+
+
+def write_desktop_webp(
+    path: Path,
+    grid: np.ndarray,
+    nodata: float,
+    bounds: tuple[float, float, float, float],
+) -> None:
+    """Write one full-resolution Web Mercator texture for desktop playback."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    sampled = sample_grid_mercator_nearest(
+        grid,
+        bounds,
+        DESKTOP_WEBP_MAX_SIZE,
+    )
+    rgba = colorize_dbz_grid_for_tiles(sampled, nodata)
+    image = Image.fromarray(rgba, mode="RGBA")
+    image.save(
+        path,
+        format="WEBP",
+        lossless=DESKTOP_WEBP_LOSSLESS,
+        method=4,
+    )
 
 
 
@@ -835,12 +1104,7 @@ def sample_grid_for_tile(
     nodata: float,
     tile_size: int = LEVEL2_TILE_SIZE,
 ) -> np.ndarray:
-    """Sample the projected dBZ grid into one map tile.
-
-    This uses nodata-aware bilinear sampling instead of nearest-neighbor sampling.
-    It keeps the radar locked to the map but removes the harsh block/gap look that
-    becomes obvious when the browser displays max-zoom radar tiles.
-    """
+    """Sample the projected dBZ grid with nearest-neighbor radar-bin preservation."""
     west, south, east, north = bounds
     height, width = grid.shape
 
@@ -861,56 +1125,15 @@ def sample_grid_for_tile(
     if not np.any(in_bounds):
         return sampled
 
-    # Convert tile pixel lon/lat into projected raster pixel coordinates.
-    # The -0.5 aligns sampling to raster cell centers.
+    # Rounding selects one source radar bin without blending neighboring bins.
     src_x = ((lon_grid - west) / (east - west)) * width - 0.5
     src_y = ((north - lat_grid) / (north - south)) * height - 0.5
+    nearest_x = np.clip(np.rint(src_x), 0, width - 1).astype(np.int32)
+    nearest_y = np.clip(np.rint(src_y), 0, height - 1).astype(np.int32)
 
-    src_x = np.clip(src_x, 0.0, float(width - 1))
-    src_y = np.clip(src_y, 0.0, float(height - 1))
-
-    x0 = np.floor(src_x).astype(np.int32)
-    y0 = np.floor(src_y).astype(np.int32)
-    x1 = np.clip(x0 + 1, 0, width - 1)
-    y1 = np.clip(y0 + 1, 0, height - 1)
-
-    wx = (src_x - x0).astype(np.float32)
-    wy = (src_y - y0).astype(np.float32)
-
-    g00 = grid[y0, x0]
-    g10 = grid[y0, x1]
-    g01 = grid[y1, x0]
-    g11 = grid[y1, x1]
-
-    valid00 = np.isfinite(g00) & (g00 != nodata)
-    valid10 = np.isfinite(g10) & (g10 != nodata)
-    valid01 = np.isfinite(g01) & (g01 != nodata)
-    valid11 = np.isfinite(g11) & (g11 != nodata)
-
-    w00 = (1.0 - wx) * (1.0 - wy)
-    w10 = wx * (1.0 - wy)
-    w01 = (1.0 - wx) * wy
-    w11 = wx * wy
-
-    w00 = np.where(valid00, w00, 0.0)
-    w10 = np.where(valid10, w10, 0.0)
-    w01 = np.where(valid01, w01, 0.0)
-    w11 = np.where(valid11, w11, 0.0)
-
-    weight_sum = w00 + w10 + w01 + w11
-
-    weighted_sum = (
-        np.where(valid00, g00, 0.0) * w00
-        + np.where(valid10, g10, 0.0) * w10
-        + np.where(valid01, g01, 0.0) * w01
-        + np.where(valid11, g11, 0.0) * w11
-    )
-
-    blended = np.full((tile_size, tile_size), nodata, dtype=np.float32)
-    np.divide(weighted_sum, weight_sum, out=blended, where=weight_sum > 0)
-
-    has_value = in_bounds & (weight_sum > 0)
-    sampled[has_value] = blended[has_value]
+    nearest_values = grid[nearest_y, nearest_x]
+    has_value = in_bounds & np.isfinite(nearest_values) & (nearest_values != nodata)
+    sampled[has_value] = nearest_values[has_value]
     return sampled
 
 
@@ -1019,12 +1242,44 @@ def ensure_mobile_webps(output_root: Path, nodata: float) -> None:
         write_mobile_webp(webp_path, grid, float(source_nodata))
 
 
+def ensure_desktop_webps(output_root: Path, nodata: float) -> None:
+    for geotiff_path in sorted(output_root.glob("*_projected_dbz.tif")):
+        webp_path = desktop_webp_path_for_geotiff(output_root, geotiff_path)
+        if webp_path.exists():
+            continue
+        with rasterio.open(geotiff_path) as src:
+            grid = src.read(1).astype(np.float32)
+            source_nodata = src.nodata if src.nodata is not None else nodata
+            source_bounds = (
+                float(src.bounds.left),
+                float(src.bounds.bottom),
+                float(src.bounds.right),
+                float(src.bounds.top),
+            )
+        write_desktop_webp(
+            webp_path,
+            grid,
+            float(source_nodata),
+            source_bounds,
+        )
+
+
 def prune_orphan_mobile_webps(output_root: Path) -> None:
     mobile_root = output_root / MOBILE_WEBP_DIR
     if not mobile_root.exists():
         return
     valid_stems = {frame_file.stem for frame_file in output_root.glob("*_projected_dbz.tif")}
     for webp_path in mobile_root.glob("*.webp"):
+        if webp_path.stem not in valid_stems:
+            webp_path.unlink(missing_ok=True)
+
+
+def prune_orphan_desktop_webps(output_root: Path) -> None:
+    desktop_root = output_root / DESKTOP_WEBP_DIR
+    if not desktop_root.exists():
+        return
+    valid_stems = {frame_file.stem for frame_file in output_root.glob("*_projected_dbz.tif")}
+    for webp_path in desktop_root.glob("*.webp"):
         if webp_path.stem not in valid_stems:
             webp_path.unlink(missing_ok=True)
 
@@ -1073,15 +1328,33 @@ def main() -> int:
     )
     parser.add_argument("--output-size", type=int, default=OUTPUT_SIZE)
     parser.add_argument("--nodata", type=float, default=NODATA)
+    parser.add_argument(
+        "--output-namespace",
+        default="test",
+        help="Namespace beneath radar/tilesets and in published manifest URLs.",
+    )
     args = parser.parse_args()
 
     site = args.site.strip().upper()
     if not re.fullmatch(r"K[A-Z0-9]{3}", site):
         raise SystemExit(f"Unsupported Level II radar site ID: {site}")
 
+    output_namespace = str(args.output_namespace or "").strip().strip("/")
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", output_namespace):
+        raise SystemExit(
+            f"Unsupported Level II output namespace: {output_namespace!r}"
+        )
+
     input_dir = args.input_dir or (LEVEL2_SOURCE_BASE / site)
-    output_root = LEVEL2_OUTPUT_BASE / site / "LEVEL2" / "REF0"
+    output_root = (
+        LEVEL2_TILESETS_BASE /
+        output_namespace /
+        site /
+        "LEVEL2" /
+        "REF0"
+    )
     level2_frames_manifest = output_root / "frames.json"
+    print(f"outputNamespace={output_namespace}")
 
     if args.fetch_latest:
         fetch_latest_source_scans(
@@ -1164,6 +1437,12 @@ def main() -> int:
 
             write_geotiff(path=output_path, grid=grid, bounds=bounds, nodata=args.nodata)
             write_mobile_webp(mobile_webp_path_for_geotiff(output_root, output_path), grid, args.nodata)
+            write_desktop_webp(
+                desktop_webp_path_for_geotiff(output_root, output_path),
+                grid,
+                args.nodata,
+                bounds,
+            )
             tile_count = write_level2_png_tiles(output_root, output_path, grid, bounds, args.nodata)
             print(f"tileCount={tile_count}")
 
@@ -1177,6 +1456,12 @@ def main() -> int:
             print(f"radarSite={site}")
             print(f"validTime={valid_time}")
             print(f"sweepElevationDeg={sweep.elevation_deg:.3f}")
+            print(f"sweepRayCount={sweep.ray_count}")
+            print(f"sweepAzimuthCoverageDeg={sweep.azimuth_coverage_deg:.3f}")
+            print(f"sweepMaxAzimuthGapDeg={sweep.max_azimuth_gap_deg:.3f}")
+            print(f"sweepNativeRangeKm={sweep.native_range_km:.3f}")
+            print(f"renderRangeKm={LEVEL2_TRUSTED_RENDER_RANGE_KM:.3f}")
+            print(f"edgeFilterStartKm={LEVEL2_EDGE_FILTER_START_KM:.3f}")
             print(f"sourceShape={sweep.reflectivity.shape[0]}x{sweep.reflectivity.shape[1]}")
             print(f"outputShape={grid.shape[0]}x{grid.shape[1]}")
             print(f"finiteMinDbz={min_dbz if np.isfinite(min_dbz) else 'nan'}")
@@ -1200,8 +1485,10 @@ def main() -> int:
 
     prune_level2_output_frames(output_root, MAX_LEVEL2_FRAMES)
     ensure_mobile_webps(output_root, args.nodata)
+    ensure_desktop_webps(output_root, args.nodata)
     ensure_level2_png_tiles(output_root, bounds, args.nodata)
     prune_orphan_mobile_webps(output_root)
+    prune_orphan_desktop_webps(output_root)
     prune_orphan_level2_tiles(output_root)
 
     latest_json = output_root / "latest.json"
@@ -1219,9 +1506,10 @@ def main() -> int:
                     "east": bounds[2],
                     "north": bounds[3],
                 },
-                "path": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{latest_output_path.name}",
-                "imagePath": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{MOBILE_WEBP_DIR}/{latest_output_path.stem}.webp",
-                "tileTemplate": f"/radar/tilesets/test/{site}/LEVEL2/REF0/{LEVEL2_TILE_DIR}/{latest_output_path.stem}/{{z}}/{{x}}/{{y}}.png",
+                "path": f"/radar/tilesets/{output_namespace}/{site}/LEVEL2/REF0/{latest_output_path.name}",
+                "imagePath": f"/radar/tilesets/{output_namespace}/{site}/LEVEL2/REF0/{MOBILE_WEBP_DIR}/{latest_output_path.stem}.webp",
+                "desktopImagePath": f"/radar/tilesets/{output_namespace}/{site}/LEVEL2/REF0/{DESKTOP_WEBP_DIR}/{latest_output_path.stem}.webp",
+                "tileTemplate": f"/radar/tilesets/{output_namespace}/{site}/LEVEL2/REF0/{LEVEL2_TILE_DIR}/{latest_output_path.stem}/{{z}}/{{x}}/{{y}}.png",
                 "tileIndex": tile_index_for_geotiff(output_root, latest_output_path),
                 "tileMinZoom": LEVEL2_TILE_MIN_ZOOM,
                 "tileMaxZoom": LEVEL2_TILE_MAX_ZOOM,
@@ -1236,6 +1524,7 @@ def main() -> int:
 
     frames_manifest = build_level2_frames_manifest(
         output_root=output_root,
+        output_namespace=output_namespace,
         site=site,
         product=LEVEL2_PRODUCT,
         bounds=bounds,

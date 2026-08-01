@@ -2582,6 +2582,150 @@ body.alert-type-filter-popup-open {
     }
   }
 </style>
+  <style id="desktop-hq-loop-style">
+    @media (min-width: 761px) {
+      .desktop-radar-playback-dock {
+        overflow: visible;
+      }
+
+      .desktop-hq-loop-prep {
+        position: absolute;
+        left: 50%;
+        bottom: calc(100% + 10px);
+        width: min(430px, calc(100vw - 48px));
+        transform: translateX(-50%);
+        padding: 11px 13px 10px;
+        border: 1px solid rgba(56, 189, 248, 0.42);
+        border-radius: 12px;
+        background:
+          linear-gradient(180deg, rgba(8, 18, 35, 0.98), rgba(5, 12, 25, 0.96));
+        box-shadow:
+          0 16px 38px rgba(0, 0, 0, 0.42),
+          inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        color: #e6f6ff;
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        pointer-events: none;
+        z-index: 4;
+      }
+
+      .desktop-hq-loop-prep[hidden] {
+        display: none !important;
+      }
+
+      .desktop-hq-loop-prep-head,
+      .desktop-hq-loop-prep-meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .desktop-hq-loop-prep-head {
+        margin-bottom: 8px;
+      }
+
+      .desktop-hq-loop-prep-title {
+        font-size: 0.74rem;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .desktop-hq-loop-prep-count,
+      .desktop-hq-loop-prep-percent {
+        color: #8ddfff;
+        font-size: 0.72rem;
+        font-weight: 850;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+
+      .desktop-hq-loop-prep-track {
+        position: relative;
+        height: 7px;
+        overflow: hidden;
+        border: 1px solid rgba(125, 211, 252, 0.2);
+        border-radius: 999px;
+        background: rgba(2, 8, 23, 0.9);
+      }
+
+      .desktop-hq-loop-prep-fill {
+        display: block;
+        width: 0%;
+        height: 100%;
+        border-radius: inherit;
+        background:
+          linear-gradient(90deg, #0284c7 0%, #38bdf8 55%, #7dd3fc 100%);
+        box-shadow: 0 0 15px rgba(56, 189, 248, 0.56);
+        transition: width 180ms ease;
+      }
+
+      .desktop-hq-loop-prep[data-state="download"]
+        .desktop-hq-loop-prep-fill,
+      .desktop-hq-loop-prep[data-state="buffer"]
+        .desktop-hq-loop-prep-fill {
+        position: relative;
+      }
+
+      .desktop-hq-loop-prep[data-state="download"]
+        .desktop-hq-loop-prep-fill::after,
+      .desktop-hq-loop-prep[data-state="buffer"]
+        .desktop-hq-loop-prep-fill::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background:
+          linear-gradient(
+            110deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.38) 46%,
+            transparent 78%
+          );
+        transform: translateX(-100%);
+        animation: desktop-hq-loop-sheen 1.2s linear infinite;
+      }
+
+      .desktop-hq-loop-prep-meta {
+        margin-top: 7px;
+        color: #a9bfd0;
+        font-size: 0.68rem;
+        font-weight: 700;
+      }
+
+      .desktop-hq-loop-prep[data-state="ready"] {
+        border-color: rgba(34, 197, 94, 0.5);
+      }
+
+      .desktop-hq-loop-prep[data-state="ready"]
+        .desktop-hq-loop-prep-fill {
+        background: linear-gradient(90deg, #16a34a, #4ade80);
+        box-shadow: 0 0 15px rgba(74, 222, 128, 0.48);
+      }
+
+      .desktop-hq-loop-prep[data-state="error"] {
+        border-color: rgba(248, 113, 113, 0.58);
+      }
+
+      .desktop-hq-loop-prep[data-state="error"]
+        .desktop-hq-loop-prep-fill {
+        background: linear-gradient(90deg, #b91c1c, #f87171);
+        box-shadow: 0 0 15px rgba(248, 113, 113, 0.42);
+      }
+
+      #playPauseButton.is-preparing {
+        border-color: rgba(56, 189, 248, 0.74);
+        color: #dff6ff;
+        box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.18);
+      }
+
+      @keyframes desktop-hq-loop-sheen {
+        to {
+          transform: translateX(180%);
+        }
+      }
+    }
+  </style>
 </head>
 <body>
   <div id="map"></div>
@@ -2747,6 +2891,33 @@ body.alert-type-filter-popup-open {
   <div id="desktopRadarPlaybackDock"
        class="desktop-radar-playback-dock"
        aria-label="Radar playback dock">
+    <div id="desktopHqLoopPrep"
+         class="desktop-hq-loop-prep"
+         data-state="download"
+         aria-live="polite"
+         hidden>
+      <div class="desktop-hq-loop-prep-head">
+        <span id="desktopHqLoopPrepTitle"
+              class="desktop-hq-loop-prep-title">Preparing HQ Loop</span>
+        <span id="desktopHqLoopPrepCount"
+              class="desktop-hq-loop-prep-count">0 / 25</span>
+      </div>
+      <div id="desktopHqLoopPrepTrack"
+           class="desktop-hq-loop-prep-track"
+           role="progressbar"
+           aria-label="High-resolution radar loop preparation"
+           aria-valuemin="0"
+           aria-valuemax="100"
+           aria-valuenow="0">
+        <span id="desktopHqLoopPrepFill"
+              class="desktop-hq-loop-prep-fill"></span>
+      </div>
+      <div class="desktop-hq-loop-prep-meta">
+        <span id="desktopHqLoopPrepDetail">Downloading high-resolution frames</span>
+        <span id="desktopHqLoopPrepPercent"
+              class="desktop-hq-loop-prep-percent">0%</span>
+      </div>
+    </div>
     <div id="desktopRadarPlaybackControlsSlot" class="desktop-radar-playback-slot"></div>
     <div class="desktop-radar-playback-divider" aria-hidden="true"></div>
     <div id="desktopRadarPlaybackSpeedSlot" class="desktop-radar-playback-slot"></div>
@@ -2755,6 +2926,7 @@ body.alert-type-filter-popup-open {
   </div>
 
   <script src="scripts/level2-radar-engine.js"></script>
+  <script src="scripts/level2-hq-playback-engine.js?v=20260729-north-up-v3"></script>
   <script>
     const MAPBOX_TOKEN = window.MAPBOX_PUBLIC_TOKEN;
     const MAPBOX_STYLE = "mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
@@ -2793,12 +2965,20 @@ body.alert-type-filter-popup-open {
     const LEVEL2_SELECTED_SITE_STORAGE_KEY = "zach-level2-selected-site";
     const LEVEL2_PRODUCT = "LEVEL2_REF0";
     const LEVEL2_REMOTE_BASE_URL = "https://radar.zacharologistwx.com";
+    const LEVEL2_DATA_NAMESPACE = (() => {
+      const requested = new URLSearchParams(window.location.search)
+        .get("level2Namespace");
+
+      return requested && /^[A-Za-z0-9_-]+$/.test(requested)
+        ? requested
+        : "test";
+    })();
     const FRAME_REFRESH_MS = 60000;
     const ALERT_REFRESH_MS = 60000;
     const PLAYBACK_INTERVAL_MS = 900;
     const MOBILE_LEVEL2_RASTER_SCALE = 0.5;
     const MOBILE_LEVEL2_RENDER_CACHE_LIMIT = 12;
-    const DESKTOP_LEVEL2_RENDER_CACHE_LIMIT = 6;
+    const DESKTOP_LEVEL2_RENDER_CACHE_LIMIT = 2;
     const MOBILE_UNCACHED_FRAME_MIN_INTERVAL_MS = 1800;
     const DISPLAY_MIN_DBZ = -32;
     const DEBUG_ALERT_STACKING = false;
@@ -2821,9 +3001,17 @@ body.alert-type-filter-popup-open {
     const USE_MANUAL_LEVEL2_RADAR_ENGINE =
       LEVEL2_ENGINE_MODE !== "legacy" && LEVEL2_ENGINE_MODE !== "off";
     const USE_WEBP_LEVEL2_PLAYBACK = true;
-    const LEVEL2_PLAYBACK_PRELOAD_COUNT = 4;
-    const LEVEL2_PLAYBACK_PRELOAD_CONCURRENCY = 2;
+    const USE_DESKTOP_HQ_WEBGL_PLAYBACK = true;
+    const DESKTOP_HQ_PLAYBACK_LAYER_ID = "level2-hq-playback-layer";
+    const DESKTOP_HQ_DOWNLOAD_CONCURRENCY = 3;
+    const DESKTOP_HQ_DECODE_CONCURRENCY = 2;
+    const DESKTOP_HQ_DECODE_BUFFER_FRAMES = 6;
+    const MOBILE_LEVEL2_PLAYBACK_PRELOAD_COUNT = 4;
+    const MOBILE_LEVEL2_PLAYBACK_PRELOAD_CONCURRENCY = 2;
+    const DESKTOP_LEVEL2_PLAYBACK_PRELOAD_COUNT = 1;
+    const DESKTOP_LEVEL2_PLAYBACK_PRELOAD_CONCURRENCY = 1;
     const PAUSED_TILE_RESTORE_DELAY_MS = 300;
+    const DESKTOP_HQ_MAP_INTERACTION_FRAME_INTERVAL_MS = 225;
     const LEVEL2_MANUAL_RADAR_LAYER_ID = "level2-manual-radar-layer";
     const PALETTE_SOURCE_FILE = "scripts/radar/radar_config.json";
 
@@ -3011,11 +3199,17 @@ body.alert-type-filter-popup-open {
     }
 
     function level2MetaUrl(site = selectedLevel2Site()) {
-      return level2DataUrl(`/radar/tilesets/test/${sanitizeLevel2Site(site)}/LEVEL2/REF0/latest.json`);
+      return level2DataUrl(
+        `/radar/tilesets/${LEVEL2_DATA_NAMESPACE}/` +
+        `${sanitizeLevel2Site(site)}/LEVEL2/REF0/latest.json`
+      );
     }
 
     function level2FramesUrl(site = selectedLevel2Site()) {
-      return level2DataUrl(`/radar/tilesets/test/${sanitizeLevel2Site(site)}/LEVEL2/REF0/frames.json`);
+      return level2DataUrl(
+        `/radar/tilesets/${LEVEL2_DATA_NAMESPACE}/` +
+        `${sanitizeLevel2Site(site)}/LEVEL2/REF0/frames.json`
+      );
     }
 
     // Copied from ZacharologistWx main radar renderer color table
@@ -3329,9 +3523,28 @@ body.alert-type-filter-popup-open {
     let overlayRedrawFrame = null;
     let pendingOverlayRedrawQuality = "full";
     let level2RadarEngine = null;
+    let desktopHqPlaybackEngine = null;
+    let desktopHqLoopPreparing = false;
+    let desktopHqLoopReadySignature = "";
+    let desktopHqPrepareToken = 0;
+    const desktopHqLoopPrep =
+      document.getElementById("desktopHqLoopPrep");
+    const desktopHqLoopPrepTitle =
+      document.getElementById("desktopHqLoopPrepTitle");
+    const desktopHqLoopPrepCount =
+      document.getElementById("desktopHqLoopPrepCount");
+    const desktopHqLoopPrepTrack =
+      document.getElementById("desktopHqLoopPrepTrack");
+    const desktopHqLoopPrepFill =
+      document.getElementById("desktopHqLoopPrepFill");
+    const desktopHqLoopPrepDetail =
+      document.getElementById("desktopHqLoopPrepDetail");
+    const desktopHqLoopPrepPercent =
+      document.getElementById("desktopHqLoopPrepPercent");
     let manualLevel2RadarViewRefreshTimer = null;
     let isWebpPlaybackActive = false;
     let webpPlaybackDisplayToken = 0;
+    let webpPlaybackLoadGeneration = 0;
     let pausedTileRestoreTimer = null;
     let webpPlaybackPreloadInProgress = false;
     let webpPlaybackPreloadRequestedIndex = null;
@@ -3468,6 +3681,42 @@ body.alert-type-filter-popup-open {
       drawAlertOverlay();
     }
 
+    function deriveDesktopLevel2ImagePath(meta) {
+      if (typeof meta?.desktopImagePath === "string" && meta.desktopImagePath.trim()) {
+        return meta.desktopImagePath.trim();
+      }
+
+      const rawFramePath =
+        typeof meta?.path === "string" ? meta.path.trim() : "";
+
+      const framePathMatch = rawFramePath.match(
+        /^(.*\/)([^/?]+)\.tif(?:\?.*)?$/i
+      );
+
+      if (framePathMatch) {
+        return (
+          `${framePathMatch[1]}desktop/` +
+          `${framePathMatch[2]}.webp`
+        );
+      }
+
+      const rawMobilePath =
+        typeof meta?.imagePath === "string" ? meta.imagePath.trim() : "";
+
+      const mobilePathMatch = rawMobilePath.match(
+        /^(.*\/)mobile\/([^/?]+)\.webp(?:\?.*)?$/i
+      );
+
+      if (mobilePathMatch) {
+        return (
+          `${mobilePathMatch[1]}desktop/` +
+          `${mobilePathMatch[2]}.webp`
+        );
+      }
+
+      return null;
+    }
+
     function normalizeLevel2Frame(meta) {
       if (!meta?.path) return null;
       const bounds = meta?.bounds;
@@ -3477,9 +3726,12 @@ body.alert-type-filter-popup-open {
         Number.isFinite(bounds.east) &&
         Number.isFinite(bounds.north);
       const validTimeDate = new Date(meta.validTime || "");
+      const desktopImagePath = deriveDesktopLevel2ImagePath(meta);
       return {
         path: level2DataUrl(meta.path),
         imagePath: meta.imagePath ? level2DataUrl(meta.imagePath) : null,
+        desktopImagePath:
+          desktopImagePath ? level2DataUrl(desktopImagePath) : null,
         tileTemplate: meta.tileTemplate ? level2DataUrl(meta.tileTemplate) : null,
         tileIndex: meta.tileIndex && typeof meta.tileIndex === "object" ? meta.tileIndex : null,
         tileMinZoom: Number.isFinite(Number(meta.tileMinZoom)) ? Number(meta.tileMinZoom) : 5,
@@ -3506,6 +3758,19 @@ body.alert-type-filter-popup-open {
     }
 
     function updatePlaybackButton() {
+      if (desktopHqLoopPreparing) {
+        playPauseButton.textContent = "Cancel";
+        playPauseButton.setAttribute("aria-pressed", "false");
+        playPauseButton.setAttribute(
+          "aria-label",
+          "Cancel HQ loop preparation"
+        );
+        playPauseButton.classList.add("is-preparing");
+        return;
+      }
+
+      playPauseButton.classList.remove("is-preparing");
+      playPauseButton.removeAttribute("aria-label");
       playPauseButton.textContent = isPlaying ? "Pause" : "Play";
       playPauseButton.setAttribute("aria-pressed", String(isPlaying));
     }
@@ -3661,7 +3926,24 @@ body.alert-type-filter-popup-open {
       if (!response.ok) throw new Error(`frames catalog fetch failed (${response.status})`);
       const payload = await response.json();
       const rawFrames = Array.isArray(payload?.frames) ? payload.frames : [];
-      return rawFrames.map(normalizeLevel2Frame).filter(Boolean);
+      return rawFrames
+        .map(normalizeLevel2Frame)
+        .filter(Boolean)
+        .sort((left, right) => {
+          const leftTime = Number.isFinite(
+            left?.validTimeDate?.getTime?.()
+          )
+            ? left.validTimeDate.getTime()
+            : 0;
+
+          const rightTime = Number.isFinite(
+            right?.validTimeDate?.getTime?.()
+          )
+            ? right.validTimeDate.getTime()
+            : 0;
+
+          return leftTime - rightTime;
+        });
     }
 
     function currentFrame() {
@@ -3675,14 +3957,24 @@ body.alert-type-filter-popup-open {
         image.onerror = () => {
           reject(new Error(`radar image failed to load: ${url}`));
         };
-        image.src = cacheBustUrl(url);
+        // Radar frame filenames contain their scan timestamp and are immutable.
+        // Preserve the browser's compressed-image cache across repeated loops.
+        image.src = url;
       });
     }
 
-    async function buildMobileLevel2ImageSurface(frame = currentFrame(), options = {}) {
-      if (!frame?.imagePath) return null;
+    function level2PlaybackImagePath(frame = currentFrame()) {
+      if (!isMobileLevel2Mode() && frame?.desktopImagePath) {
+        return frame.desktopImagePath;
+      }
+      return frame?.imagePath || null;
+    }
 
-      const image = await loadRadarImageElement(frame.imagePath);
+    async function buildMobileLevel2ImageSurface(frame = currentFrame(), options = {}) {
+      const imagePath = level2PlaybackImagePath(frame);
+      if (!imagePath) return null;
+
+      const image = await loadRadarImageElement(imagePath);
       const width = Math.max(1, image.naturalWidth || image.width || 1);
       const height = Math.max(1, image.naturalHeight || image.height || 1);
 
@@ -3699,7 +3991,7 @@ body.alert-type-filter-popup-open {
         width,
         height,
         bounds: frame?.bounds || radarBounds,
-        path: frame.imagePath,
+        path: imagePath,
         validTime: frame?.validTime || ""
       };
     }
@@ -4223,6 +4515,374 @@ body.alert-type-filter-popup-open {
       return previousLatestPath !== (level2Frames[level2Frames.length - 1]?.path || "");
     }
 
+    /* Desktop HQ WebGL loop v2 */
+
+    function desktopHqLoopSignature(frames = level2Frames) {
+      return (Array.isArray(frames) ? frames : [])
+        .map((frame) => [
+          frame?.desktopImagePath || "",
+          frame?.validTime || "",
+          JSON.stringify(frame?.bounds || null)
+        ].join("::"))
+        .join("|");
+    }
+
+    function shouldUseDesktopHqPlayback(frame = currentFrame()) {
+      return (
+        USE_DESKTOP_HQ_WEBGL_PLAYBACK &&
+        !isMobileLevel2Mode() &&
+        typeof window.Level2HqPlaybackEngine === "function" &&
+        Boolean(frame?.desktopImagePath)
+      );
+    }
+
+    function setDesktopHqControlsLocked(locked) {
+      const controls = [
+        siteSelect,
+        productSelect,
+        frameSelect,
+        previousFrameButton,
+        nextFrameButton
+      ].filter(Boolean);
+
+      for (const control of controls) {
+        if (locked) {
+          if (!Object.prototype.hasOwnProperty.call(
+            control.dataset,
+            "hqWasDisabled"
+          )) {
+            control.dataset.hqWasDisabled = control.disabled ? "1" : "0";
+          }
+
+          control.disabled = true;
+        } else {
+          const wasDisabled = control.dataset.hqWasDisabled === "1";
+          control.disabled = wasDisabled;
+          delete control.dataset.hqWasDisabled;
+        }
+      }
+
+      if (desktopRadarPlaybackDock) {
+        desktopRadarPlaybackDock.setAttribute(
+          "aria-busy",
+          locked ? "true" : "false"
+        );
+      }
+    }
+
+    function updateDesktopHqLoopUi(payload = {}) {
+      if (!desktopHqLoopPrep) return;
+
+      const stage = payload.stage || "download";
+      const total = Math.max(0, Number(payload.total) || 0);
+      const completed = Math.max(
+        0,
+        Math.min(total || Number.MAX_SAFE_INTEGER, Number(payload.completed) || 0)
+      );
+
+      let percent = total > 0
+        ? Math.round((completed / total) * 100)
+        : 0;
+
+      if (stage === "ready") percent = 100;
+
+      const titleByStage = {
+        download: "Preparing HQ Loop",
+        buffer: "Optimizing HQ Loop",
+        ready: "HQ Loop Ready",
+        error: "HQ Loop Failed",
+        canceled: "HQ Loop Canceled"
+      };
+
+      desktopHqLoopPrep.hidden = stage === "canceled";
+      desktopHqLoopPrep.dataset.state = stage;
+      desktopHqLoopPrepTitle.textContent =
+        titleByStage[stage] || "Preparing HQ Loop";
+      desktopHqLoopPrepCount.textContent =
+        total > 0 ? `${completed} / ${total}` : "";
+      desktopHqLoopPrepDetail.textContent =
+        payload.label || "Preparing high-resolution radar";
+      desktopHqLoopPrepPercent.textContent = `${percent}%`;
+      desktopHqLoopPrepFill.style.width = `${percent}%`;
+      desktopHqLoopPrepTrack.setAttribute(
+        "aria-valuenow",
+        String(percent)
+      );
+    }
+
+    function ensureDesktopHqPlaybackEngine() {
+      if (!shouldUseDesktopHqPlayback()) return null;
+
+      if (!desktopHqPlaybackEngine) {
+        desktopHqPlaybackEngine = new window.Level2HqPlaybackEngine({
+          map,
+          layerId: DESKTOP_HQ_PLAYBACK_LAYER_ID,
+          beforeLayerId: () => {
+            const candidates = [
+              ALERT_DIRECT_FILL_LAYER_ID,
+              ALERT_FILL_LAYER_ID,
+              SITE_CIRCLE_LAYER_ID
+            ];
+
+            return candidates.find((id) => map.getLayer(id));
+          },
+          opacity: Number(opacitySlider?.value ?? 1),
+          downloadConcurrency: DESKTOP_HQ_DOWNLOAD_CONCURRENCY,
+          decodeConcurrency: DESKTOP_HQ_DECODE_CONCURRENCY,
+          bufferAhead: DESKTOP_HQ_DECODE_BUFFER_FRAMES,
+          status: (message) => setStatusText(message),
+          progress: updateDesktopHqLoopUi
+        });
+      }
+
+      desktopHqPlaybackEngine.setOpacity(
+        Number(opacitySlider?.value ?? 1)
+      );
+
+      return desktopHqPlaybackEngine;
+    }
+
+    function clearDesktopHqFallbackLayersForPlayback() {
+      removeMapboxLevel2TileLayer();
+
+      if (map.getLayer(LEVEL2_MAPBOX_IMAGE_LAYER_ID)) {
+        map.removeLayer(LEVEL2_MAPBOX_IMAGE_LAYER_ID);
+      }
+
+      if (map.getSource(LEVEL2_MAPBOX_IMAGE_SOURCE_ID)) {
+        map.removeSource(LEVEL2_MAPBOX_IMAGE_SOURCE_ID);
+      }
+
+      removeManualLevel2RadarLayerForPlayback();
+      isWebpPlaybackActive = false;
+
+      if (radarOverlayCanvas) {
+        radarOverlayCanvas.style.display = "none";
+      }
+    }
+
+    function cancelDesktopHqLoopPreparation() {
+      desktopHqPrepareToken += 1;
+
+      if (desktopHqPlaybackEngine) {
+        desktopHqPlaybackEngine.cancelPreparation({
+          clear: true,
+          report: false
+        });
+      }
+
+      desktopHqLoopPreparing = false;
+      desktopHqLoopReadySignature = "";
+      setDesktopHqControlsLocked(false);
+      updateDesktopHqLoopUi({
+        stage: "canceled",
+        completed: 0,
+        total: level2Frames.length,
+        label: "HQ loop preparation canceled"
+      });
+      updatePlaybackButton();
+      setStatusText("HQ loop preparation canceled");
+    }
+
+    function resetDesktopHqPlayback() {
+      desktopHqPrepareToken += 1;
+      desktopHqLoopPreparing = false;
+      desktopHqLoopReadySignature = "";
+      setDesktopHqControlsLocked(false);
+
+      if (desktopHqPlaybackEngine) {
+        desktopHqPlaybackEngine.dispose();
+        desktopHqPlaybackEngine = null;
+      }
+
+      if (desktopHqLoopPrep) {
+        desktopHqLoopPrep.hidden = true;
+      }
+
+      updatePlaybackButton();
+    }
+
+    async function prepareDesktopHqLoop() {
+      const engine = ensureDesktopHqPlaybackEngine();
+      if (!engine) return false;
+
+      const signature = desktopHqLoopSignature();
+      const token = ++desktopHqPrepareToken;
+      const latestFrameIndex = Math.max(
+        0,
+        level2Frames.length - 1
+      );
+      const playbackStartIndex =
+        currentFrameIndex >= latestFrameIndex
+          ? 0
+          : currentFrameIndex;
+
+      desktopHqLoopPreparing = true;
+      setDesktopHqControlsLocked(true);
+      updatePlaybackButton();
+      updateDesktopHqLoopUi({
+        stage: "download",
+        completed: 0,
+        total: level2Frames.length,
+        label: "Downloading high-resolution frames"
+      });
+      setStatusText("preparing high-resolution radar loop");
+
+      try {
+        const prepared = await engine.prepare(
+          level2Frames,
+          playbackStartIndex
+        );
+
+        if (
+          !prepared ||
+          token !== desktopHqPrepareToken
+        ) {
+          return false;
+        }
+
+        desktopHqLoopReadySignature = signature;
+
+        clearDesktopHqFallbackLayersForPlayback();
+
+        currentFrameIndex = Math.max(
+          0,
+          Math.min(
+            playbackStartIndex,
+            level2Frames.length - 1
+          )
+        );
+        syncFrameSelect();
+        updateFrameInfoRow();
+
+        const displayed = await engine.displayFrame(
+          currentFrameIndex
+        );
+
+        if (
+          !displayed ||
+          token !== desktopHqPrepareToken
+        ) {
+          return false;
+        }
+
+        desktopHqLoopPreparing = false;
+        setDesktopHqControlsLocked(false);
+        updatePlaybackButton();
+        updateDesktopHqLoopUi({
+          stage: "ready",
+          completed: level2Frames.length,
+          total: level2Frames.length,
+          label: "Oldest scan loaded; loop advances forward"
+        });
+        setStatusText("HQ radar loop ready - oldest to newest");
+
+        window.setTimeout(() => {
+          if (
+            desktopHqLoopPrep &&
+            !desktopHqLoopPreparing &&
+            desktopHqLoopReadySignature === signature
+          ) {
+            desktopHqLoopPrep.hidden = true;
+          }
+        }, 1100);
+
+        return true;
+      } catch (error) {
+        if (token !== desktopHqPrepareToken) return false;
+
+        desktopHqLoopPreparing = false;
+        desktopHqLoopReadySignature = "";
+        setDesktopHqControlsLocked(false);
+        updatePlaybackButton();
+        updateDesktopHqLoopUi({
+          stage: "error",
+          completed:
+            desktopHqPlaybackEngine?.debugState?.().downloadedFrames || 0,
+          total: level2Frames.length,
+          label: error?.message || "HQ loop preparation failed"
+        });
+        setStatusText(
+          `HQ loop failed: ${error?.message || "unknown error"}`
+        );
+        console.error("Desktop HQ loop preparation failed", error);
+        return false;
+      }
+    }
+
+    async function renderDesktopHqPlaybackFrame(frame) {
+      const engine = ensureDesktopHqPlaybackEngine();
+      const signature = desktopHqLoopSignature();
+
+      if (
+        !engine ||
+        desktopHqLoopReadySignature !== signature ||
+        !engine.isPrepared()
+      ) {
+        throw new Error("The desktop HQ loop is not prepared.");
+      }
+
+      clearDesktopHqFallbackLayersForPlayback();
+      engine.setOpacity(Number(opacitySlider?.value ?? 1));
+
+      const displayed = await engine.displayFrame(
+        currentFrameIndex
+      );
+
+      if (!displayed) {
+        throw new Error("The HQ radar frame could not be displayed.");
+      }
+
+      frameReadout.textContent =
+        `Radar: updated ${frame?.validTime || "Unknown"}`;
+
+      const validText = frame?.validTime
+        ? new Date(frame.validTime).toLocaleString()
+        : "unknown";
+
+      if (typeof validTimeRow !== "undefined" && validTimeRow) {
+        validTimeRow.textContent = `Valid time: ${validText}`;
+      }
+
+      if (typeof sourceRow !== "undefined" && sourceRow) {
+        sourceRow.textContent =
+          `Radar source: ${frame?.desktopImagePath || frame?.path || ""}`;
+      }
+
+      updateFrameInfoRow();
+      syncFrameSelect();
+      positionLevel2WeatherLayers();
+      syncMapboxAlertLayerVisibility();
+      drawAlertOverlay();
+      setStatusText(
+        `HQ playback frame ${currentFrameIndex + 1}/${level2Frames.length}`
+      );
+
+      return "desktop-hq-webgl";
+    }
+
+    opacitySlider?.addEventListener("input", () => {
+      desktopHqPlaybackEngine?.setOpacity(
+        Number(opacitySlider.value)
+      );
+    });
+
+    window.__desktopHqPlaybackState = () => ({
+      preparing: desktopHqLoopPreparing,
+      readySignatureMatches:
+        desktopHqLoopReadySignature === desktopHqLoopSignature(),
+      frame: `${currentFrameIndex + 1}/${level2Frames.length}`,
+      direction: "oldest-to-newest",
+      mapInteractionThrottled: Boolean(
+        isMapInteracting ||
+        map?.isMoving?.()
+      ),
+      interactionSkippedFrames: Number(
+        playbackTick.hqInteractionState?.skippedFrames || 0
+      ),
+      engine: desktopHqPlaybackEngine?.debugState?.() || null
+    });
+
     /* Hybrid WebP Level II playback v2 */
 
     function removeManualLevel2RadarLayerForPlayback() {
@@ -4239,12 +4899,45 @@ body.alert-type-filter-popup-open {
       );
     }
 
+    function releaseRenderedSurfaceCanvas(surface) {
+      const canvas = surface?.canvas;
+      if (!canvas || canvas === radarCanvas) return;
+
+      canvas.width = 1;
+      canvas.height = 1;
+    }
+
+    function releaseDesktopWebpPlaybackSurface(frame) {
+      if (isMobileLevel2Mode()) return;
+
+      const key = level2FrameCacheKey(frame);
+      if (!key) return;
+
+      const cached = renderedFrameCache.get(key);
+      renderedFrameCache.delete(key);
+      releaseRenderedSurfaceCanvas(cached);
+    }
+
+    function clearDesktopWebpPlaybackCache() {
+      if (isMobileLevel2Mode()) return;
+
+      for (const cached of renderedFrameCache.values()) {
+        releaseRenderedSurfaceCanvas(cached);
+      }
+
+      renderedFrameCache.clear();
+    }
+
     async function loadWebpPlaybackFrameIntoCache(frame) {
       const key = level2FrameCacheKey(frame);
-      if (!key || !frame?.imagePath) return false;
+      const imagePath = level2PlaybackImagePath(frame);
+
+      if (!key || !imagePath) return false;
       if (renderedFrameCache.has(key)) return true;
 
-      let promise = webpPlaybackLoadPromises.get(key);
+      const generation = webpPlaybackLoadGeneration;
+      const promiseKey = `${generation}:${key}`;
+      let promise = webpPlaybackLoadPromises.get(promiseKey);
 
       if (!promise) {
         promise = (async () => {
@@ -4253,17 +4946,22 @@ body.alert-type-filter-popup-open {
             { logDiagnostics: false }
           );
 
-          if (!webpPlaybackFrameStillAvailable(frame)) {
+          if (
+            generation !== webpPlaybackLoadGeneration ||
+            !isPlaying ||
+            !webpPlaybackFrameStillAvailable(frame)
+          ) {
+            releaseRenderedSurfaceCanvas(surface);
             return false;
           }
 
           storeRenderedFrameSurface(frame, surface);
           return true;
         })().finally(() => {
-          webpPlaybackLoadPromises.delete(key);
+          webpPlaybackLoadPromises.delete(promiseKey);
         });
 
-        webpPlaybackLoadPromises.set(key, promise);
+        webpPlaybackLoadPromises.set(promiseKey, promise);
       }
 
       return promise;
@@ -4284,11 +4982,19 @@ body.alert-type-filter-popup-open {
           const requestedIndex = webpPlaybackPreloadRequestedIndex;
           webpPlaybackPreloadRequestedIndex = null;
 
+          const preloadCount = isMobileLevel2Mode()
+            ? MOBILE_LEVEL2_PLAYBACK_PRELOAD_COUNT
+            : DESKTOP_LEVEL2_PLAYBACK_PRELOAD_COUNT;
+
+          const preloadConcurrency = isMobileLevel2Mode()
+            ? MOBILE_LEVEL2_PLAYBACK_PRELOAD_CONCURRENCY
+            : DESKTOP_LEVEL2_PLAYBACK_PRELOAD_CONCURRENCY;
+
           const indexes = [];
 
           for (
             let offset = 1;
-            offset <= LEVEL2_PLAYBACK_PRELOAD_COUNT;
+            offset <= preloadCount;
             offset += 1
           ) {
             const index =
@@ -4308,7 +5014,7 @@ body.alert-type-filter-popup-open {
               cursor += 1;
 
               const frame = level2Frames[index];
-              if (!frame?.imagePath) continue;
+              if (!level2PlaybackImagePath(frame)) continue;
 
               try {
                 await loadWebpPlaybackFrameIntoCache(frame);
@@ -4322,7 +5028,7 @@ body.alert-type-filter-popup-open {
           };
 
           const workerCount = Math.min(
-            LEVEL2_PLAYBACK_PRELOAD_CONCURRENCY,
+            preloadConcurrency,
             indexes.length
           );
 
@@ -4338,8 +5044,20 @@ body.alert-type-filter-popup-open {
       }
     }
 
+    window.__desktopWebpPlaybackState = () => ({
+      active: isWebpPlaybackActive,
+      generation: webpPlaybackLoadGeneration,
+      currentFrameIndex,
+      currentFramePath: level2PlaybackImagePath(currentFrame()),
+      displayCanvas: `${radarCanvas.width}x${radarCanvas.height}`,
+      decodedCacheFrames: renderedFrameCache.size,
+      pendingLoads: webpPlaybackLoadPromises.size,
+      preloadRequestedIndex: webpPlaybackPreloadRequestedIndex,
+      preloadInProgress: webpPlaybackPreloadInProgress
+    });
+
     async function renderWebpPlaybackFrame(frame) {
-      if (!frame?.imagePath) {
+      if (!level2PlaybackImagePath(frame)) {
         throw new Error("This radar frame has no WebP playback image.");
       }
 
@@ -4385,6 +5103,10 @@ body.alert-type-filter-popup-open {
         return false;
       }
 
+      // The radarCanvas now owns the displayed desktop frame. Release the
+      // duplicate cached canvas so memory contains only display + next frame.
+      releaseDesktopWebpPlaybackSurface(frame);
+
       positionLevel2WeatherLayers();
       syncMapboxAlertLayerVisibility();
       drawAlertOverlay();
@@ -4401,6 +5123,21 @@ body.alert-type-filter-popup-open {
       const frame = currentFrame();
       if (!frame) return null;
 
+      const preparedDesktopHqAvailable = (
+        shouldUseDesktopHqPlayback(frame) &&
+        desktopHqPlaybackEngine?.isPrepared?.() &&
+        desktopHqLoopReadySignature === desktopHqLoopSignature()
+      );
+
+      if (
+        options.playback === true ||
+        preparedDesktopHqAvailable
+      ) {
+        if (shouldUseDesktopHqPlayback(frame)) {
+          return renderDesktopHqPlaybackFrame(frame);
+        }
+      }
+
       if (
         options.playback === true &&
         USE_WEBP_LEVEL2_PLAYBACK
@@ -4412,6 +5149,7 @@ body.alert-type-filter-popup-open {
       isWebpPlaybackActive = false;
 
       if (await updateManualLevel2RadarEngineFrame(frame)) {
+        desktopHqPlaybackEngine?.deactivate();
         return "manual-radar-engine";
       }
 
@@ -4498,10 +5236,14 @@ body.alert-type-filter-popup-open {
 
       isPlaying = false;
       updatePlaybackButton();
+      delete playbackTick.hqInteractionState;
 
       webpPlaybackDisplayToken += 1;
+      webpPlaybackLoadGeneration += 1;
       webpPlaybackPreloadRequestedIndex = null;
+      webpPlaybackLoadPromises.clear();
       isWebpPlaybackActive = false;
+      clearDesktopWebpPlaybackCache();
 
       if (pausedTileRestoreTimer !== null) {
         window.clearTimeout(pausedTileRestoreTimer);
@@ -4511,6 +5253,27 @@ body.alert-type-filter-popup-open {
       syncMapboxAlertLayerVisibility();
       drawAlertOverlay();
 
+      const preserveDesktopHqFrame = (
+        options.restoreTiles !== false &&
+        !isMobileLevel2Mode() &&
+        shouldUseDesktopHqPlayback() &&
+        desktopHqPlaybackEngine?.isPrepared?.() &&
+        desktopHqPlaybackEngine?.isActive?.() &&
+        desktopHqLoopReadySignature === desktopHqLoopSignature()
+      );
+
+      if (preserveDesktopHqFrame) {
+        if (desktopHqLoopPrep) {
+          desktopHqLoopPrep.hidden = true;
+        }
+
+        setStatusText(
+          `HQ radar paused on frame ` +
+          `${currentFrameIndex + 1}/${level2Frames.length}`
+        );
+        return;
+      }
+
       const restoreTiles = options.restoreTiles !== false;
 
       if (
@@ -4518,6 +5281,7 @@ body.alert-type-filter-popup-open {
         !shouldUseManualLevel2RadarEngine() ||
         !currentFrame()?.tileTemplate
       ) {
+        desktopHqPlaybackEngine?.deactivate();
         return;
       }
 
@@ -4618,10 +5382,72 @@ body.alert-type-filter-popup-open {
       if (!isPlaying) return;
 
       const tickStartedAt = performance.now();
+      const desktopHqMapInteractionActive = (
+        !isMobileLevel2Mode() &&
+        shouldUseDesktopHqPlayback() &&
+        (
+          isMapInteracting ||
+          Boolean(map?.isMoving?.())
+        )
+      );
+
+      const hqInteractionState = (
+        playbackTick.hqInteractionState ||
+        (
+          playbackTick.hqInteractionState = {
+            lastDisplayAt: 0,
+            skippedFrames: 0
+          }
+        )
+      );
+
+      let stepDirection = 1;
+
+      if (desktopHqMapInteractionActive) {
+        const elapsedSinceInteractionFrame = (
+          tickStartedAt -
+          hqInteractionState.lastDisplayAt
+        );
+
+        if (
+          hqInteractionState.lastDisplayAt > 0 &&
+          elapsedSinceInteractionFrame <
+            DESKTOP_HQ_MAP_INTERACTION_FRAME_INTERVAL_MS
+        ) {
+          hqInteractionState.skippedFrames = Math.min(
+            Math.max(0, level2Frames.length - 1),
+            hqInteractionState.skippedFrames + 1
+          );
+
+          const remainingMs = Math.max(
+            16,
+            DESKTOP_HQ_MAP_INTERACTION_FRAME_INTERVAL_MS -
+              elapsedSinceInteractionFrame
+          );
+
+          clearPlaybackTimer();
+          playbackTimer = window.setTimeout(
+            playbackTick,
+            Math.max(
+              16,
+              Math.min(playbackIntervalMs, remainingMs)
+            )
+          );
+          return;
+        }
+
+        stepDirection += hqInteractionState.skippedFrames;
+        hqInteractionState.skippedFrames = 0;
+        hqInteractionState.lastDisplayAt = tickStartedAt;
+      } else {
+        stepDirection += hqInteractionState.skippedFrames;
+        hqInteractionState.skippedFrames = 0;
+        hqInteractionState.lastDisplayAt = 0;
+      }
 
       try {
         if (level2Frames.length > 1) {
-          await stepFrame(1, { playback: true });
+          await stepFrame(stepDirection, { playback: true });
         }
       } catch (error) {
         if (!isPlaying) return;
@@ -4646,10 +5472,15 @@ body.alert-type-filter-popup-open {
       );
     }
 
-    function startPlayback(options = {}) {
+    async function startPlayback(options = {}) {
       const userRequested = options && options.userRequested === true;
       if (!userRequested && !playbackWasUserRequested) return;
       if (isPlaying || level2Frames.length < 2) return;
+
+      if (shouldUseDesktopHqPlayback()) {
+        const prepared = await prepareDesktopHqLoop();
+        if (!prepared) return;
+      }
 
       playbackWasUserRequested = true;
 
@@ -4659,12 +5490,16 @@ body.alert-type-filter-popup-open {
       }
 
       webpPlaybackDisplayToken += 1;
+      webpPlaybackLoadGeneration += 1;
       webpPlaybackPreloadRequestedIndex = null;
+      webpPlaybackLoadPromises.clear();
+      clearDesktopWebpPlaybackCache();
 
       isPlaying = true;
       updatePlaybackButton();
 
       if (
+        !shouldUseDesktopHqPlayback() &&
         USE_WEBP_LEVEL2_PLAYBACK &&
         level2Frames.some((frame) => Boolean(frame?.imagePath))
       ) {
@@ -4686,16 +5521,21 @@ body.alert-type-filter-popup-open {
     }
 
     function togglePlayback() {
+      if (desktopHqLoopPreparing) {
+        cancelDesktopHqLoopPreparation();
+        return;
+      }
       if (isPlaying) {
         stopPlayback();
       } else {
-        startPlayback({ userRequested: true });
+        void startPlayback({ userRequested: true });
       }
     }
     async function changeLevel2Site(site) {
       const nextSite = persistSelectedLevel2Site(site);
       if (siteSelect) siteSelect.value = nextSite;
       stopPlayback({ restoreTiles: false });
+      resetDesktopHqPlayback();
       renderedFrameCache.clear();
       if (level2RadarEngine) {
         level2RadarEngine.removeFromMap();
@@ -4735,6 +5575,17 @@ body.alert-type-filter-popup-open {
         window.clearInterval(frameRefreshTimer);
       }
       frameRefreshTimer = window.setInterval(async () => {
+        if (
+          desktopHqLoopPreparing ||
+          (
+            !isMobileLevel2Mode() &&
+            isPlaying &&
+            desktopHqPlaybackEngine?.isActive()
+          )
+        ) {
+          return;
+        }
+
         const latestChanged = await refreshLevel2Frames();
         if (latestChanged && level2Frames.length > 0) {
           const previousFrameIndex = currentFrameIndex;
