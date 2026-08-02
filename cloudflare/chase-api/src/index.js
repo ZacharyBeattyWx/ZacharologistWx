@@ -679,45 +679,128 @@ function normalizeMetar(payload) {
   };
 }
 
-function buildSpcMonthTornadoArchive() {
-  // SPC report days run from 1200 UTC to 1159 UTC the next day.
+function currentSpcReportDay() {
+  // SPC report days run from 1200 UTC to 1159 UTC the following day.
   const spcDay = new Date(Date.now() - (12 * 60 * 60 * 1000));
   const year = spcDay.getUTCFullYear();
-  const month = spcDay.getUTCMonth();
-  const currentDay = spcDay.getUTCDate();
-
-  const formatKey = (utcDate) => {
-    const yy = String(utcDate.getUTCFullYear()).slice(-2);
-    const mm = String(utcDate.getUTCMonth() + 1).padStart(2, "0");
-    const dd = String(utcDate.getUTCDate()).padStart(2, "0");
-    return `${yy}${mm}${dd}`;
-  };
-
-  const previousDays = [];
-
-  for (let day = 1; day < currentDay; day += 1) {
-    const date = new Date(Date.UTC(year, month, day));
-    const key = formatKey(date);
-
-    previousDays.push({
-      key,
-      url: `https://www.spc.noaa.gov/climo/reports/${key}_rpts_torn.csv`
-    });
-  }
+  const month = String(spcDay.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(spcDay.getUTCDate()).padStart(2, "0");
 
   return {
-    currentKey: formatKey(spcDay),
+    dayKey: `${year}-${month}-${day}`,
+    monthKey: `${year}-${month}`,
     monthLabel: new Intl.DateTimeFormat("en-US", {
       month: "long",
       year: "numeric",
       timeZone: "UTC"
-    }).format(spcDay),
-    previousDays
+    }).format(spcDay)
   };
 }
 
-async function buildOpsSummary() {
-  const tornadoMonthArchive = buildSpcMonthTornadoArchive();
+async function persistAndReadSpcReportCounts(env, spcDay, dailyCounts) {
+  const fallbackCounts = Object.fromEntries(
+    Object.entries(dailyCounts).map(([type, item]) => [
+      type,
+      item.available ? Number(item.count || 0) : null
+    ])
+  );
+
+  const fallback = {
+    available: false,
+    counts: fallbackCounts,
+    days: {}
+  };
+
+  if (!env?.DB) {
+    return fallback;
+  }
+
+  try {
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS spc_report_daily_counts (
+        report_day TEXT NOT NULL,
+        report_month TEXT NOT NULL,
+        report_type TEXT NOT NULL,
+        report_count INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (report_day, report_type)
+      )
+    `).run();
+
+    const updatedAt = new Date().toISOString();
+    const upserts = Object.entries(dailyCounts)
+      .filter(([, item]) => item.available)
+      .map(([type, item]) =>
+        env.DB.prepare(`
+          INSERT INTO spc_report_daily_counts (
+            report_day,
+            report_month,
+            report_type,
+            report_count,
+            updated_at
+          )
+          VALUES (?, ?, ?, ?, ?)
+          ON CONFLICT(report_day, report_type) DO UPDATE SET
+            report_month = excluded.report_month,
+            report_count = excluded.report_count,
+            updated_at = excluded.updated_at
+        `).bind(
+          spcDay.dayKey,
+          spcDay.monthKey,
+          type,
+          Math.max(0, Math.round(Number(item.count || 0))),
+          updatedAt
+        )
+      );
+
+    if (upserts.length) {
+      await env.DB.batch(upserts);
+    }
+
+    const monthlyResult = await env.DB.prepare(`
+      SELECT
+        report_type,
+        SUM(report_count) AS report_count,
+        COUNT(DISTINCT report_day) AS report_days
+      FROM spc_report_daily_counts
+      WHERE report_month = ?
+      GROUP BY report_type
+    `).bind(spcDay.monthKey).all();
+
+    const counts = {
+      tornado: 0,
+      hail: 0,
+      wind: 0
+    };
+
+    const days = {
+      tornado: 0,
+      hail: 0,
+      wind: 0
+    };
+
+    for (const row of monthlyResult?.results || []) {
+      const type = String(row?.report_type || "");
+
+      if (!(type in counts)) continue;
+
+      counts[type] = Math.max(0, Number(row?.report_count || 0));
+      days[type] = Math.max(0, Number(row?.report_days || 0));
+    }
+
+    return {
+      available: true,
+      counts,
+      days
+    };
+  } catch (error) {
+    console.warn("Unable to store SPC monthly report counts:", error);
+    return fallback;
+  }
+}
+
+async function buildOpsSummary(env) {
+  const spcReportDay = currentSpcReportDay();
 
   const tasks = [
     ["category", fetchJsonOrThrow(spcLayerUrl(1))],
@@ -728,11 +811,7 @@ async function buildOpsSummary() {
     ["tornadoReports", fetchTextOrThrow(SPC_REPORT_SOURCES[0].url)],
     ["hailReports", fetchTextOrThrow(SPC_REPORT_SOURCES[1].url)],
     ["windReports", fetchTextOrThrow(SPC_REPORT_SOURCES[2].url)],
-    ["metar", fetchJsonOrThrow(AWC_METAR_URL)],
-    ...tornadoMonthArchive.previousDays.map(({ key, url }) => [
-      `tornadoMonth_${key}`,
-      fetchTextOrThrow(url)
-    ])
+    ["metar", fetchJsonOrThrow(AWC_METAR_URL)]
   ];
 
   const settled = await Promise.allSettled(tasks.map(([, task]) => task));
@@ -746,32 +825,39 @@ async function buildOpsSummary() {
     "tornado"
   );
 
-  const tornadoMonthAvailable =
-    settledOkay(results.tornadoReports) &&
-    tornadoMonthArchive.previousDays.every(({ key }) =>
-      settledOkay(results[`tornadoMonth_${key}`])
-    );
+  const hailReportRows = parseSpcReportCsv(
+    settledValue(results.hailReports, ""),
+    "hail"
+  );
 
-  const tornadoMonthCount =
-    tornadoReportRows.length +
-    tornadoMonthArchive.previousDays.reduce((total, { key }) => {
-      const text = settledValue(results[`tornadoMonth_${key}`], "");
-      return total + parseSpcReportCsv(text, "tornado").length;
-    }, 0);
+  const windReportRows = parseSpcReportCsv(
+    settledValue(results.windReports, ""),
+    "wind"
+  );
+
+  const monthlyReportCounts = await persistAndReadSpcReportCounts(
+    env,
+    spcReportDay,
+    {
+      tornado: {
+        available: settledOkay(results.tornadoReports),
+        count: tornadoReportRows.length
+      },
+      hail: {
+        available: settledOkay(results.hailReports),
+        count: hailReportRows.length
+      },
+      wind: {
+        available: settledOkay(results.windReports),
+        count: windReportRows.length
+      }
+    }
+  );
 
   const reports = [
-    ...parseSpcReportCsv(
-      settledValue(results.tornadoReports, ""),
-      "tornado"
-    ),
-    ...parseSpcReportCsv(
-      settledValue(results.hailReports, ""),
-      "hail"
-    ),
-    ...parseSpcReportCsv(
-      settledValue(results.windReports, ""),
-      "wind"
-    )
+    ...tornadoReportRows,
+    ...hailReportRows,
+    ...windReportRows
   ]
     .sort((a, b) => b.sortValue - a.sortValue)
     .slice(0, 6)
@@ -815,17 +901,52 @@ async function buildOpsSummary() {
 
     stormReports: {
       preliminary: true,
-      count: reports.length,
+      count:
+        tornadoReportRows.length +
+        hailReportRows.length +
+        windReportRows.length,
+      counts: {
+        tornado: tornadoReportRows.length,
+        hail: hailReportRows.length,
+        wind: windReportRows.length
+      },
       reports
     },
 
     tornadoCount: {
       preliminary: true,
-      available: tornadoMonthAvailable,
-      count: tornadoMonthCount,
-      monthLabel: tornadoMonthArchive.monthLabel,
-      reportDayKey: tornadoMonthArchive.currentKey,
-      includedSpcDays: tornadoMonthArchive.previousDays.length + 1,
+      available: monthlyReportCounts.available,
+      count: monthlyReportCounts.counts.tornado,
+      monthCount: monthlyReportCounts.counts.tornado,
+      dailyAvailable: settledOkay(results.tornadoReports),
+      dailyCount: tornadoReportRows.length,
+      monthLabel: spcReportDay.monthLabel,
+      reportDayKey: spcReportDay.dayKey,
+      includedSpcDays: monthlyReportCounts.days.tornado || 0,
+      trackerUrl: "https://www.spc.noaa.gov/climo/reports/today.html"
+    },
+
+    hailCount: {
+      preliminary: true,
+      dailyAvailable: settledOkay(results.hailReports),
+      dailyCount: hailReportRows.length,
+      monthlyAvailable: monthlyReportCounts.available,
+      monthCount: monthlyReportCounts.counts.hail,
+      monthLabel: spcReportDay.monthLabel,
+      reportDayKey: spcReportDay.dayKey,
+      includedSpcDays: monthlyReportCounts.days.hail || 0,
+      trackerUrl: "https://www.spc.noaa.gov/climo/reports/today.html"
+    },
+
+    windCount: {
+      preliminary: true,
+      dailyAvailable: settledOkay(results.windReports),
+      dailyCount: windReportRows.length,
+      monthlyAvailable: monthlyReportCounts.available,
+      monthCount: monthlyReportCounts.counts.wind,
+      monthLabel: spcReportDay.monthLabel,
+      reportDayKey: spcReportDay.dayKey,
+      includedSpcDays: monthlyReportCounts.days.wind || 0,
       trackerUrl: "https://www.spc.noaa.gov/climo/reports/today.html"
     },
 
@@ -837,7 +958,7 @@ async function buildOpsSummary() {
   };
 }
 
-async function getCachedOpsSummary(request) {
+async function getCachedOpsSummary(request, env) {
   const cache = caches.default;
 
   const cacheKey = new Request(
@@ -851,7 +972,7 @@ async function getCachedOpsSummary(request) {
     return cached;
   }
 
-  const summary = await buildOpsSummary();
+  const summary = await buildOpsSummary(env);
   const response = opsJsonResponse(summary);
 
   try {
@@ -1278,7 +1399,7 @@ export default {
 
     if (url.pathname === "/api/ops/summary" && request.method === "GET") {
       try {
-        return await getCachedOpsSummary(request);
+        return await getCachedOpsSummary(request, env);
       } catch (error) {
         console.error("Operations summary failed:", error);
 

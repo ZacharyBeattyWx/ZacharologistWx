@@ -10964,6 +10964,436 @@ body {
   }
 }
 </style>
+
+<style id="homepage-hail-wind-report-cards-css">
+  /* Allow the hazard rail to grow naturally now that it carries two full cards. */
+  @media (min-width: 769px) {
+    .forecast-dashboard .ops-reference-right {
+      height: auto !important;
+      max-height: none !important;
+      overflow: visible !important;
+      align-content: start !important;
+    }
+  }
+
+  .forecast-dashboard .ops-reference-card--report-count {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  /*
+    Override the older nth-child(2) rules that previously belonged to
+    Latest Storm Reports so Hail and Wind remain visually identical.
+  */
+  @media (min-width: 769px) {
+    .forecast-dashboard
+    .ops-reference-right
+    > .ops-reference-card.ops-reference-card--report-count {
+      min-height: 340px !important;
+      padding: 18px !important;
+    }
+
+    .forecast-dashboard
+    .ops-reference-right
+    > .ops-reference-card.ops-reference-card--report-count
+    .ops-reference-kicker {
+      font-size: 0.92rem !important;
+      line-height: 1.08 !important;
+      letter-spacing: 0.09em !important;
+    }
+
+    .forecast-dashboard
+    .ops-reference-right
+    > .ops-reference-card.ops-reference-card--report-count
+    .ops-reference-title {
+      font-size: 1.08rem !important;
+      line-height: 1.05 !important;
+      letter-spacing: 0.05em !important;
+    }
+
+    .forecast-dashboard
+    .ops-reference-right
+    > .ops-reference-card.ops-reference-card--report-count
+    .ops-tornado-count {
+      font-size: 3rem !important;
+    }
+
+    .forecast-dashboard
+    .ops-reference-right
+    > .ops-reference-card.ops-reference-card--report-count
+    .ops-tornado-delta {
+      font-size: 0.84rem !important;
+    }
+
+    .forecast-dashboard
+    .ops-reference-right
+    > .ops-reference-card.ops-reference-card--report-count
+    .ops-tornado-note {
+      font-size: 0.8rem !important;
+      line-height: 1.3 !important;
+    }
+
+    .forecast-dashboard
+    .ops-reference-right
+    > .ops-reference-card.ops-reference-card--report-count
+    .ops-reference-button {
+      min-height: 46px !important;
+      font-size: 0.78rem !important;
+    }
+  }
+
+  @media (min-width: 1600px) {
+    .forecast-dashboard
+    .ops-reference-right
+    > .ops-reference-card.ops-reference-card--report-count {
+      padding: 22px !important;
+    }
+
+    .forecast-dashboard
+    .ops-reference-right
+    > .ops-reference-card.ops-reference-card--report-count
+    .ops-reference-kicker {
+      font-size: 1.08rem !important;
+      line-height: 1.12 !important;
+    }
+
+    .forecast-dashboard
+    .ops-reference-right
+    > .ops-reference-card.ops-reference-card--report-count
+    .ops-reference-title {
+      font-size: 1.22rem !important;
+      line-height: 1.06 !important;
+    }
+
+    .forecast-dashboard
+    .ops-reference-right
+    > .ops-reference-card.ops-reference-card--report-count
+    .ops-tornado-count {
+      font-size: 3.45rem !important;
+    }
+
+    .forecast-dashboard
+    .ops-reference-right
+    > .ops-reference-card.ops-reference-card--report-count
+    .ops-tornado-delta {
+      font-size: 0.9rem !important;
+    }
+
+    .forecast-dashboard
+    .ops-reference-right
+    > .ops-reference-card.ops-reference-card--report-count
+    .ops-tornado-note {
+      font-size: 0.86rem !important;
+    }
+
+    .forecast-dashboard
+    .ops-reference-right
+    > .ops-reference-card.ops-reference-card--report-count
+    .ops-reference-button {
+      min-height: 52px !important;
+      font-size: 0.92rem !important;
+    }
+  }
+
+  .forecast-dashboard .ops-reference-card--report-count .ops-report-count-layout {
+    margin-top: 14px !important;
+  }
+
+  .forecast-dashboard .ops-reference-card--report-count .ops-report-count-icon {
+    flex: 0 0 auto;
+  }
+
+  .forecast-dashboard .ops-reference-card--report-count .ops-report-count-icon svg {
+    width: 52px;
+    height: 52px;
+    display: block;
+  }
+
+  .forecast-dashboard .ops-report-month-total {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 16px 0 12px;
+    padding: 11px 12px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 13px;
+    background: rgba(2, 6, 23, 0.34);
+  }
+
+  .forecast-dashboard .ops-report-month-total span {
+    color: #aebfd4;
+    font-size: 0.76rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    line-height: 1.15;
+    text-transform: uppercase;
+  }
+
+  .forecast-dashboard .ops-report-month-total strong {
+    color: #f8fbff;
+    font-size: 1.34rem;
+    font-weight: 950;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .forecast-dashboard .ops-reference-card--report-count .ops-tornado-note {
+    margin-bottom: 14px !important;
+  }
+
+  .forecast-dashboard .ops-reference-card--report-count .ops-report-count-button {
+    margin-top: auto !important;
+  }
+
+  /* SPC hazard convention: hail green, wind blue. */
+  .forecast-dashboard .ops-reference-card--hail {
+    border-color: rgba(70, 220, 181, 0.48) !important;
+    background:
+      radial-gradient(circle at 22% 34%, rgba(37, 199, 158, 0.18), transparent 36%),
+      radial-gradient(circle at 84% 16%, rgba(126, 255, 221, 0.09), transparent 32%),
+      linear-gradient(145deg, rgba(15, 43, 47, 0.98), rgba(5, 17, 27, 0.99)) !important;
+  }
+
+  .forecast-dashboard .ops-reference-card--hail::before {
+    background: #4ce0ba !important;
+  }
+
+  .forecast-dashboard .ops-reference-card--hail::after {
+    background: linear-gradient(90deg, rgba(76, 224, 186, 0.95), transparent) !important;
+  }
+
+  .forecast-dashboard .ops-reference-card--hail .ops-reference-kicker,
+  .forecast-dashboard .ops-reference-card--hail .ops-tornado-count,
+  .forecast-dashboard .ops-reference-card--hail .ops-tornado-delta,
+  .forecast-dashboard .ops-reference-card--hail .ops-tornado-icon {
+    color: #6de7c7 !important;
+  }
+
+  .forecast-dashboard .ops-reference-card--hail .ops-reference-icon {
+    color: #6de7c7 !important;
+    border-color: rgba(76, 224, 186, 0.72) !important;
+    background: rgba(18, 105, 87, 0.22) !important;
+  }
+
+  .forecast-dashboard .ops-reference-card--hail .ops-tornado-icon {
+    color: #f4fbff !important;
+    border-color: rgba(76, 224, 186, 0.72) !important;
+    background: rgba(18, 105, 87, 0.13) !important;
+    filter:
+      drop-shadow(0 0 4px rgba(255, 255, 255, 0.28))
+      drop-shadow(0 0 8px rgba(145, 230, 255, 0.14));
+  }
+
+  .forecast-dashboard .ops-reference-card--hail .ops-report-month-total {
+    border-color: rgba(76, 224, 186, 0.26) !important;
+    background: rgba(18, 105, 87, 0.14) !important;
+  }
+
+  .forecast-dashboard .ops-reference-card--hail .ops-report-count-button {
+    border-color: rgba(76, 224, 186, 0.42) !important;
+    background: rgba(27, 145, 116, 0.16) !important;
+  }
+
+  .forecast-dashboard .ops-reference-card--wind {
+    border-color: rgba(89, 190, 255, 0.52) !important;
+    background:
+      radial-gradient(circle at 22% 34%, rgba(61, 169, 255, 0.18), transparent 36%),
+      radial-gradient(circle at 84% 16%, rgba(164, 219, 255, 0.10), transparent 32%),
+      linear-gradient(145deg, rgba(17, 38, 58, 0.98), rgba(6, 15, 28, 0.99)) !important;
+  }
+
+  .forecast-dashboard .ops-reference-card--wind::before {
+    background: #64c7ff !important;
+  }
+
+  .forecast-dashboard .ops-reference-card--wind::after {
+    background: linear-gradient(90deg, rgba(100, 199, 255, 0.98), transparent) !important;
+  }
+
+  .forecast-dashboard .ops-reference-card--wind .ops-reference-kicker,
+  .forecast-dashboard .ops-reference-card--wind .ops-tornado-count,
+  .forecast-dashboard .ops-reference-card--wind .ops-tornado-delta,
+  .forecast-dashboard .ops-reference-card--wind .ops-tornado-icon {
+    color: #8bd5ff !important;
+  }
+
+  .forecast-dashboard .ops-reference-card--wind .ops-reference-icon {
+    color: #8bd5ff !important;
+    border-color: rgba(100, 199, 255, 0.74) !important;
+    background: rgba(18, 84, 122, 0.22) !important;
+  }
+
+  .forecast-dashboard .ops-reference-card--wind .ops-tornado-icon {
+    border-color: rgba(100, 199, 255, 0.74) !important;
+    background: rgba(18, 84, 122, 0.14) !important;
+  }
+
+  .forecast-dashboard .ops-reference-card--wind .ops-report-month-total {
+    border-color: rgba(100, 199, 255, 0.27) !important;
+    background: rgba(18, 84, 122, 0.15) !important;
+  }
+
+  .forecast-dashboard .ops-reference-card--wind .ops-report-count-button {
+    border-color: rgba(100, 199, 255, 0.44) !important;
+    background: rgba(36, 143, 203, 0.17) !important;
+  }
+
+  @media (max-width: 768px) {
+    .forecast-dashboard .ops-reference-card--report-count {
+      min-height: 0 !important;
+    }
+  }
+</style>
+
+
+<style id="homepage-daily-report-counts-css">
+  /*
+    Daily report totals are the primary information and use the same bright
+    white treatment across tornado, hail, and wind. Hazard colors remain on
+    titles, icons, borders, badges, and supporting labels.
+  */
+  .forecast-dashboard
+  .ops-reference-card--tornado
+  .ops-tornado-count,
+  .forecast-dashboard
+  .ops-reference-card--hail
+  .ops-tornado-count,
+  .forecast-dashboard
+  .ops-reference-card--wind
+  .ops-tornado-count {
+    color: #f8fbff !important;
+    font-variant-numeric: tabular-nums !important;
+  }
+
+  .forecast-dashboard
+  .ops-reference-card--tornado
+  .ops-tornado-count {
+    text-shadow: 0 0 16px rgba(244, 94, 88, 0.18) !important;
+  }
+
+  .forecast-dashboard
+  .ops-reference-card--hail
+  .ops-tornado-count {
+    text-shadow: 0 0 16px rgba(76, 224, 186, 0.16) !important;
+  }
+
+  .forecast-dashboard
+  .ops-reference-card--wind
+  .ops-tornado-count {
+    text-shadow: 0 0 16px rgba(100, 199, 255, 0.17) !important;
+  }
+
+  .forecast-dashboard
+  .ops-reference-card--tornado
+  .ops-report-month-total {
+    border-color: rgba(244, 94, 88, 0.28) !important;
+    background: rgba(126, 31, 38, 0.14) !important;
+  }
+
+  .forecast-dashboard
+  .ops-reference-card--tornado
+  .ops-report-month-total strong {
+    color: #f8fbff !important;
+  }
+
+  .forecast-dashboard
+  .ops-reference-card--tornado
+  .ops-tornado-button {
+    margin-top: auto !important;
+  }
+</style>
+
+
+<style id="homepage-report-card-final-polish-css">
+  /*
+    Final report-card hierarchy:
+    - hazard name and accents follow the SPC hazard color
+    - "Today" and the primary daily number remain bright white
+    - supporting daily labels retain the hazard accent
+  */
+
+  .forecast-dashboard
+  .ops-reference-card--report-count
+  .ops-reference-title {
+    color: #f8fbff !important;
+    text-transform: none !important;
+    letter-spacing: -0.015em !important;
+  }
+
+  /* Tornado: red hazard identity instead of inherited blue. */
+  .forecast-dashboard
+  .ops-reference-card--tornado
+  .ops-reference-kicker {
+    color: #ff7772 !important;
+  }
+
+  .forecast-dashboard
+  .ops-reference-card--tornado
+  .ops-reference-icon {
+    color: #ff7772 !important;
+    border-color: rgba(255, 105, 99, 0.72) !important;
+    background: rgba(145, 35, 42, 0.18) !important;
+  }
+
+  .forecast-dashboard
+  .ops-reference-card--tornado
+  .ops-tornado-delta {
+    color: #ff7772 !important;
+  }
+
+  .forecast-dashboard
+  .ops-reference-card--tornado
+  .ops-tornado-button {
+    border-color: rgba(255, 105, 99, 0.46) !important;
+    background:
+      linear-gradient(
+        135deg,
+        rgba(145, 35, 42, 0.25),
+        rgba(84, 24, 34, 0.20)
+      ) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035) !important;
+  }
+
+  .forecast-dashboard
+  .ops-reference-card--tornado
+  .ops-tornado-button:hover {
+    border-color: rgba(255, 125, 119, 0.78) !important;
+    background:
+      linear-gradient(
+        135deg,
+        rgba(170, 43, 50, 0.34),
+        rgba(101, 27, 39, 0.27)
+      ) !important;
+  }
+
+  /* Preserve the correct supporting accent for hail and wind. */
+  .forecast-dashboard
+  .ops-reference-card--hail
+  .ops-tornado-delta {
+    color: #6de7c7 !important;
+  }
+
+  .forecast-dashboard
+  .ops-reference-card--wind
+  .ops-tornado-delta {
+    color: #8bd5ff !important;
+  }
+
+  /* Keep the daily value hierarchy identical across all three cards. */
+  .forecast-dashboard
+  .ops-reference-card--report-count
+  .ops-tornado-count {
+    color: #f8fbff !important;
+  }
+
+  .forecast-dashboard
+  .ops-reference-card--report-count
+  .ops-tornado-delta {
+    line-height: 1.08 !important;
+  }
+</style>
+
 </head>
 
 <body>
@@ -15893,26 +16323,62 @@ setInterval(loadSPCImages, 10 * 60 * 1000);
 
   function renderRight(summary) {
     const tornadoCount = summary?.tornadoCount || {};
-    const tornadoAvailable =
-      tornadoCount.available === true &&
-      Number.isFinite(Number(tornadoCount.count));
 
-    const tornadoValue = tornadoAvailable
-      ? Number(tornadoCount.count).toLocaleString("en-US")
+    const tornadoDailyAvailable =
+      tornadoCount.dailyAvailable === true &&
+      Number.isFinite(Number(tornadoCount.dailyCount));
+
+    const tornadoDailyValue = tornadoDailyAvailable
+      ? Number(tornadoCount.dailyCount).toLocaleString("en-US")
       : "—";
 
-    const tornadoMonth = clean(tornadoCount.monthLabel) || "Current month";
-    const tornadoDays = Number.isFinite(Number(tornadoCount.includedSpcDays))
-      ? Number(tornadoCount.includedSpcDays)
-      : null;
+    const tornadoMonthCount =
+      tornadoCount.monthCount ?? tornadoCount.count;
+
+    const tornadoMonthlyAvailable =
+      (tornadoCount.monthlyAvailable === true ||
+        tornadoCount.available === true) &&
+      Number.isFinite(Number(tornadoMonthCount));
+
+    const tornadoMonthValue = tornadoMonthlyAvailable
+      ? Number(tornadoMonthCount).toLocaleString("en-US")
+      : "—";
+
+    const tornadoMonth =
+      clean(tornadoCount.monthLabel) || "Current month";
 
     const tornadoTrackerUrl =
       clean(tornadoCount.trackerUrl) ||
       "https://www.spc.noaa.gov/climo/reports/today.html";
-const watches = countItems(summary?.alerts?.watches);
-    const reports = Array.isArray(summary?.stormReports?.reports)
-      ? summary.stormReports.reports.slice(0, 3)
-      : [];
+
+    function reportMetric(value) {
+      const dailyAvailable =
+        value?.dailyAvailable === true &&
+        Number.isFinite(Number(value?.dailyCount));
+
+      const monthlyAvailable =
+        value?.monthlyAvailable === true &&
+        Number.isFinite(Number(value?.monthCount));
+
+      return {
+        dailyAvailable,
+        dailyValue: dailyAvailable
+          ? Number(value.dailyCount).toLocaleString("en-US")
+          : "—",
+        monthlyAvailable,
+        monthValue: monthlyAvailable
+          ? Number(value.monthCount).toLocaleString("en-US")
+          : "—",
+        monthLabel: clean(value?.monthLabel) || "Current month",
+        trackerUrl:
+          clean(value?.trackerUrl) ||
+          "https://www.spc.noaa.gov/climo/reports/today.html"
+      };
+    }
+
+    const hailMetric = reportMetric(summary?.hailCount || {});
+    const windMetric = reportMetric(summary?.windCount || {});
+    const watches = countItems(summary?.alerts?.watches);
 
     const fireWeather = countItems(summary?.alerts?.fireWeather);
     const watchTotal = watches.reduce(
@@ -15932,11 +16398,11 @@ const threats = [
       ${card(
   "red",
   "TOR",
-  "Tornado Count",
-  "(This Month)",
+  "Tornado Reports",
+  "Today",
   `
-    <div class="ops-tornado-layout">
-      <span class="ops-tornado-icon" aria-hidden="true">
+    <div class="ops-tornado-layout ops-report-count-layout">
+      <span class="ops-tornado-icon ops-report-count-icon" aria-hidden="true">
         <svg viewBox="0 0 64 64" role="presentation">
           <path d="M12 10h40M17 19h30M22 28h20M27 37h10M31 46h3"
             fill="none" stroke="currentColor" stroke-linecap="round"
@@ -15948,23 +16414,24 @@ const threats = [
       </span>
 
       <span class="ops-tornado-metric">
-        <strong class="ops-tornado-count">${esc(tornadoValue)}</strong>
+        <strong class="ops-tornado-count">${esc(tornadoDailyValue)}</strong>
         <small class="ops-tornado-delta">
           ${esc(
-            tornadoAvailable
-              ? `${tornadoMonth} preliminary reports`
+            tornadoDailyAvailable
+              ? "Preliminary reports"
               : "Live tracker unavailable"
           )}
         </small>
       </span>
     </div>
 
+    <span class="ops-report-month-total">
+      <span>${esc(`${tornadoMonth} total`)}</span>
+      <strong>${esc(tornadoMonthValue)}</strong>
+    </span>
+
     <span class="ops-tornado-note">
-      ${esc(
-        tornadoAvailable
-          ? `Month-to-date preliminary SPC reports${tornadoDays ? ` • ${tornadoDays} report days` : ""}`
-          : "Preliminary local storm reports"
-      )}
+      Preliminary SPC tornado reports for the current report day.
     </span>
 
     <a class="ops-reference-button ops-tornado-button"
@@ -15974,38 +16441,163 @@ const threats = [
       View SPC Tracker
     </a>
   `,
-  "ops-reference-card--tornado"
+  "ops-reference-card--tornado ops-reference-card--report-count"
 )}
+      ${card(
+        "blue",
+        "HAIL",
+        "Hail Reports",
+        "Today",
+        `
+          <div class="ops-tornado-layout ops-report-count-layout">
+            <span class="ops-tornado-icon ops-report-count-icon" aria-hidden="true">
+              <svg viewBox="0 0 64 64" role="presentation">
+                <!-- Falling streaks -->
+                <path
+                  d="M18 8v8M32 5v10M46 9v8"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="3"
+                  stroke-linecap="round"
+                  opacity="0.8">
+                </path>
+
+                <!-- Three faceted hailstones -->
+                <path
+                  d="M10 28 17 21 27 23 31 32 27 42 17 45 9 38Z"
+                  fill="currentColor"
+                  opacity="0.22">
+                </path>
+                <path
+                  d="M10 28 17 21 27 23 31 32 27 42 17 45 9 38Z"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="3"
+                  stroke-linejoin="round">
+                </path>
+
+                <path
+                  d="M35 22 42 17 51 20 55 29 51 38 42 41 35 35 33 28Z"
+                  fill="currentColor"
+                  opacity="0.22">
+                </path>
+                <path
+                  d="M35 22 42 17 51 20 55 29 51 38 42 41 35 35 33 28Z"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="3"
+                  stroke-linejoin="round">
+                </path>
+
+                <path
+                  d="M22 46 30 40 40 43 44 52 39 60 29 61 21 55Z"
+                  fill="currentColor"
+                  opacity="0.22">
+                </path>
+                <path
+                  d="M22 46 30 40 40 43 44 52 39 60 29 61 21 55Z"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="3"
+                  stroke-linejoin="round">
+                </path>
+
+                <!-- Ice facets -->
+                <path
+                  d="M15 30l5-4 5 2-3 6-6 2-3-3
+                     M40 25l4-3 5 2-2 6-6 2-3-3
+                     M28 49l5-4 5 2-2 6-6 2-4-3"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  opacity="0.88">
+                </path>
+              </svg>
+            </span>
+
+            <span class="ops-tornado-metric">
+              <strong class="ops-tornado-count">${esc(hailMetric.dailyValue)}</strong>
+              <small class="ops-tornado-delta">
+                ${esc(
+                  hailMetric.dailyAvailable
+                    ? "Preliminary reports"
+                    : "Live tracker unavailable"
+                )}
+              </small>
+            </span>
+          </div>
+
+          <span class="ops-report-month-total">
+            <span>${esc(`${hailMetric.monthLabel} total`)}</span>
+            <strong>${esc(hailMetric.monthValue)}</strong>
+          </span>
+
+          <span class="ops-tornado-note">
+            Preliminary SPC hail reports for the current report day.
+          </span>
+
+          <a class="ops-reference-button ops-tornado-button ops-report-count-button"
+            href="${esc(hailMetric.trackerUrl)}"
+            target="_blank"
+            rel="noopener noreferrer">
+            View SPC Tracker
+          </a>
+        `,
+        "ops-reference-card--report-count ops-reference-card--hail"
+      )}
 
       ${card(
         "blue",
-        "RPT",
-        "Latest Storm Reports",
-        reports.length ? "Preliminary reports" : "No reports posted",
-        reports.length
-          ? `
-              <div class="ops-report-list">
-                ${reports.map((report) => `
-                  <span class="ops-report-row">
-                    <time class="ops-report-time">${esc(shortTime(
-                      report.timeUtc || report.time || report.datetime || report.date
-                    ))}</time>
-                    <span class="ops-report-main">
-                      <strong>${esc(reportTitle(report))}</strong>
-                      <small>${esc(reportLocation(report))}</small>
-                    </span>
-                  </span>
-                `).join("")}
-              </div>
-              ${scrollButton("View SPC Outlooks", "spc")}
-            `
-          : `
-              <div class="ops-report-quiet">
-                <span class="ops-quiet-orb"></span>
-                <strong>Monitoring SPC feed</strong>
-                <span>No preliminary tornado, hail, or wind reports are posted for the current SPC day.</span>
-              </div>
-            `
+        "WND",
+        "Wind Reports",
+        "Today",
+        `
+          <div class="ops-tornado-layout ops-report-count-layout">
+            <span class="ops-tornado-icon ops-report-count-icon" aria-hidden="true">
+              <svg viewBox="0 0 64 64" role="presentation">
+                <path d="M9 22h30c7 0 10-4 10-8 0-4-3-7-7-7-4 0-7 2-8 6"
+                  fill="none" stroke="currentColor" stroke-width="4"
+                  stroke-linecap="round"></path>
+                <path d="M9 32h40c5 0 8 3 8 7s-3 8-8 8c-4 0-7-2-8-6"
+                  fill="none" stroke="currentColor" stroke-width="4"
+                  stroke-linecap="round"></path>
+                <path d="M9 43h22"
+                  fill="none" stroke="currentColor" stroke-width="4"
+                  stroke-linecap="round"></path>
+              </svg>
+            </span>
+
+            <span class="ops-tornado-metric">
+              <strong class="ops-tornado-count">${esc(windMetric.dailyValue)}</strong>
+              <small class="ops-tornado-delta">
+                ${esc(
+                  windMetric.dailyAvailable
+                    ? "Preliminary reports"
+                    : "Live tracker unavailable"
+                )}
+              </small>
+            </span>
+          </div>
+
+          <span class="ops-report-month-total">
+            <span>${esc(`${windMetric.monthLabel} total`)}</span>
+            <strong>${esc(windMetric.monthValue)}</strong>
+          </span>
+
+          <span class="ops-tornado-note">
+            Preliminary SPC damaging-wind reports for the current report day.
+          </span>
+
+          <a class="ops-reference-button ops-tornado-button ops-report-count-button"
+            href="${esc(windMetric.trackerUrl)}"
+            target="_blank"
+            rel="noopener noreferrer">
+            View SPC Tracker
+          </a>
+        `,
+        "ops-reference-card--report-count ops-reference-card--wind"
       )}
 
       ${card(
