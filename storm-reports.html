@@ -1,0 +1,3382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Interactive SPC severe weather report summaries with maps, tables, charts, and statistics.">
+  <title>Storm Reports | Zacharologist</title>
+  <link rel="icon" type="image/jpeg" href="/hero.jpg">
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.25.0/mapbox-gl.css" rel="stylesheet">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.25.0/mapbox-gl.js"></script>
+  <script src="mapbox-token.js"></script>
+  <style>
+    :root {
+      --bg: #030914;
+      --panel: rgba(8, 18, 32, 0.94);
+      --panel-2: rgba(13, 29, 49, 0.92);
+      --line: rgba(126, 173, 214, 0.22);
+      --text: #f7fbff;
+      --muted: #91a6bb;
+      --blue: #62c9ff;
+      --tornado: #ff645f;
+      --hail: #57e0ba;
+      --wind: #66caff;
+      --amber: #ffc44d;
+      --green: #35d69a;
+      --shadow: 0 22px 55px rgba(0, 0, 0, 0.34);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      color-scheme: dark;
+      background: var(--bg);
+    }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100vh;
+      overflow-x: hidden;
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 50% -10%, rgba(0, 193, 255, 0.20), transparent 35%),
+        radial-gradient(circle at 100% 22%, rgba(31, 108, 255, 0.10), transparent 28%),
+        linear-gradient(180deg, #061321 0%, #030914 48%, #020710 100%);
+    }
+
+    button,
+    select,
+    input {
+      font: inherit;
+    }
+
+    button,
+    select {
+      color: inherit;
+    }
+
+    a {
+      color: inherit;
+    }
+
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 3000;
+      width: 100%;
+      min-height: 72px;
+      padding: 12px clamp(16px, 2.2vw, 34px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      background: rgba(3, 9, 20, 0.96);
+      border-bottom: 1px solid rgba(100, 199, 255, 0.20);
+      backdrop-filter: blur(16px);
+    }
+
+    .site-brand {
+      flex: 0 0 auto;
+      text-decoration: none;
+    }
+
+    .brand-main {
+      font-size: 1.12rem;
+      line-height: 1;
+      font-weight: 950;
+      letter-spacing: 0.12em;
+    }
+
+    .brand-sub {
+      margin-top: 6px;
+      color: #76cfff;
+      font-size: 0.62rem;
+      font-weight: 900;
+      letter-spacing: 0.20em;
+      text-transform: uppercase;
+    }
+
+    .site-nav {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .site-nav a {
+      padding: 9px 12px;
+      border: 1px solid transparent;
+      border-radius: 11px;
+      color: #dbe8f5;
+      text-decoration: none;
+      font-size: 0.72rem;
+      font-weight: 900;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .site-nav a:hover,
+    .site-nav a.active {
+      color: #fff;
+      border-color: rgba(98, 201, 255, 0.38);
+      background: rgba(98, 201, 255, 0.12);
+    }
+
+    .mobile-nav-toggle {
+      display: none;
+      width: 42px;
+      height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(15, 31, 50, 0.92);
+      color: white;
+      cursor: pointer;
+    }
+
+    .reports-shell {
+      width: min(1820px, calc(100% - clamp(20px, 3vw, 54px)));
+      margin: 0 auto;
+      padding: 28px 0 60px;
+    }
+
+    .reports-hero {
+      margin-bottom: 18px;
+      padding: clamp(22px, 3vw, 36px);
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 24px;
+      align-items: center;
+      border: 1px solid rgba(98, 201, 255, 0.23);
+      border-radius: 24px;
+      background:
+        radial-gradient(circle at 78% 18%, rgba(98, 201, 255, 0.13), transparent 33%),
+        linear-gradient(145deg, rgba(11, 28, 48, 0.97), rgba(4, 13, 25, 0.98));
+      box-shadow: var(--shadow);
+    }
+
+    .eyebrow {
+      margin: 0 0 9px;
+      color: var(--blue);
+      font-size: 0.70rem;
+      font-weight: 950;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    .reports-hero h1 {
+      margin: 0;
+      max-width: 960px;
+      font-size: clamp(2rem, 4.2vw, 4.5rem);
+      line-height: 0.98;
+      letter-spacing: -0.055em;
+    }
+
+    .reports-hero-copy {
+      max-width: 900px;
+      margin: 15px 0 0;
+      color: #b5c6d8;
+      font-size: clamp(0.95rem, 1.2vw, 1.08rem);
+      line-height: 1.55;
+    }
+
+    .hero-source {
+      min-width: 230px;
+      padding: 16px 18px;
+      border: 1px solid rgba(98, 201, 255, 0.24);
+      border-radius: 17px;
+      background: rgba(2, 8, 18, 0.54);
+    }
+
+    .hero-source strong,
+    .hero-source span {
+      display: block;
+    }
+
+    .hero-source strong {
+      font-size: 0.82rem;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+    }
+
+    .hero-source span {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 0.76rem;
+      line-height: 1.35;
+    }
+
+    .control-deck {
+      position: sticky;
+      top: 72px;
+      z-index: 2000;
+      margin-bottom: 18px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: rgba(5, 14, 26, 0.96);
+      box-shadow: 0 16px 38px rgba(0, 0, 0, 0.30);
+      backdrop-filter: blur(18px);
+    }
+
+    .control-row {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto auto;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .select-control {
+      display: grid;
+      grid-template-columns: auto minmax(92px, auto);
+      gap: 8px;
+      align-items: center;
+    }
+
+    .select-control span,
+    .control-label {
+      color: #8096ac;
+      font-size: 0.62rem;
+      font-weight: 950;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .select-control select,
+    .table-tools select,
+    .table-tools input {
+      min-height: 38px;
+      border: 1px solid rgba(125, 175, 219, 0.27);
+      border-radius: 10px;
+      background: rgba(13, 29, 48, 0.92);
+      padding: 7px 10px;
+      color: #f7fbff;
+      outline: none;
+    }
+
+    .segmented {
+      display: inline-flex;
+      min-width: 0;
+      padding: 3px;
+      border: 1px solid rgba(125, 175, 219, 0.20);
+      border-radius: 12px;
+      background: rgba(1, 7, 16, 0.58);
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .segmented::-webkit-scrollbar {
+      display: none;
+    }
+
+    .segmented button {
+      min-height: 34px;
+      padding: 7px 12px;
+      border: 0;
+      border-radius: 9px;
+      background: transparent;
+      color: #849bb1;
+      font-size: 0.68rem;
+      font-weight: 950;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .segmented button:hover {
+      color: #fff;
+      background: rgba(98, 201, 255, 0.09);
+    }
+
+    .segmented button.active {
+      color: #fff;
+      background: rgba(98, 201, 255, 0.18);
+      box-shadow: inset 0 0 0 1px rgba(98, 201, 255, 0.28);
+    }
+
+    .segmented button[data-value="tornado"].active {
+      color: #ffd0ce;
+      background: rgba(255, 100, 95, 0.17);
+      box-shadow: inset 0 0 0 1px rgba(255, 100, 95, 0.34);
+    }
+
+    .segmented button[data-value="hail"].active {
+      color: #caffef;
+      background: rgba(87, 224, 186, 0.15);
+      box-shadow: inset 0 0 0 1px rgba(87, 224, 186, 0.32);
+    }
+
+    .segmented button[data-value="wind"].active {
+      color: #d3f0ff;
+      background: rgba(102, 202, 255, 0.16);
+      box-shadow: inset 0 0 0 1px rgba(102, 202, 255, 0.34);
+    }
+
+    .segmented button:disabled {
+      opacity: 0.34;
+      cursor: not-allowed;
+    }
+
+    .state-control {
+      display: none;
+    }
+
+    .state-control.visible {
+      display: grid;
+    }
+
+    .period-row {
+      margin-top: 10px;
+      display: grid;
+      grid-template-columns: repeat(13, minmax(54px, 1fr));
+      gap: 6px;
+    }
+
+    .period-row button {
+      min-height: 34px;
+      border: 1px solid rgba(125, 175, 219, 0.18);
+      border-radius: 9px;
+      background: rgba(11, 26, 43, 0.74);
+      color: #8ea4b8;
+      font-size: 0.66rem;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .period-row button:hover,
+    .period-row button.active {
+      color: #fff;
+      border-color: rgba(98, 201, 255, 0.46);
+      background: rgba(98, 201, 255, 0.16);
+    }
+
+    .status-strip {
+      margin-bottom: 18px;
+      min-height: 46px;
+      padding: 11px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      border: 1px solid rgba(125, 175, 219, 0.18);
+      border-radius: 14px;
+      background: rgba(8, 20, 35, 0.84);
+    }
+
+    .status-main {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .status-dot {
+      flex: 0 0 auto;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #42d69b;
+      box-shadow: 0 0 14px rgba(66, 214, 155, 0.45);
+    }
+
+    .status-strip.loading .status-dot {
+      background: var(--amber);
+      box-shadow: 0 0 14px rgba(255, 196, 77, 0.45);
+      animation: pulse 1s ease-in-out infinite;
+    }
+
+    .status-strip.error .status-dot {
+      background: #ff6e69;
+      box-shadow: 0 0 14px rgba(255, 110, 105, 0.45);
+    }
+
+    @keyframes pulse {
+      50% {
+        opacity: 0.35;
+        transform: scale(0.75);
+      }
+    }
+
+    #statusText {
+      min-width: 0;
+      overflow: hidden;
+      color: #d7e5f2;
+      font-size: 0.78rem;
+      font-weight: 750;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .status-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .small-action {
+      min-height: 32px;
+      padding: 6px 10px;
+      border: 1px solid rgba(125, 175, 219, 0.26);
+      border-radius: 9px;
+      background: rgba(15, 34, 56, 0.86);
+      color: #dceaf6;
+      font-size: 0.65rem;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      text-decoration: none;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+
+    .summary-grid {
+      margin-bottom: 18px;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .summary-card {
+      min-height: 120px;
+      padding: 17px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background:
+        linear-gradient(145deg, rgba(15, 34, 56, 0.96), rgba(6, 17, 30, 0.98));
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+    }
+
+    .summary-card span,
+    .summary-card strong,
+    .summary-card small {
+      display: block;
+    }
+
+    .summary-card span {
+      color: #7e95aa;
+      font-size: 0.64rem;
+      font-weight: 950;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+    }
+
+    .summary-card strong {
+      margin-top: 8px;
+      color: #fff;
+      font-size: clamp(2rem, 4vw, 3.3rem);
+      line-height: 0.95;
+      letter-spacing: -0.05em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .summary-card small {
+      margin-top: 9px;
+      color: #9eb1c4;
+      font-size: 0.75rem;
+      line-height: 1.3;
+    }
+
+    .workspace {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: rgba(5, 14, 26, 0.95);
+      box-shadow: var(--shadow);
+    }
+
+    .workspace-header {
+      min-height: 78px;
+      padding: 17px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      border-bottom: 1px solid rgba(125, 175, 219, 0.17);
+      background:
+        linear-gradient(90deg, rgba(21, 48, 77, 0.70), rgba(5, 14, 26, 0.25));
+    }
+
+    .workspace-header h2 {
+      margin: 0;
+      font-size: clamp(1.15rem, 2.3vw, 1.8rem);
+      line-height: 1.1;
+    }
+
+    .workspace-header p {
+      margin: 6px 0 0;
+      color: #8ea4b8;
+      font-size: 0.76rem;
+    }
+
+    .hazard-chip {
+      flex: 0 0 auto;
+      padding: 8px 11px;
+      border: 1px solid rgba(98, 201, 255, 0.30);
+      border-radius: 999px;
+      background: rgba(98, 201, 255, 0.10);
+      color: #bfeaff;
+      font-size: 0.65rem;
+      font-weight: 950;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+    }
+
+    .view-panel {
+      display: none;
+    }
+
+    .view-panel.active {
+      display: block;
+    }
+
+    .map-wrap {
+      position: relative;
+      min-height: 640px;
+      background: #07111e;
+    }
+
+    #reportsMap {
+      width: 100%;
+      height: min(72vh, 820px);
+      min-height: 640px;
+    }
+
+    .map-legend {
+      position: absolute;
+      left: 14px;
+      bottom: 14px;
+      z-index: 700;
+      min-width: 180px;
+      padding: 12px;
+      border: 1px solid rgba(150, 190, 224, 0.26);
+      border-radius: 13px;
+      background: rgba(3, 10, 20, 0.88);
+      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.34);
+      backdrop-filter: blur(12px);
+    }
+
+    .map-legend strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 0.69rem;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+    }
+
+    .legend-row {
+      display: grid;
+      grid-template-columns: 14px minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      margin-top: 6px;
+      color: #becddb;
+      font-size: 0.72rem;
+    }
+
+    .legend-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.65);
+    }
+
+    .legend-dot.tornado { background: var(--tornado); }
+    .legend-dot.hail { background: var(--hail); }
+    .legend-dot.wind { background: var(--wind); }
+
+    .legend-hazard-section + .legend-hazard-section {
+      margin-top: 8px;
+      padding-top: 7px;
+      border-top: 1px solid rgba(150, 190, 224, 0.13);
+    }
+
+    .legend-hazard-heading,
+    .legend-detail-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .legend-hazard-heading {
+      margin-top: 5px;
+      font-size: 0.75rem;
+      font-weight: 950;
+    }
+
+    .legend-hazard-heading.tornado,
+    .legend-detail-row.tornado {
+      color: var(--tornado);
+    }
+
+    .legend-hazard-heading.wind,
+    .legend-detail-row.wind {
+      color: var(--wind);
+    }
+
+    .legend-hazard-heading.hail,
+    .legend-detail-row.hail {
+      color: var(--hail);
+    }
+
+    .legend-detail-row {
+      grid-template-columns: 15px minmax(0, 1fr) auto;
+      margin-top: 2px;
+      padding-left: 2px;
+      font-size: 0.68rem;
+      line-height: 1.2;
+    }
+
+    .legend-detail-row span:nth-child(2) {
+      color: currentColor;
+      opacity: 0.92;
+    }
+
+    .legend-detail-row b,
+    .legend-hazard-heading b {
+      color: currentColor;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .legend-symbol {
+      display: block;
+      justify-self: center;
+      flex: 0 0 auto;
+    }
+
+    /* Hazard families match the SPC visual language:
+       triangles = tornado, squares = wind, circles = hail. */
+    .tornado-all-row {
+      color: #ff6b72 !important;
+      font-size: 0.66rem;
+    }
+
+    .tornado-ef2-row {
+      color: #ff263b !important;
+      font-size: 0.69rem;
+      font-weight: 850;
+    }
+
+    .tornado-all-symbol {
+      width: 0;
+      height: 0;
+      border-left: 4px solid transparent;
+      border-right: 4px solid transparent;
+      border-top: 7px solid #ff6b72;
+      filter:
+        drop-shadow(0 0 1px rgba(0, 0, 0, 0.95))
+        drop-shadow(0 0 3px rgba(255, 70, 82, 0.28));
+    }
+
+    .tornado-ef2-symbol {
+      width: 0;
+      height: 0;
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-top: 11px solid #ff263b;
+      filter:
+        drop-shadow(0 0 1px rgba(0, 0, 0, 0.95))
+        drop-shadow(0 0 4px rgba(255, 38, 59, 0.36));
+    }
+
+    /* Wind remains entirely within a cyan/blue family—no violet. */
+    .wind-damage-row {
+      color: #82ddff !important;
+      font-size: 0.65rem;
+    }
+
+    .wind-measured-row {
+      color: #2daeff !important;
+      font-size: 0.67rem;
+    }
+
+    .wind-significant-row {
+      color: #007bd9 !important;
+      font-size: 0.69rem;
+      font-weight: 850;
+    }
+
+    .wind-damage-symbol,
+    .wind-measured-symbol,
+    .wind-significant-symbol {
+      border: 1px solid rgba(220, 246, 255, 0.78);
+      border-radius: 1px;
+      box-shadow:
+        0 0 0 1px rgba(3, 13, 24, 0.95),
+        0 0 4px rgba(58, 182, 255, 0.22);
+    }
+
+    .wind-damage-symbol {
+      width: 7px;
+      height: 7px;
+      background: #82ddff;
+    }
+
+    .wind-measured-symbol {
+      width: 9px;
+      height: 9px;
+      background: #2daeff;
+    }
+
+    .wind-significant-symbol {
+      width: 12px;
+      height: 12px;
+      background: #007bd9;
+    }
+
+    /* Hail tiers use stronger shifts in both size and green shade. */
+    .hail-small-row {
+      color: #a5ff73 !important;
+      font-size: 0.65rem;
+    }
+
+    .hail-medium-row {
+      color: #35d65a !important;
+      font-size: 0.67rem;
+    }
+
+    .hail-large-row {
+      color: #00a33f !important;
+      font-size: 0.69rem;
+      font-weight: 850;
+    }
+
+    .hail-small-symbol,
+    .hail-medium-symbol,
+    .hail-large-symbol {
+      border-radius: 50%;
+      border: 1px solid rgba(222, 255, 226, 0.76);
+      box-shadow:
+        0 0 0 1px rgba(3, 18, 10, 0.96),
+        0 0 4px rgba(63, 229, 99, 0.2);
+    }
+
+    .hail-small-symbol {
+      width: 7px;
+      height: 7px;
+      background: #a5ff73;
+    }
+
+    .hail-medium-symbol {
+      width: 10px;
+      height: 10px;
+      background: #35d65a;
+    }
+
+    .hail-large-symbol {
+      width: 13px;
+      height: 13px;
+      background: #00a33f;
+    }
+
+    /* Storm reports use an independent Mapbox GL canvas. Radar and
+       alert sources, layers, state, and controls are not shared with this map. */
+    #reportsMap .mapboxgl-canvas {
+      outline: none;
+    }
+
+    #reportsMap .mapboxgl-ctrl-top-left {
+      top: 8px;
+      left: 8px;
+    }
+
+    #reportsMap .mapboxgl-ctrl-group {
+      overflow: hidden;
+      border: 1px solid rgba(127, 183, 228, 0.28);
+      border-radius: 8px;
+      background: rgba(5, 14, 24, 0.94);
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.32);
+    }
+
+    #reportsMap .mapboxgl-ctrl-group button {
+      background-color: rgba(5, 14, 24, 0.94);
+    }
+
+    #reportsMap .mapboxgl-ctrl-group button + button {
+      border-top-color: rgba(127, 183, 228, 0.22);
+    }
+
+    #reportsMap .mapboxgl-ctrl-icon {
+      filter: invert(1) brightness(1.35);
+    }
+
+    #reportsMap .mapboxgl-ctrl-attrib {
+      color: #b7c7d6;
+      background: rgba(3, 9, 16, 0.76);
+    }
+
+    #reportsMap .mapboxgl-ctrl-attrib a {
+      color: #d9efff;
+    }
+
+    #reportsMap .mapboxgl-popup {
+      z-index: 760;
+    }
+
+    #reportsMap .mapboxgl-popup-content {
+      padding: 13px 15px;
+      color: #f4f9fd;
+      border: 1px solid rgba(120, 180, 225, 0.25);
+      border-radius: 12px;
+      background: #071522;
+      box-shadow: 0 16px 34px rgba(0, 0, 0, 0.45);
+    }
+
+    #reportsMap .mapboxgl-popup-tip {
+      border-top-color: #071522;
+      border-bottom-color: #071522;
+    }
+
+    #reportsMap .mapboxgl-popup-close-button {
+      width: 30px;
+      height: 30px;
+      color: #dceeff;
+      font-size: 1.2rem;
+      line-height: 28px;
+    }
+
+    #reportsMap .mapboxgl-popup-close-button:hover {
+      background: rgba(98, 201, 255, 0.12);
+    }
+
+
+    .report-popup {
+      min-width: 220px;
+    }
+
+    .report-popup strong,
+    .report-popup span {
+      display: block;
+    }
+
+    .report-popup strong {
+      margin-bottom: 5px;
+      font-size: 0.92rem;
+    }
+
+    .report-popup span {
+      margin-top: 3px;
+      color: #b5c7d7;
+      font-size: 0.76rem;
+      line-height: 1.35;
+    }
+
+    .table-panel {
+      padding: 16px;
+    }
+
+    .table-tools {
+      margin-bottom: 12px;
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) auto auto auto;
+      gap: 9px;
+      align-items: center;
+    }
+
+    .check-control {
+      min-height: 38px;
+      padding: 7px 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 1px solid rgba(125, 175, 219, 0.23);
+      border-radius: 10px;
+      background: rgba(13, 29, 48, 0.80);
+      color: #b5c7d7;
+      font-size: 0.72rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .table-scroll {
+      overflow: auto;
+      max-height: 68vh;
+      border: 1px solid rgba(125, 175, 219, 0.16);
+      border-radius: 13px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 980px;
+    }
+
+    th,
+    td {
+      padding: 10px 11px;
+      border-bottom: 1px solid rgba(125, 175, 219, 0.12);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #0e2237;
+      color: #9fb5ca;
+      font-size: 0.64rem;
+      font-weight: 950;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    td {
+      color: #d8e4ef;
+      font-size: 0.75rem;
+      line-height: 1.38;
+    }
+
+    tbody tr:hover {
+      background: rgba(98, 201, 255, 0.06);
+    }
+
+    .hazard-label {
+      display: inline-flex;
+      min-width: 66px;
+      padding: 4px 7px;
+      justify-content: center;
+      border-radius: 999px;
+      font-size: 0.61rem;
+      font-weight: 950;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    .hazard-label.tornado {
+      color: #ffd1cf;
+      background: rgba(255, 100, 95, 0.17);
+    }
+
+    .hazard-label.hail {
+      color: #caffef;
+      background: rgba(87, 224, 186, 0.15);
+    }
+
+    .hazard-label.wind {
+      color: #d5f1ff;
+      background: rgba(102, 202, 255, 0.16);
+    }
+
+    .significant-flag {
+      color: #ffd26e;
+      font-weight: 950;
+    }
+
+    .pagination {
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .pagination-buttons {
+      display: flex;
+      gap: 7px;
+    }
+
+    .pagination button {
+      min-height: 34px;
+      padding: 6px 11px;
+      border: 1px solid rgba(125, 175, 219, 0.24);
+      border-radius: 9px;
+      background: rgba(13, 29, 48, 0.88);
+      color: white;
+      cursor: pointer;
+    }
+
+    .pagination button:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    #pageReadout {
+      color: #8ea4b8;
+      font-size: 0.72rem;
+    }
+
+    .charts-panel,
+    .stats-panel {
+      padding: 18px;
+    }
+
+    .chart-grid,
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .chart-card,
+    .stats-card {
+      min-height: 250px;
+      padding: 16px;
+      border: 1px solid rgba(125, 175, 219, 0.17);
+      border-radius: 16px;
+      background: rgba(10, 24, 40, 0.78);
+    }
+
+    .chart-card h3,
+    .stats-card h3 {
+      margin: 0 0 13px;
+      font-size: 0.88rem;
+      letter-spacing: 0.04em;
+    }
+
+    .bar-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: minmax(72px, 118px) minmax(0, 1fr) 48px;
+      gap: 9px;
+      align-items: center;
+    }
+
+    .bar-label {
+      overflow: hidden;
+      color: #aebfd0;
+      font-size: 0.69rem;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .bar-track {
+      height: 10px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(125, 175, 219, 0.10);
+    }
+
+    .bar-fill {
+      display: block;
+      width: var(--bar-width);
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #2fb9ff, #74ddff);
+      box-shadow: 0 0 12px rgba(98, 201, 255, 0.24);
+    }
+
+    .bar-value {
+      color: #f6fbff;
+      font-size: 0.72rem;
+      font-weight: 900;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stats-list {
+      display: grid;
+      gap: 9px;
+    }
+
+    .stats-row {
+      padding: 9px 0;
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      border-bottom: 1px solid rgba(125, 175, 219, 0.12);
+    }
+
+    .stats-row span {
+      color: #91a6bb;
+      font-size: 0.73rem;
+    }
+
+    .stats-row strong {
+      color: #f5faff;
+      font-size: 0.78rem;
+      text-align: right;
+    }
+
+    .empty-state {
+      min-height: 420px;
+      padding: 38px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+    }
+
+    .empty-state[hidden] {
+      display: none !important;
+    }
+
+    .empty-state > div {
+      max-width: 520px;
+    }
+
+    .empty-state strong {
+      display: block;
+      font-size: 1.35rem;
+    }
+
+    .empty-state p {
+      color: #91a6bb;
+      line-height: 1.55;
+    }
+
+    .loading-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 1000;
+      display: none;
+      place-items: center;
+      background: rgba(2, 8, 17, 0.68);
+      backdrop-filter: blur(4px);
+    }
+
+    .loading-overlay.visible {
+      display: grid;
+    }
+
+    .loader {
+      width: 54px;
+      height: 54px;
+      border: 5px solid rgba(98, 201, 255, 0.18);
+      border-top-color: #62c9ff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .reports-footer {
+      margin-top: 18px;
+      padding: 16px 18px;
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      border: 1px solid rgba(125, 175, 219, 0.16);
+      border-radius: 15px;
+      background: rgba(6, 17, 30, 0.76);
+      color: #7f95aa;
+      font-size: 0.72rem;
+      line-height: 1.45;
+    }
+
+    @media (max-width: 1180px) {
+      .control-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .select-control {
+        grid-template-columns: auto minmax(0, 1fr);
+      }
+
+      .segmented {
+        width: 100%;
+      }
+
+      .segmented button {
+        flex: 1 0 auto;
+      }
+
+      .summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .period-row {
+        grid-template-columns: repeat(7, minmax(52px, 1fr));
+      }
+    }
+
+    @media (max-width: 760px) {
+      .site-header {
+        min-height: 62px;
+      }
+
+      .mobile-nav-toggle {
+        display: grid;
+        place-items: center;
+      }
+
+      .site-nav {
+        position: fixed;
+        top: 62px;
+        right: 10px;
+        left: 10px;
+        display: none;
+        padding: 10px;
+        flex-direction: column;
+        align-items: stretch;
+        border: 1px solid var(--line);
+        border-radius: 15px;
+        background: rgba(3, 10, 21, 0.98);
+        box-shadow: var(--shadow);
+      }
+
+      .site-nav.open {
+        display: flex;
+      }
+
+      .site-nav a {
+        width: 100%;
+      }
+
+      .reports-shell {
+        width: min(100% - 18px, 1820px);
+        padding-top: 12px;
+      }
+
+      .reports-hero {
+        grid-template-columns: 1fr;
+        padding: 20px;
+        border-radius: 18px;
+      }
+
+      .hero-source {
+        min-width: 0;
+      }
+
+      .control-deck {
+        position: static;
+        padding: 10px;
+        border-radius: 16px;
+      }
+
+      .control-row {
+        grid-template-columns: 1fr;
+      }
+
+      .period-row {
+        display: flex;
+        overflow-x: auto;
+        padding-bottom: 4px;
+      }
+
+      .period-row button {
+        flex: 0 0 64px;
+      }
+
+      .status-strip,
+      .workspace-header,
+      .reports-footer {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .status-actions {
+        justify-content: stretch;
+      }
+
+      .status-actions > * {
+        flex: 1 1 auto;
+        text-align: center;
+      }
+
+      .summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .summary-card {
+        min-height: 108px;
+        padding: 14px;
+      }
+
+      .map-wrap,
+      #reportsMap {
+        min-height: 560px;
+        height: 70dvh;
+      }
+
+      .map-legend {
+        right: 10px;
+        left: 10px;
+        bottom: 10px;
+      }
+
+      .table-tools {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .table-tools input {
+        grid-column: 1 / -1;
+      }
+
+      .chart-grid,
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 460px) {
+      .summary-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .summary-card strong {
+        font-size: 2rem;
+      }
+
+      .table-tools {
+        grid-template-columns: 1fr;
+      }
+
+      .table-tools input {
+        grid-column: auto;
+      }
+
+      .reports-footer {
+        font-size: 0.67rem;
+      }
+    }
+  </style>
+
+<style id="storm-report-mapbox-logo-right-css">
+  /*
+   * Keep the custom report legend in the lower-left. Move Mapbox's required
+   * wordmark into the lower-right control corner, just above attribution.
+   */
+  #mapLegend.map-legend {
+    bottom: 8px !important;
+    left: 8px !important;
+  }
+
+  .mapboxgl-ctrl-bottom-right {
+    position: absolute;
+  }
+
+  .mapboxgl-ctrl-bottom-right > .mapboxgl-ctrl-logo,
+  .mapboxgl-ctrl-bottom-right > .storm-report-mapbox-logo-right {
+    position: absolute !important;
+    right: 0 !important;
+    bottom: 25px !important;
+    left: auto !important;
+    margin: 0 10px 0 0 !important;
+    z-index: 4 !important;
+  }
+
+  @media (max-width: 760px) {
+    #mapLegend.map-legend {
+      bottom: 7px !important;
+      left: 7px !important;
+    }
+
+    .mapboxgl-ctrl-bottom-right > .mapboxgl-ctrl-logo,
+    .mapboxgl-ctrl-bottom-right > .storm-report-mapbox-logo-right {
+      bottom: 27px !important;
+      margin-right: 7px !important;
+    }
+  }
+</style>
+
+</head>
+<body>
+  <header class="site-header">
+    <a class="site-brand" href="index.html">
+      <div class="brand-main">ZACHAROLOGIST</div>
+      <div class="brand-sub">Built for the Storm</div>
+    </a>
+
+    <button class="mobile-nav-toggle" id="mobileNavToggle" type="button" aria-label="Open navigation">☰</button>
+
+    <nav class="site-nav" id="siteNav">
+      <a href="index.html">Home</a>
+      <a href="wx-updates.html">Wx Updates</a>
+      <a href="maps.html">Maps &amp; Models</a>
+      <a href="level2-mobile-radar.html">Radar + Alerts</a>
+      <a class="active" href="storm-reports.html">Storm Reports</a>
+      <a href="chase-dashboard.html">Storm Chasing</a>
+    </nav>
+  </header>
+
+  <main class="reports-shell">
+    <section class="reports-hero">
+      <div>
+        <p class="eyebrow">SPC Severe Weather Database</p>
+        <h1>Storm Report Explorer</h1>
+        <p class="reports-hero-copy">
+          Explore preliminary and final tornado, hail, and damaging-wind reports
+          with shareable filters, interactive maps, searchable tables, charts,
+          state summaries, and downloadable data.
+        </p>
+      </div>
+
+      <div class="hero-source">
+        <strong>Official source data</strong>
+        <span>NOAA / NWS Storm Prediction Center</span>
+        <span>Preliminary reports are subject to revision.</span>
+      </div>
+    </section>
+
+    <section class="control-deck" aria-label="Storm report controls">
+      <div class="control-row">
+        <label class="select-control">
+          <span>Year</span>
+          <select id="yearSelect" aria-label="Report year"></select>
+        </label>
+
+        <div class="segmented" id="scopeControls" aria-label="Geographic scope">
+          <button type="button" data-value="national">National</button>
+          <button type="button" data-value="state">State</button>
+        </div>
+
+        <label class="select-control state-control" id="stateControl">
+          <span>State</span>
+          <select id="stateSelect" aria-label="State filter"></select>
+        </label>
+
+        <div class="segmented" id="hazardControls" aria-label="Report category">
+          <button type="button" data-value="all">All</button>
+          <button type="button" data-value="tornado">Tornado</button>
+          <button type="button" data-value="hail">Hail</button>
+          <button type="button" data-value="wind">Wind</button>
+        </div>
+
+        <div class="segmented" id="datasetControls" aria-label="Report dataset">
+          <button type="button" data-value="preliminary">Preliminary</button>
+          <button type="button" data-value="final">Final</button>
+        </div>
+
+        <div class="segmented" id="viewControls" aria-label="Report view">
+          <button type="button" data-value="map">Map</button>
+          <button type="button" data-value="table">Tables</button>
+          <button type="button" data-value="charts">Charts</button>
+          <button type="button" data-value="stats">STAMTS</button>
+        </div>
+      </div>
+
+      <div class="period-row" id="periodControls" aria-label="Report period"></div>
+    </section>
+
+    <section class="status-strip" id="statusStrip">
+      <div class="status-main">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span id="statusText">Preparing report explorer…</span>
+      </div>
+
+      <div class="status-actions">
+        <button class="small-action" id="refreshButton" type="button">Refresh</button>
+        <button class="small-action" id="exportCsvButton" type="button">Export CSV</button>
+        <button class="small-action" id="exportGeoJsonButton" type="button">Export GeoJSON</button>
+        <a class="small-action" id="officialSourceLink" href="https://www.spc.noaa.gov/climo/summary/" target="_blank" rel="noopener noreferrer">Official SPC</a>
+      </div>
+    </section>
+
+    <section class="summary-grid" aria-label="Report summary">
+      <article class="summary-card">
+        <span>Total reports</span>
+        <strong id="totalReports">0</strong>
+        <small id="totalReportsMeta">Current selection</small>
+      </article>
+
+      <article class="summary-card">
+        <span>Significant</span>
+        <strong id="significantReports">0</strong>
+        <small>EF2+, 2-inch hail, or 75+ mph wind</small>
+      </article>
+
+      <article class="summary-card">
+        <span>Peak period</span>
+        <strong id="peakPeriod">—</strong>
+        <small id="peakPeriodMeta">Most active report day</small>
+      </article>
+
+      <article class="summary-card">
+        <span>Top state</span>
+        <strong id="topState">—</strong>
+        <small id="topStateMeta">Most reports in selection</small>
+      </article>
+    </section>
+
+    <section class="workspace">
+      <header class="workspace-header">
+        <div>
+          <h2 id="workspaceTitle">Storm Report Summary</h2>
+          <p id="workspaceSubtitle">Loading NOAA Storm Prediction Center data…</p>
+        </div>
+        <span class="hazard-chip" id="hazardChip">All severe</span>
+      </header>
+
+      <section class="view-panel active" id="mapPanel" data-view="map">
+        <div class="map-wrap">
+          <div id="reportsMap" aria-label="Interactive severe weather report map"></div>
+          <div class="loading-overlay" id="mapLoadingOverlay"><span class="loader" aria-label="Loading"></span></div>
+          <aside class="map-legend" id="mapLegend"></aside>
+        </div>
+      </section>
+
+      <section class="view-panel table-panel" id="tablePanel" data-view="table">
+        <div class="table-tools">
+          <input id="tableSearch" type="search" placeholder="Search location, county, state, or remarks">
+          <label class="check-control">
+            <input id="significantOnly" type="checkbox">
+            Significant only
+          </label>
+          <label class="select-control">
+            <span>Rows</span>
+            <select id="rowsPerPage">
+              <option value="50">50</option>
+              <option value="100" selected>100</option>
+              <option value="250">250</option>
+            </select>
+          </label>
+          <button class="small-action" id="clearTableFilters" type="button">Clear filters</button>
+        </div>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th data-sort="dateTimeUtc">Date / Time</th>
+                <th data-sort="hazard">Hazard</th>
+                <th data-sort="magnitudeValue">Magnitude</th>
+                <th data-sort="location">Location</th>
+                <th data-sort="county">County</th>
+                <th data-sort="state">State</th>
+                <th data-sort="comments">Remarks</th>
+              </tr>
+            </thead>
+            <tbody id="reportsTableBody"></tbody>
+          </table>
+        </div>
+
+        <div class="pagination">
+          <span id="pageReadout">Page 1</span>
+          <div class="pagination-buttons">
+            <button id="previousPageButton" type="button">Previous</button>
+            <button id="nextPageButton" type="button">Next</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="view-panel charts-panel" id="chartsPanel" data-view="charts">
+        <div class="chart-grid">
+          <article class="chart-card">
+            <h3 id="timeChartTitle">Reports by day</h3>
+            <div class="bar-list" id="timeChart"></div>
+          </article>
+          <article class="chart-card">
+            <h3>Reports by hazard</h3>
+            <div class="bar-list" id="hazardChart"></div>
+          </article>
+          <article class="chart-card">
+            <h3>Top states</h3>
+            <div class="bar-list" id="stateChart"></div>
+          </article>
+          <article class="chart-card">
+            <h3>Reports by hour</h3>
+            <div class="bar-list" id="hourChart"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="view-panel stats-panel" id="statsPanel" data-view="stats">
+        <div class="stats-grid" id="statsGrid"></div>
+      </section>
+
+      <section class="empty-state" id="emptyState" hidden>
+        <div>
+          <strong>No reports match this selection</strong>
+          <p>Try another month, hazard, state, or dataset. Preliminary report days begin at 12 UTC and may be revised by SPC.</p>
+        </div>
+      </section>
+    </section>
+
+    <footer class="reports-footer">
+      <span>
+        Preliminary reports come from SPC Local Storm Report archives. Final records
+        come from SPC Storm Data files and are currently available through 2024.
+      </span>
+      <span>
+        This independent interface is not an official NOAA product. Always consult
+        the official SPC source for authoritative documentation.
+      </span>
+    </footer>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const CURRENT_DATE = new Date();
+      const FINAL_MAX_YEAR = 2024;
+      const PRELIMINARY_MIN_YEAR = 1999;
+      const FINAL_MIN_YEAR = 1950;
+
+      const MONTHS = [
+        "Annual", "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+      ];
+
+      const MONTH_SHORT = [
+        "Annual", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+      ];
+
+      const STATES = [
+        ["AL", "Alabama"], ["AK", "Alaska"], ["AZ", "Arizona"], ["AR", "Arkansas"],
+        ["CA", "California"], ["CO", "Colorado"], ["CT", "Connecticut"], ["DE", "Delaware"],
+        ["FL", "Florida"], ["GA", "Georgia"], ["HI", "Hawaii"], ["ID", "Idaho"],
+        ["IL", "Illinois"], ["IN", "Indiana"], ["IA", "Iowa"], ["KS", "Kansas"],
+        ["KY", "Kentucky"], ["LA", "Louisiana"], ["ME", "Maine"], ["MD", "Maryland"],
+        ["MA", "Massachusetts"], ["MI", "Michigan"], ["MN", "Minnesota"], ["MS", "Mississippi"],
+        ["MO", "Missouri"], ["MT", "Montana"], ["NE", "Nebraska"], ["NV", "Nevada"],
+        ["NH", "New Hampshire"], ["NJ", "New Jersey"], ["NM", "New Mexico"], ["NY", "New York"],
+        ["NC", "North Carolina"], ["ND", "North Dakota"], ["OH", "Ohio"], ["OK", "Oklahoma"],
+        ["OR", "Oregon"], ["PA", "Pennsylvania"], ["RI", "Rhode Island"], ["SC", "South Carolina"],
+        ["SD", "South Dakota"], ["TN", "Tennessee"], ["TX", "Texas"], ["UT", "Utah"],
+        ["VT", "Vermont"], ["VA", "Virginia"], ["WA", "Washington"], ["WV", "West Virginia"],
+        ["WI", "Wisconsin"], ["WY", "Wyoming"], ["DC", "District of Columbia"],
+        ["PR", "Puerto Rico"]
+      ];
+
+      const HAZARDS = {
+        all: {
+          label: "All severe",
+          color: "#f7fbff"
+        },
+        tornado: {
+          label: "Tornado",
+          color: "#ff645f"
+        },
+        hail: {
+          label: "Hail",
+          color: "#57e0ba"
+        },
+        wind: {
+          label: "Wind",
+          color: "#66caff"
+        }
+      };
+
+      const state = {
+        year: CURRENT_DATE.getUTCFullYear(),
+        month: CURRENT_DATE.getUTCMonth() + 1,
+        scope: "national",
+        stateCode: "NC",
+        hazard: "all",
+        dataset: "preliminary",
+        view: "map",
+        reports: [],
+        rawReports: [],
+        loading: false,
+        sortKey: "dateTimeUtc",
+        sortDirection: "desc",
+        page: 1,
+        rowsPerPage: 100
+      };
+
+      const dataCache = new Map();
+      const REPORT_SOURCE_ID = "storm-report-points";
+      const REPORT_LAYER_ID = "storm-report-symbols";
+      const REPORT_ICON_NAMES = [
+        "tornado-all",
+        "tornado-ef2",
+        "wind-damage",
+        "wind-measured",
+        "wind-significant",
+        "hail-small",
+        "hail-medium",
+        "hail-large"
+      ];
+
+      let map = null;
+      let reportPopup = null;
+      let plottedReportLookup = [];
+      let pendingMapRender = false;
+      let mapRenderQueued = false;
+      let tableReports = [];
+      let activeLoadToken = 0;
+
+      const els = {
+        yearSelect: document.getElementById("yearSelect"),
+        stateSelect: document.getElementById("stateSelect"),
+        stateControl: document.getElementById("stateControl"),
+        periodControls: document.getElementById("periodControls"),
+        statusStrip: document.getElementById("statusStrip"),
+        statusText: document.getElementById("statusText"),
+        refreshButton: document.getElementById("refreshButton"),
+        exportCsvButton: document.getElementById("exportCsvButton"),
+        exportGeoJsonButton: document.getElementById("exportGeoJsonButton"),
+        officialSourceLink: document.getElementById("officialSourceLink"),
+        totalReports: document.getElementById("totalReports"),
+        totalReportsMeta: document.getElementById("totalReportsMeta"),
+        significantReports: document.getElementById("significantReports"),
+        peakPeriod: document.getElementById("peakPeriod"),
+        peakPeriodMeta: document.getElementById("peakPeriodMeta"),
+        topState: document.getElementById("topState"),
+        topStateMeta: document.getElementById("topStateMeta"),
+        workspaceTitle: document.getElementById("workspaceTitle"),
+        workspaceSubtitle: document.getElementById("workspaceSubtitle"),
+        hazardChip: document.getElementById("hazardChip"),
+        mapPanel: document.getElementById("mapPanel"),
+        tablePanel: document.getElementById("tablePanel"),
+        chartsPanel: document.getElementById("chartsPanel"),
+        statsPanel: document.getElementById("statsPanel"),
+        emptyState: document.getElementById("emptyState"),
+        mapLegend: document.getElementById("mapLegend"),
+        mapLoadingOverlay: document.getElementById("mapLoadingOverlay"),
+        tableSearch: document.getElementById("tableSearch"),
+        significantOnly: document.getElementById("significantOnly"),
+        rowsPerPage: document.getElementById("rowsPerPage"),
+        clearTableFilters: document.getElementById("clearTableFilters"),
+        reportsTableBody: document.getElementById("reportsTableBody"),
+        pageReadout: document.getElementById("pageReadout"),
+        previousPageButton: document.getElementById("previousPageButton"),
+        nextPageButton: document.getElementById("nextPageButton"),
+        timeChartTitle: document.getElementById("timeChartTitle"),
+        timeChart: document.getElementById("timeChart"),
+        hazardChart: document.getElementById("hazardChart"),
+        stateChart: document.getElementById("stateChart"),
+        hourChart: document.getElementById("hourChart"),
+        statsGrid: document.getElementById("statsGrid"),
+        mobileNavToggle: document.getElementById("mobileNavToggle"),
+        siteNav: document.getElementById("siteNav")
+      };
+
+      function clean(value) {
+        return String(value ?? "").replace(/\s+/g, " ").trim();
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      function integer(value, fallback) {
+        const number = Number(value);
+        return Number.isInteger(number) ? number : fallback;
+      }
+
+      function localApiBase() {
+        if (
+          ["localhost", "127.0.0.1"].includes(window.location.hostname) &&
+          window.location.port !== "8787"
+        ) {
+          return "http://127.0.0.1:8787";
+        }
+
+        return "";
+      }
+
+      function apiUrl(year, month, hazard, dataset) {
+        const url = new URL(
+          `${localApiBase()}/api/storm-reports`,
+          window.location.origin
+        );
+
+        url.searchParams.set("year", String(year));
+        url.searchParams.set("month", String(month));
+        url.searchParams.set("hazard", hazard);
+        url.searchParams.set("dataset", dataset);
+
+        return url.toString();
+      }
+
+      function readUrlState() {
+        const params = new URLSearchParams(window.location.search);
+        const currentYear = CURRENT_DATE.getUTCFullYear();
+        const year = integer(params.get("year"), currentYear);
+        const month = integer(params.get("month"), CURRENT_DATE.getUTCMonth() + 1);
+        const scope = params.get("scope");
+        const stateCode = clean(params.get("state")).toUpperCase();
+        const hazard = params.get("type") || params.get("hazard");
+        const dataset = params.get("dataset");
+        const view = params.get("view");
+
+        state.year = Math.max(FINAL_MIN_YEAR, Math.min(currentYear, year));
+        state.month = Math.max(0, Math.min(12, month));
+        state.scope = ["national", "state"].includes(scope) ? scope : "national";
+        state.stateCode = STATES.some(([code]) => code === stateCode)
+          ? stateCode
+          : "NC";
+        state.hazard = Object.hasOwn(HAZARDS, hazard) ? hazard : "all";
+        state.dataset = ["preliminary", "final"].includes(dataset)
+          ? dataset
+          : "preliminary";
+        state.view = ["map", "table", "charts", "stats"].includes(view)
+          ? view
+          : "map";
+
+        if (state.dataset === "final" && state.year > FINAL_MAX_YEAR) {
+          state.dataset = "preliminary";
+        }
+
+        if (state.dataset === "preliminary" && state.year < PRELIMINARY_MIN_YEAR) {
+          state.dataset = "final";
+        }
+      }
+
+      function writeUrlState() {
+        const url = new URL(window.location.href);
+        url.searchParams.set("year", String(state.year));
+        url.searchParams.set("month", String(state.month));
+        url.searchParams.set("scope", state.scope);
+        url.searchParams.set("state", state.stateCode);
+        url.searchParams.set("type", state.hazard);
+        url.searchParams.set("dataset", state.dataset);
+        url.searchParams.set("view", state.view);
+        history.replaceState(null, "", url);
+      }
+
+      function buildYearOptions() {
+        const currentYear = CURRENT_DATE.getUTCFullYear();
+        const fragment = document.createDocumentFragment();
+
+        for (let year = currentYear; year >= FINAL_MIN_YEAR; year -= 1) {
+          const option = document.createElement("option");
+          option.value = String(year);
+          option.textContent = String(year);
+          fragment.appendChild(option);
+        }
+
+        els.yearSelect.replaceChildren(fragment);
+        els.yearSelect.value = String(state.year);
+      }
+
+      function buildStateOptions() {
+        const fragment = document.createDocumentFragment();
+
+        for (const [code, name] of STATES) {
+          const option = document.createElement("option");
+          option.value = code;
+          option.textContent = `${code} — ${name}`;
+          fragment.appendChild(option);
+        }
+
+        els.stateSelect.replaceChildren(fragment);
+        els.stateSelect.value = state.stateCode;
+      }
+
+      function buildPeriodControls() {
+        els.periodControls.innerHTML = MONTH_SHORT.map((label, month) => `
+          <button type="button" data-month="${month}">
+            ${escapeHtml(label)}
+          </button>
+        `).join("");
+      }
+
+      function setSegmentedActive(containerId, value) {
+        document.querySelectorAll(`#${containerId} button`).forEach((button) => {
+          button.classList.toggle("active", button.dataset.value === value);
+        });
+      }
+
+      function syncControls() {
+        els.yearSelect.value = String(state.year);
+        els.stateSelect.value = state.stateCode;
+        els.stateControl.classList.toggle("visible", state.scope === "state");
+
+        setSegmentedActive("scopeControls", state.scope);
+        setSegmentedActive("hazardControls", state.hazard);
+        setSegmentedActive("datasetControls", state.dataset);
+        setSegmentedActive("viewControls", state.view);
+
+        document.querySelectorAll("#periodControls button").forEach((button) => {
+          button.classList.toggle(
+            "active",
+            Number(button.dataset.month) === state.month
+          );
+        });
+
+        const finalButton = document.querySelector(
+          '#datasetControls button[data-value="final"]'
+        );
+        const preliminaryButton = document.querySelector(
+          '#datasetControls button[data-value="preliminary"]'
+        );
+
+        finalButton.disabled = state.year > FINAL_MAX_YEAR;
+        finalButton.title = finalButton.disabled
+          ? `Final SPC Storm Data are currently available through ${FINAL_MAX_YEAR}.`
+          : "";
+
+        preliminaryButton.disabled = state.year < PRELIMINARY_MIN_YEAR;
+        preliminaryButton.title = preliminaryButton.disabled
+          ? "SPC preliminary daily archives begin in 1999."
+          : "";
+
+        document.querySelectorAll(".view-panel").forEach((panel) => {
+          panel.classList.toggle("active", panel.dataset.view === state.view);
+        });
+
+        els.emptyState.hidden = true;
+        writeUrlState();
+
+        if (state.view === "map" && map) {
+          window.setTimeout(() => map.resize(), 80);
+        }
+      }
+
+      function setLoading(loading, message = "") {
+        state.loading = loading;
+        els.statusStrip.classList.toggle("loading", loading);
+        els.statusStrip.classList.remove("error");
+        els.mapLoadingOverlay.classList.toggle("visible", loading);
+
+        if (message) {
+          els.statusText.textContent = message;
+        }
+      }
+
+      function setError(message) {
+        state.loading = false;
+        els.statusStrip.classList.remove("loading");
+        els.statusStrip.classList.add("error");
+        els.mapLoadingOverlay.classList.remove("visible");
+        els.statusText.textContent = message;
+      }
+
+      function selectedPeriodLabel() {
+        return state.month === 0
+          ? `${state.year} Annual`
+          : `${MONTHS[state.month]} ${state.year}`;
+      }
+
+      function selectedScopeLabel() {
+        return state.scope === "state"
+          ? state.stateCode
+          : "National";
+      }
+
+      function selectedHazardLabel() {
+        return HAZARDS[state.hazard]?.label || "All severe";
+      }
+
+      function selectedDatasetLabel() {
+        return state.dataset === "final" ? "Final" : "Preliminary";
+      }
+
+      function updateWorkspaceHeader() {
+        const period = selectedPeriodLabel();
+        const hazard = selectedHazardLabel();
+        const dataset = selectedDatasetLabel();
+        const scope = selectedScopeLabel();
+
+        els.workspaceTitle.textContent =
+          `${period} ${dataset} ${hazard} Summary`;
+
+        els.workspaceSubtitle.textContent =
+          `${scope} • ${state.reports.length.toLocaleString("en-US")} reports`;
+
+        els.hazardChip.textContent = hazard;
+        els.hazardChip.style.color = HAZARDS[state.hazard]?.color || "#f7fbff";
+        els.hazardChip.style.borderColor =
+          `${HAZARDS[state.hazard]?.color || "#62c9ff"}66`;
+
+        els.totalReportsMeta.textContent =
+          `${scope} • ${dataset.toLowerCase()} dataset`;
+      }
+
+      function hazardsToLoad() {
+        return state.hazard === "all"
+          ? ["tornado", "hail", "wind"]
+          : [state.hazard];
+      }
+
+      function monthsToLoad() {
+        return state.month === 0
+          ? Array.from({ length: 12 }, (_, index) => index + 1)
+          : [state.month];
+      }
+
+      async function mapWithConcurrency(items, concurrency, mapper) {
+        const results = new Array(items.length);
+        let nextIndex = 0;
+
+        async function worker() {
+          while (true) {
+            const index = nextIndex;
+            nextIndex += 1;
+
+            if (index >= items.length) return;
+            results[index] = await mapper(items[index], index);
+          }
+        }
+
+        await Promise.all(
+          Array.from(
+            { length: Math.min(concurrency, items.length) },
+            () => worker()
+          )
+        );
+
+        return results;
+      }
+
+      async function fetchDataset(year, month, hazard, dataset) {
+        const key = [dataset, year, month, hazard].join(":");
+
+        if (dataCache.has(key)) {
+          return dataCache.get(key);
+        }
+
+        const response = await fetch(
+          apiUrl(year, month, hazard, dataset),
+          { cache: "no-store" }
+        );
+
+        if (!response.ok) {
+          const detail = await response.text().catch(() => "");
+          throw new Error(
+            `Storm report API returned ${response.status}` +
+            (detail ? `: ${detail.slice(0, 180)}` : "")
+          );
+        }
+
+        const payload = await response.json();
+        dataCache.set(key, payload);
+        return payload;
+      }
+
+      async function loadReports(force = false) {
+        const token = ++activeLoadToken;
+        const hazards = hazardsToLoad();
+        const months = monthsToLoad();
+        const jobs = [];
+
+        for (const month of months) {
+          for (const hazard of hazards) {
+            jobs.push({
+              year: state.year,
+              month,
+              hazard,
+              dataset: state.dataset
+            });
+          }
+        }
+
+        if (force) {
+          for (const job of jobs) {
+            dataCache.delete(
+              [job.dataset, job.year, job.month, job.hazard].join(":")
+            );
+          }
+        }
+
+        setLoading(
+          true,
+          `Loading ${jobs.length} SPC dataset${jobs.length === 1 ? "" : "s"}…`
+        );
+
+        let completed = 0;
+
+        try {
+          const payloads = await mapWithConcurrency(
+            jobs,
+            state.month === 0 ? 3 : 4,
+            async (job) => {
+              const payload = await fetchDataset(
+                job.year,
+                job.month,
+                job.hazard,
+                job.dataset
+              );
+
+              completed += 1;
+
+              if (token === activeLoadToken) {
+                els.statusText.textContent =
+                  `Loaded ${completed} of ${jobs.length} SPC datasets…`;
+              }
+
+              return payload;
+            }
+          );
+
+          if (token !== activeLoadToken) return;
+
+          const reports = payloads.flatMap((payload) =>
+            Array.isArray(payload?.reports) ? payload.reports : []
+          );
+
+          state.rawReports = reports;
+          state.reports = state.scope === "state"
+            ? reports.filter((report) => report.state === state.stateCode)
+            : reports;
+
+          state.reports.sort((a, b) =>
+            String(b.dateTimeUtc || b.eventDate || "")
+              .localeCompare(String(a.dateTimeUtc || a.eventDate || ""))
+          );
+
+          state.page = 1;
+          setLoading(
+            false,
+            `${state.reports.length.toLocaleString("en-US")} reports loaded from SPC.`
+          );
+
+          renderAll();
+        } catch (error) {
+          console.error(error);
+
+          if (token === activeLoadToken) {
+            state.rawReports = [];
+            state.reports = [];
+            setError(
+              `Unable to load storm reports: ${error.message || error}`
+            );
+            renderAll();
+          }
+        }
+      }
+
+      function countBy(reports, getter) {
+        const counts = new Map();
+
+        for (const report of reports) {
+          const key = clean(getter(report)) || "Unknown";
+          counts.set(key, (counts.get(key) || 0) + 1);
+        }
+
+        return [...counts.entries()]
+          .map(([label, count]) => ({ label, count }))
+          .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+      }
+
+      function reportDayLabel(report) {
+        const value = clean(report.eventDate || report.reportDay);
+
+        if (!value) return "Unknown";
+
+        const date = new Date(`${value}T12:00:00Z`);
+
+        if (Number.isNaN(date.getTime())) return value;
+
+        return new Intl.DateTimeFormat("en-US", {
+          month: "short",
+          day: "numeric",
+          timeZone: "UTC"
+        }).format(date);
+      }
+
+      function reportMonthLabel(report) {
+        const value = clean(report.eventDate || report.reportDay);
+        const date = new Date(`${value}T12:00:00Z`);
+
+        if (Number.isNaN(date.getTime())) return value.slice(0, 7) || "Unknown";
+
+        return new Intl.DateTimeFormat("en-US", {
+          month: "short",
+          timeZone: "UTC"
+        }).format(date);
+      }
+
+      function updateSummary() {
+        const reports = state.reports;
+        const significant = reports.filter((report) => report.significant);
+        const timeCounts = countBy(
+          reports,
+          state.month === 0 ? reportMonthLabel : reportDayLabel
+        );
+        const stateCounts = countBy(reports, (report) => report.state);
+
+        els.totalReports.textContent =
+          reports.length.toLocaleString("en-US");
+        els.significantReports.textContent =
+          significant.length.toLocaleString("en-US");
+
+        els.peakPeriod.textContent = timeCounts[0]?.label || "—";
+        els.peakPeriodMeta.textContent = timeCounts[0]
+          ? `${timeCounts[0].count.toLocaleString("en-US")} reports`
+          : "Most active report period";
+
+        els.topState.textContent = stateCounts[0]?.label || "—";
+        els.topStateMeta.textContent = stateCounts[0]
+          ? `${stateCounts[0].count.toLocaleString("en-US")} reports`
+          : "Most reports in selection";
+      }
+
+      function drawReportIcon(markerCategory) {
+        const size = 64;
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+
+        const context = canvas.getContext("2d", {
+          alpha: true,
+          willReadFrequently: true
+        });
+
+        if (!context) {
+          throw new Error("Canvas rendering is unavailable for report icons.");
+        }
+
+        context.clearRect(0, 0, size, size);
+        context.lineJoin = "round";
+        context.lineCap = "round";
+        context.lineWidth = 3;
+        context.shadowBlur = 7;
+        context.shadowOffsetX = 0;
+        context.shadowOffsetY = 0;
+
+        const triangle = (points, fill, stroke, shadow) => {
+          context.beginPath();
+          context.moveTo(points[0][0], points[0][1]);
+          for (const [x, y] of points.slice(1)) {
+            context.lineTo(x, y);
+          }
+          context.closePath();
+          context.fillStyle = fill;
+          context.strokeStyle = stroke;
+          context.shadowColor = shadow;
+          context.fill();
+          context.stroke();
+        };
+
+        const square = (x, y, side, fill, stroke, shadow) => {
+          context.beginPath();
+          context.rect(x, y, side, side);
+          context.fillStyle = fill;
+          context.strokeStyle = stroke;
+          context.shadowColor = shadow;
+          context.fill();
+          context.stroke();
+        };
+
+        const circle = (radius, fill, stroke, shadow) => {
+          context.beginPath();
+          context.arc(32, 32, radius, 0, Math.PI * 2);
+          context.fillStyle = fill;
+          context.strokeStyle = stroke;
+          context.shadowColor = shadow;
+          context.fill();
+          context.stroke();
+        };
+
+        switch (markerCategory) {
+          case "tornado-all":
+            triangle(
+              [[32, 48], [21, 25], [43, 25]],
+              "#ff6b72",
+              "#ffd3d6",
+              "rgba(255, 70, 82, 0.72)"
+            );
+            break;
+          case "tornado-ef2":
+            triangle(
+              [[32, 52], [17, 21], [47, 21]],
+              "#ff263b",
+              "#ffe1e4",
+              "rgba(255, 38, 59, 0.82)"
+            );
+            break;
+          case "wind-measured":
+            square(
+              21, 21, 22,
+              "#2daeff",
+              "#e2f6ff",
+              "rgba(45, 174, 255, 0.72)"
+            );
+            break;
+          case "wind-significant":
+            square(
+              18, 18, 28,
+              "#007bd9",
+              "#dff4ff",
+              "rgba(0, 123, 217, 0.78)"
+            );
+            break;
+          case "hail-small":
+            circle(
+              8,
+              "#a5ff73",
+              "#efffe7",
+              "rgba(165, 255, 115, 0.64)"
+            );
+            break;
+          case "hail-medium":
+            circle(
+              11,
+              "#35d65a",
+              "#eaffeb",
+              "rgba(53, 214, 90, 0.7)"
+            );
+            break;
+          case "hail-large":
+            circle(
+              14,
+              "#00a33f",
+              "#e5ffe9",
+              "rgba(0, 163, 63, 0.76)"
+            );
+            break;
+          case "wind-damage":
+          default:
+            square(
+              24, 24, 16,
+              "#82ddff",
+              "#e4f8ff",
+              "rgba(130, 221, 255, 0.68)"
+            );
+            break;
+        }
+
+        context.shadowColor = "transparent";
+        return context.getImageData(0, 0, size, size);
+      }
+
+      function ensureReportImage(iconName) {
+        if (
+          !map ||
+          !REPORT_ICON_NAMES.includes(iconName) ||
+          map.hasImage(iconName)
+        ) {
+          return;
+        }
+
+        map.addImage(iconName, drawReportIcon(iconName), {
+          pixelRatio: 2
+        });
+      }
+
+      function registerReportImages() {
+        for (const iconName of REPORT_ICON_NAMES) {
+          ensureReportImage(iconName);
+        }
+      }
+
+      function emptyReportFeatureCollection() {
+        return {
+          type: "FeatureCollection",
+          features: []
+        };
+      }
+
+      function ensureReportSourceAndLayer() {
+        if (!map.getSource(REPORT_SOURCE_ID)) {
+          map.addSource(REPORT_SOURCE_ID, {
+            type: "geojson",
+            data: emptyReportFeatureCollection()
+          });
+        }
+
+        if (!map.getLayer(REPORT_LAYER_ID)) {
+          map.addLayer({
+            id: REPORT_LAYER_ID,
+            type: "symbol",
+            source: REPORT_SOURCE_ID,
+            layout: {
+              "icon-image": ["get", "markerCategory"],
+              "icon-size": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                3, 0.78,
+                4, 0.86,
+                6, 1.0,
+                8, 1.18,
+                10, 1.38,
+                13, 1.55
+              ],
+              "icon-anchor": "center",
+              "icon-allow-overlap": true,
+              "icon-ignore-placement": true,
+              "icon-rotation-alignment": "viewport",
+              "icon-pitch-alignment": "viewport"
+            },
+            paint: {
+              "icon-opacity": 0.98
+            }
+          });
+        }
+      }
+
+      function reportPopupHtml(report) {
+        return `
+          <div class="report-popup">
+            <strong>${escapeHtml(
+              `${report.magnitude || HAZARDS[report.hazard]?.label || "Storm report"}`
+            )}</strong>
+            <span>${escapeHtml(reportTimeDisplay(report))}</span>
+            <span>${escapeHtml(
+              [report.location, report.county, report.state]
+                .filter(Boolean)
+                .join(" • ")
+            )}</span>
+            ${report.comments
+              ? `<span>${escapeHtml(report.comments)}</span>`
+              : ""}
+            ${report.significant
+              ? '<span class="significant-flag">Significant severe report</span>'
+              : ""}
+          </div>
+        `;
+      }
+
+      function reportAtMapEvent(event) {
+        const directFeature = event.features?.[0];
+
+        if (directFeature) {
+          const directIndex = Number(directFeature.properties?.reportIndex);
+          return plottedReportLookup[directIndex] || null;
+        }
+
+        const point = event.point;
+        const hitBox = [
+          [point.x - 8, point.y - 8],
+          [point.x + 8, point.y + 8]
+        ];
+        const features = map.queryRenderedFeatures(hitBox, {
+          layers: [REPORT_LAYER_ID]
+        });
+        const index = Number(features[0]?.properties?.reportIndex);
+        return plottedReportLookup[index] || null;
+      }
+
+      function openReportPopup(event) {
+        const report = reportAtMapEvent(event);
+        if (!report) return;
+
+        reportPopup?.remove();
+        reportPopup = new mapboxgl.Popup({
+          closeButton: true,
+          closeOnClick: true,
+          maxWidth: "360px",
+          offset: 10
+        })
+          .setLngLat([Number(report.lon), Number(report.lat)])
+          .setHTML(reportPopupHtml(report))
+          .addTo(map);
+      }
+
+      function positionMapboxLogoAboveAttribution() {
+        const controlContainer =
+          els.map?.querySelector(".mapboxgl-control-container");
+
+        const logo =
+          controlContainer?.querySelector(".mapboxgl-ctrl-logo");
+
+        const bottomRight =
+          controlContainer?.querySelector(".mapboxgl-ctrl-bottom-right");
+
+        if (!logo || !bottomRight) return;
+
+        if (logo.parentElement !== bottomRight) {
+          bottomRight.appendChild(logo);
+        }
+
+        logo.classList.add("storm-report-mapbox-logo-right");
+      }
+
+      function ensureMap() {
+        if (map) return;
+
+        const token = clean(window.MAPBOX_PUBLIC_TOKEN);
+
+        if (!window.mapboxgl || !token) {
+          els.statusStrip.classList.add("error");
+          els.statusText.textContent =
+            "Mapbox failed to initialize. Check mapbox-token.js.";
+          return;
+        }
+
+        mapboxgl.accessToken = token;
+
+        map = new mapboxgl.Map({
+          container: "reportsMap",
+          style: "mapbox://styles/mapbox/dark-v11",
+          center: [-97.3, 38.3],
+          zoom: 3.4,
+          minZoom: 2.5,
+          maxZoom: 14,
+          maxPitch: 0,
+          dragRotate: false,
+          pitchWithRotate: false,
+          touchPitch: false,
+          attributionControl: true,
+          logoPosition: "bottom-right",
+          antialias: true
+        });
+
+        map.addControl(
+          new mapboxgl.NavigationControl({
+            showCompass: false,
+            visualizePitch: false
+          }),
+          "top-left"
+        );
+
+        const restoreReportMapStyle = () => {
+          positionMapboxLogoAboveAttribution();
+          registerReportImages();
+          ensureReportSourceAndLayer();
+
+          if (pendingMapRender || state.reports.length) {
+            pendingMapRender = false;
+            renderMap();
+          }
+        };
+
+        window.requestAnimationFrame(
+          positionMapboxLogoAboveAttribution
+        );
+
+        map.on("style.load", restoreReportMapStyle);
+
+        map.on("styleimagemissing", (event) => {
+          ensureReportImage(event.id);
+        });
+
+        map.on("idle", () => {
+          if (!pendingMapRender || mapRenderQueued) return;
+
+          mapRenderQueued = true;
+
+          window.requestAnimationFrame(() => {
+            mapRenderQueued = false;
+
+            if (!pendingMapRender) return;
+
+            pendingMapRender = false;
+            renderMap();
+          });
+        });
+
+        map.on("click", REPORT_LAYER_ID, openReportPopup);
+        map.on("mouseenter", REPORT_LAYER_ID, () => {
+          map.getCanvas().style.cursor = "pointer";
+        });
+        map.on("mouseleave", REPORT_LAYER_ID, () => {
+          map.getCanvas().style.cursor = "";
+        });
+
+        map.on("error", (event) => {
+          console.error("Storm report Mapbox error:", event?.error || event);
+        });
+      }
+
+      function validCoordinate(report) {
+        return (
+          Number.isFinite(Number(report.lat)) &&
+          Number.isFinite(Number(report.lon)) &&
+          Math.abs(Number(report.lat)) <= 90 &&
+          Math.abs(Number(report.lon)) <= 180
+        );
+      }
+
+      function reportTimeDisplay(report) {
+        const value = clean(report.dateTimeUtc);
+
+        if (value) {
+          const date = new Date(value);
+
+          if (!Number.isNaN(date.getTime())) {
+            return new Intl.DateTimeFormat("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+              timeZone: "UTC",
+              timeZoneName: "short"
+            }).format(date);
+          }
+        }
+
+        return [clean(report.eventDate), clean(report.timeLabel)]
+          .filter(Boolean)
+          .join(" ") || "Time unavailable";
+      }
+
+      function reportMagnitudeNumber(report) {
+        const raw = report?.magnitudeValue;
+
+        if (raw === null || raw === undefined || raw === "") {
+          return null;
+        }
+
+        const value = Number(raw);
+        return Number.isFinite(value) ? value : null;
+      }
+
+      function reportMarkerCategory(report) {
+        const magnitude = reportMagnitudeNumber(report);
+
+        if (report.hazard === "tornado") {
+          return report.significant ||
+            (magnitude !== null && magnitude >= 2)
+            ? "tornado-ef2"
+            : "tornado-all";
+        }
+
+        if (report.hazard === "wind") {
+          if (
+            report.significant ||
+            (magnitude !== null && magnitude >= 75)
+          ) {
+            return "wind-significant";
+          }
+
+          return magnitude !== null
+            ? "wind-measured"
+            : "wind-damage";
+        }
+
+        if (report.hazard === "hail") {
+          if (magnitude !== null && magnitude >= 2) {
+            return "hail-large";
+          }
+
+          if (magnitude !== null && magnitude >= 1.25) {
+            return "hail-medium";
+          }
+
+          return "hail-small";
+        }
+
+        return "wind-damage";
+      }
+
+      function renderMapLegend() {
+        const tornadoReports = state.reports.filter(
+          (report) => report.hazard === "tornado"
+        );
+        const hailReports = state.reports.filter(
+          (report) => report.hazard === "hail"
+        );
+        const windReports = state.reports.filter(
+          (report) => report.hazard === "wind"
+        );
+
+        const numericMagnitude = reportMagnitudeNumber;
+
+        const tornadoSection = `
+          <section class="legend-hazard-section">
+            <div class="legend-hazard-heading tornado">
+              <span>Tornadoes</span>
+              <b>${tornadoReports.length.toLocaleString("en-US")}</b>
+            </div>
+            <div class="legend-detail-row tornado tornado-all-row">
+              <span class="legend-symbol tornado-all-symbol" aria-hidden="true"></span>
+              <span>All reports</span>
+              <b>${tornadoReports.length.toLocaleString("en-US")}</b>
+            </div>
+            <div class="legend-detail-row tornado tornado-ef2-row">
+              <span class="legend-symbol tornado-ef2-symbol" aria-hidden="true"></span>
+              <span>Possible EF2+</span>
+              <b>${tornadoReports.filter(
+                (report) => report.significant
+              ).length.toLocaleString("en-US")}</b>
+            </div>
+          </section>
+        `;
+
+        const windDamage = windReports.filter(
+          (report) => numericMagnitude(report) === null
+        ).length;
+
+        const measuredWind = windReports.filter(
+          (report) => numericMagnitude(report) !== null
+        ).length;
+
+        const significantWind = windReports.filter((report) => {
+          const value = numericMagnitude(report);
+          return report.significant || (value !== null && value >= 75);
+        }).length;
+
+        const windSection = `
+          <section class="legend-hazard-section">
+            <div class="legend-hazard-heading wind">
+              <span>Severe Wind</span>
+              <b>${windReports.length.toLocaleString("en-US")}</b>
+            </div>
+            <div class="legend-detail-row wind wind-damage-row">
+              <span class="legend-symbol wind-damage-symbol" aria-hidden="true"></span>
+              <span>Wind damage</span>
+              <b>${windDamage.toLocaleString("en-US")}</b>
+            </div>
+            <div class="legend-detail-row wind wind-measured-row">
+              <span class="legend-symbol wind-measured-symbol" aria-hidden="true"></span>
+              <span>Measured gusts</span>
+              <b>${measuredWind.toLocaleString("en-US")}</b>
+            </div>
+            <div class="legend-detail-row wind wind-significant-row">
+              <span class="legend-symbol wind-significant-symbol" aria-hidden="true"></span>
+              <span>Meas. gusts ≥75 mph</span>
+              <b>${significantWind.toLocaleString("en-US")}</b>
+            </div>
+          </section>
+        `;
+
+        const hailOneTo124 = hailReports.filter((report) => {
+          const value = numericMagnitude(report);
+          return value !== null && value >= 1 && value < 1.25;
+        }).length;
+
+        const hail125To199 = hailReports.filter((report) => {
+          const value = numericMagnitude(report);
+          return value !== null && value >= 1.25 && value < 2;
+        }).length;
+
+        const hailTwoPlus = hailReports.filter((report) => {
+          const value = numericMagnitude(report);
+          return value !== null && value >= 2;
+        }).length;
+
+        const hailSection = `
+          <section class="legend-hazard-section">
+            <div class="legend-hazard-heading hail">
+              <span>Severe Hail</span>
+              <b>${hailReports.length.toLocaleString("en-US")}</b>
+            </div>
+            <div class="legend-detail-row hail hail-small-row">
+              <span class="legend-symbol hail-small-symbol" aria-hidden="true"></span>
+              <span>Hail 1.00–1.24 in.</span>
+              <b>${hailOneTo124.toLocaleString("en-US")}</b>
+            </div>
+            <div class="legend-detail-row hail hail-medium-row">
+              <span class="legend-symbol hail-medium-symbol" aria-hidden="true"></span>
+              <span>Hail 1.25–1.99 in.</span>
+              <b>${hail125To199.toLocaleString("en-US")}</b>
+            </div>
+            <div class="legend-detail-row hail hail-large-row">
+              <span class="legend-symbol hail-large-symbol" aria-hidden="true"></span>
+              <span>Hail 2.00+ in.</span>
+              <b>${hailTwoPlus.toLocaleString("en-US")}</b>
+            </div>
+          </section>
+        `;
+
+        const sections = state.hazard === "all"
+          ? [tornadoSection, windSection, hailSection]
+          : state.hazard === "tornado"
+            ? [tornadoSection]
+            : state.hazard === "wind"
+              ? [windSection]
+              : [hailSection];
+
+        els.mapLegend.innerHTML = `
+          <strong>Storm Reports Legend</strong>
+          ${sections.join("")}
+        `;
+      }
+
+      function renderMap() {
+        ensureMap();
+        renderMapLegend();
+
+        if (!map || !map.isStyleLoaded()) {
+          pendingMapRender = true;
+          return;
+        }
+
+        pendingMapRender = false;
+        registerReportImages();
+        ensureReportSourceAndLayer();
+        reportPopup?.remove();
+        reportPopup = null;
+
+        const reportsWithCoordinates = state.reports.filter(validCoordinate);
+        const maxMarkers = 50000;
+        const plotted = reportsWithCoordinates.length > maxMarkers
+          ? reportsWithCoordinates.filter(
+              (_, index) =>
+                index % Math.ceil(reportsWithCoordinates.length / maxMarkers) === 0
+            )
+          : reportsWithCoordinates;
+
+        plottedReportLookup = plotted;
+
+        const featureCollection = {
+          type: "FeatureCollection",
+          features: plotted.map((report, reportIndex) => ({
+            type: "Feature",
+            geometry: {
+              type: "Point",
+              coordinates: [Number(report.lon), Number(report.lat)]
+            },
+            properties: {
+              reportIndex,
+              markerCategory: reportMarkerCategory(report),
+              hazard: report.hazard,
+              significant: Boolean(report.significant)
+            }
+          }))
+        };
+
+        map.getSource(REPORT_SOURCE_ID).setData(featureCollection);
+
+        if (state.scope === "national" || !plotted.length) {
+          map.jumpTo({
+            center: [-97.3, 38.3],
+            zoom: 3.4,
+            bearing: 0,
+            pitch: 0
+          });
+        } else {
+          const bounds = new mapboxgl.LngLatBounds();
+
+          for (const report of plotted) {
+            bounds.extend([Number(report.lon), Number(report.lat)]);
+          }
+
+          if (!bounds.isEmpty()) {
+            map.fitBounds(bounds, {
+              padding: 42,
+              maxZoom: 8,
+              duration: 0
+            });
+          }
+        }
+
+        if (reportsWithCoordinates.length > maxMarkers) {
+          els.statusText.textContent =
+            `${state.reports.length.toLocaleString("en-US")} reports loaded; ` +
+            `${plotted.length.toLocaleString("en-US")} representative markers plotted for performance.`;
+        }
+
+        window.setTimeout(() => map.resize(), 60);
+      }
+
+      function filteredTableReports() {
+        const query = clean(els.tableSearch.value).toLowerCase();
+        const significantOnly = els.significantOnly.checked;
+
+        return state.reports.filter((report) => {
+          if (significantOnly && !report.significant) return false;
+          if (!query) return true;
+
+          return [
+            report.hazard,
+            report.magnitude,
+            report.location,
+            report.county,
+            report.state,
+            report.comments,
+            report.eventDate
+          ].some((value) => clean(value).toLowerCase().includes(query));
+        });
+      }
+
+      function comparableValue(report, key) {
+        if (key === "magnitudeValue") {
+          const number = Number(report[key]);
+          return Number.isFinite(number) ? number : -Infinity;
+        }
+
+        return clean(report[key]).toLowerCase();
+      }
+
+      function renderTable() {
+        tableReports = filteredTableReports().slice().sort((a, b) => {
+          const aValue = comparableValue(a, state.sortKey);
+          const bValue = comparableValue(b, state.sortKey);
+
+          if (aValue < bValue) return state.sortDirection === "asc" ? -1 : 1;
+          if (aValue > bValue) return state.sortDirection === "asc" ? 1 : -1;
+          return 0;
+        });
+
+        state.rowsPerPage = Number(els.rowsPerPage.value) || 100;
+        const totalPages = Math.max(
+          1,
+          Math.ceil(tableReports.length / state.rowsPerPage)
+        );
+
+        state.page = Math.min(state.page, totalPages);
+
+        const start = (state.page - 1) * state.rowsPerPage;
+        const rows = tableReports.slice(start, start + state.rowsPerPage);
+
+        els.reportsTableBody.innerHTML = rows.map((report) => `
+          <tr>
+            <td>${escapeHtml(reportTimeDisplay(report))}</td>
+            <td>
+              <span class="hazard-label ${escapeHtml(report.hazard)}">
+                ${escapeHtml(HAZARDS[report.hazard]?.label || report.hazard)}
+              </span>
+              ${report.significant
+                ? '<div class="significant-flag">Significant</div>'
+                : ""}
+            </td>
+            <td>${escapeHtml(report.magnitude || "—")}</td>
+            <td>${escapeHtml(report.location || "—")}</td>
+            <td>${escapeHtml(report.county || "—")}</td>
+            <td>${escapeHtml(report.state || "—")}</td>
+            <td>${escapeHtml(report.comments || "—")}</td>
+          </tr>
+        `).join("");
+
+        els.pageReadout.textContent =
+          `${tableReports.length.toLocaleString("en-US")} reports • ` +
+          `Page ${state.page} of ${totalPages}`;
+
+        els.previousPageButton.disabled = state.page <= 1;
+        els.nextPageButton.disabled = state.page >= totalPages;
+      }
+
+      function renderBars(container, items, limit = 20) {
+        const visible = items.slice(0, limit);
+        const max = Math.max(1, ...visible.map((item) => item.count));
+
+        container.innerHTML = visible.length
+          ? visible.map((item) => `
+              <div class="bar-row">
+                <span class="bar-label" title="${escapeHtml(item.label)}">
+                  ${escapeHtml(item.label)}
+                </span>
+                <span class="bar-track">
+                  <i class="bar-fill"
+                    style="--bar-width:${Math.max(2, (item.count / max) * 100)}%"></i>
+                </span>
+                <strong class="bar-value">${item.count.toLocaleString("en-US")}</strong>
+              </div>
+            `).join("")
+          : '<div class="empty-state"><div><strong>No chart data</strong></div></div>';
+      }
+
+      function hourLabel(report) {
+        const raw = clean(report.timeRaw || report.timeLabel);
+        const digits = raw.replace(/\D/g, "").padStart(4, "0").slice(-4);
+        const hour = Number(digits.slice(0, 2));
+
+        return Number.isFinite(hour)
+          ? `${String(hour).padStart(2, "0")}Z`
+          : "Unknown";
+      }
+
+      function renderCharts() {
+        const periodCounts = countBy(
+          state.reports,
+          state.month === 0 ? reportMonthLabel : reportDayLabel
+        ).sort((a, b) => {
+          if (state.month === 0) {
+            return MONTH_SHORT.indexOf(a.label) - MONTH_SHORT.indexOf(b.label);
+          }
+
+          const aDay = Number(a.label.match(/\d+/)?.[0] || 0);
+          const bDay = Number(b.label.match(/\d+/)?.[0] || 0);
+          return aDay - bDay;
+        });
+
+        const hazardCounts = countBy(
+          state.reports,
+          (report) => HAZARDS[report.hazard]?.label || report.hazard
+        );
+        const stateCounts = countBy(state.reports, (report) => report.state);
+        const hourCounts = countBy(state.reports, hourLabel).sort(
+          (a, b) => a.label.localeCompare(b.label)
+        );
+
+        els.timeChartTitle.textContent =
+          state.month === 0 ? "Reports by month" : "Reports by day";
+
+        renderBars(els.timeChart, periodCounts, state.month === 0 ? 12 : 31);
+        renderBars(els.hazardChart, hazardCounts, 4);
+        renderBars(els.stateChart, stateCounts, 15);
+        renderBars(els.hourChart, hourCounts, 24);
+      }
+
+      function largestReport(hazard) {
+        return state.reports
+          .filter((report) => report.hazard === hazard)
+          .slice()
+          .sort(
+            (a, b) =>
+              Number(b.magnitudeValue || -Infinity) -
+              Number(a.magnitudeValue || -Infinity)
+          )[0];
+      }
+
+      function tornadoRatingCounts() {
+        const ratings = new Map();
+
+        for (const report of state.reports.filter(
+          (item) => item.hazard === "tornado"
+        )) {
+          const match = clean(report.magnitude)
+            .toUpperCase()
+            .match(/(?:EF|F)?([0-5])/);
+
+          const label = match ? `EF/F${match[1]}` : "Unknown";
+          ratings.set(label, (ratings.get(label) || 0) + 1);
+        }
+
+        return [...ratings.entries()]
+          .map(([label, count]) => ({ label, count }))
+          .sort((a, b) => b.count - a.count);
+      }
+
+      function statsCard(title, rows) {
+        return `
+          <article class="stats-card">
+            <h3>${escapeHtml(title)}</h3>
+            <div class="stats-list">
+              ${rows.map(([label, value]) => `
+                <div class="stats-row">
+                  <span>${escapeHtml(label)}</span>
+                  <strong>${escapeHtml(value)}</strong>
+                </div>
+              `).join("")}
+            </div>
+          </article>
+        `;
+      }
+
+      function renderStats() {
+        const reports = state.reports;
+        const hazardCounts = Object.fromEntries(
+          countBy(reports, (report) => report.hazard)
+            .map((item) => [item.label, item.count])
+        );
+        const stateCounts = countBy(reports, (report) => report.state);
+        const dayCounts = countBy(reports, reportDayLabel);
+        const hourCounts = countBy(reports, hourLabel);
+        const largestHail = largestReport("hail");
+        const strongestWind = largestReport("wind");
+        const ratings = tornadoRatingCounts();
+
+        els.statsGrid.innerHTML = [
+          statsCard("Dataset totals", [
+            ["Total reports", reports.length.toLocaleString("en-US")],
+            ["Tornado", Number(hazardCounts.tornado || 0).toLocaleString("en-US")],
+            ["Hail", Number(hazardCounts.hail || 0).toLocaleString("en-US")],
+            ["Wind", Number(hazardCounts.wind || 0).toLocaleString("en-US")],
+            [
+              "Significant",
+              reports.filter((report) => report.significant)
+                .length.toLocaleString("en-US")
+            ]
+          ]),
+          statsCard("Peak activity", [
+            ["Most active day", dayCounts[0]?.label || "—"],
+            [
+              "Reports that day",
+              dayCounts[0]?.count?.toLocaleString("en-US") || "0"
+            ],
+            ["Most active hour", hourCounts[0]?.label || "—"],
+            [
+              "Reports that hour",
+              hourCounts[0]?.count?.toLocaleString("en-US") || "0"
+            ],
+            ["Top state", stateCounts[0]?.label || "—"]
+          ]),
+          statsCard("Hazard extremes", [
+            ["Largest hail", largestHail?.magnitude || "—"],
+            [
+              "Hail location",
+              largestHail
+                ? [largestHail.location, largestHail.state]
+                    .filter(Boolean).join(", ")
+                : "—"
+            ],
+            ["Highest wind", strongestWind?.magnitude || "—"],
+            [
+              "Wind location",
+              strongestWind
+                ? [strongestWind.location, strongestWind.state]
+                    .filter(Boolean).join(", ")
+                : "—"
+            ]
+          ]),
+          statsCard(
+            "Tornado ratings",
+            ratings.length
+              ? ratings.map((item) => [
+                  item.label,
+                  item.count.toLocaleString("en-US")
+                ])
+              : [["Tornado ratings", "No tornado reports"]]
+          )
+        ].join("");
+      }
+
+      function renderEmptyState() {
+        const empty = state.reports.length === 0;
+        els.emptyState.hidden = !empty;
+
+        for (const panel of [
+          els.mapPanel,
+          els.tablePanel,
+          els.chartsPanel,
+          els.statsPanel
+        ]) {
+          panel.style.display = empty
+            ? "none"
+            : panel.dataset.view === state.view
+              ? "block"
+              : "none";
+        }
+      }
+
+      function renderAll() {
+        syncControls();
+        updateWorkspaceHeader();
+        updateSummary();
+        renderEmptyState();
+
+        if (!state.reports.length) {
+          return;
+        }
+
+        renderMap();
+        renderTable();
+        renderCharts();
+        renderStats();
+      }
+
+      function downloadBlob(filename, type, content) {
+        const blob = new Blob([content], { type });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      }
+
+      function exportFilename(extension) {
+        const period = state.month === 0
+          ? "annual"
+          : String(state.month).padStart(2, "0");
+
+        return [
+          "zacharologist-storm-reports",
+          state.dataset,
+          state.year,
+          period,
+          state.hazard,
+          state.scope === "state" ? state.stateCode : "national"
+        ].join("-") + `.${extension}`;
+      }
+
+      function exportCsv() {
+        const headers = [
+          "dataset", "hazard", "eventDate", "time", "magnitude",
+          "location", "county", "state", "latitude", "longitude",
+          "significant", "comments"
+        ];
+
+        const csvCell = (value) =>
+          `"${String(value ?? "").replace(/"/g, '""')}"`;
+
+        const rows = state.reports.map((report) => [
+          report.dataset,
+          report.hazard,
+          report.eventDate,
+          report.timeLabel || report.timeRaw,
+          report.magnitude,
+          report.location,
+          report.county,
+          report.state,
+          report.lat,
+          report.lon,
+          report.significant,
+          report.comments
+        ].map(csvCell).join(","));
+
+        downloadBlob(
+          exportFilename("csv"),
+          "text/csv;charset=utf-8",
+          [headers.join(","), ...rows].join("\n")
+        );
+      }
+
+      function exportGeoJson() {
+        const features = state.reports
+          .filter(validCoordinate)
+          .map((report) => ({
+            type: "Feature",
+            geometry: {
+              type: "Point",
+              coordinates: [Number(report.lon), Number(report.lat)]
+            },
+            properties: {
+              dataset: report.dataset,
+              hazard: report.hazard,
+              eventDate: report.eventDate,
+              time: report.timeLabel || report.timeRaw,
+              magnitude: report.magnitude,
+              location: report.location,
+              county: report.county,
+              state: report.state,
+              significant: Boolean(report.significant),
+              comments: report.comments
+            }
+          }));
+
+        downloadBlob(
+          exportFilename("geojson"),
+          "application/geo+json;charset=utf-8",
+          JSON.stringify(
+            {
+              type: "FeatureCollection",
+              features
+            },
+            null,
+            2
+          )
+        );
+      }
+
+      function bindSegmented(containerId, key, reload) {
+        document
+          .getElementById(containerId)
+          .addEventListener("click", (event) => {
+            const button = event.target.closest("button[data-value]");
+
+            if (!button || button.disabled) return;
+
+            state[key] = button.dataset.value;
+
+            if (key === "scope") {
+              state.reports = state.scope === "state"
+                ? state.rawReports.filter(
+                    (report) => report.state === state.stateCode
+                  )
+                : state.rawReports;
+            }
+
+            if (key === "view") {
+              syncControls();
+              renderAll();
+              return;
+            }
+
+            state.page = 1;
+            syncControls();
+
+            if (reload) {
+              loadReports();
+            } else {
+              renderAll();
+            }
+          });
+      }
+
+      function bindEvents() {
+        bindSegmented("scopeControls", "scope", false);
+        bindSegmented("hazardControls", "hazard", true);
+        bindSegmented("datasetControls", "dataset", true);
+        bindSegmented("viewControls", "view", false);
+
+        els.yearSelect.addEventListener("change", () => {
+          state.year = Number(els.yearSelect.value);
+
+          if (state.dataset === "final" && state.year > FINAL_MAX_YEAR) {
+            state.dataset = "preliminary";
+          }
+
+          if (
+            state.dataset === "preliminary" &&
+            state.year < PRELIMINARY_MIN_YEAR
+          ) {
+            state.dataset = "final";
+          }
+
+          syncControls();
+          loadReports();
+        });
+
+        els.stateSelect.addEventListener("change", () => {
+          state.stateCode = els.stateSelect.value;
+          state.reports = state.rawReports.filter(
+            (report) => report.state === state.stateCode
+          );
+          state.page = 1;
+          renderAll();
+        });
+
+        els.periodControls.addEventListener("click", (event) => {
+          const button = event.target.closest("button[data-month]");
+          if (!button) return;
+
+          state.month = Number(button.dataset.month);
+          syncControls();
+          loadReports();
+        });
+
+        els.refreshButton.addEventListener("click", () => loadReports(true));
+        els.exportCsvButton.addEventListener("click", exportCsv);
+        els.exportGeoJsonButton.addEventListener("click", exportGeoJson);
+
+        els.tableSearch.addEventListener("input", () => {
+          state.page = 1;
+          renderTable();
+        });
+
+        els.significantOnly.addEventListener("change", () => {
+          state.page = 1;
+          renderTable();
+        });
+
+        els.rowsPerPage.addEventListener("change", () => {
+          state.page = 1;
+          renderTable();
+        });
+
+        els.clearTableFilters.addEventListener("click", () => {
+          els.tableSearch.value = "";
+          els.significantOnly.checked = false;
+          state.page = 1;
+          renderTable();
+        });
+
+        document.querySelectorAll("th[data-sort]").forEach((header) => {
+          header.addEventListener("click", () => {
+            const key = header.dataset.sort;
+
+            if (state.sortKey === key) {
+              state.sortDirection =
+                state.sortDirection === "asc" ? "desc" : "asc";
+            } else {
+              state.sortKey = key;
+              state.sortDirection = "asc";
+            }
+
+            renderTable();
+          });
+        });
+
+        els.previousPageButton.addEventListener("click", () => {
+          state.page = Math.max(1, state.page - 1);
+          renderTable();
+        });
+
+        els.nextPageButton.addEventListener("click", () => {
+          state.page += 1;
+          renderTable();
+        });
+
+        els.mobileNavToggle.addEventListener("click", () => {
+          els.siteNav.classList.toggle("open");
+        });
+
+        window.addEventListener("popstate", () => {
+          readUrlState();
+          syncControls();
+          loadReports();
+        });
+      }
+
+      function boot() {
+        readUrlState();
+        buildYearOptions();
+        buildStateOptions();
+        buildPeriodControls();
+        bindEvents();
+        syncControls();
+        ensureMap();
+        loadReports();
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", boot, { once: true });
+      } else {
+        boot();
+      }
+    })();
+  </script>
+</body>
+</html>

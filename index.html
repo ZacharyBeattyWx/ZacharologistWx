@@ -11394,6 +11394,221 @@ body {
   }
 </style>
 
+
+<style id="homepage-report-timeframe-links-css">
+  /*
+    The daily report page remains the primary full-width action.
+    The compact monthly total row opens SPC monthly/annual summaries.
+  */
+  .forecast-dashboard
+  .ops-reference-card--report-count
+  .ops-report-month-link {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto 26px !important;
+    align-items: center !important;
+    gap: 10px !important;
+    color: inherit !important;
+    text-decoration: none !important;
+    cursor: pointer !important;
+    transition:
+      transform 160ms ease,
+      border-color 160ms ease,
+      background 160ms ease,
+      box-shadow 160ms ease !important;
+  }
+
+  .forecast-dashboard
+  .ops-reference-card--report-count
+  .ops-report-month-link:hover {
+    transform: translateY(-1px) !important;
+  }
+
+  .forecast-dashboard
+  .ops-reference-card--report-count
+  .ops-report-month-link:focus-visible {
+    outline: 2px solid rgba(248, 251, 255, 0.88) !important;
+    outline-offset: 3px !important;
+  }
+
+  .forecast-dashboard
+  .ops-report-month-arrow {
+    width: 26px !important;
+    height: 26px !important;
+    display: grid !important;
+    place-items: center !important;
+    border: 1px solid currentColor !important;
+    border-radius: 999px !important;
+    font-size: 0.95rem !important;
+    font-weight: 950 !important;
+    line-height: 1 !important;
+    transition:
+      transform 160ms ease,
+      background 160ms ease !important;
+  }
+
+  .forecast-dashboard
+  .ops-report-month-link:hover
+  .ops-report-month-arrow {
+    transform: translateX(2px) !important;
+  }
+
+  .forecast-dashboard
+  .ops-reference-card--tornado
+  .ops-report-month-arrow {
+    color: #ff7772 !important;
+    background: rgba(145, 35, 42, 0.16) !important;
+  }
+
+  .forecast-dashboard
+  .ops-reference-card--tornado
+  .ops-report-month-link:hover {
+    border-color: rgba(255, 119, 114, 0.52) !important;
+    background: rgba(145, 35, 42, 0.20) !important;
+    box-shadow: 0 8px 18px rgba(95, 18, 27, 0.16) !important;
+  }
+
+  .forecast-dashboard
+  .ops-reference-card--hail
+  .ops-report-month-arrow {
+    color: #6de7c7 !important;
+    background: rgba(18, 105, 87, 0.15) !important;
+  }
+
+  .forecast-dashboard
+  .ops-reference-card--hail
+  .ops-report-month-link:hover {
+    border-color: rgba(109, 231, 199, 0.50) !important;
+    background: rgba(18, 105, 87, 0.20) !important;
+    box-shadow: 0 8px 18px rgba(7, 70, 58, 0.16) !important;
+  }
+
+  .forecast-dashboard
+  .ops-reference-card--wind
+  .ops-report-month-arrow {
+    color: #8bd5ff !important;
+    background: rgba(18, 84, 122, 0.16) !important;
+  }
+
+  .forecast-dashboard
+  .ops-reference-card--wind
+  .ops-report-month-link:hover {
+    border-color: rgba(139, 213, 255, 0.52) !important;
+    background: rgba(18, 84, 122, 0.21) !important;
+    box-shadow: 0 8px 18px rgba(8, 53, 82, 0.17) !important;
+  }
+
+  @media (max-width: 420px) {
+    .forecast-dashboard
+    .ops-reference-card--report-count
+    .ops-report-month-link {
+      grid-template-columns: minmax(0, 1fr) auto 24px !important;
+      gap: 7px !important;
+    }
+
+    .forecast-dashboard
+    .ops-report-month-arrow {
+      width: 24px !important;
+      height: 24px !important;
+      font-size: 0.86rem !important;
+    }
+  }
+</style>
+
+
+<style id="homepage-report-timeframe-polish-css">
+  /* Compact daily/monthly actions for the narrow report rail. */
+  .forecast-dashboard
+  .ops-reference-card--report-count
+  .ops-report-month-link {
+    min-height: 48px !important;
+    padding: 9px 10px 9px 12px !important;
+    grid-template-columns: minmax(0, 1fr) auto 22px !important;
+    gap: 8px !important;
+    border-radius: 12px !important;
+  }
+
+  .forecast-dashboard
+  .ops-reference-card--report-count
+  .ops-report-month-link > span:first-child {
+    min-width: 0 !important;
+    font-size: 0.70rem !important;
+    line-height: 1.1 !important;
+    letter-spacing: 0.11em !important;
+    white-space: nowrap !important;
+  }
+
+  .forecast-dashboard
+  .ops-reference-card--report-count
+  .ops-report-month-link > strong {
+    min-width: 1.2ch !important;
+    font-size: 1.32rem !important;
+    line-height: 1 !important;
+    text-align: right !important;
+    font-variant-numeric: tabular-nums !important;
+  }
+
+  .forecast-dashboard
+  .ops-reference-card--report-count
+  .ops-report-month-arrow {
+    width: 22px !important;
+    height: 22px !important;
+    font-size: 1rem !important;
+    font-weight: 900 !important;
+    line-height: 1 !important;
+  }
+
+  .forecast-dashboard
+  .ops-reference-card--report-count
+  .ops-tornado-delta {
+    max-width: 112px !important;
+    font-size: 0.76rem !important;
+    line-height: 1.08 !important;
+  }
+
+  .forecast-dashboard
+  .ops-reference-card--report-count
+  .ops-tornado-note {
+    margin: 12px 0 14px !important;
+    font-size: 0.72rem !important;
+    line-height: 1.3 !important;
+  }
+
+  .forecast-dashboard
+  .ops-reference-card--report-count
+  .ops-reference-button {
+    min-height: 44px !important;
+    padding: 10px 12px !important;
+    font-size: 0.76rem !important;
+    line-height: 1 !important;
+    letter-spacing: 0.07em !important;
+    white-space: nowrap !important;
+  }
+
+  @media (max-width: 420px) {
+    .forecast-dashboard
+    .ops-reference-card--report-count
+    .ops-report-month-link {
+      grid-template-columns: minmax(0, 1fr) auto 21px !important;
+      gap: 7px !important;
+      padding-inline: 10px !important;
+    }
+
+    .forecast-dashboard
+    .ops-reference-card--report-count
+    .ops-report-month-arrow {
+      width: 21px !important;
+      height: 21px !important;
+    }
+
+    .forecast-dashboard
+    .ops-reference-card--report-count
+    .ops-reference-button {
+      font-size: 0.72rem !important;
+      letter-spacing: 0.055em !important;
+    }
+  }
+</style>
+
 </head>
 
 <body>
@@ -16161,6 +16376,43 @@ setInterval(loadSPCImages, 10 * 60 * 1000);
     return match ? Number(match[0]) : null;
   }
 
+  function stormReportsPageUrl(hazard, monthLabel) {
+    const monthNumbers = {
+      january: 1,
+      february: 2,
+      march: 3,
+      april: 4,
+      may: 5,
+      june: 6,
+      july: 7,
+      august: 8,
+      september: 9,
+      october: 10,
+      november: 11,
+      december: 12
+    };
+
+    const match = clean(monthLabel).match(/^([A-Za-z]+)\s+(\d{4})$/);
+    const fallbackDate = new Date(Date.now() - (12 * 60 * 60 * 1000));
+    const year = match
+      ? Number(match[2])
+      : fallbackDate.getUTCFullYear();
+    const month = match
+      ? monthNumbers[match[1].toLowerCase()]
+      : fallbackDate.getUTCMonth() + 1;
+
+    const query = new URLSearchParams({
+      year: String(year),
+      month: String(month || fallbackDate.getUTCMonth() + 1),
+      scope: "national",
+      type: hazard,
+      dataset: "preliminary",
+      view: "map"
+    });
+
+    return `storm-reports.html?${query.toString()}`;
+  }
+
   function watchRows(items) {
     if (!items.length) {
       return `<span class="ops-reference-copy">No active NWS watch products are currently returned by the live feed.</span>`;
@@ -16418,27 +16670,32 @@ const threats = [
         <small class="ops-tornado-delta">
           ${esc(
             tornadoDailyAvailable
-              ? "Preliminary reports"
+              ? "Current SPC day"
               : "Live tracker unavailable"
           )}
         </small>
       </span>
     </div>
 
-    <span class="ops-report-month-total">
+    <a class="ops-report-month-total ops-report-month-link"
+      href="${esc(stormReportsPageUrl("tornado", tornadoMonth))}"
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Open tornado reports in the Storm Report Explorer">
       <span>${esc(`${tornadoMonth} total`)}</span>
       <strong>${esc(tornadoMonthValue)}</strong>
-    </span>
+      <span class="ops-report-month-arrow" aria-hidden="true">&#8250;</span>
+    </a>
 
     <span class="ops-tornado-note">
-      Preliminary SPC tornado reports for the current report day.
+      Preliminary SPC tornado reports.
     </span>
 
     <a class="ops-reference-button ops-tornado-button"
       href="${esc(tornadoTrackerUrl)}"
       target="_blank"
       rel="noopener noreferrer">
-      View SPC Tracker
+      Today&#39;s SPC Reports
     </a>
   `,
   "ops-reference-card--tornado ops-reference-card--report-count"
@@ -16522,27 +16779,32 @@ const threats = [
               <small class="ops-tornado-delta">
                 ${esc(
                   hailMetric.dailyAvailable
-                    ? "Preliminary reports"
+                    ? "Current SPC day"
                     : "Live tracker unavailable"
                 )}
               </small>
             </span>
           </div>
 
-          <span class="ops-report-month-total">
+          <a class="ops-report-month-total ops-report-month-link"
+            href="${esc(stormReportsPageUrl("hail", hailMetric.monthLabel))}"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Open hail reports in the Storm Report Explorer">
             <span>${esc(`${hailMetric.monthLabel} total`)}</span>
             <strong>${esc(hailMetric.monthValue)}</strong>
-          </span>
+            <span class="ops-report-month-arrow" aria-hidden="true">&#8250;</span>
+          </a>
 
           <span class="ops-tornado-note">
-            Preliminary SPC hail reports for the current report day.
+            Preliminary SPC hail reports.
           </span>
 
           <a class="ops-reference-button ops-tornado-button ops-report-count-button"
             href="${esc(hailMetric.trackerUrl)}"
             target="_blank"
             rel="noopener noreferrer">
-            View SPC Tracker
+            Today&#39;s SPC Reports
           </a>
         `,
         "ops-reference-card--report-count ops-reference-card--hail"
@@ -16574,27 +16836,32 @@ const threats = [
               <small class="ops-tornado-delta">
                 ${esc(
                   windMetric.dailyAvailable
-                    ? "Preliminary reports"
+                    ? "Current SPC day"
                     : "Live tracker unavailable"
                 )}
               </small>
             </span>
           </div>
 
-          <span class="ops-report-month-total">
+          <a class="ops-report-month-total ops-report-month-link"
+            href="${esc(stormReportsPageUrl("wind", windMetric.monthLabel))}"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Open wind reports in the Storm Report Explorer">
             <span>${esc(`${windMetric.monthLabel} total`)}</span>
             <strong>${esc(windMetric.monthValue)}</strong>
-          </span>
+            <span class="ops-report-month-arrow" aria-hidden="true">&#8250;</span>
+          </a>
 
           <span class="ops-tornado-note">
-            Preliminary SPC damaging-wind reports for the current report day.
+            Preliminary SPC damaging-wind reports.
           </span>
 
           <a class="ops-reference-button ops-tornado-button ops-report-count-button"
             href="${esc(windMetric.trackerUrl)}"
             target="_blank"
             rel="noopener noreferrer">
-            View SPC Tracker
+            Today&#39;s SPC Reports
           </a>
         `,
         "ops-reference-card--report-count ops-reference-card--wind"

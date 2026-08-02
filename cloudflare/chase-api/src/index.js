@@ -958,6 +958,779 @@ async function buildOpsSummary(env) {
   };
 }
 
+
+// zacharologist-storm-report-explorer-v1
+
+const STORM_REPORTS_FINAL_MAX_YEAR = 2024;
+const STORM_REPORTS_PRELIMINARY_MIN_YEAR = 1999;
+const STORM_REPORTS_CACHE_SECONDS_CURRENT = 900;
+const STORM_REPORTS_CACHE_SECONDS_ARCHIVE = 21600;
+const STORM_REPORTS_CACHE_SECONDS_FINAL = 86400;
+const STORM_REPORTS_VALID_HAZARDS = new Set(["tornado", "hail", "wind"]);
+
+function stormReportsInteger(value, fallback) {
+  const number = Number(value);
+  return Number.isInteger(number) ? number : fallback;
+}
+
+function stormReportsCurrentSpcDate() {
+  return new Date(Date.now() - (12 * 60 * 60 * 1000));
+}
+
+function stormReportsDateKey(year, month, day) {
+  return [
+    String(year).slice(-2),
+    String(month).padStart(2, "0"),
+    String(day).padStart(2, "0")
+  ].join("");
+}
+
+function stormReportsIsoDate(year, month, day) {
+  return [
+    String(year).padStart(4, "0"),
+    String(month).padStart(2, "0"),
+    String(day).padStart(2, "0")
+  ].join("-");
+}
+
+function stormReportsDaysInMonth(year, month) {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
+function stormReportsPreliminaryDays(year, month) {
+  if (
+    year < STORM_REPORTS_PRELIMINARY_MIN_YEAR ||
+    month < 1 ||
+    month > 12
+  ) {
+    return [];
+  }
+
+  if (year === 1999 && month < 6) {
+    return [];
+  }
+
+  const current = stormReportsCurrentSpcDate();
+  const currentYear = current.getUTCFullYear();
+  const currentMonth = current.getUTCMonth() + 1;
+  const currentDay = current.getUTCDate();
+
+  if (
+    year > currentYear ||
+    (year === currentYear && month > currentMonth)
+  ) {
+    return [];
+  }
+
+  let lastDay = stormReportsDaysInMonth(year, month);
+
+  if (year === currentYear && month === currentMonth) {
+    lastDay = Math.min(lastDay, currentDay);
+  }
+
+  const firstDay = year === 1999 && month === 6 ? 1 : 1;
+
+  return Array.from(
+    { length: Math.max(0, lastDay - firstDay + 1) },
+    (_, index) => firstDay + index
+  );
+}
+
+function stormReportsCoordinate(value, longitude = false) {
+  const cleaned = String(value ?? "")
+    .replace(/[^\d.+-]/g, "")
+    .trim();
+
+  if (!cleaned) return null;
+
+  let number = Number(cleaned);
+
+  if (!Number.isFinite(number)) return null;
+
+  const limit = longitude ? 180 : 90;
+
+  while (Math.abs(number) > limit && Math.abs(number) >= 100) {
+    number /= 100;
+  }
+
+  if (longitude && number > 0 && number >= 60) {
+    number *= -1;
+  }
+
+  return Math.abs(number) <= limit ? number : null;
+}
+
+function stormReportsTimeParts(value) {
+  const digits = String(value ?? "")
+    .replace(/\D/g, "")
+    .padStart(4, "0")
+    .slice(-4);
+
+  const hour = Number(digits.slice(0, 2));
+  const minute = Number(digits.slice(2));
+
+  if (
+    !Number.isInteger(hour) ||
+    !Number.isInteger(minute) ||
+    hour > 23 ||
+    minute > 59
+  ) {
+    return {
+      raw: cleanOpsText(value),
+      hour: null,
+      minute: null,
+      label: cleanOpsText(value) || "Time unavailable"
+    };
+  }
+
+  return {
+    raw: digits,
+    hour,
+    minute,
+    label: `${digits.slice(0, 2)}:${digits.slice(2)}Z`
+  };
+}
+
+function stormReportsDateTimeUtc(year, month, day, rawTime, spcDay = false) {
+  const time = stormReportsTimeParts(rawTime);
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  if (spcDay && time.hour !== null && time.hour < 12) {
+    date.setUTCDate(date.getUTCDate() + 1);
+  }
+
+  date.setUTCHours(time.hour ?? 0, time.minute ?? 0, 0, 0);
+  return date.toISOString();
+}
+
+function stormReportsCsvIndex(headers, aliases) {
+  return findCsvColumn(headers, aliases);
+}
+
+function stormReportsMagnitude(hazard, rawValue, dataset) {
+  const raw = cleanOpsText(rawValue);
+
+  if (hazard === "hail") {
+    const amount = Number(raw);
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return {
+        label: "Hail report",
+        value: null,
+        significant: false
+      };
+    }
+
+    const inches = amount > 10 ? amount / 100 : amount;
+
+    return {
+      label: `${inches
+        .toFixed(2)
+        .replace(/\.00$/, "")
+        .replace(/(\.\d)0$/, "$1")}" hail`,
+      value: inches,
+      significant: inches >= 2
+    };
+  }
+
+  if (hazard === "wind") {
+    const speed = Number(raw);
+
+    if (!Number.isFinite(speed) || speed <= 0) {
+      return {
+        label: "Wind damage",
+        value: null,
+        significant: false
+      };
+    }
+
+    if (dataset === "final") {
+      return {
+        label: `${Math.round(speed)} kt wind`,
+        value: speed,
+        significant: speed >= 65
+      };
+    }
+
+    return {
+      label: `${Math.round(speed)} mph wind`,
+      value: speed,
+      significant: speed >= 75
+    };
+  }
+
+  const scaleMatch = raw.toUpperCase().match(/(?:EF|F)?([0-5])/);
+  const scaleNumber = scaleMatch ? Number(scaleMatch[1]) : null;
+  const scaleLabel = scaleMatch
+    ? `${dataset === "final" ? "F/EF" : "EF/F"}${scaleMatch[1]} tornado`
+    : "Tornado report";
+
+  return {
+    label: scaleLabel,
+    value: scaleNumber,
+    significant: Number.isFinite(scaleNumber) && scaleNumber >= 2
+  };
+}
+
+function stormReportsPreliminaryUrl(key, hazard) {
+  const suffix = {
+    tornado: "torn",
+    hail: "hail",
+    wind: "wind"
+  }[hazard];
+
+  return (
+    "https://www.spc.noaa.gov/climo/reports/" +
+    `${key}_rpts_filtered_${suffix}.csv`
+  );
+}
+
+async function stormReportsFetchText(url) {
+  const response = await fetch(url, {
+    headers: {
+      "accept": "text/csv,text/plain,*/*",
+      "user-agent":
+        "ZacharologistWx Storm Report Explorer (https://zacharologistwx.com)"
+    }
+  });
+
+  if (response.status === 404) {
+    return "";
+  }
+
+  if (!response.ok) {
+    throw new Error(`SPC source returned HTTP ${response.status}`);
+  }
+
+  return response.text();
+}
+
+function stormReportsParsePreliminaryCsv(
+  text,
+  hazard,
+  year,
+  month,
+  day,
+  sourceUrl
+) {
+  const rows = parseCsv(text);
+
+  if (rows.length < 2) return [];
+
+  const headers = rows[0];
+  const timeIndex = stormReportsCsvIndex(headers, ["time"]);
+  const scaleIndex = stormReportsCsvIndex(headers, ["fscale", "scale"]);
+  const sizeIndex = stormReportsCsvIndex(headers, ["size"]);
+  const speedIndex = stormReportsCsvIndex(headers, ["speed"]);
+  const locationIndex = stormReportsCsvIndex(headers, ["location"]);
+  const countyIndex = stormReportsCsvIndex(headers, ["county"]);
+  const stateIndex = stormReportsCsvIndex(headers, ["state"]);
+  const latIndex = stormReportsCsvIndex(headers, ["lat", "latitude"]);
+  const lonIndex = stormReportsCsvIndex(headers, ["lon", "longitude"]);
+  const commentsIndex = stormReportsCsvIndex(
+    headers,
+    ["comments", "comment", "remarks"]
+  );
+
+  if (timeIndex < 0) return [];
+
+  const reportDay = stormReportsIsoDate(year, month, day);
+  const dateKey = stormReportsDateKey(year, month, day);
+
+  return rows
+    .slice(1)
+    .map((row, index) => {
+      const rawTime = csvCell(row, timeIndex);
+
+      if (!rawTime) return null;
+
+      const magnitudeRaw = hazard === "hail"
+        ? csvCell(row, sizeIndex)
+        : hazard === "wind"
+          ? csvCell(row, speedIndex)
+          : csvCell(row, scaleIndex);
+
+      const magnitude = stormReportsMagnitude(
+        hazard,
+        magnitudeRaw,
+        "preliminary"
+      );
+
+      const comments = csvCell(row, commentsIndex);
+      const tornadoCommentMatch = hazard === "tornado"
+        ? comments.toUpperCase().match(/\bEF([0-5])\b/)
+        : null;
+
+      const commentScale = tornadoCommentMatch
+        ? Number(tornadoCommentMatch[1])
+        : null;
+
+      const significant =
+        magnitude.significant ||
+        (Number.isFinite(commentScale) && commentScale >= 2);
+
+      const time = stormReportsTimeParts(rawTime);
+      const lat = stormReportsCoordinate(csvCell(row, latIndex));
+      const lon = stormReportsCoordinate(csvCell(row, lonIndex), true);
+
+      return {
+        id: [
+          "preliminary",
+          hazard,
+          dateKey,
+          time.raw || index,
+          lat ?? "x",
+          lon ?? "x",
+          index
+        ].join("-"),
+        dataset: "preliminary",
+        hazard,
+        reportDay,
+        eventDate: stormReportsDateTimeUtc(
+          year,
+          month,
+          day,
+          rawTime,
+          true
+        ).slice(0, 10),
+        dateTimeUtc: stormReportsDateTimeUtc(
+          year,
+          month,
+          day,
+          rawTime,
+          true
+        ),
+        timeRaw: time.raw,
+        timeLabel: time.label,
+        magnitude: tornadoCommentMatch && !magnitude.value
+          ? `EF${tornadoCommentMatch[1]} tornado`
+          : magnitude.label,
+        magnitudeValue: tornadoCommentMatch && !magnitude.value
+          ? Number(tornadoCommentMatch[1])
+          : magnitude.value,
+        significant,
+        location: csvCell(row, locationIndex) || "Location unavailable",
+        county: csvCell(row, countyIndex),
+        state: csvCell(row, stateIndex).toUpperCase(),
+        lat,
+        lon,
+        comments,
+        sourceUrl
+      };
+    })
+    .filter(Boolean);
+}
+
+function stormReportsFinalSource(year, hazard) {
+  const suffix = {
+    tornado: "torn",
+    hail: "hail",
+    wind: "wind"
+  }[hazard];
+
+  if (!suffix) return null;
+
+  if (hazard !== "tornado" && year < 1955) {
+    return null;
+  }
+
+  let fileName = "";
+
+  if (year >= 2008 && year <= STORM_REPORTS_FINAL_MAX_YEAR) {
+    fileName = `${year}_${suffix}.csv`;
+  } else if (year >= 2005 && year <= 2007) {
+    fileName = `2005-2007_${suffix}.csv`;
+  } else if (year >= 2000 && year <= 2004) {
+    fileName = `2000-2004_${suffix}.csv`;
+  } else if (year >= 1990 && year <= 1999) {
+    fileName = `90-99_${suffix}.csv`;
+  } else if (year >= 1980 && year <= 1989) {
+    fileName = `80-89_${suffix}.csv`;
+  } else if (year >= 1970 && year <= 1979) {
+    fileName = `70-79_${suffix}.csv`;
+  } else if (year >= 1960 && year <= 1969) {
+    fileName = `60-69_${suffix}.csv`;
+  } else if (year >= 1950 && year <= 1959) {
+    fileName = hazard === "tornado"
+      ? `50-59_${suffix}.csv`
+      : `55-59_${suffix}.csv`;
+  }
+
+  return fileName
+    ? `https://www.spc.noaa.gov/wcm/data/${fileName}`
+    : null;
+}
+
+function stormReportsParseDateField(value) {
+  const text = cleanOpsText(value);
+
+  if (!text) return null;
+
+  const parts = text.match(
+    /^(?:(\d{4})[-/](\d{1,2})[-/](\d{1,2})|(\d{1,2})[-/](\d{1,2})[-/](\d{2,4}))$/
+  );
+
+  if (!parts) return null;
+
+  if (parts[1]) {
+    return {
+      year: Number(parts[1]),
+      month: Number(parts[2]),
+      day: Number(parts[3])
+    };
+  }
+
+  const parsedYear = Number(parts[6]);
+
+  return {
+    year: parsedYear < 100 ? 2000 + parsedYear : parsedYear,
+    month: Number(parts[4]),
+    day: Number(parts[5])
+  };
+}
+
+function stormReportsParseFinalCsv(
+  text,
+  hazard,
+  requestedYear,
+  requestedMonth,
+  sourceUrl
+) {
+  const rows = parseCsv(text);
+
+  if (rows.length < 2) return [];
+
+  const headers = rows[0];
+  const yearIndex = stormReportsCsvIndex(headers, ["yr", "year"]);
+  const monthIndex = stormReportsCsvIndex(headers, ["mo", "month"]);
+  const dayIndex = stormReportsCsvIndex(headers, ["dy", "day"]);
+  const dateIndex = stormReportsCsvIndex(headers, ["date", "begindate"]);
+  const timeIndex = stormReportsCsvIndex(
+    headers,
+    ["time", "begintime", "bgntime"]
+  );
+  const stateIndex = stormReportsCsvIndex(headers, ["st", "state"]);
+  const magnitudeIndex = stormReportsCsvIndex(
+    headers,
+    ["mag", "magnitude", "fscale"]
+  );
+  const latIndex = stormReportsCsvIndex(
+    headers,
+    ["slat", "beginlat", "lat", "latitude"]
+  );
+  const lonIndex = stormReportsCsvIndex(
+    headers,
+    ["slon", "beginlon", "lon", "longitude"]
+  );
+  const endLatIndex = stormReportsCsvIndex(headers, ["elat", "endlat"]);
+  const endLonIndex = stormReportsCsvIndex(headers, ["elon", "endlon"]);
+  const countyIndex = stormReportsCsvIndex(
+    headers,
+    ["county", "czname", "f1"]
+  );
+  const locationIndex = stormReportsCsvIndex(
+    headers,
+    ["location", "beglocation", "stn"]
+  );
+  const injuriesIndex = stormReportsCsvIndex(
+    headers,
+    ["inj", "injuriesdirect"]
+  );
+  const fatalitiesIndex = stormReportsCsvIndex(
+    headers,
+    ["fat", "deaths", "deathsdirect"]
+  );
+
+  return rows
+    .slice(1)
+    .map((row, index) => {
+      const parsedDate = stormReportsParseDateField(csvCell(row, dateIndex));
+
+      const year = yearIndex >= 0
+        ? Number(csvCell(row, yearIndex))
+        : parsedDate?.year;
+      const month = monthIndex >= 0
+        ? Number(csvCell(row, monthIndex))
+        : parsedDate?.month;
+      const day = dayIndex >= 0
+        ? Number(csvCell(row, dayIndex))
+        : parsedDate?.day;
+
+      if (
+        year !== requestedYear ||
+        month !== requestedMonth ||
+        !Number.isInteger(day)
+      ) {
+        return null;
+      }
+
+      const rawTime = csvCell(row, timeIndex);
+      const time = stormReportsTimeParts(rawTime);
+      const magnitude = stormReportsMagnitude(
+        hazard,
+        csvCell(row, magnitudeIndex),
+        "final"
+      );
+      const lat = stormReportsCoordinate(csvCell(row, latIndex));
+      const lon = stormReportsCoordinate(csvCell(row, lonIndex), true);
+      const endLat = stormReportsCoordinate(csvCell(row, endLatIndex));
+      const endLon = stormReportsCoordinate(
+        csvCell(row, endLonIndex),
+        true
+      );
+      const injuries = Number(csvCell(row, injuriesIndex));
+      const fatalities = Number(csvCell(row, fatalitiesIndex));
+      const comments = [
+        Number.isFinite(injuries) && injuries > 0
+          ? `${injuries} injuries`
+          : "",
+        Number.isFinite(fatalities) && fatalities > 0
+          ? `${fatalities} fatalities`
+          : ""
+      ].filter(Boolean).join(" • ");
+
+      const eventDate = stormReportsIsoDate(year, month, day);
+      const dateTimeUtc = stormReportsDateTimeUtc(
+        year,
+        month,
+        day,
+        rawTime,
+        false
+      );
+
+      return {
+        id: [
+          "final",
+          hazard,
+          requestedYear,
+          requestedMonth,
+          day,
+          time.raw || index,
+          lat ?? "x",
+          lon ?? "x",
+          index
+        ].join("-"),
+        dataset: "final",
+        hazard,
+        reportDay: eventDate,
+        eventDate,
+        dateTimeUtc,
+        timeRaw: time.raw,
+        timeLabel: time.label.replace(/Z$/, ""),
+        magnitude: magnitude.label,
+        magnitudeValue: magnitude.value,
+        significant: magnitude.significant,
+        location: csvCell(row, locationIndex) || "Storm Data event",
+        county: csvCell(row, countyIndex),
+        state: csvCell(row, stateIndex).toUpperCase(),
+        lat,
+        lon,
+        endLat,
+        endLon,
+        comments,
+        sourceUrl
+      };
+    })
+    .filter(Boolean);
+}
+
+async function stormReportsBuildPreliminary(year, month, hazard) {
+  const days = stormReportsPreliminaryDays(year, month);
+
+  const dayResults = await mapWithConcurrency(
+    days,
+    6,
+    async (day) => {
+      const key = stormReportsDateKey(year, month, day);
+      const sourceUrl = stormReportsPreliminaryUrl(key, hazard);
+
+      try {
+        const text = await stormReportsFetchText(sourceUrl);
+
+        return {
+          day,
+          reports: stormReportsParsePreliminaryCsv(
+            text,
+            hazard,
+            year,
+            month,
+            day,
+            sourceUrl
+          ),
+          error: ""
+        };
+      } catch (error) {
+        return {
+          day,
+          reports: [],
+          error: String(error?.message || error)
+        };
+      }
+    }
+  );
+
+  return {
+    reports: dayResults.flatMap((result) => result.reports),
+    partialFailures: dayResults
+      .filter((result) => result.error)
+      .map((result) => ({
+        day: result.day,
+        error: result.error
+      })),
+    source:
+      "https://www.spc.noaa.gov/climo/reports/YYMMDD_rpts_filtered_HAZARD.csv"
+  };
+}
+
+async function stormReportsBuildFinal(year, month, hazard) {
+  if (year > STORM_REPORTS_FINAL_MAX_YEAR) {
+    throw new Error(
+      `Final SPC Storm Data are available through ${STORM_REPORTS_FINAL_MAX_YEAR}`
+    );
+  }
+
+  const sourceUrl = stormReportsFinalSource(year, hazard);
+
+  if (!sourceUrl) {
+    return {
+      reports: [],
+      partialFailures: [],
+      source: ""
+    };
+  }
+
+  const text = await stormReportsFetchText(sourceUrl);
+
+  return {
+    reports: stormReportsParseFinalCsv(
+      text,
+      hazard,
+      year,
+      month,
+      sourceUrl
+    ),
+    partialFailures: [],
+    source: sourceUrl
+  };
+}
+
+function stormReportsCacheTtl(year, month, dataset) {
+  if (dataset === "final") {
+    return STORM_REPORTS_CACHE_SECONDS_FINAL;
+  }
+
+  const current = stormReportsCurrentSpcDate();
+  const isCurrent =
+    current.getUTCFullYear() === year &&
+    current.getUTCMonth() + 1 === month;
+
+  return isCurrent
+    ? STORM_REPORTS_CACHE_SECONDS_CURRENT
+    : STORM_REPORTS_CACHE_SECONDS_ARCHIVE;
+}
+
+async function getCachedStormReports(request) {
+  const requestUrl = new URL(request.url);
+  const currentYear = stormReportsCurrentSpcDate().getUTCFullYear();
+  const year = stormReportsInteger(
+    requestUrl.searchParams.get("year"),
+    currentYear
+  );
+  const month = stormReportsInteger(
+    requestUrl.searchParams.get("month"),
+    stormReportsCurrentSpcDate().getUTCMonth() + 1
+  );
+  const hazard = cleanOpsText(
+    requestUrl.searchParams.get("hazard")
+  ).toLowerCase();
+  const dataset = cleanOpsText(
+    requestUrl.searchParams.get("dataset") || "preliminary"
+  ).toLowerCase();
+
+  if (
+    !STORM_REPORTS_VALID_HAZARDS.has(hazard) ||
+    !["preliminary", "final"].includes(dataset) ||
+    month < 1 ||
+    month > 12 ||
+    year < 1950 ||
+    year > currentYear
+  ) {
+    return opsJsonResponse(
+      {
+        error: "Invalid storm-report query",
+        allowedHazards: [...STORM_REPORTS_VALID_HAZARDS],
+        allowedDatasets: ["preliminary", "final"],
+        finalMaxYear: STORM_REPORTS_FINAL_MAX_YEAR
+      },
+      400,
+      60
+    );
+  }
+
+  if (
+    dataset === "preliminary" &&
+    year < STORM_REPORTS_PRELIMINARY_MIN_YEAR
+  ) {
+    return opsJsonResponse(
+      {
+        error: "SPC preliminary daily archives begin in 1999",
+        finalMaxYear: STORM_REPORTS_FINAL_MAX_YEAR
+      },
+      400,
+      60
+    );
+  }
+
+  const cache = caches.default;
+  const normalizedUrl = new URL("/api/storm-reports", request.url);
+  normalizedUrl.searchParams.set("year", String(year));
+  normalizedUrl.searchParams.set("month", String(month));
+  normalizedUrl.searchParams.set("hazard", hazard);
+  normalizedUrl.searchParams.set("dataset", dataset);
+
+  const cacheKey = new Request(normalizedUrl.toString(), {
+    method: "GET"
+  });
+
+  const cached = await cache.match(cacheKey);
+
+  if (cached) {
+    return cached;
+  }
+
+  const built = dataset === "final"
+    ? await stormReportsBuildFinal(year, month, hazard)
+    : await stormReportsBuildPreliminary(year, month, hazard);
+
+  const ttl = stormReportsCacheTtl(year, month, dataset);
+  const response = opsJsonResponse(
+    {
+      generatedAt: new Date().toISOString(),
+      dataset,
+      year,
+      month,
+      hazard,
+      count: built.reports.length,
+      reports: built.reports,
+      source: built.source,
+      partialFailures: built.partialFailures,
+      finalMaxYear: STORM_REPORTS_FINAL_MAX_YEAR,
+      preliminaryMinYear: STORM_REPORTS_PRELIMINARY_MIN_YEAR
+    },
+    200,
+    ttl
+  );
+
+  try {
+    await cache.put(cacheKey, response.clone());
+  } catch (error) {
+    console.warn("Unable to cache storm-report response:", error);
+  }
+
+  return response;
+}
+
+
 async function getCachedOpsSummary(request, env) {
   const cache = caches.default;
 
@@ -1393,6 +2166,24 @@ export default {
           },
           503,
           30
+        );
+      }
+    }
+
+    if (url.pathname === "/api/storm-reports" && request.method === "GET") {
+      try {
+        return await getCachedStormReports(request);
+      } catch (error) {
+        console.error("Storm report explorer failed:", error);
+
+        return opsJsonResponse(
+          {
+            error: "Unable to load storm reports",
+            detail: String(error?.message || error || "Unknown failure"),
+            finalMaxYear: STORM_REPORTS_FINAL_MAX_YEAR
+          },
+          502,
+          60
         );
       }
     }
