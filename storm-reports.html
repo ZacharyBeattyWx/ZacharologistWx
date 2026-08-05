@@ -2177,6 +2177,541 @@
   }
 </style>
 
+
+<style id="mobile-storm-report-explorer-makeover-v2">
+  .mobile-reports-toolbar,
+  .mobile-filter-backdrop,
+  .mobile-control-sheet-header,
+  .mobile-map-legend-toggle,
+  .mobile-chart-lightbox {
+    display: none;
+  }
+
+  @media (max-width: 760px) {
+    body.mobile-storm-reports-ready {
+      --mobile-storm-header-height: 52px;
+    }
+
+    body.mobile-report-filter-open {
+      overflow: hidden !important;
+    }
+
+    body.mobile-storm-reports-ready .reports-shell {
+      width: 100% !important;
+      padding: 10px 10px calc(42px + env(safe-area-inset-bottom)) !important;
+    }
+
+    body.mobile-storm-reports-ready .reports-hero {
+      display: none !important;
+    }
+
+    body.mobile-storm-reports-ready .mobile-reports-toolbar {
+      position: sticky;
+      top: var(--mobile-storm-header-height);
+      z-index: 2800;
+      margin: 0 0 10px;
+      min-height: 58px;
+      padding: 8px 9px 8px 13px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      gap: 7px;
+      align-items: center;
+      border: 1px solid rgba(125, 175, 219, 0.24);
+      border-radius: 15px;
+      background: rgba(5, 15, 28, 0.97);
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.30);
+      backdrop-filter: blur(18px);
+    }
+
+    .mobile-reports-context {
+      min-width: 0;
+    }
+
+    .mobile-reports-context strong,
+    .mobile-reports-context span {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .mobile-reports-context strong {
+      color: #f5faff;
+      font-size: 0.79rem;
+      line-height: 1.2;
+    }
+
+    .mobile-reports-context span {
+      margin-top: 4px;
+      color: #7f96aa;
+      font-size: 0.62rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+    }
+
+    .mobile-reports-toolbar button {
+      min-height: 40px;
+      padding: 7px 10px;
+      border: 1px solid rgba(125, 175, 219, 0.27);
+      border-radius: 10px;
+      background: rgba(14, 34, 55, 0.92);
+      color: #edf8ff;
+      font-size: 0.64rem;
+      font-weight: 950;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    body.mobile-storm-reports-ready .mobile-filter-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 4900;
+      display: block;
+      opacity: 0;
+      pointer-events: none;
+      background: rgba(0, 4, 10, 0.72);
+      backdrop-filter: blur(5px);
+      transition: opacity 180ms ease;
+    }
+
+    body.mobile-storm-reports-ready .mobile-filter-backdrop.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    body.mobile-storm-reports-ready .control-deck {
+      position: fixed !important;
+      inset: auto 0 0 !important;
+      z-index: 5000 !important;
+      width: 100% !important;
+      max-height: min(84dvh, 760px);
+      margin: 0 !important;
+      padding: 10px 14px calc(18px + env(safe-area-inset-bottom)) !important;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      border-width: 1px 0 0 !important;
+      border-radius: 24px 24px 0 0 !important;
+      background: rgba(5, 15, 28, 0.995) !important;
+      box-shadow: 0 -24px 70px rgba(0, 0, 0, 0.55) !important;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(calc(100% + 24px));
+      transition: transform 210ms ease, opacity 180ms ease;
+    }
+
+    body.mobile-storm-reports-ready .control-deck.mobile-open {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+
+    body.mobile-storm-reports-ready .mobile-control-sheet-header {
+      position: sticky;
+      top: -10px;
+      z-index: 4;
+      margin: 0 -4px 12px;
+      padding: 9px 4px 11px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid rgba(125, 175, 219, 0.16);
+      background: rgba(5, 15, 28, 0.995);
+    }
+
+    .mobile-control-sheet-header strong {
+      color: #f7fbff;
+      font-size: 0.88rem;
+    }
+
+    .mobile-control-sheet-header button {
+      width: 38px;
+      height: 38px;
+      padding: 0;
+      border: 1px solid rgba(125, 175, 219, 0.28);
+      border-radius: 11px;
+      background: rgba(16, 37, 60, 0.94);
+      color: #fff;
+      font-size: 1.15rem;
+    }
+
+    body.mobile-storm-reports-ready .control-row {
+      display: grid !important;
+      grid-template-columns: 1fr !important;
+      gap: 10px !important;
+    }
+
+    body.mobile-storm-reports-ready .select-control {
+      grid-template-columns: 76px minmax(0, 1fr) !important;
+    }
+
+    body.mobile-storm-reports-ready .select-control select {
+      width: 100%;
+      min-height: 44px !important;
+    }
+
+    body.mobile-storm-reports-ready .segmented {
+      width: 100%;
+      display: grid !important;
+      gap: 4px;
+      overflow: visible !important;
+    }
+
+    body.mobile-storm-reports-ready #scopeControls,
+    body.mobile-storm-reports-ready #datasetControls {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    body.mobile-storm-reports-ready #hazardControls {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    body.mobile-storm-reports-ready #viewControls {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    body.mobile-storm-reports-ready .segmented button {
+      min-width: 0 !important;
+      min-height: 42px !important;
+      padding: 7px 5px !important;
+      font-size: 0.61rem !important;
+      letter-spacing: 0.035em !important;
+    }
+
+    body.mobile-storm-reports-ready .state-control.visible {
+      display: grid !important;
+    }
+
+    body.mobile-storm-reports-ready .period-row {
+      margin-top: 10px !important;
+      padding-bottom: 2px;
+      display: grid !important;
+      grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+      gap: 6px !important;
+    }
+
+    body.mobile-storm-reports-ready .period-row button {
+      min-height: 42px !important;
+    }
+
+    body.mobile-storm-reports-ready .status-strip {
+      margin-bottom: 10px !important;
+      min-height: 42px !important;
+      padding: 8px 10px !important;
+      border-radius: 12px !important;
+    }
+
+    body.mobile-storm-reports-ready #statusText {
+      font-size: 0.68rem !important;
+    }
+
+    body.mobile-storm-reports-ready .status-actions {
+      display: none !important;
+    }
+
+    body.mobile-storm-reports-ready .summary-grid {
+      margin-bottom: 10px !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      gap: 8px !important;
+    }
+
+    body.mobile-storm-reports-ready .summary-card {
+      min-height: 96px !important;
+      padding: 13px !important;
+      border-radius: 15px !important;
+    }
+
+    body.mobile-storm-reports-ready .summary-card span {
+      font-size: 0.57rem !important;
+    }
+
+    body.mobile-storm-reports-ready .summary-card strong {
+      margin-top: 8px !important;
+      font-size: clamp(1.65rem, 10vw, 2.45rem) !important;
+    }
+
+    body.mobile-storm-reports-ready .summary-card small {
+      margin-top: 6px !important;
+      font-size: 0.60rem !important;
+      line-height: 1.25 !important;
+    }
+
+    body.mobile-storm-reports-ready .workspace {
+      border-radius: 18px !important;
+    }
+
+    body.mobile-storm-reports-ready .workspace-header {
+      min-height: 76px !important;
+      padding: 13px 14px !important;
+      gap: 10px !important;
+    }
+
+    body.mobile-storm-reports-ready .workspace-header h2 {
+      font-size: clamp(1.17rem, 5.9vw, 1.55rem) !important;
+      line-height: 1.1 !important;
+    }
+
+    body.mobile-storm-reports-ready .workspace-header p {
+      margin-top: 5px !important;
+      font-size: 0.64rem !important;
+    }
+
+    body.mobile-storm-reports-ready .hazard-chip {
+      padding: 7px 9px !important;
+      font-size: 0.55rem !important;
+      letter-spacing: 0.08em !important;
+    }
+
+    body.mobile-storm-reports-ready .map-wrap,
+    body.mobile-storm-reports-ready #reportsMap {
+      min-height: 470px !important;
+      height: 62dvh !important;
+      max-height: 720px;
+    }
+
+    body.mobile-storm-reports-ready .mobile-map-legend-toggle {
+      position: absolute;
+      left: 9px;
+      bottom: 9px;
+      z-index: 12;
+      min-height: 38px;
+      padding: 7px 11px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 1px solid rgba(125, 175, 219, 0.36);
+      border-radius: 11px;
+      background: rgba(5, 16, 29, 0.94);
+      color: #eef8ff;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.34);
+      font-size: 0.62rem;
+      font-weight: 950;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    body.mobile-storm-reports-ready #mapLegend.map-legend {
+      left: 9px !important;
+      bottom: 54px !important;
+      width: min(290px, calc(100% - 18px)) !important;
+      max-height: min(52dvh, 430px);
+      overflow-y: auto;
+      transform-origin: left bottom;
+      transition: opacity 160ms ease, transform 160ms ease;
+    }
+
+    body.mobile-storm-reports-ready #mapLegend.map-legend.mobile-collapsed {
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(10px) scale(0.97);
+    }
+
+    body.mobile-storm-reports-ready .table-panel {
+      padding: 10px !important;
+    }
+
+    body.mobile-storm-reports-ready .table-tools {
+      margin-bottom: 10px !important;
+      display: grid !important;
+      grid-template-columns: 1fr 1fr !important;
+      gap: 8px !important;
+    }
+
+    body.mobile-storm-reports-ready .table-tools > :first-child {
+      grid-column: 1 / -1;
+    }
+
+    body.mobile-storm-reports-ready .table-scroll {
+      overflow: visible !important;
+      border: 0 !important;
+      background: transparent !important;
+    }
+
+    body.mobile-storm-reports-ready .table-scroll table,
+    body.mobile-storm-reports-ready .table-scroll tbody {
+      width: 100% !important;
+      display: block !important;
+    }
+
+    body.mobile-storm-reports-ready .table-scroll thead {
+      display: none !important;
+    }
+
+    body.mobile-storm-reports-ready .table-scroll tbody tr {
+      margin-bottom: 9px;
+      padding: 11px 12px;
+      display: grid !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0 12px;
+      overflow: hidden;
+      border: 1px solid rgba(125, 175, 219, 0.18);
+      border-radius: 14px;
+      background: rgba(7, 19, 33, 0.92);
+    }
+
+    body.mobile-storm-reports-ready .table-scroll tbody td {
+      min-width: 0;
+      padding: 8px 0 !important;
+      display: flex !important;
+      flex-direction: column;
+      gap: 4px;
+      border: 0 !important;
+      border-bottom: 1px solid rgba(125, 175, 219, 0.09) !important;
+      color: #eef6fd;
+      font-size: 0.72rem !important;
+      white-space: normal !important;
+      word-break: break-word;
+    }
+
+    body.mobile-storm-reports-ready .table-scroll tbody td::before {
+      color: #71899e;
+      font-size: 0.51rem;
+      font-weight: 950;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+    }
+
+    body.mobile-storm-reports-ready .table-scroll tbody td:nth-child(1)::before {
+      content: "Date";
+    }
+
+    body.mobile-storm-reports-ready .table-scroll tbody td:nth-child(2)::before {
+      content: "Time";
+    }
+
+    body.mobile-storm-reports-ready .table-scroll tbody td:nth-child(3)::before {
+      content: "Hazard";
+    }
+
+    body.mobile-storm-reports-ready .table-scroll tbody td:nth-child(4)::before {
+      content: "Magnitude";
+    }
+
+    body.mobile-storm-reports-ready .table-scroll tbody td:nth-child(5)::before {
+      content: "Location";
+    }
+
+    body.mobile-storm-reports-ready .table-scroll tbody td:nth-child(6)::before {
+      content: "County";
+    }
+
+    body.mobile-storm-reports-ready .table-scroll tbody td:nth-child(7)::before {
+      content: "State";
+    }
+
+    body.mobile-storm-reports-ready .table-scroll tbody td:nth-child(n + 8) {
+      grid-column: 1 / -1;
+    }
+
+    body.mobile-storm-reports-ready .table-scroll tbody td:nth-child(8)::before {
+      content: "Remarks";
+    }
+
+    body.mobile-storm-reports-ready #tableModeControls,
+    body.mobile-storm-reports-ready #chartModeControls {
+      width: 100% !important;
+      margin-inline: 0 !important;
+    }
+
+    body.mobile-storm-reports-ready #tableModeControls button,
+    body.mobile-storm-reports-ready #chartModeControls button {
+      min-width: 0 !important;
+    }
+
+    body.mobile-storm-reports-ready .official-spc-exact-card {
+      width: 100% !important;
+      border-radius: 13px !important;
+    }
+
+    body.mobile-storm-reports-ready .official-spc-exact-toolbar {
+      padding: 9px 10px !important;
+    }
+
+    body.mobile-storm-reports-ready .official-spc-exact-toolbar a {
+      display: none !important;
+    }
+
+    body.mobile-storm-reports-ready .official-spc-exact-media {
+      min-height: 0 !important;
+      background: #fff;
+    }
+
+    body.mobile-storm-reports-ready .official-spc-exact-media img {
+      width: 100% !important;
+      height: auto !important;
+      cursor: zoom-in;
+      touch-action: manipulation;
+    }
+
+    body.mobile-storm-reports-ready .mobile-chart-lightbox {
+      position: fixed;
+      inset: 0;
+      z-index: 8000;
+      display: none;
+      flex-direction: column;
+      background: rgba(0, 4, 10, 0.98);
+    }
+
+    body.mobile-storm-reports-ready .mobile-chart-lightbox.open {
+      display: flex;
+    }
+
+    .mobile-chart-lightbox-toolbar {
+      min-height: 58px;
+      padding: calc(8px + env(safe-area-inset-top)) 10px 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      border-bottom: 1px solid rgba(125, 175, 219, 0.20);
+      background: #06101d;
+    }
+
+    .mobile-chart-lightbox-toolbar strong {
+      color: #f7fbff;
+      font-size: 0.76rem;
+    }
+
+    .mobile-chart-lightbox-toolbar button {
+      min-height: 38px;
+      padding: 7px 11px;
+      border: 1px solid rgba(125, 175, 219, 0.28);
+      border-radius: 10px;
+      background: rgba(15, 35, 57, 0.94);
+      color: #fff;
+      font-size: 0.66rem;
+      font-weight: 900;
+    }
+
+    .mobile-chart-lightbox-viewport {
+      flex: 1 1 auto;
+      overflow: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pinch-zoom pan-x pan-y;
+      background: #fff;
+    }
+
+    .mobile-chart-lightbox-viewport img {
+      display: block;
+      width: max(100%, 1000px);
+      max-width: none;
+      height: auto;
+    }
+
+    @media (max-width: 390px) {
+      body.mobile-storm-reports-ready .mobile-reports-toolbar {
+        grid-template-columns: minmax(0, 1fr) auto;
+      }
+
+      body.mobile-storm-reports-ready
+        .mobile-reports-toolbar button[data-mobile-view-button] {
+        display: none;
+      }
+    }
+  }
+</style>
+
 </head>
 <body>
   <header class="site-header">
@@ -4875,5 +5410,246 @@
       }
     })();
   </script>
+
+<script id="mobile-storm-report-explorer-makeover-v2-script">
+(() => {
+  const READY_CLASS = "mobile-storm-reports-ready";
+
+  function isMobile() {
+    return window.matchMedia("(max-width: 760px)").matches;
+  }
+
+  function activeLabel(selector, fallback) {
+    return document.querySelector(`${selector} button.active`)
+      ?.textContent?.trim() || fallback;
+  }
+
+  function selectLabel(id, fallback) {
+    const select = document.getElementById(id);
+    return select?.selectedOptions?.[0]?.textContent?.trim() || fallback;
+  }
+
+  function updateContext() {
+    const title = document.querySelector("[data-mobile-report-context]");
+    const subtitle = document.querySelector(
+      "[data-mobile-report-subcontext]"
+    );
+
+    if (!title || !subtitle) return;
+
+    const year = selectLabel("yearSelect", "");
+    const period = activeLabel("#periodControls", "Annual");
+    const hazard = activeLabel("#hazardControls", "All");
+    const scope = activeLabel("#scopeControls", "National");
+    const view = activeLabel("#viewControls", "Map");
+
+    title.textContent = `${period} ${year} · ${hazard}`;
+    subtitle.textContent = `${scope} · ${view}`;
+  }
+
+  function installToolbar(deck) {
+    if (document.querySelector(".mobile-reports-toolbar")) return;
+
+    const toolbar = document.createElement("section");
+    toolbar.className = "mobile-reports-toolbar";
+    toolbar.innerHTML = `
+      <div class="mobile-reports-context">
+        <strong data-mobile-report-context>Storm Reports</strong>
+        <span data-mobile-report-subcontext>Preparing controls…</span>
+      </div>
+      <button type="button" data-mobile-filter-button>Filters</button>
+      <button type="button" data-mobile-view-button>View</button>
+    `;
+
+    deck.insertAdjacentElement("beforebegin", toolbar);
+
+    const sheetHeader = document.createElement("div");
+    sheetHeader.className = "mobile-control-sheet-header";
+    sheetHeader.innerHTML = `
+      <strong>Storm Report Controls</strong>
+      <button
+        type="button"
+        data-mobile-filter-close
+        aria-label="Close storm report controls"
+      >×</button>
+    `;
+    deck.insertAdjacentElement("afterbegin", sheetHeader);
+
+    const backdrop = document.createElement("div");
+    backdrop.className = "mobile-filter-backdrop";
+    backdrop.setAttribute("aria-hidden", "true");
+    document.body.appendChild(backdrop);
+
+    const open = (focusView = false) => {
+      if (!isMobile()) return;
+      deck.classList.add("mobile-open");
+      backdrop.classList.add("visible");
+      document.body.classList.add("mobile-report-filter-open");
+
+      if (focusView) {
+        setTimeout(() => {
+          document.getElementById("viewControls")?.scrollIntoView({
+            block: "center",
+            behavior: "smooth"
+          });
+        }, 220);
+      }
+    };
+
+    const close = () => {
+      deck.classList.remove("mobile-open");
+      backdrop.classList.remove("visible");
+      document.body.classList.remove("mobile-report-filter-open");
+    };
+
+    toolbar.querySelector("[data-mobile-filter-button]")
+      ?.addEventListener("click", () => open(false));
+
+    toolbar.querySelector("[data-mobile-view-button]")
+      ?.addEventListener("click", () => open(true));
+
+    sheetHeader.querySelector("[data-mobile-filter-close]")
+      ?.addEventListener("click", close);
+
+    backdrop.addEventListener("click", close);
+
+    document.getElementById("viewControls")
+      ?.addEventListener("click", (event) => {
+        if (event.target.closest("button[data-value]")) {
+          setTimeout(close, 90);
+        }
+      });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") close();
+    });
+
+    window.addEventListener("resize", () => {
+      if (!isMobile()) close();
+    });
+  }
+
+  function installLegendToggle() {
+    const wrap = document.querySelector(".map-wrap");
+    const legend = document.getElementById("mapLegend");
+
+    if (!wrap || !legend) return;
+    if (wrap.querySelector(".mobile-map-legend-toggle")) return;
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "mobile-map-legend-toggle";
+    button.textContent = "Legend";
+    button.setAttribute("aria-expanded", "false");
+
+    legend.classList.add("mobile-collapsed");
+    wrap.appendChild(button);
+
+    button.addEventListener("click", () => {
+      const collapsed = legend.classList.toggle("mobile-collapsed");
+      button.textContent = collapsed ? "Legend" : "Hide Legend";
+      button.setAttribute("aria-expanded", String(!collapsed));
+    });
+  }
+
+  function installChartViewer() {
+    if (document.querySelector(".mobile-chart-lightbox")) return;
+
+    const overlay = document.createElement("div");
+    overlay.className = "mobile-chart-lightbox";
+    overlay.setAttribute("aria-hidden", "true");
+    overlay.innerHTML = `
+      <div class="mobile-chart-lightbox-toolbar">
+        <strong>Official SPC Chart</strong>
+        <button type="button" data-chart-reset>Reset</button>
+        <button type="button" data-chart-close>Close</button>
+      </div>
+      <div class="mobile-chart-lightbox-viewport">
+        <img alt="Enlarged official SPC chart">
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    const viewport = overlay.querySelector(
+      ".mobile-chart-lightbox-viewport"
+    );
+    const image = overlay.querySelector("img");
+
+    const close = () => {
+      overlay.classList.remove("open");
+      overlay.setAttribute("aria-hidden", "true");
+      image.removeAttribute("src");
+      document.body.classList.remove("mobile-report-filter-open");
+    };
+
+    overlay.querySelector("[data-chart-close]")
+      ?.addEventListener("click", close);
+
+    overlay.querySelector("[data-chart-reset]")
+      ?.addEventListener("click", () => {
+        viewport.scrollTo({ left: 0, top: 0, behavior: "smooth" });
+      });
+
+    document.addEventListener("click", (event) => {
+      if (!isMobile()) return;
+
+      const source = event.target.closest(
+        "img[data-exact-spc-trend-image], .official-spc-exact-media img"
+      );
+
+      if (!source?.src) return;
+
+      image.src = source.src;
+      image.alt = source.alt || "Official SPC chart";
+      overlay.classList.add("open");
+      overlay.setAttribute("aria-hidden", "false");
+      document.body.classList.add("mobile-report-filter-open");
+      viewport.scrollTo(0, 0);
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && overlay.classList.contains("open")) {
+        close();
+      }
+    });
+  }
+
+  function install() {
+    if (document.body.classList.contains(READY_CLASS)) return;
+
+    const deck = document.querySelector(".control-deck");
+    if (!deck) {
+      console.warn("Mobile Storm Reports makeover: control deck not found.");
+      return;
+    }
+
+    document.body.classList.add(READY_CLASS);
+    installToolbar(deck);
+    installLegendToggle();
+    installChartViewer();
+    updateContext();
+
+    const observer = new MutationObserver(() => {
+      updateContext();
+      installLegendToggle();
+    });
+
+    observer.observe(document.body, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ["class"]
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", install, { once: true });
+  } else {
+    install();
+  }
+})();
+</script>
+
 </body>
 </html>

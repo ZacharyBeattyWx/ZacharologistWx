@@ -11609,6 +11609,208 @@ body {
   }
 </style>
 
+
+<style id="mobile-home-storm-reports-card-v2">
+  .mobile-storm-reports-card {
+    display: none;
+  }
+
+  @media (max-width: 760px) {
+    .mobile-storm-reports-card {
+      margin: 18px 20px 0;
+      padding: 26px 28px 28px;
+      display: block;
+      overflow: hidden;
+      border: 1px solid rgba(119, 177, 221, 0.26);
+      border-radius: 29px;
+      background:
+        radial-gradient(circle at 82% 2%, rgba(43, 175, 238, 0.12), transparent 38%),
+        linear-gradient(145deg, rgba(11, 31, 53, 0.98), rgba(3, 13, 26, 0.99));
+      box-shadow:
+        0 20px 44px rgba(0, 0, 0, 0.30),
+        inset 0 1px 0 rgba(255, 255, 255, 0.025);
+    }
+
+    .mobile-storm-reports-card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .mobile-storm-reports-eyebrow,
+    .mobile-storm-reports-status {
+      margin: 0;
+      font-size: 0.70rem;
+      font-weight: 950;
+      letter-spacing: 0.17em;
+      text-transform: uppercase;
+    }
+
+    .mobile-storm-reports-eyebrow {
+      color: #72ceff;
+    }
+
+    .mobile-storm-reports-status {
+      padding-top: 2px;
+      color: #8997aa;
+      text-align: right;
+    }
+
+    .mobile-storm-reports-card h2 {
+      margin: 11px 0 0;
+      color: #f7fbff;
+      font-size: clamp(1.7rem, 8vw, 2.25rem);
+      line-height: 1;
+      letter-spacing: -0.035em;
+    }
+
+    .mobile-storm-report-grid {
+      margin-top: 22px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 9px;
+    }
+
+    .mobile-storm-report-tile {
+      min-width: 0;
+      min-height: 126px;
+      padding: 14px 8px 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(123, 176, 219, 0.20);
+      border-radius: 17px;
+      background: rgba(4, 14, 28, 0.72);
+      text-align: center;
+    }
+
+    .mobile-storm-report-tile[data-hazard="tornado"] {
+      border-color: rgba(255, 100, 95, 0.34);
+    }
+
+    .mobile-storm-report-tile[data-hazard="hail"] {
+      border-color: rgba(87, 224, 186, 0.32);
+    }
+
+    .mobile-storm-report-tile[data-hazard="wind"] {
+      border-color: rgba(102, 202, 255, 0.34);
+    }
+
+    .mobile-storm-report-name {
+      color: #8ed7ff;
+      font-size: 0.61rem;
+      font-weight: 950;
+      letter-spacing: 0.15em;
+      line-height: 1.15;
+      text-transform: uppercase;
+    }
+
+    .mobile-storm-report-today {
+      margin-top: 9px;
+      color: #f8fbff;
+      font-size: 1.85rem;
+      font-weight: 950;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .mobile-storm-report-tile[data-hazard="tornado"] .mobile-storm-report-today {
+      color: #ff7772;
+    }
+
+    .mobile-storm-report-tile[data-hazard="hail"] .mobile-storm-report-today {
+      color: #57e0ba;
+    }
+
+    .mobile-storm-report-tile[data-hazard="wind"] .mobile-storm-report-today {
+      color: #66caff;
+    }
+
+    .mobile-storm-report-today-label {
+      margin-top: 5px;
+      color: #b9c7d5;
+      font-size: 0.63rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .mobile-storm-report-month {
+      margin-top: 8px;
+      color: #8393a7;
+      font-size: 0.66rem;
+      line-height: 1.25;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .mobile-storm-reports-open {
+      margin-top: 20px;
+      min-height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(91, 194, 246, 0.42);
+      border-radius: 8px;
+      background: rgba(19, 44, 68, 0.64);
+      color: #f4f9fd;
+      font-size: 0.76rem;
+      font-weight: 950;
+      letter-spacing: 0.10em;
+      text-align: center;
+      text-decoration: none;
+      text-transform: uppercase;
+    }
+
+    .mobile-storm-reports-open:active {
+      background: rgba(41, 105, 148, 0.54);
+      transform: translateY(1px);
+    }
+
+    .mobile-storm-reports-card.is-error .mobile-storm-reports-status {
+      color: #ff9a96;
+    }
+
+    @media (max-width: 390px) {
+      .mobile-storm-reports-card {
+        margin-inline: 14px;
+        padding-inline: 18px;
+      }
+
+      .mobile-storm-report-grid {
+        gap: 7px;
+      }
+
+      .mobile-storm-report-tile {
+        min-height: 116px;
+        padding-inline: 5px;
+      }
+
+      .mobile-storm-report-today {
+        font-size: 1.62rem;
+      }
+    }
+  }
+</style>
+
+
+<style id="mobile-storm-reports-flex-order-fix-v1">
+  @media (max-width: 768px) {
+    /*
+      Existing mobile sequence:
+      Regional Radar = 10
+      Active Alerts  = 20
+      SPC Outlook    = 30
+
+      Storm Reports belongs immediately after SPC.
+    */
+    .forecast-dashboard .mobile-storm-reports-card {
+      order: 40 !important;
+    }
+  }
+</style>
+
 </head>
 
 <body>
@@ -18309,5 +18511,351 @@ const threats = [
   );
 })();
 </script>
+
+<script id="mobile-home-storm-reports-card-v2-script">
+(() => {
+  const CARD_ID = "mobile-home-storm-reports-card-panel-v2";
+
+  function dateKey(date = new Date()) {
+    return [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2, "0"),
+      String(date.getDate()).padStart(2, "0")
+    ].join("-");
+  }
+
+  function reportDateKey(report) {
+    const raw = String(
+      report?.eventDate ||
+      report?.reportDay ||
+      report?.date ||
+      ""
+    ).trim();
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+
+    const parsed = new Date(raw);
+    return Number.isNaN(parsed.getTime()) ? "" : dateKey(parsed);
+  }
+
+  function apiUrl(year, month, hazard) {
+    const local = ["localhost", "127.0.0.1"].includes(
+      window.location.hostname
+    );
+    const base = local ? "http://127.0.0.1:8787" : "";
+    const params = new URLSearchParams({
+      year: String(year),
+      month: String(month),
+      hazard,
+      dataset: "preliminary"
+    });
+
+    return `${base}/api/storm-reports?${params.toString()}`;
+  }
+
+  function findSpcCard() {
+    const heading = [...document.querySelectorAll("h1, h2, h3, h4")]
+      .find((element) =>
+        element.textContent.trim().toLowerCase() === "convective forecast"
+      );
+
+    if (!heading) return null;
+
+    const direct = heading.closest(
+      "section, article, .dashboard-card, .forecast-card, .spc-card, .panel"
+    );
+    if (direct) return direct;
+
+    let current = heading.parentElement;
+    while (current && current !== document.body) {
+      const text = current.textContent || "";
+      if (/SPC OUTLOOK/i.test(text) && /DAY 1 OUTLOOK/i.test(text)) {
+        return current;
+      }
+      current = current.parentElement;
+    }
+
+    return heading.parentElement;
+  }
+
+  function ensureNavLink() {
+    if (document.querySelector('a[href*="storm-reports.html"]')) return;
+
+    const stormChasing = [...document.querySelectorAll("a")]
+      .find((link) => /storm chasing/i.test(link.textContent || ""));
+
+    if (!stormChasing) return;
+
+    const link = document.createElement("a");
+    link.href = "storm-reports.html";
+    link.textContent = "Storm Reports";
+    link.className = stormChasing.className;
+    stormChasing.insertAdjacentElement("beforebegin", link);
+  }
+
+  function createCard() {
+    if (document.getElementById(CARD_ID)) return null;
+
+    const now = new Date();
+    const params = new URLSearchParams({
+      year: String(now.getFullYear()),
+      month: String(now.getMonth() + 1),
+      scope: "national",
+      type: "all",
+      dataset: "preliminary",
+      view: "map"
+    });
+
+    const card = document.createElement("section");
+    card.id = CARD_ID;
+    card.className = "mobile-storm-reports-card";
+    card.setAttribute("aria-label", "SPC storm report summary");
+
+    card.innerHTML = `
+      <div class="mobile-storm-reports-card-header">
+        <div>
+          <p class="mobile-storm-reports-eyebrow">SPC Storm Reports</p>
+          <h2>Storm Reports</h2>
+        </div>
+        <p class="mobile-storm-reports-status" data-report-status>
+          Auto updating
+        </p>
+      </div>
+
+      <div class="mobile-storm-report-grid">
+        ${["tornado", "hail", "wind"].map((hazard) => `
+          <article class="mobile-storm-report-tile" data-hazard="${hazard}">
+            <span class="mobile-storm-report-name">
+              ${hazard.charAt(0).toUpperCase() + hazard.slice(1)}
+            </span>
+            <strong
+              class="mobile-storm-report-today"
+              data-report-today="${hazard}"
+            >—</strong>
+            <span class="mobile-storm-report-today-label">Today</span>
+            <span
+              class="mobile-storm-report-month"
+              data-report-month="${hazard}"
+            >— this month</span>
+          </article>
+        `).join("")}
+      </div>
+
+      <a
+        class="mobile-storm-reports-open"
+        href="storm-reports.html?${params.toString()}"
+      >Open Storm Report Explorer</a>
+    `;
+
+    return card;
+  }
+
+  async function updateCard(card) {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+    const today = dateKey(now);
+    const status = card.querySelector("[data-report-status]");
+
+    status.textContent = "Updating";
+
+    try {
+      const hazards = ["tornado", "hail", "wind"];
+      const results = await Promise.all(
+        hazards.map(async (hazard) => {
+          const response = await fetch(
+            apiUrl(year, month, hazard),
+            { cache: "no-store" }
+          );
+
+          if (!response.ok) {
+            throw new Error(`Storm reports API returned ${response.status}`);
+          }
+
+          const payload = await response.json();
+          return {
+            hazard,
+            reports: Array.isArray(payload?.reports) ? payload.reports : []
+          };
+        })
+      );
+
+      for (const { hazard, reports } of results) {
+        const todayCount = reports.filter(
+          (report) => reportDateKey(report) === today
+        ).length;
+
+        card.querySelector(
+          `[data-report-today="${hazard}"]`
+        ).textContent = todayCount.toLocaleString("en-US");
+
+        card.querySelector(
+          `[data-report-month="${hazard}"]`
+        ).textContent =
+          `${reports.length.toLocaleString("en-US")} this month`;
+      }
+
+      card.classList.remove("is-error");
+      status.textContent = "Auto updating";
+    } catch (error) {
+      console.error("Mobile storm reports summary failed:", error);
+      card.classList.add("is-error");
+      status.textContent = "Explorer available";
+    }
+  }
+
+  function install() {
+    ensureNavLink();
+
+    const anchor = findSpcCard();
+    const card = createCard();
+
+    if (!anchor || !card) {
+      console.warn("Mobile Storm Reports card anchor was not found.");
+      return;
+    }
+
+    anchor.insertAdjacentElement("afterend", card);
+    updateCard(card);
+
+    window.setInterval(() => {
+      if (!document.hidden) updateCard(card);
+    }, 300000);
+
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) updateCard(card);
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", install, { once: true });
+  } else {
+    install();
+  }
+})();
+</script>
+<script id="mobile-storm-reports-order-aware-placement-v2">
+(() => {
+  const CARD_ID = "mobile-home-storm-reports-card-v2";
+  const MOBILE_QUERY = "(max-width: 760px)";
+
+  function headingWithText(text) {
+    const normalized = text.trim().toLowerCase();
+
+    return [...document.querySelectorAll("h1, h2, h3, h4")]
+      .find((heading) =>
+        heading.textContent.trim().toLowerCase() === normalized
+      ) || null;
+  }
+
+  function containsHeading(element, text) {
+    const normalized = text.trim().toLowerCase();
+
+    return [...element.querySelectorAll("h1, h2, h3, h4")]
+      .some((heading) =>
+        heading.textContent.trim().toLowerCase() === normalized
+      );
+  }
+
+  function findExactSpcCard() {
+    const heading = headingWithText("Convective Forecast");
+
+    if (!heading) return null;
+
+    let current = heading;
+    let best = heading.parentElement;
+
+    while (current?.parentElement && current.parentElement !== document.body) {
+      const parent = current.parentElement;
+
+      const parentIncludesOtherHomepageCard =
+        containsHeading(parent, "Regional Radar") ||
+        containsHeading(parent, "Storm Reports");
+
+      if (parentIncludesOtherHomepageCard) {
+        return current === heading ? best : current;
+      }
+
+      best = parent;
+      current = parent;
+    }
+
+    return best;
+  }
+
+  function numericOrder(element) {
+    if (!element) return 0;
+
+    const raw = window.getComputedStyle(element).order;
+    const parsed = Number.parseInt(raw, 10);
+
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  function applyPlacement() {
+    const stormCard = document.getElementById(CARD_ID);
+    const spcCard = findExactSpcCard();
+
+    if (!stormCard || !spcCard || !spcCard.parentElement) {
+      return false;
+    }
+
+    const parent = spcCard.parentElement;
+
+    if (stormCard.parentElement !== parent) {
+      spcCard.insertAdjacentElement("afterend", stormCard);
+    } else if (spcCard.nextElementSibling !== stormCard) {
+      spcCard.insertAdjacentElement("afterend", stormCard);
+    }
+
+    if (window.matchMedia(MOBILE_QUERY).matches) {
+      /*
+       * The homepage visually reorders cards on mobile. Give Storm Reports the
+       * exact same order as the SPC card. Equal-order siblings follow DOM order,
+       * and Storm Reports is now immediately after SPC in the DOM.
+       */
+      stormCard.style.setProperty(
+        "order",
+        String(numericOrder(spcCard)),
+        "important"
+      );
+    } else {
+      stormCard.style.removeProperty("order");
+    }
+
+    return true;
+  }
+
+  function install() {
+    let attempts = 0;
+
+    const settle = () => {
+      attempts += 1;
+      const placed = applyPlacement();
+
+      if (!placed && attempts < 40) {
+        window.setTimeout(settle, 125);
+      }
+    };
+
+    settle();
+
+    window.addEventListener("resize", applyPlacement);
+
+    window.addEventListener("load", () => {
+      applyPlacement();
+      window.setTimeout(applyPlacement, 250);
+      window.setTimeout(applyPlacement, 1000);
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", install, { once: true });
+  } else {
+    install();
+  }
+})();
+</script>
+
 </body>
 </html>
