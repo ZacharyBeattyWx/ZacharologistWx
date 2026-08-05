@@ -1373,12 +1373,819 @@
   }
 </style>
 
+
+<style id="spc-statistical-tables-and-charts-v1">
+  .spc-subtabs {
+    margin: 0 auto 16px;
+    padding: 4px;
+    display: flex;
+    width: max-content;
+    max-width: 100%;
+    gap: 4px;
+    overflow-x: auto;
+    border: 1px solid rgba(125, 175, 219, 0.22);
+    border-radius: 12px;
+    background: rgba(3, 10, 19, 0.82);
+    scrollbar-width: none;
+  }
+
+  .spc-subtabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .spc-subtabs button {
+    min-height: 36px;
+    padding: 8px 14px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: #8da3b8;
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.025em;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .spc-subtabs button:hover,
+  .spc-subtabs button.active {
+    color: #fff;
+    background: rgba(98, 201, 255, 0.17);
+    box-shadow: inset 0 0 0 1px rgba(98, 201, 255, 0.3);
+  }
+
+  .table-mode[hidden],
+  .chart-mode[hidden],
+  .chart-card[hidden] {
+    display: none !important;
+  }
+
+  .aggregate-table-heading {
+    margin-bottom: 12px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    border: 1px solid rgba(125, 175, 219, 0.2);
+    border-radius: 13px;
+    background: rgba(10, 25, 42, 0.76);
+  }
+
+  .aggregate-table-heading strong,
+  .aggregate-table-heading span {
+    display: block;
+  }
+
+  .aggregate-table-heading strong {
+    font-size: 1rem;
+  }
+
+  .aggregate-table-heading span {
+    margin-top: 4px;
+    color: #91a8bd;
+    font-size: 0.72rem;
+  }
+
+  .aggregate-sort-note {
+    flex: 0 0 auto;
+    margin: 0 !important;
+    color: #78cfff !important;
+    font-weight: 800;
+  }
+
+  .aggregate-table-scroll {
+    max-height: min(68vh, 760px);
+  }
+
+  .aggregate-table th,
+  .aggregate-table td {
+    padding: 13px 18px;
+    font-size: 0.86rem;
+  }
+
+  .aggregate-table th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    text-align: left;
+  }
+
+  .aggregate-table .numeric-heading,
+  .aggregate-number {
+    width: 15%;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .aggregate-table .numeric-heading.tornado {
+    color: #ff827e;
+  }
+
+  .aggregate-table .numeric-heading.wind {
+    color: #6dccff;
+  }
+
+  .aggregate-table .numeric-heading.hail {
+    color: #5ee3a1;
+  }
+
+  .aggregate-label {
+    min-width: 220px;
+    font-weight: 760;
+  }
+
+  .aggregate-number {
+    position: relative;
+    font-weight: 850;
+  }
+
+  .aggregate-number.all {
+    background: rgba(72, 185, 235, calc(var(--cell-intensity) * 0.32));
+  }
+
+  .aggregate-number.tornado {
+    color: #ffaaa6;
+    background: rgba(255, 100, 95, calc(var(--cell-intensity) * 0.18));
+  }
+
+  .aggregate-number.wind {
+    color: #bdeaff;
+    background: rgba(68, 180, 244, calc(var(--cell-intensity) * 0.2));
+  }
+
+  .aggregate-number.hail {
+    color: #bdfbd9;
+    background: rgba(56, 213, 116, calc(var(--cell-intensity) * 0.18));
+  }
+
+  .aggregate-empty {
+    padding: 42px !important;
+    color: #91a8bd;
+    text-align: center;
+  }
+
+  .spc-trend-content {
+    min-height: 420px;
+  }
+
+  .official-trend-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .official-trend-grid.single {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .official-trend-card,
+  .native-trend-card {
+    overflow: hidden;
+    border: 1px solid rgba(125, 175, 219, 0.22);
+    border-radius: 16px;
+    background: #071321;
+  }
+
+  .official-trend-heading,
+  .native-trend-header {
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    border-bottom: 1px solid rgba(125, 175, 219, 0.18);
+    background: rgba(12, 28, 47, 0.94);
+  }
+
+  .official-trend-heading h3,
+  .native-trend-header h3 {
+    margin: 0;
+    font-size: 0.95rem;
+  }
+
+  .official-trend-heading p,
+  .native-trend-header p {
+    margin: 4px 0 0;
+    color: #8fa6bb;
+    font-size: 0.7rem;
+  }
+
+  .official-trend-heading a {
+    flex: 0 0 auto;
+    color: #7dd4ff;
+    font-size: 0.67rem;
+    font-weight: 900;
+    text-decoration: none;
+    text-transform: uppercase;
+  }
+
+  .official-trend-media {
+    position: relative;
+    min-height: 300px;
+    display: grid;
+    place-items: center;
+    background: #d2d2d2;
+  }
+
+  .official-trend-grid.single .official-trend-media {
+    min-height: 520px;
+  }
+
+  .official-trend-media img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .official-trend-grid.single img {
+    max-height: 74vh;
+    object-fit: contain;
+  }
+
+  .official-trend-loading {
+    position: absolute;
+    color: #1a2732;
+    font-size: 0.78rem;
+    font-weight: 800;
+  }
+
+  .native-trend-legend {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .native-trend-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #b9cada;
+    font-size: 0.7rem;
+    font-weight: 800;
+  }
+
+  .native-trend-legend i {
+    width: 18px;
+    height: 4px;
+    border-radius: 99px;
+  }
+
+  .cumulative-chart-svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .chart-grid-single-mode {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .chart-grid-single-mode .chart-card {
+    min-height: 520px;
+  }
+
+  /* Mask content sliding beneath the sticky control deck. */
+  .control-deck {
+    box-shadow:
+      0 16px 38px rgba(0, 0, 0, 0.46),
+      0 22px 24px rgba(3, 9, 20, 0.96);
+  }
+
+  @media (max-width: 1000px) {
+    .official-trend-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .official-trend-media,
+    .official-trend-grid.single .official-trend-media {
+      min-height: 260px;
+    }
+  }
+
+  @media (max-width: 700px) {
+    .spc-subtabs {
+      width: 100%;
+      justify-content: flex-start;
+    }
+
+    .aggregate-table-heading,
+    .official-trend-heading,
+    .native-trend-header {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    .aggregate-sort-note {
+      align-self: flex-start;
+    }
+
+    .aggregate-table th,
+    .aggregate-table td {
+      padding: 11px 12px;
+      font-size: 0.78rem;
+    }
+
+    .aggregate-label {
+      min-width: 155px;
+    }
+  }
+</style>
+
+
+<style id="compact-storm-report-trend-charts-v1">
+  /*
+   * Keep trend charts readable without allowing them to consume nearly
+   * the full viewport height on wide desktop displays.
+   */
+  #trendChartContent {
+    width: 100%;
+  }
+
+  .native-trend-card {
+    width: min(100%, 1180px) !important;
+    margin-inline: auto !important;
+  }
+
+  .cumulative-chart-svg {
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  .official-trend-grid.single {
+    width: min(100%, 1180px) !important;
+    margin-inline: auto !important;
+  }
+
+  .official-trend-grid.single .official-trend-media {
+    min-height: 390px !important;
+  }
+
+  .official-trend-grid.single img {
+    max-height: min(58vh, 520px) !important;
+  }
+
+  .chart-grid-single-mode .chart-card {
+    min-height: 400px !important;
+  }
+
+  @media (max-width: 900px) {
+    .native-trend-card,
+    .official-trend-grid.single {
+      width: 100% !important;
+    }
+
+    .official-trend-grid.single .official-trend-media {
+      min-height: 300px !important;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .official-trend-grid.single .official-trend-media {
+      min-height: 230px !important;
+    }
+
+    .chart-grid-single-mode .chart-card {
+      min-height: 320px !important;
+    }
+  }
+</style>
+
+
+<style id="unpinned-storm-report-control-deck-v1">
+  /*
+   * Let the report filters scroll naturally with the page so maps, charts,
+   * and statistical tables can use the full viewport once the controls pass.
+   */
+  .control-deck {
+    position: relative !important;
+    top: auto !important;
+    z-index: 20 !important;
+    backdrop-filter: none !important;
+  }
+
+  /* Remove any sticky-deck masking added for content sliding underneath. */
+  .control-deck::before,
+  .control-deck::after {
+    display: none !important;
+    content: none !important;
+  }
+
+  /* Allow the main visual views to use more of the available desktop width. */
+  #trendChartContent .native-trend-card,
+  #trendChartContent .official-trend-grid.single {
+    width: 100% !important;
+    max-width: 1420px !important;
+  }
+
+  .map-card,
+  .chart-card,
+  .view-panel {
+    scroll-margin-top: 18px;
+  }
+
+  @media (max-width: 760px) {
+    .control-deck {
+      position: relative !important;
+      top: auto !important;
+    }
+
+    #trendChartContent .native-trend-card,
+    #trendChartContent .official-trend-grid.single {
+      max-width: 100% !important;
+    }
+  }
+</style>
+
+
+<style id="simplified-taller-storm-report-charts-v3">
+  /*
+   * Keep only the two highest-value chart views:
+   * cumulative evolution and state totals.
+   */
+  #chartModeControls {
+    justify-content: center;
+    width: fit-content;
+    margin-inline: auto;
+  }
+
+  #chartModeControls button {
+    min-width: 138px;
+  }
+
+  #trendChartContent .native-trend-card {
+    width: 100% !important;
+    max-width: 1420px !important;
+    margin-inline: auto !important;
+  }
+
+  .official-trend-grid.single .official-trend-media {
+    min-height: 470px !important;
+  }
+
+  .official-trend-grid.single img {
+    max-height: min(66vh, 610px) !important;
+  }
+
+  @media (max-width: 760px) {
+    #chartModeControls {
+      width: 100%;
+    }
+
+    #chartModeControls button {
+      min-width: 0;
+      flex: 1 1 50%;
+    }
+
+    .official-trend-grid.single .official-trend-media {
+      min-height: 300px !important;
+    }
+  }
+</style>
+
+
+<style id="compact-header-logo-taller-chart-v1">
+  /*
+   * Slim operations header: preserve navigation while returning more
+   * vertical space to the map, charts, and statistical tables.
+   */
+  .site-header {
+    min-height: 54px !important;
+    padding: 5px clamp(14px, 2vw, 26px) !important;
+    gap: 14px !important;
+  }
+
+  .site-brand {
+    min-width: 42px;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    line-height: 0;
+  }
+
+  .site-brand-logo {
+    display: block;
+    width: 42px;
+    height: 42px;
+    object-fit: contain;
+    border-radius: 11px;
+  }
+
+  .site-nav {
+    gap: 5px !important;
+  }
+
+  .site-nav a {
+    padding: 7px 9px !important;
+    border-radius: 9px !important;
+    font-size: 0.66rem !important;
+    letter-spacing: 0.055em !important;
+  }
+
+  .mobile-nav-toggle {
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 10px !important;
+  }
+
+  #trendChartContent .native-trend-card {
+    max-width: 1460px !important;
+  }
+
+  @media (max-width: 980px) {
+    .site-header {
+      min-height: 52px !important;
+      padding: 5px 12px !important;
+    }
+
+    .site-brand-logo {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+    }
+  }
+
+  @media (max-width: 760px) {
+    .site-header {
+      gap: 10px !important;
+    }
+
+    .site-brand {
+      min-width: 38px;
+    }
+
+    .site-brand-logo {
+      width: 38px;
+      height: 38px;
+    }
+  }
+</style>
+
+
+<style id="exact-official-spc-trend-mode-v1">
+  .official-spc-exact-card {
+    width: min(100%, 1240px);
+    margin-inline: auto;
+    overflow: hidden;
+    border: 1px solid rgba(125, 175, 219, 0.25);
+    border-radius: 18px;
+    background: #071321;
+  }
+
+  .official-spc-exact-toolbar {
+    min-height: 52px;
+    padding: 9px 13px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    border-bottom: 1px solid rgba(125, 175, 219, 0.22);
+    background: rgba(11, 28, 48, 0.98);
+  }
+
+  .official-spc-exact-toolbar strong,
+  .official-spc-exact-toolbar span {
+    display: block;
+  }
+
+  .official-spc-exact-toolbar strong {
+    font-size: 0.78rem;
+  }
+
+  .official-spc-exact-toolbar span {
+    margin-top: 3px;
+    color: #8fa8bd;
+    font-size: 0.67rem;
+  }
+
+  .official-spc-exact-toolbar a,
+  .exact-spc-trend-error a {
+    flex: 0 0 auto;
+    padding: 7px 10px;
+    border: 1px solid rgba(98, 201, 255, 0.34);
+    border-radius: 9px;
+    background: rgba(98, 201, 255, 0.12);
+    color: #eef9ff;
+    font-size: 0.66rem;
+    font-weight: 900;
+    letter-spacing: 0.05em;
+    text-decoration: none;
+    text-transform: uppercase;
+  }
+
+  .official-spc-exact-media {
+    position: relative;
+    min-height: 460px;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    background: #fff;
+  }
+
+  .official-spc-exact-media img {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: none !important;
+    object-fit: contain;
+    opacity: 0;
+  }
+
+  .official-spc-exact-media img.loaded {
+    opacity: 1;
+  }
+
+  .official-spc-exact-loading {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: #35526c;
+    background: #f5f6f7;
+    font-size: 0.82rem;
+    font-weight: 800;
+  }
+
+  .exact-spc-trend-gate,
+  .exact-spc-trend-error {
+    width: min(100%, 760px);
+    margin-inline: auto;
+    padding: clamp(24px, 4vw, 42px);
+    border: 1px solid rgba(125, 175, 219, 0.24);
+    border-radius: 20px;
+    background:
+      radial-gradient(
+        circle at 50% 0%,
+        rgba(98, 201, 255, 0.12),
+        transparent 46%
+      ),
+      rgba(7, 19, 33, 0.98);
+    text-align: center;
+  }
+
+  .exact-spc-trend-eyebrow {
+    margin: 0 0 8px !important;
+    color: #62c9ff !important;
+    font-size: 0.68rem !important;
+    font-weight: 950;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .exact-spc-trend-gate h3,
+  .exact-spc-trend-error h3 {
+    margin: 0;
+    font-size: clamp(1.35rem, 2.4vw, 2rem);
+  }
+
+  .exact-spc-trend-gate > p:not(.exact-spc-trend-eyebrow),
+  .exact-spc-trend-error p {
+    max-width: 650px;
+    margin: 12px auto 0;
+    color: #9db2c6;
+    line-height: 1.55;
+  }
+
+  .exact-spc-requirements {
+    margin: 18px auto 0;
+    color: #91a6bb;
+    font-size: 0.78rem;
+  }
+
+  .exact-spc-requirements strong {
+    margin-left: 5px;
+    color: #f7fbff;
+  }
+
+  .exact-spc-hazard-links {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+    gap: 9px;
+    flex-wrap: wrap;
+  }
+
+  .exact-spc-hazard-links a {
+    min-width: 122px;
+    padding: 10px 14px;
+    border: 1px solid rgba(125, 175, 219, 0.28);
+    border-radius: 11px;
+    background: rgba(12, 29, 49, 0.92);
+    color: #dceaf6;
+    font-size: 0.72rem;
+    font-weight: 950;
+    letter-spacing: 0.05em;
+    text-decoration: none;
+    text-transform: uppercase;
+  }
+
+  .exact-spc-hazard-links a:hover,
+  .exact-spc-hazard-links a.preferred {
+    border-color: rgba(98, 201, 255, 0.55);
+    background: rgba(98, 201, 255, 0.16);
+    color: #fff;
+  }
+
+  .exact-spc-trend-note {
+    font-size: 0.73rem !important;
+  }
+
+  .exact-spc-trend-error a {
+    display: inline-block;
+    margin-top: 18px;
+  }
+
+  @media (max-width: 760px) {
+    .official-spc-exact-toolbar {
+      align-items: flex-start;
+    }
+
+    .official-spc-exact-media {
+      min-height: 270px;
+    }
+
+    .exact-spc-hazard-links {
+      display: grid;
+      grid-template-columns: 1fr;
+    }
+
+    .exact-spc-hazard-links a {
+      width: 100%;
+    }
+  }
+</style>
+
+
+<style id="hide-local-totals-during-exact-spc-chart-v1">
+  /*
+   * The official SPC image can update on a different schedule than the
+   * detailed daily CSV archive. Do not display both totals together.
+   */
+  body.exact-spc-authoritative-presentation #statusStrip,
+  body.exact-spc-authoritative-presentation .summary-grid {
+    display: none !important;
+  }
+
+  body.exact-spc-authoritative-presentation .workspace {
+    margin-top: 0 !important;
+  }
+
+  body.exact-spc-authoritative-presentation .workspace-header {
+    min-height: 74px;
+    padding-block: 12px !important;
+  }
+
+  body.exact-spc-authoritative-presentation #workspaceSubtitle {
+    color: #8fa8bd;
+  }
+
+  body.exact-spc-authoritative-presentation #hazardChip {
+    border-color: rgba(98, 201, 255, 0.42) !important;
+    color: #eaf8ff !important;
+    background: rgba(98, 201, 255, 0.12);
+  }
+
+  @media (max-width: 760px) {
+    body.exact-spc-authoritative-presentation .workspace-header {
+      min-height: 0;
+    }
+  }
+</style>
+
+
+<style id="remove-hourly-month-table-tabs-v1">
+  #tableModeControls {
+    width: fit-content;
+    margin-inline: auto;
+  }
+
+  #tableModeControls button {
+    min-width: 108px;
+  }
+
+  @media (max-width: 620px) {
+    #tableModeControls {
+      width: 100%;
+    }
+
+    #tableModeControls button {
+      min-width: 0;
+      flex: 1 1 33.333%;
+    }
+  }
+</style>
+
 </head>
 <body>
   <header class="site-header">
     <a class="site-brand" href="index.html">
-      <div class="brand-main">ZACHAROLOGIST</div>
-      <div class="brand-sub">Built for the Storm</div>
+      <img
+        class="site-brand-logo"
+        src="assets/zacharologist-wx-radar-mark.png"
+        alt="Zacharologist"
+      >
     </a>
 
     <button class="mobile-nav-toggle" id="mobileNavToggle" type="button" aria-label="Open navigation">☰</button>
@@ -1510,67 +2317,103 @@
       </section>
 
       <section class="view-panel table-panel" id="tablePanel" data-view="table">
-        <div class="table-tools">
-          <input id="tableSearch" type="search" placeholder="Search location, county, state, or remarks">
-          <label class="check-control">
-            <input id="significantOnly" type="checkbox">
-            Significant only
-          </label>
-          <label class="select-control">
-            <span>Rows</span>
-            <select id="rowsPerPage">
-              <option value="50">50</option>
-              <option value="100" selected>100</option>
-              <option value="250">250</option>
-            </select>
-          </label>
-          <button class="small-action" id="clearTableFilters" type="button">Clear filters</button>
+        <div class="spc-subtabs" id="tableModeControls" aria-label="Table display">
+          <button type="button" class="active" data-table-mode="reports">Reports</button>
+          <button type="button" data-table-mode="days">All Days</button>
+          <button type="button" data-table-mode="states">State Totals</button>
         </div>
 
-        <div class="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th data-sort="dateTimeUtc">Date / Time</th>
-                <th data-sort="hazard">Hazard</th>
-                <th data-sort="magnitudeValue">Magnitude</th>
-                <th data-sort="location">Location</th>
-                <th data-sort="county">County</th>
-                <th data-sort="state">State</th>
-                <th data-sort="comments">Remarks</th>
-              </tr>
-            </thead>
-            <tbody id="reportsTableBody"></tbody>
-          </table>
+        <div class="table-mode active" id="reportTableMode">
+          <div class="table-tools">
+            <input id="tableSearch" type="search" placeholder="Search location, county, state, or remarks">
+            <label class="check-control">
+              <input id="significantOnly" type="checkbox">
+              Significant only
+            </label>
+            <label class="select-control">
+              <span>Rows</span>
+              <select id="rowsPerPage">
+                <option value="50">50</option>
+                <option value="100" selected>100</option>
+                <option value="250">250</option>
+              </select>
+            </label>
+            <button class="small-action" id="clearTableFilters" type="button">Clear filters</button>
+          </div>
+
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th data-sort="dateTimeUtc">Date / Time</th>
+                  <th data-sort="hazard">Hazard</th>
+                  <th data-sort="magnitudeValue">Magnitude</th>
+                  <th data-sort="location">Location</th>
+                  <th data-sort="county">County</th>
+                  <th data-sort="state">State</th>
+                  <th data-sort="comments">Remarks</th>
+                </tr>
+              </thead>
+              <tbody id="reportsTableBody"></tbody>
+            </table>
+          </div>
+
+          <div class="pagination">
+            <span id="pageReadout">Page 1</span>
+            <div class="pagination-buttons">
+              <button id="previousPageButton" type="button">Previous</button>
+              <button id="nextPageButton" type="button">Next</button>
+            </div>
+          </div>
         </div>
 
-        <div class="pagination">
-          <span id="pageReadout">Page 1</span>
-          <div class="pagination-buttons">
-            <button id="previousPageButton" type="button">Previous</button>
-            <button id="nextPageButton" type="button">Next</button>
+        <div class="table-mode" id="summaryTableMode" hidden>
+          <div class="aggregate-table-heading">
+            <div>
+              <strong id="aggregateTableTitle">Daily Statistics</strong>
+              <span id="aggregateTableSubtitle">Totals for the current selection</span>
+            </div>
+            <span class="aggregate-sort-note" id="aggregateSortNote">Sorted by total reports</span>
+          </div>
+
+          <div class="table-scroll aggregate-table-scroll">
+            <table class="aggregate-table">
+              <thead id="aggregateTableHead"></thead>
+              <tbody id="aggregateTableBody"></tbody>
+            </table>
           </div>
         </div>
       </section>
 
       <section class="view-panel charts-panel" id="chartsPanel" data-view="charts">
-        <div class="chart-grid">
-          <article class="chart-card">
-            <h3 id="timeChartTitle">Reports by day</h3>
-            <div class="bar-list" id="timeChart"></div>
-          </article>
-          <article class="chart-card">
-            <h3>Reports by hazard</h3>
-            <div class="bar-list" id="hazardChart"></div>
-          </article>
-          <article class="chart-card">
-            <h3>Top states</h3>
-            <div class="bar-list" id="stateChart"></div>
-          </article>
-          <article class="chart-card">
-            <h3>Reports by hour</h3>
-            <div class="bar-list" id="hourChart"></div>
-          </article>
+        <div class="spc-subtabs" id="chartModeControls" aria-label="Chart display">
+          <button type="button" class="active" data-chart-mode="trend">Cumulative Trend</button>
+          <button type="button" data-chart-mode="states">State Totals</button>
+        </div>
+
+        <div class="chart-mode active" id="trendChartMode">
+          <div id="spcTrendContent" class="spc-trend-content"></div>
+        </div>
+
+        <div class="chart-mode" id="summaryChartMode" hidden>
+          <div class="chart-grid chart-grid-single-mode">
+            <article class="chart-card" id="periodChartCard">
+              <h3 id="timeChartTitle">Reports by day</h3>
+              <div class="bar-list" id="timeChart"></div>
+            </article>
+            <article class="chart-card" id="hazardChartCard">
+              <h3>Reports by hazard</h3>
+              <div class="bar-list" id="hazardChart"></div>
+            </article>
+            <article class="chart-card" id="stateChartCard">
+              <h3>State totals</h3>
+              <div class="bar-list" id="stateChart"></div>
+            </article>
+            <article class="chart-card" id="hourChartCard">
+              <h3>Reports by hour</h3>
+              <div class="bar-list" id="hourChart"></div>
+            </article>
+          </div>
         </div>
       </section>
 
@@ -1667,7 +2510,9 @@
         sortKey: "dateTimeUtc",
         sortDirection: "desc",
         page: 1,
-        rowsPerPage: 100
+        rowsPerPage: 100,
+        tableMode: "reports",
+        chartMode: "trend"
       };
 
       const dataCache = new Map();
@@ -1720,6 +2565,14 @@
         emptyState: document.getElementById("emptyState"),
         mapLegend: document.getElementById("mapLegend"),
         mapLoadingOverlay: document.getElementById("mapLoadingOverlay"),
+        tableModeControls: document.getElementById("tableModeControls"),
+        reportTableMode: document.getElementById("reportTableMode"),
+        summaryTableMode: document.getElementById("summaryTableMode"),
+        aggregateTableTitle: document.getElementById("aggregateTableTitle"),
+        aggregateTableSubtitle: document.getElementById("aggregateTableSubtitle"),
+        aggregateSortNote: document.getElementById("aggregateSortNote"),
+        aggregateTableHead: document.getElementById("aggregateTableHead"),
+        aggregateTableBody: document.getElementById("aggregateTableBody"),
         tableSearch: document.getElementById("tableSearch"),
         significantOnly: document.getElementById("significantOnly"),
         rowsPerPage: document.getElementById("rowsPerPage"),
@@ -1728,6 +2581,14 @@
         pageReadout: document.getElementById("pageReadout"),
         previousPageButton: document.getElementById("previousPageButton"),
         nextPageButton: document.getElementById("nextPageButton"),
+        chartModeControls: document.getElementById("chartModeControls"),
+        trendChartMode: document.getElementById("trendChartMode"),
+        summaryChartMode: document.getElementById("summaryChartMode"),
+        spcTrendContent: document.getElementById("spcTrendContent"),
+        periodChartCard: document.getElementById("periodChartCard"),
+        hazardChartCard: document.getElementById("hazardChartCard"),
+        stateChartCard: document.getElementById("stateChartCard"),
+        hourChartCard: document.getElementById("hourChartCard"),
         timeChartTitle: document.getElementById("timeChartTitle"),
         timeChart: document.getElementById("timeChart"),
         hazardChart: document.getElementById("hazardChart"),
@@ -2866,7 +3727,207 @@
         return clean(report[key]).toLowerCase();
       }
 
+      function aggregateHazardRows(mode) {
+        const rows = new Map();
+        const stateNames = Object.fromEntries(STATES);
+
+        const ensureRow = (key, label, order) => {
+          if (!rows.has(key)) {
+            rows.set(key, {
+              key,
+              label,
+              order,
+              all: 0,
+              tornado: 0,
+              wind: 0,
+              hail: 0
+            });
+          }
+
+          return rows.get(key);
+        };
+
+        for (const report of state.reports) {
+          const dateValue = clean(report.eventDate || report.reportDay);
+          let key = "Unknown";
+          let label = "Unknown";
+          let order = Number.MAX_SAFE_INTEGER;
+
+          if (mode === "days") {
+            const date = new Date(`${dateValue}T12:00:00Z`);
+            key = dateValue || "Unknown";
+            label = Number.isNaN(date.getTime())
+              ? key
+              : new Intl.DateTimeFormat("en-US", {
+                  month: "2-digit",
+                  day: "2-digit",
+                  year: "numeric",
+                  timeZone: "UTC"
+                }).format(date);
+            order = Number.isNaN(date.getTime()) ? 0 : date.getTime();
+          } else if (mode === "hours") {
+            const hour = Number(hourLabel(report).replace(/\D/g, ""));
+            key = Number.isFinite(hour)
+              ? String(hour).padStart(2, "0")
+              : "Unknown";
+            label = key === "Unknown" ? key : `${key}Z`;
+            order = Number.isFinite(hour) ? hour : 99;
+          } else if (mode === "months") {
+            const date = new Date(`${dateValue}T12:00:00Z`);
+            const monthIndex = Number.isNaN(date.getTime())
+              ? -1
+              : date.getUTCMonth();
+            key = monthIndex >= 0 ? String(monthIndex + 1) : "Unknown";
+            label = monthIndex >= 0 ? MONTHS[monthIndex + 1] : "Unknown";
+            order = monthIndex >= 0 ? monthIndex : 99;
+          } else {
+            key = clean(report.state) || "Unknown";
+            label = key === "Unknown"
+              ? key
+              : `${key} — ${stateNames[key] || key}`;
+            order = 0;
+          }
+
+          const row = ensureRow(key, label, order);
+          row.all += 1;
+
+          if (["tornado", "wind", "hail"].includes(report.hazard)) {
+            row[report.hazard] += 1;
+          }
+        }
+
+        const values = [...rows.values()];
+
+        if (mode === "days" || mode === "states") {
+          values.sort(
+            (a, b) =>
+              b.all - a.all ||
+              (mode === "days"
+                ? b.order - a.order
+                : a.label.localeCompare(b.label))
+          );
+        } else {
+          values.sort((a, b) => a.order - b.order);
+        }
+
+        return values;
+      }
+
+      function aggregateTableDescriptor(mode) {
+        const period = state.month === 0
+          ? "Annual"
+          : MONTHS[state.month];
+        const scope = state.scope === "state" ? state.stateCode : "National";
+
+        const descriptors = {
+          days: {
+            title: `${state.year} Daily Statistics`,
+            subtitle: `${scope} • ${period}`,
+            dimension: "Date",
+            sortNote: "Sorted by total reports"
+          },
+          hours: {
+            title: `${state.year} Hourly Totals`,
+            subtitle: `${scope} • ${period}`,
+            dimension: "Hour (UTC)",
+            sortNote: "Chronological by UTC hour"
+          },
+          months: {
+            title: `${state.year} Month Totals`,
+            subtitle: `${scope} • ${period}`,
+            dimension: "Month",
+            sortNote: "Chronological by month"
+          },
+          states: {
+            title: `${state.year} State Totals`,
+            subtitle: `${scope} • ${period}`,
+            dimension: "State",
+            sortNote: "Sorted by total reports"
+          }
+        };
+
+        return descriptors[mode] || descriptors.days;
+      }
+
+      function renderAggregateTable() {
+        const descriptor = aggregateTableDescriptor(state.tableMode);
+        const rows = aggregateHazardRows(state.tableMode);
+        const showAllHazards = state.hazard === "all";
+        const hazardColumns = showAllHazards
+          ? ["all", "tornado", "wind", "hail"]
+          : [state.hazard];
+        const labels = {
+          all: "All",
+          tornado: "Tornado",
+          wind: "Wind",
+          hail: "Hail"
+        };
+        const maxAll = Math.max(1, ...rows.map((row) => row.all));
+
+        els.aggregateTableTitle.textContent = descriptor.title;
+        els.aggregateTableSubtitle.textContent = descriptor.subtitle;
+        els.aggregateSortNote.textContent = descriptor.sortNote;
+
+        els.aggregateTableHead.innerHTML = `
+          <tr>
+            <th>${escapeHtml(descriptor.dimension)}</th>
+            ${hazardColumns.map((hazard) => `
+              <th class="numeric-heading ${escapeHtml(hazard)}">
+                ${escapeHtml(labels[hazard])}
+              </th>
+            `).join("")}
+          </tr>
+        `;
+
+        els.aggregateTableBody.innerHTML = rows.length
+          ? rows.map((row) => `
+              <tr>
+                <td class="aggregate-label">${escapeHtml(row.label)}</td>
+                ${hazardColumns.map((hazard) => {
+                  const count = Number(row[hazard] || 0);
+                  const intensity = Math.max(0.08, count / maxAll);
+
+                  return `
+                    <td
+                      class="aggregate-number ${escapeHtml(hazard)}"
+                      style="--cell-intensity:${intensity.toFixed(3)}"
+                    >${count.toLocaleString("en-US")}</td>
+                  `;
+                }).join("")}
+              </tr>
+            `).join("")
+          : `
+              <tr>
+                <td colspan="5" class="aggregate-empty">No statistics available</td>
+              </tr>
+            `;
+      }
+
       function renderTable() {
+        if (["hours", "months"].includes(state.tableMode)) {
+          state.tableMode = "reports";
+        }
+        const reportMode = state.tableMode === "reports";
+
+        els.tableModeControls
+          .querySelectorAll("button[data-table-mode]")
+          .forEach((button) => {
+            button.classList.toggle(
+              "active",
+              button.dataset.tableMode === state.tableMode
+            );
+          });
+
+        els.reportTableMode.hidden = !reportMode;
+        els.reportTableMode.classList.toggle("active", reportMode);
+        els.summaryTableMode.hidden = reportMode;
+        els.summaryTableMode.classList.toggle("active", !reportMode);
+
+        if (!reportMode) {
+          renderAggregateTable();
+          return;
+        }
+
         tableReports = filteredTableReports().slice().sort((a, b) => {
           const aValue = comparableValue(a, state.sortKey);
           const bValue = comparableValue(b, state.sortKey);
@@ -2944,7 +4005,380 @@
           : "Unknown";
       }
 
+      function spcAnnualTrendImageUrl(hazard) {
+        const code = {
+          tornado: "torn",
+          hail: "hail",
+          wind: "wind"
+        }[hazard];
+
+        if (!code) return "";
+
+        const currentYear = CURRENT_DATE.getUTCFullYear();
+        const prefix = state.year === currentYear ? "" : `${state.year}-`;
+
+        return `https://www.spc.noaa.gov/wcm/newimgs/${prefix}${code}-counts.png`;
+      }
+
+      function dayOfYear(date) {
+        const start = Date.UTC(date.getUTCFullYear(), 0, 1);
+        return Math.floor((date.getTime() - start) / 86400000) + 1;
+      }
+
+      function cumulativeSeries() {
+        const annual = state.month === 0;
+        const pointCount = annual
+          ? (new Date(Date.UTC(state.year, 1, 29)).getUTCMonth() === 1 ? 366 : 365)
+          : new Date(Date.UTC(state.year, state.month, 0)).getUTCDate();
+        const hazards = state.hazard === "all"
+          ? ["tornado", "wind", "hail"]
+          : [state.hazard];
+
+        return hazards.map((hazard) => {
+          const daily = Array.from({ length: pointCount }, () => 0);
+
+          for (const report of state.reports) {
+            if (report.hazard !== hazard) continue;
+
+            const value = clean(report.eventDate || report.reportDay);
+            const date = new Date(`${value}T12:00:00Z`);
+            if (Number.isNaN(date.getTime())) continue;
+
+            const index = annual
+              ? dayOfYear(date) - 1
+              : date.getUTCDate() - 1;
+
+            if (index >= 0 && index < daily.length) {
+              daily[index] += 1;
+            }
+          }
+
+          let running = 0;
+          return {
+            hazard,
+            label: HAZARDS[hazard]?.label || hazard,
+            color: HAZARDS[hazard]?.color || "#62c9ff",
+            values: daily.map((count) => {
+              running += count;
+              return running;
+            })
+          };
+        });
+      }
+
+      function nativeCumulativeChart() {
+        const series = cumulativeSeries();
+        const width = 1120;
+        const height = 540;
+        const margin = { top: 46, right: 36, bottom: 60, left: 70 };
+        const plotWidth = width - margin.left - margin.right;
+        const plotHeight = height - margin.top - margin.bottom;
+        const points = Math.max(1, series[0]?.values.length || 1);
+        const maxValue = Math.max(
+          1,
+          ...series.flatMap((item) => item.values)
+        );
+        const roundedMax = Math.max(5, Math.ceil(maxValue / 5) * 5);
+        const x = (index) => margin.left + (index / Math.max(1, points - 1)) * plotWidth;
+        const y = (value) => margin.top + plotHeight - (value / roundedMax) * plotHeight;
+        const yTicks = Array.from({ length: 6 }, (_, index) =>
+          Math.round((roundedMax * index) / 5)
+        );
+        const xTicks = [];
+
+        if (state.month === 0) {
+          for (let month = 0; month < 12; month += 1) {
+            const date = new Date(Date.UTC(state.year, month, 1));
+            xTicks.push({
+              index: dayOfYear(date) - 1,
+              label: MONTH_SHORT[month]
+            });
+          }
+        } else {
+          const candidates = [1, 5, 10, 15, 20, 25, points];
+          for (const day of [...new Set(candidates)]) {
+            if (day <= points) xTicks.push({ index: day - 1, label: String(day) });
+          }
+        }
+
+        const paths = series.map((item) => {
+          const pointsText = item.values
+            .map((value, index) => `${x(index).toFixed(2)},${y(value).toFixed(2)}`)
+            .join(" ");
+
+          return `
+            <polyline
+              points="${pointsText}"
+              fill="none"
+              stroke="${escapeHtml(item.color)}"
+              stroke-width="5"
+              stroke-linejoin="round"
+              stroke-linecap="round"
+            />
+          `;
+        }).join("");
+
+        const title = state.month === 0
+          ? `${state.year} Annual Running Report Total`
+          : `${MONTHS[state.month]} ${state.year} Cumulative Reports`;
+
+        return `
+          <article class="native-trend-card">
+            <div class="native-trend-header">
+              <div>
+                <h3>${escapeHtml(title)}</h3>
+                <p>Built from the reports currently loaded in the Explorer.</p>
+              </div>
+              <div class="native-trend-legend">
+                ${series.map((item) => `
+                  <span>
+                    <i style="background:${escapeHtml(item.color)}"></i>
+                    ${escapeHtml(item.label)}
+                  </span>
+                `).join("")}
+              </div>
+            </div>
+
+            <svg
+              class="cumulative-chart-svg"
+              viewBox="0 0 ${width} ${height}"
+              role="img"
+              aria-label="${escapeHtml(title)}"
+            >
+              <rect x="0" y="0" width="${width}" height="${height}" rx="18" fill="#071321"></rect>
+              ${yTicks.map((tick) => `
+                <line
+                  x1="${margin.left}"
+                  x2="${width - margin.right}"
+                  y1="${y(tick)}"
+                  y2="${y(tick)}"
+                  stroke="rgba(144, 177, 205, 0.17)"
+                  stroke-width="1"
+                ></line>
+                <text
+                  x="${margin.left - 14}"
+                  y="${y(tick) + 5}"
+                  text-anchor="end"
+                  fill="#8fa8bd"
+                  font-size="15"
+                >${tick.toLocaleString("en-US")}</text>
+              `).join("")}
+              ${xTicks.map((tick) => `
+                <line
+                  x1="${x(tick.index)}"
+                  x2="${x(tick.index)}"
+                  y1="${margin.top}"
+                  y2="${margin.top + plotHeight}"
+                  stroke="rgba(144, 177, 205, 0.09)"
+                  stroke-width="1"
+                ></line>
+                <text
+                  x="${x(tick.index)}"
+                  y="${height - 30}"
+                  text-anchor="middle"
+                  fill="#8fa8bd"
+                  font-size="15"
+                >${escapeHtml(tick.label)}</text>
+              `).join("")}
+              ${paths}
+            </svg>
+          </article>
+        `;
+      }
+
+      function officialTrendSelectionHref(hazard) {
+        const params = new URLSearchParams(window.location.search);
+
+        params.set("year", String(state.year));
+        params.set("month", "0");
+        params.set("scope", "national");
+        params.set("type", hazard);
+        params.set("dataset", "preliminary");
+        params.set("view", "charts");
+
+        return `${window.location.pathname}?${params.toString()}`;
+      }
+
+      function spcAnnualTrendRequestUrl(hazard) {
+        const baseUrl = spcAnnualTrendImageUrl(hazard);
+
+        if (!baseUrl) return "";
+
+        // Five-minute cache bucket prevents a browser from holding an older
+        // SPC chart after SPC refreshes the source image.
+        const cacheBucket = Math.floor(Date.now() / 300000);
+
+        return `${baseUrl}?v=${cacheBucket}`;
+      }
+
+      function exactOfficialTrendModeActive() {
+        return (
+          state.month === 0 &&
+          state.dataset === "preliminary" &&
+          state.scope === "national" &&
+          ["tornado", "hail", "wind"].includes(state.hazard)
+        );
+      }
+
+      function renderOfficialTrendRequirement() {
+        const currentHazard = ["tornado", "hail", "wind"].includes(state.hazard)
+          ? state.hazard
+          : "tornado";
+
+        const requirements = [];
+
+        if (state.month !== 0) requirements.push("Annual");
+        if (state.scope !== "national") requirements.push("National");
+        if (state.dataset !== "preliminary") requirements.push("Preliminary");
+        if (!["tornado", "hail", "wind"].includes(state.hazard)) {
+          requirements.push("Tornado, Hail, or Wind");
+        }
+
+        els.spcTrendContent.innerHTML = `
+          <article class="exact-spc-trend-gate">
+            <p class="exact-spc-trend-eyebrow">Exact SPC chart mode</p>
+            <h3>Select one official annual hazard chart</h3>
+            <p>
+              To keep both the appearance and values identical to SPC,
+              Cumulative Trend displays SPC's original chart instead of
+              rebuilding it from local report rows.
+            </p>
+
+            ${
+              requirements.length
+                ? `
+                  <div class="exact-spc-requirements">
+                    Required selection:
+                    <strong>${requirements.map(escapeHtml).join(" · ")}</strong>
+                  </div>
+                `
+                : ""
+            }
+
+            <div class="exact-spc-hazard-links">
+              ${["tornado", "hail", "wind"].map((hazard) => `
+                <a
+                  href="${escapeHtml(officialTrendSelectionHref(hazard))}"
+                  class="${hazard === currentHazard ? "preferred" : ""}"
+                >
+                  ${escapeHtml(HAZARDS[hazard]?.label || hazard)}
+                </a>
+              `).join("")}
+            </div>
+
+            <p class="exact-spc-trend-note">
+              Monthly and state analysis remains available in Tables and
+              State Totals without presenting a custom chart as an SPC match.
+            </p>
+          </article>
+        `;
+      }
+
+      function renderOfficialTrendCharts() {
+        const hazard = state.hazard;
+        const sourceUrl = spcAnnualTrendImageUrl(hazard);
+        const requestUrl = spcAnnualTrendRequestUrl(hazard);
+        const hazardLabel = HAZARDS[hazard]?.label || hazard;
+
+        els.spcTrendContent.innerHTML = `
+          <article class="official-spc-exact-card">
+            <div class="official-spc-exact-toolbar">
+              <div>
+                <strong>Official SPC annual running count</strong>
+                <span>
+                  ${escapeHtml(state.year)} · National ·
+                  ${escapeHtml(hazardLabel)} · Preliminary
+                </span>
+              </div>
+
+              <a
+                href="${escapeHtml(sourceUrl)}"
+                target="_blank"
+                rel="noopener noreferrer"
+              >Open original</a>
+            </div>
+
+            <div class="official-spc-exact-media">
+              <span class="official-spc-exact-loading">
+                Loading the official SPC chart…
+              </span>
+
+              <img
+                src="${escapeHtml(requestUrl)}"
+                alt="${escapeHtml(
+                  `${state.year} official SPC national preliminary ${hazardLabel} annual running-count chart`
+                )}"
+                data-exact-spc-trend-image
+                loading="eager"
+                decoding="async"
+              >
+            </div>
+          </article>
+        `;
+
+        const image = els.spcTrendContent.querySelector(
+          "img[data-exact-spc-trend-image]"
+        );
+
+        const loading = els.spcTrendContent.querySelector(
+          ".official-spc-exact-loading"
+        );
+
+        image?.addEventListener("load", () => {
+          loading?.remove();
+          image.classList.add("loaded");
+        }, { once: true });
+
+        image?.addEventListener("error", () => {
+          els.spcTrendContent.innerHTML = `
+            <article class="exact-spc-trend-error">
+              <h3>The official SPC chart could not be loaded</h3>
+              <p>
+                No substitute chart was shown because it would not guarantee
+                the same visual presentation and data.
+              </p>
+              <a
+                href="${escapeHtml(sourceUrl)}"
+                target="_blank"
+                rel="noopener noreferrer"
+              >Open the official SPC chart</a>
+            </article>
+          `;
+        }, { once: true });
+      }
+
+      function renderTrendChart() {
+        if (!exactOfficialTrendModeActive()) {
+          renderOfficialTrendRequirement();
+          return;
+        }
+
+        renderOfficialTrendCharts();
+      }
+
       function renderCharts() {
+        syncExactSpcAuthoritativePresentation();
+        const trendMode = state.chartMode === "trend";
+
+        els.chartModeControls
+          .querySelectorAll("button[data-chart-mode]")
+          .forEach((button) => {
+            button.classList.toggle(
+              "active",
+              button.dataset.chartMode === state.chartMode
+            );
+          });
+
+        els.trendChartMode.hidden = !trendMode;
+        els.trendChartMode.classList.toggle("active", trendMode);
+        els.summaryChartMode.hidden = trendMode;
+        els.summaryChartMode.classList.toggle("active", !trendMode);
+
+        if (trendMode) {
+          renderTrendChart();
+          return;
+        }
+
         const periodCounts = countBy(
           state.reports,
           state.month === 0 ? reportMonthLabel : reportDayLabel
@@ -2972,8 +4406,24 @@
 
         renderBars(els.timeChart, periodCounts, state.month === 0 ? 12 : 31);
         renderBars(els.hazardChart, hazardCounts, 4);
-        renderBars(els.stateChart, stateCounts, 15);
+        renderBars(els.stateChart, stateCounts, 52);
         renderBars(els.hourChart, hourCounts, 24);
+
+        const activeCard = {
+          daily: els.periodChartCard,
+          hourly: els.hourChartCard,
+          states: els.stateChartCard,
+          hazard: els.hazardChartCard
+        }[state.chartMode] || els.periodChartCard;
+
+        for (const card of [
+          els.periodChartCard,
+          els.hazardChartCard,
+          els.stateChartCard,
+          els.hourChartCard
+        ]) {
+          card.hidden = card !== activeCard;
+        }
       }
 
       function largestReport(hazard) {
@@ -3108,9 +4558,39 @@
         }
       }
 
+      function exactSpcAuthoritativePresentationActive() {
+        return (
+          exactOfficialTrendModeActive() &&
+          state.view === "charts" &&
+          state.chartMode === "trend"
+        );
+      }
+
+      function syncExactSpcAuthoritativePresentation() {
+        const active = exactSpcAuthoritativePresentationActive();
+
+        document.body.classList.toggle(
+          "exact-spc-authoritative-presentation",
+          active
+        );
+
+        if (!active) return;
+
+        const hazard = selectedHazardLabel();
+
+        els.workspaceTitle.textContent =
+          `Official SPC ${state.year} Annual ${hazard} Running Count`;
+
+        els.workspaceSubtitle.textContent =
+          "Original SPC chart • values, comparison years, mean, and cutoff published by SPC";
+
+        els.hazardChip.textContent = `${hazard} · Official SPC`;
+      }
+
       function renderAll() {
         syncControls();
         updateWorkspaceHeader();
+        syncExactSpcAuthoritativePresentation();
         updateSummary();
         renderEmptyState();
 
@@ -3300,6 +4780,23 @@
         els.refreshButton.addEventListener("click", () => loadReports(true));
         els.exportCsvButton.addEventListener("click", exportCsv);
         els.exportGeoJsonButton.addEventListener("click", exportGeoJson);
+
+        els.tableModeControls.addEventListener("click", (event) => {
+          const button = event.target.closest("button[data-table-mode]");
+          if (!button) return;
+
+          state.tableMode = button.dataset.tableMode;
+          state.page = 1;
+          renderTable();
+        });
+
+        els.chartModeControls.addEventListener("click", (event) => {
+          const button = event.target.closest("button[data-chart-mode]");
+          if (!button) return;
+
+          state.chartMode = button.dataset.chartMode;
+          renderCharts();
+        });
 
         els.tableSearch.addEventListener("input", () => {
           state.page = 1;
