@@ -11841,6 +11841,15 @@ body {
       <span>Analysis</span>
     </a>
 
+    <a href="storm-reports.html">
+
+      Storm Reports
+
+      <span>Explorer</span>
+
+    </a>
+
+
     <a href="chase-dashboard.html" class="chase-link">
       Storm Chasing
       <span>Field Ops</span>
@@ -18854,6 +18863,60 @@ const threats = [
   } else {
     install();
   }
+})();
+</script>
+
+
+<script id="force-current-storm-reports-menu-link-v2">
+(() => {
+  "use strict";
+
+  function stormReportsMenuUrl() {
+    const now = new Date();
+    const params = new URLSearchParams({
+      year: String(now.getFullYear()),
+      month: String(now.getMonth() + 1),
+      scope: "national",
+      state: "NC",
+      type: "all",
+      dataset: "preliminary",
+      view: "map"
+    });
+
+    return `storm-reports.html?${params.toString()}`;
+  }
+
+  function stormReportsMenuLinks() {
+    return [...document.querySelectorAll("#siteNav a")].filter((link) =>
+      /storm reports/i.test(link.textContent || "")
+    );
+  }
+
+  function normalizeStormReportsMenuLinks() {
+    const url = stormReportsMenuUrl();
+
+    stormReportsMenuLinks().forEach((link) => {
+      link.href = url;
+    });
+  }
+
+  normalizeStormReportsMenuLinks();
+  window.setTimeout(normalizeStormReportsMenuLinks, 250);
+  window.setTimeout(normalizeStormReportsMenuLinks, 1000);
+
+  document.addEventListener(
+    "click",
+    (event) => {
+      const link = event.target.closest("#siteNav a");
+
+      if (!link || !/storm reports/i.test(link.textContent || "")) return;
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      window.location.href = stormReportsMenuUrl();
+    },
+    true
+  );
 })();
 </script>
 

@@ -5411,7 +5411,7 @@
     })();
   </script>
 
-<script <id="mobile-storm-report-explorer-makeover-v2-script">
+<script id="mobile-storm-report-explorer-makeover-v2-script">
 (() => {
   const READY_CLASS = "mobile-storm-reports-ready";
 
@@ -5616,7 +5616,7 @@
   }
 
   function install() {
-    return;
+    if (!isMobile()) return;
     if (document.body.classList.contains(READY_CLASS)) return;
 
     const deck = document.querySelector(".control-deck");
@@ -5631,17 +5631,18 @@
     installChartViewer();
     updateContext();
 
-    const observer = new MutationObserver(() => {
-      updateContext();
-      installLegendToggle();
+    const updateContextSoon = () => {
+      window.setTimeout(updateContext, 0);
+    };
+
+    deck.addEventListener("click", (event) => {
+      if (event.target.closest("button[data-value], button[data-month]")) {
+        updateContextSoon();
+      }
     });
 
-    observer.observe(document.body, {
-      subtree: true,
-      childList: true,
-      attributes: true,
-      attributeFilter: ["class"]
-    });
+    deck.addEventListener("change", updateContextSoon);
+    window.addEventListener("popstate", updateContextSoon);
   }
 
   if (document.readyState === "loading") {
