@@ -3609,8 +3609,8 @@
         context.clearRect(0, 0, size, size);
         context.lineJoin = "round";
         context.lineCap = "round";
-        context.lineWidth = 3;
-        context.shadowBlur = 7;
+        context.lineWidth = 2;
+        context.shadowBlur = 0;
         context.shadowOffsetX = 0;
         context.shadowOffsetY = 0;
 
@@ -3762,16 +3762,66 @@
             source: REPORT_SOURCE_ID,
             layout: {
               "icon-image": ["get", "markerCategory"],
+              // storm-report-spc-style-scaling-v3
               "icon-size": [
                 "interpolate",
                 ["linear"],
                 ["zoom"],
-                3, 0.78,
-                4, 0.86,
-                6, 1.0,
-                8, 1.18,
-                10, 1.38,
-                13, 1.55
+                3, [
+                  "match",
+                  ["get", "markerCategory"],
+                  ["tornado-ef2", "wind-significant", "hail-large"],
+                  0.293,
+                  0.24
+                ],
+                4, [
+                  "match",
+                  ["get", "markerCategory"],
+                  ["tornado-ef2", "wind-significant", "hail-large"],
+                  0.354,
+                  0.29
+                ],
+                6, [
+                  "match",
+                  ["get", "markerCategory"],
+                  ["tornado-ef2", "wind-significant", "hail-large"],
+                  0.488,
+                  0.40
+                ],
+                8, [
+                  "match",
+                  ["get", "markerCategory"],
+                  ["tornado-ef2", "wind-significant", "hail-large"],
+                  0.732,
+                  0.60
+                ],
+                10, [
+                  "match",
+                  ["get", "markerCategory"],
+                  ["tornado-ef2", "wind-significant", "hail-large"],
+                  1.000,
+                  0.82
+                ],
+                13, [
+                  "match",
+                  ["get", "markerCategory"],
+                  ["tornado-ef2", "wind-significant", "hail-large"],
+                  1.318,
+                  1.08
+                ]
+              ],
+              "symbol-sort-key": [
+                "match",
+                ["get", "markerCategory"],
+                "wind-damage", 10,
+                "wind-measured", 20,
+                "wind-significant", 30,
+                "hail-small", 40,
+                "hail-medium", 50,
+                "hail-large", 60,
+                "tornado-all", 70,
+                "tornado-ef2", 80,
+                0
               ],
               "icon-anchor": "center",
               "icon-allow-overlap": true,
@@ -3780,7 +3830,14 @@
               "icon-pitch-alignment": "viewport"
             },
             paint: {
-              "icon-opacity": 0.98
+              "icon-opacity": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                3, 0.84,
+                5, 0.91,
+                7, 0.97
+              ]
             }
           });
         }
@@ -3882,6 +3939,7 @@
           style: "mapbox://styles/mapbox/dark-v11",
           center: [-97.3, 38.3],
           zoom: 3.4,
+          projection: "mercator",
           minZoom: 2.5,
           maxZoom: 14,
           maxPitch: 0,
@@ -4202,12 +4260,22 @@
         map.getSource(REPORT_SOURCE_ID).setData(featureCollection);
 
         if (state.scope === "national" || !plotted.length) {
-          map.jumpTo({
-            center: [-97.3, 38.3],
-            zoom: 3.4,
-            bearing: 0,
-            pitch: 0
-          });
+          map.fitBounds(
+            [
+              [-125.0, 24.0],
+              [-66.5, 50.0]
+            ],
+            {
+              padding: {
+                top: 24,
+                right: 24,
+                bottom: 24,
+                left: 24
+              },
+              maxZoom: 4.7,
+              duration: 0
+            }
+          );
         } else {
           const bounds = new mapboxgl.LngLatBounds();
 
