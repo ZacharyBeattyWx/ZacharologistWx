@@ -3762,7 +3762,7 @@
             source: REPORT_SOURCE_ID,
             layout: {
               "icon-image": ["get", "markerCategory"],
-              // storm-report-spc-style-scaling-v4
+              // storm-report-local-zoom-scaling-v3
               "icon-size": [
                 "interpolate",
                 ["linear"],
@@ -3785,29 +3785,43 @@
                   "match",
                   ["get", "markerCategory"],
                   ["tornado-ef2", "wind-significant", "hail-large"],
-                  0.561,
-                  0.46
+                  0.586,
+                  0.48
                 ],
                 8, [
                   "match",
                   ["get", "markerCategory"],
                   ["tornado-ef2", "wind-significant", "hail-large"],
-                  0.805,
-                  0.66
+                  0.830,
+                  0.68
                 ],
                 10, [
                   "match",
                   ["get", "markerCategory"],
                   ["tornado-ef2", "wind-significant", "hail-large"],
-                  1.025,
-                  0.84
+                  1.159,
+                  0.95
+                ],
+                11.5, [
+                  "match",
+                  ["get", "markerCategory"],
+                  ["tornado-ef2", "wind-significant", "hail-large"],
+                  1.586,
+                  1.30
                 ],
                 13, [
                   "match",
                   ["get", "markerCategory"],
                   ["tornado-ef2", "wind-significant", "hail-large"],
-                  1.318,
-                  1.08
+                  2.098,
+                  1.72
+                ],
+                14, [
+                  "match",
+                  ["get", "markerCategory"],
+                  ["tornado-ef2", "wind-significant", "hail-large"],
+                  2.562,
+                  2.10
                 ]
               ],
               "symbol-sort-key": [
