@@ -73,6 +73,9 @@ jobs:
 
           stats = snapshot.get("stats") or {}
           features = snapshot.get("features") or []
+          partial_failures = snapshot.get("partialFailures") or {}
+          alert_failures = partial_failures.get("alerts") or []
+          zone_failures = partial_failures.get("zones") or []
 
           if snapshot.get("type") != "FeatureCollection":
               raise SystemExit("Snapshot is not a GeoJSON FeatureCollection")
@@ -82,10 +85,30 @@ jobs:
 
           print(f"generatedAt={snapshot.get('generatedAt')}")
           print(f"snapshotFeatures={len(features)}")
+          print(f"alertFetchFailures={stats.get('alertFetchFailures')}")
+          print(f"zoneFetchFailures={stats.get('zoneFetchFailures')}")
           print(f"zoneFetchRequests={stats.get('zoneFetchRequests')}")
           print(f"cachedZoneGeometryHits={stats.get('cachedZoneGeometryHits')}")
           print(f"resolvedFallbackAlerts={stats.get('resolvedFallbackAlerts')}")
           print(f"listedOnlyAlerts={stats.get('listedOnlyAlerts')}")
+
+          if alert_failures:
+              print("State-level NWS alert fetch failures:")
+              for failure in alert_failures:
+                  print(
+                      f"  {failure.get('area', '?')}: "
+                      f"{failure.get('error', 'Unknown failure')}"
+                  )
+              raise SystemExit(
+                  "Refusing to publish a partial alert snapshot because one or more "
+                  "state-level NWS alert requests failed."
+              )
+
+          if zone_failures:
+              print(
+                  f"WARNING: {len(zone_failures)} zone geometry request(s) failed; "
+                  "continuing with available/listed-only alert data."
+              )
           PY
 
       - name: Publish zone cache and alert snapshot to R2

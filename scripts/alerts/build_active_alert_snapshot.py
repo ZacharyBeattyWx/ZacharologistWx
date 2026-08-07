@@ -24,7 +24,8 @@ NWS_HEADERS = {
     "User-Agent": "ZacharologistWx Alert Snapshot Builder (https://zacharologistwx.com)",
 }
 
-def request_json(url: str, attempts: int = 3, timeout: int = 45):
+# NWS requests fail fast so one degraded endpoint cannot consume the whole workflow.
+def request_json(url: str, attempts: int = 2, timeout: int = 20):
     last_error = None
 
     for attempt in range(1, attempts + 1):
