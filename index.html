@@ -16718,18 +16718,13 @@ setInterval(loadSPCImages, 10 * 60 * 1000);
       )}
 
       ${card(
-        "blue",
-        "BRF",
-        "Latest Briefing",
-        "Forecast focus",
-        `
-          <span class="ops-reference-copy ops-briefing-copy">${esc(briefingText())}</span>
-          ${scrollButton("View Briefing", "discussion")}
-        `,
-        "ops-reference-card--briefing"
-      )}
-
-      ${card(
+        "amber",
+        "SAFE",
+        "Safety Reminder",
+        "Have multiple warning sources",
+        `<span class="ops-reference-copy">Use NOAA Weather Radio, Wireless Emergency Alerts, trusted local media, and live radar awareness together.</span>`,
+        "ops-reference-card--safety"
+      )}      ${card(
         "blue",
         "MOON",
         "Current Moon",
@@ -17099,15 +17094,7 @@ const threats = [
           : `<span class="ops-reference-copy">No Day 1 probabilistic contours are currently available.</span>`
       )}
 
-      /* remove-watches-in-effect-card-v1: active watches are covered by the NWS Alerts map */
-      ${card(
-        "amber",
-        "SAFE",
-        "Safety Reminder",
-        "Have multiple warning sources",
-        `<span class="ops-reference-copy">Use NOAA Weather Radio, Wireless Emergency Alerts, trusted local media, and live radar awareness together.</span>`,
-        "ops-reference-card--safety"
-      )}
+
     `;
   }
 
