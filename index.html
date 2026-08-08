@@ -17099,69 +17099,7 @@ const threats = [
           : `<span class="ops-reference-copy">No Day 1 probabilistic contours are currently available.</span>`
       )}
 
-      ${card(
-        "blue",
-        "",
-        "Watches in Effect",
-        "",
-        `
-          <span class="ops-watches-badge">${watchTypeCount}</span>
-
-          ${
-            watchTypeCount
-              ? `
-                <div class="ops-watch-list">
-                  ${watches.slice(0, 3).map((watch) => {
-                    const event = clean(watch.event || watch.label || "Watch");
-                    const count = Number(watch.count || watch.value || 0);
-
-                    const accent =
-                      /tornado/i.test(event) ? "tornado" :
-                      /severe thunderstorm/i.test(event) ? "severe" :
-                      /flash flood|flood/i.test(event) ? "flood" :
-                      /fire/i.test(event) ? "fire" :
-                      "general";
-
-                    const symbol =
-                      accent === "tornado" ? "◆" :
-                      accent === "severe" ? "⚡" :
-                      accent === "flood" ? "●" :
-                      accent === "fire" ? "▲" :
-                      "◆";
-
-                    const detail =
-                      count > 1
-                        ? `${count} active NWS areas`
-                        : count === 1
-                          ? "1 active NWS area"
-                          : "Active NWS product";
-
-                    return `
-                      <span class="ops-watch-item">
-                        <span class="ops-watch-item-icon ops-watch-item-icon--${accent}">
-                          ${symbol}
-                        </span>
-                        <span class="ops-watch-item-copy">
-                          <strong>${esc(event)}</strong>
-                          <small>${esc(detail)}</small>
-                        </span>
-                      </span>
-                    `;
-                  }).join("")}
-                </div>
-              `
-              : `
-                <span class="ops-watches-empty">
-                  No active NWS watch products are currently returned by the live feed.
-                </span>
-              `
-          }
-
-          ${scrollButton("View All Watches", "alerts")}
-        `,
-        "ops-reference-card--watches-in-effect"
-      )}
-
+      /* remove-watches-in-effect-card-v1: active watches are covered by the NWS Alerts map */
       ${card(
         "amber",
         "SAFE",
