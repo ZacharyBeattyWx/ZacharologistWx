@@ -1,845 +1,1882 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <title>Wx Updates | Zacharologist Wx</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Climate & Outlook Center | Zacharologist</title>
   <link rel="icon" type="image/jpeg" href="/hero.jpg">
 
   <style>
+    :root {
+      --bg: #07111f;
+      --bg-deep: #050b14;
+      --panel: rgba(12, 25, 43, 0.94);
+      --panel-soft: rgba(18, 36, 59, 0.82);
+      --panel-strong: #102139;
+      --line: rgba(148, 183, 218, 0.20);
+      --line-strong: rgba(148, 183, 218, 0.34);
+      --text: #eff7ff;
+      --muted: #9fb6cd;
+      --blue: #60a5fa;
+      --cyan: #38bdf8;
+      --orange: #fb923c;
+      --green: #34d399;
+      --red: #fb7185;
+      --yellow: #facc15;
+      --radius: 18px;
+      --shadow: 0 18px 50px rgba(0, 0, 0, 0.30);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      background: var(--bg-deep);
+    }
+
     body {
       margin: 0;
-      font-family: Arial, sans-serif;
-      background: #111827;
-      color: white;
+      min-height: 100vh;
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 15% 0%, rgba(56, 189, 248, 0.12), transparent 28rem),
+        radial-gradient(circle at 86% 6%, rgba(251, 146, 60, 0.10), transparent 30rem),
+        linear-gradient(180deg, #071321 0%, #050b14 100%);
+    }
+
+    a {
+      color: inherit;
+    }
+
+    button,
+    select {
+      font: inherit;
     }
 
     header {
-      padding: 28px 20px;
-      background: #0b1220;
-      border-bottom: 1px solid rgba(255,255,255,0.12);
-      text-align: center;
+      position: relative;
+      overflow: hidden;
+      border-bottom: 1px solid var(--line);
+      background:
+        linear-gradient(135deg, rgba(11, 31, 53, 0.96), rgba(7, 18, 32, 0.96));
     }
 
-    header h1 {
+    header::after {
+      content: "";
+      position: absolute;
+      inset: auto -12% -110px auto;
+      width: 430px;
+      height: 240px;
+      border-radius: 50%;
+      background: rgba(56, 189, 248, 0.08);
+      filter: blur(18px);
+      pointer-events: none;
+    }
+
+    .header-inner {
+      width: min(1280px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 34px 0 30px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .eyebrow {
+      margin: 0 0 8px;
+      color: var(--cyan);
+      font-size: 0.76rem;
+      font-weight: 900;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    h1 {
       margin: 0;
-      font-size: 2rem;
+      font-size: clamp(2rem, 4.2vw, 3.6rem);
+      line-height: 0.98;
+      letter-spacing: -0.045em;
     }
 
-    header p {
-      color: #cbd5e1;
-      margin-top: 8px;
+    .header-copy {
+      margin: 13px 0 0;
+      max-width: 780px;
+      color: #c3d4e6;
+      line-height: 1.6;
+      font-size: clamp(0.96rem, 1.6vw, 1.08rem);
     }
 
     main {
-      max-width: 1100px;
-      margin: auto;
-      padding: 24px 16px 50px;
-    }
-
-    .section {
-      background: #162033;
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 16px;
-      padding: 20px;
-      margin-bottom: 22px;
-    }
-
-    .section h2 {
-      margin-top: 0;
-    }
-
-    .alert-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 14px;
-    }
-
-    .alert-card {
-      transition: all 0.25s ease;
-      border-radius: 14px;
-      padding: 14px 16px;
-      background: #1f2937;
-      border-left: 6px solid #64748b;
-    }
-
-    .alert-card strong {
-      display: block;
-      font-size: 0.95rem;
-      line-height: 1.45;
-      margin-bottom: 10px;
-      color: #f8fafc;
-    }
-
-    .alert-card.tornado-warning {
-      border-left-color: #dc2626;
-      background: rgba(127, 29, 29, 0.45);
-      animation: pulseAlert 2s infinite;
-    }
-
-    .alert-card.tornado-watch {
-      border-left-color: #f97316;
-      background: rgba(124, 45, 18, 0.45);
-    }
-
-    .alert-card.severe-warning {
-      border-left-color: #facc15;
-      background: rgba(113, 63, 18, 0.45);
-    }
-
-    .alert-card.flood-warning {
-      border-left-color: #22c55e;
-      background: rgba(20, 83, 45, 0.45);
-    }
-
-    .alert-card.temperature-alert {
-  border-left-color: #60a5fa;
-  background: rgba(30, 64, 175, 0.35);
-}
-
-    .alert-card.storm-statement {
-  border-left-color: #38bdf8;
-  background: rgba(14, 116, 144, 0.35);
-}
-
-    .alert-card h3 {
-      margin: 0 0 8px;
-    }
-
-    .alert-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.alert-badge {
-  padding: 5px 10px;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.03em;
-  white-space: nowrap;
-}
-
-.alert-badge.tornado-warning {
-  background: #dc2626;
-  color: white;
-}
-
-.alert-badge.warning {
-  background: #facc15;
-  color: black;
-}
-
-.alert-badge.watch {
-  background: #f97316;
-  color: white;
-}
-
-.alert-badge.flood-warning {
-  background: #22c55e;
-  color: white;
-}
-
-.alert-badge.statement {
-  background: #64748b;
-  color: white;
-}
-
-.details-btn {
-  margin-top: 12px;
-  background: rgba(147, 197, 253, 0.16);
-  color: #dbeafe;
-  border: 1px solid rgba(147, 197, 253, 0.35);
-  border-radius: 999px;
-  padding: 8px 12px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.details-btn:hover {
-  background: rgba(147, 197, 253, 0.28);
-}
-
-.alert-modal {
-  position: fixed;
-  inset: 0;
-  display: none;
-  z-index: 9999;
-}
-
-.alert-modal.is-open {
-  display: block;
-}
-
-.alert-modal-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(0,0,0,0.65);
-}
-
-.alert-modal-box {
-  position: relative;
-  max-width: 760px;
-  max-height: 82vh;
-  overflow-y: auto;
-  margin: 7vh auto;
-  background: #162033;
-  border: 1px solid rgba(255,255,255,0.18);
-  border-radius: 18px;
-  padding: 22px;
-  color: white;
-}
-
-.alert-modal-close {
-  float: right;
-  background: rgba(255,255,255,0.12);
-  color: white;
-  border: 0;
-  border-radius: 999px;
-  width: 34px;
-  height: 34px;
-  font-size: 1.4rem;
-  cursor: pointer;
-}
-
-.modal-alert-text {
-  white-space: pre-wrap;
-  line-height: 1.55;
-  color: #e5e7eb;
-}
-
-.alert-card p {
-  color: #e5e7eb;
-  line-height: 1.45;
-}
-
-.county-list {
-  max-height: none;
-  overflow: visible;
-  mask-image: none;
-  -webkit-mask-image: none;
-}
-
-    .meta {
-      font-size: 0.85rem;
-      color: #cbd5e1;
-      margin-top: 10px;
-    }
-
-    .forecast-note {
-      color: #d1d5db;
-      line-height: 1.8;
+      width: min(1280px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 22px 0 54px;
     }
 
     .back-link {
-      display: inline-block;
-      margin-bottom: 18px;
-      color: #93c5fd;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      margin: 0 0 18px;
+      color: #b8d7f4;
       text-decoration: none;
+      font-weight: 800;
+      font-size: 0.92rem;
     }
 
     .back-link:hover {
-      text-decoration: underline;
+      color: white;
     }
-   .spc-wrapper {
-  margin-top: 40px;
-  text-align: center;
-}
 
-.spc-image {
-  width: 100%;
-  max-width: 850px;
-  border-radius: 16px;
-  border: 2px solid rgba(255,255,255,0.08);
-  transition: transform 0.25s ease;
-}
+    .status-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 18px;
+      padding: 11px 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(11, 23, 39, 0.82);
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
 
-.spc-image:hover {
-  transform: scale(1.01);
-}
+    .status-left {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-width: 0;
+    }
 
-.spc-link-button {
-  display: inline-block;
-  background: #2563eb;
-  color: white;
-  padding: 14px 18px;
-  border-radius: 12px;
-  text-decoration: none;
-  font-weight: 700;
-  margin-top: 14px;
-}
-.alert-center h2 {
-  text-align: center;
-}
+    .status-dot {
+      width: 9px;
+      height: 9px;
+      flex: 0 0 auto;
+      border-radius: 50%;
+      background: var(--yellow);
+      box-shadow: 0 0 14px rgba(250, 204, 21, 0.46);
+    }
 
-.state-summary-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
-  margin: 18px 0 22px;
-}
+    .status-dot.live {
+      background: var(--green);
+      box-shadow: 0 0 14px rgba(52, 211, 153, 0.46);
+    }
 
-.state-summary-card {
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.14);
-  border-radius: 14px;
-  padding: 14px;
-  text-align: center;
-  font-weight: 800;
-}
+    .status-dot.error {
+      background: var(--red);
+      box-shadow: 0 0 14px rgba(251, 113, 133, 0.46);
+    }
 
-.state-alert-list {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
+    .refresh-button {
+      flex: 0 0 auto;
+      border: 1px solid var(--line-strong);
+      border-radius: 999px;
+      padding: 7px 11px;
+      background: rgba(255, 255, 255, 0.055);
+      color: #dbeafe;
+      font-weight: 850;
+      cursor: pointer;
+    }
 
-.state-alert-group {
-  background: rgba(15, 23, 42, 0.55);
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 16px;
-  overflow: hidden;
-}
+    .refresh-button:hover {
+      background: rgba(255, 255, 255, 0.10);
+    }
 
-.state-alert-group summary {
-  cursor: pointer;
-  padding: 16px 18px;
-  font-weight: 900;
-  font-size: 1.05rem;
-  background: rgba(255,255,255,0.06);
-}
+    .section {
+      margin-bottom: 20px;
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background:
+        linear-gradient(180deg, rgba(17, 34, 57, 0.94), rgba(10, 22, 38, 0.94));
+      box-shadow: var(--shadow);
+    }
 
-.state-alert-inner {
-  padding: 16px;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 14px;
-  align-items: start;
-}
+    .section-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
 
+    .section-kicker {
+      margin: 0 0 5px;
+      color: var(--cyan);
+      font-size: 0.72rem;
+      font-weight: 900;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
 
-.alert-card.statement {
-  border-left-color: #94a3b8;
-  background: rgba(51, 65, 85, 0.72);
-}
+    .section h2 {
+      margin: 0;
+      font-size: clamp(1.3rem, 2.2vw, 1.85rem);
+      letter-spacing: -0.025em;
+    }
 
-.alert-card.watch {
-  border-left-color: #f97316;
-  background: rgba(124, 45, 18, 0.45);
-}
+    .briefing-title-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px 12px;
+    }
 
-.alert-card.warning {
-  border-left-color: #facc15;
-  background: rgba(113, 63, 18, 0.45);
-}
+    .briefing-title-row h2 {
+      margin: 0;
+    }
 
-.alert-card.tornado-warning {
-  border-left-color: #dc2626;
-  background: rgba(127, 29, 29, 0.55);
-  animation: pulseAlert 2s infinite;
-}
+    .briefing-issued-timestamp {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 5px 10px;
+      border: 1px solid rgba(96, 165, 250, 0.28);
+      border-radius: 999px;
+      background: rgba(96, 165, 250, 0.08);
+      color: #b9d9f7;
+      font-size: 0.76rem;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+    .section-description {
+      margin: 7px 0 0;
+      max-width: 760px;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 0.94rem;
+    }
 
-.alert-card.flood-warning {
-  border-left-color: #22c55e;
-  background: rgba(20, 83, 45, 0.45);
-}
+    .source-link {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 36px;
+      padding: 8px 12px;
+      border: 1px solid rgba(96, 165, 250, 0.30);
+      border-radius: 999px;
+      background: rgba(96, 165, 250, 0.09);
+      color: #cfe5ff;
+      text-decoration: none;
+      font-size: 0.82rem;
+      font-weight: 850;
+    }
 
-.state-summary-card {
-  position: relative;
-  overflow: hidden;
-}
+    .source-link:hover {
+      background: rgba(96, 165, 250, 0.16);
+    }
 
-.state-summary-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(
-      120deg,
-      transparent,
-      rgba(255,255,255,0.08),
-      transparent
-    );
+    .briefing-meta {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 16px;
+    }
 
-  transform: translateX(-100%);
-  animation: shimmer 5s infinite;
-}
+.meta-tile {
+      padding: 12px 13px;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      background: rgba(255, 255, 255, 0.035);
+    }
 
-@keyframes shimmer {
-  100% {
-    transform: translateX(100%);
-  }
-}
+    .meta-label {
+      color: var(--muted);
+      font-size: 0.70rem;
+      font-weight: 850;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
 
-@keyframes pulseAlert {
-  0% {
-    box-shadow: 0 0 0 rgba(220, 38, 38, 0.25);
-  }
-  50% {
-    box-shadow: 0 0 18px rgba(220, 38, 38, 0.65);
-  }
-  100% {
-    box-shadow: 0 0 0 rgba(220, 38, 38, 0.25);
-  }
-}
+    .meta-value {
+      margin-top: 5px;
+      font-size: 0.96rem;
+      font-weight: 850;
+      line-height: 1.35;
+    }
 
-@media (max-width: 768px) {
+    .briefing-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
 
-  .spc-wrapper {
-    display: block;
-  }
+    .period-card {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      overflow: hidden;
+      background: rgba(7, 16, 29, 0.58);
+    }
 
-  .spc-image {
-    width: 100%;
-    max-width: 100%;
-  }
+    .period-head {
+      display: block;
+      padding: 18px 16px 16px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.04);
+      text-align: center;
+    }
 
-  .spc-link-button {
-    display: inline-block;
-  }
+    .period-title {
+      margin: 0;
+      font-size: clamp(1.35rem, 2.2vw, 1.7rem);
+      line-height: 1.05;
+      font-weight: 950;
+      letter-spacing: -0.025em;
+    }
 
-  .state-summary-grid {
-    grid-template-columns: 1fr;
-  }
+    .period-valid {
+      margin-top: 7px;
+      color: #b9cee2;
+      font-size: 0.84rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+    }
 
-  .state-alert-inner {
-    grid-template-columns: 1fr;
-  }
+    .discussion-block {
+      padding: 15px;
+      border-bottom: 1px solid rgba(148, 183, 218, 0.11);
+    }
 
-}
+    .discussion-block:last-child {
+      border-bottom: 0;
+    }
 
+    .discussion-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 7px;
+      color: #d9ecff;
+      font-size: 0.78rem;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .discussion-label::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--blue);
+    }
+
+    .discussion-block:nth-child(3) .discussion-label::before {
+      background: var(--orange);
+    }
+
+    .discussion-block:nth-child(4) .discussion-label::before {
+      background: var(--green);
+    }
+
+    .discussion-text {
+      margin: 0;
+      color: #d3deeb;
+      line-height: 1.62;
+      font-size: 0.92rem;
+    }
+
+    .technical-discussion {
+      margin-top: 12px;
+      padding-top: 11px;
+      border-top: 1px solid rgba(148, 183, 218, 0.10);
+    }
+
+    .technical-discussion summary {
+      cursor: pointer;
+      color: #9fc7e8;
+      font-size: 0.80rem;
+      font-weight: 850;
+    }
+
+    .technical-discussion summary:hover {
+      color: #d7ecff;
+    }
+
+    .technical-discussion p {
+      margin: 9px 0 0;
+      color: var(--muted);
+      line-height: 1.58;
+      font-size: 0.84rem;
+    }
+    details.methodology {
+      margin: 0;
+      padding: 0 15px 15px;
+    }
+
+    details.methodology summary {
+      cursor: pointer;
+      color: #a8c7e5;
+      font-size: 0.82rem;
+      font-weight: 800;
+    }
+
+    details.methodology p {
+      margin: 9px 0 0;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 0.85rem;
+    }
+
+    .outlook-comparison-stack {
+      display: grid;
+      gap: 24px;
+    }
+
+    .outlook-comparison-row {
+      min-width: 0;
+    }
+
+    .outlook-comparison-title {
+      margin: 0 0 13px;
+      text-align: center;
+      font-size: clamp(1.4rem, 2.4vw, 1.9rem);
+      line-height: 1.05;
+      font-weight: 950;
+      letter-spacing: -0.025em;
+    }
+
+    .outlook-row-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .outlook-row-grid .outlook-card {
+      height: 100%;
+    }
+
+    .outlook-row-grid .outlook-head {
+      min-height: 74px;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .outlook-row-grid .outlook-title {
+      font-size: 1.02rem;
+    }
+
+    .outlook-row-grid .outlook-subtitle {
+      min-height: 1.1em;
+    }
+
+    .outlook-row-grid .map-frame {
+      min-height: 205px;
+      padding: 7px;
+    }
+    .national-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .outlook-card {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      overflow: hidden;
+      background: rgba(5, 14, 25, 0.62);
+    }
+
+    .outlook-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .outlook-title {
+      font-size: 0.96rem;
+      font-weight: 900;
+    }
+
+    .outlook-subtitle {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+
+    .map-type {
+      flex: 0 0 auto;
+      padding: 5px 8px;
+      border-radius: 999px;
+      font-size: 0.68rem;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .map-type.temp {
+      background: rgba(251, 146, 60, 0.14);
+      color: #ffd7b5;
+      border: 1px solid rgba(251, 146, 60, 0.30);
+    }
+
+    .map-type.precip {
+      background: rgba(56, 189, 248, 0.13);
+      color: #c9efff;
+      border: 1px solid rgba(56, 189, 248, 0.30);
+    }
+
+    .map-frame {
+      min-height: 300px;
+      display: grid;
+      place-items: center;
+      padding: 12px;
+      background:
+        linear-gradient(180deg, rgba(245, 248, 250, 0.96), rgba(221, 231, 239, 0.96));
+    }
+
+    .map-frame img {
+      display: block;
+      width: 100%;
+      height: auto;
+      max-height: 560px;
+      object-fit: contain;
+    }
+
+    .map-loading {
+      color: #334155;
+      font-weight: 850;
+    }
+
+    .region-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .region-button {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.045);
+      color: #b7cbe0;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 850;
+    }
+
+    .region-button:hover {
+      color: white;
+      border-color: var(--line-strong);
+    }
+
+    .region-button.active {
+      color: white;
+      border-color: rgba(56, 189, 248, 0.56);
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.22), rgba(96, 165, 250, 0.10));
+      box-shadow: 0 0 18px rgba(56, 189, 248, 0.10);
+    }
+
+    .region-summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .signal-card {
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      background: rgba(255, 255, 255, 0.035);
+    }
+
+    .signal-period {
+      color: var(--muted);
+      font-size: 0.69rem;
+      font-weight: 850;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    .signal-variable {
+      margin-top: 3px;
+      color: #dfeefa;
+      font-size: 0.78rem;
+      font-weight: 800;
+    }
+
+    .signal-value {
+      margin-top: 7px;
+      font-size: 1rem;
+      font-weight: 950;
+    }
+
+    .signal-value.above {
+      color: #ffb77a;
+    }
+
+    .signal-value.below {
+      color: #7dd3fc;
+    }
+
+    .signal-value.near {
+      color: #a7f3d0;
+    }
+
+    .signal-value.mixed {
+      color: #e2e8f0;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+    }
+
+    table {
+      width: 100%;
+      min-width: 760px;
+      border-collapse: collapse;
+      background: rgba(4, 12, 22, 0.42);
+    }
+
+    th,
+    td {
+      padding: 11px 12px;
+      border-bottom: 1px solid rgba(148, 183, 218, 0.10);
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #102139;
+      color: #a9bfd5;
+      font-size: 0.70rem;
+      font-weight: 900;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    td {
+      color: #d8e6f4;
+      font-size: 0.87rem;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: 0;
+    }
+
+    tbody tr:hover td {
+      background: rgba(255, 255, 255, 0.025);
+    }
+
+    .area-name {
+      font-weight: 850;
+      color: white;
+    }
+
+    .category-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 88px;
+      padding: 5px 8px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-size: 0.73rem;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .category-chip.above {
+      background: rgba(251, 146, 60, 0.12);
+      border-color: rgba(251, 146, 60, 0.28);
+      color: #ffd0aa;
+    }
+
+    .category-chip.below {
+      background: rgba(56, 189, 248, 0.11);
+      border-color: rgba(56, 189, 248, 0.26);
+      color: #c9efff;
+    }
+
+    .category-chip.near {
+      background: rgba(52, 211, 153, 0.10);
+      border-color: rgba(52, 211, 153, 0.24);
+      color: #c8fae6;
+    }
+
+    .category-chip.unknown {
+      background: rgba(148, 163, 184, 0.10);
+      border-color: rgba(148, 163, 184, 0.22);
+      color: #cbd5e1;
+    }
+
+    .climate-link-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .climate-link-card {
+      display: block;
+      min-height: 132px;
+      padding: 15px;
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      background: rgba(255, 255, 255, 0.035);
+      text-decoration: none;
+      transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+    }
+
+    .climate-link-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(96, 165, 250, 0.42);
+      background: rgba(96, 165, 250, 0.07);
+    }
+
+    .climate-link-card strong {
+      display: block;
+      margin-bottom: 7px;
+      font-size: 0.98rem;
+    }
+
+    .climate-link-card span {
+      display: block;
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 0.83rem;
+    }
+
+    .climate-link-card em {
+      display: inline-block;
+      margin-top: 12px;
+      color: #b9dcff;
+      font-size: 0.78rem;
+      font-style: normal;
+      font-weight: 900;
+    }
+
+    .spc-card {
+      display: grid;
+      grid-template-columns: minmax(0, 0.95fr) minmax(260px, 0.55fr);
+      gap: 16px;
+      align-items: center;
+    }
+
+    .spc-map {
+      display: block;
+      width: 100%;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: #e2e8f0;
+    }
+
+    .spc-copy h3 {
+      margin: 0;
+      font-size: 1.1rem;
+    }
+
+    .spc-copy p {
+      margin: 8px 0 13px;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 0.9rem;
+    }
+
+    .primary-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 40px;
+      padding: 9px 13px;
+      border-radius: 11px;
+      background: #2563eb;
+      color: white;
+      text-decoration: none;
+      font-weight: 900;
+      font-size: 0.84rem;
+    }
+
+    .empty-state {
+      padding: 18px;
+      border: 1px dashed var(--line-strong);
+      border-radius: 14px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .skeleton {
+      position: relative;
+      overflow: hidden;
+      min-height: 80px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.045);
+    }
+
+    .skeleton::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      transform: translateX(-100%);
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+      animation: shimmer 1.7s infinite;
+    }
+
+    @keyframes shimmer {
+      100% {
+        transform: translateX(100%);
+      }
+    }
+
+    .long-range-stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .climate-image-section {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(5, 14, 25, 0.54);
+    }
+
+    .climate-image-section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .climate-image-kicker {
+      margin: 0 0 4px;
+      color: var(--cyan);
+      font-size: 0.68rem;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .climate-image-section h3 {
+      margin: 0;
+      font-size: clamp(1.3rem, 2.2vw, 1.75rem);
+      line-height: 1.05;
+      letter-spacing: -0.025em;
+    }
+
+    .climate-image-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .climate-image-card {
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      background: rgba(7, 16, 29, 0.64);
+      color: inherit;
+      text-decoration: none;
+      transition:
+        transform 0.18s ease,
+        border-color 0.18s ease,
+        box-shadow 0.18s ease;
+    }
+
+    .climate-image-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(96, 165, 250, 0.42);
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
+    }
+
+    .climate-image-title {
+      padding: 11px 13px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.045);
+      text-align: center;
+      font-size: 0.95rem;
+      font-weight: 900;
+    }
+
+    .climate-image-frame {
+      display: grid;
+      place-items: center;
+      min-height: 260px;
+      padding: 8px;
+      background: rgba(236, 242, 247, 0.98);
+    }
+
+    .climate-image-frame.drought {
+      background: white;
+    }
+
+    .climate-image-frame img {
+      display: block;
+      width: 100%;
+      height: auto;
+      max-height: 620px;
+      object-fit: contain;
+    }
+    @media (max-width: 980px) {
+      .outlook-row-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .climate-image-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .briefing-meta,
+      .region-summary,
+      .climate-link-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .briefing-grid,
+      .national-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .spc-card {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .outlook-row-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .header-inner,
+      main {
+        width: min(100% - 22px, 1280px);
+      }
+
+      .header-inner {
+        padding: 26px 0 23px;
+      }
+
+      main {
+        padding-top: 15px;
+      }
+
+      .section {
+        padding: 14px;
+        border-radius: 15px;
+      }
+
+      .section-head {
+        display: block;
+      }
+
+      .source-link {
+        margin-top: 12px;
+      }
+
+      .briefing-meta,
+      .region-summary,
+      .climate-link-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .period-head {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .status-bar {
+        align-items: flex-start;
+      }
+
+      .status-left {
+        align-items: flex-start;
+      }
+
+      .refresh-button {
+        padding-inline: 10px;
+      }
+
+      .map-frame {
+        min-height: 190px;
+        padding: 7px;
+      }
+    }
   </style>
 </head>
 
 <body>
   <header>
-    <h1>Storm Desk</h1>
-    <p>Forecast briefings, chase thoughts, and live weather alerts</p>
+    <div class="header-inner">
+      <p class="eyebrow">Zacharologist Climate Desk</p>
+      <h1>Climate & Outlook Center</h1>
+      <p class="header-copy">
+        National climate patterns, NOAA Climate Prediction Center guidance, regional outlooks,
+        and longer-range signals — organized from the national picture down to individual areas.
+      </p>
+    </div>
   </header>
 
   <main>
     <a class="back-link" href="index.html">← Back to Home</a>
 
-    <section class="section">
-      <h2>Latest Forecast Briefing</h2>
-      <p class="forecast-note">
-        <p>Keeping an eye on the SPC outlooks and local NWS forecasts for the latest details in regards to the longterm forecasts. 
-          For the next 0–7 days, the Carolinas and Virginia look locked into a generally warm, increasingly humid pattern with temperatures 
-         running above normal most days. High pressure over the Southeast should keep the region largely summerlike, though periodic disturbances 
-          moving in from the west will bring rounds of scattered afternoon and evening thunderstorms. Especially across the mountains/Piedmont 
-         and then drifting eastward. Severe weather risk appears localized rather than widespread, but any stronger storms could produce heavy rain, 
-         gusty winds, and frequent lightning.
-        <p>
+    <div class="status-bar">
+      <div class="status-left">
+        <span class="status-dot" id="cpcStatusDot"></span>
+        <span id="cpcStatusText">Loading the latest CPC outlook...</span>
+      </div>
+      <button class="refresh-button" id="refreshCpcButton" type="button">Refresh</button>
+    </div>
 
-        <p>
-          During the 8–14 day period, the broader pattern still favors a continued warm-to-hot regime across NC, SC, and VA, with above-normal
-         temperatures remaining the dominant signal. The Southeast ridge looks persistent, meaning humidity levels likely stay elevated and the region 
-         trends toward a more typical early-summer setup with warm mornings, muggy afternoons, and intermittent thunderstorm chances rather than prolonged 
-         cool or dry periods. Rainfall overall may average near to slightly above normal because of repeated moisture flow from the Gulf and Atlantic, 
-         but no strong signal currently points toward a sustained washout pattern.
-         <p>
-      </p>
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <p class="section-kicker">Auto-updated from NOAA CPC</p>
+          <div class="briefing-title-row">
+            <h2>Latest Forecast Briefing</h2>
+            <span class="briefing-issued-timestamp" id="briefingIssuedTimestamp">Loading...</span>
+          </div>
+          <p class="section-description">
+            The latest CPC 6–10 day and 8–14 day prognostic discussion, cleaned into the
+            large-scale pattern, temperature signal, and precipitation signal.
+          </p>
+        </div>
+        <a
+          class="source-link"
+          id="cpcDiscussionLink"
+          href="https://www.cpc.ncep.noaa.gov/products/predictions/610day/fxus06.html"
+          target="_blank"
+          rel="noopener"
+        >Open CPC Discussion ↗</a>
+      </div>
+
+
+
+</div>
+
+      <div class="briefing-grid" id="briefingGrid">
+        <div class="skeleton"></div>
+        <div class="skeleton"></div>
+      </div>
     </section>
 
-    <section class="section alert-center">
-  <h2>Regional Alert Center</h2>
-  <p id="alert-status">Loading active alerts...</p>
+        <section class="section" id="nationalClimateOutlookSection">
+      <div class="section-head">
+        <div>
+          <p class="section-kicker">National guidance timeline</p>
+          <h2>National Climate Outlook</h2>
+          <p class="section-description">
+            Compare the CPC outlook timeline from 6-10 days through the monthly period.
+            Temperature products are aligned left-to-right first, with precipitation
+            products aligned in the same order directly beneath them.
+          </p>
+        </div>
+      </div>
 
-  <div class="state-summary-grid">
-    <div class="state-summary-card" id="summary-nc">NC: Loading...</div>
-    <div class="state-summary-card" id="summary-sc">SC: Loading...</div>
-    <div class="state-summary-card" id="summary-va">VA: Loading...</div>
-  </div>
+      <div id="nationalOutlookGrid">
+        <div class="skeleton"></div>
+        <div class="skeleton"></div>
+      </div>
+    </section>
+<section class="section" id="regionalOutlookExplorerSection" hidden>
+      <div class="section-head">
+        <div>
+          <p class="section-kicker">National → regional</p>
+          <h2>Regional Outlook Explorer</h2>
+          <p class="section-description">
+            Start with the full United States, then isolate a region to compare CPC categorical
+            temperature and precipitation signals area-by-area.
+          </p>
+        </div>
+      </div>
 
-  <div id="alerts" class="state-alert-list"></div>
-</section>
+      <div class="region-toolbar" id="regionToolbar"></div>
 
-   <section class="section">
-  <h2>Storm Prediction Center: Day 1 Outlook</h2>
+      <div class="region-summary" id="regionSummary">
+        <div class="skeleton"></div>
+        <div class="skeleton"></div>
+        <div class="skeleton"></div>
+        <div class="skeleton"></div>
+      </div>
 
-  <div class="spc-wrapper">
-    <a href="https://www.spc.noaa.gov/products/outlook/day1otlk.html" target="_blank">
-      <img
-      id="spc-day1-img"
-      src="https://www.spc.noaa.gov/products/outlook/day1otlk.png"
-      alt="SPC Day 1 Convective Outlook"
-      class="spc-image"
->
-    </a>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Area</th>
+              <th>6–10 Temp</th>
+              <th>6–10 Precip</th>
+              <th>8–14 Temp</th>
+              <th>8–14 Precip</th>
+            </tr>
+          </thead>
+          <tbody id="regionTableBody">
+            <tr>
+              <td colspan="5">Loading CPC regional classifications...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
 
-    <a
-      class="spc-link-button"
-      href="https://www.spc.noaa.gov/products/outlook/day1otlk.html"
-      target="_blank"
-    >
-      Open Latest SPC Day 1 Outlook →
-    </a>
-  </div>
-</section>
+            <section class="section" id="longRangeClimateSection">
+      <div class="section-head">
+        <div>
+          <p class="section-kicker">Beyond the monthly window</p>
+          <h2>Long-Range Climate</h2>
+          <p class="section-description">
+            Seasonal temperature and precipitation guidance plus the latest CPC drought outlooks.
+          </p>
+        </div>
+      </div>
+
+      <div class="long-range-stack">
+        <section class="climate-image-section">
+          <div class="climate-image-section-head">
+            <div>
+              <p class="climate-image-kicker">Three month</p>
+              <h3>Seasonal Outlook</h3>
+            </div>
+            <a
+              class="source-link"
+              href="https://www.cpc.ncep.noaa.gov/products/predictions/long_range/"
+              target="_blank"
+              rel="noopener"
+            >Open CPC Seasonal</a>
+          </div>
+
+          <div class="climate-image-grid">
+            <a
+              class="climate-image-card"
+              href="https://www.cpc.ncep.noaa.gov/products/predictions/long_range/"
+              target="_blank"
+              rel="noopener"
+            >
+              <div class="climate-image-title">Temperature</div>
+              <div class="climate-image-frame">
+                <img
+                  data-climate-image
+                  data-src="https://www.cpc.ncep.noaa.gov/products/predictions/long_range/lead01/off01_temp.gif"
+                  alt="CPC Seasonal Temperature Outlook"
+                >
+              </div>
+            </a>
+
+            <a
+              class="climate-image-card"
+              href="https://www.cpc.ncep.noaa.gov/products/predictions/long_range/"
+              target="_blank"
+              rel="noopener"
+            >
+              <div class="climate-image-title">Precipitation</div>
+              <div class="climate-image-frame">
+                <img
+                  data-climate-image
+                  data-src="https://www.cpc.ncep.noaa.gov/products/predictions/long_range/lead01/off01_prcp.gif"
+                  alt="CPC Seasonal Precipitation Outlook"
+                >
+              </div>
+            </a>
+          </div>
+        </section>
+
+        <section class="climate-image-section">
+          <div class="climate-image-section-head">
+            <div>
+              <p class="climate-image-kicker">Drought guidance</p>
+              <h3>Drought Outlooks</h3>
+            </div>
+            <a
+              class="source-link"
+              href="https://www.cpc.ncep.noaa.gov/products/Drought/"
+              target="_blank"
+              rel="noopener"
+            >Open CPC Drought</a>
+          </div>
+
+          <div class="climate-image-grid">
+            <a
+              class="climate-image-card"
+              href="https://www.cpc.ncep.noaa.gov/products/expert_assessment/mdo_summary.php"
+              target="_blank"
+              rel="noopener"
+            >
+              <div class="climate-image-title">Monthly Drought Outlook</div>
+              <div class="climate-image-frame drought">
+                <img
+                  data-climate-image
+                  data-src="https://www.cpc.ncep.noaa.gov/products/expert_assessment/mdohomeweb.png"
+                  alt="CPC Monthly Drought Outlook"
+                >
+              </div>
+            </a>
+
+            <a
+              class="climate-image-card"
+              href="https://www.cpc.ncep.noaa.gov/products/expert_assessment/sdo_summary.php"
+              target="_blank"
+              rel="noopener"
+            >
+              <div class="climate-image-title">Seasonal Drought Outlook</div>
+              <div class="climate-image-frame drought">
+                <img
+                  data-climate-image
+                  data-src="https://www.cpc.ncep.noaa.gov/products/expert_assessment/sdohomeweb.png"
+                  alt="CPC Seasonal Drought Outlook"
+                >
+              </div>
+            </a>
+          </div>
+        </section>
+      </div>
+    </section>
   </main>
 
-  <div id="alertModal" class="alert-modal">
-  <div class="alert-modal-backdrop"></div>
-
-  <div class="alert-modal-box">
-    <button class="alert-modal-close" type="button">×</button>
-    <h2 id="modalAlertTitle">Alert Details</h2>
-    <p id="modalAlertMeta" class="meta"></p>
-    <div id="modalAlertText" class="modal-alert-text"></div>
-  </div>
-</div>
   <script>
-  
-    const alertsContainer = document.getElementById("alerts");
-    const alertStatus = document.getElementById("alert-status");
+    const PROD_CPC_API =
+      "https://zacharologist-chase-api.zacharologistwx.workers.dev/api/cpc/outlook";
+    const LOCAL_CPC_API = "http://127.0.0.1:8788/api/cpc/outlook";
+    const CPC_REFRESH_MS = 15 * 60 * 1000;
 
-   const importantEvents = [
+    const isLocalPage = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+    const CPC_API = isLocalPage ? LOCAL_CPC_API : PROD_CPC_API;
 
-  // Severe / Storm
-  "Tornado Warning",
-  "Tornado Watch",
-  "Severe Thunderstorm Warning",
-  "Severe Thunderstorm Watch",
-  "Flash Flood Warning",
-  "Flash Flood Watch",
-  "Flood Warning",
-  "Flood Watch",
-  "Special Weather Statement",
+    let cpcData = null;
+    let selectedRegion = "United States";
 
-  // Winter
-  "Winter Storm Warning",
-  "Winter Storm Watch",
-  "Winter Weather Advisory",
-  "Ice Storm Warning",
-  "Blizzard Warning",
-  "Snow Squall Warning",
+    const regionOrder = [
+      "United States",
+      "Northeast",
+      "Southeast",
+      "South",
+      "Midwest",
+      "Plains",
+      "Northwest",
+      "West",
+      "Southwest",
+      "Alaska"
+    ];
 
-  // Temperature
-  "Frost Advisory",
-  "Freeze Warning",
-  "Freeze Watch",
-  "Hard Freeze Warning",
-  "Hard Freeze Watch",
-  "Extreme Cold Warning",
-  "Extreme Cold Watch",
-  "Cold Weather Advisory",
-  "Wind Chill Warning",
-  "Wind Chill Watch",
-  "Wind Chill Advisory",
-  "Heat Advisory",
-  "Excessive Heat Warning",
-  "Excessive Heat Watch",
-
-  // Tropical
-  "Hurricane Warning",
-  "Hurricane Watch",
-  "Tropical Storm Warning",
-  "Tropical Storm Watch",
-
-  // Fire Weather
-  "Red Flag Warning",
-  "Fire Warning",
-  "Extreme Fire Danger",
-  "Fire Weather Watch",
-
-  // Air Quality
-  "Air Quality Alert",
-
-  // Dense Fog / Visibility
-  "Dense Fog Advisory"
-];
-
-    async function loadAlerts() {
-  alertStatus.textContent = "Loading active alerts...";
-  alertsContainer.innerHTML = "";
-
-  try {
-    const states = ["NC", "SC", "VA"];
-
-    const responses = await Promise.all(
-      states.map(state =>
-        fetch(`https://api.weather.gov/alerts/active?area=${state}`)
-      )
-    );
-
-    responses.forEach(response => {
-      if (!response.ok) {
-        throw new Error("NWS API error");
-      }
-    });
-
-    const dataSets = await Promise.all(
-      responses.map(response => response.json())
-    );
-
-    const stateAlerts = {
-      NC: [],
-      SC: [],
-      VA: []
-    };
-
-    dataSets.forEach((data, index) => {
-      const state = states[index];
-
-      const filtered = (data.features || []).filter(item =>
-        importantEvents.includes(item.properties.event)
-      );
-
-      stateAlerts[state] = filtered;
-    });
-
-    const totalAlerts =
-      stateAlerts.NC.length + stateAlerts.SC.length + stateAlerts.VA.length;
-
-    document.getElementById("summary-nc").textContent =
-      `NC: ${stateAlerts.NC.length} alert(s)`;
-
-    document.getElementById("summary-sc").textContent =
-      `SC: ${stateAlerts.SC.length} alert(s)`;
-
-    document.getElementById("summary-va").textContent =
-      `VA: ${stateAlerts.VA.length} alert(s)`;
-
-      setSummaryColor("summary-nc", stateAlerts.NC);
-      setSummaryColor("summary-sc", stateAlerts.SC);
-      setSummaryColor("summary-va", stateAlerts.VA);
-
-    alertStatus.textContent =
-      `${totalAlerts} active regional alert(s) found • Updated ${new Date().toLocaleTimeString([], {
-        hour: "numeric",
-        minute: "2-digit"
-      })}`;
-
-    if (totalAlerts === 0) {
-      alertsContainer.innerHTML = `
-        <div class="alert-card">
-          <h3>No Active Regional Alerts</h3>
-          <p>No tracked severe, flood, watch, or statement alerts are active for NC, SC, or VA right now.</p>
-        </div>
-      `;
-      return;
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
     }
 
-    states.forEach(state => {
+    function setCpcStatus(message, state = "loading") {
+      document.getElementById("cpcStatusText").textContent = message;
+      const dot = document.getElementById("cpcStatusDot");
+      dot.classList.toggle("live", state === "live");
+      dot.classList.toggle("error", state === "error");
+    }
 
-    if (stateAlerts[state].length === 0) return;
-      const group = document.createElement("details");
-      group.className = "state-alert-group";
-      group.open = stateAlerts[state].length > 0;
+    function categoryInfo(code) {
+      const normalized = String(code || "").trim().toUpperCase();
 
-      group.innerHTML = `
-        <summary>${state} Alert Count: ${stateAlerts[state].length}</summary>
-        <div class="state-alert-inner"></div>
-      `;
-
-      const inner = group.querySelector(".state-alert-inner");
-
-      if (stateAlerts[state].length === 0) {
-        inner.innerHTML = `
-          <div class="alert-card">
-            <h3>No Active Alerts</h3>
-            <p>No tracked alerts currently active for ${state}.</p>
-          </div>
-        `;
-      } else {
-        stateAlerts[state].forEach(item => {
-          const props = item.properties;
-
-          const card = document.createElement("div");
-          card.className = "alert-card " + getAlertClass(props.event, props);
-
-          card.innerHTML = `
-  <div class="alert-header">
-    <h3>${props.event}</h3>
-    <span class="alert-badge ${getAlertClass(props.event)}">
-      ${getBadgeLabel(props.event)}
-    </span>
-  </div>
-
-  <p class="county-list">
-    <strong>${props.areaDesc}</strong>
-  </p>
-
-  <p>${props.headline || "No headline available."}</p>
-
-  <div class="meta">
-    Issued: ${formatTime(props.sent)}<br>
-    Expires: ${formatTime(props.expires)}
-  </div>
-
-  <button class="details-btn" type="button">Details</button>
-`;
-
-card.querySelector(".details-btn").addEventListener("click", () => {
-  openAlertModal(props);
-});
-
-          inner.appendChild(card);
-        });
+      if (normalized === "A") {
+        return { label: "Above Normal", className: "above" };
       }
 
-      alertsContainer.appendChild(group);
+      if (normalized === "B") {
+        return { label: "Below Normal", className: "below" };
+      }
+
+      if (normalized === "N" || normalized === "EC") {
+        return { label: normalized === "EC" ? "Equal Chances" : "Near Normal", className: "near" };
+      }
+
+      return { label: normalized || "Unavailable", className: "unknown" };
+    }
+
+    function categoryChip(code) {
+      const info = categoryInfo(code);
+      return `<span class="category-chip ${info.className}">${escapeHtml(info.label)}</span>`;
+    }
+
+    function naturalList(items) {
+      const values = [...new Set((items || []).filter(Boolean))];
+
+      if (!values.length) return "";
+      if (values.length === 1) return values[0];
+      if (values.length === 2) return `${values[0]} and ${values[1]}`;
+
+      return `${values.slice(0, -1).join(", ")}, and ${values[values.length - 1]}`;
+    }
+
+    function dominantRegionalSignals(period, variable) {
+      const areas = Array.isArray(period?.areas) ? period.areas : [];
+      const regionBuckets = new Map();
+
+      areas.forEach((area) => {
+        const region = String(area?.region || "").trim();
+        const code = String(area?.[variable] || "").trim().toUpperCase();
+
+        if (!region || !["A", "B", "N", "EC"].includes(code)) return;
+
+        if (!regionBuckets.has(region)) {
+          regionBuckets.set(region, { A: 0, B: 0, N: 0 });
+        }
+
+        const bucket = regionBuckets.get(region);
+        const normalized = code === "EC" ? "N" : code;
+        bucket[normalized] += 1;
+      });
+
+      return [...regionBuckets.entries()]
+        .map(([region, counts]) => {
+          const ranked = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+
+          if (!ranked[0] || ranked[0][1] === 0) {
+            return { region, code: "" };
+          }
+
+          if (ranked[1] && ranked[0][1] === ranked[1][1]) {
+            return { region, code: "MIXED" };
+          }
+
+          return { region, code: ranked[0][0] };
+        });
+    }
+
+    function regionsWithSignal(period, variable, code) {
+      return dominantRegionalSignals(period, variable)
+        .filter((item) => item.code === code)
+        .map((item) => item.region);
+    }
+
+    function plainTemperatureSummary(period) {
+      const warm = regionsWithSignal(period, "temperature", "A");
+      const cool = regionsWithSignal(period, "temperature", "B");
+      const near = regionsWithSignal(period, "temperature", "N");
+      const sentences = [];
+
+      if (warm.length) {
+        sentences.push(
+          `Warmer-than-normal temperatures are favored across ${naturalList(warm)}.`
+        );
+      }
+
+      if (cool.length) {
+        sentences.push(
+          `Cooler-than-normal temperatures are favored across ${naturalList(cool)}.`
+        );
+      }
+
+      if (!warm.length && !cool.length && near.length) {
+        sentences.push(
+          `Temperatures are generally expected to stay near normal across ${naturalList(near)}.`
+        );
+      }
+
+      if (!sentences.length) {
+        sentences.push(
+          "The temperature outlook is mixed, with no single broad regional signal dominating."
+        );
+      }
+
+      return sentences.join(" ");
+    }
+
+    function plainPrecipitationSummary(period) {
+      const wet = regionsWithSignal(period, "precipitation", "A");
+      const dry = regionsWithSignal(period, "precipitation", "B");
+      const near = regionsWithSignal(period, "precipitation", "N");
+      const sentences = [];
+
+      if (wet.length) {
+        sentences.push(
+          `Wetter-than-normal conditions are favored across ${naturalList(wet)}.`
+        );
+      }
+
+      if (dry.length) {
+        sentences.push(
+          `Drier-than-normal conditions are favored across ${naturalList(dry)}.`
+        );
+      }
+
+      if (!wet.length && !dry.length && near.length) {
+        sentences.push(
+          `Precipitation is generally expected to stay near normal across ${naturalList(near)}.`
+        );
+      }
+
+      if (!sentences.length) {
+        sentences.push(
+          "The precipitation outlook is mixed, with no single broad regional signal dominating."
+        );
+      }
+
+      return sentences.join(" ");
+    }
+
+    function plainPatternSummary(period) {
+      const raw = String(period?.discussion?.[0] || "").toLowerCase();
+      const features = [];
+
+      const southeastRidge =
+        /southeast.{0,90}(ridg|positive.{0,25}height)|(?:ridg|positive.{0,25}height).{0,90}southeast/i.test(raw);
+      const alaskaRidge =
+        /alaska.{0,90}(ridg|positive.{0,25}height)|(?:ridg|positive.{0,25}height).{0,90}alaska/i.test(raw);
+      const northeastTrough =
+        /northeast.{0,90}(trough|negative.{0,25}height)|(?:trough|negative.{0,25}height).{0,90}northeast/i.test(raw);
+      const westCoastTrough =
+        /west coast.{0,90}(trough|negative.{0,25}height)|(?:trough|negative.{0,25}height).{0,90}west coast/i.test(raw);
+
+      if (southeastRidge) {
+        features.push("High pressure is favored across the Southeast, supporting a warmer and more stable overall pattern there.");
+      }
+
+      if (alaskaRidge) {
+        features.push("Higher pressure is also favored across much of Alaska.");
+      }
+
+      if (northeastTrough) {
+        features.push("A lower-pressure pattern is favored over the Northeast, which can support cooler and more unsettled conditions.");
+      }
+
+      if (westCoastTrough) {
+        features.push("Another lower-pressure area is favored near the West Coast, increasing the chance for cooler or more unsettled weather there.");
+      }
+
+      if (features.length) {
+        return features.join(" ");
+      }
+
+      const warm = regionsWithSignal(period, "temperature", "A");
+      const cool = regionsWithSignal(period, "temperature", "B");
+      const wet = regionsWithSignal(period, "precipitation", "A");
+      const dry = regionsWithSignal(period, "precipitation", "B");
+      const fallback = [];
+
+      if (warm.length) {
+        fallback.push(`The broader pattern favors warmer conditions across ${naturalList(warm)}.`);
+      }
+
+      if (cool.length) {
+        fallback.push(`Cooler conditions are favored across ${naturalList(cool)}.`);
+      }
+
+      if (wet.length) {
+        fallback.push(`A wetter pattern is favored across ${naturalList(wet)}.`);
+      }
+
+      if (dry.length) {
+        fallback.push(`A drier pattern is favored across ${naturalList(dry)}.`);
+      }
+
+      return fallback.join(" ") ||
+        "The large-scale pattern is mixed, without one dominant signal across the country.";
+    }
+
+    function technicalDiscussion(text) {
+      if (!text) return "";
+
+      return `
+        <details class="technical-discussion">
+          <summary>View technical CPC discussion</summary>
+          <p>${escapeHtml(text)}</p>
+        </details>
+      `;
+    }
+
+    function periodCard(title, period) {
+      const discussion = Array.isArray(period?.discussion) ? period.discussion : [];
+      const technicalPattern = discussion[0] || "";
+      const technicalTemperature = discussion[1] || "";
+      const technicalPrecipitation = discussion[2] || "";
+      const methodology = discussion[3] || "";
+
+      const pattern = plainPatternSummary(period);
+      const temperature = plainTemperatureSummary(period);
+      const precipitation = plainPrecipitationSummary(period);
+
+      return `
+        <article class="period-card">
+          <div class="period-head">
+            <div class="period-title">${escapeHtml(title)}</div>
+            <div class="period-valid">${escapeHtml(period?.valid || "Valid period unavailable")}</div>
+          </div>
+
+          <div class="discussion-block">
+            <div class="discussion-label">Pattern</div>
+            <p class="discussion-text">${escapeHtml(pattern)}</p>
+            ${technicalDiscussion(technicalPattern)}
+          </div>
+
+          <div class="discussion-block">
+            <div class="discussion-label">Temperature</div>
+            <p class="discussion-text">${escapeHtml(temperature)}</p>
+            ${technicalDiscussion(technicalTemperature)}
+          </div>
+
+          <div class="discussion-block">
+            <div class="discussion-label">Precipitation</div>
+            <p class="discussion-text">${escapeHtml(precipitation)}</p>
+            ${technicalDiscussion(technicalPrecipitation)}
+          </div>
+
+          ${methodology ? `
+            <details class="methodology">
+              <summary>View CPC forecast blend / methodology</summary>
+              <p>${escapeHtml(methodology)}</p>
+            </details>
+          ` : ""}
+        </article>
+      `;
+    }
+    function formatCpcIssuedTimestamp(value) {
+      const raw = String(value || "").trim();
+      if (!raw) return "Issued time unavailable";
+
+      const match = raw.match(
+        /^(\d{1,4})\s+(AM|PM)\s+([A-Z]{2,5})\s+(.+)$/i
+      );
+
+      if (!match) {
+        return `Issued ${raw}`;
+      }
+
+      const digits = match[1].padStart(4, "0");
+      const hour = Number(digits.slice(0, 2));
+      const minute = digits.slice(2);
+      const displayHour = Number.isFinite(hour) && hour > 0 ? hour : 12;
+      const meridiem = match[2].toUpperCase();
+      const zone = match[3].toUpperCase();
+      const datePart = match[4];
+
+      return `Issued ${displayHour}:${minute} ${meridiem} ${zone} - ${datePart}`;
+    }
+    function renderBriefing(data) {
+      document.getElementById("briefingIssuedTimestamp").textContent =
+        formatCpcIssuedTimestamp(data.issued);
+
+
+
+      if (data.source?.discussion) {
+        document.getElementById("cpcDiscussionLink").href = data.source.discussion;
+      }
+
+      document.getElementById("briefingGrid").innerHTML =
+        periodCard("6–10 Day Outlook", data.sixToTen) +
+        periodCard("8–14 Day Outlook", data.eightToFourteen);
+    }
+
+    function mapCard(periodTitle, validLabel, variable, url) {
+      const variableName = variable === "temp" ? "Temperature" : "Precipitation";
+      const cacheKey = encodeURIComponent(cpcData?.generatedAt || Date.now());
+      const imageUrl = url
+        ? `${url}${url.includes("?") ? "&" : "?"}zwx=${cacheKey}`
+        : "";
+
+      return `
+        <article class="outlook-card">
+          <div class="outlook-head">
+            <div>
+              <div class="outlook-title">${escapeHtml(periodTitle)}</div>
+              <div class="outlook-subtitle">${escapeHtml(validLabel || "Latest CPC outlook")}</div>
+            </div>
+          </div>
+
+          <div class="map-frame">
+            ${imageUrl
+              ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(`${periodTitle} CPC ${variableName} Outlook`)}">`
+              : `<div class="map-loading">Map unavailable</div>`
+            }
+          </div>
+        </article>
+      `;
+    }
+
+    function renderNationalOutlook(data) {
+      const sixMaps = data.maps?.sixToTen || {};
+      const eightMaps = data.maps?.eightToFourteen || {};
+
+      const week34Temp =
+        "https://www.cpc.ncep.noaa.gov/products/predictions/WK34/gifs/WK34temp.gif";
+      const week34Precip =
+        "https://www.cpc.ncep.noaa.gov/products/predictions/WK34/gifs/WK34prcp.gif";
+      const monthlyTemp =
+        "https://www.cpc.ncep.noaa.gov/products/predictions/long_range/lead14/off15_temp.gif";
+      const monthlyPrecip =
+        "https://www.cpc.ncep.noaa.gov/products/predictions/long_range/lead14/off15_prcp.gif";
+
+      const temperatureCards = [
+        mapCard("6-10 Day", data.sixToTen?.valid, "temp", sixMaps.temperature),
+        mapCard("8-14 Day", data.eightToFourteen?.valid, "temp", eightMaps.temperature),
+        mapCard("Week 3-4", "Latest CPC outlook", "temp", week34Temp),
+        mapCard("Monthly", "Latest CPC outlook", "temp", monthlyTemp)
+      ].join("");
+
+      const precipitationCards = [
+        mapCard("6-10 Day", data.sixToTen?.valid, "precip", sixMaps.precipitation),
+        mapCard("8-14 Day", data.eightToFourteen?.valid, "precip", eightMaps.precipitation),
+        mapCard("Week 3-4", "Latest CPC outlook", "precip", week34Precip),
+        mapCard("Monthly", "Latest CPC outlook", "precip", monthlyPrecip)
+      ].join("");
+
+      document.getElementById("nationalOutlookGrid").innerHTML = `
+        <div class="outlook-comparison-stack">
+          <section class="outlook-comparison-row">
+            <h3 class="outlook-comparison-title">Temperature Outlooks</h3>
+            <div class="outlook-row-grid">
+              ${temperatureCards}
+            </div>
+          </section>
+
+          <section class="outlook-comparison-row">
+            <h3 class="outlook-comparison-title">Precipitation Outlooks</h3>
+            <div class="outlook-row-grid">
+              ${precipitationCards}
+            </div>
+          </section>
+        </div>
+      `;
+    }
+    function areaKey(area) {
+      return String(area?.sourceLabel || area?.label || "").trim().toUpperCase();
+    }
+
+    function mergedAreas(data) {
+      const sixAreas = Array.isArray(data.sixToTen?.areas) ? data.sixToTen.areas : [];
+      const eightAreas = Array.isArray(data.eightToFourteen?.areas) ? data.eightToFourteen.areas : [];
+      const eightMap = new Map(eightAreas.map((area) => [areaKey(area), area]));
+
+      return sixAreas.map((six) => {
+        const eight = eightMap.get(areaKey(six)) || {};
+
+        return {
+          label: six.label || eight.label || six.sourceLabel || eight.sourceLabel || "Unknown area",
+          region: six.region || eight.region || "Other",
+          sixTemp: six.temperature,
+          sixPrecip: six.precipitation,
+          eightTemp: eight.temperature,
+          eightPrecip: eight.precipitation
+        };
+      });
+    }
+
+    function regionsFromData(data) {
+      const found = new Set(
+        mergedAreas(data)
+          .map((area) => area.region)
+          .filter(Boolean)
+      );
+
+      const ordered = regionOrder.filter((region) =>
+        region === "United States" || found.has(region)
+      );
+
+      [...found]
+        .filter((region) => !ordered.includes(region))
+        .sort()
+        .forEach((region) => ordered.push(region));
+
+      return ordered;
+    }
+
+    function renderRegionToolbar(data) {
+      const toolbar = document.getElementById("regionToolbar");
+      const regions = regionsFromData(data);
+
+      toolbar.innerHTML = regions.map((region) => `
+        <button
+          class="region-button ${region === selectedRegion ? "active" : ""}"
+          type="button"
+          data-region="${escapeHtml(region)}"
+        >${escapeHtml(region)}</button>
+      `).join("");
+
+      toolbar.querySelectorAll("[data-region]").forEach((button) => {
+        button.addEventListener("click", () => {
+          selectedRegion = button.dataset.region;
+          renderRegionalExplorer(data);
+        });
+      });
+    }
+
+    function dominantCategory(rows, key) {
+      const counts = new Map();
+
+      rows.forEach((row) => {
+        const code = String(row?.[key] || "").trim().toUpperCase();
+        if (!code) return;
+        counts.set(code, (counts.get(code) || 0) + 1);
+      });
+
+      if (!counts.size) {
+        return { label: "Unavailable", className: "mixed" };
+      }
+
+      const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+
+      if (ranked.length > 1 && ranked[0][1] === ranked[1][1]) {
+        return { label: "Mixed", className: "mixed" };
+      }
+
+      return categoryInfo(ranked[0][0]);
+    }
+
+    function signalCard(period, variable, signal) {
+      return `
+        <div class="signal-card">
+          <div class="signal-period">${escapeHtml(period)}</div>
+          <div class="signal-variable">${escapeHtml(variable)}</div>
+          <div class="signal-value ${signal.className}">${escapeHtml(signal.label)}</div>
+        </div>
+      `;
+    }
+
+    function renderRegionSummary(rows) {
+      document.getElementById("regionSummary").innerHTML = [
+        signalCard("6–10 Day", "Temperature", dominantCategory(rows, "sixTemp")),
+        signalCard("6–10 Day", "Precipitation", dominantCategory(rows, "sixPrecip")),
+        signalCard("8–14 Day", "Temperature", dominantCategory(rows, "eightTemp")),
+        signalCard("8–14 Day", "Precipitation", dominantCategory(rows, "eightPrecip"))
+      ].join("");
+    }
+
+    function renderRegionTable(rows) {
+      const tbody = document.getElementById("regionTableBody");
+
+      if (!rows.length) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5">
+              <div class="empty-state">No CPC classifications are available for this region.</div>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = rows.map((row) => `
+        <tr>
+          <td class="area-name">${escapeHtml(row.label)}</td>
+          <td>${categoryChip(row.sixTemp)}</td>
+          <td>${categoryChip(row.sixPrecip)}</td>
+          <td>${categoryChip(row.eightTemp)}</td>
+          <td>${categoryChip(row.eightPrecip)}</td>
+        </tr>
+      `).join("");
+    }
+
+    function renderRegionalExplorer(data) {
+      const allRows = mergedAreas(data);
+      const rows = selectedRegion === "United States"
+        ? allRows
+        : allRows.filter((row) => row.region === selectedRegion);
+
+      renderRegionToolbar(data);
+      renderRegionSummary(rows);
+      renderRegionTable(rows);
+    }
+
+    function formatGeneratedAt(value) {
+      const date = new Date(value);
+      if (!Number.isFinite(date.getTime())) return "just now";
+
+      return date.toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit"
+      });
+    }
+
+    async function loadCpcOutlook({ manual = false } = {}) {
+      const refreshButton = document.getElementById("refreshCpcButton");
+
+      if (manual) {
+        refreshButton.disabled = true;
+        refreshButton.textContent = "Refreshing...";
+      }
+
+      setCpcStatus("Loading the latest CPC outlook...", "loading");
+
+      try {
+        const response = await fetch(`${CPC_API}?v=${Date.now()}`, {
+          cache: "no-store"
+        });
+
+        if (!response.ok) {
+          throw new Error(`CPC API returned HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (!data?.sixToTen || !data?.eightToFourteen) {
+          throw new Error("CPC API response is missing required outlook periods");
+        }
+
+        cpcData = data;
+
+        renderBriefing(data);
+        renderNationalOutlook(data);
+        renderRegionalExplorer(data);
+
+        setCpcStatus(
+          `CPC outlook loaded · ${data.issued || `refreshed ${formatGeneratedAt(data.generatedAt)}`}`,
+          "live"
+        );
+      } catch (error) {
+        console.error("CPC outlook load failed:", error);
+
+        setCpcStatus(
+          "Could not load the CPC outlook right now. The rest of the page remains available.",
+          "error"
+        );
+
+        if (!cpcData) {
+          document.getElementById("briefingGrid").innerHTML = `
+            <div class="empty-state">Latest CPC briefing is temporarily unavailable.</div>
+          `;
+
+          document.getElementById("nationalOutlookGrid").innerHTML = `
+            <div class="empty-state">National CPC outlook maps are temporarily unavailable.</div>
+          `;
+
+          document.getElementById("regionSummary").innerHTML = "";
+          document.getElementById("regionTableBody").innerHTML = `
+            <tr>
+              <td colspan="5">Regional CPC classifications are temporarily unavailable.</td>
+            </tr>
+          `;
+        }
+      } finally {
+        refreshButton.disabled = false;
+        refreshButton.textContent = "Refresh";
+      }
+    }
+
+    document.getElementById("refreshCpcButton").addEventListener("click", () => {
+      loadCpcOutlook({ manual: true });
     });
 
-  } catch (error) {
-    alertStatus.textContent =
-      "Could not load regional alerts right now. Try refreshing the page.";
-    console.error(error);
-  }
-}
+    function refreshLongRangeImages() {
+      const cacheKey = Date.now();
 
-function getAlertClass(eventName, props = {}) {
-  if (eventName === "Tornado Warning") return "tornado-warning";
-  if (eventName === "Tornado Watch") return "watch";
-  if (eventName === "Severe Thunderstorm Warning") return "warning";
-  if (eventName === "Severe Thunderstorm Watch") return "watch";
-  if (eventName === "Flash Flood Warning") return "flood-warning";
+      document.querySelectorAll("[data-climate-image]").forEach((image) => {
+        const source = image.dataset.src;
+        if (!source) return;
 
-  if (eventName === "Special Weather Statement") {
-    return isStormBasedStatement(props) ? "storm-statement" : "statement";
-  }
+        image.src =
+          source +
+          (source.includes("?") ? "&" : "?") +
+          "zwx=" +
+          cacheKey;
+      });
+    }
 
-  if (
-  eventName.includes("Frost") ||
-  eventName.includes("Freeze") ||
-  eventName.includes("Heat") ||
-  eventName.includes("Cold") ||
-  eventName.includes("Wind Chill")
-) {
-  return "temperature-alert";
-}
+    loadCpcOutlook();
+    refreshLongRangeImages();
 
-  return "";
-}
-function getBadgeLabel(eventName) {
-
-  if (eventName.includes("Warning")) {
-    return "WARNING";
-  }
-
-  if (eventName.includes("Watch")) {
-    return "WATCH";
-  }
-
-  if (eventName.includes("Statement")) {
-    return "STATEMENT";
-  }
-
-  return "ALERT";
-}
-
-function isStormBasedStatement(props) {
-  if (props.event !== "Special Weather Statement") return false;
-
-  const text = `${props.description || ""} ${props.headline || ""}`.toLowerCase();
-
-  return (
-    text.includes("strong thunderstorm") ||
-    text.includes("gusty winds") ||
-    text.includes("hail") ||
-    text.includes("doppler radar") ||
-    text.includes("radar indicated") ||
-    text.includes("moving") ||
-    text.includes("winds in excess")
-  );
-}
-
-function setSummaryColor(id, alerts) {
-
-  const el = document.getElementById(id);
-
-if (!alerts.length) {
-  el.style.display = "block";
-  el.style.borderColor = "rgba(255,255,255,0.12)";
-  el.style.boxShadow = "none";
-  el.style.opacity = "0.65";
-  return;
-}
-
-el.style.display = "block";
-el.style.opacity = "1";
-
-  const hasTornado = alerts.some(a =>
-    a.properties.event.includes("Tornado")
-  );
-
-  const hasSevere = alerts.some(a =>
-    a.properties.event.includes("Severe")
-  );
-
-  const hasFlood = alerts.some(a =>
-    a.properties.event.includes("Flood")
-  );
-
-  if (hasTornado) {
-    el.style.borderColor = "#dc2626";
-    el.style.boxShadow = "0 0 18px rgba(220,38,38,0.35)";
-  }
-  else if (hasSevere) {
-    el.style.borderColor = "#facc15";
-    el.style.boxShadow = "0 0 18px rgba(250,204,21,0.25)";
-  }
-  else if (hasFlood) {
-    el.style.borderColor = "#22c55e";
-    el.style.boxShadow = "0 0 18px rgba(34,197,94,0.25)";
-  }
-  else {
-  el.style.borderColor = "#94a3b8";
-  el.style.boxShadow = "0 0 18px rgba(148,163,184,0.25)";
-}
-}
-
-function formatTime(timeString) {
-  if (!timeString) return "Unknown";
-
-  return new Date(timeString).toLocaleString("en-US", {
-    month: "short",
-      day: "numeric",
-     hour: "numeric",
-     minute: "2-digit"
-   });
-}
-
-function openAlertModal(props) {
-  document.getElementById("modalAlertTitle").textContent = props.event;
-
-  document.getElementById("modalAlertMeta").innerHTML = `
-    ${props.areaDesc}<br>
-    Issued: ${formatTime(props.sent)}<br>
-    Expires: ${formatTime(props.expires)}
-  `;
-
-  document.getElementById("modalAlertText").textContent =
-    props.description || props.instruction || props.headline || "No details available.";
-
-  document.getElementById("alertModal").classList.add("is-open");
-}
-
-document.querySelector(".alert-modal-close").addEventListener("click", () => {
-  document.getElementById("alertModal").classList.remove("is-open");
-});
-
-document.querySelector(".alert-modal-backdrop").addEventListener("click", () => {
-  document.getElementById("alertModal").classList.remove("is-open");
-});
-
-function updateSpcImage() {
-  const spcImg = document.getElementById("spc-day1-img");
-
-  if (spcImg) {
-    spcImg.src =
-  "https://www.spc.noaa.gov/products/outlook/day1otlk.png?refresh=" +
-  new Date().getTime();
-  }
-}
-updateSpcImage();
-setInterval(updateSpcImage, 900000);
-
-loadAlerts();
-setInterval(loadAlerts, 90000);
+    window.setInterval(loadCpcOutlook, CPC_REFRESH_MS);
+    window.setInterval(refreshLongRangeImages, CPC_REFRESH_MS);
   </script>
 </body>
 </html>

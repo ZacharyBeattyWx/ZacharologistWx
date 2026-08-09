@@ -1,4 +1,5 @@
 export { LiveAlertHub } from "./live-alert-hub.js";
+import { getCachedCpcOutlook } from "./cpc-outlook.js";
 function jsonResponse(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -2188,6 +2189,22 @@ export default {
       }
     }
 
+    if (url.pathname === "/api/cpc/outlook" && request.method === "GET") {
+      try {
+        return await getCachedCpcOutlook(request);
+      } catch (error) {
+        console.error("CPC outlook failed:", error);
+
+        return opsJsonResponse(
+          {
+            error: "CPC outlook is temporarily unavailable",
+            generatedAt: new Date().toISOString()
+          },
+          503,
+          60
+        );
+      }
+    }
     if (url.pathname === "/api/ops/summary" && request.method === "GET") {
       try {
         return await getCachedOpsSummary(request, env);
