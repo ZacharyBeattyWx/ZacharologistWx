@@ -76,7 +76,7 @@
     }
 
     .header-inner {
-      width: min(1280px, calc(100% - 32px));
+      width: min(1600px, calc(100% - 32px));
       margin: 0 auto;
       padding: 34px 0 30px;
       position: relative;
@@ -108,7 +108,7 @@
     }
 
     main {
-      width: min(1280px, calc(100% - 32px));
+      width: min(1600px, calc(100% - 32px));
       margin: 0 auto;
       padding: 22px 0 54px;
     }
@@ -194,11 +194,23 @@
     }
 
     .section-head {
+      position: relative;
       display: flex;
       align-items: flex-start;
-      justify-content: space-between;
+      justify-content: center;
       gap: 18px;
       margin-bottom: 18px;
+      text-align: center;
+    }
+
+    .section-head > div {
+      width: 100%;
+    }
+
+    .section-head .source-link {
+      position: absolute;
+      top: 0;
+      right: 0;
     }
 
     .section-kicker {
@@ -219,6 +231,7 @@
     .briefing-title-row {
       display: flex;
       align-items: center;
+      justify-content: center;
       flex-wrap: wrap;
       gap: 10px 12px;
     }
@@ -241,11 +254,12 @@
       white-space: nowrap;
     }
     .section-description {
-      margin: 7px 0 0;
-      max-width: 760px;
+      margin: 7px auto 0;
+      max-width: 940px;
       color: var(--muted);
-      line-height: 1.55;
-      font-size: 0.94rem;
+      line-height: 1.6;
+      font-size: 0.98rem;
+      text-align: center;
     }
 
     .source-link {
@@ -347,9 +361,9 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      margin: 0 0 7px;
+      margin: 0 0 8px;
       color: #d9ecff;
-      font-size: 0.78rem;
+      font-size: 0.86rem;
       font-weight: 900;
       letter-spacing: 0.08em;
       text-transform: uppercase;
@@ -373,9 +387,9 @@
 
     .discussion-text {
       margin: 0;
-      color: #d3deeb;
-      line-height: 1.62;
-      font-size: 0.92rem;
+      color: #dbe7f3;
+      line-height: 1.7;
+      font-size: clamp(1rem, 0.35vw + 0.92rem, 1.08rem);
     }
 
     .technical-discussion {
@@ -387,7 +401,7 @@
     .technical-discussion summary {
       cursor: pointer;
       color: #9fc7e8;
-      font-size: 0.80rem;
+      font-size: 0.88rem;
       font-weight: 850;
     }
 
@@ -921,6 +935,19 @@
       max-height: 620px;
       object-fit: contain;
     }
+
+    .drought-monthly-card {
+      grid-column: 1 / -1;
+      width: calc(50% - 7px);
+      justify-self: center;
+    }
+
+    @media (max-width: 980px) {
+      .drought-monthly-card {
+        grid-column: auto;
+        width: 100%;
+      }
+    }
     @media (max-width: 980px) {
       .outlook-row-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -973,6 +1000,10 @@
         display: block;
       }
 
+      .section-head .source-link {
+        position: static;
+      }
+
       .source-link {
         margin-top: 12px;
       }
@@ -1005,7 +1036,77 @@
         padding: 7px;
       }
     }
-  </style>
+
+    /* National outlook row panels - long-range style */
+    .outlook-comparison-stack {
+      gap: 18px;
+    }
+
+    .outlook-comparison-row {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(5, 14, 25, 0.54);
+    }
+
+    .outlook-comparison-title {
+      margin: 0 0 14px;
+      text-align: center;
+      font-size: clamp(1.3rem, 2.2vw, 1.75rem);
+      line-height: 1.05;
+      font-weight: 950;
+      letter-spacing: -0.025em;
+    }
+
+    .outlook-row-grid {
+      gap: 14px;
+    }
+
+    @media (max-width: 640px) {
+      .outlook-comparison-row {
+        padding: 12px;
+        border-radius: 14px;
+      }
+
+      .outlook-comparison-title {
+        margin-bottom: 12px;
+        font-size: 1.28rem;
+      }
+    }
+
+    /* Center all long-range subsection headings */
+    .climate-image-section-head {
+      position: relative;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .climate-image-section-head > div {
+      width: 100%;
+    }
+
+    .climate-image-section-head .source-link {
+      position: absolute;
+      top: 0;
+      right: 0;
+    }
+
+    .climate-image-kicker,
+    .climate-image-section h3 {
+      text-align: center;
+    }
+
+    @media (max-width: 640px) {
+      .climate-image-section-head .source-link {
+        position: static;
+      }
+    }
+
+    .map-frame img,
+    .climate-image-frame img {
+      cursor: zoom-in;
+    }
+</style>
 </head>
 
 <body>
@@ -1183,19 +1284,51 @@
           <div class="climate-image-section-head">
             <div>
               <p class="climate-image-kicker">Drought guidance</p>
-              <h3>Drought Outlooks</h3>
+              <h3>Drought Monitor &amp; Outlook</h3>
             </div>
             <a
               class="source-link"
-              href="https://www.cpc.ncep.noaa.gov/products/Drought/"
+              href="https://droughtmonitor.unl.edu/"
               target="_blank"
               rel="noopener"
-            >Open CPC Drought</a>
+            >Open U.S. Drought Monitor</a>
           </div>
 
-          <div class="climate-image-grid">
+          <div class="climate-image-grid drought-image-grid">
             <a
               class="climate-image-card"
+              href="https://droughtmonitor.unl.edu/CurrentMap.aspx"
+              target="_blank"
+              rel="noopener"
+            >
+              <div class="climate-image-title">Current U.S. Drought Monitor</div>
+              <div class="climate-image-frame drought">
+                <img
+                  data-climate-image
+                  data-src="https://droughtmonitor.unl.edu/data/png/current/current_usdm.png"
+                  alt="Current U.S. Drought Monitor"
+                >
+              </div>
+            </a>
+
+            <a
+              class="climate-image-card"
+              href="https://droughtmonitor.unl.edu/Maps/ChangeMaps.aspx"
+              target="_blank"
+              rel="noopener"
+            >
+              <div class="climate-image-title">4-Week Drought Class Change</div>
+              <div class="climate-image-frame drought">
+                <img
+                  data-climate-image
+                  data-src="https://droughtmonitor.unl.edu/data/chng/png/current/current_conus_chng_4W.png"
+                  alt="U.S. Drought Monitor 4-week class change map"
+                >
+              </div>
+            </a>
+
+            <a
+              class="climate-image-card drought-monthly-card"
               href="https://www.cpc.ncep.noaa.gov/products/expert_assessment/mdo_summary.php"
               target="_blank"
               rel="noopener"
@@ -1206,22 +1339,6 @@
                   data-climate-image
                   data-src="https://www.cpc.ncep.noaa.gov/products/expert_assessment/mdohomeweb.png"
                   alt="CPC Monthly Drought Outlook"
-                >
-              </div>
-            </a>
-
-            <a
-              class="climate-image-card"
-              href="https://www.cpc.ncep.noaa.gov/products/expert_assessment/sdo_summary.php"
-              target="_blank"
-              rel="noopener"
-            >
-              <div class="climate-image-title">Seasonal Drought Outlook</div>
-              <div class="climate-image-frame drought">
-                <img
-                  data-climate-image
-                  data-src="https://www.cpc.ncep.noaa.gov/products/expert_assessment/sdohomeweb.png"
-                  alt="CPC Seasonal Drought Outlook"
                 >
               </div>
             </a>
@@ -1868,6 +1985,25 @@
       });
     }
 
+
+    function openFullSizeOutlookImage(event) {
+      const image = event.target.closest(".map-frame img, .climate-image-frame img");
+      if (!image) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const imageUrl =
+        image.dataset.src ||
+        image.currentSrc ||
+        image.src;
+
+      if (!imageUrl) return;
+
+      window.open(imageUrl, "_blank", "noopener,noreferrer");
+    }
+
+    document.addEventListener("click", openFullSizeOutlookImage);
     loadCpcOutlook();
     refreshLongRangeImages();
 
