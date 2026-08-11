@@ -11811,6 +11811,49 @@ body {
   }
 </style>
 
+
+<style id="active-alert-radar-action-css">
+  .forecast-dashboard .active-alert-primary-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin: 0 0 12px;
+  }
+
+  .forecast-dashboard
+  .active-alert-primary-actions
+  .live-alerts-feed-link {
+    margin-bottom: 0 !important;
+  }
+
+  .forecast-dashboard .active-alert-radar-link {
+    border-color: rgba(56, 189, 248, 0.48);
+    color: #c9efff;
+    box-shadow: 0 0 22px rgba(56, 189, 248, 0.10);
+  }
+
+  .forecast-dashboard .active-alert-radar-link:hover {
+    border-color: rgba(56, 189, 248, 0.78);
+    color: #ffffff;
+    background: rgba(56, 189, 248, 0.10);
+  }
+
+  @media (max-width: 768px) {
+    .forecast-dashboard .active-alert-primary-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .forecast-dashboard
+    .active-alert-primary-actions
+    .live-alerts-feed-link {
+      width: 100%;
+      margin-bottom: 0 !important;
+    }
+  }
+</style>
 </head>
 
 <body>
@@ -11953,7 +11996,7 @@ body {
         class="radar-frame">
       </iframe>
 
-      <a class="dashboard-button subtle-button" href="https://zacharologistwx.com/level2-mobile-radar.html?level2Data=remote">Open Hi-Res Radar + Alerts</a>
+
     </article>
 
     <article class="dashboard-card mini-card spc-card">
@@ -12113,7 +12156,13 @@ body {
 
   <article class="dashboard-card mini-card alerts-card">
     <h2 id="alertsTitle">Active Alerts</h2>
-    <a class="live-alerts-feed-link" href="live-alerts.html">Open Alerts</a>
+    <div class="active-alert-primary-actions">
+      <a class="live-alerts-feed-link" href="live-alerts.html">Open Alerts</a>
+      <a
+        class="live-alerts-feed-link active-alert-radar-link"
+        href="https://zacharologistwx.com/level2-mobile-radar.html?level2Data=remote"
+      >Open Radar</a>
+    </div>
 
     <div class="alert-tabs-wrapper">
       <div class="alert-tabs">
