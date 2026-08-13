@@ -94,6 +94,44 @@ def compact_text(value):
     return re.sub(r"\s+", " ", str(value or "")).strip()
 
 
+def product_tag_value(text, label):
+    pattern = rf"(?im)^\s*{re.escape(label)}\s*\.\.\.\s*(.+?)\s*$"
+    match = re.search(pattern, str(text or ""))
+
+    if not match:
+        return ""
+
+    return compact_text(match.group(1))
+
+
+def flash_flood_metadata(text):
+    raw_text = str(text or "")
+    upper_text = raw_text.upper()
+
+    observed = product_tag_value(raw_text, "FLASH FLOOD").upper()
+    damage_threat = product_tag_value(
+        raw_text,
+        "FLASH FLOOD DAMAGE THREAT",
+    ).upper()
+    expected_rainfall_rate = product_tag_value(
+        raw_text,
+        "EXPECTED RAINFALL RATE",
+    )
+
+    is_emergency = (
+        damage_threat == "CATASTROPHIC"
+        if damage_threat
+        else "FLASH FLOOD EMERGENCY" in upper_text
+    )
+
+    return {
+        "flashFlood": observed,
+        "flashFloodDamageThreat": damage_threat,
+        "expectedRainfallRate": expected_rainfall_rate,
+        "isFlashFloodEmergency": is_emergency,
+    }
+
+
 def load_secret(secret_id):
     client = boto3.client("secretsmanager", region_name=os.environ.get("AWS_REGION", "us-east-1"))
     response = client.get_secret_value(SecretId=secret_id)
@@ -449,6 +487,9 @@ def parse_alert_payload(product):
             "_liveSource": "nwws-oi",
             "_liveUpdatedAt": utc_now_iso(),
         }
+
+        if entry["phenom"] == "FF" and entry["sig"] == "W":
+            properties.update(flash_flood_metadata(text))
 
         if cap:
             properties.update({

@@ -6635,6 +6635,108 @@ body.alert-type-filter-popup-open {
       alertOverlayContext.globalAlpha = 1;
     }
 
+    function level2AlertProperties(alertOrProperties) {
+      if (
+        alertOrProperties?.properties &&
+        typeof alertOrProperties.properties === "object"
+      ) {
+        return alertOrProperties.properties;
+      }
+
+      return alertOrProperties || {};
+    }
+
+    function level2AlertDetectionText(alertOrProperties) {
+      const props = level2AlertProperties(alertOrProperties);
+
+      let parametersText = "";
+
+      try {
+        parametersText = JSON.stringify(props.parameters || {});
+      } catch {
+        parametersText = "";
+      }
+
+      return [
+        props.event,
+        props.headline,
+        props.description,
+        props.instruction,
+        props.flashFlood,
+        props.flashFloodDamageThreat,
+        parametersText
+      ]
+        .map(value => String(value || "").toUpperCase())
+        .join("\n");
+    }
+
+    function isLevel2FlashFloodEmergency(alertOrProperties) {
+      const props = level2AlertProperties(alertOrProperties);
+      const event = String(props.event || "").trim();
+
+      if (event !== "Flash Flood Warning") {
+        return false;
+      }
+
+      const explicitDamageThreat =
+        String(props.flashFloodDamageThreat || "")
+          .trim()
+          .toUpperCase();
+
+      if (explicitDamageThreat) {
+        return explicitDamageThreat === "CATASTROPHIC";
+      }
+
+      const parameters =
+        props.parameters && typeof props.parameters === "object"
+          ? props.parameters
+          : {};
+
+      const structuredDamageThreatValues = Object.entries(parameters)
+        .filter(([key]) => {
+          return (
+            String(key || "")
+              .toLowerCase()
+              .replace(/[^a-z0-9]/g, "") ===
+            "flashflooddamagethreat"
+          );
+        })
+        .flatMap(([, value]) => {
+          return Array.isArray(value) ? value : [value];
+        })
+        .map((value) => String(value || "").trim().toUpperCase())
+        .filter(Boolean);
+
+      if (structuredDamageThreatValues.length) {
+        return structuredDamageThreatValues.includes("CATASTROPHIC");
+      }
+
+      if (props.isFlashFloodEmergency === true) {
+        return true;
+      }
+
+      const text = level2AlertDetectionText(props);
+
+      return (
+        text.includes("FLASH FLOOD EMERGENCY") ||
+        /FLASH FLOOD DAMAGE THREAT\s*\.\.\.\s*CATASTROPHIC/i.test(text)
+      );
+    }
+
+    function level2AlertDisplayEvent(alertOrProperties) {
+      const props = level2AlertProperties(alertOrProperties);
+
+      if (isLevel2FlashFloodEmergency(props)) {
+        return "Flash Flood Emergency";
+      }
+
+      return String(
+        props._alertDisplayEvent ||
+        props.event ||
+        ""
+      );
+    }
+
     // Homepage source-of-truth event color mapping (index.html getAlertColor).
     function alertColor(eventName) {
       const event = String(eventName || "").trim();
@@ -6642,6 +6744,7 @@ body.alert-type-filter-popup-open {
 
       // Storm
       if (event.includes("Tornado Emergency")) return "#FF00FF";
+      if (event.includes("Flash Flood Emergency")) return "#39FF14";
       if (event.includes("Tornado Warning") || event.includes("Particularly Dangerous Situation")) return "#E01E37";
       if (event.includes("Severe Thunderstorm Warning")) return "#FFD900";
       if (event.includes("Special Marine Warning")) return "#FF9D00";
@@ -6718,7 +6821,10 @@ body.alert-type-filter-popup-open {
       let minWidth = 0.9;
       let maxWidth = 1.6;
 
-      if (event.includes("Warning")) {
+      if (
+        event.includes("Warning") ||
+        event.includes("Emergency")
+      ) {
         fillOpacity = 0.30;
         lineOpacity = 0.86;
         minWidth = 1.4;
@@ -6752,6 +6858,7 @@ body.alert-type-filter-popup-open {
 
     function alertDrawRank(eventName) {
       const event = String(eventName || "");
+      if (event.includes("Flash Flood Emergency")) return 600;
       if (event.includes("Flash Flood Warning")) return 500;
       if (event.includes("Flood Warning")) return 420;
       if (event.includes("Flood Advisory")) return 320;
@@ -6775,7 +6882,12 @@ body.alert-type-filter-popup-open {
     }
 
     function compactAlertSummary(props) {
-      const eventName = String(props?.event || "");
+      const eventName = level2AlertDisplayEvent(props);
+
+      if (eventName.includes("Flash Flood Emergency")) {
+        return "Catastrophic flash flooding. Seek higher ground immediately.";
+      }
+
       if (eventName.includes("Flash Flood")) return "Flash flooding possible.";
       if (eventName.includes("Tornado")) return "Take shelter immediately.";
       if (eventName.includes("Severe Thunderstorm")) return "Damaging winds and hail possible.";
@@ -6835,11 +6947,17 @@ body.alert-type-filter-popup-open {
     }
 
     function mapboxAlertColorExpression() {
-      const event = ["coalesce", ["get", "event"], ""];
+      const event = [
+        "coalesce",
+        ["get", "_alertDisplayEvent"],
+        ["get", "event"],
+        ""
+      ];
 
       return [
         "case",
         [">=", ["index-of", "Tornado Emergency", event], 0], "#ff00ff",
+        [">=", ["index-of", "Flash Flood Emergency", event], 0], "#39ff14",
         [">=", ["index-of", "Tornado Warning", event], 0], "#ff0033",
         [">=", ["index-of", "Tornado Watch", event], 0], "#A11D33",
         [">=", ["index-of", "Severe Thunderstorm Warning", event], 0], "#facc15",
@@ -6992,8 +7110,10 @@ body.alert-type-filter-popup-open {
         if (!dedupedByAlert.length) return;
         const eventPriority = (eventName) => {
           const value = String(eventName || "");
+
           if (value.includes("Tornado Warning")) return 0;
           if (value.includes("Severe Thunderstorm Warning")) return 1;
+          if (value.includes("Flash Flood Emergency")) return 1.5;
           if (value.includes("Flash Flood Warning")) return 2;
           if (value.includes("Special Marine Warning")) return 3;
           if (value.includes("Flood Warning")) return 4;
@@ -7008,7 +7128,9 @@ body.alert-type-filter-popup-open {
         const sortedFeatures = dedupedByAlert.slice().sort((a, b) => {
           const aProps = a?.properties || {};
           const bProps = b?.properties || {};
-          const priorityDiff = eventPriority(aProps.event) - eventPriority(bProps.event);
+          const priorityDiff =
+            eventPriority(level2AlertDisplayEvent(aProps)) -
+            eventPriority(level2AlertDisplayEvent(bProps));
           if (priorityDiff !== 0) return priorityDiff;
           if (aProps._fallbackGeometry === true && bProps._fallbackGeometry !== true) return 1;
           if (bProps._fallbackGeometry === true && aProps._fallbackGeometry !== true) return -1;
@@ -7030,8 +7152,19 @@ body.alert-type-filter-popup-open {
 
         const cardsHtml = sortedFeatures.map((feature, index) => {
           const props = feature.properties || {};
-          const eventName = props.event || "Unknown Event";
+          const eventName =
+            level2AlertDisplayEvent(props) ||
+            props.event ||
+            "Unknown Event";
           const alertHex = props._alertColor || alertColor(eventName);
+          const emergencyHeader =
+            eventName.includes("Flash Flood Emergency");
+          const alertHeaderText =
+            emergencyHeader ? "#062008" : "#FFFFFF";
+          const alertHeaderShadow =
+            emergencyHeader
+              ? "none"
+              : "0 1px 2px rgba(0, 0, 0, 0.42)";
           const expires = formatPopupExpires(props.expires || props.ends);
           const effective = formatPopupExpires(props.effective);
           const summary = compactAlertSummary(props);
@@ -7089,7 +7222,7 @@ body.alert-type-filter-popup-open {
                 </div>
               </div>
               <div class="omega-alert-card" style="--alert-color: ${escapeHtml(alertHex)};">
-                <div class="omega-alert-header" style="background: ${escapeHtml(alertHex)};"><span class="omega-alert-title">${escapeHtml(eventName)}</span></div>
+                <div class="omega-alert-header" style="background: ${escapeHtml(alertHex)}; color: ${escapeHtml(alertHeaderText)}; text-shadow: ${escapeHtml(alertHeaderShadow)};"><span class="omega-alert-title">${escapeHtml(eventName)}</span></div>
                 <div class="omega-alert-body">
                   <div class="omega-alert-expires">${escapeHtml(expiresIn)}</div>
                   <div class="omega-alert-actions">
@@ -7701,8 +7834,9 @@ body.alert-type-filter-popup-open {
       const mapFeatureId = canonicalAlertId
         ? `${canonicalAlertId}::${index}`
         : `__missing__:${index}`;
-      const fallbackStyle = alertFallbackStyle(properties.event || "");
-      const drawRank = alertDrawRank(properties.event || "");
+      const displayEvent = level2AlertDisplayEvent(properties);
+      const fallbackStyle = alertFallbackStyle(displayEvent);
+      const drawRank = alertDrawRank(displayEvent);
 
       return {
         ...feature,
@@ -7711,7 +7845,8 @@ body.alert-type-filter-popup-open {
           ...properties,
           _alertId: canonicalAlertId || mapFeatureId,
           _hasCanonicalAlertId: Boolean(canonicalAlertId),
-          _alertColor: alertColor(properties.event || ""),
+          _alertDisplayEvent: displayEvent,
+          _alertColor: alertColor(displayEvent),
           _alertFallbackFillColor: fallbackStyle.fill,
           _alertFillColor: fallbackStyle.fill,
           _alertFallbackLineColor: fallbackStyle.outline,

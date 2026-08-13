@@ -12638,10 +12638,96 @@ function hasValidPolygon(alert) {
   );
 }
 
+function homepageAlertDetectionText(alert) {
+  const props = alert?.properties || {};
+
+  let parametersText = "";
+
+  try {
+    parametersText = JSON.stringify(props.parameters || {});
+  } catch {
+    parametersText = "";
+  }
+
+  return [
+    props.event,
+    props.headline,
+    props.description,
+    props.instruction,
+    props.flashFlood,
+    props.flashFloodDamageThreat,
+    parametersText
+  ]
+    .map(value => String(value || "").toUpperCase())
+    .join("\n");
+}
+
+function isHomepageFlashFloodEmergency(alert) {
+  const props = alert?.properties || {};
+  const event = String(props.event || "").trim();
+
+  if (event !== "Flash Flood Warning") {
+    return false;
+  }
+
+  const explicitDamageThreat =
+    String(props.flashFloodDamageThreat || "")
+      .trim()
+      .toUpperCase();
+
+  if (explicitDamageThreat) {
+    return explicitDamageThreat === "CATASTROPHIC";
+  }
+
+  const parameters =
+    props.parameters && typeof props.parameters === "object"
+      ? props.parameters
+      : {};
+
+  const structuredDamageThreatValues = Object.entries(parameters)
+    .filter(([key]) => {
+      return (
+        String(key || "")
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, "") ===
+        "flashflooddamagethreat"
+      );
+    })
+    .flatMap(([, value]) => {
+      return Array.isArray(value) ? value : [value];
+    })
+    .map((value) => String(value || "").trim().toUpperCase())
+    .filter(Boolean);
+
+  if (structuredDamageThreatValues.length) {
+    return structuredDamageThreatValues.includes("CATASTROPHIC");
+  }
+
+  if (props.isFlashFloodEmergency === true) {
+    return true;
+  }
+
+  const text = homepageAlertDetectionText(alert);
+
+  return (
+    text.includes("FLASH FLOOD EMERGENCY") ||
+    /FLASH FLOOD DAMAGE THREAT\s*\.\.\.\s*CATASTROPHIC/i.test(text)
+  );
+}
+
+function homepageAlertDisplayEvent(alert) {
+  if (isHomepageFlashFloodEmergency(alert)) {
+    return "Flash Flood Emergency";
+  }
+
+  return String(alert?.properties?.event || "");
+}
+
 function getAlertColor(event) {
   if (!event) return "#58b7ff";
 
   if (event.includes("Tornado Emergency")) return "#ff00ff";
+  if (event.includes("Flash Flood Emergency")) return "#39ff14";
   if (event.includes("Tornado Watch")) return "#A11D33";
   if (event.includes("Severe Thunderstorm Watch")) return "#FFBB00";
 
@@ -12983,7 +13069,8 @@ stateDetails.addEventListener("toggle", () => {
 
     stateAlerts.slice(0, 25).forEach(alert => {
       const props = alert.properties;
-      const alertColor = getAlertColor(props.event);
+      const displayEvent = homepageAlertDisplayEvent(alert);
+      const alertColor = getAlertColor(displayEvent);
 
       const card = document.createElement("div");
       card.style.setProperty("--alert-color", alertColor);
@@ -13038,13 +13125,13 @@ const radarActionsHtml = hasValidPolygon(alert)
 
 card.innerHTML = `
   <div class="ro-alert-title-row" style="--alert-color:${alertColor};">
-    <span class="ro-alert-icon" style="color:${getAlertColor(props.event)};">
-      ${getCompactAlertIcon(props.event)}
+    <span class="ro-alert-icon" style="color:${alertColor};">
+      ${getCompactAlertIcon(displayEvent)}
     </span>
 
     <div class="compact-alert-title ${category}-title"
-         style="color:${getAlertColor(props.event)};">
-      ${props.event}
+         style="color:${alertColor};">
+      ${escapeAlertChipText(displayEvent)}
     </div>
   </div>
 
