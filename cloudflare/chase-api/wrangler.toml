@@ -1,6 +1,7 @@
 ﻿name = "zacharologist-chase-api"
 main = "src/index.js"
 compatibility_date = "2026-06-04"
+workers_dev = true
 
 [[d1_databases]]
 binding = "DB"
@@ -18,3 +19,7 @@ class_name = "LiveAlertHub"
 [[migrations]]
 tag = "live_alert_hub_v1"
 new_sqlite_classes = ["LiveAlertHub"]
+
+[[routes]]
+pattern = "zacharologistwx.com/api/*"
+zone_name = "zacharologistwx.com"
