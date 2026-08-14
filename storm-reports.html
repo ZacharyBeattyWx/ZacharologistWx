@@ -2712,6 +2712,660 @@
   }
 </style>
 
+<style id="mobile-storm-report-table-chart-fix-v1">
+  /*
+   * Mobile-only cleanup for Storm Reports tables and charts.
+   * Desktop presentation is intentionally unchanged.
+   */
+  @media (max-width: 760px) {
+    /*
+     * Report rows contain exactly seven cells:
+     * Date/Time, Hazard, Magnitude, Location, County, State, Remarks.
+     */
+    body.mobile-storm-reports-ready
+      .table-scroll tbody td:nth-child(1)::before {
+      content: "Date / Time" !important;
+    }
+
+    body.mobile-storm-reports-ready
+      .table-scroll tbody td:nth-child(2)::before {
+      content: "Hazard" !important;
+    }
+
+    body.mobile-storm-reports-ready
+      .table-scroll tbody td:nth-child(3)::before {
+      content: "Magnitude" !important;
+    }
+
+    body.mobile-storm-reports-ready
+      .table-scroll tbody td:nth-child(4)::before {
+      content: "Location" !important;
+    }
+
+    body.mobile-storm-reports-ready
+      .table-scroll tbody td:nth-child(5)::before {
+      content: "County" !important;
+    }
+
+    body.mobile-storm-reports-ready
+      .table-scroll tbody td:nth-child(6)::before {
+      content: "State" !important;
+    }
+
+    body.mobile-storm-reports-ready
+      .table-scroll tbody td:nth-child(7)::before {
+      content: "Remarks" !important;
+    }
+
+    /* Remove the obsolete eighth-column mobile rule. */
+    body.mobile-storm-reports-ready
+      .table-scroll tbody td:nth-child(8)::before {
+      content: none !important;
+    }
+
+    /*
+     * Give the long-value fields the full card width.
+     * Hazard/Magnitude and Location/County remain compact two-column rows.
+     */
+    body.mobile-storm-reports-ready
+      .table-scroll tbody td:nth-child(1),
+    body.mobile-storm-reports-ready
+      .table-scroll tbody td:nth-child(6),
+    body.mobile-storm-reports-ready
+      .table-scroll tbody td:nth-child(7) {
+      grid-column: 1 / -1 !important;
+    }
+
+    body.mobile-storm-reports-ready
+      .table-scroll tbody td:nth-child(7) {
+      padding-bottom: 4px !important;
+      border-bottom: 0 !important;
+      line-height: 1.45 !important;
+      overflow-wrap: anywhere;
+    }
+
+    body.mobile-storm-reports-ready
+      .table-scroll tbody td:nth-child(7)::before {
+      margin-bottom: 1px;
+    }
+
+    /*
+     * Pagination should occupy its own row rather than visually colliding
+     * with the final report card.
+     */
+    body.mobile-storm-reports-ready .pagination {
+      position: relative !important;
+      z-index: 2;
+      margin-top: 14px !important;
+      padding: 10px 0 2px !important;
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px !important;
+      align-items: center !important;
+    }
+
+    body.mobile-storm-reports-ready #pageReadout {
+      min-width: 0;
+      font-size: 0.65rem !important;
+      line-height: 1.35;
+      white-space: normal;
+    }
+
+    body.mobile-storm-reports-ready .pagination-buttons {
+      display: grid !important;
+      grid-template-columns: repeat(2, auto);
+      gap: 7px !important;
+    }
+
+    body.mobile-storm-reports-ready .pagination button {
+      min-height: 42px !important;
+      padding: 7px 12px !important;
+    }
+
+    /*
+     * Charts: keep the chart workspace inside the mobile viewport.
+     */
+    body.mobile-storm-reports-ready .charts-panel {
+      padding: 10px !important;
+      overflow: hidden;
+    }
+
+    body.mobile-storm-reports-ready #chartModeControls {
+      display: grid !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 4px !important;
+    }
+
+    body.mobile-storm-reports-ready #chartModeControls button {
+      width: 100%;
+      min-width: 0 !important;
+      padding-inline: 7px !important;
+      font-size: 0.64rem !important;
+    }
+
+    body.mobile-storm-reports-ready .spc-trend-content {
+      width: 100% !important;
+      min-width: 0 !important;
+      min-height: 0 !important;
+    }
+
+    body.mobile-storm-reports-ready .official-spc-exact-card {
+      width: 100% !important;
+      max-width: 100% !important;
+      border-radius: 14px !important;
+    }
+
+    body.mobile-storm-reports-ready .official-spc-exact-toolbar {
+      min-height: 0 !important;
+      padding: 10px 11px !important;
+    }
+
+    body.mobile-storm-reports-ready
+      .official-spc-exact-toolbar strong {
+      font-size: 0.73rem !important;
+      line-height: 1.3;
+    }
+
+    body.mobile-storm-reports-ready
+      .official-spc-exact-toolbar span {
+      margin-top: 4px !important;
+      font-size: 0.61rem !important;
+      line-height: 1.35;
+    }
+
+    /*
+     * Do not shrink the official SPC chart down to phone width.
+     * Keep it readable and allow horizontal panning. Tapping it still opens
+     * the existing full-screen chart viewer.
+     */
+    body.mobile-storm-reports-ready .official-spc-exact-media {
+      width: 100% !important;
+      min-height: 0 !important;
+      display: block !important;
+      overflow-x: auto !important;
+      overflow-y: hidden !important;
+      overscroll-behavior-x: contain;
+      -webkit-overflow-scrolling: touch;
+      background: #fff;
+    }
+
+    body.mobile-storm-reports-ready .official-spc-exact-media img {
+      display: block !important;
+      width: max(760px, 100%) !important;
+      max-width: none !important;
+      height: auto !important;
+      cursor: zoom-in;
+      touch-action: pan-x pinch-zoom;
+    }
+
+    /*
+     * State Totals uses the native bar renderer. Remove desktop-oriented
+     * minimum heights and tighten the rows for a phone display.
+     */
+    body.mobile-storm-reports-ready
+      #summaryChartMode .chart-grid {
+      display: block !important;
+    }
+
+    body.mobile-storm-reports-ready
+      #summaryChartMode .chart-card {
+      width: 100% !important;
+      min-height: 0 !important;
+      padding: 13px 11px !important;
+      overflow: hidden;
+      border-radius: 14px !important;
+    }
+
+    body.mobile-storm-reports-ready #stateChart {
+      gap: 7px !important;
+    }
+
+    body.mobile-storm-reports-ready #stateChart .bar-row {
+      min-height: 28px;
+      grid-template-columns: 42px minmax(0, 1fr) 46px !important;
+      gap: 8px !important;
+    }
+
+    body.mobile-storm-reports-ready #stateChart .bar-label {
+      overflow: visible !important;
+      font-size: 0.67rem !important;
+      text-overflow: clip !important;
+    }
+
+    body.mobile-storm-reports-ready #stateChart .bar-track {
+      height: 11px !important;
+    }
+
+    body.mobile-storm-reports-ready #stateChart .bar-value {
+      font-size: 0.68rem !important;
+    }
+  }
+
+  @media (max-width: 390px) {
+    body.mobile-storm-reports-ready .pagination {
+      grid-template-columns: 1fr !important;
+    }
+
+    body.mobile-storm-reports-ready .pagination-buttons {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    body.mobile-storm-reports-ready .pagination button {
+      width: 100%;
+    }
+  }
+</style>
+
+<style id="mobile-storm-report-width-fix-v2">
+  @media (max-width: 760px) {
+    /*
+     * Kill the desktop table's 980px minimum width.
+     * Mobile report cards must size from the phone viewport instead.
+     */
+    body.mobile-storm-reports-ready .table-panel {
+      width: 100% !important;
+      max-width: 100% !important;
+      overflow: hidden !important;
+    }
+
+    body.mobile-storm-reports-ready .table-scroll {
+      width: 100% !important;
+      max-width: 100% !important;
+      min-width: 0 !important;
+      overflow: visible !important;
+    }
+
+    body.mobile-storm-reports-ready .table-scroll table,
+    body.mobile-storm-reports-ready .table-scroll tbody {
+      display: block !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      min-width: 0 !important;
+    }
+
+    body.mobile-storm-reports-ready .table-scroll table {
+      table-layout: fixed !important;
+    }
+
+    /*
+     * Every report card must be exactly the width available on screen.
+     */
+    body.mobile-storm-reports-ready .table-scroll tbody tr {
+      width: 100% !important;
+      max-width: 100% !important;
+      min-width: 0 !important;
+      grid-template-columns:
+        minmax(0, 1fr)
+        minmax(0, 1fr) !important;
+    }
+
+    body.mobile-storm-reports-ready .table-scroll tbody td {
+      width: auto !important;
+      max-width: 100% !important;
+      min-width: 0 !important;
+      overflow: hidden !important;
+      overflow-wrap: anywhere !important;
+      word-break: normal !important;
+    }
+
+    /*
+     * Full-width information rows.
+     */
+    body.mobile-storm-reports-ready
+      .table-scroll tbody td:nth-child(1),
+    body.mobile-storm-reports-ready
+      .table-scroll tbody td:nth-child(6),
+    body.mobile-storm-reports-ready
+      .table-scroll tbody td:nth-child(7) {
+      grid-column: 1 / -1 !important;
+    }
+
+    /*
+     * Hazard badge should be a badge, not a full-width bar.
+     */
+    body.mobile-storm-reports-ready .hazard-label {
+      width: auto !important;
+      min-width: 72px !important;
+      max-width: 100% !important;
+      align-self: flex-start !important;
+      justify-content: center !important;
+      padding: 5px 10px !important;
+    }
+
+    /*
+     * Long remarks must wrap inside the card.
+     */
+    body.mobile-storm-reports-ready
+      .table-scroll tbody td:nth-child(7) {
+      overflow: visible !important;
+      white-space: normal !important;
+      overflow-wrap: anywhere !important;
+      line-height: 1.42 !important;
+    }
+
+    /*
+     * Give the final report room before pagination.
+     */
+    body.mobile-storm-reports-ready
+      .table-scroll tbody tr:last-child {
+      margin-bottom: 18px !important;
+    }
+
+    /*
+     * Pagination belongs below the cards, never on top of one.
+     */
+    body.mobile-storm-reports-ready .pagination {
+      position: static !important;
+      inset: auto !important;
+      z-index: auto !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      margin: 0 !important;
+      padding: 12px 0 4px !important;
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) auto !important;
+      gap: 10px !important;
+      align-items: center !important;
+      transform: none !important;
+      border-top: 1px solid rgba(125, 175, 219, 0.14);
+      background: transparent !important;
+    }
+
+    body.mobile-storm-reports-ready #pageReadout {
+      min-width: 0 !important;
+      white-space: normal !important;
+      line-height: 1.3 !important;
+    }
+
+    body.mobile-storm-reports-ready .pagination-buttons {
+      display: flex !important;
+      gap: 7px !important;
+      flex-wrap: nowrap !important;
+    }
+
+    body.mobile-storm-reports-ready .pagination button {
+      min-width: 0 !important;
+      min-height: 42px !important;
+      padding: 7px 12px !important;
+    }
+
+    body.mobile-storm-reports-ready .reports-footer {
+      position: relative !important;
+      z-index: 1 !important;
+      width: 100% !important;
+      clear: both !important;
+    }
+  }
+
+  @media (max-width: 390px) {
+    body.mobile-storm-reports-ready .pagination {
+      grid-template-columns: 1fr !important;
+    }
+
+    body.mobile-storm-reports-ready .pagination-buttons {
+      display: grid !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    body.mobile-storm-reports-ready .pagination button {
+      width: 100% !important;
+    }
+  }
+</style>
+
+<style id="mobile-storm-report-height-fix-v3">
+  @media (max-width: 760px) {
+    /*
+     * Desktop tables are capped at 68vh. On mobile the Reports view is
+     * card-based and must grow naturally with the rendered report cards.
+     */
+    body.mobile-storm-reports-ready
+      #reportTableMode .table-scroll {
+      height: auto !important;
+      max-height: none !important;
+      min-height: 0 !important;
+      overflow: visible !important;
+    }
+
+    body.mobile-storm-reports-ready
+      #reportTableMode .table-scroll table,
+    body.mobile-storm-reports-ready
+      #reportTableMode .table-scroll tbody {
+      height: auto !important;
+      max-height: none !important;
+      overflow: visible !important;
+    }
+
+    body.mobile-storm-reports-ready
+      #reportTableMode {
+      height: auto !important;
+      max-height: none !important;
+      overflow: visible !important;
+    }
+
+    body.mobile-storm-reports-ready
+      #tablePanel {
+      height: auto !important;
+      max-height: none !important;
+      overflow: visible !important;
+    }
+
+    /*
+     * Once the table owns its true height, pagination naturally follows
+     * the final report instead of sitting at the old 68vh boundary.
+     */
+    body.mobile-storm-reports-ready
+      #reportTableMode .pagination {
+      position: relative !important;
+      clear: both !important;
+      width: 100% !important;
+      margin-top: 8px !important;
+      padding-top: 12px !important;
+    }
+  }
+</style>
+
+<style id="mobile-spc-chart-fit-v4">
+  @media (max-width: 760px) {
+    /*
+     * Inline SPC chart should be an at-a-glance view.
+     * Full-resolution inspection remains available through the existing
+     * tap-to-open mobile chart viewer.
+     */
+    body.mobile-storm-reports-ready .official-spc-exact-media {
+      width: 100% !important;
+      max-width: 100% !important;
+      overflow: hidden !important;
+      min-height: 0 !important;
+      background: #fff;
+    }
+
+    body.mobile-storm-reports-ready
+      .official-spc-exact-media img {
+      display: block !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      height: auto !important;
+      object-fit: contain !important;
+      cursor: zoom-in;
+      touch-action: manipulation;
+    }
+
+    body.mobile-storm-reports-ready
+      .official-spc-exact-card {
+      overflow: hidden !important;
+    }
+  }
+</style>
+
+<style id="state-climatology-bars-v1">
+  .state-climo-summary {
+    margin-bottom: 3px;
+    padding: 3px 0 9px;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .state-climo-summary strong { color: #f0f7fd; font-size: 0.72rem; }
+  .state-climo-summary span { color: #7890a5; font-size: 0.61rem; text-align: right; }
+
+  .state-climo-legend {
+    margin-bottom: 7px;
+    display: grid;
+    grid-template-columns: auto minmax(80px, 180px) auto;
+    gap: 8px;
+    align-items: center;
+    color: #8197aa;
+    font-size: 0.58rem;
+    font-weight: 800;
+  }
+
+  .state-climo-legend i {
+    height: 7px;
+    border-radius: 999px;
+    background: linear-gradient(
+      90deg,
+      hsl(120 80% 43%),
+      hsl(60 82% 50%),
+      hsl(30 88% 53%),
+      hsl(0 82% 55%)
+    );
+  }
+
+  .state-climo-label { min-width: 0; display: block; }
+  .state-climo-label b,
+  .state-climo-label small { display: block; }
+  .state-climo-label b { color: #aebfd0; font-size: 0.69rem; font-weight: 500; }
+  .state-climo-label small {
+    margin-top: 2px;
+    color: #8197aa;
+    font-size: 0.52rem;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .state-climo-fill {
+    background:
+      linear-gradient(
+        90deg,
+        hsl(120 80% 43%) 0%,
+        hsl(60 82% 50%) 50%,
+        hsl(30 88% 53%) 75%,
+        hsl(0 82% 55%) 100%
+      ) !important;
+
+    background-size:
+      var(--state-climo-gradient-size) 100% !important;
+
+    background-position:
+      left center !important;
+
+    background-repeat:
+      no-repeat !important;
+
+    box-shadow: none !important;
+  }
+
+  .state-climo-loading {
+    padding: 28px 10px;
+    color: #8da4b9;
+    font-size: 0.72rem;
+    text-align: center;
+  }
+
+  @media (max-width: 760px) {
+    body.mobile-storm-reports-ready #stateChart .bar-row.state-climo-row {
+      min-height: 34px !important;
+      grid-template-columns: 52px minmax(0, 1fr) 48px !important;
+      gap: 8px !important;
+    }
+
+    body.mobile-storm-reports-ready .state-climo-summary {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    body.mobile-storm-reports-ready .state-climo-summary span { text-align: left; }
+    body.mobile-storm-reports-ready .state-climo-legend {
+      grid-template-columns: auto minmax(0, 1fr) auto;
+    }
+    body.mobile-storm-reports-ready .state-climo-label b { font-size: 0.67rem; }
+    body.mobile-storm-reports-ready .state-climo-label small { font-size: 0.50rem; }
+  }
+</style>
+
+<style id="state-yellow-anomaly-layout-v2">
+  .state-climo-legend {
+    display: none !important;
+  }
+
+  .state-climo-fill {
+    background: #facc15 !important;
+    background-image: none !important;
+    background-size: auto !important;
+    background-position: initial !important;
+    background-repeat: initial !important;
+    box-shadow: 0 0 10px rgba(250, 204, 21, 0.14) !important;
+  }
+
+  .state-climo-label {
+    display: flex !important;
+    align-items: center !important;
+    min-width: 0 !important;
+  }
+
+  .state-climo-label b {
+    display: block !important;
+    margin: 0 !important;
+  }
+
+  .state-climo-label small {
+    display: none !important;
+  }
+
+  .state-climo-value {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-end !important;
+    justify-content: center !important;
+    min-width: 0 !important;
+    line-height: 1.05 !important;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .state-climo-value .bar-value {
+    display: block !important;
+    margin: 0 !important;
+  }
+
+  .state-climo-value small {
+    display: block !important;
+    margin-top: 4px !important;
+    color: #8ea4b8 !important;
+    font-size: 0.55rem !important;
+    font-weight: 900 !important;
+    white-space: nowrap !important;
+  }
+
+  @media (max-width: 760px) {
+    body.mobile-storm-reports-ready
+      #stateChart .bar-row.state-climo-row {
+      grid-template-columns: 42px minmax(0, 1fr) 58px !important;
+      gap: 8px !important;
+      align-items: center !important;
+    }
+
+    body.mobile-storm-reports-ready
+      .state-climo-value small {
+      margin-top: 3px !important;
+      font-size: 0.50rem !important;
+    }
+  }
+</style>
+
 </head>
 <body>
   <header class="site-header">
@@ -3051,6 +3705,8 @@
       };
 
       const dataCache = new Map();
+      const stateClimatologyCache = new Map();
+      let stateClimatologyRenderToken = 0;
       const REPORT_SOURCE_ID = "storm-report-points";
       const REPORT_LAYER_ID = "storm-report-symbols";
       const REPORT_ICON_NAMES = [
@@ -3153,11 +3809,16 @@
       }
 
       function localApiBase() {
-        if (
-          ["localhost", "127.0.0.1"].includes(window.location.hostname) &&
-          window.location.port !== "8787"
-        ) {
-          return "http://127.0.0.1:8787";
+        const hostname = window.location.hostname;
+        const isLocalhost = ["localhost", "127.0.0.1"].includes(hostname);
+        const isPrivateLan =
+          /^192\.168\.\d{1,3}\.\d{1,3}$/.test(hostname) ||
+          /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname) ||
+          /^172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}$/.test(hostname);
+
+        if ((isLocalhost || isPrivateLan) && window.location.port !== "8787") {
+          const apiHost = hostname === "localhost" ? "127.0.0.1" : hostname;
+          return `http://${apiHost}:8787`;
         }
 
         return "";
@@ -4592,6 +5253,159 @@
         els.nextPageButton.disabled = state.page >= totalPages;
       }
 
+      function stateClimatologyEligible() {
+        return (
+          state.year === CURRENT_DATE.getUTCFullYear() &&
+          state.month === 0 &&
+          state.scope === "national" &&
+          state.dataset === "preliminary" &&
+          ["tornado", "hail", "wind"].includes(state.hazard)
+        );
+      }
+
+      function stateClimatologyUrl() {
+        const url = new URL(
+          `${localApiBase()}/api/storm-reports-climatology`,
+          window.location.origin
+        );
+        url.searchParams.set("hazard", state.hazard);
+        return url.toString();
+      }
+
+      async function fetchStateClimatology() {
+        const key = state.hazard;
+        if (stateClimatologyCache.has(key)) return stateClimatologyCache.get(key);
+
+        const response = await fetch(stateClimatologyUrl(), { cache: "no-store" });
+        if (!response.ok) throw new Error(`Climatology API returned ${response.status}`);
+
+        const payload = await response.json();
+        stateClimatologyCache.set(key, payload);
+        return payload;
+      }
+
+      function stateAnomalyColor(currentCount, averageCount) {
+        if (!(averageCount > 0)) {
+          return currentCount > 0 ? "hsl(0 82% 55%)" : "hsl(60 72% 48%)";
+        }
+
+        const ratio = currentCount / averageCount;
+        const normalized = Math.max(0, Math.min(1, (ratio - 0.5) / 1.0));
+        const hue = Math.round(120 * (1 - normalized));
+        return `hsl(${hue} 80% 50%)`;
+      }
+
+      function stateAnomalyProgress(currentCount, averageCount) {
+        if (!(averageCount > 0)) {
+          return currentCount > 0 ? 1 : 0.5;
+        }
+
+        const ratio = currentCount / averageCount;
+
+        return Math.max(
+          0.08,
+          Math.min(1, (ratio - 0.5) / 1.0)
+        );
+      }      function stateAnomalyProgress(currentCount, averageCount) {
+        if (!(averageCount > 0)) {
+          return currentCount > 0 ? 1 : 0.5;
+        }
+
+        const ratio = currentCount / averageCount;
+
+        return Math.max(
+          0.08,
+          Math.min(1, (ratio - 0.5) / 1.0)
+        );
+      }
+
+      function stateAnomalyLabel(currentCount, averageCount) {
+        if (!(averageCount > 0)) return currentCount > 0 ? "new" : "0%";
+
+        const percent = Math.round(((currentCount - averageCount) / averageCount) * 100);
+        return `${percent > 0 ? "+" : ""}${percent}%`;
+      }
+
+      function stateClimatologyDateLabel(month, day) {
+        const date = new Date(Date.UTC(2000, month - 1, day));
+        return new Intl.DateTimeFormat("en-US", {
+          month: "short",
+          day: "numeric",
+          timeZone: "UTC"
+        }).format(date);
+      }
+
+      function renderStateAnomalyBars(container, items, climatology) {
+        const visible = items.slice(0, 52);
+        const max = Math.max(1, ...visible.map((item) => item.count));
+        const averages = climatology?.stateAverages || {};
+        const dateLabel = stateClimatologyDateLabel(
+          climatology.cutoffMonth,
+          climatology.cutoffDay
+        );
+
+        container.innerHTML = `
+          <div class="state-climo-summary">
+            <strong>${escapeHtml(
+              `${climatology.baselineStartYear}\u2013${climatology.baselineEndYear} average through ${dateLabel}`
+            )}</strong>
+            <span>SPC final historical reports</span>
+          </div>
+
+
+
+          ${visible.map((item) => {
+            const average = Number(averages[item.label] || 0);
+            const anomaly = stateAnomalyLabel(item.count, average);
+
+            return `
+              <div class="bar-row state-climo-row">
+                <span class="state-climo-label">
+                  <b>${escapeHtml(item.label)}</b>
+                </span>
+                <span
+                  class="bar-track"
+                  title="${escapeHtml(
+                    `${item.label}: ${item.count.toLocaleString("en-US")} reports; historical average ${average.toFixed(1)}`
+                  )}"
+                >
+                  <i
+                    class="bar-fill state-climo-fill"
+                    style="--bar-width:${Math.max(2, (item.count / max) * 100)}%;"
+                  ></i>
+                </span>
+                <span class="state-climo-value">
+                  <strong class="bar-value">
+                    ${item.count.toLocaleString("en-US")}
+                  </strong>
+                  <small>${escapeHtml(anomaly)}</small>
+                </span>
+              </div>
+            `;
+          }).join("")}
+        `;
+      }
+
+      function renderStateClimatologyBars(stateCounts) {
+        if (!stateClimatologyEligible()) return;
+
+        const token = ++stateClimatologyRenderToken;
+        els.stateChart.innerHTML = `
+          <div class="state-climo-loading">Calculating 10-year state averagesâ€¦</div>
+        `;
+
+        fetchStateClimatology()
+          .then((climatology) => {
+            if (token !== stateClimatologyRenderToken || state.chartMode !== "states") return;
+            renderStateAnomalyBars(els.stateChart, stateCounts, climatology);
+          })
+          .catch((error) => {
+            console.error("State climatology chart failed:", error);
+            if (token !== stateClimatologyRenderToken) return;
+            renderBars(els.stateChart, stateCounts, 52);
+        renderStateClimatologyBars(stateCounts);
+          });
+      }
       function renderBars(container, items, limit = 20) {
         const visible = items.slice(0, limit);
         const max = Math.max(1, ...visible.map((item) => item.count));
@@ -5024,6 +5838,7 @@
         renderBars(els.timeChart, periodCounts, state.month === 0 ? 12 : 31);
         renderBars(els.hazardChart, hazardCounts, 4);
         renderBars(els.stateChart, stateCounts, 52);
+        renderStateClimatologyBars(stateCounts);
         renderBars(els.hourChart, hourCounts, 24);
 
         const activeCard = {

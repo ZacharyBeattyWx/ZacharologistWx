@@ -308,12 +308,42 @@ function parseCsv(text) {
     const nextCharacter = text[index + 1];
 
     if (character === '"') {
-      if (quoted && nextCharacter === '"') {
+      if (quoted) {
+        if (nextCharacter === '"') {
+          cell += '"';
+          index += 1;
+          continue;
+        }
+
+        /*
+         * Only close a quoted CSV field when the quote occurs at a real
+         * field boundary. SPC remarks can contain ordinary inch marks such
+         * as 6" or 8", which must remain literal text.
+         */
+        if (
+          nextCharacter === "," ||
+          nextCharacter === "\n" ||
+          nextCharacter === "\r" ||
+          nextCharacter === undefined
+        ) {
+          quoted = false;
+          continue;
+        }
+
         cell += '"';
-        index += 1;
-      } else {
-        quoted = !quoted;
+        continue;
       }
+
+      /*
+       * A quote starts CSV quoting only at the beginning of a field.
+       * Quotes occurring inside normal SPC remarks are literal characters.
+       */
+      if (cell.length === 0) {
+        quoted = true;
+        continue;
+      }
+
+      cell += '"';
       continue;
     }
 
@@ -1732,6 +1762,156 @@ async function getCachedStormReports(request) {
 }
 
 
+const STORM_REPORTS_CLIMO_YEAR_COUNT = 10;
+const STORM_REPORTS_CLIMO_CACHE_SECONDS = 86400;
+
+function stormReportsFinalStateCountsThrough(text, requestedYear, cutoffMonth, cutoffDay) {
+  const rows = parseCsv(text);
+  if (rows.length < 2) return {};
+
+  const headers = rows[0];
+  const yearIndex = stormReportsCsvIndex(headers, ["yr", "year"]);
+  const monthIndex = stormReportsCsvIndex(headers, ["mo", "month"]);
+  const dayIndex = stormReportsCsvIndex(headers, ["dy", "day"]);
+  const dateIndex = stormReportsCsvIndex(headers, ["date", "begindate"]);
+  const stateIndex = stormReportsCsvIndex(headers, ["st", "state"]);
+  const counts = {};
+
+  for (const row of rows.slice(1)) {
+    const parsedDate = stormReportsParseDateField(csvCell(row, dateIndex));
+    const year = yearIndex >= 0 ? Number(csvCell(row, yearIndex)) : parsedDate?.year;
+    const month = monthIndex >= 0 ? Number(csvCell(row, monthIndex)) : parsedDate?.month;
+    const day = dayIndex >= 0 ? Number(csvCell(row, dayIndex)) : parsedDate?.day;
+
+    if (year !== requestedYear || !Number.isInteger(month) || !Number.isInteger(day)) continue;
+    if (month > cutoffMonth || (month === cutoffMonth && day > cutoffDay)) continue;
+
+    const stateCode = csvCell(row, stateIndex).toUpperCase();
+    if (!stateCode) continue;
+    counts[stateCode] = (counts[stateCode] || 0) + 1;
+  }
+
+  return counts;
+}
+
+async function stormReportsBuildStateClimatology(hazard, cutoffMonth, cutoffDay) {
+  const baselineEndYear = STORM_REPORTS_FINAL_MAX_YEAR;
+  const baselineStartYear = Math.max(2008, baselineEndYear - STORM_REPORTS_CLIMO_YEAR_COUNT + 1);
+  const years = Array.from(
+    { length: baselineEndYear - baselineStartYear + 1 },
+    (_, index) => baselineStartYear + index
+  );
+
+  const yearResults = await mapWithConcurrency(years, 3, async (year) => {
+    const sourceUrl = stormReportsFinalSource(year, hazard);
+    if (!sourceUrl) return { year, counts: {}, error: "No SPC final source" };
+
+    try {
+      const text = await stormReportsFetchText(sourceUrl);
+      return {
+        year,
+        counts: stormReportsFinalStateCountsThrough(text, year, cutoffMonth, cutoffDay),
+        error: ""
+      };
+    } catch (error) {
+      return { year, counts: {}, error: String(error?.message || error) };
+    }
+  });
+
+  const usableYears = yearResults.filter((result) => !result.error);
+  if (!usableYears.length) throw new Error("No historical SPC years were available");
+
+  const stateCodes = new Set();
+  for (const result of usableYears) {
+    for (const stateCode of Object.keys(result.counts)) stateCodes.add(stateCode);
+  }
+
+  const stateAverages = {};
+  for (const stateCode of stateCodes) {
+    const total = usableYears.reduce(
+      (sum, result) => sum + Number(result.counts[stateCode] || 0),
+      0
+    );
+    stateAverages[stateCode] = Number((total / usableYears.length).toFixed(1));
+  }
+
+  return {
+    hazard,
+    cutoffMonth,
+    cutoffDay,
+    baselineStartYear,
+    baselineEndYear,
+    yearsUsed: usableYears.map((result) => result.year),
+    stateAverages,
+    partialFailures: yearResults
+      .filter((result) => result.error)
+      .map((result) => ({ year: result.year, error: result.error }))
+  };
+}
+
+async function getCachedStormReportClimatology(request) {
+  const requestUrl = new URL(request.url);
+  const hazard = cleanOpsText(requestUrl.searchParams.get("hazard")).toLowerCase();
+
+  if (!STORM_REPORTS_VALID_HAZARDS.has(hazard)) {
+    return opsJsonResponse({ error: "Select tornado, hail, or wind for climatology" }, 400, 60);
+  }
+
+  const current = stormReportsCurrentSpcDate();
+  const monthParam = requestUrl.searchParams.get("month");
+  const dayParam = requestUrl.searchParams.get("day");
+
+  const cutoffMonth = monthParam === null
+    ? current.getUTCMonth() + 1
+    : stormReportsInteger(
+        monthParam,
+        current.getUTCMonth() + 1
+      );
+
+  const cutoffDay = dayParam === null
+    ? current.getUTCDate()
+    : stormReportsInteger(
+        dayParam,
+        current.getUTCDate()
+      );
+
+  if (
+    cutoffMonth < 1 || cutoffMonth > 12 || cutoffDay < 1 ||
+    cutoffDay > stormReportsDaysInMonth(2000, cutoffMonth)
+  ) {
+    return opsJsonResponse({ error: "Invalid climatology cutoff date" }, 400, 60);
+  }
+
+  const cache = caches.default;
+  const normalizedUrl = new URL("/api/storm-reports-climatology", request.url);
+  normalizedUrl.searchParams.set("hazard", hazard);
+  normalizedUrl.searchParams.set("month", String(cutoffMonth));
+  normalizedUrl.searchParams.set("day", String(cutoffDay));
+
+  const cacheKey = new Request(normalizedUrl.toString(), { method: "GET" });
+  const cached = await cache.match(cacheKey);
+  if (cached) return cached;
+
+  const built = await stormReportsBuildStateClimatology(hazard, cutoffMonth, cutoffDay);
+  const response = opsJsonResponse(
+    {
+      generatedAt: new Date().toISOString(),
+      comparisonDataset: "final",
+      ...built
+    },
+    200,
+    STORM_REPORTS_CLIMO_CACHE_SECONDS
+  );
+
+  try {
+    await cache.put(cacheKey, response.clone());
+  } catch (error) {
+    console.warn("Unable to cache storm-report climatology:", error);
+  }
+
+  return response;
+}
+
 async function getCachedOpsSummary(request, env) {
   const cache = caches.default;
 
@@ -2171,6 +2351,24 @@ export default {
       }
     }
 
+    if (
+      url.pathname === "/api/storm-reports-climatology" &&
+      request.method === "GET"
+    ) {
+      try {
+        return await getCachedStormReportClimatology(request);
+      } catch (error) {
+        console.error("Storm report climatology failed:", error);
+        return opsJsonResponse(
+          {
+            error: "Unable to build storm-report climatology",
+            detail: String(error?.message || error || "Unknown failure")
+          },
+          502,
+          60
+        );
+      }
+    }
     if (url.pathname === "/api/storm-reports" && request.method === "GET") {
       try {
         return await getCachedStormReports(request);
