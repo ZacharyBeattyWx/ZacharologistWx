@@ -5951,16 +5951,15 @@ body.alert-type-filter-popup-open {
         ? weatherLayerBeforeLayerId()
         : undefined;
 
-      // True weather stack: alert fills below radar, radar above fills, and all alert outlines above radar.
-      moveLayerIfPresent(ALERT_FILL_LAYER_ID, beforeLayerId);
-      moveLayerIfPresent(ALERT_DIRECT_FILL_LAYER_ID, beforeLayerId);
-      moveLayerIfPresent(ALERT_STORM_HITBOX_LAYER_ID, beforeLayerId);
-
+      // Radar below direct alert visuals; roads, boundaries, and labels remain above both.
       moveLayerIfPresent(LEVEL2_MANUAL_RADAR_LAYER_ID, beforeLayerId);
       moveLayerIfPresent(LEVEL2_MAPBOX_IMAGE_LAYER_ID, beforeLayerId);
       moveLayerIfPresent(LEVEL2_MAPBOX_TILE_LAYER_ID, beforeLayerId);
 
+      moveLayerIfPresent(ALERT_FILL_LAYER_ID, beforeLayerId);
+      moveLayerIfPresent(ALERT_DIRECT_FILL_LAYER_ID, beforeLayerId);
       moveLayerIfPresent(ALERT_DIRECT_LINE_LAYER_ID, beforeLayerId);
+      moveLayerIfPresent(ALERT_STORM_HITBOX_LAYER_ID, beforeLayerId);
       moveLayerIfPresent(ALERT_LINE_LAYER_ID, beforeLayerId);
     }
 
@@ -6203,7 +6202,11 @@ body.alert-type-filter-popup-open {
           "line-emissive-strength",
           1
         );
-        $10.90 * opacity,
+        map.setPaintProperty(ALERT_LINE_LAYER_ID, "line-opacity", [
+          "case",
+
+          ["==", ["get", "_fallbackGeometry"], true],
+          0,
 
           ["==", ["get", "_visibleStormPolygon"], true],
           1.00 * opacity,
@@ -7053,9 +7056,9 @@ body.alert-type-filter-popup-open {
         type: "line",
         source: ALERT_SOURCE_ID,
         filter: [
-          "any",
-          ["==", ["get", "_fallbackGeometry"], true],
-          ["==", ["get", "_visibleStormPolygon"], true]
+          "all",
+          ["==", ["get", "_visibleStormPolygon"], true],
+          ["!=", ["get", "_fallbackGeometry"], true]
         ],
         layout: {
           "line-sort-key": ["coalesce", ["get", "_alertDrawRank"], 0]
