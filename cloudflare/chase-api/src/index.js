@@ -251,6 +251,11 @@ async function resolveAutoStreamStatus(status, env) {
 
 const OPS_CACHE_TTL_SECONDS = 120;
 
+const OPS_HOMEPAGE_SNAPSHOT_OBJECT_KEY =
+  "ops/homepage-summary.json";
+
+const OPS_HOMEPAGE_BOOTSTRAP_BROWSER_TTL_SECONDS = 30;
+
 const SPC_MAP_SERVICE =
   "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/SPC_wx_outlks/MapServer";
 
@@ -1938,6 +1943,142 @@ async function getCachedOpsSummary(request, env) {
   return response;
 }
 
+async function publishHomepageOpsSummary(env, summary) {
+  if (!env.RADAR_BUCKET) {
+    throw new Error("Missing R2 binding: RADAR_BUCKET");
+  }
+
+  await env.RADAR_BUCKET.put(
+    OPS_HOMEPAGE_SNAPSHOT_OBJECT_KEY,
+    JSON.stringify(summary),
+    {
+      httpMetadata: {
+        contentType: "application/json; charset=utf-8",
+        cacheControl: "no-store"
+      },
+      customMetadata: {
+        generatedAt:
+          String(summary?.generatedAt || new Date().toISOString())
+      }
+    }
+  );
+}
+
+async function readPublishedHomepageOpsSummary(env) {
+  if (!env.RADAR_BUCKET) return null;
+
+  const object = await env.RADAR_BUCKET.get(
+    OPS_HOMEPAGE_SNAPSHOT_OBJECT_KEY
+  );
+
+  if (!object) return null;
+
+  try {
+    const summary = JSON.parse(
+      await object.text()
+    );
+
+    if (
+      !summary ||
+      typeof summary !== "object" ||
+      Array.isArray(summary)
+    ) {
+      return null;
+    }
+
+    return summary;
+  } catch (error) {
+    console.warn(
+      "Unable to parse homepage operations snapshot:",
+      error
+    );
+
+    return null;
+  }
+}
+
+async function refreshPublishedHomepageOpsSummary(env) {
+  const summary = await buildOpsSummary(env);
+
+  await publishHomepageOpsSummary(
+    env,
+    summary
+  );
+
+  return summary;
+}
+
+function serializeOpsBootstrap(summary) {
+  return JSON.stringify(summary)
+    .replace(/</g, "\\u003c")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029");
+}
+
+function homepageOpsBootstrapResponse(summary) {
+  const generatedAt =
+    String(summary?.generatedAt || "");
+
+  const source =
+    "window.__ZACH_OPS_BOOTSTRAP__=" +
+    serializeOpsBootstrap(summary) +
+    ";";
+
+  return new Response(source, {
+    status: 200,
+    headers: {
+      "content-type":
+        "application/javascript; charset=utf-8",
+
+      "cache-control":
+        `public, max-age=${OPS_HOMEPAGE_BOOTSTRAP_BROWSER_TTL_SECONDS}, ` +
+        "stale-while-revalidate=300",
+
+      "access-control-allow-origin": "*",
+
+      "x-zacharologist-ops-generated":
+        generatedAt
+    }
+  });
+}
+
+async function getHomepageOpsBootstrap(request, env) {
+  let summary =
+    await readPublishedHomepageOpsSummary(env);
+
+  /*
+    Cold-start protection:
+    if the scheduled snapshot has not been created yet,
+    use the existing cached operations-summary path.
+  */
+  if (!summary) {
+    const response =
+      await getCachedOpsSummary(request, env);
+
+    if (!response.ok) {
+      throw new Error(
+        `Operations bootstrap fallback returned ${response.status}`
+      );
+    }
+
+    summary = await response.json();
+
+    try {
+      await publishHomepageOpsSummary(
+        env,
+        summary
+      );
+    } catch (error) {
+      console.warn(
+        "Unable to publish cold-start homepage snapshot:",
+        error
+      );
+    }
+  }
+
+  return homepageOpsBootstrapResponse(summary);
+}
+
 const NWS_ALERT_PROXY_AREAS = [
   "AL", "AZ", "AR", "CA", "CO", "CT", "DE", "FL",
   "GA", "ID", "IL", "IN", "IA", "KS", "KY", "LA",
@@ -2403,6 +2544,44 @@ export default {
         );
       }
     }
+    if (
+      url.pathname === "/api/ops/bootstrap.js" &&
+      request.method === "GET"
+    ) {
+      try {
+        return await getHomepageOpsBootstrap(
+          request,
+          env
+        );
+      } catch (error) {
+        console.error(
+          "Homepage operations bootstrap failed:",
+          error
+        );
+
+        /*
+          Always return valid JavaScript.
+          The homepage renderer can still use browser cache and
+          /api/ops/summary if the bootstrap service has a problem.
+        */
+        return new Response(
+          "window.__ZACH_OPS_BOOTSTRAP__=null;",
+          {
+            status: 200,
+            headers: {
+              "content-type":
+                "application/javascript; charset=utf-8",
+
+              "cache-control":
+                "no-store",
+
+              "access-control-allow-origin":
+                "*"
+            }
+          }
+        );
+      }
+    }
     if (url.pathname === "/api/ops/summary" && request.method === "GET") {
       try {
         return await getCachedOpsSummary(request, env);
@@ -2571,11 +2750,23 @@ export default {
     }
 
     return jsonResponse({ error: "Not found" }, 404);
+  },
+
+  async scheduled(controller, env, ctx) {
+    ctx.waitUntil(
+      refreshPublishedHomepageOpsSummary(env)
+        .then((summary) => {
+          console.log(
+            "Homepage operations snapshot refreshed:",
+            summary?.generatedAt || "unknown"
+          );
+        })
+        .catch((error) => {
+          console.error(
+            "Scheduled homepage operations refresh failed:",
+            error
+          );
+        })
+    );
   }
 };
-
-
-
-
-
-
