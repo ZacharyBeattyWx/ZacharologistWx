@@ -1,0 +1,84 @@
+name: Render Model Guidance
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/models/**"
+      - ".github/workflows/render-model-guidance.yml"
+  workflow_dispatch:
+    inputs:
+      max_forecast_hour:
+        description: "Last HRRR forecast hour to render"
+        required: false
+        default: "12"
+      stride:
+        description: "Forecast-hour step"
+        required: false
+        default: "1"
+  schedule:
+    - cron: "35 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zacharologist-model-guidance-hrrr
+  cancel-in-progress: true
+
+jobs:
+  render-hrrr:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install model renderer dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libeccodes0 libeccodes-dev
+          python -m pip install --upgrade pip
+          python -m pip install -r scripts/models/requirements.txt
+
+      - name: Render latest complete HRRR loop
+        env:
+          MAX_FH: ${{ github.event.inputs.max_forecast_hour || '12' }}
+          STRIDE: ${{ github.event.inputs.stride || '1' }}
+        run: |
+          python scripts/models/render_hrrr.py \
+            --output-root model-output/hrrr \
+            --max-fh "$MAX_FH" \
+            --stride "$STRIDE"
+
+      - name: Upload HRRR frames to Cloudflare R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_EC2_METADATA_DISABLED: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          R2_ENDPOINT="https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com"
+          BUCKET="${{ secrets.R2_BUCKET }}"
+
+          aws s3 sync \
+            model-output/hrrr/latest/ \
+            "s3://${BUCKET}/models/hrrr/latest/" \
+            --delete \
+            --endpoint-url "$R2_ENDPOINT" \
+            --cache-control "public,max-age=3600"
+
+          aws s3 cp \
+            model-output/hrrr/manifest.json \
+            "s3://${BUCKET}/models/hrrr/manifest.json" \
+            --endpoint-url "$R2_ENDPOINT" \
+            --content-type "application/json; charset=utf-8" \
+            --cache-control "public,max-age=30,must-revalidate"

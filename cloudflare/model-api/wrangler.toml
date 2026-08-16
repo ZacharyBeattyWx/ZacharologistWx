@@ -1,0 +1,14 @@
+name = "zacharologist-model-assets"
+main = "src/index.js"
+compatibility_date = "2026-08-15"
+workers_dev = true
+
+[[r2_buckets]]
+binding = "RADAR_BUCKET"
+bucket_name = "zacharologist-radar"
+
+[[routes]]
+pattern = "zacharologistwx.com/model-data/*"
+zone_name = "zacharologistwx.com"
+
+

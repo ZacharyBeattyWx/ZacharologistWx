@@ -1,0 +1,50 @@
+name: Render Current Wx Previews
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
+
+concurrency:
+  group: current-wx-previews
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  render-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      BUCKET: zacharologistwx-weather-previews
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: scripts/weather/requirements.txt
+
+      - name: Install renderer dependencies
+        run: python -m pip install -r scripts/weather/requirements.txt
+
+      - name: Render previews
+        run: python scripts/weather/render_current_wx_previews.py --output weather-preview-build
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Upload previews to R2
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4 r2 object put "$BUCKET/current-temp.webp" --file=weather-preview-build/current-temp.webp --content-type=image/webp --cache-control="public, max-age=120, stale-while-revalidate=600" --remote
+          npx --yes wrangler@4 r2 object put "$BUCKET/current-hazards.webp" --file=weather-preview-build/current-hazards.webp --content-type=image/webp --cache-control="public, max-age=120, stale-while-revalidate=600" --remote
+          npx --yes wrangler@4 r2 object put "$BUCKET/mrms-72h.webp" --file=weather-preview-build/mrms-72h.webp --content-type=image/webp --cache-control="public, max-age=120, stale-while-revalidate=600" --remote
+          npx --yes wrangler@4 r2 object put "$BUCKET/conus-radar.webp" --file=weather-preview-build/conus-radar.webp --content-type=image/webp --cache-control="public, max-age=120, stale-while-revalidate=600" --remote
+          npx --yes wrangler@4 r2 object put "$BUCKET/manifest.json" --file=weather-preview-build/manifest.json --content-type=application/json --cache-control="public, max-age=30, stale-while-revalidate=120" --remote

@@ -1,0 +1,12 @@
+name = "zacharologistwx-weather-previews"
+main = "src/index.js"
+compatibility_date = "2026-08-16"
+
+routes = [
+  { pattern = "zacharologistwx.com/weather-data/current-wx/*", zone_name = "zacharologistwx.com" },
+  { pattern = "www.zacharologistwx.com/weather-data/current-wx/*", zone_name = "zacharologistwx.com" }
+]
+
+[[r2_buckets]]
+binding = "WEATHER_PREVIEWS"
+bucket_name = "zacharologistwx-weather-previews"

@@ -8488,11 +8488,31 @@ body.alert-type-filter-popup-open {
         siteSelect.value = nearestChaseSite;
       }
 
+      const requestedInitialMapView = String(
+        new URLSearchParams(window.location.search).get("view") || ""
+      ).trim().toLowerCase();
+
+      const useConusInitialView =
+        !chaseLocation &&
+        requestedInitialMapView === "conus";
+
+      const conusInitialBounds = [
+        [-125.0, 24.0],
+        [-66.5, 50.0]
+      ];
+
       map = new mapboxgl.Map({
         container: "map",
         style: MAPBOX_STYLE,
         center: chaseLocation ? [chaseLocation.lon, chaseLocation.lat] : [-80.5, 37.43],
         zoom: chaseLocation ? chaseLocation.zoom : 4.92,
+        bounds: useConusInitialView ? conusInitialBounds : undefined,
+        fitBoundsOptions: useConusInitialView
+          ? {
+              padding: 28,
+              maxZoom: 4.5
+            }
+          : undefined,
         projection: "mercator",
         renderWorldCopies: false,
         bearing: 0,
@@ -10396,3 +10416,4 @@ body.alert-type-filter-popup-open {
 </style>
 </body>
 </html>
+
