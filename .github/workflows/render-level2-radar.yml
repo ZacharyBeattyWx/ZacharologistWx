@@ -10,15 +10,15 @@ on:
         required: false
         default: ""
       source_count:
-        description: "Number of latest Level II scans to fetch"
+        description: "Raw Level II source candidates to fetch (automatic runs are capped low)"
         required: false
-        default: "75"
+        default: "3"
       frame_count:
-        description: "Number of final Level II frames to publish"
+        description: "Number of final Level II frames to retain in the published loop"
         required: false
         default: "25"
       force_render:
-        description: "Rebuild existing radar outputs instead of reusing restored files"
+        description: "Rebuild the newest radar output"
         required: false
         type: boolean
         default: false
@@ -56,7 +56,12 @@ jobs:
           import re
           from pathlib import Path
 
-          default_sites = ["KFCX", "KRAX", "KGSP", "KLTX", "KMRX", "KJKL", "KRLX", "KLWX", "KMHX", "KAKQ", "KCAE", "KCLX", "KILX", "KIND", "KLOT", "KLSX", "KIWX", "KDVN", "KDMX", "KOAX", "KEAX", "KICT", "KTWX", "KSGF", "KVWX", "KPAH"]
+          default_sites = [
+              "KFCX", "KRAX", "KGSP", "KLTX", "KMRX", "KJKL", "KRLX",
+              "KLWX", "KMHX", "KAKQ", "KCAE", "KCLX", "KILX", "KIND",
+              "KLOT", "KLSX", "KIWX", "KDVN", "KDMX", "KOAX", "KEAX",
+              "KICT", "KTWX", "KSGF", "KVWX", "KPAH"
+          ]
 
           event_name = os.environ.get("EVENT_NAME", "").strip()
           event_action = os.environ.get("EVENT_ACTION", "").strip()
@@ -67,23 +72,13 @@ jobs:
           dispatch_payload_raw = r'''${{ toJson(github.event.client_payload) }}'''
 
           try:
-              dispatch_payload = json.loads(dispatch_payload_raw) if dispatch_payload_raw and dispatch_payload_raw != "null" else {}
+              dispatch_payload = (
+                  json.loads(dispatch_payload_raw)
+                  if dispatch_payload_raw and dispatch_payload_raw != "null"
+                  else {}
+              )
           except json.JSONDecodeError:
               dispatch_payload = {}
-
-          if not source_count_input:
-              source_count_input = str(
-                  dispatch_payload.get("source_count")
-                  or dispatch_payload.get("sourceCount")
-                  or ""
-              ).strip()
-
-          if not frame_count_input:
-              frame_count_input = str(
-                  dispatch_payload.get("frame_count")
-                  or dispatch_payload.get("frameCount")
-                  or ""
-              ).strip()
 
           def normalize_site_id(site):
               site = str(site or "").strip().upper()
@@ -92,55 +87,67 @@ jobs:
               if not re.fullmatch(r"K[A-Z0-9]{3}", site):
                   raise SystemExit(f"Unsupported radar site: {site}")
               if site not in default_sites:
-                  raise SystemExit(f"Radar site is not configured for Level II rendering: {site}")
+                  raise SystemExit(
+                      f"Radar site is not configured for Level II rendering: {site}"
+                  )
               return site
 
           def normalize_dispatch_sites(value):
               if not value:
                   return []
-
               if isinstance(value, str):
-                  raw_sites = [part for part in re.split(r"[,\s]+", value) if part.strip()]
+                  raw_sites = [
+                      part for part in re.split(r"[,\s]+", value)
+                      if part.strip()
+                  ]
               elif isinstance(value, list):
                   raw_sites = value
               else:
-                  raise SystemExit(f"Unsupported dispatch sites payload: {value!r}")
+                  raise SystemExit(
+                      f"Unsupported dispatch sites payload: {value!r}"
+                  )
 
               normalized = []
               for raw_site in raw_sites:
                   site = normalize_site_id(raw_site)
                   if site not in normalized:
                       normalized.append(site)
-
               return normalized
 
           payload_sites = normalize_dispatch_sites(
-              dispatch_payload.get("sites")
-              or dispatch_payload.get("site")
+              dispatch_payload.get("sites") or dispatch_payload.get("site")
           )
 
           if site_input:
               sites = [normalize_site_id(site_input)]
           elif event_name == "repository_dispatch":
-              # Long-term path: the external dispatcher decides active sites.
-              # Safety fallback stays KFCX if an old dispatcher sends no payload.
               sites = payload_sites or ["KFCX"]
           else:
-              # Manual workflow_dispatch with no site still supports a full backfill run.
               sites = default_sites
 
-          def parse_positive_int(value: str, fallback: int) -> int:
-              if not value:
-                  return fallback
+          def parse_positive_int(value, fallback):
               try:
-                  return max(1, int(value))
+                  return max(1, int(value)) if str(value or "").strip() else fallback
               except ValueError:
                   return fallback
 
-          frame_count = parse_positive_int(frame_count_input, 25)
+          # Automatic runs only need enough raw candidates to survive a partial
+          # newest scan. The renderer publishes one new frame per site event.
+          if event_name == "repository_dispatch":
+              source_count = 3
+          else:
+              source_count = min(
+                  12,
+                  max(3, parse_positive_int(source_count_input, 3)),
+              )
 
-          # Manual non-main branch runs own an isolated R2 dataset so the
-          # default-branch repository_dispatch feed cannot overwrite test assets.
+          # The R2 manifest keeps the playback history. Individual jobs no longer
+          # rebuild the entire historical loop locally.
+          frame_count = min(
+              25,
+              max(1, parse_positive_int(frame_count_input, 25)),
+          )
+
           output_namespace = (
               "test"
               if event_name == "repository_dispatch" or ref_name == "main"
@@ -151,22 +158,12 @@ jobs:
                   f"Unsupported Level II output namespace: {output_namespace!r}"
               )
 
-          # Keep a deeper raw Level II source buffer than the displayed loop.
-          # This prevents SAILS/partial newest scans from starving the renderer.
-          minimum_source_count = frame_count * 3
-          requested_source_count = parse_positive_int(source_count_input, minimum_source_count)
-          source_count = max(requested_source_count, minimum_source_count)
-
           print(f"Level II event_name: {event_name}")
           print(f"Level II event_action: {event_action or '(none)'}")
-          print(f"Level II raw site input: {site_input or '(empty)'}")
           print(f"Level II dispatch payload: {dispatch_payload}")
-          print(f"Level II dispatch source: {dispatch_payload.get('source', '(none)')}")
-          print(f"Level II dispatch reason: {dispatch_payload.get('dispatch_reason', '(none)')}")
-          print(f"Level II source key: {dispatch_payload.get('source_key', '(none)')}")
           print(f"Level II sites: {sites}")
           print(f"Level II source_count: {source_count}")
-          print(f"Level II frame_count: {frame_count}")
+          print(f"Level II retained frame_count: {frame_count}")
           print(f"Level II output_namespace: {output_namespace}")
 
           with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as output:
@@ -175,6 +172,7 @@ jobs:
               print(f"frame_count={frame_count}", file=output)
               print(f"output_namespace={output_namespace}", file=output)
           PY
+
   render-level2:
     needs: prepare-matrix
     runs-on: ubuntu-latest
@@ -203,38 +201,40 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r scripts/radar/requirements.txt
 
-      - name: Restore existing Level II output from Cloudflare R2
+      - name: Restore only the Level II frame manifest from R2
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: auto
           AWS_EC2_METADATA_DISABLED: true
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
         shell: bash
         run: |
           set -euo pipefail
 
           R2_ENDPOINT="https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com"
+          BUCKET="${{ secrets.R2_BUCKET }}"
           SITE="${{ matrix.site }}"
           NAMESPACE="${{ needs.prepare-matrix.outputs.output_namespace }}"
-          LOCAL_DIR="radar/tilesets/${NAMESPACE}/${SITE}/LEVEL2/REF0"
-          REMOTE_DIR="s3://${{ secrets.R2_BUCKET }}/radar/tilesets/${NAMESPACE}/${SITE}/LEVEL2/REF0"
+          KEY="radar/tilesets/${NAMESPACE}/${SITE}/LEVEL2/REF0/frames.json"
+          OLD_FRAMES="/tmp/${SITE}-frames-old.json"
 
-          mkdir -p "$LOCAL_DIR"
-
-          if aws s3 ls "$REMOTE_DIR/" --endpoint-url "$R2_ENDPOINT" >/dev/null 2>&1; then
-            aws s3 sync "$REMOTE_DIR" "$LOCAL_DIR" \
-              --exclude "*" \
-              --include "*.tif" \
-              --include "*.json" \
-              --include "mobile/*.webp" \
-              --include "desktop/*.webp" \
-              --include "tiles/*/*/*/*.png" \
-              --endpoint-url "$R2_ENDPOINT"
+          # One direct GetObject replaces the old recursive aws s3 sync. There is
+          # no ListObjects walk and no download of TIFF/WebP/PNG history.
+          if aws s3api get-object \
+            --bucket "$BUCKET" \
+            --key "$KEY" \
+            "$OLD_FRAMES" \
+            --endpoint-url "$R2_ENDPOINT" \
+            >/dev/null 2>&1; then
+            echo "Restored prior frame manifest for ${SITE}."
           else
-            echo "No existing Level II R2 output for ${SITE}; rendering fresh."
+            printf '{"frames":[]}\n' > "$OLD_FRAMES"
+            echo "No prior frame manifest for ${SITE}; starting a new loop."
           fi
 
-      - name: Render latest Level II frames
+      - name: Render newest Level II frame
         shell: bash
         run: |
           set +e
@@ -244,7 +244,7 @@ jobs:
             --output-namespace "${{ needs.prepare-matrix.outputs.output_namespace }}"
             --fetch-latest
             --source-count "${{ needs.prepare-matrix.outputs.source_count }}"
-            --max-sources "${{ needs.prepare-matrix.outputs.frame_count }}"
+            --max-sources "1"
           )
 
           if [[ "${{ github.event.inputs.force_render || 'false' }}" == "true" ]]; then
@@ -261,7 +261,316 @@ jobs:
           set -e
           exit "$status"
 
-      - name: Show generated Level II summary
+      - name: Merge incremental loop and build R2 change plan
+        id: plan
+        env:
+          SITE: ${{ matrix.site }}
+          NAMESPACE: ${{ needs.prepare-matrix.outputs.output_namespace }}
+          MAX_FRAMES: ${{ needs.prepare-matrix.outputs.frame_count }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python - <<'PY'
+          import json
+          import os
+          from datetime import UTC, datetime
+          from pathlib import Path
+          from urllib.parse import urlparse
+
+          site = os.environ["SITE"]
+          namespace = os.environ["NAMESPACE"]
+          max_frames = max(1, min(25, int(os.environ["MAX_FRAMES"])))
+          output_root = Path(
+              f"radar/tilesets/{namespace}/{site}/LEVEL2/REF0"
+          )
+          old_frames_path = Path(f"/tmp/{site}-frames-old.json")
+          new_frames_path = output_root / "frames.json"
+          local_latest_path = output_root / "latest.json"
+          upload_plan_path = Path(f"/tmp/{site}-r2-uploads.tsv")
+          delete_plan_path = Path(f"/tmp/{site}-r2-deletes.txt")
+
+          tile_fields = {
+              "tileTemplate",
+              "tileIndex",
+              "tileMinZoom",
+              "tileMaxZoom",
+          }
+
+          def read_json(path, fallback):
+              try:
+                  return json.loads(path.read_text(encoding="utf-8"))
+              except Exception:
+                  return fallback
+
+          def clean_frame(value):
+              frame = dict(value or {})
+              for field in tile_fields:
+                  frame.pop(field, None)
+              return frame
+
+          def frame_key(frame):
+              for field in (
+                  "validTime",
+                  "imagePath",
+                  "desktopImagePath",
+                  "path",
+              ):
+                  value = str((frame or {}).get(field) or "").strip()
+                  if value:
+                      return f"{field}:{value}"
+              return ""
+
+          def sort_key(frame):
+              raw = str((frame or {}).get("validTime") or "").strip()
+              if not raw:
+                  return (0.0, frame_key(frame))
+              try:
+                  parsed = datetime.fromisoformat(
+                      raw.replace("Z", "+00:00")
+                  )
+                  if parsed.tzinfo is None:
+                      parsed = parsed.replace(tzinfo=UTC)
+                  return (parsed.timestamp(), frame_key(frame))
+              except ValueError:
+                  return (0.0, raw)
+
+          old_payload = read_json(old_frames_path, {"frames": []})
+          new_payload = read_json(new_frames_path, {"frames": []})
+          renderer_latest = read_json(local_latest_path, {})
+
+          old_frames = [
+              clean_frame(frame)
+              for frame in (old_payload.get("frames") or [])
+              if isinstance(frame, dict) and frame_key(frame)
+          ]
+          rendered_frames = [
+              clean_frame(frame)
+              for frame in (new_payload.get("frames") or [])
+              if isinstance(frame, dict) and frame_key(frame)
+          ]
+
+          old_by_key = {frame_key(frame): frame for frame in old_frames}
+          merged_by_key = dict(old_by_key)
+          newly_added = []
+
+          for frame in rendered_frames:
+              key = frame_key(frame)
+              if key not in old_by_key:
+                  newly_added.append(frame)
+              merged_by_key[key] = frame
+
+          ordered_frames = sorted(
+              merged_by_key.values(),
+              key=sort_key,
+          )
+          kept_frames = ordered_frames[-max_frames:]
+          kept_keys = {frame_key(frame) for frame in kept_frames}
+          stale_frames = [
+              frame for frame in old_frames
+              if frame_key(frame) not in kept_keys
+          ]
+          added_kept_frames = [
+              frame for frame in newly_added
+              if frame_key(frame) in kept_keys
+          ]
+
+          merged_payload = {
+              key: value
+              for key, value in new_payload.items()
+              if key != "frames"
+          }
+          merged_payload["site"] = site
+          merged_payload["product"] = (
+              merged_payload.get("product") or "LEVEL2_REF0"
+          )
+          merged_payload["updatedAt"] = datetime.now(UTC).isoformat()
+          merged_payload["frames"] = kept_frames
+          new_frames_path.write_text(
+              json.dumps(merged_payload, indent=2),
+              encoding="utf-8",
+          )
+
+          if not kept_frames:
+              raise SystemExit("Incremental Level II merge produced no frames.")
+
+          newest_frame = kept_frames[-1]
+          newest_key = frame_key(newest_frame)
+          renderer_latest_key = frame_key(renderer_latest)
+          latest_payload = {
+              "site": site,
+              "product": merged_payload.get("product") or "LEVEL2_REF0",
+              "palettePath": merged_payload.get("palettePath"),
+              "validTime": newest_frame.get("validTime", ""),
+              "bounds": newest_frame.get("bounds"),
+              "path": newest_frame.get("path"),
+              "imagePath": newest_frame.get("imagePath"),
+              "desktopImagePath": newest_frame.get("desktopImagePath"),
+          }
+
+          if newest_key == renderer_latest_key:
+              for field in (
+                  "sourceFile",
+                  "width",
+                  "height",
+                  "nodata",
+              ):
+                  if field in renderer_latest:
+                      latest_payload[field] = renderer_latest[field]
+
+          latest_payload = {
+              key: value
+              for key, value in latest_payload.items()
+              if value is not None
+          }
+          local_latest_path.write_text(
+              json.dumps(latest_payload, indent=2),
+              encoding="utf-8",
+          )
+
+          upload_lines = []
+          for frame in added_kept_frames:
+              for field, folder in (
+                  ("imagePath", "mobile"),
+                  ("desktopImagePath", "desktop"),
+              ):
+                  remote_path = str(frame.get(field) or "").strip()
+                  if not remote_path:
+                      raise SystemExit(
+                          f"New frame is missing required {field}: {frame}"
+                      )
+                  remote_key = urlparse(remote_path).path.lstrip("/")
+                  filename = Path(urlparse(remote_path).path).name
+                  local_file = output_root / folder / filename
+                  if not local_file.exists():
+                      raise SystemExit(
+                          f"Expected rendered WebP is missing: {local_file}"
+                      )
+                  upload_lines.append(
+                      f"{local_file}\t{remote_key}"
+                  )
+
+          delete_keys = []
+          for frame in stale_frames:
+              for field in (
+                  "imagePath",
+                  "desktopImagePath",
+                  "path",
+              ):
+                  remote_path = str(frame.get(field) or "").strip()
+                  if not remote_path:
+                      continue
+                  key = urlparse(remote_path).path.lstrip("/")
+                  if key and key not in delete_keys:
+                      delete_keys.append(key)
+
+          upload_plan_path.write_text(
+              "\n".join(upload_lines) + ("\n" if upload_lines else ""),
+              encoding="utf-8",
+          )
+          delete_plan_path.write_text(
+              "\n".join(delete_keys) + ("\n" if delete_keys else ""),
+              encoding="utf-8",
+          )
+
+          changed = bool(added_kept_frames or stale_frames)
+          print(f"oldFrames={len(old_frames)}")
+          print(f"renderedFrames={len(rendered_frames)}")
+          print(f"newFrames={len(added_kept_frames)}")
+          print(f"staleFrames={len(stale_frames)}")
+          print(f"retainedFrames={len(kept_frames)}")
+          print(f"r2AssetPuts={len(upload_lines)}")
+          print(f"r2Deletes={len(delete_keys)}")
+          print(f"manifestChanged={changed}")
+
+          github_output = Path(os.environ["GITHUB_OUTPUT"])
+          with github_output.open("a", encoding="utf-8") as output:
+              print(
+                  f"changed={'true' if changed else 'false'}",
+                  file=output,
+              )
+              print(f"new_frames={len(added_kept_frames)}", file=output)
+              print(f"stale_frames={len(stale_frames)}", file=output)
+              print(f"retained_frames={len(kept_frames)}", file=output)
+          PY
+
+      - name: Publish only new WebP assets and manifests to R2
+        if: steps.plan.outputs.changed == 'true'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_EC2_METADATA_DISABLED: true
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          R2_ENDPOINT="https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com"
+          BUCKET="${{ secrets.R2_BUCKET }}"
+          SITE="${{ matrix.site }}"
+          NAMESPACE="${{ needs.prepare-matrix.outputs.output_namespace }}"
+          LOCAL_DIR="radar/tilesets/${NAMESPACE}/${SITE}/LEVEL2/REF0"
+          BASE_KEY="radar/tilesets/${NAMESPACE}/${SITE}/LEVEL2/REF0"
+          UPLOAD_PLAN="/tmp/${SITE}-r2-uploads.tsv"
+          DELETE_PLAN="/tmp/${SITE}-r2-deletes.txt"
+
+          # Use s3api put-object instead of aws s3 sync. Each immutable WebP is
+          # one Class A operation, even when it is large enough that the high-level
+          # aws s3 command would otherwise choose multipart upload.
+          while IFS=$'\t' read -r local_file remote_key; do
+            [[ -n "$local_file" && -n "$remote_key" ]] || continue
+            aws s3api put-object \
+              --bucket "$BUCKET" \
+              --key "$remote_key" \
+              --body "$local_file" \
+              --content-type "image/webp" \
+              --cache-control "public, max-age=31536000, immutable" \
+              --endpoint-url "$R2_ENDPOINT" \
+              >/dev/null
+            echo "Uploaded ${remote_key}"
+          done < "$UPLOAD_PLAN"
+
+          # Publish metadata last so browsers never receive a manifest that points
+          # at a WebP which has not finished uploading yet.
+          aws s3api put-object \
+            --bucket "$BUCKET" \
+            --key "$BASE_KEY/frames.json" \
+            --body "$LOCAL_DIR/frames.json" \
+            --content-type "application/json" \
+            --cache-control "no-cache, no-store, must-revalidate" \
+            --endpoint-url "$R2_ENDPOINT" \
+            >/dev/null
+
+          aws s3api put-object \
+            --bucket "$BUCKET" \
+            --key "$BASE_KEY/latest.json" \
+            --body "$LOCAL_DIR/latest.json" \
+            --content-type "application/json" \
+            --cache-control "no-cache, no-store, must-revalidate" \
+            --endpoint-url "$R2_ENDPOINT" \
+            >/dev/null
+
+          # R2 DeleteObject operations are free. Remove only known stale frame
+          # objects; never enumerate the bucket with ListObjects.
+          while IFS= read -r remote_key; do
+            [[ -n "$remote_key" ]] || continue
+            aws s3api delete-object \
+              --bucket "$BUCKET" \
+              --key "$remote_key" \
+              --endpoint-url "$R2_ENDPOINT" \
+              >/dev/null
+            echo "Deleted stale ${remote_key}"
+          done < "$DELETE_PLAN"
+
+      - name: Skip R2 write for duplicate scan
+        if: steps.plan.outputs.changed != 'true'
+        run: |
+          echo "Newest rendered scan is already present in the R2 manifest."
+          echo "No R2 PutObject operations were performed."
+
+      - name: Show incremental Level II summary
         run: |
           python - <<'PY'
           import json
@@ -270,74 +579,21 @@ jobs:
           site = "${{ matrix.site }}"
           namespace = "${{ needs.prepare-matrix.outputs.output_namespace }}"
           base = Path(f"radar/tilesets/{namespace}/{site}/LEVEL2/REF0")
-          manifest = base / "frames.json"
-          latest = base / "latest.json"
-          mobile = base / "mobile"
-          desktop = base / "desktop"
-          tiles = base / "tiles"
-
-          frames = json.loads(manifest.read_text(encoding="utf-8"))
-          latest_payload = json.loads(latest.read_text(encoding="utf-8"))
+          frames = json.loads((base / "frames.json").read_text(encoding="utf-8"))
+          latest = json.loads((base / "latest.json").read_text(encoding="utf-8"))
 
           print(f"site={site}")
           print(f"framesCount={len(frames.get('frames') or [])}")
-          print(f"latestValidTime={latest_payload.get('validTime')}")
-          print(f"jsonFiles={len(list(base.glob('*.json')))}")
-          print(f"tifFiles={len(list(base.glob('*.tif')))}")
-          print(f"mobileWebpFiles={len(list(mobile.glob('*.webp'))) if mobile.exists() else 0}")
-          print(f"desktopWebpFiles={len(list(desktop.glob('*.webp'))) if desktop.exists() else 0}")
-          print(f"tileFrameDirs={sum(1 for p in tiles.iterdir() if p.is_dir()) if tiles.exists() else 0}")
+          print(f"latestValidTime={latest.get('validTime')}")
+          print("r2Mode=incremental-webp-only")
+          print("r2RecursiveSync=false")
+          print("r2TilePublishing=false")
+          print("r2GeoTiffPublishing=false")
           PY
-      - name: Upload Level II radar to Cloudflare R2
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: auto
-          AWS_EC2_METADATA_DISABLED: true
+
+      - name: Remove non-published local heavy assets
+        if: always()
         shell: bash
         run: |
-          set -euo pipefail
-
-          R2_ENDPOINT="https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com"
-          SITE="${{ matrix.site }}"
-          NAMESPACE="${{ needs.prepare-matrix.outputs.output_namespace }}"
-          LOCAL_DIR="radar/tilesets/${NAMESPACE}/${SITE}/LEVEL2/REF0"
-          REMOTE_DIR="s3://${{ secrets.R2_BUCKET }}/radar/tilesets/${NAMESPACE}/${SITE}/LEVEL2/REF0"
-
-          # Upload heavy radar assets first. Keep manifests out of this sync so
-          # browsers never see a new frames.json before its tile PNGs exist.
-          aws s3 sync "$LOCAL_DIR" "$REMOTE_DIR" \
-            --exclude "*" \
-            --include "*.tif" \
-            --include "mobile/*.webp" \
-            --include "desktop/*.webp" \
-            --include "tiles/*/*/*/*.png" \
-            --delete \
-            --endpoint-url "$R2_ENDPOINT"
-
-          # Publish manifests last. These are the browser's source of truth.
-          aws s3 cp "$LOCAL_DIR/frames.json" "$REMOTE_DIR/frames.json" \
-            --cache-control "no-cache, no-store, must-revalidate" \
-            --content-type "application/json" \
-            --endpoint-url "$R2_ENDPOINT"
-
-          aws s3 cp "$LOCAL_DIR/latest.json" "$REMOTE_DIR/latest.json" \
-            --cache-control "no-cache, no-store, must-revalidate" \
-            --content-type "application/json" \
-            --endpoint-url "$R2_ENDPOINT"
-
-          aws s3 cp "$REMOTE_DIR/frames.json" "/tmp/${SITE}-frames.json" --endpoint-url "$R2_ENDPOINT"
-          aws s3 cp "$REMOTE_DIR/latest.json" "/tmp/${SITE}-latest.json" --endpoint-url "$R2_ENDPOINT"
-
-          python - <<'PY'
-          import json
-          from pathlib import Path
-
-          site = "${{ matrix.site }}"
-          frames = json.loads(Path(f"/tmp/{site}-frames.json").read_text(encoding="utf-8"))
-          latest = json.loads(Path(f"/tmp/{site}-latest.json").read_text(encoding="utf-8"))
-
-          print(f"Uploaded Level II site: {site}")
-          print(f"Uploaded frame count: {len(frames.get('frames') or [])}")
-          print(f"Uploaded latest validTime: {latest.get('validTime')}")
-          PY
+          rm -rf "radar/tilesets/${{ needs.prepare-matrix.outputs.output_namespace }}/${{ matrix.site }}/LEVEL2/REF0/tiles" || true
+          rm -f "radar/tilesets/${{ needs.prepare-matrix.outputs.output_namespace }}/${{ matrix.site }}/LEVEL2/REF0/"*.tif || true
