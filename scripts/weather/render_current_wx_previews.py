@@ -1302,6 +1302,7 @@ def main():
     ap=argparse.ArgumentParser()
     ap.add_argument('--output',default='weather-data/current-wx')
     ap.add_argument('--only',choices=['temperature','hazards','mrms','radar'])
+    ap.add_argument('--skip-temperature-tiles',action='store_true')
     args=ap.parse_args()
     out=Path(args.output); out.mkdir(parents=True,exist_ok=True)
     products={}
@@ -1316,7 +1317,8 @@ def main():
         if target=='temperature':
             temperature_obs=fetch_surface_obs()
             img=render_temperature(ensure_states(),temperature_obs); name='current-temp.webp'
-            render_temperature_tiles(ensure_states(),temperature_obs,out)
+            if not args.skip_temperature_tiles:
+                render_temperature_tiles(ensure_states(),temperature_obs,out)
         elif target=='hazards':
             img=render_hazards(ensure_states()); name='current-hazards.webp'
         elif target=='mrms':

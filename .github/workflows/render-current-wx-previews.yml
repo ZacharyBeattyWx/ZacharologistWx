@@ -33,7 +33,7 @@ jobs:
         run: python -m pip install -r scripts/weather/requirements.txt
 
       - name: Render previews
-        run: python scripts/weather/render_current_wx_previews.py --output weather-preview-build
+        run: python scripts/weather/render_current_wx_previews.py --output weather-preview-build --skip-temperature-tiles
 
       - uses: actions/setup-node@v4
         with:
