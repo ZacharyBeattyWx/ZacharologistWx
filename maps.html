@@ -6361,9 +6361,19 @@
             return 60;
           }
 
+          let rtmaStationPlotsEnabled = true;
+
           function updateRtmaStationBubble() {
             const source = map.getSource("rtma-stations");
             if (!source || !allRtmaStations?.features) return;
+
+            if (!rtmaStationPlotsEnabled) {
+              source.setData({
+                type: "FeatureCollection",
+                features: []
+              });
+              return;
+            }
 
             const zoom = map.getZoom();
             const spacing = rtmaStationBubbleRadius(zoom);
@@ -6594,6 +6604,94 @@
 
           // Populate the first decluttered station set immediately.
           scheduleRtmaStationBubble();
+
+          // Compact operator control for hiding/showing the complete station
+          // model layer without touching the RTMA raster.
+          const stationToggleButton = document.createElement("button");
+          stationToggleButton.type = "button";
+          stationToggleButton.className = "rtma-station-toggle";
+          stationToggleButton.setAttribute("aria-pressed", "true");
+          stationToggleButton.title = "Show or hide surface station plots";
+
+          Object.assign(stationToggleButton.style, {
+            position: "absolute",
+            left: "12px",
+            top: "12px",
+            zIndex: "12",
+            minHeight: "32px",
+            padding: "0 11px",
+            border: "1px solid rgba(245, 158, 11, 0.82)",
+            borderRadius: "7px",
+            background: "rgba(8, 18, 32, 0.92)",
+            color: "#f8fafc",
+            font: "700 11px/1 system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+            letterSpacing: "0.02em",
+            cursor: "pointer",
+            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.28)",
+            backdropFilter: "blur(5px)"
+          });
+
+          function syncStationToggleButton() {
+            stationToggleButton.textContent =
+              rtmaStationPlotsEnabled
+                ? "Station Plots: ON"
+                : "Station Plots: OFF";
+
+            stationToggleButton.setAttribute(
+              "aria-pressed",
+              rtmaStationPlotsEnabled ? "true" : "false"
+            );
+
+            stationToggleButton.style.borderColor =
+              rtmaStationPlotsEnabled
+                ? "rgba(245, 158, 11, 0.88)"
+                : "rgba(148, 163, 184, 0.58)";
+
+            stationToggleButton.style.color =
+              rtmaStationPlotsEnabled
+                ? "#f8fafc"
+                : "#94a3b8";
+          }
+
+          stationToggleButton.addEventListener("pointerdown", (event) => {
+            event.stopPropagation();
+          });
+
+          stationToggleButton.addEventListener("dblclick", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+          });
+
+          stationToggleButton.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+
+            rtmaStationPlotsEnabled = !rtmaStationPlotsEnabled;
+            syncStationToggleButton();
+
+            const stationSource = map.getSource("rtma-stations");
+
+            if (!rtmaStationPlotsEnabled) {
+              if (rtmaStationBubbleFrame) {
+                cancelAnimationFrame(rtmaStationBubbleFrame);
+                rtmaStationBubbleFrame = 0;
+              }
+
+              stationSource?.setData({
+                type: "FeatureCollection",
+                features: []
+              });
+            } else {
+              scheduleRtmaStationBubble();
+            }
+          });
+
+          syncStationToggleButton();
+          map.getContainer().appendChild(stationToggleButton);
+
+          map.once("remove", () => {
+            stationToggleButton.remove();
+          });
 
           if (stateResponse.ok) {
             map.addSource("rtma-state-borders", {
