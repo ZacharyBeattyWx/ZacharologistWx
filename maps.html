@@ -2230,7 +2230,17 @@
       .spc-card-foot { align-items: flex-start; flex-direction: column; }
     }
 
-  </style>
+  
+    /* v52: keep interactive station details above temperature analysis */
+    .interactive-weather-map .mapboxgl-popup {
+      z-index: 8 !important;
+    }
+
+    .interactive-weather-map .mapboxgl-control-container {
+      position: relative;
+      z-index: 9;
+    }
+</style>
   <link rel="preload" as="image" href="/weather-data/current-wx/current-hazards.webp" type="image/webp">
 </head>
 
@@ -3956,7 +3966,15 @@
           setTimeout(resolve, 0);
         });
       }
+      function tempMercatorYFast(lat) {
+        const clamped = Math.max(-85.05112878, Math.min(85.05112878, Number(lat)));
+        const radians = clamped * Math.PI / 180;
+        return Math.log(Math.tan(Math.PI / 4 + radians / 2));
+      }
 
+      function tempLatitudeFromMercatorYFast(y) {
+        return (2 * Math.atan(Math.exp(y)) - Math.PI / 2) * 180 / Math.PI;
+      }
       async function buildTemperatureAnalysisDataUrl(features, field = "temperature", options = {}) {
         const width = options.width || 280;
         const height = options.height || 150;
@@ -3975,13 +3993,20 @@
 
         const spatialIndex = buildAnalysisSpatialIndex(samples, 2.0);
         const [west, south, east, north] = TEMP_ANALYSIS_BOUNDS;
+        const useMercatorGrid = options.mercatorGrid === true;
+        const mercatorNorth = useMercatorGrid ? tempMercatorYFast(north) : 0;
+        const mercatorSouth = useMercatorGrid ? tempMercatorYFast(south) : 0;
 
         for (let y = 0; y < height; y++) {
-          const lat = north - ((y + 0.5) / height) * (north - south);
+          const rowFraction = (y + 0.5) / height;
+          const lat = useMercatorGrid
+            ? tempLatitudeFromMercatorYFast(
+                mercatorNorth + rowFraction * (mercatorSouth - mercatorNorth)
+              )
+            : north - rowFraction * (north - south);
 
           for (let x = 0; x < width; x++) {
             const lon = west + ((x + 0.5) / width) * (east - west);
-
             const analysis = analyzeTemperatureAt(lon, lat, spatialIndex);
             if (!analysis || !Number.isFinite(analysis.value)) continue;
 
@@ -4025,24 +4050,97 @@
       let temperatureStateBoundaryCache = null;
       let temperatureStateBoundaryPromise = null;
 
+      function simplifyTempBoundaryRingFast(ring, minDistance = 0.055) {
+        if (!Array.isArray(ring) || ring.length <= 4) return ring || [];
+
+        const simplified = [];
+        const thresholdSq = minDistance * minDistance;
+        let last = null;
+
+        for (let i = 0; i < ring.length; i++) {
+          const coord = ring[i];
+          if (!Array.isArray(coord) || coord.length < 2) continue;
+
+          const lon = Number(coord[0]);
+          const lat = Number(coord[1]);
+          if (!Number.isFinite(lon) || !Number.isFinite(lat)) continue;
+
+          const endpoint = i === 0 || i === ring.length - 1;
+          if (!last || endpoint) {
+            simplified.push([lon, lat]);
+            last = [lon, lat];
+            continue;
+          }
+
+          const dx = lon - last[0];
+          const dy = lat - last[1];
+          if ((dx * dx + dy * dy) >= thresholdSq) {
+            simplified.push([lon, lat]);
+            last = [lon, lat];
+          }
+        }
+
+        if (simplified.length >= 3) {
+          const first = simplified[0];
+          const lastPoint = simplified[simplified.length - 1];
+          if (first[0] !== lastPoint[0] || first[1] !== lastPoint[1]) {
+            simplified.push([...first]);
+          }
+        }
+
+        return simplified.length >= 4 ? simplified : ring;
+      }
+
+      function simplifyTempBoundaryGeometryFast(geometry) {
+        if (!geometry) return geometry;
+
+        if (geometry.type === "Polygon") {
+          return {
+            ...geometry,
+            coordinates: (geometry.coordinates || [])
+              .map((ring) => simplifyTempBoundaryRingFast(ring))
+              .filter((ring) => ring.length >= 4)
+          };
+        }
+
+        if (geometry.type === "MultiPolygon") {
+          return {
+            ...geometry,
+            coordinates: (geometry.coordinates || [])
+              .map((polygon) =>
+                (polygon || [])
+                  .map((ring) => simplifyTempBoundaryRingFast(ring))
+                  .filter((ring) => ring.length >= 4)
+              )
+              .filter((polygon) => polygon.length)
+          };
+        }
+
+        return geometry;
+      }
       async function fetchTemperatureStateBoundaries(options = {}) {
         if (temperatureStateBoundaryCache) return temperatureStateBoundaryCache;
         if (temperatureStateBoundaryPromise) return temperatureStateBoundaryPromise;
 
-        const timeoutMs = Math.max(1500, Number(options.timeoutMs) || 3500);
+        const timeoutMs = Math.max(2500, Number(options.timeoutMs) || 9000);
 
         temperatureStateBoundaryPromise = (async () => {
           const params = new URLSearchParams({
             where: "1=1",
             outFields: "name",
             returnGeometry: "true",
+            geometry: "-125.5,23.0,-66.0,50.5",
+            geometryType: "esriGeometryEnvelope",
+            inSR: "4326",
+            spatialRel: "esriSpatialRelIntersects",
             outSR: "4326",
+            geometryPrecision: "3",
+            maxAllowableOffset: "0.06",
             f: "geojson",
             _: String(Date.now())
           });
 
           const url = `https://mapservices.weather.noaa.gov/static/rest/services/nws_reference_maps/nws_reference_map/MapServer/3/query?${params.toString()}`;
-
           const controller = new AbortController();
           const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
 
@@ -4057,9 +4155,12 @@
             }
 
             const data = await response.json();
-            temperatureStateBoundaryCache = Array.isArray(data?.features)
-              ? data.features
-              : [];
+            const features = Array.isArray(data?.features) ? data.features : [];
+
+            temperatureStateBoundaryCache = features.map((feature) => ({
+              ...feature,
+              geometry: simplifyTempBoundaryGeometryFast(feature?.geometry)
+            }));
 
             return temperatureStateBoundaryCache;
           } catch (error) {
@@ -4078,7 +4179,6 @@
           temperatureStateBoundaryPromise = null;
         }
       }
-
       function drawStateBoundaryGeometry(ctx, map, geometry) {
         if (!geometry) return;
 
@@ -4123,8 +4223,8 @@
           drawStateBoundaryGeometry(ctx, map, feature?.geometry);
         }
 
-        ctx.strokeStyle = "rgba(14, 12, 10, 0.94)";
-        ctx.lineWidth = map.getZoom() < 4 ? 1.05 : 1.35;
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.98)";
+        ctx.lineWidth = map.getZoom() < 4 ? 1.65 : 2.10;
         ctx.lineJoin = "round";
         ctx.lineCap = "round";
         ctx.stroke();
@@ -4177,22 +4277,84 @@
         const { ctx, width, height } = resizeWeatherOverlayCanvas(canvas, container);
         ctx.clearRect(0, 0, width, height);
 
-        const nw = map.project([TEMP_ANALYSIS_BOUNDS[0], TEMP_ANALYSIS_BOUNDS[3]]);
-        const se = map.project([TEMP_ANALYSIS_BOUNDS[2], TEMP_ANALYSIS_BOUNDS[1]]);
-
-        const drawX = nw.x;
-        const drawY = nw.y;
-        const drawWidth = se.x - nw.x;
-        const drawHeight = se.y - nw.y;
+        const [west, south, east, north] = TEMP_ANALYSIS_BOUNDS;
+        const sourceWidth = Math.max(1, image.naturalWidth || image.width || 1);
+        const sourceHeight = Math.max(1, image.naturalHeight || image.height || 1);
 
         ctx.save();
         ctx.globalAlpha = opacity;
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = "high";
-        ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight);
+
+        /*
+         * The analysis image is built on an evenly spaced lon/lat grid.
+         * Mapbox displays the map in Web Mercator, where latitude spacing is
+         * nonlinear. Stretching the entire image between only NW/SE corners
+         * makes the field drift away from state lines and station values.
+         *
+         * Warp it one horizontal source row at a time. Each row is placed at
+         * its actual projected latitude, while longitude remains linear in
+         * Mercator. This preserves the original full analysis coverage but
+         * locks the color field to the same map projection used by the
+         * station labels, state outlines, alerts, and radar.
+         */
+        for (let sy = 0; sy < sourceHeight; sy++) {
+          const latTop = north - (sy / sourceHeight) * (north - south);
+          const latBottom = north - ((sy + 1) / sourceHeight) * (north - south);
+
+          const nw = map.project([west, latTop]);
+          const ne = map.project([east, latTop]);
+          const sw = map.project([west, latBottom]);
+
+          const drawX = nw.x;
+          const drawY = nw.y;
+          const drawWidth = ne.x - nw.x;
+          const drawHeight = Math.max(0.75, sw.y - nw.y + 0.35);
+
+          ctx.drawImage(
+            image,
+            0,
+            sy,
+            sourceWidth,
+            1,
+            drawX,
+            drawY,
+            drawWidth,
+            drawHeight
+          );
+        }
+
         ctx.restore();
       }
+      function drawFastMercatorTemperatureImage(
+        canvas,
+        container,
+        map,
+        image,
+        opacity = 0.94
+      ) {
+        if (!canvas || !container || !map || !image) return;
 
+        const { ctx, width, height } = resizeWeatherOverlayCanvas(canvas, container);
+        ctx.clearRect(0, 0, width, height);
+
+        const [west, south, east, north] = TEMP_ANALYSIS_BOUNDS;
+        const nw = map.project([west, north]);
+        const se = map.project([east, south]);
+
+        ctx.save();
+        ctx.globalAlpha = opacity;
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(
+          image,
+          nw.x,
+          nw.y,
+          se.x - nw.x,
+          se.y - nw.y
+        );
+        ctx.restore();
+      }
       function prioritizedObservationCandidates(features, map, field, width, height) {
         return features
           .map((feature) => {
@@ -4344,6 +4506,142 @@
         );
       }
 
+      const TEMP_STATE_REFERENCE_LABELS = [
+        ["Washington", -120.7, 47.35], ["Oregon", -120.6, 44.05],
+        ["California", -119.7, 37.15], ["Nevada", -116.9, 39.3],
+        ["Idaho", -114.6, 44.25], ["Montana", -110.6, 46.9],
+        ["Wyoming", -107.55, 43.0], ["Utah", -111.6, 39.3],
+        ["Arizona", -111.9, 34.25], ["New Mexico", -106.0, 34.45],
+        ["Colorado", -105.55, 39.0], ["North Dakota", -100.45, 47.5],
+        ["South Dakota", -100.1, 44.45], ["Nebraska", -99.9, 41.55],
+        ["Kansas", -98.4, 38.55], ["Oklahoma", -97.45, 35.55],
+        ["Texas", -99.2, 31.1], ["Minnesota", -94.3, 46.0],
+        ["Iowa", -93.5, 42.0], ["Missouri", -92.5, 38.5],
+        ["Arkansas", -92.35, 34.9], ["Louisiana", -92.25, 31.05],
+        ["Wisconsin", -89.9, 44.6], ["Illinois", -89.2, 40.0],
+        ["Michigan", -84.8, 44.35], ["Indiana", -86.15, 40.0],
+        ["Ohio", -82.8, 40.25], ["Kentucky", -85.3, 37.65],
+        ["Tennessee", -86.35, 35.85], ["Mississippi", -89.7, 32.75],
+        ["Alabama", -86.85, 32.8], ["Georgia", -83.45, 32.75],
+        ["Florida", -82.1, 28.2], ["South Carolina", -80.9, 33.8],
+        ["North Carolina", -79.5, 35.45], ["Virginia", -78.6, 37.55],
+        ["West Virginia", -80.6, 38.65], ["Pennsylvania", -77.7, 40.9],
+        ["New York", -75.35, 43.0], ["Vermont", -72.7, 44.05],
+        ["New Hampshire", -71.6, 43.75], ["Maine", -69.1, 45.2],
+        ["Massachusetts", -71.9, 42.25], ["Connecticut", -72.75, 41.6],
+        ["Rhode Island", -71.55, 41.7], ["New Jersey", -74.55, 40.15],
+        ["Delaware", -75.5, 39.0], ["Maryland", -76.7, 39.05]
+      ];
+
+      const TEMP_CITY_REFERENCE_LABELS = [
+        ["Seattle", -122.33, 47.61], ["Portland", -122.68, 45.52],
+        ["San Francisco", -122.42, 37.77], ["Los Angeles", -118.24, 34.05],
+        ["San Diego", -117.16, 32.72], ["Las Vegas", -115.14, 36.17],
+        ["Phoenix", -112.07, 33.45], ["Salt Lake City", -111.89, 40.76],
+        ["Boise", -116.20, 43.62], ["Denver", -104.99, 39.74],
+        ["Albuquerque", -106.65, 35.08], ["Dallas", -96.80, 32.78],
+        ["Houston", -95.37, 29.76], ["San Antonio", -98.49, 29.42],
+        ["Austin", -97.74, 30.27], ["Oklahoma City", -97.52, 35.47],
+        ["Kansas City", -94.58, 39.10], ["Omaha", -95.94, 41.26],
+        ["Minneapolis", -93.27, 44.98], ["St. Louis", -90.20, 38.63],
+        ["Chicago", -87.63, 41.88], ["Detroit", -83.05, 42.33],
+        ["Indianapolis", -86.16, 39.77], ["Cleveland", -81.69, 41.50],
+        ["Nashville", -86.78, 36.16], ["Memphis", -90.05, 35.15],
+        ["New Orleans", -90.07, 29.95], ["Birmingham", -86.80, 33.52],
+        ["Atlanta", -84.39, 33.75], ["Jacksonville", -81.66, 30.33],
+        ["Tampa", -82.46, 27.95], ["Miami", -80.19, 25.76],
+        ["Charlotte", -80.84, 35.23], ["Raleigh", -78.64, 35.78],
+        ["Richmond", -77.44, 37.54], ["Washington", -77.04, 38.91],
+        ["Baltimore", -76.61, 39.29], ["Philadelphia", -75.17, 39.95],
+        ["Pittsburgh", -80.00, 40.44], ["New York", -74.01, 40.71],
+        ["Boston", -71.06, 42.36], ["Buffalo", -78.88, 42.89]
+      ];
+
+      function drawTemperatureLocationLabels(canvas, container, map) {
+        if (!canvas || !container || !map) return;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+
+        const zoom = map.getZoom();
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+        const occupied = [];
+
+        function canPlace(x, y, text, fontSize, padding = 5) {
+          const w = Math.max(28, text.length * fontSize * 0.56) + padding * 2;
+          const h = fontSize + padding * 2;
+          const box = {
+            left: x - w / 2,
+            right: x + w / 2,
+            top: y - h / 2,
+            bottom: y + h / 2
+          };
+
+          if (box.right < 0 || box.left > width || box.bottom < 0 || box.top > height) return false;
+
+          for (const other of occupied) {
+            if (!(
+              box.right < other.left ||
+              box.left > other.right ||
+              box.bottom < other.top ||
+              box.top > other.bottom
+            )) {
+              return false;
+            }
+          }
+
+          occupied.push(box);
+          return true;
+        }
+
+        function drawLabel(text, lon, lat, options = {}) {
+          const point = map.project([lon, lat]);
+          const fontSize = options.fontSize || 11;
+          if (!canPlace(point.x, point.y, text, fontSize, options.padding || 5)) return;
+
+          ctx.save();
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.font = `${options.weight || 800} ${fontSize}px Arial, Helvetica, sans-serif`;
+          ctx.lineJoin = "round";
+          ctx.strokeStyle = options.halo || "rgba(5,10,18,0.94)";
+          ctx.lineWidth = options.haloWidth || 3.5;
+          ctx.globalAlpha = options.alpha || 0.94;
+          ctx.strokeText(text, point.x, point.y);
+          ctx.fillStyle = options.color || "#f3f6fb";
+          ctx.fillText(text, point.x, point.y);
+          ctx.restore();
+        }
+
+        const stateFont = zoom >= 5.2 ? 12 : zoom >= 4.0 ? 11 : 10;
+
+        for (const [name, lon, lat] of TEMP_STATE_REFERENCE_LABELS) {
+          drawLabel(name, lon, lat, {
+            fontSize: stateFont,
+            weight: 800,
+            color: "rgba(244,247,252,0.92)",
+            halo: "rgba(15,20,28,0.92)",
+            haloWidth: 3.2,
+            alpha: 0.92,
+            padding: 7
+          });
+        }
+
+        if (zoom >= 4.1) {
+          const cityFont = zoom >= 6 ? 11 : 10;
+          for (const [name, lon, lat] of TEMP_CITY_REFERENCE_LABELS) {
+            drawLabel(name, lon, lat, {
+              fontSize: cityFont,
+              weight: 700,
+              color: "rgba(232,238,247,0.90)",
+              halo: "rgba(8,12,18,0.94)",
+              haloWidth: 3,
+              alpha: 0.90,
+              padding: 5
+            });
+          }
+        }
+      }
       function mapSupportsStyleSlot(map, slotName) {
         try {
           const slots = typeof map.getSlots === "function" ? map.getSlots() : [];
@@ -4418,6 +4716,9 @@
             }
           },
           {
+            // Keep the color field inside Mapbox but underneath location data.
+            // Standard: bottom = above land/water, below roads and labels.
+            // Classic/custom styles: insert before the first line/symbol.
             // "middle" is the Mapbox Standard slot intended for weather/data
             // overlays beneath labels/POIs but above the base geography.
             slot: "middle",
@@ -4971,6 +5272,13 @@
           rasterFunction: "rft_72hr"
         });
 
+        const mosaicRule = JSON.stringify({
+          mosaicMethod: "esriMosaicNone",
+          where: "idp_subset = 'conus_QPE_72H'",
+          ascending: true,
+          mosaicOperation: "MT_FIRST"
+        });
+
         const params = new URLSearchParams({
           bbox: NDFD_WMS_BBOX.join(","),
           bboxSR: "3857",
@@ -4980,6 +5288,7 @@
           transparent: "true",
           noData: "-3",
           noDataInterpretation: "esriNoDataMatchAny",
+            mosaicRule,
           renderingRule,
           f: "image",
           _: String(Date.now())
@@ -5598,14 +5907,45 @@
       async function openTemperatureInteractiveMap() {
         destroyInteractiveWeatherMap();
 
-        interactiveWeatherTitle.textContent = "Surface Temperatures";
-        interactiveWeatherSubtitle.textContent = "Opening live surface-temperature analysis…";
+        interactiveWeatherTitle.textContent = "RTMA 2m Temperature";
+        interactiveWeatherSubtitle.textContent =
+          "Opening NOAA/NCEP RTMA analysis and surface station plots…";
+
+        try {
+          setInteractiveToolbar([], () => {});
+        } catch (_error) {}
+
+        let manifest;
+
+        try {
+          const response = await fetch(
+            `/weather-data/current-wx/temp-tiles/manifest.json?_=${Date.now()}`,
+            { cache: "no-store" }
+          );
+
+          if (!response.ok) {
+            throw new Error(
+              `temperature tile manifest HTTP ${response.status}`
+            );
+          }
+
+          manifest = await response.json();
+        } catch (error) {
+          console.warn("RTMA tile manifest unavailable", error);
+
+          interactiveWeatherTitle.textContent = "Surface Temperatures";
+          interactiveWeatherSubtitle.textContent =
+            "RTMA tiles are not available yet. Regenerate the temperature product first.";
+          return;
+        }
+
+        mapboxgl.accessToken = MAPBOX_TOKEN;
 
         const map = new mapboxgl.Map({
           container: interactiveWeatherMapEl,
           style: MAPBOX_STYLE,
           center: [-96.5, 38.5],
-          zoom: 3.2,
+          zoom: 3.3,
           bearing: 0,
           pitch: 0,
           projection: "mercator",
@@ -5614,222 +5954,693 @@
           pitchWithRotate: false
         });
 
+        interactiveWeatherMap = map;
+
         try {
           map.touchZoomRotate?.disableRotation?.();
         } catch (_error) {}
 
-        interactiveWeatherMap = map;
-        map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
-
-        const analysisCanvas = createWeatherOverlayCanvas(
-          interactiveWeatherMapEl,
-          "interactive-temp-analysis-overlay"
-        );
-        const valueCanvas = createWeatherOverlayCanvas(
-          interactiveWeatherMapEl,
-          "interactive-temp-value-overlay"
+        map.addControl(
+          new mapboxgl.NavigationControl({ showCompass: false }),
+          "top-right"
         );
 
-        const interactiveLegend = document.createElement("div");
-        interactiveLegend.className = "interactive-temp-legend";
-        interactiveLegend.setAttribute("aria-hidden", "true");
-        interactiveLegend.style.display = "none";
-        interactiveWeatherMapEl.appendChild(interactiveLegend);
+        const revision = encodeURIComponent(
+          String(manifest.revision || Date.now())
+        );
 
-        analysisCanvas.style.display = "none";
-        valueCanvas.style.display = "none";
+        const tileTemplate =
+          `${manifest.tiles}?v=${revision}`;
+        const stationUrl =
+          `${manifest.stations}?v=${revision}`;
+        const stateUrl =
+          `${manifest.states}?v=${revision}`;
 
-        let baseFeatures = [];
-        let features = [];
-        let stateBoundaries = [];
-        let activeField = "temperature";
-        let analysisImage = null;
-        let drawQueued = false;
-        let analysisGeneration = 0;
-        let detailGeneration = 0;
-        let loadedDetailLayer = 10;
-        let cachedFallbackOverlay = null;
-        let liveAnalysisReady = false;
+        function registerWindBarbImages() {
+          for (let speed = 0; speed <= 150; speed += 5) {
+            const id = `zwx-wind-${speed}`;
+            if (map.hasImage(id)) continue;
 
-        function showLiveTemperatureLayers() {
-          if (liveAnalysisReady) return;
-          liveAnalysisReady = true;
+            const size = 88;
+            const canvas = document.createElement("canvas");
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext("2d");
 
-          analysisCanvas.style.display = "block";
-          valueCanvas.style.display = "block";
-          interactiveLegend.style.display = "";
+            ctx.clearRect(0, 0, size, size);
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
 
-          if (cachedFallbackOverlay) {
-            cachedFallbackOverlay.cleanup();
-            cachedFallbackOverlay = null;
-          }
-        }
+            const cx = 44;
+            const cy = 52;
+            const shaftTop = 10;
 
-        function showCachedTemperatureFallback() {
-          if (cachedFallbackOverlay) return;
+            function drawBarb(stroke, fill, lineWidth, drawStationFill = false) {
+              ctx.strokeStyle = stroke;
+              ctx.fillStyle = fill;
+              ctx.lineWidth = lineWidth;
 
-          cachedFallbackOverlay = createInteractiveRasterOverlay(
-            map,
-            interactiveWeatherMapEl,
-            {
-              url: `/weather-data/current-wx/current-temp.webp?_=${Date.now()}`,
-              bounds: [[-130.0, 20.0], [-64.0, 53.5]],
-              opacity: 1,
-              alt: "Cached current surface temperature analysis"
+              // Station circle. Fill the core on the foreground pass so the
+              // wind barb has a strong, unmistakable anchor point.
+              ctx.beginPath();
+              ctx.arc(cx, cy, 4.7, 0, Math.PI * 2);
+              if (drawStationFill) ctx.fill();
+              ctx.stroke();
+
+              if (speed < 3) return;
+
+              // Longer wind shaft than V70.
+              ctx.beginPath();
+              ctx.moveTo(cx, cy - 5);
+              ctx.lineTo(cx, shaftTop);
+              ctx.stroke();
+
+              let remaining = speed;
+              let y = shaftTop + 5;
+
+              while (remaining >= 50) {
+                ctx.beginPath();
+                ctx.moveTo(cx, y);
+                ctx.lineTo(cx + 18, y + 8);
+                ctx.lineTo(cx, y + 14);
+                ctx.closePath();
+                ctx.fill();
+                remaining -= 50;
+                y += 15;
+              }
+
+              while (remaining >= 10) {
+                ctx.beginPath();
+                ctx.moveTo(cx, y);
+                ctx.lineTo(cx + 17, y + 8);
+                ctx.stroke();
+                remaining -= 10;
+                y += 9;
+              }
+
+              if (remaining >= 5) {
+                ctx.beginPath();
+                ctx.moveTo(cx, y);
+                ctx.lineTo(cx + 10, y + 5);
+                ctx.stroke();
+              }
             }
-          );
-        }
 
-        function scheduleDraw() {
-          if (drawQueued || !analysisImage) return;
+            // Strong dark outline first, then a bright white barb on top.
+            // This is intentionally more aggressive than V70 so the barb
+            // remains obvious over every RTMA color and dense station text.
+            drawBarb("rgba(0,0,0,0.95)", "rgba(0,0,0,0.95)", 8.0, false);
+            drawBarb("#ffffff", "#ffffff", 3.6, true);
 
-          drawQueued = true;
-          requestAnimationFrame(() => {
-            drawQueued = false;
-            drawTemperatureCanvasProduct({
-              map,
-              container: interactiveWeatherMapEl,
-              analysisCanvas,
-              valueCanvas,
-              analysisImage,
-              features,
-              boundaries: stateBoundaries,
-              field: activeField,
-              preview: false
-            });
-          });
-        }
-
-        async function updateAnalysis(field) {
-          activeField = field;
-          const generation = ++analysisGeneration;
-          const isDew = field === "dewpoint";
-
-          interactiveWeatherTitle.textContent = isDew
-            ? "Surface Dew Points"
-            : "Surface Temperatures";
-
-          interactiveWeatherSubtitle.textContent = isDew
-            ? "Canvas-rendered dew-point analysis · click a station for details."
-            : "Canvas-rendered temperature analysis · click a station for details.";
-
-          const analysisUrl = await buildTemperatureAnalysisDataUrl(
-            features,
-            field,
-            { width: 360, height: 196, alpha: 255, rowsPerYield: 12 }
-          );
-
-          if (!analysisUrl) return;
-
-          const image = await loadOverlayImage(analysisUrl);
-          if (generation !== analysisGeneration) return;
-
-          analysisImage = image;
-          showLiveTemperatureLayers();
-          scheduleDraw();
-        }
-
-        function updateInteractiveHitSource() {
-          const hitSource = map.getSource("interactive-temp-hit-source");
-          if (!hitSource) return;
-
-          hitSource.setData({
-            type: "FeatureCollection",
-            features: features.filter((feature) => {
-              const coords = feature?.geometry?.coordinates;
-              return Array.isArray(coords) && coords.length >= 2;
-            })
-          });
-        }
-
-        async function refreshInteractiveObservationDensity() {
-          const targetLayer = surfaceObservationLayerForZoom(map.getZoom());
-
-          if (targetLayer === 10) {
-            if (loadedDetailLayer !== 10 || features !== baseFeatures) {
-              features = baseFeatures;
-              loadedDetailLayer = 10;
-              updateInteractiveHitSource();
-              await updateAnalysis(activeField);
-            }
-            return;
-          }
-
-          const generation = ++detailGeneration;
-          const bounds = paddedMapBounds(map, 0.14);
-
-          try {
-            const detailFeatures = await fetchSurfaceObservationLayer(
-              targetLayer,
-              bounds,
-              { timeoutMs: 4500 }
-            );
-
-            if (generation !== detailGeneration) return;
-
-            features = mergeSurfaceObservationSets(baseFeatures, detailFeatures);
-            loadedDetailLayer = targetLayer;
-            updateInteractiveHitSource();
-            await updateAnalysis(activeField);
-          } catch (error) {
-            if (generation !== detailGeneration) return;
-
-            // Keep the fast national layer rather than turning a NOAA detail
-            // timeout into a broken interactive map.
-            console.info(
-              `Regional surface observation detail unavailable for layer ${targetLayer}; keeping national observations.`,
-              error?.message || error
+            map.addImage(
+              id,
+              ctx.getImageData(0, 0, size, size),
+              { pixelRatio: 2 }
             );
           }
         }
+        function addStationModelBand(sourceLayer, minzoom, maxzoom) {
+          const suffix = String(sourceLayer);
 
-        map.on("load", async () => {
-          showCachedTemperatureFallback();
+          const filter = [
+            "==",
+            ["get", "sourceLayer"],
+            sourceLayer
+          ];
 
-          map.fitBounds([[-125.5, 23.5], [-66.0, 50.2]], {
-            padding: 30,
-            duration: 0,
-            maxZoom: 4.6
+          map.addLayer({
+            id: `rtma-station-wind-${suffix}`,
+            type: "symbol",
+            source: "rtma-stations",
+            minzoom,
+            maxzoom,
+            filter,
+            layout: {
+              "icon-image": [
+                "concat",
+                "zwx-wind-",
+                ["to-string", ["get", "windBin"]]
+              ],
+              "icon-size": [
+                "interpolate", ["linear"], ["zoom"],
+                3, 0.72,
+                5, 0.80,
+                7, 0.90,
+                10, 1.02
+              ],
+              "icon-rotate": [
+                "coalesce",
+                ["get", "winddir"],
+                0
+              ],
+              "icon-rotation-alignment": "map",
+              "icon-allow-overlap": false,
+              "icon-ignore-placement": false,
+              "symbol-sort-key": ["get", "priority"]
+            }
           });
 
-          interactiveWeatherSubtitle.textContent =
-            "Cached analysis shown · loading live surface observations…";
-
-          try {
-
-            // Required first pass: observations only.
-            // State-boundary geometry is optional cosmetic polish and must
-            // never prevent the live temperature analysis from opening.
-            baseFeatures = await fetchSurfaceTemperatureStations({ timeoutMs: 12000 });
-            features = baseFeatures;
-            stateBoundaries = [];
-            loadedDetailLayer = 10;
-
-            hideQuickLookMapLabels(map);
-
-            const hitGeojson = {
-            type: "FeatureCollection",
-            features: features.filter((feature) => {
-              const coords = feature?.geometry?.coordinates;
-              return Array.isArray(coords) && coords.length >= 2;
-            })
+          const commonLayout = {
+            "text-size": [
+              "interpolate", ["linear"], ["zoom"],
+              3, 8.4,
+              5, 9.2,
+              7, 10.0,
+              10, 11.3
+            ],
+            "text-font": [
+              "Open Sans Bold",
+              "Arial Unicode MS Bold"
+            ],
+            "text-allow-overlap": true,
+            "text-ignore-placement": true
           };
 
-          map.addSource("interactive-temp-hit-source", {
-            type: "geojson",
-            data: hitGeojson
+          map.addLayer({
+            id: `rtma-station-temp-${suffix}`,
+            type: "symbol",
+            source: "rtma-stations",
+            minzoom,
+            maxzoom,
+            filter,
+            layout: {
+              ...commonLayout,
+              "text-field": ["get", "tempLabel"],
+              "text-offset": [-0.72, -0.58],
+              "text-anchor": "right"
+            },
+            paint: {
+              "text-color": "#ff5168",
+              "text-halo-color": "rgba(5,10,15,.88)",
+              "text-halo-width": 1.2
+            }
           });
 
-          // Mapbox is now only used for interaction / hit testing here.
           map.addLayer({
-            id: "interactive-temp-hit-layer",
+            id: `rtma-station-dew-${suffix}`,
+            type: "symbol",
+            source: "rtma-stations",
+            minzoom,
+            maxzoom,
+            filter: [
+              "all",
+              filter,
+              ["!=", ["get", "dewLabel"], ""]
+            ],
+            layout: {
+              ...commonLayout,
+              "text-field": ["get", "dewLabel"],
+              "text-offset": [-0.72, 0.58],
+              "text-anchor": "right"
+            },
+            paint: {
+              "text-color": "#7ee787",
+              "text-halo-color": "rgba(5,10,15,.88)",
+              "text-halo-width": 1.2
+            }
+          });
+
+          map.addLayer({
+            id: `rtma-station-pressure-${suffix}`,
+            type: "symbol",
+            source: "rtma-stations",
+            minzoom,
+            maxzoom,
+            filter: [
+              "all",
+              filter,
+              ["!=", ["get", "pressureCode"], ""]
+            ],
+            layout: {
+              ...commonLayout,
+              "text-field": ["get", "pressureCode"],
+              "text-offset": [0.72, -0.58],
+              "text-anchor": "left"
+            },
+            paint: {
+              "text-color": "#65d1ff",
+              "text-halo-color": "rgba(5,10,15,.88)",
+              "text-halo-width": 1.2
+            }
+          });
+
+          map.addLayer({
+            id: `rtma-station-id-${suffix}`,
+            type: "symbol",
+            source: "rtma-stations",
+            minzoom: Math.max(minzoom, 5.2),
+            maxzoom,
+            filter,
+            layout: {
+              ...commonLayout,
+              "text-field": ["get", "stationname"],
+              "text-size": [
+                "interpolate", ["linear"], ["zoom"],
+                4.8, 6.3,
+                7, 7.1,
+                10, 8.5
+              ],
+              "text-offset": [0.72, 0.61],
+              "text-anchor": "left"
+            },
+            paint: {
+              "text-color": "#d7e0ea",
+              "text-halo-color": "rgba(5,10,15,.88)",
+              "text-halo-width": 1
+            }
+          });
+        }
+
+        const legend = document.createElement("div");
+        legend.setAttribute("aria-hidden", "true");
+        legend.style.position = "absolute";
+        legend.style.right = "12px";
+        legend.style.top = "90px";
+        legend.style.bottom = "60px";
+        legend.style.width = "34px";
+        legend.style.zIndex = "12";
+        legend.style.display = "none";
+        legend.style.pointerEvents = "none";
+
+        legend.innerHTML = `
+          <div style="
+            position:absolute;
+            left:5px;
+            top:0;
+            bottom:20px;
+            width:15px;
+            border:1px solid rgba(255,255,255,.45);
+            background:linear-gradient(to top,
+              rgb(241,207,204) 0%,
+              rgb(153,78,176) 19%,
+              rgb(223,237,242) 35%,
+              rgb(26,83,178) 45%,
+              rgb(150,175,139) 52%,
+              rgb(238,222,155) 58%,
+              rgb(161,98,70) 68%,
+              rgb(104,10,11) 74%,
+              rgb(157,114,108) 84%,
+              rgb(87,86,85) 100%);
+          "></div>
+          <div style="
+            position:absolute;
+            right:0;
+            top:0;
+            bottom:20px;
+            width:13px;
+            display:flex;
+            flex-direction:column;
+            justify-content:space-between;
+            font-size:9px;
+            font-weight:800;
+            color:white;
+            text-shadow:0 1px 2px #000;
+          ">
+            <span>115</span>
+            <span>95</span>
+            <span>70</span>
+            <span>40</span>
+            <span>0</span>
+            <span>-40</span>
+          </div>
+          <div style="
+            position:absolute;
+            left:5px;
+            bottom:0;
+            color:white;
+            font-size:10px;
+            font-weight:900;
+          ">°F</div>
+        `;
+
+        interactiveWeatherMapEl.appendChild(legend);
+
+        map.on("load", async () => {
+          const bounds = manifest.bounds || [-138.4, 19.2, -59.0, 54.4];
+
+          map.fitBounds(
+            [
+              [bounds[0], bounds[1]],
+              [bounds[2], bounds[3]]
+            ],
+            {
+              padding: 26,
+              duration: 0,
+              maxZoom: 4.5
+            }
+          );
+
+          map.addSource("rtma-temperature", {
+            type: "raster",
+            tiles: [tileTemplate],
+            tileSize: Number(manifest.tileSize) || 256,
+            minzoom: Number(manifest.minzoom) || 3,
+            maxzoom: Number(manifest.maxzoom) || 7,
+            bounds
+          });
+
+          map.addLayer({
+            id: "rtma-temperature",
+            type: "raster",
+            source: "rtma-temperature",
+            paint: {
+              "raster-opacity": 0.90,
+              "raster-fade-duration": 0,
+              "raster-resampling": "linear",
+              "raster-emissive-strength": 1
+            }
+          });
+
+          const [stationResponse, stateResponse] = await Promise.all([
+            fetch(stationUrl, { cache: "force-cache" }),
+            fetch(stateUrl, { cache: "force-cache" })
+          ]);
+
+          if (!stationResponse.ok) {
+            throw new Error(
+              `station GeoJSON HTTP ${stationResponse.status}`
+            );
+          }
+
+          const stations = await stationResponse.json();
+
+          // Keep the full station collection in memory, but feed Mapbox a
+          // screen-space-decluttered subset. This gives every complete station
+          // model a uniform "bubble" instead of allowing nearby models to pile
+          // on top of one another.
+          const allRtmaStations = stations;
+
+          map.addSource("rtma-stations", {
+            type: "geojson",
+            data: {
+              type: "FeatureCollection",
+              features: []
+            }
+          });
+
+          function rtmaStationBubbleRadius(zoom) {
+            // WeatherFront-like spacing: still uniform, but more generous
+            // with station count at CONUS/regional scales.
+            if (zoom < 3.4) return 58;
+            if (zoom < 4.2) return 54;
+            if (zoom < 5.0) return 50;
+            if (zoom < 6.0) return 46;
+            if (zoom < 7.0) return 43;
+            if (zoom < 8.0) return 40;
+            return 37;
+          }
+
+          function rtmaMaxStationLayerForZoom(zoom) {
+            // Let the second NOAA scale band participate at the normal CONUS
+            // fit zoom. The screen-space bubble still controls actual density.
+            if (zoom < 3.25) return 10;
+            if (zoom < 4.25) return 20;
+            if (zoom < 5.0) return 30;
+            if (zoom < 5.75) return 40;
+            if (zoom < 6.6) return 50;
+            return 60;
+          }
+
+          function updateRtmaStationBubble() {
+            const source = map.getSource("rtma-stations");
+            if (!source || !allRtmaStations?.features) return;
+
+            const zoom = map.getZoom();
+            const spacing = rtmaStationBubbleRadius(zoom);
+            const width = map.getContainer().clientWidth;
+            const height = map.getContainer().clientHeight;
+            const edgePad = spacing * 1.5;
+
+            /*
+             * Use the ENTIRE NOAA station pool at every zoom.
+             *
+             * The earlier source-layer gate was the real reason states such
+             * as Pennsylvania could look empty: many perfectly valid stations
+             * live in NOAA's finer scale bands and were excluded before the
+             * decluttering algorithm ever saw them.
+             *
+             * The screen-space spacing algorithm already controls how many
+             * stations can be displayed, so there is no need to pre-discard
+             * finer-band stations. Source layer remains a weak tie-breaker.
+             */
+            const candidates = allRtmaStations.features
+              .map((feature) => {
+                const coordinates = feature.geometry?.coordinates;
+                if (!Array.isArray(coordinates) || coordinates.length < 2) {
+                  return null;
+                }
+
+                const point = map.project(coordinates);
+
+                if (
+                  point.x < -edgePad ||
+                  point.y < -edgePad ||
+                  point.x > width + edgePad ||
+                  point.y > height + edgePad
+                ) {
+                  return null;
+                }
+
+                return {
+                  feature,
+                  point,
+                  layer: Number(feature.properties?.sourceLayer || 60),
+                  priority: Number(feature.properties?.priority || 999),
+                  timeobs: Number(feature.properties?.timeobs || 0),
+                  minDistanceSq: Infinity,
+                  selected: false
+                };
+              })
+              .filter(Boolean);
+
+            if (!candidates.length) {
+              source.setData({
+                type: "FeatureCollection",
+                features: []
+              });
+              return;
+            }
+
+            /*
+             * Adaptive farthest-point decluttering.
+             *
+             * The fixed staggered lattice could let stations just across a
+             * state line win a cell and leave a visible hole inside the
+             * neighboring state. This pass uses the actual station locations
+             * and repeatedly selects the station in the largest remaining
+             * screen-space gap.
+             */
+
+            const accepted = [];
+            const minSpacing = spacing * 0.88;
+            const minSpacingSq = minSpacing * minSpacing;
+
+            const centerX = width / 2;
+            const centerY = height / 2;
+
+            let seed = null;
+            let seedScore = Infinity;
+
+            for (const candidate of candidates) {
+              const dx = candidate.point.x - centerX;
+              const dy = candidate.point.y - centerY;
+              const centerDistance = Math.sqrt(dx * dx + dy * dy);
+
+              const layerPenalty =
+                Math.max(0, candidate.layer - 10) * 0.35;
+              const priorityPenalty =
+                Math.min(999, Math.max(0, candidate.priority)) * 0.01;
+
+              const score =
+                centerDistance +
+                layerPenalty +
+                priorityPenalty;
+
+              if (score < seedScore) {
+                seedScore = score;
+                seed = candidate;
+              }
+            }
+
+            function accept(candidate) {
+              candidate.selected = true;
+              accepted.push(candidate);
+
+              for (const other of candidates) {
+                if (other.selected) continue;
+
+                const dx = other.point.x - candidate.point.x;
+                const dy = other.point.y - candidate.point.y;
+                const distanceSq = dx * dx + dy * dy;
+
+                if (distanceSq < other.minDistanceSq) {
+                  other.minDistanceSq = distanceSq;
+                }
+              }
+            }
+
+            accept(seed);
+
+            while (true) {
+              let best = null;
+              let bestCoverageScore = -Infinity;
+
+              for (const candidate of candidates) {
+                if (candidate.selected) continue;
+                if (candidate.minDistanceSq < minSpacingSq) continue;
+
+                const distance = Math.sqrt(candidate.minDistanceSq);
+
+                const layerPenalty =
+                  Math.max(0, candidate.layer - 10) * 0.22;
+                const priorityPenalty =
+                  Math.min(999, Math.max(0, candidate.priority)) * 0.004;
+
+                const score =
+                  distance -
+                  layerPenalty -
+                  priorityPenalty;
+
+                if (
+                  score > bestCoverageScore ||
+                  (
+                    Math.abs(score - bestCoverageScore) < 0.001 &&
+                    best &&
+                    candidate.timeobs > best.timeobs
+                  )
+                ) {
+                  bestCoverageScore = score;
+                  best = candidate;
+                }
+              }
+
+              if (!best) break;
+              accept(best);
+            }
+
+            /*
+             * Gentle hole-fill pass.
+             * Adds only stations that remain well separated after the main
+             * coverage pass, so sparse pockets fill without recreating
+             * dense clusters.
+             */
+            const fillSpacing = spacing * 0.70;
+            const fillSpacingSq = fillSpacing * fillSpacing;
+
+            const leftovers = candidates
+              .filter((candidate) => !candidate.selected)
+              .sort((a, b) => {
+                if (b.minDistanceSq !== a.minDistanceSq) {
+                  return b.minDistanceSq - a.minDistanceSq;
+                }
+
+                const layerDiff = a.layer - b.layer;
+                if (layerDiff) return layerDiff;
+
+                const priorityDiff = a.priority - b.priority;
+                if (priorityDiff) return priorityDiff;
+
+                return b.timeobs - a.timeobs;
+              });
+
+            for (const candidate of leftovers) {
+              if (candidate.minDistanceSq < fillSpacingSq) continue;
+              accept(candidate);
+            }
+
+            /*
+             * IMPORTANT:
+             * The decluttering source now contains stations selected from ALL
+             * NOAA scale bands. The six Mapbox station-model layer groups still
+             * filter on sourceLayer, so a selected layer-40/50/60 station can be
+             * present in the GeoJSON but remain invisible at a national zoom.
+             *
+             * Normalize only the DISPLAY copy to layer 10. The original
+             * allRtmaStations collection keeps its native sourceLayer and is
+             * still used by the selection algorithm for tie-breaking.
+             *
+             * This makes every station that survives decluttering actually
+             * render, while the screen-space algorithm alone controls density.
+             */
+            source.setData({
+              type: "FeatureCollection",
+              features: accepted.map((candidate) => ({
+                ...candidate.feature,
+                properties: {
+                  ...(candidate.feature.properties || {}),
+                  nativeSourceLayer:
+                    Number(candidate.feature.properties?.sourceLayer || 60),
+                  sourceLayer: 10
+                }
+              }))
+            });
+          }
+          let rtmaStationBubbleFrame = 0;
+
+          function scheduleRtmaStationBubble() {
+            if (rtmaStationBubbleFrame) {
+              cancelAnimationFrame(rtmaStationBubbleFrame);
+            }
+
+            rtmaStationBubbleFrame = requestAnimationFrame(() => {
+              rtmaStationBubbleFrame = 0;
+              updateRtmaStationBubble();
+            });
+          }
+
+          map.on("moveend", scheduleRtmaStationBubble);
+          map.on("zoomend", scheduleRtmaStationBubble);
+          map.on("resize", scheduleRtmaStationBubble);
+
+          // Populate the first decluttered station set immediately.
+          scheduleRtmaStationBubble();
+
+          if (stateResponse.ok) {
+            map.addSource("rtma-state-borders", {
+              type: "geojson",
+              data: await stateResponse.json()
+            });
+
+            map.addLayer({
+              id: "rtma-state-borders",
+              type: "line",
+              source: "rtma-state-borders",
+              paint: {
+                "line-color": "rgba(225,232,238,.78)",
+                "line-width": [
+                  "interpolate", ["linear"], ["zoom"],
+                  3, 0.8,
+                  8, 1.6
+                ]
+              }
+            });
+          }
+
+          registerWindBarbImages();
+
+          // Same idea as NOAA's 6 scale-band surface_obs service:
+          // reveal more station plots as the user zooms in.
+          // Progressive station density:
+          // national -> regional -> state -> local.
+          // Keep the CONUS view sparse; add observations only as the
+          // geography has enough screen space to support complete models.
+          addStationModelBand(10, 2.5, 24);
+          addStationModelBand(20, 4.15, 24);
+          addStationModelBand(30, 4.85, 24);
+          addStationModelBand(40, 5.55, 24);
+          addStationModelBand(50, 6.25, 24);
+          addStationModelBand(60, 7.0, 24);
+
+          map.addLayer({
+            id: "rtma-station-hit",
             type: "circle",
-            source: "interactive-temp-hit-source",
+            source: "rtma-stations",
+            minzoom: 4,
             paint: {
               "circle-radius": [
                 "interpolate", ["linear"], ["zoom"],
-                2, 7,
-                7, 11
+                4, 8,
+                10, 12
               ],
               "circle-color": "#ffffff",
               "circle-opacity": 0.001,
@@ -5837,107 +6648,85 @@
             }
           });
 
-          setInteractiveToolbar(
-            [
-              { label: "Temperature", value: "temperature" },
-              { label: "Dew Point", value: "dewpoint" }
-            ],
-            (field) => {
-              updateAnalysis(field).catch((error) => {
-                console.warn("Temperature field switch failed", error);
-              });
-            }
-          );
-
-          map.on("mouseenter", "interactive-temp-hit-layer", () => {
+          map.on("mouseenter", "rtma-station-hit", () => {
             map.getCanvas().style.cursor = "pointer";
           });
 
-          map.on("mouseleave", "interactive-temp-hit-layer", () => {
+          map.on("mouseleave", "rtma-station-hit", () => {
             map.getCanvas().style.cursor = "";
           });
 
-          map.on("click", "interactive-temp-hit-layer", (event) => {
+          map.on("click", "rtma-station-hit", (event) => {
             const feature = event.features?.[0];
             if (!feature) return;
 
             const p = feature.properties || {};
-            const temp = Number(p.temperature);
-            const dew = Number(p.dewpoint);
-            const visibility = Number(p.visibility);
-            const pressure = Number(p.sealevelpress);
-            const station = p.stationname || p.locationname || "Surface station";
-            const location = p.locationname && p.locationname !== station ? p.locationname : "";
-            const when = formatObservationTime(p.timeobs);
 
             const rows = [
-              Number.isFinite(temp) ? `Temperature: <strong>${Math.round(temp)}°F</strong>` : "",
-              Number.isFinite(dew) ? `Dew point: <strong>${Math.round(dew)}°F</strong>` : "",
-              `Wind: <strong>${escapeHtml(formatStationWind(p.windspeed, p.winddir, p.windgust))}</strong>`,
-              Number.isFinite(visibility) ? `Visibility: <strong>${visibility.toFixed(1)} mi</strong>` : "",
-              Number.isFinite(pressure) ? `MSLP: <strong>${pressure.toFixed(1)} mb</strong>` : ""
+              Number.isFinite(Number(p.temperature))
+                ? `Temperature: <strong>${Math.round(Number(p.temperature))}°F</strong>`
+                : "",
+              Number.isFinite(Number(p.dewpoint))
+                ? `Dew point: <strong>${Math.round(Number(p.dewpoint))}°F</strong>`
+                : "",
+              Number.isFinite(Number(p.windspeed))
+                ? `Wind: <strong>${Math.round(Number(p.winddir) || 0)}° ${Math.round(Number(p.windspeed))} kt</strong>`
+                : "",
+              Number.isFinite(Number(p.windgust))
+                ? `Gust: <strong>${Math.round(Number(p.windgust))} kt</strong>`
+                : "",
+              Number.isFinite(Number(p.sealevelpress))
+                ? `MSLP: <strong>${Number(p.sealevelpress).toFixed(1)} mb</strong>`
+                : "",
+              Number.isFinite(Number(p.visibility))
+                ? `Visibility: <strong>${Number(p.visibility).toFixed(1)} mi</strong>`
+                : ""
             ].filter(Boolean);
 
-            new mapboxgl.Popup({ maxWidth: "300px" })
+            new mapboxgl.Popup({ maxWidth: "310px" })
               .setLngLat(event.lngLat)
               .setHTML(
-                `<strong>${escapeHtml(station)}</strong>` +
-                `${location ? `<br><span style="opacity:.74">${escapeHtml(location)}</span>` : ""}` +
-                `<div style="margin-top:7px">${rows.join("<br>")}</div>` +
-                `${when ? `<div style="margin-top:7px;opacity:.65">Observed ${escapeHtml(when)}</div>` : ""}`
+                `<strong>${escapeHtml(
+                  p.stationname || p.locationname || "Surface station"
+                )}</strong>` +
+                `<div style="margin-top:7px">${rows.join("<br>")}</div>`
               )
               .addTo(map);
           });
 
-          ["move", "zoom", "resize", "moveend", "zoomend"].forEach((eventName) => {
-            map.on(eventName, scheduleDraw);
-          });
+          legend.style.display = "";
 
-          map.on("moveend", () => {
-            refreshInteractiveObservationDensity().catch((error) => {
-              console.info("Regional observation refresh skipped", error?.message || error);
-            });
-          });
+          const valid = manifest.valid_time
+            ? new Date(manifest.valid_time)
+            : null;
+
+          const validText =
+            valid && !Number.isNaN(valid.getTime())
+              ? valid.toLocaleString([], {
+                  month: "short",
+                  day: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                  timeZoneName: "short"
+                })
+              : "latest";
+
+          interactiveWeatherSubtitle.textContent =
+            `${manifest.source || "NOAA/NCEP RTMA"} · valid ${validText} · ` +
+            `${Number(manifest.stationCount) || 0} station plots available.`;
 
           interactiveWeatherCleanup = () => {
-            detailGeneration++;
-            drawQueued = false;
-            analysisGeneration++;
-
-            if (cachedFallbackOverlay) {
-              cachedFallbackOverlay.cleanup();
-              cachedFallbackOverlay = null;
-            }
+            legend.remove();
           };
+        });
 
-            await updateAnalysis("temperature");
-            scheduleDraw();
-
-            interactiveWeatherSubtitle.textContent =
-              `${baseFeatures.length} current observations · zoom in for denser regional data.`;
-
-            // Optional second pass: sharpen the analysis with NOAA state
-            // outlines if that service responds. A timeout is intentionally
-            // non-fatal; the temperature field is already usable.
-            fetchTemperatureStateBoundaries({ timeoutMs: 3000 })
-              .then((result) => {
-                stateBoundaries = Array.isArray(result) ? result : [];
-                scheduleDraw();
-              })
-              .catch((error) => {
-                console.info(
-                  "Interactive temperature state outlines skipped",
-                  error?.message || error
-                );
-              });
-          } catch (error) {
-            console.warn("Interactive surface temperature live upgrade failed", error);
-            interactiveWeatherSubtitle.textContent =
-              "Cached temperature analysis shown · live station observations are temporarily unavailable.";
-          }
+        map.on("error", (event) => {
+          console.info(
+            "RTMA temperature Mapbox event",
+            event?.error || event
+          );
         });
       }
-
       async function openHazardsInteractiveMap() {
         destroyInteractiveWeatherMap();
         interactiveWeatherTitle.textContent = "Active NWS Hazards";
