@@ -770,7 +770,7 @@ def render_rtma_temperature_tiles(out_root):
     tile_root.mkdir(parents=True, exist_ok=True)
 
     tile_size = 256
-    min_zoom = 3
+    min_zoom = 2
     max_zoom = 7
     tile_count = 0
 
@@ -1112,7 +1112,7 @@ def render_temperature_tiles(states, obs, out_root):
         tile_root.mkdir(parents=True, exist_ok=True)
 
         tile_size = 256
-        min_zoom = 3
+        min_zoom = 2
         max_zoom = 6
         tile_count = 0
 

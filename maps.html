@@ -5950,6 +5950,7 @@
           pitch: 0,
           projection: "mercator",
           renderWorldCopies: false,
+          minZoom: Number(manifest.minzoom) || 3,
           dragRotate: false,
           pitchWithRotate: false
         });
@@ -6214,64 +6215,169 @@
         const legend = document.createElement("div");
         legend.setAttribute("aria-hidden", "true");
         legend.style.position = "absolute";
-        legend.style.right = "12px";
-        legend.style.top = "90px";
-        legend.style.bottom = "60px";
-        legend.style.width = "34px";
         legend.style.zIndex = "12";
         legend.style.display = "none";
         legend.style.pointerEvents = "none";
 
-        legend.innerHTML = `
-          <div style="
-            position:absolute;
-            left:5px;
-            top:0;
-            bottom:20px;
-            width:15px;
-            border:1px solid rgba(255,255,255,.45);
-            background:linear-gradient(to top,
-              rgb(241,207,204) 0%,
-              rgb(153,78,176) 19%,
-              rgb(223,237,242) 35%,
-              rgb(26,83,178) 45%,
-              rgb(150,175,139) 52%,
-              rgb(238,222,155) 58%,
-              rgb(161,98,70) 68%,
-              rgb(104,10,11) 74%,
-              rgb(157,114,108) 84%,
-              rgb(87,86,85) 100%);
-          "></div>
-          <div style="
-            position:absolute;
-            right:0;
-            top:0;
-            bottom:20px;
-            width:13px;
-            display:flex;
-            flex-direction:column;
-            justify-content:space-between;
-            font-size:9px;
-            font-weight:800;
-            color:white;
-            text-shadow:0 1px 2px #000;
-          ">
-            <span>115</span>
-            <span>95</span>
-            <span>70</span>
-            <span>40</span>
-            <span>0</span>
-            <span>-40</span>
-          </div>
-          <div style="
-            position:absolute;
-            left:5px;
-            bottom:0;
-            color:white;
-            font-size:10px;
-            font-weight:900;
-          ">°F</div>
-        `;
+        const rtmaMobileLegendQuery =
+          window.matchMedia("(max-width: 700px)");
+
+        function renderRtmaLegend() {
+          const mobile = rtmaMobileLegendQuery.matches;
+
+          legend.style.transform = "";
+          legend.style.left = "";
+          legend.style.right = "";
+          legend.style.top = "";
+          legend.style.bottom = "";
+          legend.style.width = "";
+          legend.style.height = "";
+
+          if (mobile) {
+            legend.style.left = "50%";
+            legend.style.bottom = "10px";
+            legend.style.width = "min(300px, calc(100% - 48px))";
+            legend.style.height = "31px";
+            legend.style.transform = "translateX(-50%)";
+
+            legend.innerHTML = `
+              <div style="
+                position:absolute;
+                left:0;
+                right:0;
+                top:0;
+                height:10px;
+                border:1px solid rgba(255,255,255,.58);
+                border-radius:2px;
+                background:linear-gradient(to right,
+                  rgb(241,207,204) 0%,
+                  rgb(153,78,176) 19%,
+                  rgb(223,237,242) 35%,
+                  rgb(26,83,178) 45%,
+                  rgb(150,175,139) 52%,
+                  rgb(238,222,155) 58%,
+                  rgb(161,98,70) 68%,
+                  rgb(104,10,11) 74%,
+                  rgb(157,114,108) 84%,
+                  rgb(87,86,85) 100%);
+                box-shadow:0 1px 3px rgba(0,0,0,.48);
+              "></div>
+              <div style="
+                position:absolute;
+                left:-5px;
+                right:-5px;
+                top:11px;
+                height:19px;
+                border-radius:6px;
+                background:rgba(5,10,18,.72);
+                border:1px solid rgba(255,255,255,.15);
+                box-shadow:0 2px 5px rgba(0,0,0,.42);
+                backdrop-filter:blur(3px);
+              "></div>
+              <div style="
+                position:absolute;
+                left:0;
+                right:0;
+                top:13px;
+                display:flex;
+                justify-content:space-between;
+                align-items:center;
+                font-size:9px;
+                font-weight:900;
+                color:#ffffff;
+                text-shadow:
+                  -1px -1px 0 rgba(0,0,0,.95),
+                   1px -1px 0 rgba(0,0,0,.95),
+                  -1px  1px 0 rgba(0,0,0,.95),
+                   1px  1px 0 rgba(0,0,0,.95),
+                   0 1px 3px rgba(0,0,0,1);
+                white-space:nowrap;
+              ">
+                <span>-40</span>
+                <span>0</span>
+                <span>40</span>
+                <span>70</span>
+                <span>95</span>
+                <span>115</span>
+              </div>
+              <div style="
+                position:absolute;
+                right:-22px;
+                top:13px;
+                color:#ffffff;
+                font-size:9px;
+                font-weight:900;
+                text-shadow:
+                  -1px -1px 0 rgba(0,0,0,.95),
+                   1px -1px 0 rgba(0,0,0,.95),
+                  -1px  1px 0 rgba(0,0,0,.95),
+                   1px  1px 0 rgba(0,0,0,.95);
+              ">°F</div>
+            `;
+          } else {
+            legend.style.right = "12px";
+            legend.style.top = "90px";
+            legend.style.bottom = "60px";
+            legend.style.width = "34px";
+
+            legend.innerHTML = `
+              <div style="
+                position:absolute;
+                left:5px;
+                top:0;
+                bottom:20px;
+                width:15px;
+                border:1px solid rgba(255,255,255,.45);
+                background:linear-gradient(to top,
+                  rgb(241,207,204) 0%,
+                  rgb(153,78,176) 19%,
+                  rgb(223,237,242) 35%,
+                  rgb(26,83,178) 45%,
+                  rgb(150,175,139) 52%,
+                  rgb(238,222,155) 58%,
+                  rgb(161,98,70) 68%,
+                  rgb(104,10,11) 74%,
+                  rgb(157,114,108) 84%,
+                  rgb(87,86,85) 100%);
+              "></div>
+              <div style="
+                position:absolute;
+                right:0;
+                top:0;
+                bottom:20px;
+                width:13px;
+                display:flex;
+                flex-direction:column;
+                justify-content:space-between;
+                font-size:9px;
+                font-weight:800;
+                color:white;
+                text-shadow:0 1px 2px #000;
+              ">
+                <span>115</span>
+                <span>95</span>
+                <span>70</span>
+                <span>40</span>
+                <span>0</span>
+                <span>-40</span>
+              </div>
+              <div style="
+                position:absolute;
+                left:5px;
+                bottom:0;
+                color:white;
+                font-size:10px;
+                font-weight:900;
+              ">°F</div>
+            `;
+          }
+        }
+
+        renderRtmaLegend();
+        rtmaMobileLegendQuery.addEventListener(
+          "change",
+          renderRtmaLegend
+        );
 
         interactiveWeatherMapEl.appendChild(legend);
 
@@ -6814,6 +6920,10 @@
             `${Number(manifest.stationCount) || 0} station plots available.`;
 
           interactiveWeatherCleanup = () => {
+            rtmaMobileLegendQuery.removeEventListener(
+              "change",
+              renderRtmaLegend
+            );
             legend.remove();
           };
         });
