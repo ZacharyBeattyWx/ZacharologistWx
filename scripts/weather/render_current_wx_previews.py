@@ -18,13 +18,23 @@ import requests
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 from scipy.spatial import cKDTree
 from scipy.interpolate import RegularGridInterpolator
-from eccodes import (
-    codes_get,
-    codes_get_array,
-    codes_get_long,
-    codes_grib_new_from_file,
-    codes_release,
-)
+# OPTIONAL_ECCODES_V91
+try:
+    from eccodes import (
+        codes_get,
+        codes_get_array,
+        codes_get_long,
+        codes_grib_new_from_file,
+        codes_release,
+    )
+    ECCODES_IMPORT_ERROR = None
+except Exception as exc:
+    codes_get = None
+    codes_get_array = None
+    codes_get_long = None
+    codes_grib_new_from_file = None
+    codes_release = None
+    ECCODES_IMPORT_ERROR = exc
 from pyproj import CRS, Transformer
 UA = "ZacharologistWx/1.0 weather preview renderer (contact: zacharologistwx.com)"
 OUT_W = 930
@@ -592,6 +602,12 @@ def fetch_latest_rtma_2m_temperature():
     )
 
 def decode_rtma_temperature(grib_bytes):
+    if codes_grib_new_from_file is None:
+        raise RuntimeError(
+            "RTMA temperature decoding requires ecCodes, but the ecCodes "
+            f"library could not be loaded: {ECCODES_IMPORT_ERROR}"
+        )
+
     # ecCodes' codes_grib_new_from_file() requires a real file descriptor on
     # Windows. io.BytesIO does not provide fileno(), so write the one-message
     # GRIB2 byte-range response to a temporary file first.

@@ -1,0 +1,95 @@
+name: Render MRMS 72h Tiles
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "11 * * * *"
+
+concurrency:
+  group: mrms72-tiles
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  render-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      BUCKET: zacharologistwx-weather-previews
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: scripts/weather/requirements.txt
+
+      - name: Install renderer dependencies
+        run: python -m pip install -r scripts/weather/requirements.txt
+
+      - name: Render MRMS 72-hour native tiles
+        run: python scripts/weather/render_current_wx_previews.py --output mrms-build --only mrms
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Wrangler
+        run: npm install --global wrangler@4
+
+      - name: Upload MRMS tile tree to R2
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ROOT="mrms-build/mrms72-tiles"
+
+          test -f "$ROOT/manifest.json"
+          test -f "$ROOT/states.geojson"
+
+          export ROOT BUCKET
+
+          find "$ROOT" -type f ! -name manifest.json -print0 |
+            xargs -0 -n1 -P8 bash -c '
+              set -euo pipefail
+              file="$1"
+              rel="${file#"$ROOT"/}"
+              key="mrms72-tiles/$rel"
+
+              case "$file" in
+                *.webp) type="image/webp" ;;
+                *.json|*.geojson) type="application/json" ;;
+                *) type="application/octet-stream" ;;
+              esac
+
+              wrangler r2 object put "$BUCKET/$key" \
+                --file="$file" \
+                --content-type="$type" \
+                --cache-control="public, max-age=300, stale-while-revalidate=900" \
+                --remote \
+                --force >/dev/null
+            ' _
+
+          # Publish discovery metadata last so a browser never sees a new
+          # revision before its tile objects have finished uploading.
+          wrangler r2 object put "$BUCKET/mrms72-tiles/manifest.json" \
+            --file="$ROOT/manifest.json" \
+            --content-type="application/json" \
+            --cache-control="public, max-age=60, stale-while-revalidate=300" \
+            --remote \
+            --force
+
+      - name: Verify published MRMS manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          wrangler r2 object get "$BUCKET/mrms72-tiles/manifest.json" \
+            --pipe \
+            --remote |
+            python -m json.tool

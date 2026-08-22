@@ -7158,7 +7158,7 @@
         };
       }
 
-      // MRMS_CURSOR_QPE_V90
+      // MRMS_CURSOR_QPE_V92
       function installMrmsQpeHover(map, requestedBounds, rasterId) {
         const serviceUrl =
           "https://mapservices.weather.noaa.gov/raster/rest/services/obs/mrms_qpe/ImageServer/identify";
@@ -7253,14 +7253,14 @@
         };
 
         const formatQpe = (rawValue) => {
-          let value = rawValue;
+          let millimeters = rawValue;
 
-          if (Array.isArray(value)) {
-            value = value[0];
+          if (Array.isArray(millimeters)) {
+            millimeters = millimeters[0];
           }
 
-          if (typeof value === "string") {
-            const normalized = value.trim();
+          if (typeof millimeters === "string") {
+            const normalized = millimeters.trim();
 
             if (
               !normalized ||
@@ -7269,18 +7269,20 @@
               return null;
             }
 
-            value = Number(normalized);
+            millimeters = Number(normalized);
           } else {
-            value = Number(value);
+            millimeters = Number(millimeters);
           }
 
-          // MRMS uses negative values for non-precip / missing categories.
-          if (!Number.isFinite(value) || value < 0) {
+          // Raw MRMS RadarOnly_QPE_72H pixels are millimeters.
+          // Negative values are MRMS missing/non-precip flags.
+          if (!Number.isFinite(millimeters) || millimeters < 0) {
             return null;
           }
 
-          const precision = value < 10 ? 2 : 1;
-          const displayValue = value
+          const inches = millimeters / 25.4;
+          const precision = inches < 10 ? 2 : 1;
+          const displayValue = inches
             .toFixed(precision)
             .replace(/\.?0+$/, "");
 
@@ -7328,9 +7330,7 @@
               lockRasterIds: [lockedRasterId],
               mosaicOperation: "MT_FIRST"
             }),
-            renderingRule: JSON.stringify({
-              rasterFunction: "rft_72hr"
-            }),
+
             f: "json",
             _: String(Date.now())
           });
@@ -7503,6 +7503,8 @@
         });
 
         interactiveWeatherMap = map;
+        // MRMS_MAP_DEBUG_V94
+        window.__wxMap = map;
         map.addControl(
           new mapboxgl.NavigationControl({ showCompass: false }),
           "top-right"
@@ -7557,6 +7559,7 @@
             bounds
           });
 
+          // MAPBOX_ADMIN_BOUNDARIES_V98
           map.addLayer({
             id: "mrms72-native",
             type: "raster",
@@ -7567,7 +7570,7 @@
               "raster-resampling": "linear",
               "raster-emissive-strength": 1
             }
-          });
+          }, "admin-state");
 
           const mrmsLegend = document.createElement("div");
           mrmsLegend.className = "mrms72-native-legend";
@@ -7731,7 +7734,8 @@
 
           populateMrmsLegend();
 
-          if (manifest.states) {
+          // Mapbox admin-state/admin-county replace the custom state overlay.
+          if (false && manifest.states) {
             try {
               const stateResponse = await fetch(
                 `${manifest.states}?v=${revision}`,
