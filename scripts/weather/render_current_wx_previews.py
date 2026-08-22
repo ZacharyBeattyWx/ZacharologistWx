@@ -1274,12 +1274,247 @@ def base_state_map(states, *, light=False):
     draw_states(d,states,bounds=LONLAT_BOUNDS,w=OUT_W,h=OUT_H,fill=land,outline=line,width=1 if light else 2,mercator=True)
     return img
 
-def fetch_mrms():
+MRMS_TILE_LONLAT_BOUNDS = (-132.0, 20.0, -58.0, 58.0)
+WEB_MERCATOR_HALF_WORLD = 20037508.342789244
+
+def mrms_mosaic_rule(raster_id=None):
+    if raster_id is not None:
+        return {
+            'mosaicMethod':'esriMosaicLockRaster',
+            'lockRasterIds':[int(raster_id)],
+            'mosaicOperation':'MT_FIRST'
+        }
+
+    return {
+        'mosaicMethod':'esriMosaicNone',
+        'where':"idp_subset = 'conus_QPE_72H'",
+        'ascending':True,
+        'mosaicOperation':'MT_FIRST'
+    }
+
+def lonlat_to_web_mercator(lon, lat):
+    lat=max(-85.05112878,min(85.05112878,float(lat)))
+    x=WEB_MERCATOR_HALF_WORLD*float(lon)/180.0
+    y=6378137.0*math.log(
+        math.tan(math.pi/4.0 + math.radians(lat)/2.0)
+    )
+    return x,y
+
+def fetch_mrms_export(bbox, size, *, timeout=45, raster_id=None):
     params={
-        'bbox':','.join(str(v) for v in MERCATOR_BBOX),'bboxSR':'3857','imageSR':'3857',
-        'size':f'{OUT_W},{OUT_H}','format':'png32','transparent':'true','noData':'-3',
-        'noDataInterpretation':'esriNoDataMatchAny','mosaicRule':json.dumps({'mosaicMethod':'esriMosaicNone','where':"idp_subset = 'conus_QPE_72H'",'ascending':True,'mosaicOperation':'MT_FIRST'}),'renderingRule':json.dumps({'rasterFunction':'rft_72hr'}),'f':'image'}
-    return Image.open(io.BytesIO(get(MRMS_URL,params=params,timeout=30).content)).convert('RGBA')
+        'bbox':','.join(str(v) for v in bbox),
+        'bboxSR':'3857',
+        'imageSR':'3857',
+        'size':f'{int(size[0])},{int(size[1])}',
+        'format':'png32',
+        'transparent':'true',
+        'noData':'-3',
+        'noDataInterpretation':'esriNoDataMatchAny',
+        'mosaicRule':json.dumps(mrms_mosaic_rule(raster_id)),
+        'renderingRule':json.dumps({'rasterFunction':'rft_72hr'}),
+        'f':'image'
+    }
+    return Image.open(
+        io.BytesIO(get(MRMS_URL,params=params,timeout=timeout).content)
+    ).convert('RGBA')
+
+def fetch_mrms():
+    return fetch_mrms_export(
+        MERCATOR_BBOX,
+        (OUT_W,OUT_H),
+        timeout=30,
+    )
+
+def fetch_mrms_snapshot():
+    query_url=MRMS_URL.rsplit('/exportImage',1)[0]+'/query'
+    payload=fetch_json(
+        query_url,
+        params={
+            'where':"idp_subset = 'conus_QPE_72H'",
+            'outFields':'objectid,idp_validendtime,idp_filedate',
+            'returnGeometry':'false',
+            'orderByFields':'idp_validendtime DESC',
+            'resultRecordCount':'1',
+            'f':'json'
+        },
+        timeout=20,
+    )
+
+    features=payload.get('features') or []
+    if not features:
+        raise RuntimeError('No CONUS MRMS 72-hour raster was returned')
+
+    attrs=features[0].get('attributes') or {}
+    raster_id=attrs.get('objectid')
+    if raster_id is None:
+        raise RuntimeError('Latest MRMS 72-hour raster has no objectid')
+
+    value=attrs.get('idp_validendtime') or attrs.get('idp_filedate')
+    if value is None:
+        raise RuntimeError('Latest MRMS 72-hour raster has no valid time')
+
+    valid_time=datetime.fromtimestamp(
+        float(value)/1000.0,
+        tz=timezone.utc,
+    )
+
+    return {
+        'raster_id':int(raster_id),
+        'valid_time':valid_time,
+    }
+
+def fetch_mrms_valid_time():
+    try:
+        return fetch_mrms_snapshot()['valid_time']
+    except Exception as exc:
+        print(f'MRMS valid-time lookup skipped: {exc}',flush=True)
+        return datetime.now(timezone.utc)
+
+def render_mrms_tiles(states, out_root):
+    tile_root=out_root/'mrms72-tiles'
+
+    if tile_root.exists():
+        shutil.rmtree(tile_root)
+    tile_root.mkdir(parents=True,exist_ok=True)
+
+    west,south,east,north=MRMS_TILE_LONLAT_BOUNDS
+    minx,miny=lonlat_to_web_mercator(west,south)
+    maxx,maxy=lonlat_to_web_mercator(east,north)
+
+    # z6 is a good balance for MRMS' native ~1 km data and R2 write volume.
+    # Mapbox can smoothly overzoom these tiles beyond z6.
+    min_zoom=2
+    max_zoom=6
+    tile_size=256
+
+    # One NOAA request per build.  This is intentionally larger than the old
+    # 930x600 overlay but still well below the service's current export limits.
+    source_h=2400
+    source_w=max(
+        1,
+        int(round(source_h*(maxx-minx)/(maxy-miny)))
+    )
+
+    print(
+        f'Fetching MRMS 72h source image {source_w}x{source_h} '
+        f'for {MRMS_TILE_LONLAT_BOUNDS}',
+        flush=True,
+    )
+
+    # MRMS_SNAPSHOT_LOCK_V90
+    snapshot=fetch_mrms_snapshot()
+    raster_id=snapshot['raster_id']
+    valid_time=snapshot['valid_time']
+    print(
+        f'Locked MRMS 72h raster {raster_id} valid {valid_time.isoformat()}',
+        flush=True,
+    )
+
+    field=fetch_mrms_export(
+        (minx,miny,maxx,maxy),
+        (source_w,source_h),
+        timeout=75,
+        raster_id=raster_id,
+    )
+
+    def source_x(mx):
+        return (mx-minx)/(maxx-minx)*source_w
+
+    def source_y(my):
+        return (maxy-my)/(maxy-miny)*source_h
+
+    tile_count=0
+
+    for zoom in range(min_zoom,max_zoom+1):
+        n=2**zoom
+
+        x0=max(0,int(math.floor(slippy_x(west,zoom))))
+        x1=min(n-1,int(math.floor(slippy_x(east,zoom))))
+        y0=max(0,int(math.floor(slippy_y(north,zoom))))
+        y1=min(n-1,int(math.floor(slippy_y(south,zoom))))
+
+        for tile_x in range(x0,x1+1):
+            tile_minx=-WEB_MERCATOR_HALF_WORLD + (
+                2.0*WEB_MERCATOR_HALF_WORLD*tile_x/n
+            )
+            tile_maxx=-WEB_MERCATOR_HALF_WORLD + (
+                2.0*WEB_MERCATOR_HALF_WORLD*(tile_x+1)/n
+            )
+
+            for tile_y in range(y0,y1+1):
+                tile_maxy=WEB_MERCATOR_HALF_WORLD - (
+                    2.0*WEB_MERCATOR_HALF_WORLD*tile_y/n
+                )
+                tile_miny=WEB_MERCATOR_HALF_WORLD - (
+                    2.0*WEB_MERCATOR_HALF_WORLD*(tile_y+1)/n
+                )
+
+                crop_box=(
+                    source_x(tile_minx),
+                    source_y(tile_maxy),
+                    source_x(tile_maxx),
+                    source_y(tile_miny),
+                )
+
+                tile=field.transform(
+                    (tile_size,tile_size),
+                    Image.Transform.EXTENT,
+                    crop_box,
+                    resample=Image.Resampling.BILINEAR,
+                    fillcolor=(0,0,0,0),
+                )
+
+                tile_dir=tile_root/str(zoom)/str(tile_x)
+                tile_dir.mkdir(parents=True,exist_ok=True)
+
+                # Write transparent edge tiles too.  Mapbox then never generates
+                # noisy 404s around the edge of the MRMS domain.
+                tile.save(
+                    tile_dir/f'{tile_y}.webp',
+                    'WEBP',
+                    quality=88,
+                    method=5,
+                )
+                tile_count+=1
+
+    with (tile_root/'states.geojson').open(
+        'w',
+        encoding='utf-8',
+    ) as handle:
+        json.dump(
+            simplified_state_geojson(states),
+            handle,
+            separators=(',',':'),
+        )
+
+    revision=int(time.time())
+
+    manifest={
+        'generated_at':datetime.now(timezone.utc).isoformat(),
+        'valid_time':valid_time.isoformat(),
+        'rasterId':raster_id,
+        'revision':revision,
+        'source':'NOAA/NWS MRMS 72-hour QPE',
+        'bounds':[west,south,east,north],
+        'minzoom':min_zoom,
+        'maxzoom':max_zoom,
+        'tileSize':tile_size,
+        'tiles':'/weather-data/current-wx/mrms72-tiles/{z}/{x}/{y}.webp',
+        'states':'/weather-data/current-wx/mrms72-tiles/states.geojson',
+        'tileCount':tile_count,
+    }
+
+    with (tile_root/'manifest.json').open(
+        'w',
+        encoding='utf-8',
+    ) as handle:
+        json.dump(manifest,handle,indent=2)
+
+    print(
+        f'Rendered {tile_count} native MRMS 72h tiles '
+        f'(z{min_zoom}-z{max_zoom})',
+        flush=True,
+    )
 
 def render_mrms(states):
     base=base_state_map(states,light=False)
@@ -1303,6 +1538,7 @@ def main():
     ap.add_argument('--output',default='weather-data/current-wx')
     ap.add_argument('--only',choices=['temperature','hazards','mrms','radar'])
     ap.add_argument('--skip-temperature-tiles',action='store_true')
+    ap.add_argument('--skip-mrms-tiles',action='store_true')
     args=ap.parse_args()
     out=Path(args.output); out.mkdir(parents=True,exist_ok=True)
     products={}
@@ -1323,6 +1559,8 @@ def main():
             img=render_hazards(ensure_states()); name='current-hazards.webp'
         elif target=='mrms':
             img=render_mrms(ensure_states()); name='mrms-72h.webp'
+            if not args.skip_mrms_tiles:
+                render_mrms_tiles(ensure_states(),out)
         else:
             img=render_radar(); name='conus-radar.webp'
         save_webp(img,out/name)

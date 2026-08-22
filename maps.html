@@ -7158,11 +7158,337 @@
         };
       }
 
+      // MRMS_CURSOR_QPE_V90
+      function installMrmsQpeHover(map, requestedBounds, rasterId) {
+        const serviceUrl =
+          "https://mapservices.weather.noaa.gov/raster/rest/services/obs/mrms_qpe/ImageServer/identify";
+
+        const fallbackBounds = [-132, 20, -58, 58];
+        const hoverBounds =
+          Array.isArray(requestedBounds) && requestedBounds.length === 4
+            ? requestedBounds.map(Number)
+            : fallbackBounds;
+
+        const lockedRasterId = Number(rasterId);
+        const hasLockedRaster =
+          Number.isInteger(lockedRasterId) && lockedRasterId > 0;
+
+        const mapContainer = map.getContainer();
+        const tooltip = document.createElement("div");
+        tooltip.className = "mrms-qpe-cursor-tooltip";
+        tooltip.setAttribute("role", "status");
+        tooltip.setAttribute("aria-live", "polite");
+
+        Object.assign(tooltip.style, {
+          position: "absolute",
+          left: "0",
+          top: "0",
+          zIndex: "30",
+          display: "none",
+          minWidth: "132px",
+          maxWidth: "220px",
+          padding: "7px 9px",
+          border: "1px solid rgba(139, 160, 196, 0.55)",
+          borderRadius: "8px",
+          color: "#ffffff",
+          background: "rgba(5, 10, 17, 0.94)",
+          boxShadow: "0 8px 24px rgba(0, 0, 0, 0.38)",
+          backdropFilter: "blur(6px)",
+          pointerEvents: "none",
+          fontSize: "12px",
+          fontWeight: "800",
+          lineHeight: "1.25",
+          whiteSpace: "nowrap"
+        });
+
+        mapContainer.appendChild(tooltip);
+
+        let hoverTimer = null;
+        let activeRequest = null;
+        let requestSerial = 0;
+        let lastPoint = null;
+        let pinnedByTap = false;
+
+        const insideBounds = (lng, lat) => {
+          const [west, south, east, north] = hoverBounds;
+          return (
+            Number.isFinite(lng) &&
+            Number.isFinite(lat) &&
+            lng >= west &&
+            lng <= east &&
+            lat >= south &&
+            lat <= north
+          );
+        };
+
+        const placeTooltip = (point) => {
+          if (!point) return;
+
+          lastPoint = point;
+          tooltip.style.display = "block";
+
+          const gap = 14;
+          const edge = 8;
+          const containerRect = mapContainer.getBoundingClientRect();
+          const tooltipRect = tooltip.getBoundingClientRect();
+
+          let left = point.x + gap;
+          let top = point.y + gap;
+
+          if (left + tooltipRect.width > containerRect.width - edge) {
+            left = point.x - tooltipRect.width - gap;
+          }
+
+          if (top + tooltipRect.height > containerRect.height - edge) {
+            top = point.y - tooltipRect.height - gap;
+          }
+
+          tooltip.style.left = `${Math.max(edge, left)}px`;
+          tooltip.style.top = `${Math.max(edge, top)}px`;
+        };
+
+        const hideTooltip = () => {
+          if (pinnedByTap) return;
+          tooltip.style.display = "none";
+        };
+
+        const formatQpe = (rawValue) => {
+          let value = rawValue;
+
+          if (Array.isArray(value)) {
+            value = value[0];
+          }
+
+          if (typeof value === "string") {
+            const normalized = value.trim();
+
+            if (
+              !normalized ||
+              /nodata|no data|null|undefined/i.test(normalized)
+            ) {
+              return null;
+            }
+
+            value = Number(normalized);
+          } else {
+            value = Number(value);
+          }
+
+          // MRMS uses negative values for non-precip / missing categories.
+          if (!Number.isFinite(value) || value < 0) {
+            return null;
+          }
+
+          const precision = value < 10 ? 2 : 1;
+          const displayValue = value
+            .toFixed(precision)
+            .replace(/\.?0+$/, "");
+
+          return `${displayValue} in`;
+        };
+
+        const identifyAt = async (lngLat, point) => {
+          const lng = Number(lngLat?.lng);
+          const lat = Number(lngLat?.lat);
+
+          if (!insideBounds(lng, lat)) {
+            if (!pinnedByTap) tooltip.style.display = "none";
+            return;
+          }
+
+          if (!hasLockedRaster) {
+            tooltip.textContent = "Value unavailable";
+            placeTooltip(point);
+            return;
+          }
+
+          if (activeRequest) {
+            activeRequest.abort();
+          }
+
+          const serial = ++requestSerial;
+          const controller = new AbortController();
+          activeRequest = controller;
+
+          tooltip.textContent = "Reading...";
+          placeTooltip(point);
+
+          const params = new URLSearchParams({
+            geometry: JSON.stringify({
+              x: lng,
+              y: lat,
+              spatialReference: { wkid: 4326 }
+            }),
+            geometryType: "esriGeometryPoint",
+            returnGeometry: "false",
+            returnCatalogItems: "false",
+            returnPixelValues: "false",
+            mosaicRule: JSON.stringify({
+              mosaicMethod: "esriMosaicLockRaster",
+              lockRasterIds: [lockedRasterId],
+              mosaicOperation: "MT_FIRST"
+            }),
+            renderingRule: JSON.stringify({
+              rasterFunction: "rft_72hr"
+            }),
+            f: "json",
+            _: String(Date.now())
+          });
+
+          try {
+            const response = await fetch(`${serviceUrl}?${params.toString()}`, {
+              cache: "no-store",
+              signal: controller.signal
+            });
+
+            if (!response.ok) {
+              throw new Error(`MRMS identify HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (serial !== requestSerial) return;
+
+            if (data?.error) {
+              throw new Error(
+                data.error.message || "MRMS identify service returned an error"
+              );
+            }
+
+            const formatted = formatQpe(data?.value);
+
+            tooltip.textContent = formatted
+              ? formatted
+              : "No data";
+
+            placeTooltip(lastPoint || point);
+          } catch (error) {
+            if (error?.name === "AbortError") return;
+            if (serial !== requestSerial) return;
+
+            console.info(
+              "MRMS hover identify unavailable",
+              error?.message || error
+            );
+
+            tooltip.textContent = "Unavailable";
+            placeTooltip(lastPoint || point);
+          } finally {
+            if (activeRequest === controller) {
+              activeRequest = null;
+            }
+          }
+        };
+
+        const queueIdentify = (event, immediate = false) => {
+          if (!event?.lngLat || !event?.point) return;
+
+          if (hoverTimer) {
+            clearTimeout(hoverTimer);
+            hoverTimer = null;
+          }
+
+          placeTooltip(event.point);
+
+          if (immediate) {
+            identifyAt(event.lngLat, event.point);
+            return;
+          }
+
+          tooltip.textContent =
+            tooltip.textContent || "Reading...";
+
+          hoverTimer = setTimeout(() => {
+            hoverTimer = null;
+            identifyAt(event.lngLat, event.point);
+          }, 125);
+        };
+
+        const onMouseMove = (event) => {
+          if (event?.originalEvent?.buttons) return;
+
+          pinnedByTap = false;
+
+          if (!insideBounds(event.lngLat.lng, event.lngLat.lat)) {
+            tooltip.style.display = "none";
+            return;
+          }
+
+          queueIdentify(event, false);
+        };
+
+        const onClick = (event) => {
+          if (!insideBounds(event.lngLat.lng, event.lngLat.lat)) return;
+
+          pinnedByTap = true;
+          queueIdentify(event, true);
+        };
+
+        const onMouseLeave = () => {
+          if (hoverTimer) {
+            clearTimeout(hoverTimer);
+            hoverTimer = null;
+          }
+
+          hideTooltip();
+        };
+
+        const onMoveStart = () => {
+          if (pinnedByTap) {
+            pinnedByTap = false;
+            tooltip.style.display = "none";
+          }
+        };
+
+        map.on("mousemove", onMouseMove);
+        map.on("click", onClick);
+        map.on("movestart", onMoveStart);
+        map.getCanvas().addEventListener("mouseleave", onMouseLeave);
+
+        const cleanup = () => {
+          if (hoverTimer) clearTimeout(hoverTimer);
+          if (activeRequest) activeRequest.abort();
+
+          try { map.off("mousemove", onMouseMove); } catch (_error) {}
+          try { map.off("click", onClick); } catch (_error) {}
+          try { map.off("movestart", onMoveStart); } catch (_error) {}
+          try {
+            map.getCanvas().removeEventListener("mouseleave", onMouseLeave);
+          } catch (_error) {}
+
+          tooltip.remove();
+        };
+
+        map.once("remove", cleanup);
+        return cleanup;
+      }
       async function openMrmsInteractiveMap() {
         destroyInteractiveWeatherMap();
 
-        interactiveWeatherTitle.textContent = "MRMS 72-Hour Observed Precipitation";
-        interactiveWeatherSubtitle.textContent = "Pan and zoom; the current 72-hour MRMS QPE is requested only after this viewer opens.";
+        interactiveWeatherTitle.textContent =
+          "MRMS 72-Hour Observed Precipitation";
+        interactiveWeatherSubtitle.textContent =
+          "Opening native MRMS precipitation tiles…";
+
+        let manifest = null;
+
+        try {
+          const response = await fetch(
+            `/weather-data/current-wx/mrms72-tiles/manifest.json?_=${Date.now()}`,
+            { cache: "no-store" }
+          );
+
+          if (!response.ok) {
+            throw new Error(`MRMS tile manifest HTTP ${response.status}`);
+          }
+
+          manifest = await response.json();
+        } catch (error) {
+          console.info(
+            "Native MRMS tile manifest unavailable; using legacy overlay",
+            error?.message || error
+          );
+        }
 
         const map = new mapboxgl.Map({
           container: interactiveWeatherMapEl,
@@ -7172,29 +7498,309 @@
           bearing: 0,
           pitch: 0,
           projection: "mercator",
-          renderWorldCopies: false
+          renderWorldCopies: false,
+          minZoom: manifest ? Number(manifest.minzoom) || 2 : 1.5
         });
 
         interactiveWeatherMap = map;
-        map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
+        map.addControl(
+          new mapboxgl.NavigationControl({ showCompass: false }),
+          "top-right"
+        );
 
-        map.on("load", () => {
+        map.on("load", async () => {
           hideQuickLookMapLabels(map);
+          installMrmsQpeHover(
+            map,
+            manifest?.bounds || NDFD_WMS_LONLAT_BOUNDS,
+            manifest?.rasterId
+          );
 
-          const overlay = createInteractiveRasterOverlay(map, interactiveWeatherMapEl, {
-            url: buildMrms72ImageUrl(),
-            bounds: NDFD_WMS_LONLAT_BOUNDS,
-            opacity: 0.92,
-            alt: "MRMS 72-hour observed precipitation"
+          if (!manifest) {
+            const overlay = createInteractiveRasterOverlay(
+              map,
+              interactiveWeatherMapEl,
+              {
+                url: buildMrms72ImageUrl(),
+                bounds: NDFD_WMS_LONLAT_BOUNDS,
+                opacity: 0.92,
+                alt: "MRMS 72-hour observed precipitation"
+              }
+            );
+
+            interactiveWeatherSubtitle.textContent =
+              "Legacy MRMS overlay · native tile set is not published yet.";
+            interactiveWeatherCleanup = () => overlay.cleanup();
+
+            map.fitBounds(NDFD_WMS_LONLAT_BOUNDS, {
+              padding: 26,
+              duration: 0,
+              maxZoom: 4.4
+            });
+            return;
+          }
+
+          const bounds = Array.isArray(manifest.bounds)
+            ? manifest.bounds
+            : [-132, 20, -58, 58];
+
+          const revision = encodeURIComponent(
+            String(manifest.revision || Date.now())
+          );
+
+          map.addSource("mrms72-native", {
+            type: "raster",
+            tiles: [`${manifest.tiles}?v=${revision}`],
+            tileSize: Number(manifest.tileSize) || 256,
+            minzoom: Number(manifest.minzoom) || 2,
+            maxzoom: Number(manifest.maxzoom) || 6,
+            bounds
           });
 
-          interactiveWeatherCleanup = () => overlay.cleanup();
-
-          map.fitBounds(NDFD_WMS_LONLAT_BOUNDS, {
-            padding: 26,
-            duration: 0,
-            maxZoom: 4.4
+          map.addLayer({
+            id: "mrms72-native",
+            type: "raster",
+            source: "mrms72-native",
+            paint: {
+              "raster-opacity": 0.96,
+              "raster-fade-duration": 0,
+              "raster-resampling": "linear",
+              "raster-emissive-strength": 1
+            }
           });
+
+          const mrmsLegend = document.createElement("div");
+          mrmsLegend.className = "mrms72-native-legend";
+          mrmsLegend.setAttribute("aria-label", "MRMS 72-hour precipitation legend");
+          Object.assign(mrmsLegend.style, {
+            position: "absolute",
+            left: "50%",
+            bottom: "12px",
+            transform: "translateX(-50%)",
+            zIndex: "12",
+            width: "min(620px, calc(100% - 46px))",
+            padding: "7px 9px 6px",
+            border: "1px solid rgba(148,163,184,.42)",
+            borderRadius: "8px",
+            background: "rgba(5,10,18,.84)",
+            boxShadow: "0 3px 10px rgba(0,0,0,.34)",
+            backdropFilter: "blur(4px)",
+            pointerEvents: "none",
+            color: "#f8fafc",
+            fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+          });
+
+          mrmsLegend.innerHTML = `
+            <div style="
+              display:flex;
+              align-items:center;
+              justify-content:space-between;
+              gap:10px;
+              margin-bottom:5px;
+            ">
+              <span style="
+                font-size:10px;
+                font-weight:900;
+                letter-spacing:.03em;
+                text-transform:uppercase;
+              ">72h QPE</span>
+              <span style="
+                font-size:9px;
+                font-weight:800;
+                color:#cbd5e1;
+              ">inches</span>
+            </div>
+            <div data-mrms-legend-bar style="
+              height:11px;
+              display:flex;
+              overflow:hidden;
+              border:1px solid rgba(255,255,255,.55);
+              border-radius:3px;
+              background:rgba(15,23,42,.7);
+            "></div>
+            <div data-mrms-legend-labels style="
+              position:relative;
+              height:16px;
+              margin-top:3px;
+              font-size:8px;
+              font-weight:900;
+              color:#fff;
+              text-shadow:
+                -1px -1px 0 rgba(0,0,0,.95),
+                 1px -1px 0 rgba(0,0,0,.95),
+                -1px  1px 0 rgba(0,0,0,.95),
+                 1px  1px 0 rgba(0,0,0,.95);
+            "></div>
+          `;
+
+          interactiveWeatherMapEl.appendChild(mrmsLegend);
+
+          async function populateMrmsLegend() {
+            const bar = mrmsLegend.querySelector("[data-mrms-legend-bar]");
+            const labels = mrmsLegend.querySelector("[data-mrms-legend-labels]");
+            if (!bar || !labels) return;
+
+            try {
+              const renderingRule = encodeURIComponent(
+                JSON.stringify({ rasterFunction: "rft_72hr" })
+              );
+
+              const response = await fetch(
+                `https://mapservices.weather.noaa.gov/raster/rest/services/obs/mrms_qpe/ImageServer/legend?f=pjson&renderingRule=${renderingRule}`,
+                { cache: "force-cache" }
+              );
+
+              if (!response.ok) {
+                throw new Error(`MRMS legend HTTP ${response.status}`);
+              }
+
+              const payload = await response.json();
+              const entries = (payload.layers || [])
+                .flatMap((layer) => layer.legend || [])
+                .filter((entry) => entry?.imageData);
+
+              if (!entries.length) {
+                throw new Error("MRMS legend returned no color entries");
+              }
+
+              bar.innerHTML = "";
+              labels.innerHTML = "";
+
+              entries.forEach((entry) => {
+                const segment = document.createElement("div");
+                segment.style.flex = "1 1 0";
+                segment.style.minWidth = "1px";
+                segment.style.backgroundImage =
+                  `url("data:${entry.contentType || "image/png"};base64,${entry.imageData}")`;
+                segment.style.backgroundRepeat = "repeat";
+                segment.style.backgroundSize = "100% 100%";
+                bar.appendChild(segment);
+              });
+
+              // Keep the legend readable on phones: show five representative
+              // labels while retaining every official NOAA color segment.
+              const labelIndexes = [
+                0,
+                Math.round((entries.length - 1) * 0.25),
+                Math.round((entries.length - 1) * 0.50),
+                Math.round((entries.length - 1) * 0.75),
+                entries.length - 1
+              ].filter((value, index, array) => array.indexOf(value) === index);
+
+              labelIndexes.forEach((entryIndex, labelIndex) => {
+                const entry = entries[entryIndex];
+                const label = document.createElement("span");
+                const left =
+                  entries.length <= 1
+                    ? 50
+                    : (entryIndex / (entries.length - 1)) * 100;
+
+                label.textContent =
+                  String(entry.label || entry.values?.[0] || "").trim();
+
+                label.style.position = "absolute";
+                label.style.left = `${left}%`;
+                label.style.top = "0";
+                label.style.whiteSpace = "nowrap";
+                label.style.transform =
+                  labelIndex === 0
+                    ? "translateX(0)"
+                    : labelIndex === labelIndexes.length - 1
+                      ? "translateX(-100%)"
+                      : "translateX(-50%)";
+
+                labels.appendChild(label);
+              });
+            } catch (error) {
+              console.info(
+                "Official MRMS legend unavailable",
+                error?.message || error
+              );
+
+              // Visual fallback only. The NOAA legend endpoint normally supplies
+              // the exact rft_72hr classes above.
+              bar.style.background =
+                "linear-gradient(to right,#00d9e8 0%,#1497ff 25%,#063cff 38%,#00e630 58%,#e9f000 76%,#ff9d00 88%,#d90000 100%)";
+
+              labels.innerHTML = `
+                <span style="position:absolute;left:0">lighter</span>
+                <span style="position:absolute;right:0">heavier</span>
+              `;
+            }
+          }
+
+          populateMrmsLegend();
+
+          if (manifest.states) {
+            try {
+              const stateResponse = await fetch(
+                `${manifest.states}?v=${revision}`,
+                { cache: "force-cache" }
+              );
+
+              if (stateResponse.ok) {
+                map.addSource("mrms72-state-borders", {
+                  type: "geojson",
+                  data: await stateResponse.json()
+                });
+
+                map.addLayer({
+                  id: "mrms72-state-borders",
+                  type: "line",
+                  source: "mrms72-state-borders",
+                  paint: {
+                    "line-color": "rgba(225,232,238,.76)",
+                    "line-width": [
+                      "interpolate",
+                      ["linear"],
+                      ["zoom"],
+                      2, 0.65,
+                      7, 1.4
+                    ]
+                  }
+                });
+              }
+            } catch (error) {
+              console.info(
+                "MRMS state-border overlay skipped",
+                error?.message || error
+              );
+            }
+          }
+
+          const valid = manifest.valid_time
+            ? new Date(manifest.valid_time)
+            : null;
+
+          const validText =
+            valid && !Number.isNaN(valid.getTime())
+              ? valid.toLocaleString([], {
+                  month: "short",
+                  day: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                  timeZoneName: "short"
+                })
+              : "latest";
+
+          interactiveWeatherSubtitle.textContent =
+            `${manifest.source || "NOAA/NWS MRMS 72-hour QPE"} · valid ${validText} · native map tiles`;
+
+          interactiveWeatherCleanup = () => {
+            mrmsLegend.remove();
+          };
+
+          map.fitBounds(
+            [
+              [Number(bounds[0]), Number(bounds[1])],
+              [Number(bounds[2]), Number(bounds[3])]
+            ],
+            {
+              padding: 26,
+              duration: 0,
+              maxZoom: 4.4
+            }
+          );
         });
       }
 
