@@ -1,4 +1,107 @@
 const PREFIX = "/weather-data/current-wx/";
+const NDFD_WMS_PROXY_PATH = `${PREFIX}ndfd-wms`;
+
+async function proxyNdfdWms(request, url, ctx) {
+  const layer = String(url.searchParams.get("layer") || "");
+  const allowedLayers = new Set([
+    "ndfd.conus.maxt",
+    "ndfd.conus.mint"
+  ]);
+
+  if (!allowedLayers.has(layer)) {
+    return new Response("Unsupported NDFD layer", {
+      status: 400,
+      headers: {
+        "Cache-Control": "no-store",
+        "Access-Control-Allow-Origin": "*"
+      }
+    });
+  }
+
+  const bbox = String(url.searchParams.get("bbox") || "");
+
+  if (!bbox || !/^-?\d+(\.\d+)?,-?\d+(\.\d+)?,-?\d+(\.\d+)?,-?\d+(\.\d+)?$/.test(bbox)) {
+    return new Response("Invalid bbox", {
+      status: 400,
+      headers: {
+        "Cache-Control": "no-store",
+        "Access-Control-Allow-Origin": "*"
+      }
+    });
+  }
+
+  const seasonRaw = Number(url.searchParams.get("season"));
+  const season =
+    seasonRaw === -1 || seasonRaw === 1
+      ? seasonRaw
+      : 0;
+
+  const upstreamParams = new URLSearchParams({
+    SERVICE: "WMS",
+    REQUEST: "GetMap",
+    VERSION: "1.3.0",
+    LAYERS: layer,
+    FORMAT: "image/png",
+    TRANSPARENT: "TRUE",
+    SEASON: String(season),
+    EXCEPTIONS: "INIMAGE",
+    STYLES: "",
+    CRS: "EPSG:3857",
+    WIDTH: "256",
+    HEIGHT: "256",
+    BBOX: bbox
+  });
+
+  const upstreamUrl =
+    `https://digital.weather.gov/ndfd.conus/wms?${upstreamParams.toString()}`;
+
+  const cache = caches.default;
+  const cacheKey = new Request(url.toString(), {
+    method: "GET"
+  });
+
+  const cached = await cache.match(cacheKey);
+  if (cached) return cached;
+
+  const upstream = await fetch(upstreamUrl, {
+    headers: {
+      "User-Agent":
+        "ZacharologistWx/1.0 NDFD Mapbox proxy (zacharologistwx.com)"
+    }
+  });
+
+  if (!upstream.ok) {
+    return new Response(
+      `NDFD upstream HTTP ${upstream.status}`,
+      {
+        status: 502,
+        headers: {
+          "Cache-Control": "no-store",
+          "Access-Control-Allow-Origin": "*"
+        }
+      }
+    );
+  }
+
+  const headers = new Headers();
+  headers.set("Content-Type", "image/png");
+  headers.set("Access-Control-Allow-Origin", "*");
+  headers.set(
+    "Cache-Control",
+    "public, max-age=300, stale-while-revalidate=600"
+  );
+
+  const response = new Response(upstream.body, {
+    status: 200,
+    headers
+  });
+
+  ctx.waitUntil(
+    cache.put(cacheKey, response.clone())
+  );
+
+  return response;
+}
 
 function contentType(key) {
   if (key.endsWith(".webp")) return "image/webp";
@@ -11,6 +114,13 @@ export default {
     const url = new URL(request.url);
     if (!url.pathname.startsWith(PREFIX)) return new Response("Not found", { status: 404 });
     if (request.method !== "GET" && request.method !== "HEAD") return new Response("Method not allowed", { status: 405 });
+
+    if (
+      url.pathname === NDFD_WMS_PROXY_PATH &&
+      request.method === "GET"
+    ) {
+      return proxyNdfdWms(request, url, ctx);
+    }
 
     const cache = caches.default;
     const cached = await cache.match(request);

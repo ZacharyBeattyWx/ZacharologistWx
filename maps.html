@@ -2579,26 +2579,26 @@
         <h3 class="wx-gallery-title">Quick Hits</h3>
 
         <div class="wx-gallery-grid">
-          <article class="wx-gallery-card" data-wx-product="maxTemp" data-open-mode="image" tabindex="0">
+          <article class="wx-gallery-card" data-wx-product="maxTemp" data-open-mode="interactive" data-interactive-kind="ndfd-max" tabindex="0">
             <div class="wx-gallery-map" id="maxTempGalleryMap"></div>
             <div class="wx-gallery-card-body">
               <p class="wx-gallery-source">NDFD</p>
               <h3>Today's Max Temperature (°F)</h3>
               <div class="wx-gallery-card-footer">
                 <span class="wx-gallery-status" data-wx-status>Loading Day 1 maximum temperature…</span>
-                <button class="wx-gallery-action" type="button" data-gallery-action>View large <span aria-hidden="true">→</span></button>
+                <button class="wx-gallery-action" type="button" data-gallery-action>Interactive <span aria-hidden="true">→</span></button>
               </div>
             </div>
           </article>
 
-          <article class="wx-gallery-card" data-wx-product="minTemp" data-open-mode="image" tabindex="0">
+          <article class="wx-gallery-card" data-wx-product="minTemp" data-open-mode="interactive" data-interactive-kind="ndfd-min" tabindex="0">
             <div class="wx-gallery-map" id="minTempGalleryMap"></div>
             <div class="wx-gallery-card-body">
               <p class="wx-gallery-source">NDFD</p>
               <h3>Today's Min Temperature (°F)</h3>
               <div class="wx-gallery-card-footer">
                 <span class="wx-gallery-status" data-wx-status>Loading Day 1 minimum temperature…</span>
-                <button class="wx-gallery-action" type="button" data-gallery-action>View large <span aria-hidden="true">→</span></button>
+                <button class="wx-gallery-action" type="button" data-gallery-action>Interactive <span aria-hidden="true">→</span></button>
               </div>
             </div>
           </article>
@@ -5904,6 +5904,1244 @@
         document.body.style.overflow = "";
       }
 
+      // RTMA_TILE_HOVER_V99
+      function installRtmaTemperatureHover(map, manifest, tileTemplate) {
+        const bounds =
+          Array.isArray(manifest?.bounds) && manifest.bounds.length === 4
+            ? manifest.bounds.map(Number)
+            : [-138.4, 19.2, -59.0, 54.4];
+
+        const sampleZoom = Math.max(
+          Number(manifest?.minzoom) || 2,
+          Number(manifest?.maxzoom) || 7
+        );
+
+        const tileSize = Number(manifest?.tileSize) || 256;
+        const mapContainer = map.getContainer();
+
+        const tooltip = document.createElement("div");
+        tooltip.className = "rtma-temperature-cursor-tooltip";
+        tooltip.setAttribute("role", "status");
+        tooltip.setAttribute("aria-live", "polite");
+
+        Object.assign(tooltip.style, {
+          position: "absolute",
+          left: "0",
+          top: "0",
+          zIndex: "30",
+          display: "none",
+          minWidth: "82px",
+          maxWidth: "180px",
+          padding: "7px 9px",
+          border: "1px solid rgba(139, 160, 196, 0.55)",
+          borderRadius: "8px",
+          color: "#ffffff",
+          background: "rgba(5, 10, 17, 0.94)",
+          boxShadow: "0 8px 24px rgba(0, 0, 0, 0.38)",
+          backdropFilter: "blur(6px)",
+          pointerEvents: "none",
+          fontSize: "12px",
+          fontWeight: "800",
+          lineHeight: "1.25",
+          whiteSpace: "nowrap"
+        });
+
+        mapContainer.appendChild(tooltip);
+
+        const colorStops = [
+          [-40, [241,207,204]],
+          [-35, [236,185,200]],
+          [-30, [219,164,195]],
+          [-25, [202,142,191]],
+          [-20, [186,121,186]],
+          [-15, [169, 99,181]],
+          [-10, [153, 78,176]],
+          [ -5, [132, 55,171]],
+          [  0, [160, 61,173]],
+          [  5, [179,119,194]],
+          [ 10, [198,178,216]],
+          [ 15, [223,237,242]],
+          [ 20, [161,188,223]],
+          [ 25, [ 98,141,201]],
+          [ 30, [ 26, 83,178]],
+          [ 35, [ 71,118,112]],
+          [ 40, [150,175,139]],
+          [ 45, [217,223,163]],
+          [ 50, [238,222,155]],
+          [ 55, [212,181,127]],
+          [ 60, [187,140, 99]],
+          [ 65, [161, 98, 70]],
+          [ 70, [130, 50, 38]],
+          [ 75, [104, 10, 11]],
+          [ 80, [107, 17, 24]],
+          [ 85, [128, 40, 58]],
+          [ 90, [157,114,108]],
+          [ 95, [229,212,202]],
+          [100, [208,200,193]],
+          [105, [167,163,157]],
+          [110, [120,117,114]],
+          [115, [ 87, 86, 85]]
+        ];
+
+        function temperatureColor(value) {
+          if (value <= colorStops[0][0]) return colorStops[0][1];
+          if (value >= colorStops[colorStops.length - 1][0]) {
+            return colorStops[colorStops.length - 1][1];
+          }
+
+          for (let i = 0; i < colorStops.length - 1; i += 1) {
+            const [a, ca] = colorStops[i];
+            const [b, cb] = colorStops[i + 1];
+
+            if (value < a || value > b) continue;
+
+            const q = (value - a) / (b - a);
+
+            return [
+              Math.round(ca[0] + (cb[0] - ca[0]) * q),
+              Math.round(ca[1] + (cb[1] - ca[1]) * q),
+              Math.round(ca[2] + (cb[2] - ca[2]) * q)
+            ];
+          }
+
+          return colorStops[colorStops.length - 1][1];
+        }
+
+        // Search the exact renderer palette at 0.25 F increments. The
+        // displayed WebP is lossy, so nearest-RGB matching is more reliable
+        // than expecting an exact color byte match.
+        const paletteSamples = [];
+
+        for (let value = -40; value <= 115.0001; value += 0.25) {
+          const rgb = temperatureColor(value);
+          paletteSamples.push({
+            value,
+            r: rgb[0],
+            g: rgb[1],
+            b: rgb[2]
+          });
+        }
+
+        function temperatureFromRgb(r, g, b, a) {
+          if (!Number.isFinite(a) || a < 20) return null;
+
+          let best = null;
+          let bestDistance = Infinity;
+
+          for (const sample of paletteSamples) {
+            const dr = r - sample.r;
+            const dg = g - sample.g;
+            const db = b - sample.b;
+            const distance = dr * dr + dg * dg + db * db;
+
+            if (distance < bestDistance) {
+              bestDistance = distance;
+              best = sample.value;
+            }
+          }
+
+          if (!Number.isFinite(best)) return null;
+
+          // Whole degrees are appropriate for an RGB-derived readout from
+          // the exact rendered tile and avoid implying false sub-degree
+          // precision after WebP compression.
+          return Math.round(best);
+        }
+
+        const tileCache = new Map();
+        const maxCachedTiles = 36;
+
+        function tileCoordinates(lng, lat) {
+          const z = sampleZoom;
+          const n = 2 ** z;
+          const safeLat = Math.max(
+            -85.05112878,
+            Math.min(85.05112878, Number(lat))
+          );
+
+          const xFloat = ((Number(lng) + 180) / 360) * n;
+          const latRad = safeLat * Math.PI / 180;
+          const yFloat =
+            (
+              1 -
+              Math.asinh(Math.tan(latRad)) / Math.PI
+            ) / 2 * n;
+
+          const x = Math.floor(xFloat);
+          const y = Math.floor(yFloat);
+
+          return {
+            z,
+            x,
+            y,
+            pixelX: Math.max(
+              0,
+              Math.min(
+                tileSize - 1,
+                Math.floor((xFloat - x) * tileSize)
+              )
+            ),
+            pixelY: Math.max(
+              0,
+              Math.min(
+                tileSize - 1,
+                Math.floor((yFloat - y) * tileSize)
+              )
+            )
+          };
+        }
+
+        function tileUrlFor(coords) {
+          return String(tileTemplate)
+            .replace("{z}", String(coords.z))
+            .replace("{x}", String(coords.x))
+            .replace("{y}", String(coords.y));
+        }
+
+        async function loadTilePixels(url) {
+          if (tileCache.has(url)) {
+            const cached = tileCache.get(url);
+
+            // Refresh insertion order for simple LRU behavior.
+            tileCache.delete(url);
+            tileCache.set(url, cached);
+            return cached;
+          }
+
+          const response = await fetch(url, { cache: "force-cache" });
+
+          if (!response.ok) {
+            throw new Error(`RTMA tile HTTP ${response.status}`);
+          }
+
+          const blob = await response.blob();
+          const bitmap = await createImageBitmap(blob);
+
+          const canvas = document.createElement("canvas");
+          canvas.width = tileSize;
+          canvas.height = tileSize;
+
+          const context = canvas.getContext("2d", {
+            alpha: true,
+            willReadFrequently: true
+          });
+
+          context.drawImage(bitmap, 0, 0, tileSize, tileSize);
+          bitmap.close?.();
+
+          const pixels = context.getImageData(
+            0,
+            0,
+            tileSize,
+            tileSize
+          );
+
+          tileCache.set(url, pixels);
+
+          while (tileCache.size > maxCachedTiles) {
+            const oldestKey = tileCache.keys().next().value;
+            tileCache.delete(oldestKey);
+          }
+
+          return pixels;
+        }
+
+        function insideBounds(lng, lat) {
+          const [west, south, east, north] = bounds;
+
+          return (
+            Number.isFinite(Number(lng)) &&
+            Number.isFinite(Number(lat)) &&
+            Number(lng) >= west &&
+            Number(lng) <= east &&
+            Number(lat) >= south &&
+            Number(lat) <= north
+          );
+        }
+
+        let hoverTimer = null;
+        let serial = 0;
+        let pinnedByTap = false;
+        let lastPoint = null;
+
+        function placeTooltip(point) {
+          if (!point) return;
+
+          lastPoint = point;
+          tooltip.style.display = "block";
+
+          const gap = 14;
+          const edge = 8;
+          const containerRect = mapContainer.getBoundingClientRect();
+          const tooltipRect = tooltip.getBoundingClientRect();
+
+          let left = point.x + gap;
+          let top = point.y + gap;
+
+          if (left + tooltipRect.width > containerRect.width - edge) {
+            left = point.x - tooltipRect.width - gap;
+          }
+
+          if (top + tooltipRect.height > containerRect.height - edge) {
+            top = point.y - tooltipRect.height - gap;
+          }
+
+          tooltip.style.left = `${Math.max(edge, left)}px`;
+          tooltip.style.top = `${Math.max(edge, top)}px`;
+        }
+
+        async function readTemperature(event) {
+          const lng = Number(event?.lngLat?.lng);
+          const lat = Number(event?.lngLat?.lat);
+
+          if (!insideBounds(lng, lat)) {
+            if (!pinnedByTap) tooltip.style.display = "none";
+            return;
+          }
+
+          const requestId = ++serial;
+          tooltip.textContent = "Reading...";
+          placeTooltip(event.point);
+
+          try {
+            const coords = tileCoordinates(lng, lat);
+            const url = tileUrlFor(coords);
+            const imageData = await loadTilePixels(url);
+
+            if (requestId !== serial) return;
+
+            const index =
+              (coords.pixelY * tileSize + coords.pixelX) * 4;
+
+            const value = temperatureFromRgb(
+              imageData.data[index],
+              imageData.data[index + 1],
+              imageData.data[index + 2],
+              imageData.data[index + 3]
+            );
+
+            tooltip.textContent =
+              Number.isFinite(value)
+                ? `${value}\u00B0F`
+                : "No data";
+
+            placeTooltip(lastPoint || event.point);
+          } catch (error) {
+            if (requestId !== serial) return;
+
+            console.info(
+              "RTMA tile hover unavailable",
+              error?.message || error
+            );
+
+            tooltip.textContent = "Unavailable";
+            placeTooltip(lastPoint || event.point);
+          }
+        }
+
+        function queueRead(event, immediate = false) {
+          if (!event?.lngLat || !event?.point) return;
+
+          if (hoverTimer) {
+            clearTimeout(hoverTimer);
+            hoverTimer = null;
+          }
+
+          placeTooltip(event.point);
+
+          if (immediate) {
+            readTemperature(event);
+            return;
+          }
+
+          hoverTimer = setTimeout(() => {
+            hoverTimer = null;
+            readTemperature(event);
+          }, 90);
+        }
+
+        function onMouseMove(event) {
+          if (event?.originalEvent?.buttons) return;
+
+          pinnedByTap = false;
+
+          if (!insideBounds(event.lngLat.lng, event.lngLat.lat)) {
+            tooltip.style.display = "none";
+            return;
+          }
+
+          queueRead(event, false);
+        }
+
+        function onClick(event) {
+          if (!insideBounds(event.lngLat.lng, event.lngLat.lat)) return;
+
+          // Preserve the existing station-model click behavior. Clicking a
+          // station opens the detailed station popup instead of pinning the
+          // raster-temperature tooltip on top of it.
+          if (map.getLayer("rtma-station-hit")) {
+            const stationFeatures = map.queryRenderedFeatures(
+              event.point,
+              { layers: ["rtma-station-hit"] }
+            );
+
+            if (stationFeatures.length) return;
+          }
+
+          pinnedByTap = true;
+          queueRead(event, true);
+        }
+
+        function onMouseLeave() {
+          if (hoverTimer) {
+            clearTimeout(hoverTimer);
+            hoverTimer = null;
+          }
+
+          if (!pinnedByTap) {
+            tooltip.style.display = "none";
+          }
+        }
+
+        function onMoveStart() {
+          pinnedByTap = false;
+          tooltip.style.display = "none";
+        }
+
+        map.on("mousemove", onMouseMove);
+        map.on("click", onClick);
+        map.on("movestart", onMoveStart);
+        map.getCanvas().addEventListener("mouseleave", onMouseLeave);
+
+        const cleanup = () => {
+          if (hoverTimer) clearTimeout(hoverTimer);
+
+          try { map.off("mousemove", onMouseMove); } catch (_error) {}
+          try { map.off("click", onClick); } catch (_error) {}
+          try { map.off("movestart", onMoveStart); } catch (_error) {}
+
+          try {
+            map.getCanvas().removeEventListener(
+              "mouseleave",
+              onMouseLeave
+            );
+          } catch (_error) {}
+
+          tileCache.clear();
+          tooltip.remove();
+        };
+
+        map.once("remove", cleanup);
+        return cleanup;
+      }
+      // NDFD_MAX_MIN_INTERACTIVE_V102
+      function installNdfdAdminBoundaryOverlay(map, container) {
+        const canvas = document.createElement("canvas");
+        canvas.className = "ndfd-admin-boundary-overlay";
+        canvas.setAttribute("aria-hidden", "true");
+
+        Object.assign(canvas.style, {
+          position: "absolute",
+          inset: "0",
+          zIndex: "4",
+          display: "block",
+          width: "100%",
+          height: "100%",
+          pointerEvents: "none"
+        });
+
+        container.appendChild(canvas);
+
+        const context = canvas.getContext("2d");
+        let drawQueued = false;
+        let disposed = false;
+
+        function resizeCanvas() {
+          const width = Math.max(1, container.clientWidth);
+          const height = Math.max(1, container.clientHeight);
+          const dpr = Math.max(
+            1,
+            Math.min(2.5, window.devicePixelRatio || 1)
+          );
+
+          const pixelWidth = Math.round(width * dpr);
+          const pixelHeight = Math.round(height * dpr);
+
+          if (
+            canvas.width !== pixelWidth ||
+            canvas.height !== pixelHeight
+          ) {
+            canvas.width = pixelWidth;
+            canvas.height = pixelHeight;
+          }
+
+          canvas.style.width = `${width}px`;
+          canvas.style.height = `${height}px`;
+
+          context.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+          return { width, height };
+        }
+
+        function drawLineGeometry(geometry) {
+          if (!geometry) return;
+
+          const type = geometry.type;
+          const coordinates = geometry.coordinates || [];
+
+          const drawLine = (line) => {
+            if (!Array.isArray(line) || line.length < 2) return;
+
+            let started = false;
+
+            for (const coordinate of line) {
+              if (
+                !Array.isArray(coordinate) ||
+                coordinate.length < 2
+              ) {
+                continue;
+              }
+
+              const lon = Number(coordinate[0]);
+              const lat = Number(coordinate[1]);
+
+              if (!Number.isFinite(lon) || !Number.isFinite(lat)) {
+                continue;
+              }
+
+              const point = map.project([lon, lat]);
+
+              if (!started) {
+                context.moveTo(point.x, point.y);
+                started = true;
+              } else {
+                context.lineTo(point.x, point.y);
+              }
+            }
+          };
+
+          if (type === "LineString") {
+            drawLine(coordinates);
+          } else if (type === "MultiLineString") {
+            for (const line of coordinates) drawLine(line);
+          } else if (type === "Polygon") {
+            for (const ring of coordinates) drawLine(ring);
+          } else if (type === "MultiPolygon") {
+            for (const polygon of coordinates) {
+              for (const ring of polygon) drawLine(ring);
+            }
+          }
+        }
+
+        function drawLayer(layerId, strokeStyle, lineWidth) {
+          if (!map.getLayer(layerId)) return;
+
+          let features = [];
+
+          try {
+            features = map.queryRenderedFeatures(
+              undefined,
+              { layers: [layerId] }
+            );
+          } catch (_error) {
+            return;
+          }
+
+          if (!features.length) return;
+
+          context.beginPath();
+
+          for (const feature of features) {
+            drawLineGeometry(feature.geometry);
+          }
+
+          context.strokeStyle = strokeStyle;
+          context.lineWidth = lineWidth;
+          context.lineCap = "round";
+          context.lineJoin = "round";
+          context.stroke();
+        }
+
+        function draw() {
+          drawQueued = false;
+          if (disposed) return;
+
+          const { width, height } = resizeCanvas();
+          context.clearRect(0, 0, width, height);
+
+          // Requested hierarchy:
+          // counties thinner/lighter, states stronger.
+          drawLayer(
+            "admin-county",
+            "rgba(226,234,242,0.46)",
+            0.72
+          );
+
+          drawLayer(
+            "admin-state",
+            "rgba(238,243,248,0.88)",
+            1.35
+          );
+        }
+
+        function scheduleDraw() {
+          if (disposed || drawQueued) return;
+
+          drawQueued = true;
+          requestAnimationFrame(draw);
+        }
+
+        const events = [
+          "move",
+          "zoom",
+          "resize",
+          "moveend",
+          "zoomend",
+          "idle"
+        ];
+
+        events.forEach((eventName) => {
+          map.on(eventName, scheduleDraw);
+        });
+
+        scheduleDraw();
+
+        return {
+          cleanup() {
+            disposed = true;
+
+            events.forEach((eventName) => {
+              try {
+                map.off(eventName, scheduleDraw);
+              } catch (_error) {}
+            });
+
+            canvas.remove();
+          }
+        };
+      }
+
+      function installNdfdTemperatureHover(map, mode) {
+        const isMax = mode === "max";
+        const mapContainer = map.getContainer();
+
+        const tooltip = document.createElement("div");
+        tooltip.className = "ndfd-temperature-cursor-tooltip";
+        tooltip.setAttribute("role", "status");
+        tooltip.setAttribute("aria-live", "polite");
+
+        Object.assign(tooltip.style, {
+          position: "absolute",
+          left: "0",
+          top: "0",
+          zIndex: "30",
+          display: "none",
+          minWidth: "78px",
+          maxWidth: "180px",
+          padding: "7px 9px",
+          border: "1px solid rgba(139,160,196,0.55)",
+          borderRadius: "8px",
+          color: "#ffffff",
+          background: "rgba(5,10,17,0.94)",
+          boxShadow: "0 8px 24px rgba(0,0,0,0.38)",
+          backdropFilter: "blur(6px)",
+          pointerEvents: "none",
+          fontSize: "12px",
+          fontWeight: "800",
+          lineHeight: "1.25",
+          whiteSpace: "nowrap"
+        });
+
+        mapContainer.appendChild(tooltip);
+
+        const west = Number(NDFD_WMS_LONLAT_BOUNDS[0][0]);
+        const south = Number(NDFD_WMS_LONLAT_BOUNDS[0][1]);
+        const east = Number(NDFD_WMS_LONLAT_BOUNDS[1][0]);
+        const north = Number(NDFD_WMS_LONLAT_BOUNDS[1][1]);
+
+        const sampleCache = new Map();
+
+        let hoverTimer = null;
+        let requestSerial = 0;
+        let pinnedByTap = false;
+        let lastPoint = null;
+
+        function insideBounds(lng, lat) {
+          return (
+            Number.isFinite(lng) &&
+            Number.isFinite(lat) &&
+            lng >= west &&
+            lng <= east &&
+            lat >= south &&
+            lat <= north
+          );
+        }
+
+        function placeTooltip(point) {
+          if (!point) return;
+
+          lastPoint = point;
+          tooltip.style.display = "block";
+
+          const gap = 14;
+          const edge = 8;
+          const containerRect = mapContainer.getBoundingClientRect();
+          const tooltipRect = tooltip.getBoundingClientRect();
+
+          let left = point.x + gap;
+          let top = point.y + gap;
+
+          if (left + tooltipRect.width > containerRect.width - edge) {
+            left = point.x - tooltipRect.width - gap;
+          }
+
+          if (top + tooltipRect.height > containerRect.height - edge) {
+            top = point.y - tooltipRect.height - gap;
+          }
+
+          tooltip.style.left = `${Math.max(edge, left)}px`;
+          tooltip.style.top = `${Math.max(edge, top)}px`;
+        }
+
+        function sampleKey(lat, lon) {
+          const qLat = Math.round(lat * 10) / 10;
+          const qLon = Math.round(lon * 10) / 10;
+
+          return `${qLat.toFixed(1)},${qLon.toFixed(1)}`;
+        }
+
+        async function getSample(lat, lon) {
+          const key = sampleKey(lat, lon);
+
+          if (sampleCache.has(key)) {
+            return sampleCache.get(key);
+          }
+
+          const promise = fetchNwsPointForecastSample({
+            lat,
+            lon
+          }).catch((error) => {
+            sampleCache.delete(key);
+            throw error;
+          });
+
+          sampleCache.set(key, promise);
+          return promise;
+        }
+
+        async function identifyAt(event) {
+          const lng = Number(event?.lngLat?.lng);
+          const lat = Number(event?.lngLat?.lat);
+
+          if (!insideBounds(lng, lat)) {
+            if (!pinnedByTap) tooltip.style.display = "none";
+            return;
+          }
+
+          const serial = ++requestSerial;
+
+          tooltip.textContent = "Reading...";
+          placeTooltip(event.point);
+
+          try {
+            const sample = await getSample(lat, lng);
+
+            if (serial !== requestSerial) return;
+
+            const rawValue = isMax
+              ? Number(sample?.max)
+              : Number(sample?.min);
+
+            tooltip.textContent = Number.isFinite(rawValue)
+              ? `${Math.round(rawValue)}\u00B0F`
+              : "No data";
+
+            placeTooltip(lastPoint || event.point);
+          } catch (error) {
+            if (serial !== requestSerial) return;
+
+            console.info(
+              "NDFD temperature hover unavailable",
+              error?.message || error
+            );
+
+            tooltip.textContent = "Unavailable";
+            placeTooltip(lastPoint || event.point);
+          }
+        }
+
+        function queueIdentify(event, immediate = false) {
+          if (!event?.lngLat || !event?.point) return;
+
+          if (hoverTimer) {
+            clearTimeout(hoverTimer);
+            hoverTimer = null;
+          }
+
+          placeTooltip(event.point);
+
+          if (immediate) {
+            identifyAt(event);
+            return;
+          }
+
+          hoverTimer = setTimeout(() => {
+            hoverTimer = null;
+            identifyAt(event);
+          }, 225);
+        }
+
+        function onMouseMove(event) {
+          if (event?.originalEvent?.buttons) return;
+
+          pinnedByTap = false;
+
+          if (!insideBounds(event.lngLat.lng, event.lngLat.lat)) {
+            tooltip.style.display = "none";
+            return;
+          }
+
+          queueIdentify(event, false);
+        }
+
+        function onClick(event) {
+          if (!insideBounds(event.lngLat.lng, event.lngLat.lat)) return;
+
+          pinnedByTap = true;
+          queueIdentify(event, true);
+        }
+
+        function onMouseLeave() {
+          if (hoverTimer) {
+            clearTimeout(hoverTimer);
+            hoverTimer = null;
+          }
+
+          if (!pinnedByTap) {
+            tooltip.style.display = "none";
+          }
+        }
+
+        function onMoveStart() {
+          pinnedByTap = false;
+          tooltip.style.display = "none";
+        }
+
+        map.on("mousemove", onMouseMove);
+        map.on("click", onClick);
+        map.on("movestart", onMoveStart);
+        map.getCanvas().addEventListener("mouseleave", onMouseLeave);
+
+        const cleanup = () => {
+          if (hoverTimer) clearTimeout(hoverTimer);
+
+          try { map.off("mousemove", onMouseMove); } catch (_error) {}
+          try { map.off("click", onClick); } catch (_error) {}
+          try { map.off("movestart", onMoveStart); } catch (_error) {}
+
+          try {
+            map.getCanvas().removeEventListener(
+              "mouseleave",
+              onMouseLeave
+            );
+          } catch (_error) {}
+
+          sampleCache.clear();
+          tooltip.remove();
+        };
+
+        map.once("remove", cleanup);
+        return cleanup;
+      }
+
+      // NDFD_TEMP_PLOTS_V103
+      function installNdfdForecastTemperaturePlots(
+        map,
+        container,
+        mode
+      ) {
+        const isMax = mode === "max";
+
+        const canvas = document.createElement("canvas");
+        canvas.className = "ndfd-forecast-temperature-plots";
+        canvas.setAttribute("aria-hidden", "true");
+
+        Object.assign(canvas.style, {
+          position: "absolute",
+          inset: "0",
+          zIndex: "6",
+          display: "block",
+          width: "100%",
+          height: "100%",
+          pointerEvents: "none"
+        });
+
+        container.appendChild(canvas);
+
+        const context = canvas.getContext("2d");
+        let forecastSamples = [];
+        let drawQueued = false;
+        let disposed = false;
+
+        function resizeCanvas() {
+          const width = Math.max(1, container.clientWidth);
+          const height = Math.max(1, container.clientHeight);
+          const dpr = Math.max(
+            1,
+            Math.min(2.5, window.devicePixelRatio || 1)
+          );
+
+          const pixelWidth = Math.round(width * dpr);
+          const pixelHeight = Math.round(height * dpr);
+
+          if (
+            canvas.width !== pixelWidth ||
+            canvas.height !== pixelHeight
+          ) {
+            canvas.width = pixelWidth;
+            canvas.height = pixelHeight;
+          }
+
+          canvas.style.width = `${width}px`;
+          canvas.style.height = `${height}px`;
+
+          context.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+          return { width, height };
+        }
+
+        function spacingForZoom(zoom) {
+          if (zoom < 3.6) return 62;
+          if (zoom < 4.5) return 54;
+          if (zoom < 5.5) return 48;
+          if (zoom < 6.5) return 42;
+          return 36;
+        }
+
+        function fontSizeForZoom(zoom) {
+          if (zoom < 3.6) return 11;
+          if (zoom < 5.0) return 12;
+          if (zoom < 6.5) return 13;
+          return 14;
+        }
+
+        function draw() {
+          drawQueued = false;
+          if (disposed) return;
+
+          const { width, height } = resizeCanvas();
+          context.clearRect(0, 0, width, height);
+
+          if (!forecastSamples.length) return;
+
+          const field = isMax ? "max" : "min";
+          const zoom = map.getZoom();
+          const spacing = spacingForZoom(zoom);
+          const fontSize = fontSizeForZoom(zoom);
+          const occupied = new Set();
+
+          const candidates = [];
+
+          for (const sample of forecastSamples) {
+            const value = Number(sample?.[field]);
+
+            if (!Number.isFinite(value)) continue;
+
+            const lon = Number(sample?.lon);
+            const lat = Number(sample?.lat);
+
+            if (!Number.isFinite(lon) || !Number.isFinite(lat)) {
+              continue;
+            }
+
+            const point = map.project([lon, lat]);
+
+            if (
+              point.x < 12 ||
+              point.y < 12 ||
+              point.x > width - 12 ||
+              point.y > height - 34
+            ) {
+              continue;
+            }
+
+            candidates.push({
+              value,
+              point
+            });
+          }
+
+          // Stable national-to-local decluttering.
+          candidates.sort((a, b) => {
+            return a.point.x - b.point.x ||
+              a.point.y - b.point.y;
+          });
+
+          context.textAlign = "center";
+          context.textBaseline = "middle";
+          context.font =
+            `900 ${fontSize}px Arial, Helvetica, sans-serif`;
+          context.lineJoin = "round";
+
+          for (const item of candidates) {
+            const cellX = Math.floor(item.point.x / spacing);
+            const cellY = Math.floor(item.point.y / spacing);
+            const key = `${cellX}:${cellY}`;
+
+            if (occupied.has(key)) continue;
+            occupied.add(key);
+
+            const label = String(Math.round(item.value));
+
+            // Small station anchor.
+            context.beginPath();
+            context.arc(
+              item.point.x,
+              item.point.y,
+              zoom < 4.5 ? 2.0 : 2.5,
+              0,
+              Math.PI * 2
+            );
+            context.fillStyle = "rgba(4,8,13,0.88)";
+            context.fill();
+
+            // Strong readable temperature plot over every NDFD color.
+            context.lineWidth = zoom < 4.5 ? 3.2 : 3.8;
+            context.strokeStyle = "rgba(3,8,14,0.96)";
+            context.strokeText(
+              label,
+              item.point.x,
+              item.point.y
+            );
+
+            context.fillStyle =
+              item.value >= 90
+                ? "#fff36a"
+                : "#ffffff";
+
+            context.fillText(
+              label,
+              item.point.x,
+              item.point.y
+            );
+          }
+        }
+
+        function scheduleDraw() {
+          if (disposed || drawQueued) return;
+
+          drawQueued = true;
+          requestAnimationFrame(draw);
+        }
+
+        const events = [
+          "move",
+          "zoom",
+          "resize",
+          "moveend",
+          "zoomend"
+        ];
+
+        events.forEach((eventName) => {
+          map.on(eventName, scheduleDraw);
+        });
+
+        loadNwsForecastSamples()
+          .then((samples) => {
+            if (disposed) return;
+
+            forecastSamples = Array.isArray(samples)
+              ? samples
+              : [];
+
+            scheduleDraw();
+          })
+          .catch((error) => {
+            console.warn(
+              "NDFD forecast temperature plots unavailable",
+              error
+            );
+          });
+
+        scheduleDraw();
+
+        return {
+          cleanup() {
+            disposed = true;
+
+            events.forEach((eventName) => {
+              try {
+                map.off(eventName, scheduleDraw);
+              } catch (_error) {}
+            });
+
+            canvas.remove();
+          }
+        };
+      }
+      async function openNdfdTemperatureInteractiveMap(kind) {
+        destroyInteractiveWeatherMap();
+
+        const isMax = kind === "ndfd-max";
+
+        const config = {
+          wmsLayer: isMax
+            ? "ndfd.conus.maxt"
+            : "ndfd.conus.mint",
+          opacity: 0.94
+        };
+
+        interactiveWeatherTitle.textContent = isMax
+          ? "Today's Max Temperature (\u00B0F)"
+          : "Today's Min Temperature (\u00B0F)";
+
+        interactiveWeatherSubtitle.textContent = isMax
+          ? "NDFD forecast maximum temperature \u00B7 pan, zoom, hover for forecast high"
+          : "NDFD forecast minimum temperature \u00B7 pan, zoom, hover for forecast low";
+
+        try {
+          setInteractiveToolbar([], () => {});
+        } catch (_error) {}
+
+        mapboxgl.accessToken = MAPBOX_TOKEN;
+
+        const map = new mapboxgl.Map({
+          container: interactiveWeatherMapEl,
+          style: MAPBOX_STYLE,
+          center: [-96.5, 38.5],
+          zoom: 3.15,
+          bearing: 0,
+          pitch: 0,
+          projection: "mercator",
+          renderWorldCopies: false,
+          dragRotate: false,
+          pitchWithRotate: false
+        });
+
+        interactiveWeatherMap = map;
+
+        try {
+          map.touchZoomRotate?.disableRotation?.();
+        } catch (_error) {}
+
+        map.addControl(
+          new mapboxgl.NavigationControl({
+            showCompass: false
+          }),
+          "top-right"
+        );
+
+        map.on("load", () => {
+          hideQuickLookMapLabels(map);
+
+          // NDFD_NATIVE_MAPBOX_V104
+          //
+          // The old NDFD field was a DOM <img> positioned above Mapbox.
+          // It looked correct at rest but could visually drift during pan /
+          // zoom because it was not part of Mapbox's transform.
+          //
+          // Use Mapbox's native WMS raster source instead. Each requested
+          // tile receives its actual EPSG:3857 bounding box from Mapbox.
+          const ndfdBounds = [
+            Number(NDFD_WMS_LONLAT_BOUNDS[0][0]),
+            Number(NDFD_WMS_LONLAT_BOUNDS[0][1]),
+            Number(NDFD_WMS_LONLAT_BOUNDS[1][0]),
+            Number(NDFD_WMS_LONLAT_BOUNDS[1][1])
+          ];
+
+          const ndfdRevision =
+            Math.floor(Date.now() / 300000);
+
+          const ndfdWmsTileUrl =
+            "https://zacharologistwx.com" +
+            "/weather-data/current-wx/ndfd-wms" +
+            `?layer=${encodeURIComponent(config.wmsLayer)}` +
+            `&season=${encodeURIComponent(String(currentNdfdSeasonFlag()))}` +
+            `&v=${ndfdRevision}` +
+            "&bbox={bbox-epsg-3857}";
+
+          map.addSource("ndfd-temperature-native", {
+            type: "raster",
+            tiles: [ndfdWmsTileUrl],
+            tileSize: 256,
+            bounds: ndfdBounds,
+            minzoom: 2,
+            maxzoom: 10
+          });
+
+          const ndfdBeforeLayer =
+            map.getLayer("admin-state")
+              ? "admin-state"
+              : map.getLayer("admin-county")
+                ? "admin-county"
+                : undefined;
+
+          map.addLayer(
+            {
+              id: "ndfd-temperature-native",
+              type: "raster",
+              source: "ndfd-temperature-native",
+              paint: {
+                "raster-opacity": Number(config.opacity) || 0.94,
+                "raster-fade-duration": 0,
+                "raster-resampling": "linear",
+                "raster-emissive-strength": 1
+              }
+            },
+            ndfdBeforeLayer
+          );
+
+          const hoverCleanup = installNdfdTemperatureHover(
+            map,
+            isMax ? "max" : "min"
+          );
+
+          const temperaturePlots =
+            installNdfdForecastTemperaturePlots(
+              map,
+              interactiveWeatherMapEl,
+              isMax ? "max" : "min"
+            );
+
+          // Reuse the existing site temperature legend.
+          const temperatureLegend =
+            appendTemperatureLegend(
+              interactiveWeatherMapEl
+            );
+
+          // Keep the color bar above the WMS image/boundary canvases.
+          temperatureLegend.style.zIndex = "8";
+          temperatureLegend.style.left = "50%";
+          temperatureLegend.style.right = "auto";
+          temperatureLegend.style.bottom = "14px";
+          temperatureLegend.style.width =
+            "min(520px, calc(100% - 100px))";
+          temperatureLegend.style.transform =
+            "translateX(-50%)";
+
+          interactiveWeatherCleanup = () => {
+            try { hoverCleanup(); } catch (_error) {}
+            try { temperaturePlots.cleanup(); } catch (_error) {}
+            try { temperatureLegend.remove(); } catch (_error) {}
+          };
+
+          map.fitBounds(
+            NDFD_WMS_LONLAT_BOUNDS,
+            {
+              padding: 26,
+              duration: 0,
+              maxZoom: 4.4
+            }
+          );
+        });
+
+        map.on("error", (event) => {
+          console.info(
+            "NDFD max/min Mapbox event",
+            event?.error || event
+          );
+        });
+      }
       async function openTemperatureInteractiveMap() {
         destroyInteractiveWeatherMap();
 
@@ -6405,17 +7643,34 @@
             bounds
           });
 
-          map.addLayer({
-            id: "rtma-temperature",
-            type: "raster",
-            source: "rtma-temperature",
-            paint: {
-              "raster-opacity": 0.90,
-              "raster-fade-duration": 0,
-              "raster-resampling": "linear",
-              "raster-emissive-strength": 1
-            }
-          });
+          // MAPBOX_RTMA_ADMIN_BOUNDARIES_V99
+          const rtmaBoundaryBeforeId =
+            map.getLayer("admin-state")
+              ? "admin-state"
+              : map.getLayer("admin-county")
+                ? "admin-county"
+                : undefined;
+
+          map.addLayer(
+            {
+              id: "rtma-temperature",
+              type: "raster",
+              source: "rtma-temperature",
+              paint: {
+                "raster-opacity": 0.90,
+                "raster-fade-duration": 0,
+                "raster-resampling": "linear",
+                "raster-emissive-strength": 1
+              }
+            },
+            rtmaBoundaryBeforeId
+          );
+
+          installRtmaTemperatureHover(
+            map,
+            manifest,
+            tileTemplate
+          );
 
           const [stationResponse, stateResponse] = await Promise.all([
             fetch(stationUrl, { cache: "force-cache" }),
@@ -6799,7 +8054,8 @@
             stationToggleButton.remove();
           });
 
-          if (stateResponse.ok) {
+          // Mapbox admin-state/admin-county replace the custom RTMA state overlay.
+          if (false && stateResponse.ok) {
             map.addSource("rtma-state-borders", {
               type: "geojson",
               data: await stateResponse.json()
@@ -7742,7 +8998,8 @@
                 { cache: "force-cache" }
               );
 
-              if (stateResponse.ok) {
+              // Mapbox admin-state/admin-county replace the custom RTMA state overlay.
+          if (false && stateResponse.ok) {
                 map.addSource("mrms72-state-borders", {
                   type: "geojson",
                   data: await stateResponse.json()
@@ -7855,6 +9112,12 @@
 
         try {
           if (kind === "temp") await openTemperatureInteractiveMap();
+          if (
+            kind === "ndfd-max" ||
+            kind === "ndfd-min"
+          ) {
+            await openNdfdTemperatureInteractiveMap(kind);
+          }
           if (kind === "hazards") await openHazardsInteractiveMap();
           if (kind === "mrms") await openMrmsInteractiveMap();
           if (kind === "radar") await openRadarInteractiveMap();
