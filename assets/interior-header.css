@@ -1,0 +1,272 @@
+/*
+ * Zacharologist Wx shared interior-page header.
+ * This file intentionally does NOT load on index.html.
+ */
+
+.site-header[data-interior-site-header] {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 7000 !important;
+  width: 100% !important;
+  min-height: 54px !important;
+  margin: 0 !important;
+  padding: 5px clamp(14px, 2vw, 26px) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 14px !important;
+  overflow: visible !important;
+  border: 0 !important;
+  border-bottom: 1px solid rgba(100, 199, 255, 0.20) !important;
+  border-radius: 0 !important;
+  background: rgba(3, 9, 20, 0.96) !important;
+  box-shadow: none !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+}
+
+.site-header[data-interior-site-header]::before,
+.site-header[data-interior-site-header]::after {
+  display: none !important;
+  content: none !important;
+}
+
+.site-header[data-interior-site-header] .site-brand {
+  flex: 0 0 auto !important;
+  min-width: 42px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: inherit !important;
+  line-height: 0 !important;
+  text-decoration: none !important;
+}
+
+.site-header[data-interior-site-header] .site-brand-logo {
+  display: block !important;
+  width: 42px !important;
+  height: 42px !important;
+  max-width: none !important;
+  object-fit: contain !important;
+  border-radius: 11px !important;
+}
+
+.site-header[data-interior-site-header] .site-nav {
+  position: static !important;
+  width: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  flex-direction: row !important;
+  gap: 5px !important;
+  overflow: visible !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.site-header[data-interior-site-header] .site-nav a {
+  width: auto !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 7px 9px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 1px solid transparent !important;
+  border-radius: 9px !important;
+  color: #dbe8f5 !important;
+  background: transparent !important;
+  text-decoration: none !important;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  font-size: 0.66rem !important;
+  font-weight: 900 !important;
+  line-height: 1.25 !important;
+  letter-spacing: 0.055em !important;
+  text-transform: uppercase !important;
+  white-space: nowrap !important;
+}
+
+.site-header[data-interior-site-header] .site-nav a:hover,
+.site-header[data-interior-site-header] .site-nav a.active,
+.site-header[data-interior-site-header] .site-nav a[aria-current="page"] {
+  color: #fff !important;
+  border-color: rgba(98, 201, 255, 0.38) !important;
+  background: rgba(98, 201, 255, 0.12) !important;
+}
+
+.site-header[data-interior-site-header] .mobile-nav-toggle {
+  display: none !important;
+  width: 38px !important;
+  height: 38px !important;
+  min-width: 38px !important;
+  min-height: 38px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  place-items: center !important;
+  border: 1px solid rgba(126, 173, 214, 0.28) !important;
+  border-radius: 10px !important;
+  background: rgba(15, 31, 50, 0.92) !important;
+  color: #fff !important;
+  font-size: 1rem !important;
+  line-height: 1 !important;
+  cursor: pointer !important;
+}
+
+/* maps.html has a second sticky section-nav directly below the main header. */
+.section-nav-wrap {
+  top: 54px !important;
+}
+
+/*
+ * level2-mobile-radar.html is a fixed/fullscreen workstation.
+ * Move the desktop control rail down so the shared header does not cover it.
+ */
+@media (min-width: 761px) {
+  .right-ui-rail {
+    top: 70px !important;
+    max-height: calc(100vh - 86px) !important;
+  }
+}
+
+@media (max-width: 980px) {
+  .site-header[data-interior-site-header] {
+    min-height: 52px !important;
+    padding: 5px 12px !important;
+  }
+
+  .site-header[data-interior-site-header] .site-brand-logo {
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 10px !important;
+  }
+
+  .section-nav-wrap {
+    top: 52px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .site-header[data-interior-site-header] {
+    min-height: 52px !important;
+    gap: 10px !important;
+  }
+
+  .site-header[data-interior-site-header] .site-brand {
+    min-width: 38px !important;
+  }
+
+  .site-header[data-interior-site-header] .site-brand-logo {
+    width: 38px !important;
+    height: 38px !important;
+  }
+
+  .site-header[data-interior-site-header] .mobile-nav-toggle {
+    display: grid !important;
+    flex: 0 0 auto !important;
+  }
+
+  .site-header[data-interior-site-header] .site-nav {
+    position: fixed !important;
+    top: 52px !important;
+    right: 10px !important;
+    left: 10px !important;
+    z-index: 7001 !important;
+    width: auto !important;
+    max-height: calc(100dvh - 64px) !important;
+    margin: 0 !important;
+    padding: 10px !important;
+    display: none !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    gap: 5px !important;
+    overflow-y: auto !important;
+    border: 1px solid rgba(126, 173, 214, 0.24) !important;
+    border-radius: 15px !important;
+    background: rgba(3, 10, 21, 0.985) !important;
+    box-shadow: 0 22px 55px rgba(0, 0, 0, 0.42) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+  }
+
+  .site-header[data-interior-site-header] .site-nav.open,
+  .site-header[data-interior-site-header].menu-open .site-nav {
+    display: flex !important;
+  }
+
+  .site-header[data-interior-site-header] .site-nav a {
+    width: 100% !important;
+    min-height: 42px !important;
+    justify-content: flex-start !important;
+    padding: 10px 12px !important;
+    font-size: 0.72rem !important;
+  }
+
+  .section-nav-wrap {
+    top: 52px !important;
+  }
+}
+
+/* HEADER-GEOMETRY-NORMALIZATION-V1 */
+/*
+ * Force the shared interior header to use the same outer geometry on every page.
+ * This neutralizes legacy Chase header height and the Radar page's content-box sizing.
+ */
+.site-header[data-interior-site-header] {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: none !important;
+  height: 54px !important;
+  min-height: 54px !important;
+}
+
+.site-header[data-interior-site-header] *,
+.site-header[data-interior-site-header] *::before,
+.site-header[data-interior-site-header] *::after {
+  box-sizing: border-box !important;
+}
+
+@media (max-width: 980px) {
+  .site-header[data-interior-site-header] {
+    height: 52px !important;
+    min-height: 52px !important;
+  }
+}
+/* END-HEADER-GEOMETRY-NORMALIZATION-V1 */
+
+/* RADAR-HEADER-VIEWPORT-LOCK-V1 */
+/*
+ * Radar is a full-screen fixed-position application. Keep its shared site
+ * header pinned directly to the viewport so its horizontal position cannot
+ * drift with the page/map layout.
+ */
+body[data-interior-radar-page] > .site-header[data-interior-site-header] {
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: auto !important;
+  left: 0 !important;
+  width: auto !important;
+  max-width: none !important;
+  margin: 0 !important;
+  transform: none !important;
+  translate: none !important;
+}
+/* END-RADAR-HEADER-VIEWPORT-LOCK-V1 */
+
+/* RADAR-NAV-BUTTON-OFFSET-V1 */
+/*
+ * Keep the Radar header itself full-width.
+ * Only pull the desktop navigation button group left by the approximate
+ * Windows scrollbar width so it lines up with the scrolling interior pages.
+ */
+@media (min-width: 761px) {
+  body[data-interior-radar-page] > .site-header[data-interior-site-header] .site-nav {
+    transform: translateX(-17px) !important;
+  }
+}
+/* END-RADAR-NAV-BUTTON-OFFSET-V1 */

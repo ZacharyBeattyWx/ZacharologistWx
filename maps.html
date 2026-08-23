@@ -2230,7 +2230,7 @@
       .spc-card-foot { align-items: flex-start; flex-direction: column; }
     }
 
-  
+
     /* v52: keep interactive station details above temperature analysis */
     .interactive-weather-map .mapboxgl-popup {
       z-index: 8 !important;
@@ -2242,21 +2242,38 @@
     }
 </style>
   <link rel="preload" as="image" href="/weather-data/current-wx/current-hazards.webp" type="image/webp">
+  <link rel="stylesheet" href="assets/interior-header.css" data-interior-header-style>
+  <script src="scripts/interior-header.js" defer data-interior-header-script></script>
 </head>
 
 <body>
-  <header class="site-header">
-    <div class="header-inner">
-      <a class="brand" href="index.html">Zacharologist Wx</a>
-      <nav class="site-nav" aria-label="Primary navigation">
-        <a href="index.html">Home</a>
-        <a href="wx-updates.html">Wx Updates</a>
-        <a href="maps.html" aria-current="page">Maps &amp; Models</a>
-        <a href="chase-dashboard.html">Chase Dashboard</a>
-        <a href="level2-mobile-radar.html">Live Radar</a>
-      </nav>
-    </div>
-  </header>
+  <header class="site-header" data-interior-site-header>
+  <a class="site-brand" href="index.html" aria-label="Zacharologist Wx home">
+    <img
+      class="site-brand-logo"
+      src="assets/zacharologist-wx-radar-mark.png"
+      alt="Zacharologist"
+    >
+  </a>
+
+  <button
+    class="mobile-nav-toggle"
+    id="mobileNavToggle"
+    data-interior-nav-toggle
+    type="button"
+    aria-label="Open navigation"
+    aria-expanded="false"
+  >&#9776;</button>
+
+  <nav class="site-nav" id="siteNav" data-interior-site-nav aria-label="Primary navigation">
+    <a href="index.html">Home</a>
+    <a href="wx-updates.html">Wx Updates</a>
+    <a href="maps.html">Maps &amp; Models</a>
+    <a href="level2-mobile-radar.html">Radar + Alerts</a>
+    <a href="storm-reports.html">Storm Reports</a>
+    <a href="chase-dashboard.html">Storm Chasing</a>
+  </nav>
+</header>
 
   <main class="page-shell">
     <section class="hero">
@@ -2442,7 +2459,7 @@
           </div>
         </article>
       </div>
-    
+
       <p class="tile-group-title">Precipitation Animations</p>
       <div class="map-grid two-column">
 <article class="map-card">

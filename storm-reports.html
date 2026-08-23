@@ -3366,28 +3366,37 @@
   }
 </style>
 
+  <link rel="stylesheet" href="assets/interior-header.css" data-interior-header-style>
+  <script src="scripts/interior-header.js" defer data-interior-header-script></script>
 </head>
 <body>
-  <header class="site-header">
-    <a class="site-brand" href="index.html">
-      <img
-        class="site-brand-logo"
-        src="assets/zacharologist-wx-radar-mark.png"
-        alt="Zacharologist"
-      >
-    </a>
+  <header class="site-header" data-interior-site-header>
+  <a class="site-brand" href="index.html" aria-label="Zacharologist Wx home">
+    <img
+      class="site-brand-logo"
+      src="assets/zacharologist-wx-radar-mark.png"
+      alt="Zacharologist"
+    >
+  </a>
 
-    <button class="mobile-nav-toggle" id="mobileNavToggle" type="button" aria-label="Open navigation">☰</button>
+  <button
+    class="mobile-nav-toggle"
+    id="mobileNavToggle"
+    data-interior-nav-toggle
+    type="button"
+    aria-label="Open navigation"
+    aria-expanded="false"
+  >&#9776;</button>
 
-    <nav class="site-nav" id="siteNav">
-      <a href="index.html">Home</a>
-      <a href="wx-updates.html">Wx Updates</a>
-      <a href="maps.html">Maps &amp; Models</a>
-      <a href="level2-mobile-radar.html">Radar + Alerts</a>
-      <a class="active" href="storm-reports.html">Storm Reports</a>
-      <a href="chase-dashboard.html">Storm Chasing</a>
-    </nav>
-  </header>
+  <nav class="site-nav" id="siteNav" data-interior-site-nav aria-label="Primary navigation">
+    <a href="index.html">Home</a>
+    <a href="wx-updates.html">Wx Updates</a>
+    <a href="maps.html">Maps &amp; Models</a>
+    <a href="level2-mobile-radar.html">Radar + Alerts</a>
+    <a href="storm-reports.html">Storm Reports</a>
+    <a href="chase-dashboard.html">Storm Chasing</a>
+  </nav>
+</header>
 
   <main class="reports-shell">
     <section class="reports-hero">

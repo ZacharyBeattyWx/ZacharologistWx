@@ -633,7 +633,7 @@
       .cards-grid { grid-template-columns: 1fr; }
       .status-card { min-height: 92px; }
     }
-  
+
   /* Field-use quick links added below the original chase dashboard */
   .field-ops-board {
     width: min(1190px, calc(100% - 32px));
@@ -2921,27 +2921,42 @@
     }
   }
 </style>
+  <link rel="stylesheet" href="assets/interior-header.css" data-interior-header-style>
+  <script src="scripts/interior-header.js" defer data-interior-header-script></script>
 </head>
 <body>
+<header class="site-header" data-interior-site-header>
+  <a class="site-brand" href="index.html" aria-label="Zacharologist Wx home">
+    <img
+      class="site-brand-logo"
+      src="assets/zacharologist-wx-radar-mark.png"
+      alt="Zacharologist"
+    >
+  </a>
+
+  <button
+    class="mobile-nav-toggle"
+    id="mobileNavToggle"
+    data-interior-nav-toggle
+    type="button"
+    aria-label="Open navigation"
+    aria-expanded="false"
+  >&#9776;</button>
+
+  <nav class="site-nav" id="siteNav" data-interior-site-nav aria-label="Primary navigation">
+    <a href="index.html">Home</a>
+    <a href="wx-updates.html">Wx Updates</a>
+    <a href="maps.html">Maps &amp; Models</a>
+    <a href="level2-mobile-radar.html">Radar + Alerts</a>
+    <a href="storm-reports.html">Storm Reports</a>
+    <a href="chase-dashboard.html">Storm Chasing</a>
+  </nav>
+</header>
+
 <div class="desktop-chase-shell">
   <div class="page-shell">
     <main class="dashboard-frame">
-      <header class="site-header">
-        <a href="index.html" class="site-brand" aria-label="Zacharologist home">
-          <div class="brand-main">ZACHAROLOGIST</div>
-          <div class="brand-sub">Built for the Storm</div>
-        </a>
-        <button class="mobile-nav-toggle" type="button" aria-expanded="false" aria-controls="chase-navigation">Menu</button>
-        <nav class="site-nav" id="chase-navigation" aria-label="Chase dashboard navigation">
-          <a href="chase-dashboard.html" class="active">Dashboard<span>Ops</span></a>
-          <a href="#chase-logs">Chase Logs<span>History</span></a>
-          <a href="#live">Live Streams<span>Feed</span></a>
-          <a href="#gallery">Gallery<span>Media</span></a>
-          <a href="#gear">Gear &amp; Vehicle<span>Equipment</span></a>
-          <a href="#targets">Targets<span>Alerts</span></a>
-          <a href="#archive">Archive<span>History</span></a>
-        </nav>
-      </header>
+
 
       <section class="hero" aria-label="Storm chase dashboard overview">
         <div class="hero-content">
@@ -2984,7 +2999,7 @@
           </div>
 
           <div class="cards-grid" aria-label="Chase operation cards">
-            
+
             <article class="card" id="live">
               <div class="card-head">
                 <h2 class="card-title" data-chase-stream-title>Live Stream</h2>
