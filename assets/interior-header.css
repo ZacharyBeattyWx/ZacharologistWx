@@ -270,3 +270,45 @@ body[data-interior-radar-page] > .site-header[data-interior-site-header] {
   }
 }
 /* END-RADAR-NAV-BUTTON-OFFSET-V1 */
+
+/* INTERIOR-HEADER-NORMAL-FLOW-V1 */
+/*
+ * Normal interior pages should scroll naturally with the document instead
+ * of floating above page content. Radar remains the one fullscreen exception;
+ * its more-specific viewport lock below still keeps that header fixed.
+ */
+body:not([data-interior-radar-page]) > .site-header[data-interior-site-header] {
+  position: relative !important;
+  top: auto !important;
+}
+
+/* Maps keeps its product/section navigation sticky after the site header scrolls away. */
+body:not([data-interior-radar-page]) .section-nav-wrap {
+  top: 0 !important;
+}
+/* END-INTERIOR-HEADER-NORMAL-FLOW-V1 */
+
+/* MAPS-STICKY-HEADER-MODAL-LAYERING-V1 */
+/*
+ * Maps & Models keeps both navigation rows pinned, but at the page's
+ * original layer levels so fullscreen maps, lightboxes, and popups can
+ * naturally render above them.
+ */
+body[data-interior-maps-page] > .site-header[data-interior-site-header] {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 50 !important;
+}
+
+body[data-interior-maps-page] .section-nav-wrap {
+  position: sticky !important;
+  top: 54px !important;
+  z-index: 40 !important;
+}
+
+@media (max-width: 980px) {
+  body[data-interior-maps-page] .section-nav-wrap {
+    top: 52px !important;
+  }
+}
+/* END-MAPS-STICKY-HEADER-MODAL-LAYERING-V1 */
