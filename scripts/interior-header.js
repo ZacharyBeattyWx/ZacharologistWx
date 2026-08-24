@@ -14,7 +14,16 @@
     const url = new URL(link.getAttribute("href"), window.location.href);
     const linkPage =
       url.pathname.split("/").filter(Boolean).pop() || "index.html";
-    const isActive = linkPage.toLowerCase() === currentPage.toLowerCase();
+    const currentPageLower = currentPage.toLowerCase();
+    const linkPageLower = linkPage.toLowerCase();
+
+    const isRadarAlertsSection =
+      currentPageLower === "live-alerts.html" &&
+      linkPageLower === "level2-mobile-radar.html";
+
+    const isActive =
+      linkPageLower === currentPageLower ||
+      isRadarAlertsSection;
 
     link.classList.toggle("active", isActive);
 

@@ -7535,27 +7535,46 @@
     color: #ffffff;
   }
 </style>
+  <link rel="stylesheet" href="assets/interior-header.css" data-interior-header-style>
+  <script src="scripts/interior-header.js" defer data-interior-header-script></script>
   <script src="mapbox-token.js"></script>
 </head>
 <body>
-  <main class="page">
-    <nav class="topbar" aria-label="Page navigation">
-      <a class="brand" href="index.html">
-        <span class="brand-mark" aria-hidden="true">
-          <img
-            src="assets/zacharologist-wx-radar-mark.png"
-            alt=""
-          >
-        </span>
-        <span>Zacharologist Wx</span>
-      </a>
-      <div class="nav-actions">
-        <a class="nav-button" href="index.html">Home</a>
-        <a class="nav-button" href="level2-mobile-radar.html?perf=1">Radar + Alerts</a>
-      </div>
-    </nav>
+<header class="site-header" data-interior-site-header>
+  <a class="site-brand" href="index.html" aria-label="Zacharologist Wx home">
+    <img
+      class="site-brand-logo"
+      src="assets/zacharologist-wx-radar-mark.png"
+      alt="Zacharologist"
+    >
+  </a>
 
-    <section class="hero">
+  <button
+    class="mobile-nav-toggle"
+    id="mobileNavToggle"
+    data-interior-nav-toggle
+    type="button"
+    aria-label="Open navigation"
+    aria-expanded="false"
+  >&#9776;</button>
+
+  <nav
+    class="site-nav"
+    id="siteNav"
+    data-interior-site-nav
+    aria-label="Primary navigation"
+  >
+    <a href="index.html">Home</a>
+    <a href="wx-updates.html">Wx Updates</a>
+    <a href="maps.html">Maps &amp; Models</a>
+    <a href="level2-mobile-radar.html">Radar + Alerts</a>
+    <a href="storm-reports.html">Storm Reports</a>
+    <a href="chase-dashboard.html">Storm Chasing</a>
+  </nav>
+</header>
+
+  <main class="page">
+<section class="hero">
       <div class="hero-card">
         <p class="eyebrow">Live NWS Alert Network</p>
         <h1>Active Alerts</h1>
