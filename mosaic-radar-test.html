@@ -9,7 +9,7 @@
   <style>
     :root {
       color-scheme: dark;
-      --panel: rgba(4, 10, 22, 0.9);
+      --panel: rgba(4, 10, 22, 0.90);
       --border: rgba(148, 163, 184, 0.28);
       --muted: #94a3b8;
       --text: #f8fafc;
@@ -20,14 +20,7 @@
     }
 
     * { box-sizing: border-box; }
-
-    html,
-    body,
-    #map {
-      width: 100%;
-      height: 100%;
-      margin: 0;
-    }
+    html, body, #map { width: 100%; height: 100%; margin: 0; }
 
     body {
       overflow: hidden;
@@ -52,7 +45,7 @@
       border: 1px solid var(--border);
       border-radius: 14px;
       background: var(--panel);
-      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.38);
+      box-shadow: 0 18px 42px rgba(0,0,0,0.38);
       backdrop-filter: blur(12px);
     }
 
@@ -65,11 +58,7 @@
       text-transform: uppercase;
     }
 
-    h1 {
-      margin: 0;
-      font-size: 1.05rem;
-      line-height: 1.2;
-    }
+    h1 { margin: 0; font-size: 1.05rem; line-height: 1.2; }
 
     .subtitle {
       margin: 6px 0 12px;
@@ -95,23 +84,20 @@
       flex: 0 0 auto;
       border-radius: 50%;
       background: var(--warn);
-      box-shadow: 0 0 10px rgba(253, 230, 138, 0.35);
+      box-shadow: 0 0 10px rgba(253,230,138,0.35);
     }
 
     .status-dot.is-live {
       background: var(--good);
-      box-shadow: 0 0 10px rgba(134, 239, 172, 0.45);
+      box-shadow: 0 0 10px rgba(134,239,172,0.45);
     }
 
     .status-dot.is-error {
       background: var(--bad);
-      box-shadow: 0 0 10px rgba(252, 165, 165, 0.45);
+      box-shadow: 0 0 10px rgba(252,165,165,0.45);
     }
 
-    .controls {
-      display: grid;
-      gap: 10px;
-    }
+    .controls { display: grid; gap: 10px; }
 
     .button-row {
       display: grid;
@@ -122,9 +108,9 @@
     button {
       min-width: 0;
       padding: 8px 10px;
-      border: 1px solid rgba(148, 163, 184, 0.34);
+      border: 1px solid rgba(148,163,184,0.34);
       border-radius: 8px;
-      background: rgba(15, 23, 42, 0.94);
+      background: rgba(15,23,42,0.94);
       color: #fff;
       font: inherit;
       font-size: 0.76rem;
@@ -132,9 +118,7 @@
       cursor: pointer;
     }
 
-    button:hover {
-      border-color: rgba(56, 189, 248, 0.72);
-    }
+    button:hover { border-color: rgba(56,189,248,0.72); }
 
     .range-row {
       display: grid;
@@ -146,10 +130,7 @@
       font-weight: 800;
     }
 
-    input[type="range"] {
-      width: 100%;
-      accent-color: var(--accent);
-    }
+    input[type="range"] { width: 100%; accent-color: var(--accent); }
 
     output {
       min-width: 38px;
@@ -161,7 +142,7 @@
     .legend {
       margin-top: 12px;
       padding-top: 10px;
-      border-top: 1px solid rgba(148, 163, 184, 0.18);
+      border-top: 1px solid rgba(148,163,184,0.18);
     }
 
     .legend-title {
@@ -174,27 +155,14 @@
     .legend-bar {
       height: 10px;
       overflow: hidden;
-      border: 1px solid rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255,255,255,0.15);
       border-radius: 999px;
-      background:
-        linear-gradient(90deg,
-          #2873a5 0%,
-          #46d2e6 10%,
-          #497598 15%,
-          #4ca58e 22%,
-          #127618 30%,
-          #cbde01 38%,
-          #d7cb00 45%,
-          #e38103 52%,
-          #b95f0a 58%,
-          #c02514 64%,
-          #ca99b4 70%,
-          #c44a8a 76%,
-          #8b20d2 82%,
-          #5614a2 87%,
-          #6fd2db 91%,
-          #730a01 95%,
-          #ffffff 100%);
+      background: linear-gradient(90deg,
+        #2873a5 0%, #46d2e6 10%, #497598 15%, #4ca58e 22%,
+        #127618 30%, #cbde01 38%, #d7cb00 45%, #e38103 52%,
+        #b95f0a 58%, #c02514 64%, #ca99b4 70%, #c44a8a 76%,
+        #8b20d2 82%, #5614a2 87%, #6fd2db 91%, #730a01 95%,
+        #ffffff 100%);
     }
 
     .legend-labels {
@@ -213,14 +181,10 @@
       line-height: 1.45;
     }
 
-    .meta strong {
-      color: #dbeafe;
-    }
+    .meta strong { color: #dbeafe; }
 
     .mapboxgl-ctrl-bottom-left,
-    .mapboxgl-ctrl-bottom-right {
-      z-index: 12;
-    }
+    .mapboxgl-ctrl-bottom-right { z-index: 12; }
 
     @media (max-width: 640px) {
       .radar-panel {
@@ -238,7 +202,7 @@
   <section class="radar-panel" aria-label="Mosaic radar controls">
     <div class="eyebrow">Experimental</div>
     <h1>National MRMS Mosaic</h1>
-    <p class="subtitle">NOAA MRMS quality-controlled base reflectivity with the ZacharologistWx Level II reflectivity palette.</p>
+    <p class="subtitle">NOAA MRMS base reflectivity colorized client-side with the ZacharologistWx Level II palette.</p>
 
     <div class="status-row">
       <span id="statusDot" class="status-dot"></span>
@@ -267,10 +231,11 @@
     </div>
 
     <div class="meta">
-      <strong>Source:</strong> NOAA/NWS MRMS conus_bref_qcd<br>
-      <strong>Delivery:</strong> GeoServer WMS + external SLD<br>
-      <strong>Palette:</strong> shared Level II dBZ logic<br>
-      <strong>Nominal resolution:</strong> ~1 km<br>
+      <strong>Source:</strong> NOAA/NWS MRMS radar_base_reflectivity_time<br>
+      <strong>Delivery:</strong> ArcGIS ImageServer PNG32<br>
+      <strong>Colorization:</strong> Mapbox GPU raster-color<br>
+      <strong>Palette:</strong> shared Level II reflectivity logic<br>
+      <strong>Native pixel size:</strong> ~565 m<br>
       <strong>Update cadence:</strong> about 5 minutes
     </div>
   </section>
@@ -282,14 +247,45 @@
   <script>
     const MAPBOX_TOKEN = window.MAPBOX_PUBLIC_TOKEN;
     const MAPBOX_STYLE = "mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
-
     const RADAR_SOURCE_ID = "noaa-mrms-mosaic-source";
     const RADAR_LAYER_ID = "noaa-mrms-mosaic-layer";
-    const NOAA_WMS_BASE = "https://opengeo.ncep.noaa.gov/geoserver/conus/conus_bref_qcd/ows";
-    const NOAA_WMS_LAYER = "conus_bref_qcd";
-    const CUSTOM_SLD_URL = "https://raw.githubusercontent.com/ZacharyBeattyWx/ZacharologistWx/main/radar/zacharologist-mrms-reflectivity.sld";
-    const NOAA_FALLBACK_STYLE = "radar_reflectivity";
+    const NOAA_EXPORT_BASE = "https://mapservices.weather.noaa.gov/eventdriven/rest/services/radar/radar_base_reflectivity_time/ImageServer/exportImage";
     const AUTO_REFRESH_MS = 5 * 60 * 1000;
+
+    // NOAA's ImageServer exposes the source as 8-bit RGBA. Mapbox normalizes
+    // source channels to 0..1 before applying raster-color-mix, so multiplying
+    // the red channel by 255 reconstructs its original 8-bit numeric value.
+    // We are initially treating that value as dBZ. If NOAA applies an offset,
+    // only this mix/offset calibration needs to change.
+    const RADAR_VALUE_MIX = [255, 0, 0, 0];
+    const RADAR_VALUE_RANGE = [0, 95];
+
+    // Same visible reflectivity logic used by the Level II tile renderer:
+    // weak echoes are translucent cyan/blue, then the shared dBZ palette.
+    const RADAR_COLOR_EXPRESSION = [
+      "interpolate", ["linear"], ["raster-value"],
+       0.0, "rgba(40,115,165,0.14)",
+       5.0, "rgba(55,163,198,0.28)",
+       9.999, "rgba(70,210,230,0.47)",
+      10.0, "rgba(73,117,152,0.49)",
+      15.0, "rgba(76,165,142,0.80)",
+      20.0, "rgba(18,118,24,0.90)",
+      25.0, "rgba(203,222,1,0.96)",
+      30.0, "rgb(215,203,0)",
+      35.0, "rgb(227,129,3)",
+      40.0, "rgb(185,95,10)",
+      45.0, "rgb(192,37,20)",
+      50.0, "rgb(202,153,180)",
+      55.0, "rgb(196,74,138)",
+      60.0, "rgb(139,32,210)",
+      65.0, "rgb(86,20,162)",
+      70.0, "rgb(111,210,219)",
+      75.0, "rgb(74,132,154)",
+      80.0, "rgb(115,10,1)",
+      85.0, "rgb(235,190,255)",
+      90.0, "rgb(255,230,245)",
+      95.0, "rgb(255,255,255)"
+    ];
 
     const statusText = document.getElementById("statusText");
     const statusDot = document.getElementById("statusDot");
@@ -302,8 +298,6 @@
     let radarOpacity = Number(radarOpacityInput.value);
     let refreshTimer = null;
     let radarErrorCount = 0;
-    let useCustomSld = true;
-    let fallbackQueued = false;
 
     function setStatus(message, state = "loading") {
       statusText.textContent = message;
@@ -313,23 +307,16 @@
 
     function getRadarTileUrl() {
       const cacheBust = Date.now();
-      const styleParams = useCustomSld
-        ? `&STYLES=&SLD=${encodeURIComponent(CUSTOM_SLD_URL)}`
-        : `&STYLES=${encodeURIComponent(NOAA_FALLBACK_STYLE)}`;
-
-      return `${NOAA_WMS_BASE}` +
-        `?SERVICE=WMS` +
-        `&VERSION=1.1.1` +
-        `&REQUEST=GetMap` +
-        `&LAYERS=${encodeURIComponent(NOAA_WMS_LAYER)}` +
-        styleParams +
-        `&FORMAT=image/png` +
-        `&TRANSPARENT=TRUE` +
-        `&SRS=EPSG:3857` +
-        `&BBOX={bbox-epsg-3857}` +
-        `&WIDTH=256` +
-        `&HEIGHT=256` +
-        `&TILED=TRUE` +
+      return `${NOAA_EXPORT_BASE}` +
+        `?bbox={bbox-epsg-3857}` +
+        `&bboxSR=3857` +
+        `&imageSR=3857` +
+        `&size=256,256` +
+        `&format=png32` +
+        `&pixelType=U8` +
+        `&interpolation=RSP_NearestNeighbor` +
+        `&transparent=true` +
+        `&f=image` +
         `&_=${cacheBust}`;
     }
 
@@ -339,12 +326,8 @@
     }
 
     function removeRadarLayer() {
-      if (map.getLayer(RADAR_LAYER_ID)) {
-        map.removeLayer(RADAR_LAYER_ID);
-      }
-      if (map.getSource(RADAR_SOURCE_ID)) {
-        map.removeSource(RADAR_SOURCE_ID);
-      }
+      if (map.getLayer(RADAR_LAYER_ID)) map.removeLayer(RADAR_LAYER_ID);
+      if (map.getSource(RADAR_SOURCE_ID)) map.removeSource(RADAR_SOURCE_ID);
     }
 
     function addRadarLayer() {
@@ -355,12 +338,11 @@
         tiles: [getRadarTileUrl()],
         tileSize: 256,
         minzoom: 0,
-        maxzoom: 11,
-        bounds: [-130, 20, -60, 55],
+        maxzoom: 10,
+        bounds: [-179.9, 8.9, 150.5, 72.5],
         attribution: "NOAA / National Weather Service / MRMS"
       });
 
-      const beforeId = firstSymbolLayerId();
       const layer = {
         id: RADAR_LAYER_ID,
         type: "raster",
@@ -368,47 +350,26 @@
         paint: {
           "raster-opacity": radarOpacity,
           "raster-fade-duration": 0,
-          "raster-resampling": "nearest"
+          "raster-resampling": "nearest",
+          "raster-color-mix": RADAR_VALUE_MIX,
+          "raster-color-range": RADAR_VALUE_RANGE,
+          "raster-color": RADAR_COLOR_EXPRESSION
         },
         layout: {
           visibility: radarVisible ? "visible" : "none"
         }
       };
 
-      if (beforeId) {
-        map.addLayer(layer, beforeId);
-      } else {
-        map.addLayer(layer);
-      }
+      const beforeId = firstSymbolLayerId();
+      if (beforeId) map.addLayer(layer, beforeId);
+      else map.addLayer(layer);
     }
 
     function refreshRadar({ automatic = false } = {}) {
       if (!map?.isStyleLoaded()) return;
-
-      fallbackQueued = false;
-      setStatus(
-        automatic
-          ? "Checking NOAA for a newer mosaic…"
-          : useCustomSld
-            ? "Loading latest mosaic with Level II palette…"
-            : "Refreshing NOAA fallback radar…"
-      );
+      setStatus(automatic ? "Checking NOAA for a newer mosaic…" : "Refreshing latest NOAA mosaic…");
       removeRadarLayer();
       addRadarLayer();
-    }
-
-    function queueNoaaFallback() {
-      if (!useCustomSld || fallbackQueued) return;
-      fallbackQueued = true;
-
-      window.setTimeout(() => {
-        if (!useCustomSld || radarErrorCount < 3) return;
-        useCustomSld = false;
-        fallbackQueued = false;
-        setStatus("Custom SLD blocked by NOAA; switching to NOAA radar style…");
-        removeRadarLayer();
-        addRadarLayer();
-      }, 500);
     }
 
     function startAutoRefresh() {
@@ -435,35 +396,25 @@
       map.setProjection("mercator");
       addRadarLayer();
       startAutoRefresh();
-      setStatus("Loading MRMS with shared Level II palette…");
+      setStatus("Loading NOAA MRMS + GPU Level II palette…");
     });
 
     map.on("idle", () => {
       if (map.getLayer(RADAR_LAYER_ID) && radarErrorCount === 0) {
         const time = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-        setStatus(
-          `${useCustomSld ? "Level II palette" : "NOAA fallback"} active • checked ${time}`,
-          "live"
-        );
+        setStatus(`GPU Level II palette active • checked ${time}`, "live");
       }
     });
 
     map.on("error", (event) => {
       const sourceId = event?.sourceId || event?.source?.id || "";
       const message = event?.error?.message || "";
-      const looksLikeRadarError = sourceId === RADAR_SOURCE_ID || message.includes("conus_bref_qcd") || message.includes("WMS");
+      const looksLikeRadarError = sourceId === RADAR_SOURCE_ID || message.includes("radar_base_reflectivity_time");
+      if (!looksLikeRadarError) return;
 
-      if (looksLikeRadarError) {
-        radarErrorCount += 1;
-        console.error("MRMS radar source error:", event.error || event);
-
-        if (useCustomSld) {
-          setStatus("Testing external Level II radar palette…");
-          queueNoaaFallback();
-        } else {
-          setStatus("NOAA radar request failed — check Console/Network.", "error");
-        }
-      }
+      radarErrorCount += 1;
+      console.error("MRMS radar source error:", event.error || event);
+      setStatus("NOAA ArcGIS radar request failed — check Console/Network.", "error");
     });
 
     toggleRadarButton.addEventListener("click", () => {
