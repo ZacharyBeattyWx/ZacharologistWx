@@ -9,8 +9,8 @@
   <style>
     :root {
       color-scheme: dark;
-      --panel: rgba(4, 10, 22, 0.90);
-      --border: rgba(148, 163, 184, 0.28);
+      --panel: rgba(4,10,22,.91);
+      --border: rgba(148,163,184,.28);
       --muted: #94a3b8;
       --text: #f8fafc;
       --accent: #38bdf8;
@@ -29,32 +29,28 @@
       font-family: Arial, Helvetica, sans-serif;
     }
 
-    #map {
-      position: fixed;
-      inset: 0;
-      background: #07111f;
-    }
+    #map { position: fixed; inset: 0; background: #07111f; }
 
     .radar-panel {
       position: fixed;
       top: 16px;
       left: 16px;
       z-index: 10;
-      width: min(370px, calc(100vw - 32px));
+      width: min(380px, calc(100vw - 32px));
       padding: 14px;
       border: 1px solid var(--border);
       border-radius: 14px;
       background: var(--panel);
-      box-shadow: 0 18px 42px rgba(0,0,0,0.38);
+      box-shadow: 0 18px 42px rgba(0,0,0,.38);
       backdrop-filter: blur(12px);
     }
 
     .eyebrow {
       margin-bottom: 4px;
       color: var(--accent);
-      font-size: 0.68rem;
+      font-size: .68rem;
       font-weight: 900;
-      letter-spacing: 0.12em;
+      letter-spacing: .12em;
       text-transform: uppercase;
     }
 
@@ -63,7 +59,7 @@
     .subtitle {
       margin: 6px 0 12px;
       color: #cbd5e1;
-      font-size: 0.76rem;
+      font-size: .76rem;
       line-height: 1.35;
     }
 
@@ -74,7 +70,7 @@
       min-height: 20px;
       margin-bottom: 12px;
       color: var(--muted);
-      font-size: 0.74rem;
+      font-size: .74rem;
       line-height: 1.3;
     }
 
@@ -84,41 +80,36 @@
       flex: 0 0 auto;
       border-radius: 50%;
       background: var(--warn);
-      box-shadow: 0 0 10px rgba(253,230,138,0.35);
+      box-shadow: 0 0 10px rgba(253,230,138,.35);
     }
 
     .status-dot.is-live {
       background: var(--good);
-      box-shadow: 0 0 10px rgba(134,239,172,0.45);
+      box-shadow: 0 0 10px rgba(134,239,172,.45);
     }
 
     .status-dot.is-error {
       background: var(--bad);
-      box-shadow: 0 0 10px rgba(252,165,165,0.45);
+      box-shadow: 0 0 10px rgba(252,165,165,.45);
     }
 
     .controls { display: grid; gap: 10px; }
-
-    .button-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
+    .button-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 
     button {
       min-width: 0;
       padding: 8px 10px;
-      border: 1px solid rgba(148,163,184,0.34);
+      border: 1px solid rgba(148,163,184,.34);
       border-radius: 8px;
-      background: rgba(15,23,42,0.94);
+      background: rgba(15,23,42,.94);
       color: #fff;
       font: inherit;
-      font-size: 0.76rem;
+      font-size: .76rem;
       font-weight: 800;
       cursor: pointer;
     }
 
-    button:hover { border-color: rgba(56,189,248,0.72); }
+    button:hover { border-color: rgba(56,189,248,.72); }
 
     .range-row {
       display: grid;
@@ -126,7 +117,7 @@
       gap: 8px;
       align-items: center;
       color: #bfdbfe;
-      font-size: 0.72rem;
+      font-size: .72rem;
       font-weight: 800;
     }
 
@@ -142,27 +133,20 @@
     .legend {
       margin-top: 12px;
       padding-top: 10px;
-      border-top: 1px solid rgba(148,163,184,0.18);
+      border-top: 1px solid rgba(148,163,184,.18);
     }
 
-    .legend-title {
-      margin-bottom: 6px;
-      color: #bfdbfe;
-      font-size: 0.68rem;
-      font-weight: 800;
-    }
+    .legend-title { margin-bottom: 6px; color: #bfdbfe; font-size: .68rem; font-weight: 800; }
 
     .legend-bar {
       height: 10px;
-      overflow: hidden;
-      border: 1px solid rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,.15);
       border-radius: 999px;
       background: linear-gradient(90deg,
         #2873a5 0%, #46d2e6 10%, #497598 15%, #4ca58e 22%,
         #127618 30%, #cbde01 38%, #d7cb00 45%, #e38103 52%,
         #b95f0a 58%, #c02514 64%, #ca99b4 70%, #c44a8a 76%,
-        #8b20d2 82%, #5614a2 87%, #6fd2db 91%, #730a01 95%,
-        #ffffff 100%);
+        #8b20d2 82%, #5614a2 87%, #6fd2db 91%, #730a01 95%, #fff 100%);
     }
 
     .legend-labels {
@@ -170,39 +154,25 @@
       justify-content: space-between;
       margin-top: 4px;
       color: #94a3b8;
-      font-size: 0.62rem;
+      font-size: .62rem;
       font-variant-numeric: tabular-nums;
     }
 
-    .meta {
-      margin-top: 10px;
-      color: #94a3b8;
-      font-size: 0.68rem;
-      line-height: 1.45;
-    }
-
+    .meta { margin-top: 10px; color: #94a3b8; font-size: .68rem; line-height: 1.45; }
     .meta strong { color: #dbeafe; }
 
-    .mapboxgl-ctrl-bottom-left,
-    .mapboxgl-ctrl-bottom-right { z-index: 12; }
-
     @media (max-width: 640px) {
-      .radar-panel {
-        top: 10px;
-        left: 10px;
-        width: calc(100vw - 20px);
-        padding: 12px;
-      }
+      .radar-panel { top: 10px; left: 10px; width: calc(100vw - 20px); padding: 12px; }
     }
   </style>
 </head>
 <body>
   <div id="map" aria-label="National MRMS radar mosaic map"></div>
 
-  <section class="radar-panel" aria-label="Mosaic radar controls">
+  <section class="radar-panel">
     <div class="eyebrow">Experimental</div>
     <h1>National MRMS Mosaic</h1>
-    <p class="subtitle">NOAA MRMS base reflectivity colorized client-side with the ZacharologistWx Level II palette.</p>
+    <p class="subtitle">NOAA MRMS reflectivity rendered by ArcGIS with the ZacharologistWx Level II palette.</p>
 
     <div class="status-row">
       <span id="statusDot" class="status-dot"></span>
@@ -222,7 +192,7 @@
       </label>
     </div>
 
-    <div class="legend" aria-label="Reflectivity color scale">
+    <div class="legend">
       <div class="legend-title">Reflectivity (dBZ)</div>
       <div class="legend-bar"></div>
       <div class="legend-labels">
@@ -233,8 +203,8 @@
     <div class="meta">
       <strong>Source:</strong> NOAA/NWS MRMS radar_base_reflectivity_time<br>
       <strong>Delivery:</strong> ArcGIS ImageServer PNG32<br>
-      <strong>Colorization:</strong> Mapbox GPU raster-color<br>
-      <strong>Palette:</strong> shared Level II reflectivity logic<br>
+      <strong>Colorization:</strong> ArcGIS ExtractBand + Remap + Colormap<br>
+      <strong>Palette:</strong> ZacharologistWx Level II reflectivity<br>
       <strong>Native pixel size:</strong> ~565 m<br>
       <strong>Update cadence:</strong> about 5 minutes
     </div>
@@ -252,32 +222,36 @@
     const NOAA_EXPORT_BASE = "https://mapservices.weather.noaa.gov/eventdriven/rest/services/radar/radar_base_reflectivity_time/ImageServer/exportImage";
     const AUTO_REFRESH_MS = 5 * 60 * 1000;
 
-    const RADAR_VALUE_MIX = [255, 0, 0, 0];
-    const RADAR_VALUE_RANGE = [0, 95];
+    // The NOAA processed reflectivity imagery is an 8-bit product. Digital
+    // reflectivity products conventionally encode reflectivity as:
+    // encoded = dBZ * 2 + 66, so dBZ = (encoded - 66) / 2.
+    // Keeping this conversion centralized makes calibration trivial if NOAA's
+    // MRMS imagery uses a slightly different encoding.
+    const DBZ_SCALE = 2;
+    const DBZ_OFFSET = 66;
+    const DISPLAY_MIN_DBZ = -5;
 
-    const RADAR_COLOR_EXPRESSION = [
-      "interpolate", ["linear"], ["raster-value"],
-       0.0, "rgba(40,115,165,0.14)",
-       5.0, "rgba(55,163,198,0.28)",
-       9.999, "rgba(70,210,230,0.47)",
-      10.0, "rgba(73,117,152,0.49)",
-      15.0, "rgba(76,165,142,0.80)",
-      20.0, "rgba(18,118,24,0.90)",
-      25.0, "rgba(203,222,1,0.96)",
-      30.0, "rgb(215,203,0)",
-      35.0, "rgb(227,129,3)",
-      40.0, "rgb(185,95,10)",
-      45.0, "rgb(192,37,20)",
-      50.0, "rgb(202,153,180)",
-      55.0, "rgb(196,74,138)",
-      60.0, "rgb(139,32,210)",
-      65.0, "rgb(86,20,162)",
-      70.0, "rgb(111,210,219)",
-      75.0, "rgb(74,132,154)",
-      80.0, "rgb(115,10,1)",
-      85.0, "rgb(235,190,255)",
-      90.0, "rgb(255,230,245)",
-      95.0, "rgb(255,255,255)"
+    const LEVEL2_STOPS = [
+      [-5, 28,95,140],
+      [0, 40,115,165],
+      [10, 73,117,152],
+      [15, 76,165,142],
+      [20, 18,118,24],
+      [25, 203,222,1],
+      [30, 215,203,0],
+      [35, 227,129,3],
+      [40, 185,95,10],
+      [45, 192,37,20],
+      [50, 202,153,180],
+      [55, 196,74,138],
+      [60, 139,32,210],
+      [65, 86,20,162],
+      [70, 111,210,219],
+      [75, 74,132,154],
+      [80, 115,10,1],
+      [85, 235,190,255],
+      [90, 255,230,245],
+      [95, 255,255,255]
     ];
 
     const statusText = document.getElementById("statusText");
@@ -298,8 +272,69 @@
       statusDot.classList.toggle("is-error", state === "error");
     }
 
+    function interpolatePalette(dbz) {
+      if (dbz <= LEVEL2_STOPS[0][0]) return LEVEL2_STOPS[0].slice(1);
+      for (let i = 1; i < LEVEL2_STOPS.length; i += 1) {
+        const a = LEVEL2_STOPS[i - 1];
+        const b = LEVEL2_STOPS[i];
+        if (dbz <= b[0]) {
+          const t = (dbz - a[0]) / (b[0] - a[0]);
+          return [1,2,3].map((channel) => Math.round(a[channel] + (b[channel] - a[channel]) * t));
+        }
+      }
+      return LEVEL2_STOPS[LEVEL2_STOPS.length - 1].slice(1);
+    }
+
+    function buildArcGisColormap() {
+      const colormap = [];
+      const minEncoded = Math.max(0, Math.ceil(DISPLAY_MIN_DBZ * DBZ_SCALE + DBZ_OFFSET));
+      for (let encoded = minEncoded; encoded <= 255; encoded += 1) {
+        const dbz = (encoded - DBZ_OFFSET) / DBZ_SCALE;
+        const [r, g, b] = interpolatePalette(dbz);
+        colormap.push([encoded, r, g, b]);
+      }
+      return colormap;
+    }
+
+    function buildRenderingRule() {
+      const minEncoded = Math.max(0, Math.ceil(DISPLAY_MIN_DBZ * DBZ_SCALE + DBZ_OFFSET));
+
+      const extractBand = {
+        rasterFunction: "ExtractBand",
+        rasterFunctionArguments: {
+          BandIDs: [0],
+          Raster: "$$"
+        },
+        outputPixelType: "U8",
+        variableName: "Raster"
+      };
+
+      const removeWeakReturns = {
+        rasterFunction: "Remap",
+        rasterFunctionArguments: {
+          NoDataRanges: [0, minEncoded],
+          AllowUnmatched: true,
+          Raster: extractBand
+        },
+        outputPixelType: "U8",
+        variableName: "Raster"
+      };
+
+      return {
+        rasterFunction: "Colormap",
+        rasterFunctionArguments: {
+          Colormap: buildArcGisColormap(),
+          Raster: removeWeakReturns
+        },
+        outputPixelType: "U8",
+        variableName: "Raster"
+      };
+    }
+
     function getRadarTileUrl() {
       const cacheBust = Date.now();
+      const renderingRule = encodeURIComponent(JSON.stringify(buildRenderingRule()));
+
       return `${NOAA_EXPORT_BASE}` +
         `?bbox={bbox-epsg-3857}` +
         `&bboxSR=3857` +
@@ -309,6 +344,7 @@
         `&pixelType=U8` +
         `&interpolation=RSP_NearestNeighbor` +
         `&transparent=true` +
+        `&renderingRule=${renderingRule}` +
         `&f=image` +
         `&_=${cacheBust}`;
     }
@@ -343,14 +379,9 @@
         paint: {
           "raster-opacity": radarOpacity,
           "raster-fade-duration": 0,
-          "raster-resampling": "nearest",
-          "raster-color-mix": RADAR_VALUE_MIX,
-          "raster-color-range": RADAR_VALUE_RANGE,
-          "raster-color": RADAR_COLOR_EXPRESSION
+          "raster-resampling": "nearest"
         },
-        layout: {
-          visibility: radarVisible ? "visible" : "none"
-        }
+        layout: { visibility: radarVisible ? "visible" : "none" }
       };
 
       const beforeId = firstSymbolLayerId();
@@ -360,7 +391,7 @@
 
     function refreshRadar({ automatic = false } = {}) {
       if (!map?.isStyleLoaded()) return;
-      setStatus(automatic ? "Checking NOAA for a newer mosaic…" : "Refreshing latest NOAA mosaic…");
+      setStatus(automatic ? "Checking NOAA for a newer mosaic…" : "Refreshing colorized MRMS mosaic…");
       removeRadarLayer();
       addRadarLayer();
     }
@@ -389,13 +420,13 @@
       map.setProjection("mercator");
       addRadarLayer();
       startAutoRefresh();
-      setStatus("Loading NOAA MRMS + GPU Level II palette…");
+      setStatus("Loading ArcGIS-colorized MRMS mosaic…");
     });
 
     map.on("idle", () => {
       if (map.getLayer(RADAR_LAYER_ID) && radarErrorCount === 0) {
         const time = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-        setStatus(`GPU Level II palette active • checked ${time}`, "live");
+        setStatus(`Level II palette mosaic active • checked ${time}`, "live");
       }
     });
 
@@ -406,8 +437,8 @@
       if (!looksLikeRadarError) return;
 
       radarErrorCount += 1;
-      console.error("MRMS radar source error:", event.error || event);
-      setStatus("NOAA ArcGIS radar request failed — check Console/Network.", "error");
+      console.error("MRMS raster-function error:", event.error || event);
+      setStatus("ArcGIS radar colorization failed — check Console/Network.", "error");
     });
 
     toggleRadarButton.addEventListener("click", () => {
@@ -416,7 +447,6 @@
         map.setLayoutProperty(RADAR_LAYER_ID, "visibility", radarVisible ? "visible" : "none");
       }
       toggleRadarButton.textContent = radarVisible ? "Hide Radar" : "Show Radar";
-      setStatus(radarVisible ? "MRMS mosaic visible" : "MRMS mosaic hidden", radarVisible ? "live" : "loading");
     });
 
     refreshRadarButton.addEventListener("click", () => refreshRadar());
