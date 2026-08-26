@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-"""Build a short playable national MRMS reflectivity loop.
+"""Build a time-window-based playable national MRMS reflectivity loop.
 
 The renderer intentionally preserves the radar path that proved visually correct:
 - NOAA numeric MRMS ReflectivityAtLowestAltitude GRIB2
 - the same Python dBZ -> RGBA colorizer used by the Level II radar
-- lossless WebP frames
+- lossless WebP observations
 - browser playback swaps those already-colored images into one custom WebGL texture
 
-The loop is incremental. Existing timestamped WebP frames are reused on later runs,
-so normally only the newest one or two MRMS scans need to be downloaded/rendered.
+The loop is defined by elapsed time, not by a fixed frame count. By default the
+latest 60 minutes of available MRMS observations are retained in the playback
+manifest. Existing timestamped WebP images are reused on later runs, so normally
+only the newest one or two MRMS scans need to be downloaded/rendered.
 """
 
 from __future__ import annotations
@@ -21,7 +23,7 @@ import re
 import shutil
 import tempfile
 import time
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from urllib.parse import urljoin
 
@@ -33,8 +35,8 @@ import render_mrms_mosaic as mrms
 
 REPO_ROOT = mrms.REPO_ROOT
 DEFAULT_OUTPUT = REPO_ROOT / "mrms-mosaic-loop-output"
-DEFAULT_FRAME_COUNT = 12
-DEFAULT_RETAIN_COUNT = 18
+DEFAULT_WINDOW_MINUTES = 60
+DEFAULT_RETAIN_MINUTES = 90
 DEFAULT_MAX_WIDTH = 4096
 MRMS_DIRECTORY_URL = "https://mrms.ncep.noaa.gov/2D/ReflectivityAtLowestAltitude/"
 HISTORICAL_NAME_RE = re.compile(
@@ -70,25 +72,26 @@ def frame_slug_from_name(name: str) -> str:
     return match.group("stamp")
 
 
-def list_recent_sources(session: requests.Session, count: int) -> list[dict]:
+def list_recent_sources(session: requests.Session, window_minutes: int) -> list[dict]:
     print(f"Listing {MRMS_DIRECTORY_URL}", flush=True)
     response = session.get(MRMS_DIRECTORY_URL, timeout=45)
     response.raise_for_status()
 
-    # Apache directory listings are plain HTML. Parsing hrefs with this narrow
-    # product-specific regex is more robust here than depending on table layout.
-    names = sorted(set(HISTORICAL_NAME_RE.findall(response.text)))
-    # findall() returns only the named capture when a named group is present,
-    # so use finditer() to recover full filenames.
     filenames = sorted(
         {match.group(0) for match in HISTORICAL_NAME_RE.finditer(html.unescape(response.text))},
         key=timestamp_from_name,
     )
-
     if not filenames:
         raise RuntimeError("NOAA MRMS directory did not contain timestamped reflectivity files")
 
-    selected = filenames[-max(1, int(count)) :]
+    newest_time = timestamp_from_name(filenames[-1])
+    cutoff = newest_time - timedelta(minutes=max(1, int(window_minutes)))
+    selected = [name for name in filenames if timestamp_from_name(name) >= cutoff]
+
+    # Guarantee a usable loop even during an unusual listing gap.
+    if len(selected) < 2:
+        selected = filenames[-2:]
+
     return [
         {
             "name": name,
@@ -185,29 +188,55 @@ def render_source_frame(
     return payload
 
 
-def prune_old_files(frames_dir: Path, meta_dir: Path, keep_ids: set[str], retain_count: int) -> None:
-    all_frames = sorted(frames_dir.glob("*.webp"), key=lambda path: path.stem)
-    protected = {path.stem for path in all_frames[-max(1, retain_count) :]} | keep_ids
+def parse_slug_time(slug: str) -> datetime | None:
+    try:
+        return datetime.strptime(slug, "%Y%m%d-%H%M%S").replace(tzinfo=UTC)
+    except ValueError:
+        return None
 
-    for path in all_frames:
-        if path.stem not in protected:
-            path.unlink(missing_ok=True)
-            (meta_dir / f"{path.stem}.json").unlink(missing_ok=True)
+
+def prune_old_files(
+    frames_dir: Path,
+    meta_dir: Path,
+    keep_ids: set[str],
+    newest_time: datetime,
+    retain_minutes: int,
+) -> None:
+    retain_cutoff = newest_time - timedelta(minutes=max(1, int(retain_minutes)))
+
+    for path in frames_dir.glob("*.webp"):
+        frame_time = parse_slug_time(path.stem)
+        if path.stem in keep_ids:
+            continue
+        if frame_time is not None and frame_time >= retain_cutoff:
+            continue
+        path.unlink(missing_ok=True)
+        (meta_dir / f"{path.stem}.json").unlink(missing_ok=True)
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", default=str(DEFAULT_OUTPUT))
-    parser.add_argument("--frames", type=int, default=DEFAULT_FRAME_COUNT)
-    parser.add_argument("--retain", type=int, default=DEFAULT_RETAIN_COUNT)
+    parser.add_argument(
+        "--minutes",
+        type=int,
+        default=DEFAULT_WINDOW_MINUTES,
+        help="Playback history window in minutes (default: 60)",
+    )
+    parser.add_argument(
+        "--retain-minutes",
+        type=int,
+        default=DEFAULT_RETAIN_MINUTES,
+        help="Keep rendered observations this many minutes for fast reuse (default: 90)",
+    )
     parser.add_argument("--max-width", type=int, default=DEFAULT_MAX_WIDTH)
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
-    frame_count = max(2, int(args.frames))
-    retain_count = max(frame_count, int(args.retain))
+    window_minutes = max(5, int(args.minutes))
+    retain_minutes = max(window_minutes, int(args.retain_minutes))
     max_width = max(512, int(args.max_width))
 
     output_root = Path(args.output).resolve()
@@ -224,9 +253,12 @@ def main():
         "Cache-Control": "no-cache",
     })
 
-    sources = list_recent_sources(session, frame_count)
+    sources = list_recent_sources(session, window_minutes)
+    actual_span_minutes = (
+        sources[-1]["filename_time"] - sources[0]["filename_time"]
+    ).total_seconds() / 60.0
     print(
-        f"Selected {len(sources)} frames: "
+        f"Selected {len(sources)} observations covering {actual_span_minutes:.1f} minutes: "
         f"{sources[0]['filename_time'].isoformat()} -> {sources[-1]['filename_time'].isoformat()}",
         flush=True,
     )
@@ -249,7 +281,6 @@ def main():
     width = frames[-1]["imageWidth"]
     height = frames[-1]["imageHeight"]
 
-    # Guard against a malformed/inconsistent source frame entering playback.
     compatible_frames = [
         frame for frame in frames
         if frame.get("bounds") == bounds
@@ -257,7 +288,11 @@ def main():
         and int(frame.get("imageHeight", 0)) == int(height)
     ]
     if len(compatible_frames) < 2:
-        raise RuntimeError("Fewer than two compatible MRMS frames were rendered")
+        raise RuntimeError("Fewer than two compatible MRMS observations were rendered")
+
+    start_time = datetime.fromisoformat(compatible_frames[0]["valid_time"])
+    end_time = datetime.fromisoformat(compatible_frames[-1]["valid_time"])
+    span_minutes = max(0.0, (end_time - start_time).total_seconds() / 60.0)
 
     now = datetime.now(UTC)
     revision = int(time.time())
@@ -271,7 +306,11 @@ def main():
         "imageHeight": height,
         "palette": str(mrms.PALETTE_FILE.relative_to(REPO_ROOT)).replace("\\", "/"),
         "displayMinDbz": mrms.TILE_DISPLAY_MIN_DBZ,
-        "frameCount": len(compatible_frames),
+        "historyWindowMinutes": window_minutes,
+        "actualSpanMinutes": round(span_minutes, 2),
+        "startTime": start_time.isoformat(),
+        "endTime": end_time.isoformat(),
+        "observationCount": len(compatible_frames),
         "defaultFrameIntervalMs": 650,
         "frames": [
             {
@@ -287,13 +326,19 @@ def main():
     )
 
     keep_ids = {frame["id"] for frame in compatible_frames}
-    prune_old_files(frames_dir, meta_dir, keep_ids, retain_count)
+    prune_old_files(
+        frames_dir,
+        meta_dir,
+        keep_ids,
+        end_time,
+        retain_minutes,
+    )
 
     reused = sum(1 for frame in compatible_frames if frame.get("reused"))
     rendered = len(compatible_frames) - reused
     print(
-        f"Done: {len(compatible_frames)} loop frames ({rendered} rendered, {reused} reused) "
-        f"-> {output_root}",
+        f"Done: {span_minutes:.1f}-minute loop with {len(compatible_frames)} observations "
+        f"({rendered} rendered, {reused} reused) -> {output_root}",
         flush=True,
     )
     print(f"Revision: {revision}", flush=True)
