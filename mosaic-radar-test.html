@@ -16,6 +16,7 @@
       --accent: #38bdf8;
       --good: #86efac;
       --warn: #fde68a;
+      --bad: #fca5a5;
     }
 
     * { box-sizing: border-box; }
@@ -100,6 +101,11 @@
     .status-dot.is-live {
       background: var(--good);
       box-shadow: 0 0 10px rgba(134, 239, 172, 0.45);
+    }
+
+    .status-dot.is-error {
+      background: var(--bad);
+      box-shadow: 0 0 10px rgba(252, 165, 165, 0.45);
     }
 
     .controls {
@@ -208,7 +214,8 @@
 
     <div class="meta">
       <strong>Source:</strong> NOAA/NWS MRMS radar_base_reflectivity_time<br>
-      <strong>Nominal resolution:</strong> 1 km<br>
+      <strong>Delivery:</strong> ArcGIS ImageServer exportImage PNG tiles<br>
+      <strong>Nominal resolution:</strong> ~1 km<br>
       <strong>Update cadence:</strong> about 5 minutes<br>
       <strong>Coverage:</strong> CONUS, Alaska, Hawaii, Caribbean, Guam
     </div>
@@ -223,7 +230,7 @@
     const MAPBOX_STYLE = "mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
     const RADAR_SOURCE_ID = "noaa-mrms-mosaic-source";
     const RADAR_LAYER_ID = "noaa-mrms-mosaic-layer";
-    const NOAA_WMS_BASE = "https://mapservices.weather.noaa.gov/eventdriven/services/radar/radar_base_reflectivity_time/ImageServer/WMSServer";
+    const NOAA_EXPORT_BASE = "https://mapservices.weather.noaa.gov/eventdriven/rest/services/radar/radar_base_reflectivity_time/ImageServer/exportImage";
     const AUTO_REFRESH_MS = 5 * 60 * 1000;
 
     const statusText = document.getElementById("statusText");
@@ -236,27 +243,26 @@
     let radarVisible = true;
     let radarOpacity = Number(radarOpacityInput.value);
     let refreshTimer = null;
-    let lastRefreshStartedAt = 0;
+    let radarErrorCount = 0;
 
-    function setStatus(message, isLive = false) {
+    function setStatus(message, state = "loading") {
       statusText.textContent = message;
-      statusDot.classList.toggle("is-live", isLive);
+      statusDot.classList.toggle("is-live", state === "live");
+      statusDot.classList.toggle("is-error", state === "error");
     }
 
-    function getWmsTileUrl() {
+    function getRadarTileUrl() {
       const cacheBust = Date.now();
-      return `${NOAA_WMS_BASE}` +
-        `?SERVICE=WMS` +
-        `&VERSION=1.1.1` +
-        `&REQUEST=GetMap` +
-        `&LAYERS=0` +
-        `&STYLES=` +
-        `&FORMAT=image/png` +
-        `&TRANSPARENT=TRUE` +
-        `&SRS=EPSG:3857` +
-        `&BBOX={bbox-epsg-3857}` +
-        `&WIDTH=256` +
-        `&HEIGHT=256` +
+      return `${NOAA_EXPORT_BASE}` +
+        `?bbox={bbox-epsg-3857}` +
+        `&bboxSR=3857` +
+        `&imageSR=3857` +
+        `&size=256,256` +
+        `&format=png32` +
+        `&pixelType=U8` +
+        `&interpolation=RSP_NearestNeighbor` +
+        `&transparent=true` +
+        `&f=image` +
         `&_=${cacheBust}`;
     }
 
@@ -275,10 +281,15 @@
     }
 
     function addRadarLayer() {
+      radarErrorCount = 0;
+
       map.addSource(RADAR_SOURCE_ID, {
         type: "raster",
-        tiles: [getWmsTileUrl()],
+        tiles: [getRadarTileUrl()],
         tileSize: 256,
+        minzoom: 0,
+        maxzoom: 10,
+        bounds: [-179.9, 8.9, 150.5, 72.5],
         attribution: "NOAA / National Weather Service / MRMS"
       });
 
@@ -289,7 +300,8 @@
         source: RADAR_SOURCE_ID,
         paint: {
           "raster-opacity": radarOpacity,
-          "raster-fade-duration": 0
+          "raster-fade-duration": 0,
+          "raster-resampling": "nearest"
         },
         layout: {
           visibility: radarVisible ? "visible" : "none"
@@ -306,17 +318,9 @@
     function refreshRadar({ automatic = false } = {}) {
       if (!map?.isStyleLoaded()) return;
 
-      lastRefreshStartedAt = Date.now();
       setStatus(automatic ? "Checking NOAA for a newer mosaic…" : "Refreshing latest NOAA mosaic…");
       removeRadarLayer();
       addRadarLayer();
-
-      window.setTimeout(() => {
-        if (lastRefreshStartedAt && Date.now() - lastRefreshStartedAt >= 900) {
-          const time = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-          setStatus(`Latest mosaic requested at ${time}`, true);
-        }
-      }, 1000);
     }
 
     function startAutoRefresh() {
@@ -347,17 +351,21 @@
     });
 
     map.on("idle", () => {
-      if (map.getLayer(RADAR_LAYER_ID)) {
+      if (map.getLayer(RADAR_LAYER_ID) && radarErrorCount === 0) {
         const time = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-        setStatus(`MRMS mosaic active • checked ${time}`, true);
+        setStatus(`MRMS mosaic active • checked ${time}`, "live");
       }
     });
 
     map.on("error", (event) => {
       const sourceId = event?.sourceId || event?.source?.id || "";
-      if (sourceId === RADAR_SOURCE_ID) {
+      const message = event?.error?.message || "";
+      const looksLikeRadarError = sourceId === RADAR_SOURCE_ID || message.includes("image") || message.includes("radar_base_reflectivity_time");
+
+      if (looksLikeRadarError) {
+        radarErrorCount += 1;
         console.error("MRMS radar source error:", event.error || event);
-        setStatus("NOAA radar tile request failed — check console/network.");
+        setStatus("NOAA radar image request failed — check Network/Console.", "error");
       }
     });
 
@@ -367,7 +375,7 @@
         map.setLayoutProperty(RADAR_LAYER_ID, "visibility", radarVisible ? "visible" : "none");
       }
       toggleRadarButton.textContent = radarVisible ? "Hide Radar" : "Show Radar";
-      setStatus(radarVisible ? "MRMS mosaic visible" : "MRMS mosaic hidden", radarVisible);
+      setStatus(radarVisible ? "MRMS mosaic visible" : "MRMS mosaic hidden", radarVisible ? "live" : "loading");
     });
 
     refreshRadarButton.addEventListener("click", () => refreshRadar());
