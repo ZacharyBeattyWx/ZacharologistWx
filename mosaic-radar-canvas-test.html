@@ -252,7 +252,9 @@
           if (!width || !height) return;
 
           gl.bindTexture(gl.TEXTURE_2D, this.texture);
-          gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+          // HTML/WebP pixels are top-origin while WebGL texture coordinates are bottom-origin.
+          // Flip only the upload Y axis so north stays north without changing the MRMS data itself.
+          gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
           gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
           if (gl.UNPACK_COLORSPACE_CONVERSION_WEBGL !== undefined) {
             gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
@@ -637,7 +639,7 @@
     }
 
     function sortedManifestFrames(manifestLike) {
-      return [...manifestLike.frames].sort((a,b)=>String(a.valid_time).localeCompare(String(b.valid_time)));
+      return [...manifestLike.frames].sort((a,b)=>parseFrameTime(a)-parseFrameTime(b));
     }
 
     async function installInitialManifest(nextManifest) {
