@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZacharologistWx MRMS Mosaic Radar Test</title>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --panel: rgba(4, 10, 22, 0.9);
+      --border: rgba(148, 163, 184, 0.28);
+      --muted: #94a3b8;
+      --text: #f8fafc;
+      --accent: #38bdf8;
+      --good: #86efac;
+      --warn: #fde68a;
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body,
+    #map {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+    }
+
+    body {
+      overflow: hidden;
+      background: #07111f;
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    #map {
+      position: fixed;
+      inset: 0;
+      background: #07111f;
+    }
+
+    .radar-panel {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      z-index: 10;
+      width: min(360px, calc(100vw - 32px));
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--panel);
+      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.38);
+      backdrop-filter: blur(12px);
+    }
+
+    .eyebrow {
+      margin-bottom: 4px;
+      color: var(--accent);
+      font-size: 0.68rem;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.05rem;
+      line-height: 1.2;
+    }
+
+    .subtitle {
+      margin: 6px 0 12px;
+      color: #cbd5e1;
+      font-size: 0.76rem;
+      line-height: 1.35;
+    }
+
+    .status-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      min-height: 20px;
+      margin-bottom: 12px;
+      color: var(--muted);
+      font-size: 0.74rem;
+      line-height: 1.3;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      flex: 0 0 auto;
+      border-radius: 50%;
+      background: var(--warn);
+      box-shadow: 0 0 10px rgba(253, 230, 138, 0.35);
+    }
+
+    .status-dot.is-live {
+      background: var(--good);
+      box-shadow: 0 0 10px rgba(134, 239, 172, 0.45);
+    }
+
+    .controls {
+      display: grid;
+      gap: 10px;
+    }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    button {
+      min-width: 0;
+      padding: 8px 10px;
+      border: 1px solid rgba(148, 163, 184, 0.34);
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.94);
+      color: #fff;
+      font: inherit;
+      font-size: 0.76rem;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    button:hover {
+      border-color: rgba(56, 189, 248, 0.72);
+    }
+
+    .range-row {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 8px;
+      align-items: center;
+      color: #bfdbfe;
+      font-size: 0.72rem;
+      font-weight: 800;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    output {
+      min-width: 38px;
+      color: #fff;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .meta {
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(148, 163, 184, 0.18);
+      color: #94a3b8;
+      font-size: 0.68rem;
+      line-height: 1.45;
+    }
+
+    .meta strong {
+      color: #dbeafe;
+    }
+
+    .mapboxgl-ctrl-bottom-left,
+    .mapboxgl-ctrl-bottom-right {
+      z-index: 12;
+    }
+
+    @media (max-width: 640px) {
+      .radar-panel {
+        top: 10px;
+        left: 10px;
+        width: calc(100vw - 20px);
+        padding: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="map" aria-label="National MRMS radar mosaic map"></div>
+
+  <section class="radar-panel" aria-label="Mosaic radar controls">
+    <div class="eyebrow">Experimental</div>
+    <h1>National MRMS Mosaic</h1>
+    <p class="subtitle">NOAA/NWS quality-controlled multi-radar base reflectivity rendered directly over Mapbox.</p>
+
+    <div class="status-row">
+      <span id="statusDot" class="status-dot"></span>
+      <span id="statusText">Initializing map…</span>
+    </div>
+
+    <div class="controls">
+      <div class="button-row">
+        <button id="toggleRadar" type="button">Hide Radar</button>
+        <button id="refreshRadar" type="button">Refresh Now</button>
+      </div>
+
+      <label class="range-row" for="radarOpacity">
+        <span>Opacity</span>
+        <input id="radarOpacity" type="range" min="0" max="1" step="0.05" value="0.82">
+        <output id="radarOpacityValue">82%</output>
+      </label>
+    </div>
+
+    <div class="meta">
+      <strong>Source:</strong> NOAA/NWS MRMS radar_base_reflectivity_time<br>
+      <strong>Nominal resolution:</strong> 1 km<br>
+      <strong>Update cadence:</strong> about 5 minutes<br>
+      <strong>Coverage:</strong> CONUS, Alaska, Hawaii, Caribbean, Guam
+    </div>
+  </section>
+
+  <script>
+    window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHFxOTBja2Iyc29nOXBtNDJkOTgifQ.A5PX2kdbDFzGYOoHmmnrKg";
+  </script>
+
+  <script>
+    const MAPBOX_TOKEN = window.MAPBOX_PUBLIC_TOKEN;
+    const MAPBOX_STYLE = "mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
+    const RADAR_SOURCE_ID = "noaa-mrms-mosaic-source";
+    const RADAR_LAYER_ID = "noaa-mrms-mosaic-layer";
+    const NOAA_WMS_BASE = "https://mapservices.weather.noaa.gov/eventdriven/services/radar/radar_base_reflectivity_time/ImageServer/WMSServer";
+    const AUTO_REFRESH_MS = 5 * 60 * 1000;
+
+    const statusText = document.getElementById("statusText");
+    const statusDot = document.getElementById("statusDot");
+    const toggleRadarButton = document.getElementById("toggleRadar");
+    const refreshRadarButton = document.getElementById("refreshRadar");
+    const radarOpacityInput = document.getElementById("radarOpacity");
+    const radarOpacityValue = document.getElementById("radarOpacityValue");
+
+    let radarVisible = true;
+    let radarOpacity = Number(radarOpacityInput.value);
+    let refreshTimer = null;
+    let lastRefreshStartedAt = 0;
+
+    function setStatus(message, isLive = false) {
+      statusText.textContent = message;
+      statusDot.classList.toggle("is-live", isLive);
+    }
+
+    function getWmsTileUrl() {
+      const cacheBust = Date.now();
+      return `${NOAA_WMS_BASE}` +
+        `?SERVICE=WMS` +
+        `&VERSION=1.1.1` +
+        `&REQUEST=GetMap` +
+        `&LAYERS=0` +
+        `&STYLES=` +
+        `&FORMAT=image/png` +
+        `&TRANSPARENT=TRUE` +
+        `&SRS=EPSG:3857` +
+        `&BBOX={bbox-epsg-3857}` +
+        `&WIDTH=256` +
+        `&HEIGHT=256` +
+        `&_=${cacheBust}`;
+    }
+
+    function firstSymbolLayerId() {
+      const layers = map.getStyle()?.layers || [];
+      return layers.find((layer) => layer.type === "symbol")?.id;
+    }
+
+    function removeRadarLayer() {
+      if (map.getLayer(RADAR_LAYER_ID)) {
+        map.removeLayer(RADAR_LAYER_ID);
+      }
+      if (map.getSource(RADAR_SOURCE_ID)) {
+        map.removeSource(RADAR_SOURCE_ID);
+      }
+    }
+
+    function addRadarLayer() {
+      map.addSource(RADAR_SOURCE_ID, {
+        type: "raster",
+        tiles: [getWmsTileUrl()],
+        tileSize: 256,
+        attribution: "NOAA / National Weather Service / MRMS"
+      });
+
+      const beforeId = firstSymbolLayerId();
+      const layer = {
+        id: RADAR_LAYER_ID,
+        type: "raster",
+        source: RADAR_SOURCE_ID,
+        paint: {
+          "raster-opacity": radarOpacity,
+          "raster-fade-duration": 0
+        },
+        layout: {
+          visibility: radarVisible ? "visible" : "none"
+        }
+      };
+
+      if (beforeId) {
+        map.addLayer(layer, beforeId);
+      } else {
+        map.addLayer(layer);
+      }
+    }
+
+    function refreshRadar({ automatic = false } = {}) {
+      if (!map?.isStyleLoaded()) return;
+
+      lastRefreshStartedAt = Date.now();
+      setStatus(automatic ? "Checking NOAA for a newer mosaic…" : "Refreshing latest NOAA mosaic…");
+      removeRadarLayer();
+      addRadarLayer();
+
+      window.setTimeout(() => {
+        if (lastRefreshStartedAt && Date.now() - lastRefreshStartedAt >= 900) {
+          const time = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+          setStatus(`Latest mosaic requested at ${time}`, true);
+        }
+      }, 1000);
+    }
+
+    function startAutoRefresh() {
+      window.clearInterval(refreshTimer);
+      refreshTimer = window.setInterval(() => refreshRadar({ automatic: true }), AUTO_REFRESH_MS);
+    }
+
+    mapboxgl.accessToken = MAPBOX_TOKEN;
+
+    const map = new mapboxgl.Map({
+      container: "map",
+      style: MAPBOX_STYLE,
+      center: [-96.5, 38.4],
+      zoom: 3.35,
+      minZoom: 2,
+      maxZoom: 12,
+      projection: "mercator",
+      attributionControl: true
+    });
+
+    map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), "bottom-right");
+
+    map.on("load", () => {
+      map.setProjection("mercator");
+      addRadarLayer();
+      startAutoRefresh();
+      setStatus("Loading latest NOAA MRMS mosaic…");
+    });
+
+    map.on("idle", () => {
+      if (map.getLayer(RADAR_LAYER_ID)) {
+        const time = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+        setStatus(`MRMS mosaic active • checked ${time}`, true);
+      }
+    });
+
+    map.on("error", (event) => {
+      const sourceId = event?.sourceId || event?.source?.id || "";
+      if (sourceId === RADAR_SOURCE_ID) {
+        console.error("MRMS radar source error:", event.error || event);
+        setStatus("NOAA radar tile request failed — check console/network.");
+      }
+    });
+
+    toggleRadarButton.addEventListener("click", () => {
+      radarVisible = !radarVisible;
+      if (map.getLayer(RADAR_LAYER_ID)) {
+        map.setLayoutProperty(RADAR_LAYER_ID, "visibility", radarVisible ? "visible" : "none");
+      }
+      toggleRadarButton.textContent = radarVisible ? "Hide Radar" : "Show Radar";
+      setStatus(radarVisible ? "MRMS mosaic visible" : "MRMS mosaic hidden", radarVisible);
+    });
+
+    refreshRadarButton.addEventListener("click", () => refreshRadar());
+
+    radarOpacityInput.addEventListener("input", () => {
+      radarOpacity = Number(radarOpacityInput.value);
+      radarOpacityValue.value = `${Math.round(radarOpacity * 100)}%`;
+      if (map.getLayer(RADAR_LAYER_ID)) {
+        map.setPaintProperty(RADAR_LAYER_ID, "raster-opacity", radarOpacity);
+      }
+    });
+  </script>
+</body>
+</html>
