@@ -17,67 +17,63 @@
       --good: #86efac;
       --bad: #fca5a5;
     }
-    * { box-sizing: border-box; }
-    html, body, #map { width:100%; height:100%; margin:0; }
-    body { overflow:hidden; background:#07111f; color:#f8fafc; font-family:Arial,Helvetica,sans-serif; }
-    #map { position:fixed; inset:0; background:#07111f; }
+    * { box-sizing:border-box; }
+    html,body,#map { width:100%;height:100%;margin:0; }
+    body { overflow:hidden;background:#07111f;color:#f8fafc;font-family:Arial,Helvetica,sans-serif; }
+    #map { position:fixed;inset:0;background:#07111f; }
 
     .panel {
-      position:fixed; top:16px; left:16px; z-index:20;
-      width:min(430px,calc(100vw - 32px)); padding:14px;
-      border:1px solid var(--border); border-radius:14px;
-      background:var(--panel); box-shadow:0 18px 42px rgba(0,0,0,.38);
-      backdrop-filter:blur(12px);
+      position:fixed;top:16px;left:16px;z-index:20;
+      width:min(430px,calc(100vw - 32px));padding:14px;
+      border:1px solid var(--border);border-radius:14px;background:var(--panel);
+      box-shadow:0 18px 42px rgba(0,0,0,.38);backdrop-filter:blur(12px);
     }
-    .eyebrow { margin-bottom:4px; color:var(--accent); font-size:.68rem; font-weight:900; letter-spacing:.12em; text-transform:uppercase; }
-    h1 { margin:0; font-size:1.05rem; }
-    .subtitle { margin:6px 0 12px; color:#cbd5e1; font-size:.76rem; line-height:1.35; }
-    .status-row { display:flex; gap:8px; align-items:flex-start; min-height:20px; margin-bottom:12px; color:var(--muted); font-size:.74rem; line-height:1.35; }
-    .status-dot { width:8px; height:8px; margin-top:2px; flex:0 0 auto; border-radius:50%; background:#fde68a; }
-    .status-dot.is-live { background:var(--good); box-shadow:0 0 10px rgba(134,239,172,.45); }
-    .status-dot.is-error { background:var(--bad); box-shadow:0 0 10px rgba(252,165,165,.45); }
+    .eyebrow { margin-bottom:4px;color:var(--accent);font-size:.68rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase; }
+    h1 { margin:0;font-size:1.05rem; }
+    .subtitle { margin:6px 0 12px;color:#cbd5e1;font-size:.76rem;line-height:1.35; }
+    .status-row { display:flex;gap:8px;align-items:flex-start;min-height:20px;margin-bottom:12px;color:var(--muted);font-size:.74rem;line-height:1.35; }
+    .status-dot { width:8px;height:8px;margin-top:2px;flex:0 0 auto;border-radius:50%;background:#fde68a; }
+    .status-dot.is-live { background:var(--good);box-shadow:0 0 10px rgba(134,239,172,.45); }
+    .status-dot.is-error { background:var(--bad);box-shadow:0 0 10px rgba(252,165,165,.45); }
 
-    .controls { display:grid; gap:10px; }
-    .button-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-    button, select {
-      min-width:0; padding:8px 10px;
-      border:1px solid rgba(148,163,184,.34); border-radius:8px;
-      background:rgba(15,23,42,.94); color:#fff;
-      font:inherit; font-size:.76rem; font-weight:800;
+    .controls { display:grid;gap:10px; }
+    .button-row { display:grid;grid-template-columns:1fr 1fr;gap:8px; }
+    button,select {
+      min-width:0;padding:8px 10px;border:1px solid rgba(148,163,184,.34);border-radius:8px;
+      background:rgba(15,23,42,.94);color:#fff;font:inherit;font-size:.76rem;font-weight:800;
     }
     button { cursor:pointer; }
     button:hover { border-color:rgba(56,189,248,.72); }
-    button:disabled { opacity:.45; cursor:default; }
+    button:disabled { opacity:.45;cursor:default; }
 
-    .playback {
-      display:grid; gap:8px; padding:10px;
-      border:1px solid rgba(148,163,184,.20); border-radius:10px;
-      background:rgba(15,23,42,.48);
-    }
-    .playback-buttons { display:grid; grid-template-columns:46px 1fr 46px 82px; gap:7px; }
+    .playback { display:grid;gap:8px;padding:10px;border:1px solid rgba(148,163,184,.20);border-radius:10px;background:rgba(15,23,42,.48); }
+    .history-row { display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:center; }
+    .history-label { color:#94a3b8;font-size:.66rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em; }
+    .history-buttons { display:grid;grid-template-columns:1fr 1fr;gap:5px; }
+    .history-btn { padding:6px 8px;font-size:.7rem;background:rgba(15,23,42,.8); }
+    .history-btn.is-active { border-color:rgba(56,189,248,.85);background:rgba(14,116,144,.28);color:#e0f2fe;box-shadow:inset 0 0 0 1px rgba(56,189,248,.12); }
+    .playback-buttons { display:grid;grid-template-columns:46px 1fr 46px 82px;gap:7px; }
     .playback-buttons button { padding:7px 6px; }
-    .frame-readout {
-      display:flex; align-items:center; justify-content:space-between; gap:10px;
-      color:#dbeafe; font-size:.72rem; font-weight:800; font-variant-numeric:tabular-nums;
-    }
-    .frame-readout span:last-child { color:#94a3b8; font-weight:700; }
-    .timeline { display:grid; grid-template-columns:1fr; gap:4px; }
+    .frame-readout { display:flex;align-items:center;justify-content:space-between;gap:10px;color:#dbeafe;font-size:.72rem;font-weight:800;font-variant-numeric:tabular-nums; }
+    .frame-readout span:last-child { color:#94a3b8;font-weight:800; }
+    .timeline { display:grid;grid-template-columns:1fr;gap:4px; }
     .timeline input[type="range"] { width:100%; }
+    .timeline-labels { display:flex;justify-content:space-between;color:#64748b;font-size:.58rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em; }
 
-    .range-row { display:grid; grid-template-columns:auto 1fr auto; gap:8px; align-items:center; color:#bfdbfe; font-size:.72rem; font-weight:800; }
-    input[type="range"] { width:100%; accent-color:var(--accent); }
-    output { min-width:38px; text-align:right; font-variant-numeric:tabular-nums; }
+    .range-row { display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;color:#bfdbfe;font-size:.72rem;font-weight:800; }
+    input[type="range"] { width:100%;accent-color:var(--accent); }
+    output { min-width:38px;text-align:right;font-variant-numeric:tabular-nums; }
 
-    .legend { margin-top:12px; padding-top:10px; border-top:1px solid rgba(148,163,184,.18); }
-    .legend-title { margin-bottom:6px; color:#bfdbfe; font-size:.68rem; font-weight:800; }
-    .legend-bar { height:10px; border-radius:999px; border:1px solid rgba(255,255,255,.15); background:linear-gradient(90deg,#2873a5 0%,#46d2e6 10%,#497598 15%,#4ca58e 22%,#127618 30%,#cbde01 38%,#d7cb00 45%,#e38103 52%,#b95f0a 58%,#c02514 64%,#ca99b4 70%,#c44a8a 76%,#8b20d2 82%,#5614a2 87%,#6fd2db 91%,#730a01 95%,#fff 100%); }
-    .legend-labels { display:flex; justify-content:space-between; margin-top:4px; color:#94a3b8; font-size:.62rem; }
-    .meta { margin-top:10px; color:#94a3b8; font-size:.68rem; line-height:1.45; }
+    .legend { margin-top:12px;padding-top:10px;border-top:1px solid rgba(148,163,184,.18); }
+    .legend-title { margin-bottom:6px;color:#bfdbfe;font-size:.68rem;font-weight:800; }
+    .legend-bar { height:10px;border-radius:999px;border:1px solid rgba(255,255,255,.15);background:linear-gradient(90deg,#2873a5 0%,#46d2e6 10%,#497598 15%,#4ca58e 22%,#127618 30%,#cbde01 38%,#d7cb00 45%,#e38103 52%,#b95f0a 58%,#c02514 64%,#ca99b4 70%,#c44a8a 76%,#8b20d2 82%,#5614a2 87%,#6fd2db 91%,#730a01 95%,#fff 100%); }
+    .legend-labels { display:flex;justify-content:space-between;margin-top:4px;color:#94a3b8;font-size:.62rem; }
+    .meta { margin-top:10px;color:#94a3b8;font-size:.68rem;line-height:1.45; }
     .meta strong { color:#dbeafe; }
     .meta span { color:#cbd5e1; }
 
     @media (max-width:640px) {
-      .panel { top:10px; left:10px; width:calc(100vw - 20px); padding:12px; }
+      .panel { top:10px;left:10px;width:calc(100vw - 20px);padding:12px; }
       .playback-buttons { grid-template-columns:42px 1fr 42px 76px; }
     }
   </style>
@@ -86,9 +82,9 @@
   <div id="map"></div>
 
   <section class="panel">
-    <div class="eyebrow">Python-colored / Map-anchored / Loop</div>
+    <div class="eyebrow">Python-colored / Map-anchored / Live Loop</div>
     <h1>National MRMS Mosaic</h1>
-    <p class="subtitle">Python owns every dBZ → RGBA pixel. The custom WebGL layer stays geographically anchored while playback swaps only the finished radar texture.</p>
+    <p class="subtitle">Real MRMS observations, pre-colored with the Level II palette and played through one geographically anchored WebGL texture.</p>
 
     <div class="status-row">
       <span id="statusDot" class="status-dot"></span>
@@ -102,10 +98,18 @@
       </div>
 
       <div class="playback">
+        <div class="history-row">
+          <span class="history-label">History</span>
+          <div class="history-buttons">
+            <button class="history-btn" type="button" data-history-minutes="30">30 min</button>
+            <button class="history-btn is-active" type="button" data-history-minutes="60">60 min</button>
+          </div>
+        </div>
+
         <div class="playback-buttons">
-          <button id="prevFrame" type="button" title="Previous frame">◀</button>
+          <button id="prevFrame" type="button" title="Previous observation">◀</button>
           <button id="playPause" type="button">▶ Play</button>
-          <button id="nextFrame" type="button" title="Next frame">▶</button>
+          <button id="nextFrame" type="button" title="Next observation">▶</button>
           <select id="speedSelect" aria-label="Playback speed">
             <option value="0.5">0.5×</option>
             <option value="1" selected>1×</option>
@@ -113,12 +117,14 @@
             <option value="2">2×</option>
           </select>
         </div>
+
         <div class="frame-readout">
           <span id="frameTime">--:--</span>
-          <span id="frameCount">0 / 0</span>
+          <span id="frameAge">-- min</span>
         </div>
         <label class="timeline" for="frameSlider">
           <input id="frameSlider" type="range" min="0" max="0" step="1" value="0">
+          <span class="timeline-labels"><span id="historyStartLabel">-60m</span><span>Now</span></span>
         </label>
       </div>
 
@@ -140,6 +146,7 @@
       <strong>Color owner:</strong> Python Level II palette renderer<br>
       <strong>Map path:</strong> custom WebGL texture; no Mapbox radar coloring<br>
       <strong>Buffer:</strong> encoded prefetch + decoded lookahead<br>
+      <strong>Auto-update:</strong> manifest check every 30 seconds<br>
       <strong>Image:</strong> <span id="imageInfo">waiting…</span><br>
       <strong>Loop:</strong> <span id="loopInfo">waiting…</span><br>
       <strong>Valid:</strong> <span id="validTime">waiting…</span><br>
@@ -155,6 +162,7 @@
     const BLOB_PREFETCH_CONCURRENCY = 4;
     const START_BUFFER_FRAMES = 4;
     const END_FRAME_HOLD_MS = 450;
+    const MANIFEST_POLL_MS = 30000;
 
     const statusText = document.getElementById("statusText");
     const statusDot = document.getElementById("statusDot");
@@ -168,7 +176,9 @@
     const speedSelect = document.getElementById("speedSelect");
     const frameSlider = document.getElementById("frameSlider");
     const frameTime = document.getElementById("frameTime");
-    const frameCount = document.getElementById("frameCount");
+    const frameAge = document.getElementById("frameAge");
+    const historyStartLabel = document.getElementById("historyStartLabel");
+    const historyButtons = [...document.querySelectorAll("[data-history-minutes]")];
     const imageInfo = document.getElementById("imageInfo");
     const loopInfo = document.getElementById("loopInfo");
     const validTime = document.getElementById("validTime");
@@ -177,12 +187,15 @@
     let radarVisible = true;
     let radarLayer = null;
     let manifest = null;
+    let allFrames = [];
     let frames = [];
+    let historyMinutes = 60;
     let currentFrameIndex = 0;
     let isPlaying = false;
     let playbackGeneration = 0;
     let frameSwitchBusy = false;
     let playbackStarting = false;
+    let manifestRefreshBusy = false;
     let defaultFrameIntervalMs = 650;
 
     const blobCache = new Map();
@@ -209,33 +222,27 @@
       return shader;
     }
 
-    function sourceWidth(source) {
-      return Number(source?.width || source?.naturalWidth || 0);
-    }
-
-    function sourceHeight(source) {
-      return Number(source?.height || source?.naturalHeight || 0);
-    }
+    function sourceWidth(source) { return Number(source?.width || source?.naturalWidth || 0); }
+    function sourceHeight(source) { return Number(source?.height || source?.naturalHeight || 0); }
 
     function createPythonColoredRadarLayer(image, bounds) {
       const [west, south, east, north] = bounds.map(Number);
-
       return {
-        id: CUSTOM_LAYER_ID,
-        type: "custom",
-        renderingMode: "2d",
-        opacity: Number(opacityInput.value),
-        visible: true,
-        map: null,
-        gl: null,
-        program: null,
-        positionBuffer: null,
-        uvBuffer: null,
-        texture: null,
-        textureWidth: 0,
-        textureHeight: 0,
-        textureInitialized: false,
-        initialImage: image,
+        id:CUSTOM_LAYER_ID,
+        type:"custom",
+        renderingMode:"2d",
+        opacity:Number(opacityInput.value),
+        visible:true,
+        map:null,
+        gl:null,
+        program:null,
+        positionBuffer:null,
+        uvBuffer:null,
+        texture:null,
+        textureWidth:0,
+        textureHeight:0,
+        textureInitialized:false,
+        initialImage:image,
 
         uploadImage(imageToUpload) {
           if (!this.gl || !this.texture || !imageToUpload) return;
@@ -252,24 +259,9 @@
           }
 
           if (this.textureInitialized && width === this.textureWidth && height === this.textureHeight) {
-            gl.texSubImage2D(
-              gl.TEXTURE_2D,
-              0,
-              0,
-              0,
-              gl.RGBA,
-              gl.UNSIGNED_BYTE,
-              imageToUpload
-            );
+            gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,gl.RGBA,gl.UNSIGNED_BYTE,imageToUpload);
           } else {
-            gl.texImage2D(
-              gl.TEXTURE_2D,
-              0,
-              gl.RGBA,
-              gl.RGBA,
-              gl.UNSIGNED_BYTE,
-              imageToUpload
-            );
+            gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,imageToUpload);
             this.textureWidth = width;
             this.textureHeight = height;
             this.textureInitialized = true;
@@ -279,30 +271,21 @@
         onAdd(map, gl) {
           this.map = map;
           this.gl = gl;
-
           const vertexSource = `
             precision highp float;
             uniform mat4 u_matrix;
             attribute vec2 a_pos;
             attribute vec2 a_uv;
             varying vec2 v_uv;
-            void main() {
-              gl_Position = u_matrix * vec4(a_pos, 0.0, 1.0);
-              v_uv = a_uv;
-            }
+            void main(){ gl_Position=u_matrix*vec4(a_pos,0.0,1.0); v_uv=a_uv; }
           `;
-
           const fragmentSource = `
             precision mediump float;
             uniform sampler2D u_texture;
             uniform float u_opacity;
             varying vec2 v_uv;
-            void main() {
-              vec4 radar = texture2D(u_texture, v_uv);
-              gl_FragColor = vec4(radar.rgb, radar.a * u_opacity);
-            }
+            void main(){ vec4 radar=texture2D(u_texture,v_uv); gl_FragColor=vec4(radar.rgb,radar.a*u_opacity); }
           `;
-
           const vertexShader = compileShader(gl, gl.VERTEX_SHADER, vertexSource);
           const fragmentShader = compileShader(gl, gl.FRAGMENT_SHADER, fragmentSource);
           const program = gl.createProgram();
@@ -311,28 +294,19 @@
           gl.linkProgram(program);
           gl.deleteShader(vertexShader);
           gl.deleteShader(fragmentShader);
-          if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-            throw new Error(gl.getProgramInfoLog(program) || "radar shader link failed");
-          }
+          if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program) || "radar shader link failed");
           this.program = program;
 
-          const nw = mapboxgl.MercatorCoordinate.fromLngLat([west, north]);
-          const ne = mapboxgl.MercatorCoordinate.fromLngLat([east, north]);
-          const sw = mapboxgl.MercatorCoordinate.fromLngLat([west, south]);
-          const se = mapboxgl.MercatorCoordinate.fromLngLat([east, south]);
-          const positions = new Float32Array([
-            nw.x,nw.y, sw.x,sw.y, ne.x,ne.y,
-            ne.x,ne.y, sw.x,sw.y, se.x,se.y
-          ]);
-          const uvs = new Float32Array([
-            0,1, 0,0, 1,1,
-            1,1, 0,0, 1,0
-          ]);
+          const nw = mapboxgl.MercatorCoordinate.fromLngLat([west,north]);
+          const ne = mapboxgl.MercatorCoordinate.fromLngLat([east,north]);
+          const sw = mapboxgl.MercatorCoordinate.fromLngLat([west,south]);
+          const se = mapboxgl.MercatorCoordinate.fromLngLat([east,south]);
+          const positions = new Float32Array([nw.x,nw.y,sw.x,sw.y,ne.x,ne.y,ne.x,ne.y,sw.x,sw.y,se.x,se.y]);
+          const uvs = new Float32Array([0,1,0,0,1,1,1,1,0,0,1,0]);
 
           this.positionBuffer = gl.createBuffer();
           gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
           gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
-
           this.uvBuffer = gl.createBuffer();
           gl.bindBuffer(gl.ARRAY_BUFFER, this.uvBuffer);
           gl.bufferData(gl.ARRAY_BUFFER, uvs, gl.STATIC_DRAW);
@@ -354,23 +328,20 @@
           gl.enable(gl.BLEND);
           gl.blendEquation(gl.FUNC_ADD);
           gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-
-          gl.uniformMatrix4fv(gl.getUniformLocation(this.program,"u_matrix"), false, matrix);
-          gl.uniform1f(gl.getUniformLocation(this.program,"u_opacity"), this.opacity);
-          gl.uniform1i(gl.getUniformLocation(this.program,"u_texture"), 0);
+          gl.uniformMatrix4fv(gl.getUniformLocation(this.program,"u_matrix"),false,matrix);
+          gl.uniform1f(gl.getUniformLocation(this.program,"u_opacity"),this.opacity);
+          gl.uniform1i(gl.getUniformLocation(this.program,"u_texture"),0);
 
           const posLocation = gl.getAttribLocation(this.program,"a_pos");
-          gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
+          gl.bindBuffer(gl.ARRAY_BUFFER,this.positionBuffer);
           gl.enableVertexAttribArray(posLocation);
           gl.vertexAttribPointer(posLocation,2,gl.FLOAT,false,0,0);
-
           const uvLocation = gl.getAttribLocation(this.program,"a_uv");
-          gl.bindBuffer(gl.ARRAY_BUFFER, this.uvBuffer);
+          gl.bindBuffer(gl.ARRAY_BUFFER,this.uvBuffer);
           gl.enableVertexAttribArray(uvLocation);
           gl.vertexAttribPointer(uvLocation,2,gl.FLOAT,false,0,0);
-
           gl.activeTexture(gl.TEXTURE0);
-          gl.bindTexture(gl.TEXTURE_2D, this.texture);
+          gl.bindTexture(gl.TEXTURE_2D,this.texture);
           gl.drawArrays(gl.TRIANGLES,0,6);
         },
 
@@ -382,21 +353,9 @@
           this.gl = null;
           this.textureInitialized = false;
         },
-
-        setImage(imageToUpload) {
-          this.uploadImage(imageToUpload);
-          this.map?.triggerRepaint();
-        },
-
-        setOpacity(value) {
-          this.opacity = Number(value);
-          this.map?.triggerRepaint();
-        },
-
-        setVisible(value) {
-          this.visible = Boolean(value);
-          this.map?.triggerRepaint();
-        }
+        setImage(imageToUpload){ this.uploadImage(imageToUpload);this.map?.triggerRepaint(); },
+        setOpacity(value){ this.opacity=Number(value);this.map?.triggerRepaint(); },
+        setVisible(value){ this.visible=Boolean(value);this.map?.triggerRepaint(); }
       };
     }
 
@@ -405,10 +364,11 @@
       return layers.find(layer => layer.type === "symbol")?.id;
     }
 
-    function frameImageUrl(index) {
-      const frame = frames[index];
-      const url = new URL(frame.image, manifest._responseUrl);
-      url.searchParams.set("rev", manifest.revision ?? "none");
+    function frameKey(frame) { return String(frame?.id || frame?.valid_time || frame?.image || ""); }
+
+    function frameImageUrl(frame, manifestLike = manifest) {
+      const url = new URL(frame.image, manifestLike._responseUrl);
+      url.searchParams.set("rev", manifestLike.revision ?? "none");
       return url.href;
     }
 
@@ -427,16 +387,17 @@
       cacheClock = 0;
     }
 
+    function currentFrame() { return frames[currentFrameIndex] || null; }
+    function currentFrameKey() { return frameKey(currentFrame()); }
+
     function evictDecodedCache() {
+      const protectedKey = currentFrameKey();
       while (decodedCache.size > DECODED_FRAME_CACHE_LIMIT) {
         let oldestKey = null;
         let oldestUse = Infinity;
         for (const [key, entry] of decodedCache.entries()) {
-          if (key === currentFrameIndex) continue;
-          if (entry.used < oldestUse) {
-            oldestUse = entry.used;
-            oldestKey = key;
-          }
+          if (key === protectedKey) continue;
+          if (entry.used < oldestUse) { oldestUse = entry.used;oldestKey = key; }
         }
         if (oldestKey === null) break;
         const entry = decodedCache.get(oldestKey);
@@ -445,88 +406,63 @@
       }
     }
 
-    async function fetchFrameBlob(index) {
-      if (blobCache.has(index)) return blobCache.get(index);
-      if (blobPromises.has(index)) return blobPromises.get(index);
-
-      const promise = fetch(frameImageUrl(index), { cache:"force-cache" })
+    async function fetchFrameBlob(frame, manifestLike = manifest) {
+      const key = frameKey(frame);
+      if (blobCache.has(key)) return blobCache.get(key);
+      if (blobPromises.has(key)) return blobPromises.get(key);
+      const promise = fetch(frameImageUrl(frame, manifestLike), { cache:"force-cache" })
         .then(response => {
           if (!response.ok) throw new Error(`Frame HTTP ${response.status}`);
           return response.blob();
         })
-        .then(blob => {
-          blobCache.set(index, blob);
-          blobPromises.delete(index);
-          return blob;
-        })
-        .catch(error => {
-          blobPromises.delete(index);
-          throw error;
-        });
-
-      blobPromises.set(index, promise);
+        .then(blob => { blobCache.set(key,blob);blobPromises.delete(key);return blob; })
+        .catch(error => { blobPromises.delete(key);throw error; });
+      blobPromises.set(key,promise);
       return promise;
     }
 
     function imageFromBlob(blob) {
-      return new Promise((resolve, reject) => {
+      return new Promise((resolve,reject) => {
         const objectUrl = URL.createObjectURL(blob);
         const image = new Image();
         image.decoding = "async";
-        image.onload = () => {
-          URL.revokeObjectURL(objectUrl);
-          resolve(image);
-        };
-        image.onerror = () => {
-          URL.revokeObjectURL(objectUrl);
-          reject(new Error("Frame image decode failed"));
-        };
+        image.onload = () => { URL.revokeObjectURL(objectUrl);resolve(image); };
+        image.onerror = () => { URL.revokeObjectURL(objectUrl);reject(new Error("Frame image decode failed")); };
         image.src = objectUrl;
       });
     }
 
     async function decodeBlob(blob) {
       if (typeof createImageBitmap === "function") {
-        try {
-          return await createImageBitmap(blob, {
-            premultiplyAlpha:"none",
-            colorSpaceConversion:"none",
-            imageOrientation:"none"
-          });
-        } catch (_) {
-          try { return await createImageBitmap(blob); } catch (_) {}
-        }
+        try { return await createImageBitmap(blob,{premultiplyAlpha:"none",colorSpaceConversion:"none",imageOrientation:"none"}); }
+        catch (_) { try { return await createImageBitmap(blob); } catch (_) {} }
       }
       return imageFromBlob(blob);
     }
 
-    async function loadFrameSource(index) {
-      if (decodedCache.has(index)) {
-        const entry = decodedCache.get(index);
+    async function loadFrameSource(frame, manifestLike = manifest) {
+      const key = frameKey(frame);
+      if (decodedCache.has(key)) {
+        const entry = decodedCache.get(key);
         entry.used = ++cacheClock;
         return entry.source;
       }
-      if (decodePromises.has(index)) return decodePromises.get(index);
-
-      const promise = fetchFrameBlob(index)
+      if (decodePromises.has(key)) return decodePromises.get(key);
+      const promise = fetchFrameBlob(frame, manifestLike)
         .then(blob => decodeBlob(blob))
         .then(source => {
-          decodedCache.set(index, { source, used: ++cacheClock });
-          decodePromises.delete(index);
+          decodedCache.set(key,{source,used:++cacheClock});
+          decodePromises.delete(key);
           evictDecodedCache();
           return source;
         })
-        .catch(error => {
-          decodePromises.delete(index);
-          throw error;
-        });
-
-      decodePromises.set(index, promise);
+        .catch(error => { decodePromises.delete(key);throw error; });
+      decodePromises.set(key,promise);
       return promise;
     }
 
     function decodeLookaheadCount() {
-      const speed = Math.max(.5, Number(speedSelect.value) || 1);
+      const speed = Math.max(.5,Number(speedSelect.value) || 1);
       if (speed >= 2) return 7;
       if (speed >= 1.5) return 6;
       if (speed >= 1) return 5;
@@ -535,79 +471,121 @@
 
     function warmAround(index) {
       if (!frames.length) return;
-      const ahead = Math.min(decodeLookaheadCount(), frames.length - 1);
-      for (let offset = 1; offset <= ahead; offset += 1) {
-        loadFrameSource((index + offset) % frames.length).catch(() => {});
-      }
-      loadFrameSource((index - 1 + frames.length) % frames.length).catch(() => {});
+      const ahead = Math.min(decodeLookaheadCount(),frames.length - 1);
+      for (let offset=1;offset<=ahead;offset+=1) loadFrameSource(frames[(index+offset)%frames.length]).catch(()=>{});
+      loadFrameSource(frames[(index-1+frames.length)%frames.length]).catch(()=>{});
     }
 
     async function primePlaybackBuffer(startIndex) {
       if (!frames.length) return;
-      const count = Math.min(START_BUFFER_FRAMES, frames.length);
+      const count = Math.min(START_BUFFER_FRAMES,frames.length);
       const jobs = [];
-      for (let offset = 0; offset < count; offset += 1) {
-        jobs.push(loadFrameSource((startIndex + offset) % frames.length));
-      }
+      for (let offset=0;offset<count;offset+=1) jobs.push(loadFrameSource(frames[(startIndex+offset)%frames.length]));
       await Promise.all(jobs);
       warmAround(startIndex);
     }
 
-    async function prefetchAllFrameBlobs() {
-      if (!frames.length) return;
+    async function prefetchFrameBlobs(frameList = frames, manifestLike = manifest) {
+      if (!frameList.length) return;
       let cursor = 0;
       const worker = async () => {
-        while (cursor < frames.length) {
-          const index = cursor;
-          cursor += 1;
-          try { await fetchFrameBlob(index); } catch (error) { console.warn("MRMS frame prefetch failed", index, error); }
+        while (cursor < frameList.length) {
+          const frame = frameList[cursor++];
+          try { await fetchFrameBlob(frame,manifestLike); }
+          catch (error) { console.warn("MRMS frame prefetch failed",frameKey(frame),error); }
         }
       };
-      await Promise.all(
-        Array.from({ length: Math.min(BLOB_PREFETCH_CONCURRENCY, frames.length) }, () => worker())
-      );
+      await Promise.all(Array.from({length:Math.min(BLOB_PREFETCH_CONCURRENCY,frameList.length)},()=>worker()));
+    }
+
+    function parseFrameTime(frame) {
+      const value = new Date(frame?.valid_time).getTime();
+      return Number.isFinite(value) ? value : 0;
     }
 
     function formatFrameTime(value) {
       const date = new Date(value);
       if (!Number.isFinite(date.getTime())) return "Unknown time";
-      return date.toLocaleTimeString([], { hour:"numeric", minute:"2-digit" });
+      return date.toLocaleTimeString([], {hour:"numeric",minute:"2-digit"});
+    }
+
+    function relativeAgeText(frame) {
+      if (!frame || !allFrames.length) return "-- min";
+      const newest = parseFrameTime(allFrames[allFrames.length - 1]);
+      const ageMinutes = Math.max(0,Math.round((newest - parseFrameTime(frame))/60000));
+      return ageMinutes <= 0 ? "Now" : `-${ageMinutes} min`;
+    }
+
+    function activeSpanMinutes() {
+      if (frames.length < 2) return 0;
+      return Math.max(0,(parseFrameTime(frames[frames.length-1])-parseFrameTime(frames[0]))/60000);
+    }
+
+    function updateHistoryButtons() {
+      historyButtons.forEach(button => button.classList.toggle("is-active",Number(button.dataset.historyMinutes) === historyMinutes));
+      historyStartLabel.textContent = `-${historyMinutes}m`;
+    }
+
+    function updateLoopInfo() {
+      loopInfo.textContent = `${activeSpanMinutes().toFixed(1)} min • ${frames.length} observations • ${historyMinutes} min view`;
     }
 
     function updateFrameUi() {
-      const frame = frames[currentFrameIndex];
+      const frame = currentFrame();
       if (!frame) return;
+      frameSlider.max = String(Math.max(0,frames.length - 1));
       frameSlider.value = String(currentFrameIndex);
       frameTime.textContent = formatFrameTime(frame.valid_time);
-      frameCount.textContent = `${currentFrameIndex + 1} / ${frames.length}`;
+      frameAge.textContent = relativeAgeText(frame);
       const valid = new Date(frame.valid_time);
       validTime.textContent = Number.isFinite(valid.getTime()) ? valid.toLocaleString() : String(frame.valid_time || "unknown");
+      updateLoopInfo();
+    }
+
+    function filterHistory(sourceFrames, minutes) {
+      if (sourceFrames.length < 2) return [...sourceFrames];
+      const newest = parseFrameTime(sourceFrames[sourceFrames.length - 1]);
+      const cutoff = newest - Math.max(1,minutes) * 60000;
+      const selected = sourceFrames.filter(frame => parseFrameTime(frame) >= cutoff);
+      return selected.length >= 2 ? selected : sourceFrames.slice(-2);
+    }
+
+    function applyHistoryWindow(minutes, preserveKey = currentFrameKey()) {
+      historyMinutes = Number(minutes) === 30 ? 30 : 60;
+      const nextFrames = filterHistory(allFrames,historyMinutes);
+      frames = nextFrames;
+      let nextIndex = frames.findIndex(frame => frameKey(frame) === preserveKey);
+      if (nextIndex < 0) nextIndex = frames.length - 1;
+      currentFrameIndex = Math.max(0,nextIndex);
+      updateHistoryButtons();
+      updateFrameUi();
+      warmAround(currentFrameIndex);
+      prefetchFrameBlobs(frames).catch(error => console.warn("MRMS history prefetch failed",error));
     }
 
     async function showFrame(index, options = {}) {
       if (!frames.length || frameSwitchBusy) return false;
       frameSwitchBusy = true;
       try {
-        const normalized = (Number(index) + frames.length) % frames.length;
-        const source = await loadFrameSource(normalized);
+        const normalized = (Number(index)+frames.length)%frames.length;
+        const frame = frames[normalized];
+        const source = await loadFrameSource(frame);
         radarLayer?.setImage(source);
         currentFrameIndex = normalized;
         updateFrameUi();
         warmAround(normalized);
-        if (!options.quiet) setStatus(`MRMS frame ${normalized + 1}/${frames.length} • ${formatFrameTime(frames[normalized].valid_time)}`, "live");
+        if (!options.quiet) setStatus(`${formatFrameTime(frame.valid_time)} • ${relativeAgeText(frame)}`,"live");
         return true;
       } catch (error) {
         console.error(error);
-        setStatus(`Frame load failed: ${error.message}`, "error");
+        setStatus(`Observation load failed: ${error.message}`,"error");
         return false;
-      } finally {
-        frameSwitchBusy = false;
-      }
+      } finally { frameSwitchBusy = false; }
     }
 
     function playbackIntervalMs() {
-      const speed = Math.max(.25, Number(speedSelect.value) || 1);
-      return Math.max(40, Math.round(defaultFrameIntervalMs / (speed * 4)));
+      const speed = Math.max(.25,Number(speedSelect.value) || 1);
+      return Math.max(40,Math.round(defaultFrameIntervalMs/(speed*4)));
     }
 
     function stopPlayback() {
@@ -620,14 +598,12 @@
       if (!isPlaying || generation !== playbackGeneration || frames.length < 2) return;
       const cycleStarted = performance.now();
       const next = (currentFrameIndex + 1) % frames.length;
-      await showFrame(next, { quiet:true });
+      await showFrame(next,{quiet:true});
       if (!isPlaying || generation !== playbackGeneration) return;
-
       const atNewest = currentFrameIndex === frames.length - 1;
       const workTime = performance.now() - cycleStarted;
-      const cadenceDelay = Math.max(0, playbackIntervalMs() - workTime);
-      const delay = cadenceDelay + (atNewest ? END_FRAME_HOLD_MS : 0);
-      window.setTimeout(() => playbackLoop(generation), delay);
+      const cadenceDelay = Math.max(0,playbackIntervalMs() - workTime);
+      window.setTimeout(()=>playbackLoop(generation),cadenceDelay + (atNewest ? END_FRAME_HOLD_MS : 0));
     }
 
     async function startPlayback() {
@@ -635,133 +611,168 @@
       playbackStarting = true;
       try {
         const startIndex = currentFrameIndex === frames.length - 1 ? 0 : currentFrameIndex;
-        setStatus("Buffering upcoming MRMS scans…");
+        setStatus("Buffering upcoming MRMS observations…");
         await primePlaybackBuffer(startIndex);
-        if (startIndex !== currentFrameIndex) await showFrame(startIndex, { quiet:true });
-
+        if (startIndex !== currentFrameIndex) await showFrame(startIndex,{quiet:true});
         isPlaying = true;
         playPauseButton.textContent = "❚❚ Pause";
-        setStatus(`MRMS playback • ${formatFrameTime(frames[currentFrameIndex].valid_time)}`, "live");
+        setStatus(`MRMS playback • ${historyMinutes} min history`,"live");
         const generation = ++playbackGeneration;
-        window.setTimeout(() => playbackLoop(generation), playbackIntervalMs());
+        window.setTimeout(()=>playbackLoop(generation),playbackIntervalMs());
       } catch (error) {
         console.error(error);
-        setStatus(`Playback buffer failed: ${error.message}`, "error");
-      } finally {
-        playbackStarting = false;
+        setStatus(`Playback buffer failed: ${error.message}`,"error");
+      } finally { playbackStarting = false; }
+    }
+
+    async function fetchManifest() {
+      const response = await fetch(`${MANIFEST_URL}?_=${Date.now()}`,{cache:"no-store"});
+      if (!response.ok) throw new Error(`Manifest HTTP ${response.status}`);
+      const nextManifest = await response.json();
+      if (!Array.isArray(nextManifest.bounds) || !Array.isArray(nextManifest.frames) || nextManifest.frames.length < 2) {
+        throw new Error("Loop manifest needs bounds and at least two observations");
       }
+      nextManifest._responseUrl = response.url;
+      return nextManifest;
+    }
+
+    function sortedManifestFrames(manifestLike) {
+      return [...manifestLike.frames].sort((a,b)=>String(a.valid_time).localeCompare(String(b.valid_time)));
+    }
+
+    async function installInitialManifest(nextManifest) {
+      clearFrameCaches();
+      manifest = nextManifest;
+      allFrames = sortedManifestFrames(manifest);
+      defaultFrameIntervalMs = Number(manifest.defaultFrameIntervalMs || 650);
+      applyHistoryWindow(historyMinutes,"");
+      currentFrameIndex = frames.length - 1;
+      const initialSource = await loadFrameSource(currentFrame());
+
+      if (map.getLayer(CUSTOM_LAYER_ID)) map.removeLayer(CUSTOM_LAYER_ID);
+      radarLayer = createPythonColoredRadarLayer(initialSource,manifest.bounds);
+      radarLayer.opacity = Number(opacityInput.value);
+      radarLayer.visible = radarVisible;
+      const beforeId = firstSymbolLayerId();
+      if (beforeId) map.addLayer(radarLayer,beforeId); else map.addLayer(radarLayer);
+
+      imageInfo.textContent = `${manifest.imageWidth} × ${manifest.imageHeight} lossless WebP`;
+      revisionInfo.textContent = String(manifest.revision ?? "unknown");
+      updateFrameUi();
+      warmAround(currentFrameIndex);
+      prefetchFrameBlobs(frames).catch(error => console.warn("MRMS background prefetch failed",error));
+      setStatus(`MRMS live loop ready • ${historyMinutes} min history`,"live");
+    }
+
+    async function adoptBackgroundManifest(nextManifest) {
+      const nextAllFrames = sortedManifestFrames(nextManifest);
+      const oldIds = new Set(allFrames.map(frameKey));
+      const newFrames = nextAllFrames.filter(frame => !oldIds.has(frameKey(frame)));
+      if (!newFrames.length && String(nextManifest.revision) === String(manifest?.revision)) return false;
+
+      const previousCurrentKey = currentFrameKey();
+      const previousNewestKey = frameKey(allFrames[allFrames.length - 1]);
+      const wasAtNewest = previousCurrentKey === previousNewestKey;
+      const wasPlaying = isPlaying;
+
+      // Stage the newest incoming observations before exposing them to playback.
+      const staged = newFrames.slice(-2);
+      await Promise.all(staged.map(frame => loadFrameSource(frame,nextManifest).catch(error => {
+        console.warn("MRMS incoming observation preload failed",frameKey(frame),error);
+        return null;
+      })));
+
+      manifest = nextManifest;
+      allFrames = nextAllFrames;
+      defaultFrameIntervalMs = Number(manifest.defaultFrameIntervalMs || defaultFrameIntervalMs || 650);
+      applyHistoryWindow(historyMinutes,previousCurrentKey);
+      revisionInfo.textContent = String(manifest.revision ?? "unknown");
+      imageInfo.textContent = `${manifest.imageWidth} × ${manifest.imageHeight} lossless WebP`;
+
+      if (!wasPlaying && wasAtNewest && newFrames.length) {
+        await showFrame(frames.length - 1,{quiet:true});
+      } else {
+        updateFrameUi();
+      }
+
+      prefetchFrameBlobs(newFrames,manifest).catch(error => console.warn("MRMS new observation prefetch failed",error));
+      if (newFrames.length) {
+        const newest = nextAllFrames[nextAllFrames.length - 1];
+        setStatus(`New MRMS observation • ${formatFrameTime(newest.valid_time)}`,"live");
+      }
+      return true;
     }
 
     async function loadRadarLoop() {
       stopPlayback();
       try {
         setStatus("Loading MRMS loop manifest…");
-        const response = await fetch(`${MANIFEST_URL}?_=${Date.now()}`, { cache:"no-store" });
-        if (!response.ok) throw new Error(`Manifest HTTP ${response.status}`);
-        const nextManifest = await response.json();
-        if (!Array.isArray(nextManifest.bounds) || !Array.isArray(nextManifest.frames) || nextManifest.frames.length < 2) {
-          throw new Error("Loop manifest needs bounds and at least two frames");
-        }
-
-        clearFrameCaches();
-        manifest = nextManifest;
-        manifest._responseUrl = response.url;
-        frames = [...manifest.frames].sort((a,b) => String(a.valid_time).localeCompare(String(b.valid_time)));
-        defaultFrameIntervalMs = Number(manifest.defaultFrameIntervalMs || 650);
-
-        currentFrameIndex = frames.length - 1;
-        frameSlider.max = String(frames.length - 1);
-        frameSlider.value = String(currentFrameIndex);
-
-        const initialSource = await loadFrameSource(currentFrameIndex);
-        if (map.getLayer(CUSTOM_LAYER_ID)) map.removeLayer(CUSTOM_LAYER_ID);
-        radarLayer = createPythonColoredRadarLayer(initialSource, manifest.bounds);
-        radarLayer.opacity = Number(opacityInput.value);
-        radarLayer.visible = radarVisible;
-
-        const beforeId = firstSymbolLayerId();
-        if (beforeId) map.addLayer(radarLayer, beforeId);
-        else map.addLayer(radarLayer);
-
-        imageInfo.textContent = `${manifest.imageWidth} × ${manifest.imageHeight} lossless WebP`;
-        const span = Number(manifest.actualSpanMinutes);
-        loopInfo.textContent = Number.isFinite(span)
-          ? `${span.toFixed(1)} min • ${frames.length} observations`
-          : `${frames.length} observations`;
-        revisionInfo.textContent = String(manifest.revision ?? "unknown");
-        updateFrameUi();
-        warmAround(currentFrameIndex);
-        prefetchAllFrameBlobs().catch(error => console.warn("MRMS background prefetch failed", error));
-        setStatus(`MRMS loop ready • ${frames.length} observations`, "live");
+        const nextManifest = await fetchManifest();
+        await installInitialManifest(nextManifest);
       } catch (error) {
         console.error(error);
-        setStatus(`Loop load failed: ${error.message}`, "error");
+        setStatus(`Loop load failed: ${error.message}`,"error");
       }
+    }
+
+    async function checkForLoopUpdate() {
+      if (manifestRefreshBusy || !manifest || document.hidden) return;
+      manifestRefreshBusy = true;
+      try {
+        const nextManifest = await fetchManifest();
+        if (String(nextManifest.revision) !== String(manifest.revision)) await adoptBackgroundManifest(nextManifest);
+      } catch (error) {
+        console.warn("MRMS manifest refresh failed",error);
+      } finally { manifestRefreshBusy = false; }
     }
 
     mapboxgl.accessToken = window.MAPBOX_PUBLIC_TOKEN;
     const map = new mapboxgl.Map({
-      container:"map",
-      style:MAPBOX_STYLE,
-      center:[-96.5,38.4],
-      zoom:3.35,
-      minZoom:2,
-      maxZoom:12,
-      projection:"mercator",
-      attributionControl:true
+      container:"map",style:MAPBOX_STYLE,center:[-96.5,38.4],zoom:3.35,
+      minZoom:2,maxZoom:12,projection:"mercator",attributionControl:true
     });
+    map.addControl(new mapboxgl.NavigationControl(),"bottom-right");
+    map.on("load",()=>{ map.setProjection("mercator");loadRadarLoop(); });
 
-    map.addControl(new mapboxgl.NavigationControl(), "bottom-right");
-    map.on("load", () => {
-      map.setProjection("mercator");
-      loadRadarLoop();
-    });
-
-    toggleButton.addEventListener("click", () => {
+    toggleButton.addEventListener("click",()=>{
       radarVisible = !radarVisible;
       toggleButton.textContent = radarVisible ? "Hide Radar" : "Show Radar";
       radarLayer?.setVisible(radarVisible);
     });
 
-    reloadButton.addEventListener("click", loadRadarLoop);
-    playPauseButton.addEventListener("click", () => {
-      if (isPlaying) stopPlayback();
-      else startPlayback();
-    });
+    reloadButton.addEventListener("click",loadRadarLoop);
+    playPauseButton.addEventListener("click",()=>{ if (isPlaying) stopPlayback(); else startPlayback(); });
+    prevFrameButton.addEventListener("click",async()=>{ stopPlayback();await showFrame(currentFrameIndex - 1); });
+    nextFrameButton.addEventListener("click",async()=>{ stopPlayback();await showFrame(currentFrameIndex + 1); });
+    speedSelect.addEventListener("change",()=>warmAround(currentFrameIndex));
 
-    prevFrameButton.addEventListener("click", async () => {
-      stopPlayback();
-      await showFrame(currentFrameIndex - 1);
-    });
-    nextFrameButton.addEventListener("click", async () => {
-      stopPlayback();
-      await showFrame(currentFrameIndex + 1);
-    });
+    historyButtons.forEach(button => button.addEventListener("click",async()=>{
+      const requested = Number(button.dataset.historyMinutes);
+      if (requested === historyMinutes) return;
+      const preserveKey = currentFrameKey();
+      applyHistoryWindow(requested,preserveKey);
+      if (!frames.some(frame => frameKey(frame) === preserveKey)) await showFrame(frames.length - 1,{quiet:true});
+      setStatus(`MRMS playback window • ${historyMinutes} min`,"live");
+    }));
 
-    speedSelect.addEventListener("change", () => warmAround(currentFrameIndex));
-
-    frameSlider.addEventListener("input", async () => {
-      stopPlayback();
-      await showFrame(Number(frameSlider.value));
-    });
-
-    opacityInput.addEventListener("input", () => {
-      opacityOutput.value = `${Math.round(Number(opacityInput.value) * 100)}%`;
+    frameSlider.addEventListener("input",async()=>{ stopPlayback();await showFrame(Number(frameSlider.value)); });
+    opacityInput.addEventListener("input",()=>{
+      opacityOutput.value = `${Math.round(Number(opacityInput.value)*100)}%`;
       radarLayer?.setOpacity(opacityInput.value);
     });
 
-    document.addEventListener("keydown", event => {
+    document.addEventListener("visibilitychange",()=>{ if (!document.hidden) checkForLoopUpdate(); });
+    window.setInterval(checkForLoopUpdate,MANIFEST_POLL_MS);
+
+    document.addEventListener("keydown",event=>{
       if (event.target && ["INPUT","SELECT","BUTTON"].includes(event.target.tagName)) return;
       if (event.code === "Space") {
         event.preventDefault();
-        if (isPlaying) stopPlayback();
-        else startPlayback();
+        if (isPlaying) stopPlayback(); else startPlayback();
       } else if (event.key === "ArrowLeft") {
-        stopPlayback();
-        showFrame(currentFrameIndex - 1);
+        stopPlayback();showFrame(currentFrameIndex - 1);
       } else if (event.key === "ArrowRight") {
-        stopPlayback();
-        showFrame(currentFrameIndex + 1);
+        stopPlayback();showFrame(currentFrameIndex + 1);
       }
     });
   </script>
