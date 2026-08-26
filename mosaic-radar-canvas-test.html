@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ZacharologistWx MRMS Custom Radar Test</title>
+  <title>ZacharologistWx MRMS Loop Test</title>
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
   <script src="mapbox-token.js"></script>
@@ -21,9 +21,10 @@
     html, body, #map { width:100%; height:100%; margin:0; }
     body { overflow:hidden; background:#07111f; color:#f8fafc; font-family:Arial,Helvetica,sans-serif; }
     #map { position:fixed; inset:0; background:#07111f; }
+
     .panel {
       position:fixed; top:16px; left:16px; z-index:20;
-      width:min(400px,calc(100vw - 32px)); padding:14px;
+      width:min(430px,calc(100vw - 32px)); padding:14px;
       border:1px solid var(--border); border-radius:14px;
       background:var(--panel); box-shadow:0 18px 42px rgba(0,0,0,.38);
       backdrop-filter:blur(12px);
@@ -35,13 +36,38 @@
     .status-dot { width:8px; height:8px; margin-top:2px; flex:0 0 auto; border-radius:50%; background:#fde68a; }
     .status-dot.is-live { background:var(--good); box-shadow:0 0 10px rgba(134,239,172,.45); }
     .status-dot.is-error { background:var(--bad); box-shadow:0 0 10px rgba(252,165,165,.45); }
+
     .controls { display:grid; gap:10px; }
     .button-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-    button { padding:8px 10px; border:1px solid rgba(148,163,184,.34); border-radius:8px; background:rgba(15,23,42,.94); color:#fff; font:inherit; font-size:.76rem; font-weight:800; cursor:pointer; }
+    button, select {
+      min-width:0; padding:8px 10px;
+      border:1px solid rgba(148,163,184,.34); border-radius:8px;
+      background:rgba(15,23,42,.94); color:#fff;
+      font:inherit; font-size:.76rem; font-weight:800;
+    }
+    button { cursor:pointer; }
     button:hover { border-color:rgba(56,189,248,.72); }
+    button:disabled { opacity:.45; cursor:default; }
+
+    .playback {
+      display:grid; gap:8px; padding:10px;
+      border:1px solid rgba(148,163,184,.20); border-radius:10px;
+      background:rgba(15,23,42,.48);
+    }
+    .playback-buttons { display:grid; grid-template-columns:46px 1fr 46px 82px; gap:7px; }
+    .playback-buttons button { padding:7px 6px; }
+    .frame-readout {
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      color:#dbeafe; font-size:.72rem; font-weight:800; font-variant-numeric:tabular-nums;
+    }
+    .frame-readout span:last-child { color:#94a3b8; font-weight:700; }
+    .timeline { display:grid; grid-template-columns:1fr; gap:4px; }
+    .timeline input[type="range"] { width:100%; }
+
     .range-row { display:grid; grid-template-columns:auto 1fr auto; gap:8px; align-items:center; color:#bfdbfe; font-size:.72rem; font-weight:800; }
     input[type="range"] { width:100%; accent-color:var(--accent); }
     output { min-width:38px; text-align:right; font-variant-numeric:tabular-nums; }
+
     .legend { margin-top:12px; padding-top:10px; border-top:1px solid rgba(148,163,184,.18); }
     .legend-title { margin-bottom:6px; color:#bfdbfe; font-size:.68rem; font-weight:800; }
     .legend-bar { height:10px; border-radius:999px; border:1px solid rgba(255,255,255,.15); background:linear-gradient(90deg,#2873a5 0%,#46d2e6 10%,#497598 15%,#4ca58e 22%,#127618 30%,#cbde01 38%,#d7cb00 45%,#e38103 52%,#b95f0a 58%,#c02514 64%,#ca99b4 70%,#c44a8a 76%,#8b20d2 82%,#5614a2 87%,#6fd2db 91%,#730a01 95%,#fff 100%); }
@@ -49,16 +75,20 @@
     .meta { margin-top:10px; color:#94a3b8; font-size:.68rem; line-height:1.45; }
     .meta strong { color:#dbeafe; }
     .meta span { color:#cbd5e1; }
-    @media (max-width:640px) { .panel { top:10px; left:10px; width:calc(100vw - 20px); padding:12px; } }
+
+    @media (max-width:640px) {
+      .panel { top:10px; left:10px; width:calc(100vw - 20px); padding:12px; }
+      .playback-buttons { grid-template-columns:42px 1fr 42px 76px; }
+    }
   </style>
 </head>
 <body>
   <div id="map"></div>
 
   <section class="panel">
-    <div class="eyebrow">Python-colored / Map-anchored</div>
+    <div class="eyebrow">Python-colored / Map-anchored / Loop</div>
     <h1>National MRMS Mosaic</h1>
-    <p class="subtitle">Python owns the dBZ → RGBA palette. A minimal custom WebGL layer only anchors and composites those finished pixels geographically.</p>
+    <p class="subtitle">Python owns every dBZ → RGBA pixel. The custom WebGL layer stays geographically anchored while playback swaps only the finished radar texture.</p>
 
     <div class="status-row">
       <span id="statusDot" class="status-dot"></span>
@@ -68,8 +98,30 @@
     <div class="controls">
       <div class="button-row">
         <button id="toggleRadar" type="button">Hide Radar</button>
-        <button id="reloadRadar" type="button">Reload Image</button>
+        <button id="reloadRadar" type="button">Reload Loop</button>
       </div>
+
+      <div class="playback">
+        <div class="playback-buttons">
+          <button id="prevFrame" type="button" title="Previous frame">◀</button>
+          <button id="playPause" type="button">▶ Play</button>
+          <button id="nextFrame" type="button" title="Next frame">▶</button>
+          <select id="speedSelect" aria-label="Playback speed">
+            <option value="0.5">0.5×</option>
+            <option value="1" selected>1×</option>
+            <option value="1.5">1.5×</option>
+            <option value="2">2×</option>
+          </select>
+        </div>
+        <div class="frame-readout">
+          <span id="frameTime">--:--</span>
+          <span id="frameCount">0 / 0</span>
+        </div>
+        <label class="timeline" for="frameSlider">
+          <input id="frameSlider" type="range" min="0" max="0" step="1" value="0">
+        </label>
+      </div>
+
       <label class="range-row" for="radarOpacity">
         <span>Opacity</span>
         <input id="radarOpacity" type="range" min="0" max="1" step="0.05" value="0.95">
@@ -86,8 +138,9 @@
     <div class="meta">
       <strong>Source:</strong> NOAA/NCEP MRMS ReflectivityAtLowestAltitude<br>
       <strong>Color owner:</strong> Python Level II palette renderer<br>
-      <strong>Map path:</strong> custom WebGL texture; no Mapbox raster shader<br>
+      <strong>Map path:</strong> custom WebGL texture; no Mapbox radar coloring<br>
       <strong>Image:</strong> <span id="imageInfo">waiting…</span><br>
+      <strong>Loop:</strong> <span id="loopInfo">waiting…</span><br>
       <strong>Valid:</strong> <span id="validTime">waiting…</span><br>
       <strong>Revision:</strong> <span id="revisionInfo">waiting…</span>
     </div>
@@ -95,8 +148,10 @@
 
   <script>
     const MAPBOX_STYLE = "mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
-    const MANIFEST_URL = "./mrms-mosaic-canvas-output/manifest.json";
+    const MANIFEST_URL = "./mrms-mosaic-loop-output/manifest.json";
     const CUSTOM_LAYER_ID = "mrms-python-colored-layer";
+    const FRAME_CACHE_LIMIT = 5;
+    const END_FRAME_HOLD_MS = 900;
 
     const statusText = document.getElementById("statusText");
     const statusDot = document.getElementById("statusDot");
@@ -104,12 +159,31 @@
     const opacityOutput = document.getElementById("radarOpacityValue");
     const toggleButton = document.getElementById("toggleRadar");
     const reloadButton = document.getElementById("reloadRadar");
+    const playPauseButton = document.getElementById("playPause");
+    const prevFrameButton = document.getElementById("prevFrame");
+    const nextFrameButton = document.getElementById("nextFrame");
+    const speedSelect = document.getElementById("speedSelect");
+    const frameSlider = document.getElementById("frameSlider");
+    const frameTime = document.getElementById("frameTime");
+    const frameCount = document.getElementById("frameCount");
     const imageInfo = document.getElementById("imageInfo");
+    const loopInfo = document.getElementById("loopInfo");
     const validTime = document.getElementById("validTime");
     const revisionInfo = document.getElementById("revisionInfo");
 
     let radarVisible = true;
     let radarLayer = null;
+    let manifest = null;
+    let frames = [];
+    let currentFrameIndex = 0;
+    let isPlaying = false;
+    let playbackGeneration = 0;
+    let frameSwitchBusy = false;
+    let defaultFrameIntervalMs = 650;
+
+    const imageCache = new Map();
+    const imagePromises = new Map();
+    let cacheClock = 0;
 
     function setStatus(message, state = "loading") {
       statusText.textContent = message;
@@ -139,13 +213,28 @@
         opacity: Number(opacityInput.value),
         visible: true,
         map: null,
+        gl: null,
         program: null,
         positionBuffer: null,
         uvBuffer: null,
         texture: null,
+        initialImage: image,
+
+        uploadImage(imageToUpload) {
+          if (!this.gl || !this.texture || !imageToUpload) return;
+          const gl = this.gl;
+          gl.bindTexture(gl.TEXTURE_2D, this.texture);
+          gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+          gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+          if (gl.UNPACK_COLORSPACE_CONVERSION_WEBGL !== undefined) {
+            gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
+          }
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, imageToUpload);
+        },
 
         onAdd(map, gl) {
           this.map = map;
+          this.gl = gl;
 
           const vertexSource = `
             precision highp float;
@@ -178,7 +267,6 @@
           gl.linkProgram(program);
           gl.deleteShader(vertexShader);
           gl.deleteShader(fragmentShader);
-
           if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
             throw new Error(gl.getProgramInfoLog(program) || "radar shader link failed");
           }
@@ -188,14 +276,13 @@
           const ne = mapboxgl.MercatorCoordinate.fromLngLat([east, north]);
           const sw = mapboxgl.MercatorCoordinate.fromLngLat([west, south]);
           const se = mapboxgl.MercatorCoordinate.fromLngLat([east, south]);
-
           const positions = new Float32Array([
-            nw.x, nw.y,  sw.x, sw.y,  ne.x, ne.y,
-            ne.x, ne.y,  sw.x, sw.y,  se.x, se.y
+            nw.x,nw.y, sw.x,sw.y, ne.x,ne.y,
+            ne.x,ne.y, sw.x,sw.y, se.x,se.y
           ]);
           const uvs = new Float32Array([
-            0,1,  0,0,  1,1,
-            1,1,  0,0,  1,0
+            0,1, 0,0, 1,1,
+            1,1, 0,0, 1,0
           ]);
 
           this.positionBuffer = gl.createBuffer();
@@ -208,41 +295,39 @@
 
           this.texture = gl.createTexture();
           gl.bindTexture(gl.TEXTURE_2D, this.texture);
-          gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
-          gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
           gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
           gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
           gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
           gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+          this.uploadImage(this.initialImage);
+          this.initialImage = null;
         },
 
         render(gl, matrix) {
           if (!this.visible || !this.program || !this.texture) return;
-
           gl.useProgram(this.program);
           gl.disable(gl.DEPTH_TEST);
           gl.enable(gl.BLEND);
           gl.blendEquation(gl.FUNC_ADD);
           gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
-          gl.uniformMatrix4fv(gl.getUniformLocation(this.program, "u_matrix"), false, matrix);
-          gl.uniform1f(gl.getUniformLocation(this.program, "u_opacity"), this.opacity);
-          gl.uniform1i(gl.getUniformLocation(this.program, "u_texture"), 0);
+          gl.uniformMatrix4fv(gl.getUniformLocation(this.program,"u_matrix"), false, matrix);
+          gl.uniform1f(gl.getUniformLocation(this.program,"u_opacity"), this.opacity);
+          gl.uniform1i(gl.getUniformLocation(this.program,"u_texture"), 0);
 
-          const posLocation = gl.getAttribLocation(this.program, "a_pos");
+          const posLocation = gl.getAttribLocation(this.program,"a_pos");
           gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
           gl.enableVertexAttribArray(posLocation);
-          gl.vertexAttribPointer(posLocation, 2, gl.FLOAT, false, 0, 0);
+          gl.vertexAttribPointer(posLocation,2,gl.FLOAT,false,0,0);
 
-          const uvLocation = gl.getAttribLocation(this.program, "a_uv");
+          const uvLocation = gl.getAttribLocation(this.program,"a_uv");
           gl.bindBuffer(gl.ARRAY_BUFFER, this.uvBuffer);
           gl.enableVertexAttribArray(uvLocation);
-          gl.vertexAttribPointer(uvLocation, 2, gl.FLOAT, false, 0, 0);
+          gl.vertexAttribPointer(uvLocation,2,gl.FLOAT,false,0,0);
 
           gl.activeTexture(gl.TEXTURE0);
           gl.bindTexture(gl.TEXTURE_2D, this.texture);
-          gl.drawArrays(gl.TRIANGLES, 0, 6);
+          gl.drawArrays(gl.TRIANGLES,0,6);
         },
 
         onRemove(map, gl) {
@@ -250,6 +335,12 @@
           if (this.positionBuffer) gl.deleteBuffer(this.positionBuffer);
           if (this.uvBuffer) gl.deleteBuffer(this.uvBuffer);
           if (this.program) gl.deleteProgram(this.program);
+          this.gl = null;
+        },
+
+        setImage(imageToUpload) {
+          this.uploadImage(imageToUpload);
+          this.map?.triggerRepaint();
         },
 
         setOpacity(value) {
@@ -264,6 +355,34 @@
       };
     }
 
+    function firstSymbolLayerId() {
+      const layers = map.getStyle()?.layers || [];
+      return layers.find(layer => layer.type === "symbol")?.id;
+    }
+
+    function frameImageUrl(index) {
+      const frame = frames[index];
+      const url = new URL(frame.image, manifest._responseUrl);
+      url.searchParams.set("rev", manifest.revision ?? "none");
+      return url.href;
+    }
+
+    function evictImageCache() {
+      while (imageCache.size > FRAME_CACHE_LIMIT) {
+        let oldestKey = null;
+        let oldestUse = Infinity;
+        for (const [key, entry] of imageCache.entries()) {
+          if (key === currentFrameIndex) continue;
+          if (entry.used < oldestUse) {
+            oldestUse = entry.used;
+            oldestKey = key;
+          }
+        }
+        if (oldestKey === null) break;
+        imageCache.delete(oldestKey);
+      }
+    }
+
     function loadImage(url) {
       return new Promise((resolve, reject) => {
         const image = new Image();
@@ -274,27 +393,135 @@
       });
     }
 
-    function firstSymbolLayerId() {
-      const layers = map.getStyle()?.layers || [];
-      return layers.find(layer => layer.type === "symbol")?.id;
+    async function loadFrameImage(index) {
+      if (imageCache.has(index)) {
+        const entry = imageCache.get(index);
+        entry.used = ++cacheClock;
+        return entry.image;
+      }
+      if (imagePromises.has(index)) return imagePromises.get(index);
+
+      const promise = loadImage(frameImageUrl(index))
+        .then(image => {
+          imageCache.set(index, { image, used: ++cacheClock });
+          imagePromises.delete(index);
+          evictImageCache();
+          return image;
+        })
+        .catch(error => {
+          imagePromises.delete(index);
+          throw error;
+        });
+      imagePromises.set(index, promise);
+      return promise;
     }
 
-    async function loadRadar() {
+    function preloadAround(index) {
+      if (!frames.length) return;
+      const candidates = [
+        (index + 1) % frames.length,
+        (index + 2) % frames.length,
+        (index + 3) % frames.length,
+        (index - 1 + frames.length) % frames.length
+      ];
+      candidates.forEach(candidate => loadFrameImage(candidate).catch(() => {}));
+    }
+
+    function formatFrameTime(value) {
+      const date = new Date(value);
+      if (!Number.isFinite(date.getTime())) return "Unknown time";
+      return date.toLocaleTimeString([], { hour:"numeric", minute:"2-digit" });
+    }
+
+    function updateFrameUi() {
+      const frame = frames[currentFrameIndex];
+      if (!frame) return;
+      frameSlider.value = String(currentFrameIndex);
+      frameTime.textContent = formatFrameTime(frame.valid_time);
+      frameCount.textContent = `${currentFrameIndex + 1} / ${frames.length}`;
+      const valid = new Date(frame.valid_time);
+      validTime.textContent = Number.isFinite(valid.getTime()) ? valid.toLocaleString() : String(frame.valid_time || "unknown");
+    }
+
+    async function showFrame(index, options = {}) {
+      if (!frames.length || frameSwitchBusy) return false;
+      frameSwitchBusy = true;
       try {
-        setStatus("Loading Python-colored MRMS image…");
+        const normalized = (Number(index) + frames.length) % frames.length;
+        const image = await loadFrameImage(normalized);
+        radarLayer?.setImage(image);
+        currentFrameIndex = normalized;
+        updateFrameUi();
+        preloadAround(normalized);
+        if (!options.quiet) setStatus(`MRMS frame ${normalized + 1}/${frames.length} • ${formatFrameTime(frames[normalized].valid_time)}`, "live");
+        return true;
+      } catch (error) {
+        console.error(error);
+        setStatus(`Frame load failed: ${error.message}`, "error");
+        return false;
+      } finally {
+        frameSwitchBusy = false;
+      }
+    }
 
-        const response = await fetch(`${MANIFEST_URL}?_=${Date.now()}`, { cache: "no-store" });
+    function playbackIntervalMs() {
+      const speed = Math.max(.25, Number(speedSelect.value) || 1);
+      return Math.max(120, Math.round(defaultFrameIntervalMs / speed));
+    }
+
+    function stopPlayback() {
+      isPlaying = false;
+      playbackGeneration += 1;
+      playPauseButton.textContent = "▶ Play";
+    }
+
+    async function playbackLoop(generation) {
+      if (!isPlaying || generation !== playbackGeneration || frames.length < 2) return;
+      const next = (currentFrameIndex + 1) % frames.length;
+      await showFrame(next, { quiet:true });
+      if (!isPlaying || generation !== playbackGeneration) return;
+
+      const atNewest = currentFrameIndex === frames.length - 1;
+      const delay = playbackIntervalMs() + (atNewest ? END_FRAME_HOLD_MS : 0);
+      window.setTimeout(() => playbackLoop(generation), delay);
+    }
+
+    async function startPlayback() {
+      if (frames.length < 2 || isPlaying) return;
+      if (currentFrameIndex === frames.length - 1) {
+        await showFrame(0, { quiet:true });
+      }
+      isPlaying = true;
+      playPauseButton.textContent = "❚❚ Pause";
+      const generation = ++playbackGeneration;
+      window.setTimeout(() => playbackLoop(generation), playbackIntervalMs());
+    }
+
+    async function loadRadarLoop() {
+      stopPlayback();
+      try {
+        setStatus("Loading MRMS loop manifest…");
+        const response = await fetch(`${MANIFEST_URL}?_=${Date.now()}`, { cache:"no-store" });
         if (!response.ok) throw new Error(`Manifest HTTP ${response.status}`);
-        const manifest = await response.json();
-        if (!Array.isArray(manifest.bounds) || !manifest.image) throw new Error("Manifest missing bounds/image");
+        const nextManifest = await response.json();
+        if (!Array.isArray(nextManifest.bounds) || !Array.isArray(nextManifest.frames) || nextManifest.frames.length < 2) {
+          throw new Error("Loop manifest needs bounds and at least two frames");
+        }
 
-        const imageUrl = new URL(manifest.image, response.url);
-        imageUrl.searchParams.set("rev", manifest.revision ?? Date.now());
-        imageUrl.searchParams.set("load", Date.now());
-        const image = await loadImage(imageUrl.href);
+        manifest = nextManifest;
+        manifest._responseUrl = response.url;
+        frames = [...manifest.frames].sort((a,b) => String(a.valid_time).localeCompare(String(b.valid_time)));
+        defaultFrameIntervalMs = Number(manifest.defaultFrameIntervalMs || 650);
+        imageCache.clear();
+        imagePromises.clear();
 
+        currentFrameIndex = frames.length - 1;
+        frameSlider.max = String(frames.length - 1);
+        frameSlider.value = String(currentFrameIndex);
+
+        const initialImage = await loadFrameImage(currentFrameIndex);
         if (map.getLayer(CUSTOM_LAYER_ID)) map.removeLayer(CUSTOM_LAYER_ID);
-        radarLayer = createPythonColoredRadarLayer(image, manifest.bounds);
+        radarLayer = createPythonColoredRadarLayer(initialImage, manifest.bounds);
         radarLayer.opacity = Number(opacityInput.value);
         radarLayer.visible = radarVisible;
 
@@ -302,22 +529,23 @@
         if (beforeId) map.addLayer(radarLayer, beforeId);
         else map.addLayer(radarLayer);
 
-        imageInfo.textContent = `${image.naturalWidth || image.width} × ${image.naturalHeight || image.height} lossless WebP`;
+        imageInfo.textContent = `${manifest.imageWidth} × ${manifest.imageHeight} lossless WebP`;
+        loopInfo.textContent = `${frames.length} frames • ~${Math.round((frames.length - 1) * 2)} min`;
         revisionInfo.textContent = String(manifest.revision ?? "unknown");
-        const valid = new Date(manifest.valid_time);
-        validTime.textContent = Number.isFinite(valid.getTime()) ? valid.toLocaleString() : String(manifest.valid_time || "unknown");
-        setStatus("Python RGBA displayed unchanged in map coordinates", "live");
+        updateFrameUi();
+        preloadAround(currentFrameIndex);
+        setStatus(`MRMS loop ready • ${frames.length} frames`, "live");
       } catch (error) {
         console.error(error);
-        setStatus(error.message, "error");
+        setStatus(`Loop load failed: ${error.message}`, "error");
       }
     }
 
     mapboxgl.accessToken = window.MAPBOX_PUBLIC_TOKEN;
     const map = new mapboxgl.Map({
-      container: "map",
-      style: MAPBOX_STYLE,
-      center: [-96.5,38.4],
+      container:"map",
+      style:MAPBOX_STYLE,
+      center:[-96.5,38.4],
       zoom:3.35,
       minZoom:2,
       maxZoom:12,
@@ -328,7 +556,7 @@
     map.addControl(new mapboxgl.NavigationControl(), "bottom-right");
     map.on("load", () => {
       map.setProjection("mercator");
-      loadRadar();
+      loadRadarLoop();
     });
 
     toggleButton.addEventListener("click", () => {
@@ -337,11 +565,44 @@
       radarLayer?.setVisible(radarVisible);
     });
 
-    reloadButton.addEventListener("click", loadRadar);
+    reloadButton.addEventListener("click", loadRadarLoop);
+    playPauseButton.addEventListener("click", () => {
+      if (isPlaying) stopPlayback();
+      else startPlayback();
+    });
+
+    prevFrameButton.addEventListener("click", async () => {
+      stopPlayback();
+      await showFrame(currentFrameIndex - 1);
+    });
+    nextFrameButton.addEventListener("click", async () => {
+      stopPlayback();
+      await showFrame(currentFrameIndex + 1);
+    });
+
+    frameSlider.addEventListener("input", async () => {
+      stopPlayback();
+      await showFrame(Number(frameSlider.value));
+    });
+
     opacityInput.addEventListener("input", () => {
-      const value = Number(opacityInput.value);
-      opacityOutput.value = `${Math.round(value * 100)}%`;
-      radarLayer?.setOpacity(value);
+      opacityOutput.value = `${Math.round(Number(opacityInput.value) * 100)}%`;
+      radarLayer?.setOpacity(opacityInput.value);
+    });
+
+    document.addEventListener("keydown", event => {
+      if (event.target && ["INPUT","SELECT","BUTTON"].includes(event.target.tagName)) return;
+      if (event.code === "Space") {
+        event.preventDefault();
+        if (isPlaying) stopPlayback();
+        else startPlayback();
+      } else if (event.key === "ArrowLeft") {
+        stopPlayback();
+        showFrame(currentFrameIndex - 1);
+      } else if (event.key === "ArrowRight") {
+        stopPlayback();
+        showFrame(currentFrameIndex + 1);
+      }
     });
   </script>
 </body>
