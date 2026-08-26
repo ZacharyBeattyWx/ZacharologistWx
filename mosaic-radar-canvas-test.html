@@ -3,93 +3,62 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ZacharologistWx MRMS Map-Owned Canvas Test</title>
+  <title>ZacharologistWx MRMS Custom Radar Test</title>
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
   <script src="mapbox-token.js"></script>
   <style>
     :root {
       color-scheme: dark;
-      --panel: rgba(4, 10, 22, 0.92);
-      --border: rgba(148, 163, 184, 0.28);
+      --panel: rgba(4,10,22,.92);
+      --border: rgba(148,163,184,.28);
       --muted: #94a3b8;
-      --text: #f8fafc;
       --accent: #38bdf8;
       --good: #86efac;
-      --warn: #fde68a;
       --bad: #fca5a5;
     }
-
     * { box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; margin: 0; }
-    body { overflow: hidden; background: #07111f; color: var(--text); font-family: Arial, Helvetica, sans-serif; }
-
-    #map { position: fixed; inset: 0; background: #07111f; }
-
-    /* This canvas is the radar texture. It is NOT displayed over the map.
-       Mapbox owns it through a CanvasSource and positions it geographically. */
-    #radarCanvas {
-      position: fixed;
-      left: -99999px;
-      top: -99999px;
-      opacity: 0;
-      pointer-events: none;
-    }
-
+    html, body, #map { width:100%; height:100%; margin:0; }
+    body { overflow:hidden; background:#07111f; color:#f8fafc; font-family:Arial,Helvetica,sans-serif; }
+    #map { position:fixed; inset:0; background:#07111f; }
     .panel {
-      position: fixed;
-      top: 16px;
-      left: 16px;
-      z-index: 20;
-      width: min(405px, calc(100vw - 32px));
-      padding: 14px;
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      background: var(--panel);
-      box-shadow: 0 18px 42px rgba(0,0,0,0.38);
-      backdrop-filter: blur(12px);
+      position:fixed; top:16px; left:16px; z-index:20;
+      width:min(400px,calc(100vw - 32px)); padding:14px;
+      border:1px solid var(--border); border-radius:14px;
+      background:var(--panel); box-shadow:0 18px 42px rgba(0,0,0,.38);
+      backdrop-filter:blur(12px);
     }
-
-    .eyebrow { margin-bottom: 4px; color: var(--accent); font-size: 0.68rem; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; }
-    h1 { margin: 0; font-size: 1.05rem; }
-    .subtitle { margin: 6px 0 12px; color: #cbd5e1; font-size: 0.76rem; line-height: 1.35; }
-
-    .status-row { display: flex; gap: 8px; align-items: flex-start; min-height: 20px; margin-bottom: 12px; color: var(--muted); font-size: 0.74rem; line-height: 1.35; }
-    .status-dot { width: 8px; height: 8px; margin-top: 2px; flex: 0 0 auto; border-radius: 50%; background: var(--warn); }
-    .status-dot.is-live { background: var(--good); box-shadow: 0 0 10px rgba(134,239,172,0.45); }
-    .status-dot.is-error { background: var(--bad); box-shadow: 0 0 10px rgba(252,165,165,0.45); }
-
-    .controls { display: grid; gap: 10px; }
-    .button-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    button { padding: 8px 10px; border: 1px solid rgba(148,163,184,0.34); border-radius: 8px; background: rgba(15,23,42,0.94); color: #fff; font: inherit; font-size: 0.76rem; font-weight: 800; cursor: pointer; }
-    button:hover { border-color: rgba(56,189,248,0.72); }
-
-    .range-row { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; color: #bfdbfe; font-size: 0.72rem; font-weight: 800; }
-    input[type="range"] { width: 100%; accent-color: var(--accent); }
-    output { min-width: 38px; text-align: right; font-variant-numeric: tabular-nums; }
-
-    .legend { margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(148,163,184,0.18); }
-    .legend-title { margin-bottom: 6px; color: #bfdbfe; font-size: 0.68rem; font-weight: 800; }
-    .legend-bar { height: 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.15); background: linear-gradient(90deg,#2873a5 0%,#46d2e6 10%,#497598 15%,#4ca58e 22%,#127618 30%,#cbde01 38%,#d7cb00 45%,#e38103 52%,#b95f0a 58%,#c02514 64%,#ca99b4 70%,#c44a8a 76%,#8b20d2 82%,#5614a2 87%,#6fd2db 91%,#730a01 95%,#fff 100%); }
-    .legend-labels { display: flex; justify-content: space-between; margin-top: 4px; color: #94a3b8; font-size: 0.62rem; }
-
-    .meta { margin-top: 10px; color: #94a3b8; font-size: 0.68rem; line-height: 1.45; }
-    .meta strong { color: #dbeafe; }
-    .meta span { color: #cbd5e1; }
-
-    @media (max-width: 640px) {
-      .panel { top: 10px; left: 10px; width: calc(100vw - 20px); padding: 12px; }
-    }
+    .eyebrow { margin-bottom:4px; color:var(--accent); font-size:.68rem; font-weight:900; letter-spacing:.12em; text-transform:uppercase; }
+    h1 { margin:0; font-size:1.05rem; }
+    .subtitle { margin:6px 0 12px; color:#cbd5e1; font-size:.76rem; line-height:1.35; }
+    .status-row { display:flex; gap:8px; align-items:flex-start; min-height:20px; margin-bottom:12px; color:var(--muted); font-size:.74rem; line-height:1.35; }
+    .status-dot { width:8px; height:8px; margin-top:2px; flex:0 0 auto; border-radius:50%; background:#fde68a; }
+    .status-dot.is-live { background:var(--good); box-shadow:0 0 10px rgba(134,239,172,.45); }
+    .status-dot.is-error { background:var(--bad); box-shadow:0 0 10px rgba(252,165,165,.45); }
+    .controls { display:grid; gap:10px; }
+    .button-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    button { padding:8px 10px; border:1px solid rgba(148,163,184,.34); border-radius:8px; background:rgba(15,23,42,.94); color:#fff; font:inherit; font-size:.76rem; font-weight:800; cursor:pointer; }
+    button:hover { border-color:rgba(56,189,248,.72); }
+    .range-row { display:grid; grid-template-columns:auto 1fr auto; gap:8px; align-items:center; color:#bfdbfe; font-size:.72rem; font-weight:800; }
+    input[type="range"] { width:100%; accent-color:var(--accent); }
+    output { min-width:38px; text-align:right; font-variant-numeric:tabular-nums; }
+    .legend { margin-top:12px; padding-top:10px; border-top:1px solid rgba(148,163,184,.18); }
+    .legend-title { margin-bottom:6px; color:#bfdbfe; font-size:.68rem; font-weight:800; }
+    .legend-bar { height:10px; border-radius:999px; border:1px solid rgba(255,255,255,.15); background:linear-gradient(90deg,#2873a5 0%,#46d2e6 10%,#497598 15%,#4ca58e 22%,#127618 30%,#cbde01 38%,#d7cb00 45%,#e38103 52%,#b95f0a 58%,#c02514 64%,#ca99b4 70%,#c44a8a 76%,#8b20d2 82%,#5614a2 87%,#6fd2db 91%,#730a01 95%,#fff 100%); }
+    .legend-labels { display:flex; justify-content:space-between; margin-top:4px; color:#94a3b8; font-size:.62rem; }
+    .meta { margin-top:10px; color:#94a3b8; font-size:.68rem; line-height:1.45; }
+    .meta strong { color:#dbeafe; }
+    .meta span { color:#cbd5e1; }
+    @media (max-width:640px) { .panel { top:10px; left:10px; width:calc(100vw - 20px); padding:12px; } }
   </style>
 </head>
 <body>
   <div id="map"></div>
-  <canvas id="radarCanvas"></canvas>
 
   <section class="panel">
-    <div class="eyebrow">Map-Owned Radar Layer</div>
+    <div class="eyebrow">Python-colored / Map-anchored</div>
     <h1>National MRMS Mosaic</h1>
-    <p class="subtitle">Same numeric MRMS dBZ colorizer, but the finished radar canvas is now geographically owned by Mapbox instead of floating above the map.</p>
+    <p class="subtitle">Python owns the dBZ → RGBA palette. A minimal custom WebGL layer only anchors and composites those finished pixels geographically.</p>
 
     <div class="status-row">
       <span id="statusDot" class="status-dot"></span>
@@ -116,8 +85,8 @@
 
     <div class="meta">
       <strong>Source:</strong> NOAA/NCEP MRMS ReflectivityAtLowestAltitude<br>
-      <strong>Browser path:</strong> Mapbox CanvasSource → raster layer<br>
-      <strong>Map behavior:</strong> geographic pan/zoom/pitch/bearing<br>
+      <strong>Color owner:</strong> Python Level II palette renderer<br>
+      <strong>Map path:</strong> custom WebGL texture; no Mapbox raster shader<br>
       <strong>Image:</strong> <span id="imageInfo">waiting…</span><br>
       <strong>Valid:</strong> <span id="validTime">waiting…</span><br>
       <strong>Revision:</strong> <span id="revisionInfo">waiting…</span>
@@ -127,11 +96,8 @@
   <script>
     const MAPBOX_STYLE = "mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
     const MANIFEST_URL = "./mrms-mosaic-canvas-output/manifest.json";
-    const RADAR_SOURCE_ID = "mrms-map-canvas-source";
-    const RADAR_LAYER_ID = "mrms-map-canvas-layer";
+    const CUSTOM_LAYER_ID = "mrms-python-colored-layer";
 
-    const radarCanvas = document.getElementById("radarCanvas");
-    const radarContext = radarCanvas.getContext("2d", { alpha: true });
     const statusText = document.getElementById("statusText");
     const statusDot = document.getElementById("statusDot");
     const opacityInput = document.getElementById("radarOpacity");
@@ -143,7 +109,7 @@
     const revisionInfo = document.getElementById("revisionInfo");
 
     let radarVisible = true;
-    let radarBounds = null;
+    let radarLayer = null;
 
     function setStatus(message, state = "loading") {
       statusText.textContent = message;
@@ -151,53 +117,151 @@
       statusDot.classList.toggle("is-error", state === "error");
     }
 
-    function firstSymbolLayerId() {
-      const layers = map.getStyle()?.layers || [];
-      return layers.find((layer) => layer.type === "symbol")?.id;
+    function compileShader(gl, type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        const message = gl.getShaderInfoLog(shader) || "shader compile failed";
+        gl.deleteShader(shader);
+        throw new Error(message);
+      }
+      return shader;
     }
 
-    function radarCoordinates(bounds) {
+    function createPythonColoredRadarLayer(image, bounds) {
       const [west, south, east, north] = bounds.map(Number);
-      return [
-        [west, north],
-        [east, north],
-        [east, south],
-        [west, south]
-      ];
-    }
 
-    function removeMapRadar() {
-      if (map.getLayer(RADAR_LAYER_ID)) map.removeLayer(RADAR_LAYER_ID);
-      if (map.getSource(RADAR_SOURCE_ID)) map.removeSource(RADAR_SOURCE_ID);
-    }
+      return {
+        id: CUSTOM_LAYER_ID,
+        type: "custom",
+        renderingMode: "2d",
+        opacity: Number(opacityInput.value),
+        visible: true,
+        map: null,
+        program: null,
+        positionBuffer: null,
+        uvBuffer: null,
+        texture: null,
 
-    function addMapRadar(bounds) {
-      removeMapRadar();
+        onAdd(map, gl) {
+          this.map = map;
 
-      map.addSource(RADAR_SOURCE_ID, {
-        type: "canvas",
-        canvas: "radarCanvas",
-        animate: true,
-        coordinates: radarCoordinates(bounds)
-      });
+          const vertexSource = `
+            precision highp float;
+            uniform mat4 u_matrix;
+            attribute vec2 a_pos;
+            attribute vec2 a_uv;
+            varying vec2 v_uv;
+            void main() {
+              gl_Position = u_matrix * vec4(a_pos, 0.0, 1.0);
+              v_uv = a_uv;
+            }
+          `;
 
-      const layer = {
-        id: RADAR_LAYER_ID,
-        type: "raster",
-        source: RADAR_SOURCE_ID,
-        paint: {
-          "raster-opacity": Number(opacityInput.value),
-          "raster-fade-duration": 0,
-          "raster-resampling": "nearest"
+          const fragmentSource = `
+            precision mediump float;
+            uniform sampler2D u_texture;
+            uniform float u_opacity;
+            varying vec2 v_uv;
+            void main() {
+              vec4 radar = texture2D(u_texture, v_uv);
+              gl_FragColor = vec4(radar.rgb, radar.a * u_opacity);
+            }
+          `;
+
+          const vertexShader = compileShader(gl, gl.VERTEX_SHADER, vertexSource);
+          const fragmentShader = compileShader(gl, gl.FRAGMENT_SHADER, fragmentSource);
+          const program = gl.createProgram();
+          gl.attachShader(program, vertexShader);
+          gl.attachShader(program, fragmentShader);
+          gl.linkProgram(program);
+          gl.deleteShader(vertexShader);
+          gl.deleteShader(fragmentShader);
+
+          if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+            throw new Error(gl.getProgramInfoLog(program) || "radar shader link failed");
+          }
+          this.program = program;
+
+          const nw = mapboxgl.MercatorCoordinate.fromLngLat([west, north]);
+          const ne = mapboxgl.MercatorCoordinate.fromLngLat([east, north]);
+          const sw = mapboxgl.MercatorCoordinate.fromLngLat([west, south]);
+          const se = mapboxgl.MercatorCoordinate.fromLngLat([east, south]);
+
+          const positions = new Float32Array([
+            nw.x, nw.y,  sw.x, sw.y,  ne.x, ne.y,
+            ne.x, ne.y,  sw.x, sw.y,  se.x, se.y
+          ]);
+          const uvs = new Float32Array([
+            0,1,  0,0,  1,1,
+            1,1,  0,0,  1,0
+          ]);
+
+          this.positionBuffer = gl.createBuffer();
+          gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
+          gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+
+          this.uvBuffer = gl.createBuffer();
+          gl.bindBuffer(gl.ARRAY_BUFFER, this.uvBuffer);
+          gl.bufferData(gl.ARRAY_BUFFER, uvs, gl.STATIC_DRAW);
+
+          this.texture = gl.createTexture();
+          gl.bindTexture(gl.TEXTURE_2D, this.texture);
+          gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+          gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
         },
-        layout: {
-          visibility: radarVisible ? "visible" : "none"
+
+        render(gl, matrix) {
+          if (!this.visible || !this.program || !this.texture) return;
+
+          gl.useProgram(this.program);
+          gl.disable(gl.DEPTH_TEST);
+          gl.enable(gl.BLEND);
+          gl.blendEquation(gl.FUNC_ADD);
+          gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+          gl.uniformMatrix4fv(gl.getUniformLocation(this.program, "u_matrix"), false, matrix);
+          gl.uniform1f(gl.getUniformLocation(this.program, "u_opacity"), this.opacity);
+          gl.uniform1i(gl.getUniformLocation(this.program, "u_texture"), 0);
+
+          const posLocation = gl.getAttribLocation(this.program, "a_pos");
+          gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
+          gl.enableVertexAttribArray(posLocation);
+          gl.vertexAttribPointer(posLocation, 2, gl.FLOAT, false, 0, 0);
+
+          const uvLocation = gl.getAttribLocation(this.program, "a_uv");
+          gl.bindBuffer(gl.ARRAY_BUFFER, this.uvBuffer);
+          gl.enableVertexAttribArray(uvLocation);
+          gl.vertexAttribPointer(uvLocation, 2, gl.FLOAT, false, 0, 0);
+
+          gl.activeTexture(gl.TEXTURE0);
+          gl.bindTexture(gl.TEXTURE_2D, this.texture);
+          gl.drawArrays(gl.TRIANGLES, 0, 6);
+        },
+
+        onRemove(map, gl) {
+          if (this.texture) gl.deleteTexture(this.texture);
+          if (this.positionBuffer) gl.deleteBuffer(this.positionBuffer);
+          if (this.uvBuffer) gl.deleteBuffer(this.uvBuffer);
+          if (this.program) gl.deleteProgram(this.program);
+        },
+
+        setOpacity(value) {
+          this.opacity = Number(value);
+          this.map?.triggerRepaint();
+        },
+
+        setVisible(value) {
+          this.visible = Boolean(value);
+          this.map?.triggerRepaint();
         }
       };
-
-      const beforeId = firstSymbolLayerId();
-      if (beforeId) map.addLayer(layer, beforeId);
-      else map.addLayer(layer);
     }
 
     function loadImage(url) {
@@ -210,41 +274,39 @@
       });
     }
 
+    function firstSymbolLayerId() {
+      const layers = map.getStyle()?.layers || [];
+      return layers.find(layer => layer.type === "symbol")?.id;
+    }
+
     async function loadRadar() {
       try {
-        setStatus("Loading MRMS map-owned canvas…");
+        setStatus("Loading Python-colored MRMS image…");
 
         const response = await fetch(`${MANIFEST_URL}?_=${Date.now()}`, { cache: "no-store" });
         if (!response.ok) throw new Error(`Manifest HTTP ${response.status}`);
-
         const manifest = await response.json();
-        if (!Array.isArray(manifest.bounds) || !manifest.image) {
-          throw new Error("Manifest missing bounds/image");
-        }
+        if (!Array.isArray(manifest.bounds) || !manifest.image) throw new Error("Manifest missing bounds/image");
 
         const imageUrl = new URL(manifest.image, response.url);
         imageUrl.searchParams.set("rev", manifest.revision ?? Date.now());
         imageUrl.searchParams.set("load", Date.now());
         const image = await loadImage(imageUrl.href);
 
-        radarCanvas.width = image.naturalWidth || image.width;
-        radarCanvas.height = image.naturalHeight || image.height;
-        radarContext.clearRect(0, 0, radarCanvas.width, radarCanvas.height);
-        radarContext.imageSmoothingEnabled = false;
-        radarContext.drawImage(image, 0, 0);
+        if (map.getLayer(CUSTOM_LAYER_ID)) map.removeLayer(CUSTOM_LAYER_ID);
+        radarLayer = createPythonColoredRadarLayer(image, manifest.bounds);
+        radarLayer.opacity = Number(opacityInput.value);
+        radarLayer.visible = radarVisible;
 
-        radarBounds = manifest.bounds.map(Number);
-        addMapRadar(radarBounds);
+        const beforeId = firstSymbolLayerId();
+        if (beforeId) map.addLayer(radarLayer, beforeId);
+        else map.addLayer(radarLayer);
 
-        imageInfo.textContent = `${radarCanvas.width} × ${radarCanvas.height} lossless WebP`;
+        imageInfo.textContent = `${image.naturalWidth || image.width} × ${image.naturalHeight || image.height} lossless WebP`;
         revisionInfo.textContent = String(manifest.revision ?? "unknown");
-
         const valid = new Date(manifest.valid_time);
-        validTime.textContent = Number.isFinite(valid.getTime())
-          ? valid.toLocaleString()
-          : String(manifest.valid_time || "unknown");
-
-        setStatus("MRMS anchored inside the Mapbox scene", "live");
+        validTime.textContent = Number.isFinite(valid.getTime()) ? valid.toLocaleString() : String(manifest.valid_time || "unknown");
+        setStatus("Python RGBA displayed unchanged in map coordinates", "live");
       } catch (error) {
         console.error(error);
         setStatus(error.message, "error");
@@ -255,16 +317,15 @@
     const map = new mapboxgl.Map({
       container: "map",
       style: MAPBOX_STYLE,
-      center: [-96.5, 38.4],
-      zoom: 3.35,
-      minZoom: 2,
-      maxZoom: 12,
-      projection: "mercator",
-      attributionControl: true
+      center: [-96.5,38.4],
+      zoom:3.35,
+      minZoom:2,
+      maxZoom:12,
+      projection:"mercator",
+      attributionControl:true
     });
 
-    map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), "bottom-right");
-
+    map.addControl(new mapboxgl.NavigationControl(), "bottom-right");
     map.on("load", () => {
       map.setProjection("mercator");
       loadRadar();
@@ -273,19 +334,14 @@
     toggleButton.addEventListener("click", () => {
       radarVisible = !radarVisible;
       toggleButton.textContent = radarVisible ? "Hide Radar" : "Show Radar";
-      if (map.getLayer(RADAR_LAYER_ID)) {
-        map.setLayoutProperty(RADAR_LAYER_ID, "visibility", radarVisible ? "visible" : "none");
-      }
+      radarLayer?.setVisible(radarVisible);
     });
 
     reloadButton.addEventListener("click", loadRadar);
-
     opacityInput.addEventListener("input", () => {
-      const opacity = Number(opacityInput.value);
-      opacityOutput.value = `${Math.round(opacity * 100)}%`;
-      if (map.getLayer(RADAR_LAYER_ID)) {
-        map.setPaintProperty(RADAR_LAYER_ID, "raster-opacity", opacity);
-      }
+      const value = Number(opacityInput.value);
+      opacityOutput.value = `${Math.round(value * 100)}%`;
+      radarLayer?.setOpacity(value);
     });
   </script>
 </body>
