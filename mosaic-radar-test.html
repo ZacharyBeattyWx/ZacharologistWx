@@ -47,7 +47,7 @@
       top: 16px;
       left: 16px;
       z-index: 10;
-      width: min(360px, calc(100vw - 32px));
+      width: min(370px, calc(100vw - 32px));
       padding: 14px;
       border: 1px solid var(--border);
       border-radius: 14px;
@@ -158,10 +158,56 @@
       font-variant-numeric: tabular-nums;
     }
 
-    .meta {
+    .legend {
       margin-top: 12px;
       padding-top: 10px;
       border-top: 1px solid rgba(148, 163, 184, 0.18);
+    }
+
+    .legend-title {
+      margin-bottom: 6px;
+      color: #bfdbfe;
+      font-size: 0.68rem;
+      font-weight: 800;
+    }
+
+    .legend-bar {
+      height: 10px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 999px;
+      background:
+        linear-gradient(90deg,
+          #2873a5 0%,
+          #46d2e6 10%,
+          #497598 15%,
+          #4ca58e 22%,
+          #127618 30%,
+          #cbde01 38%,
+          #d7cb00 45%,
+          #e38103 52%,
+          #b95f0a 58%,
+          #c02514 64%,
+          #ca99b4 70%,
+          #c44a8a 76%,
+          #8b20d2 82%,
+          #5614a2 87%,
+          #6fd2db 91%,
+          #730a01 95%,
+          #ffffff 100%);
+    }
+
+    .legend-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 4px;
+      color: #94a3b8;
+      font-size: 0.62rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .meta {
+      margin-top: 10px;
       color: #94a3b8;
       font-size: 0.68rem;
       line-height: 1.45;
@@ -192,7 +238,7 @@
   <section class="radar-panel" aria-label="Mosaic radar controls">
     <div class="eyebrow">Experimental</div>
     <h1>National MRMS Mosaic</h1>
-    <p class="subtitle">NOAA/NWS quality-controlled multi-radar base reflectivity rendered directly over Mapbox.</p>
+    <p class="subtitle">NOAA MRMS quality-controlled base reflectivity with the ZacharologistWx Level II reflectivity palette.</p>
 
     <div class="status-row">
       <span id="statusDot" class="status-dot"></span>
@@ -207,17 +253,25 @@
 
       <label class="range-row" for="radarOpacity">
         <span>Opacity</span>
-        <input id="radarOpacity" type="range" min="0" max="1" step="0.05" value="0.82">
-        <output id="radarOpacityValue">82%</output>
+        <input id="radarOpacity" type="range" min="0" max="1" step="0.05" value="0.90">
+        <output id="radarOpacityValue">90%</output>
       </label>
     </div>
 
+    <div class="legend" aria-label="Reflectivity color scale">
+      <div class="legend-title">Reflectivity (dBZ)</div>
+      <div class="legend-bar"></div>
+      <div class="legend-labels">
+        <span>0</span><span>10</span><span>20</span><span>30</span><span>40</span><span>50</span><span>60</span><span>70+</span>
+      </div>
+    </div>
+
     <div class="meta">
-      <strong>Source:</strong> NOAA/NWS MRMS radar_base_reflectivity_time<br>
-      <strong>Delivery:</strong> ArcGIS ImageServer exportImage PNG tiles<br>
+      <strong>Source:</strong> NOAA/NWS MRMS conus_bref_qcd<br>
+      <strong>Delivery:</strong> GeoServer WMS + custom SLD raster color map<br>
+      <strong>Palette:</strong> shared Level II dBZ logic<br>
       <strong>Nominal resolution:</strong> ~1 km<br>
-      <strong>Update cadence:</strong> about 5 minutes<br>
-      <strong>Coverage:</strong> CONUS, Alaska, Hawaii, Caribbean, Guam
+      <strong>Update cadence:</strong> about 5 minutes
     </div>
   </section>
 
@@ -228,10 +282,41 @@
   <script>
     const MAPBOX_TOKEN = window.MAPBOX_PUBLIC_TOKEN;
     const MAPBOX_STYLE = "mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
+
     const RADAR_SOURCE_ID = "noaa-mrms-mosaic-source";
     const RADAR_LAYER_ID = "noaa-mrms-mosaic-layer";
-    const NOAA_EXPORT_BASE = "https://mapservices.weather.noaa.gov/eventdriven/rest/services/radar/radar_base_reflectivity_time/ImageServer/exportImage";
+    const NOAA_WMS_BASE = "https://opengeo.ncep.noaa.gov/geoserver/conus/conus_bref_qcd/ows";
+    const NOAA_WMS_LAYER = "conus_bref_qcd";
     const AUTO_REFRESH_MS = 5 * 60 * 1000;
+
+    // Mirrors scripts/radar/render_level2_reflectivity.py tile-display behavior.
+    // Below -5 dBZ is hidden. -5 to just under 10 dBZ uses the cleaner blue/cyan
+    // weak-return ramp. At 10 dBZ and above we use the shared Level II palette.
+    const RADAR_COLOR_STOPS = [
+      { q: -100.0, color: "#1c5f8c", opacity: 0.0 },
+      { q: -5.001, color: "#1c5f8c", opacity: 0.0 },
+      { q: -5.0, color: "#1c5f8c", opacity: 10 / 255 },
+      { q: 0.0, color: "#2873a5", opacity: 35 / 255 },
+      { q: 9.999, color: "#46d2e6", opacity: 120 / 255 },
+      { q: 10.0, color: "#497598", opacity: 126 / 255 },
+      { q: 15.0, color: "#4ca58e", opacity: 205 / 255 },
+      { q: 20.0, color: "#127618", opacity: 230 / 255 },
+      { q: 25.0, color: "#cbde01", opacity: 245 / 255 },
+      { q: 30.0, color: "#d7cb00", opacity: 1.0 },
+      { q: 35.0, color: "#e38103", opacity: 1.0 },
+      { q: 40.0, color: "#b95f0a", opacity: 1.0 },
+      { q: 45.0, color: "#c02514", opacity: 1.0 },
+      { q: 50.0, color: "#ca99b4", opacity: 1.0 },
+      { q: 55.0, color: "#c44a8a", opacity: 1.0 },
+      { q: 60.0, color: "#8b20d2", opacity: 1.0 },
+      { q: 65.0, color: "#5614a2", opacity: 1.0 },
+      { q: 70.0, color: "#6fd2db", opacity: 1.0 },
+      { q: 75.0, color: "#4a849a", opacity: 1.0 },
+      { q: 80.0, color: "#730a01", opacity: 1.0 },
+      { q: 85.0, color: "#ebbeff", opacity: 1.0 },
+      { q: 90.0, color: "#ffe6f5", opacity: 1.0 },
+      { q: 95.0, color: "#ffffff", opacity: 1.0 }
+    ];
 
     const statusText = document.getElementById("statusText");
     const statusDot = document.getElementById("statusDot");
@@ -251,18 +336,53 @@
       statusDot.classList.toggle("is-error", state === "error");
     }
 
+    function buildRadarSld() {
+      const entries = RADAR_COLOR_STOPS.map((stop) => (
+        `<sld:ColorMapEntry color="${stop.color}" quantity="${stop.q}" opacity="${stop.opacity.toFixed(4)}"/>`
+      )).join("");
+
+      return `<?xml version="1.0" encoding="UTF-8"?>` +
+        `<sld:StyledLayerDescriptor version="1.0.0" ` +
+        `xmlns="http://www.opengis.net/sld" ` +
+        `xmlns:sld="http://www.opengis.net/sld" ` +
+        `xmlns:ogc="http://www.opengis.net/ogc" ` +
+        `xmlns:xlink="http://www.w3.org/1999/xlink" ` +
+        `xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">` +
+          `<sld:NamedLayer>` +
+            `<sld:Name>${NOAA_WMS_LAYER}</sld:Name>` +
+            `<sld:UserStyle>` +
+              `<sld:Title>ZacharologistWx Reflectivity</sld:Title>` +
+              `<sld:FeatureTypeStyle>` +
+                `<sld:Rule>` +
+                  `<sld:RasterSymbolizer>` +
+                    `<sld:Opacity>1.0</sld:Opacity>` +
+                    `<sld:ColorMap type="ramp">${entries}</sld:ColorMap>` +
+                  `</sld:RasterSymbolizer>` +
+                `</sld:Rule>` +
+              `</sld:FeatureTypeStyle>` +
+            `</sld:UserStyle>` +
+          `</sld:NamedLayer>` +
+        `</sld:StyledLayerDescriptor>`;
+    }
+
     function getRadarTileUrl() {
       const cacheBust = Date.now();
-      return `${NOAA_EXPORT_BASE}` +
-        `?bbox={bbox-epsg-3857}` +
-        `&bboxSR=3857` +
-        `&imageSR=3857` +
-        `&size=256,256` +
-        `&format=png32` +
-        `&pixelType=U8` +
-        `&interpolation=RSP_NearestNeighbor` +
-        `&transparent=true` +
-        `&f=image` +
+      const sld = encodeURIComponent(buildRadarSld());
+
+      return `${NOAA_WMS_BASE}` +
+        `?SERVICE=WMS` +
+        `&VERSION=1.1.1` +
+        `&REQUEST=GetMap` +
+        `&LAYERS=${encodeURIComponent(NOAA_WMS_LAYER)}` +
+        `&STYLES=` +
+        `&FORMAT=image/png` +
+        `&TRANSPARENT=TRUE` +
+        `&SRS=EPSG:3857` +
+        `&BBOX={bbox-epsg-3857}` +
+        `&WIDTH=256` +
+        `&HEIGHT=256` +
+        `&TILED=TRUE` +
+        `&SLD_BODY=${sld}` +
         `&_=${cacheBust}`;
     }
 
@@ -288,8 +408,8 @@
         tiles: [getRadarTileUrl()],
         tileSize: 256,
         minzoom: 0,
-        maxzoom: 10,
-        bounds: [-179.9, 8.9, 150.5, 72.5],
+        maxzoom: 11,
+        bounds: [-130, 20, -60, 55],
         attribution: "NOAA / National Weather Service / MRMS"
       });
 
@@ -347,7 +467,7 @@
       map.setProjection("mercator");
       addRadarLayer();
       startAutoRefresh();
-      setStatus("Loading latest NOAA MRMS mosaic…");
+      setStatus("Loading MRMS with Level II palette…");
     });
 
     map.on("idle", () => {
@@ -360,12 +480,12 @@
     map.on("error", (event) => {
       const sourceId = event?.sourceId || event?.source?.id || "";
       const message = event?.error?.message || "";
-      const looksLikeRadarError = sourceId === RADAR_SOURCE_ID || message.includes("image") || message.includes("radar_base_reflectivity_time");
+      const looksLikeRadarError = sourceId === RADAR_SOURCE_ID || message.includes("conus_bref_qcd") || message.includes("WMS");
 
       if (looksLikeRadarError) {
         radarErrorCount += 1;
         console.error("MRMS radar source error:", event.error || event);
-        setStatus("NOAA radar image request failed — check Network/Console.", "error");
+        setStatus("NOAA styled radar request failed — check Console/Network.", "error");
       }
     });
 
