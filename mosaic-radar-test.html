@@ -268,7 +268,7 @@
 
     <div class="meta">
       <strong>Source:</strong> NOAA/NWS MRMS conus_bref_qcd<br>
-      <strong>Delivery:</strong> GeoServer WMS + custom SLD raster color map<br>
+      <strong>Delivery:</strong> GeoServer WMS + external SLD<br>
       <strong>Palette:</strong> shared Level II dBZ logic<br>
       <strong>Nominal resolution:</strong> ~1 km<br>
       <strong>Update cadence:</strong> about 5 minutes
@@ -287,36 +287,9 @@
     const RADAR_LAYER_ID = "noaa-mrms-mosaic-layer";
     const NOAA_WMS_BASE = "https://opengeo.ncep.noaa.gov/geoserver/conus/conus_bref_qcd/ows";
     const NOAA_WMS_LAYER = "conus_bref_qcd";
+    const CUSTOM_SLD_URL = "https://raw.githubusercontent.com/ZacharyBeattyWx/ZacharologistWx/main/radar/zacharologist-mrms-reflectivity.sld";
+    const NOAA_FALLBACK_STYLE = "radar_reflectivity";
     const AUTO_REFRESH_MS = 5 * 60 * 1000;
-
-    // Mirrors scripts/radar/render_level2_reflectivity.py tile-display behavior.
-    // Below -5 dBZ is hidden. -5 to just under 10 dBZ uses the cleaner blue/cyan
-    // weak-return ramp. At 10 dBZ and above we use the shared Level II palette.
-    const RADAR_COLOR_STOPS = [
-      { q: -100.0, color: "#1c5f8c", opacity: 0.0 },
-      { q: -5.001, color: "#1c5f8c", opacity: 0.0 },
-      { q: -5.0, color: "#1c5f8c", opacity: 10 / 255 },
-      { q: 0.0, color: "#2873a5", opacity: 35 / 255 },
-      { q: 9.999, color: "#46d2e6", opacity: 120 / 255 },
-      { q: 10.0, color: "#497598", opacity: 126 / 255 },
-      { q: 15.0, color: "#4ca58e", opacity: 205 / 255 },
-      { q: 20.0, color: "#127618", opacity: 230 / 255 },
-      { q: 25.0, color: "#cbde01", opacity: 245 / 255 },
-      { q: 30.0, color: "#d7cb00", opacity: 1.0 },
-      { q: 35.0, color: "#e38103", opacity: 1.0 },
-      { q: 40.0, color: "#b95f0a", opacity: 1.0 },
-      { q: 45.0, color: "#c02514", opacity: 1.0 },
-      { q: 50.0, color: "#ca99b4", opacity: 1.0 },
-      { q: 55.0, color: "#c44a8a", opacity: 1.0 },
-      { q: 60.0, color: "#8b20d2", opacity: 1.0 },
-      { q: 65.0, color: "#5614a2", opacity: 1.0 },
-      { q: 70.0, color: "#6fd2db", opacity: 1.0 },
-      { q: 75.0, color: "#4a849a", opacity: 1.0 },
-      { q: 80.0, color: "#730a01", opacity: 1.0 },
-      { q: 85.0, color: "#ebbeff", opacity: 1.0 },
-      { q: 90.0, color: "#ffe6f5", opacity: 1.0 },
-      { q: 95.0, color: "#ffffff", opacity: 1.0 }
-    ];
 
     const statusText = document.getElementById("statusText");
     const statusDot = document.getElementById("statusDot");
@@ -329,6 +302,8 @@
     let radarOpacity = Number(radarOpacityInput.value);
     let refreshTimer = null;
     let radarErrorCount = 0;
+    let useCustomSld = true;
+    let fallbackQueued = false;
 
     function setStatus(message, state = "loading") {
       statusText.textContent = message;
@@ -336,45 +311,18 @@
       statusDot.classList.toggle("is-error", state === "error");
     }
 
-    function buildRadarSld() {
-      const entries = RADAR_COLOR_STOPS.map((stop) => (
-        `<sld:ColorMapEntry color="${stop.color}" quantity="${stop.q}" opacity="${stop.opacity.toFixed(4)}"/>`
-      )).join("");
-
-      return `<?xml version="1.0" encoding="UTF-8"?>` +
-        `<sld:StyledLayerDescriptor version="1.0.0" ` +
-        `xmlns="http://www.opengis.net/sld" ` +
-        `xmlns:sld="http://www.opengis.net/sld" ` +
-        `xmlns:ogc="http://www.opengis.net/ogc" ` +
-        `xmlns:xlink="http://www.w3.org/1999/xlink" ` +
-        `xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">` +
-          `<sld:NamedLayer>` +
-            `<sld:Name>${NOAA_WMS_LAYER}</sld:Name>` +
-            `<sld:UserStyle>` +
-              `<sld:Title>ZacharologistWx Reflectivity</sld:Title>` +
-              `<sld:FeatureTypeStyle>` +
-                `<sld:Rule>` +
-                  `<sld:RasterSymbolizer>` +
-                    `<sld:Opacity>1.0</sld:Opacity>` +
-                    `<sld:ColorMap type="ramp">${entries}</sld:ColorMap>` +
-                  `</sld:RasterSymbolizer>` +
-                `</sld:Rule>` +
-              `</sld:FeatureTypeStyle>` +
-            `</sld:UserStyle>` +
-          `</sld:NamedLayer>` +
-        `</sld:StyledLayerDescriptor>`;
-    }
-
     function getRadarTileUrl() {
       const cacheBust = Date.now();
-      const sld = encodeURIComponent(buildRadarSld());
+      const styleParams = useCustomSld
+        ? `&STYLES=&SLD=${encodeURIComponent(CUSTOM_SLD_URL)}`
+        : `&STYLES=${encodeURIComponent(NOAA_FALLBACK_STYLE)}`;
 
       return `${NOAA_WMS_BASE}` +
         `?SERVICE=WMS` +
         `&VERSION=1.1.1` +
         `&REQUEST=GetMap` +
         `&LAYERS=${encodeURIComponent(NOAA_WMS_LAYER)}` +
-        `&STYLES=` +
+        styleParams +
         `&FORMAT=image/png` +
         `&TRANSPARENT=TRUE` +
         `&SRS=EPSG:3857` +
@@ -382,7 +330,6 @@
         `&WIDTH=256` +
         `&HEIGHT=256` +
         `&TILED=TRUE` +
-        `&SLD_BODY=${sld}` +
         `&_=${cacheBust}`;
     }
 
@@ -438,9 +385,30 @@
     function refreshRadar({ automatic = false } = {}) {
       if (!map?.isStyleLoaded()) return;
 
-      setStatus(automatic ? "Checking NOAA for a newer mosaic…" : "Refreshing latest NOAA mosaic…");
+      fallbackQueued = false;
+      setStatus(
+        automatic
+          ? "Checking NOAA for a newer mosaic…"
+          : useCustomSld
+            ? "Loading latest mosaic with Level II palette…"
+            : "Refreshing NOAA fallback radar…"
+      );
       removeRadarLayer();
       addRadarLayer();
+    }
+
+    function queueNoaaFallback() {
+      if (!useCustomSld || fallbackQueued) return;
+      fallbackQueued = true;
+
+      window.setTimeout(() => {
+        if (!useCustomSld || radarErrorCount < 3) return;
+        useCustomSld = false;
+        fallbackQueued = false;
+        setStatus("Custom SLD blocked by NOAA; switching to NOAA radar style…");
+        removeRadarLayer();
+        addRadarLayer();
+      }, 500);
     }
 
     function startAutoRefresh() {
@@ -467,13 +435,16 @@
       map.setProjection("mercator");
       addRadarLayer();
       startAutoRefresh();
-      setStatus("Loading MRMS with Level II palette…");
+      setStatus("Loading MRMS with shared Level II palette…");
     });
 
     map.on("idle", () => {
       if (map.getLayer(RADAR_LAYER_ID) && radarErrorCount === 0) {
         const time = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-        setStatus(`MRMS mosaic active • checked ${time}`, "live");
+        setStatus(
+          `${useCustomSld ? "Level II palette" : "NOAA fallback"} active • checked ${time}`,
+          "live"
+        );
       }
     });
 
@@ -485,7 +456,13 @@
       if (looksLikeRadarError) {
         radarErrorCount += 1;
         console.error("MRMS radar source error:", event.error || event);
-        setStatus("NOAA styled radar request failed — check Console/Network.", "error");
+
+        if (useCustomSld) {
+          setStatus("Testing external Level II radar palette…");
+          queueNoaaFallback();
+        } else {
+          setStatus("NOAA radar request failed — check Console/Network.", "error");
+        }
       }
     });
 
