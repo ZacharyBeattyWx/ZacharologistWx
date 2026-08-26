@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZacharologistWx MRMS Canvas Radar Test</title>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
+  <script src="mapbox-token.js"></script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --panel: rgba(4, 10, 22, 0.92);
+      --border: rgba(148, 163, 184, 0.28);
+      --muted: #94a3b8;
+      --text: #f8fafc;
+      --accent: #38bdf8;
+      --good: #86efac;
+      --warn: #fde68a;
+      --bad: #fca5a5;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; }
+    body { overflow: hidden; background: #07111f; color: var(--text); font-family: Arial, Helvetica, sans-serif; }
+
+    #map { position: fixed; inset: 0; background: #07111f; }
+    #radarOverlayCanvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 5;
+    }
+    #radarCanvas {
+      position: fixed;
+      left: -99999px;
+      top: -99999px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .panel {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      z-index: 20;
+      width: min(395px, calc(100vw - 32px));
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--panel);
+      box-shadow: 0 18px 42px rgba(0,0,0,0.38);
+      backdrop-filter: blur(12px);
+    }
+
+    .eyebrow { margin-bottom: 4px; color: var(--accent); font-size: 0.68rem; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: 1.05rem; }
+    .subtitle { margin: 6px 0 12px; color: #cbd5e1; font-size: 0.76rem; line-height: 1.35; }
+
+    .status-row { display: flex; gap: 8px; align-items: flex-start; min-height: 20px; margin-bottom: 12px; color: var(--muted); font-size: 0.74rem; line-height: 1.35; }
+    .status-dot { width: 8px; height: 8px; margin-top: 2px; flex: 0 0 auto; border-radius: 50%; background: var(--warn); }
+    .status-dot.is-live { background: var(--good); box-shadow: 0 0 10px rgba(134,239,172,0.45); }
+    .status-dot.is-error { background: var(--bad); box-shadow: 0 0 10px rgba(252,165,165,0.45); }
+
+    .controls { display: grid; gap: 10px; }
+    .button-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    button { padding: 8px 10px; border: 1px solid rgba(148,163,184,0.34); border-radius: 8px; background: rgba(15,23,42,0.94); color: #fff; font: inherit; font-size: 0.76rem; font-weight: 800; cursor: pointer; }
+    button:hover { border-color: rgba(56,189,248,0.72); }
+
+    .range-row { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; color: #bfdbfe; font-size: 0.72rem; font-weight: 800; }
+    input[type="range"] { width: 100%; accent-color: var(--accent); }
+    output { min-width: 38px; text-align: right; font-variant-numeric: tabular-nums; }
+
+    .legend { margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(148,163,184,0.18); }
+    .legend-title { margin-bottom: 6px; color: #bfdbfe; font-size: 0.68rem; font-weight: 800; }
+    .legend-bar { height: 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.15); background: linear-gradient(90deg,#2873a5 0%,#46d2e6 10%,#497598 15%,#4ca58e 22%,#127618 30%,#cbde01 38%,#d7cb00 45%,#e38103 52%,#b95f0a 58%,#c02514 64%,#ca99b4 70%,#c44a8a 76%,#8b20d2 82%,#5614a2 87%,#6fd2db 91%,#730a01 95%,#fff 100%); }
+    .legend-labels { display: flex; justify-content: space-between; margin-top: 4px; color: #94a3b8; font-size: 0.62rem; }
+
+    .meta { margin-top: 10px; color: #94a3b8; font-size: 0.68rem; line-height: 1.45; }
+    .meta strong { color: #dbeafe; }
+    .meta span { color: #cbd5e1; }
+
+    @media (max-width: 640px) {
+      .panel { top: 10px; left: 10px; width: calc(100vw - 20px); padding: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <canvas id="radarOverlayCanvas"></canvas>
+  <canvas id="radarCanvas"></canvas>
+
+  <section class="panel">
+    <div class="eyebrow">Site Radar Display Path</div>
+    <h1>National MRMS Mosaic</h1>
+    <p class="subtitle">Same numeric MRMS dBZ colorizer, then the same HTML-canvas overlay architecture used by Site Radar. No Mapbox raster layer.</p>
+
+    <div class="status-row">
+      <span id="statusDot" class="status-dot"></span>
+      <span id="statusText">Initializing…</span>
+    </div>
+
+    <div class="controls">
+      <div class="button-row">
+        <button id="toggleRadar" type="button">Hide Radar</button>
+        <button id="reloadRadar" type="button">Reload Image</button>
+      </div>
+      <label class="range-row" for="radarOpacity">
+        <span>Opacity</span>
+        <input id="radarOpacity" type="range" min="0" max="1" step="0.05" value="0.95">
+        <output id="radarOpacityValue">95%</output>
+      </label>
+    </div>
+
+    <div class="legend">
+      <div class="legend-title">Reflectivity (dBZ)</div>
+      <div class="legend-bar"></div>
+      <div class="legend-labels"><span>0</span><span>10</span><span>20</span><span>30</span><span>40</span><span>50</span><span>60</span><span>70+</span></div>
+    </div>
+
+    <div class="meta">
+      <strong>Source:</strong> NOAA/NCEP MRMS ReflectivityAtLowestAltitude<br>
+      <strong>Browser path:</strong> Site Radar canvas overlay<br>
+      <strong>Image:</strong> <span id="imageInfo">waiting…</span><br>
+      <strong>Valid:</strong> <span id="validTime">waiting…</span><br>
+      <strong>Revision:</strong> <span id="revisionInfo">waiting…</span>
+    </div>
+  </section>
+
+  <script>
+    const MAPBOX_STYLE = "mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
+    const MANIFEST_URL = "./mrms-mosaic-canvas-output/manifest.json";
+    const RADAR_OVERLAY_VERTICAL_STRIPS = 96;
+    const RADAR_OVERLAY_INTERACTION_VERTICAL_STRIPS = 32;
+
+    const overlay = document.getElementById("radarOverlayCanvas");
+    const overlayContext = overlay.getContext("2d");
+    const radarCanvas = document.getElementById("radarCanvas");
+    const radarContext = radarCanvas.getContext("2d");
+    const statusText = document.getElementById("statusText");
+    const statusDot = document.getElementById("statusDot");
+    const opacityInput = document.getElementById("radarOpacity");
+    const opacityOutput = document.getElementById("radarOpacityValue");
+    const toggleButton = document.getElementById("toggleRadar");
+    const reloadButton = document.getElementById("reloadRadar");
+    const imageInfo = document.getElementById("imageInfo");
+    const validTime = document.getElementById("validTime");
+    const revisionInfo = document.getElementById("revisionInfo");
+
+    let radarBounds = null;
+    let radarVisible = true;
+    let isMapInteracting = false;
+    let redrawFrame = null;
+
+    function setStatus(message, state = "loading") {
+      statusText.textContent = message;
+      statusDot.classList.toggle("is-live", state === "live");
+      statusDot.classList.toggle("is-error", state === "error");
+    }
+
+    function overlayDevicePixelRatio() {
+      return Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    }
+
+    function redrawRadarOverlay(options = {}) {
+      const dpr = overlayDevicePixelRatio();
+      const container = map.getContainer();
+      const width = Math.max(1, Math.round(container.clientWidth * dpr));
+      const height = Math.max(1, Math.round(container.clientHeight * dpr));
+
+      if (overlay.width !== width || overlay.height !== height) {
+        overlay.width = width;
+        overlay.height = height;
+      }
+
+      overlayContext.clearRect(0, 0, width, height);
+      if (!radarVisible || !radarBounds || !radarCanvas.width || !radarCanvas.height) return;
+
+      const stripCount = Number.isFinite(options.stripCount)
+        ? Math.max(1, Math.round(options.stripCount))
+        : RADAR_OVERLAY_VERTICAL_STRIPS;
+
+      overlayContext.globalAlpha = Number(opacityInput.value);
+      overlayContext.imageSmoothingEnabled = false;
+
+      const [west, south, east, north] = radarBounds;
+      const latSpan = north - south;
+
+      for (let strip = 0; strip < stripCount; strip += 1) {
+        const t0 = strip / stripCount;
+        const t1 = (strip + 1) / stripCount;
+        const srcY = t0 * radarCanvas.height;
+        const srcH = (t1 - t0) * radarCanvas.height;
+
+        const stripNorth = north - t0 * latSpan;
+        const stripSouth = north - t1 * latSpan;
+        const nw = map.project([west, stripNorth]);
+        const se = map.project([east, stripSouth]);
+
+        overlayContext.drawImage(
+          radarCanvas,
+          0, srcY, radarCanvas.width, srcH,
+          nw.x * dpr,
+          nw.y * dpr,
+          (se.x - nw.x) * dpr,
+          (se.y - nw.y) * dpr
+        );
+      }
+
+      overlayContext.globalAlpha = 1;
+    }
+
+    function requestOverlayRedraw(interaction = false) {
+      if (redrawFrame !== null) return;
+      redrawFrame = requestAnimationFrame(() => {
+        redrawFrame = null;
+        redrawRadarOverlay({
+          stripCount: interaction ? RADAR_OVERLAY_INTERACTION_VERTICAL_STRIPS : RADAR_OVERLAY_VERTICAL_STRIPS
+        });
+      });
+    }
+
+    function loadImage(url) {
+      return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.decoding = "async";
+        image.onload = () => resolve(image);
+        image.onerror = () => reject(new Error(`Image failed: ${url}`));
+        image.src = url;
+      });
+    }
+
+    async function loadRadar() {
+      try {
+        setStatus("Loading MRMS canvas image…");
+        const response = await fetch(`${MANIFEST_URL}?_=${Date.now()}`, { cache: "no-store" });
+        if (!response.ok) throw new Error(`Manifest HTTP ${response.status}`);
+        const manifest = await response.json();
+        if (!Array.isArray(manifest.bounds) || !manifest.image) throw new Error("Manifest missing bounds/image");
+
+        const imageUrl = new URL(manifest.image, response.url);
+        imageUrl.searchParams.set("rev", manifest.revision ?? Date.now());
+        imageUrl.searchParams.set("load", Date.now());
+        const image = await loadImage(imageUrl.href);
+
+        radarCanvas.width = image.naturalWidth || image.width;
+        radarCanvas.height = image.naturalHeight || image.height;
+        radarContext.clearRect(0, 0, radarCanvas.width, radarCanvas.height);
+        radarContext.drawImage(image, 0, 0);
+
+        radarBounds = manifest.bounds.map(Number);
+        imageInfo.textContent = `${radarCanvas.width} × ${radarCanvas.height} lossless WebP`;
+        revisionInfo.textContent = String(manifest.revision ?? "unknown");
+        const valid = new Date(manifest.valid_time);
+        validTime.textContent = Number.isFinite(valid.getTime()) ? valid.toLocaleString() : String(manifest.valid_time || "unknown");
+
+        redrawRadarOverlay();
+        setStatus("MRMS using Site Radar canvas path", "live");
+      } catch (error) {
+        console.error(error);
+        setStatus(error.message, "error");
+      }
+    }
+
+    mapboxgl.accessToken = window.MAPBOX_PUBLIC_TOKEN;
+    const map = new mapboxgl.Map({
+      container: "map",
+      style: MAPBOX_STYLE,
+      center: [-96.5, 38.4],
+      zoom: 3.35,
+      minZoom: 2,
+      maxZoom: 12,
+      projection: "mercator",
+      attributionControl: true
+    });
+
+    map.addControl(new mapboxgl.NavigationControl(), "bottom-right");
+    map.on("load", () => {
+      map.setProjection("mercator");
+      loadRadar();
+    });
+    map.on("movestart", () => { isMapInteracting = true; });
+    map.on("zoomstart", () => { isMapInteracting = true; });
+    map.on("move", () => requestOverlayRedraw(true));
+    map.on("zoom", () => requestOverlayRedraw(true));
+    map.on("render", () => {
+      if (isMapInteracting) requestOverlayRedraw(true);
+    });
+    map.on("moveend", () => { isMapInteracting = false; requestOverlayRedraw(false); });
+    map.on("zoomend", () => { isMapInteracting = false; requestOverlayRedraw(false); });
+    map.on("resize", () => requestOverlayRedraw(false));
+
+    toggleButton.addEventListener("click", () => {
+      radarVisible = !radarVisible;
+      toggleButton.textContent = radarVisible ? "Hide Radar" : "Show Radar";
+      redrawRadarOverlay();
+    });
+
+    reloadButton.addEventListener("click", loadRadar);
+    opacityInput.addEventListener("input", () => {
+      opacityOutput.value = `${Math.round(Number(opacityInput.value) * 100)}%`;
+      redrawRadarOverlay();
+    });
+  </script>
+</body>
+</html>
