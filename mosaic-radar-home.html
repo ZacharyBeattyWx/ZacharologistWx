@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live National Radar | ZacharologistWx</title>
+  <style>
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #07111f;
+    }
+
+    #radarEngine {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      opacity: 0;
+      transition: opacity 160ms ease;
+      background: #07111f;
+    }
+
+    #radarEngine.is-ready {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <iframe
+    id="radarEngine"
+    src="./mosaic-radar-canvas-test.html"
+    title="Live national radar"
+    allowfullscreen>
+  </iframe>
+
+  <script>
+    (() => {
+      const engine = document.getElementById("radarEngine");
+      const MANIFEST_URL = "./mrms-mosaic-loop-output/manifest.json";
+      let badgeFreshness = null;
+      let freshnessTimer = null;
+
+      function relativeUpdateText(value) {
+        const time = new Date(value).getTime();
+        if (!Number.isFinite(time)) return "Updating automatically";
+
+        const minutes = Math.max(0, Math.round((Date.now() - time) / 60000));
+        if (minutes <= 1) return "Updated just now";
+        if (minutes < 60) return `Updated ${minutes} min ago`;
+        return `Updated at ${new Date(time).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
+      }
+
+      async function updateFreshness() {
+        if (!badgeFreshness) return;
+        try {
+          const response = await fetch(`${MANIFEST_URL}?_=${Date.now()}`, { cache: "no-store" });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const manifest = await response.json();
+          const observations = Array.isArray(manifest.frames) ? manifest.frames : [];
+          const newest = observations
+            .map(frame => new Date(frame?.valid_time).getTime())
+            .filter(Number.isFinite)
+            .sort((a, b) => b - a)[0];
+
+          badgeFreshness.textContent = Number.isFinite(newest)
+            ? relativeUpdateText(newest)
+            : "Updating automatically";
+        } catch (_) {
+          badgeFreshness.textContent = "Live radar";
+        }
+      }
+
+      function installHomepageUi() {
+        const doc = engine.contentDocument;
+        if (!doc?.head || !doc?.body) return;
+
+        doc.documentElement.classList.add("homepage-radar-mode");
+
+        const style = doc.createElement("style");
+        style.id = "homepage-radar-mode-style";
+        style.textContent = `
+          .homepage-radar-mode .panel {
+            display: contents !important;
+          }
+
+          .homepage-radar-mode .panel > .eyebrow,
+          .homepage-radar-mode .panel > h1,
+          .homepage-radar-mode .panel > .subtitle,
+          .homepage-radar-mode .panel > .status-row,
+          .homepage-radar-mode .button-row,
+          .homepage-radar-mode .range-row,
+          .homepage-radar-mode .meta {
+            display: none !important;
+          }
+
+          .homepage-radar-mode .home-radar-badge {
+            position: fixed;
+            top: 14px;
+            left: 14px;
+            z-index: 30;
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            min-width: 186px;
+            padding: 9px 12px;
+            border: 1px solid rgba(148,163,184,.28);
+            border-radius: 11px;
+            background: rgba(4,10,22,.88);
+            box-shadow: 0 10px 26px rgba(0,0,0,.28);
+            backdrop-filter: blur(10px);
+            pointer-events: none;
+          }
+
+          .homepage-radar-mode .home-radar-live-dot {
+            width: 8px;
+            height: 8px;
+            flex: 0 0 auto;
+            border-radius: 50%;
+            background: #4ade80;
+            box-shadow: 0 0 10px rgba(74,222,128,.7);
+          }
+
+          .homepage-radar-mode .home-radar-badge-copy {
+            min-width: 0;
+          }
+
+          .homepage-radar-mode .home-radar-badge strong {
+            display: block;
+            color: #f8fafc;
+            font-size: .72rem;
+            font-weight: 900;
+            letter-spacing: .055em;
+            text-transform: uppercase;
+            line-height: 1.1;
+          }
+
+          .homepage-radar-mode .home-radar-badge span:last-child {
+            display: block;
+            margin-top: 3px;
+            color: #94a3b8;
+            font-size: .62rem;
+            font-weight: 700;
+            line-height: 1.1;
+          }
+
+          .homepage-radar-mode .playback {
+            position: fixed !important;
+            left: 50% !important;
+            bottom: 14px !important;
+            z-index: 30 !important;
+            width: min(520px, calc(100vw - 28px)) !important;
+            transform: translateX(-50%) !important;
+            display: grid !important;
+            grid-template-columns: 126px 1fr !important;
+            grid-template-areas:
+              "history controls"
+              "readout readout"
+              "timeline timeline" !important;
+            gap: 7px 9px !important;
+            padding: 9px 10px 8px !important;
+            border: 1px solid rgba(148,163,184,.28) !important;
+            border-radius: 13px !important;
+            background: rgba(4,10,22,.90) !important;
+            box-shadow: 0 14px 34px rgba(0,0,0,.34) !important;
+            backdrop-filter: blur(12px) !important;
+          }
+
+          .homepage-radar-mode .history-row {
+            grid-area: history !important;
+            display: grid !important;
+            grid-template-columns: 1fr !important;
+            gap: 4px !important;
+          }
+
+          .homepage-radar-mode .history-label {
+            display: none !important;
+          }
+
+          .homepage-radar-mode .history-buttons {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 4px !important;
+          }
+
+          .homepage-radar-mode .history-btn {
+            min-height: 31px !important;
+            padding: 5px 6px !important;
+            border-radius: 8px !important;
+            font-size: .66rem !important;
+          }
+
+          .homepage-radar-mode .playback-buttons {
+            grid-area: controls !important;
+            display: grid !important;
+            grid-template-columns: 36px 1fr 36px 68px !important;
+            gap: 5px !important;
+          }
+
+          .homepage-radar-mode .playback-buttons button,
+          .homepage-radar-mode .playback-buttons select {
+            min-height: 31px !important;
+            padding: 5px !important;
+            border-radius: 8px !important;
+            font-size: .68rem !important;
+          }
+
+          .homepage-radar-mode .frame-readout {
+            grid-area: readout !important;
+            display: flex !important;
+            justify-content: space-between !important;
+            padding-inline: 2px !important;
+            color: #dbeafe !important;
+            font-size: .67rem !important;
+          }
+
+          .homepage-radar-mode .timeline {
+            grid-area: timeline !important;
+            gap: 2px !important;
+          }
+
+          .homepage-radar-mode .timeline input[type="range"] {
+            margin: 0 !important;
+          }
+
+          .homepage-radar-mode .timeline-labels {
+            font-size: .52rem !important;
+          }
+
+          .homepage-radar-mode .legend {
+            position: fixed !important;
+            top: 14px !important;
+            right: 14px !important;
+            z-index: 30 !important;
+            width: 224px !important;
+            margin: 0 !important;
+            padding: 8px 10px !important;
+            border: 1px solid rgba(148,163,184,.24) !important;
+            border-radius: 10px !important;
+            background: rgba(4,10,22,.82) !important;
+            box-shadow: 0 10px 24px rgba(0,0,0,.24) !important;
+            backdrop-filter: blur(10px) !important;
+          }
+
+          .homepage-radar-mode .legend-title {
+            margin-bottom: 5px !important;
+            color: #cbd5e1 !important;
+            font-size: .60rem !important;
+            text-transform: uppercase !important;
+            letter-spacing: .06em !important;
+          }
+
+          .homepage-radar-mode .legend-bar {
+            height: 7px !important;
+          }
+
+          .homepage-radar-mode .legend-labels {
+            margin-top: 3px !important;
+            font-size: .50rem !important;
+          }
+
+          @media (max-width: 720px), (max-height: 440px) {
+            .homepage-radar-mode .home-radar-badge {
+              top: 9px !important;
+              left: 9px !important;
+              min-width: 0 !important;
+              padding: 7px 9px !important;
+            }
+
+            .homepage-radar-mode .home-radar-badge strong {
+              font-size: .65rem !important;
+            }
+
+            .homepage-radar-mode .home-radar-badge span:last-child {
+              font-size: .56rem !important;
+            }
+
+            .homepage-radar-mode .legend {
+              display: none !important;
+            }
+
+            .homepage-radar-mode .playback {
+              bottom: 9px !important;
+              width: calc(100vw - 18px) !important;
+              grid-template-columns: 108px 1fr !important;
+              padding: 7px 8px !important;
+              gap: 5px 7px !important;
+            }
+
+            .homepage-radar-mode .playback-buttons {
+              grid-template-columns: 32px 1fr 32px 60px !important;
+            }
+          }
+
+          @media (max-width: 430px) {
+            .homepage-radar-mode .playback {
+              grid-template-columns: 1fr !important;
+              grid-template-areas:
+                "controls"
+                "readout"
+                "timeline" !important;
+            }
+
+            .homepage-radar-mode .history-row {
+              display: none !important;
+            }
+          }
+        `;
+        doc.head.appendChild(style);
+
+        const oldBadge = doc.getElementById("homeRadarBadge");
+        if (oldBadge) oldBadge.remove();
+
+        const badge = doc.createElement("div");
+        badge.id = "homeRadarBadge";
+        badge.className = "home-radar-badge";
+        badge.innerHTML = `
+          <span class="home-radar-live-dot" aria-hidden="true"></span>
+          <span class="home-radar-badge-copy">
+            <strong>Live National Radar</strong>
+            <span id="homeRadarFreshness">Updating automatically</span>
+          </span>
+        `;
+        doc.body.appendChild(badge);
+
+        badgeFreshness = doc.getElementById("homeRadarFreshness");
+
+        const legendTitle = doc.querySelector(".legend-title");
+        if (legendTitle) legendTitle.textContent = "Radar Intensity (dBZ)";
+
+        engine.classList.add("is-ready");
+        updateFreshness();
+
+        if (freshnessTimer) clearInterval(freshnessTimer);
+        freshnessTimer = setInterval(updateFreshness, 30000);
+      }
+
+      engine.addEventListener("load", installHomepageUi);
+    })();
+  </script>
+</body>
+</html>
