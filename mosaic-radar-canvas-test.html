@@ -252,9 +252,9 @@
           if (!width || !height) return;
 
           gl.bindTexture(gl.TEXTURE_2D, this.texture);
-          // HTML/WebP pixels are top-origin while WebGL texture coordinates are bottom-origin.
-          // Flip only the upload Y axis so north stays north without changing the MRMS data itself.
-          gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+          // Keep upload orientation untouched. The north/south correction is handled
+          // deterministically by the UV mapping so ImageBitmap and <img> behave the same.
+          gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
           gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
           if (gl.UNPACK_COLORSPACE_CONVERSION_WEBGL !== undefined) {
             gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
@@ -304,7 +304,9 @@
           const sw = mapboxgl.MercatorCoordinate.fromLngLat([west,south]);
           const se = mapboxgl.MercatorCoordinate.fromLngLat([east,south]);
           const positions = new Float32Array([nw.x,nw.y,sw.x,sw.y,ne.x,ne.y,ne.x,ne.y,sw.x,sw.y,se.x,se.y]);
-          const uvs = new Float32Array([0,1,0,0,1,1,1,1,0,0,1,0]);
+          // Python/WebP row 0 is north. With an unflipped upload, v=0 samples that
+          // top row, so north uses v=0 and south uses v=1.
+          const uvs = new Float32Array([0,0,0,1,1,0,1,0,0,1,1,1]);
 
           this.positionBuffer = gl.createBuffer();
           gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
@@ -677,7 +679,6 @@
       const wasAtNewest = previousCurrentKey === previousNewestKey;
       const wasPlaying = isPlaying;
 
-      // Stage the newest incoming observations before exposing them to playback.
       const staged = newFrames.slice(-2);
       await Promise.all(staged.map(frame => loadFrameSource(frame,nextManifest).catch(error => {
         console.warn("MRMS incoming observation preload failed",frameKey(frame),error);
