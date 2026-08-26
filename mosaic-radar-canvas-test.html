@@ -151,7 +151,7 @@
     const MANIFEST_URL = "./mrms-mosaic-loop-output/manifest.json";
     const CUSTOM_LAYER_ID = "mrms-python-colored-layer";
     const FRAME_CACHE_LIMIT = 5;
-    const END_FRAME_HOLD_MS = 900;
+    const END_FRAME_HOLD_MS = 450;
 
     const statusText = document.getElementById("statusText");
     const statusDot = document.getElementById("statusDot");
@@ -466,9 +466,8 @@
 
     function playbackIntervalMs() {
       const speed = Math.max(.25, Number(speedSelect.value) || 1);
-      // The previous 2× cadence is now the baseline 1× speed.
-      // This preserves that snappier feel while making the new 2× twice as fast again.
-      return Math.max(80, Math.round(defaultFrameIntervalMs / (speed * 2)));
+      // Double the already-accelerated scale again: current 2× becomes the new 1×.
+      return Math.max(40, Math.round(defaultFrameIntervalMs / (speed * 4)));
     }
 
     function stopPlayback() {
