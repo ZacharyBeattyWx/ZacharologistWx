@@ -11,6 +11,9 @@ workers/radar-h2-dispatcher/.wrangler/
 # Generated Level III frame images live in R2; keep only radar/frames.json in Git.
 /radar/frames/**/*.webp
 
+# Raw MRMS national mosaic test tiles are generated locally / in deployment jobs.
+/mrms-mosaic-output/
+
 # Local Node dependencies
 cloudflare/model-api/node_modules/
 
