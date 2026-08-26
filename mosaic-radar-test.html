@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ZacharologistWx MRMS Mosaic Radar Test</title>
-  <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
-  <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.24.0/mapbox-gl.css" rel="stylesheet">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.24.0/mapbox-gl.js"></script>
   <style>
     :root {
       color-scheme: dark;
@@ -252,16 +252,9 @@
     const NOAA_EXPORT_BASE = "https://mapservices.weather.noaa.gov/eventdriven/rest/services/radar/radar_base_reflectivity_time/ImageServer/exportImage";
     const AUTO_REFRESH_MS = 5 * 60 * 1000;
 
-    // NOAA's ImageServer exposes the source as 8-bit RGBA. Mapbox normalizes
-    // source channels to 0..1 before applying raster-color-mix, so multiplying
-    // the red channel by 255 reconstructs its original 8-bit numeric value.
-    // We are initially treating that value as dBZ. If NOAA applies an offset,
-    // only this mix/offset calibration needs to change.
     const RADAR_VALUE_MIX = [255, 0, 0, 0];
     const RADAR_VALUE_RANGE = [0, 95];
 
-    // Same visible reflectivity logic used by the Level II tile renderer:
-    // weak echoes are translucent cyan/blue, then the shared dBZ palette.
     const RADAR_COLOR_EXPRESSION = [
       "interpolate", ["linear"], ["raster-value"],
        0.0, "rgba(40,115,165,0.14)",
