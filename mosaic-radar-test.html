@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ZacharologistWx MRMS Mosaic Radar Test</title>
-  <link href="https://api.mapbox.com/mapbox-gl-js/v3.24.0/mapbox-gl.css" rel="stylesheet">
-  <script src="https://api.mapbox.com/mapbox-gl-js/v3.24.0/mapbox-gl.js"></script>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
   <style>
     :root {
       color-scheme: dark;
@@ -29,11 +29,7 @@
       font-family: Arial, Helvetica, sans-serif;
     }
 
-    #map {
-      position: fixed;
-      inset: 0;
-      background: #07111f;
-    }
+    #map { position: fixed; inset: 0; background: #07111f; }
 
     .radar-panel {
       position: fixed;
@@ -99,12 +95,7 @@
     }
 
     .controls { display: grid; gap: 10px; }
-
-    .button-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
+    .button-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 
     button {
       min-width: 0;
@@ -185,28 +176,6 @@
     .meta strong { color: #dbeafe; }
     .meta span { color: #cbd5e1; }
 
-    .local-note {
-      display: none;
-      margin-top: 10px;
-      padding: 9px 10px;
-      border: 1px solid rgba(253,230,138,0.30);
-      border-radius: 8px;
-      background: rgba(120, 86, 15, 0.18);
-      color: #fde68a;
-      font-size: 0.69rem;
-      line-height: 1.4;
-    }
-
-    .local-note.is-visible { display: block; }
-
-    code {
-      color: #f8fafc;
-      font-family: Consolas, "Courier New", monospace;
-    }
-
-    .mapboxgl-ctrl-bottom-left,
-    .mapboxgl-ctrl-bottom-right { z-index: 12; }
-
     @media (max-width: 640px) {
       .radar-panel {
         top: 10px;
@@ -223,7 +192,7 @@
   <section class="radar-panel" aria-label="Mosaic radar controls">
     <div class="eyebrow">Raw MRMS Test</div>
     <h1>National MRMS Mosaic</h1>
-    <p class="subtitle">Numeric NOAA MRMS reflectivity rendered into our own XYZ tiles with the exact ZacharologistWx Level II tile palette.</p>
+    <p class="subtitle">Numeric NOAA MRMS reflectivity rendered into XYZ PNG tiles by the same Level II dBZ color logic used by Site Radar.</p>
 
     <div class="status-row">
       <span id="statusDot" class="status-dot"></span>
@@ -233,7 +202,7 @@
     <div class="controls">
       <div class="button-row">
         <button id="toggleRadar" type="button">Hide Radar</button>
-        <button id="refreshRadar" type="button">Reload Tiles</button>
+        <button id="refreshRadar" type="button">Reload Fresh Tiles</button>
       </div>
 
       <label class="range-row" for="radarOpacity">
@@ -256,12 +225,9 @@
       <strong>Delivery:</strong> local XYZ PNG test tiles<br>
       <strong>Palette:</strong> <span>scripts/radar/palettes/zacharologist-reflectivity.pal</span><br>
       <strong>Valid:</strong> <span id="validTime">waiting…</span><br>
+      <strong>Revision:</strong> <span id="revisionInfo">waiting…</span><br>
       <strong>Grid:</strong> <span id="gridInfo">waiting…</span><br>
       <strong>Tiles:</strong> <span id="tileInfo">waiting…</span>
-    </div>
-
-    <div id="localNote" class="local-note">
-      Raw tile manifests cannot be loaded reliably from <code>file://</code>. Run <code>python -m http.server 8000</code> in the repo and open <code>http://localhost:8000/mosaic-radar-test.html</code>.
     </div>
   </section>
 
@@ -284,15 +250,13 @@
     const radarOpacityInput = document.getElementById("radarOpacity");
     const radarOpacityValue = document.getElementById("radarOpacityValue");
     const validTimeElement = document.getElementById("validTime");
+    const revisionInfoElement = document.getElementById("revisionInfo");
     const gridInfoElement = document.getElementById("gridInfo");
     const tileInfoElement = document.getElementById("tileInfo");
-    const localNote = document.getElementById("localNote");
 
     let radarVisible = true;
     let radarOpacity = Number(radarOpacityInput.value);
     let reloadTimer = null;
-    let radarErrorCount = 0;
-    let lastManifest = null;
 
     function setStatus(message, state = "loading") {
       statusText.textContent = message;
@@ -310,15 +274,21 @@
       if (map.getSource(RADAR_SOURCE_ID)) map.removeSource(RADAR_SOURCE_ID);
     }
 
-    function absoluteTileTemplate(template, manifestResponseUrl) {
-      let value = new URL(template, manifestResponseUrl).href;
-      return value
+    function freshTileTemplate(template, manifestResponseUrl, revision) {
+      let value = new URL(template, manifestResponseUrl).href
         .replaceAll("%7Bz%7D", "{z}")
         .replaceAll("%7Bx%7D", "{x}")
         .replaceAll("%7By%7D", "{y}")
         .replaceAll("%7BZ%7D", "{z}")
         .replaceAll("%7BX%7D", "{x}")
         .replaceAll("%7BY%7D", "{y}");
+
+      // Critical for radar playback/testing: the PNG filename is reused every
+      // render, so give Mapbox a new URL whenever the manifest revision changes.
+      // The per-load nonce also guarantees old experimental tiles cannot survive
+      // in browser/Mapbox caches while this proof of concept is being tuned.
+      const separator = value.includes("?") ? "&" : "?";
+      return `${value}${separator}rev=${encodeURIComponent(revision ?? "none")}&load=${Date.now()}`;
     }
 
     function updateManifestMeta(manifest) {
@@ -326,6 +296,8 @@
       validTimeElement.textContent = Number.isFinite(valid.getTime())
         ? valid.toLocaleString()
         : String(manifest.valid_time || "unknown");
+
+      revisionInfoElement.textContent = String(manifest.revision ?? "unknown");
 
       const grid = manifest.grid || {};
       gridInfoElement.textContent = grid.width && grid.height
@@ -338,65 +310,73 @@
     async function loadRadarManifest({ automatic = false } = {}) {
       if (!map?.isStyleLoaded()) return;
 
-      radarErrorCount = 0;
-      setStatus(automatic ? "Checking local raw-MRMS tiles…" : "Loading raw MRMS tile manifest…");
+      setStatus(automatic ? "Checking latest raw MRMS render…" : "Loading fresh raw-MRMS tiles…");
 
-      const response = await fetch(`${MANIFEST_URL}?_=${Date.now()}`, { cache: "no-store" });
-      if (!response.ok) throw new Error(`Manifest HTTP ${response.status}`);
-      const manifest = await response.json();
+      try {
+        const response = await fetch(`${MANIFEST_URL}?manifest=${Date.now()}`, { cache: "no-store" });
+        if (!response.ok) throw new Error(`Manifest HTTP ${response.status}`);
 
-      if (!manifest?.tiles || !Array.isArray(manifest.bounds)) {
-        throw new Error("Manifest is missing tiles or bounds");
-      }
-
-      const tileTemplate = absoluteTileTemplate(manifest.tiles, response.url);
-      removeRadarLayer();
-
-      map.addSource(RADAR_SOURCE_ID, {
-        type: "raster",
-        tiles: [tileTemplate],
-        tileSize: Number(manifest.tileSize || 256),
-        minzoom: Number(manifest.minzoom || 0),
-        maxzoom: Number(manifest.maxzoom || 7),
-        bounds: manifest.bounds,
-        attribution: "NOAA / NCEP / MRMS"
-      });
-
-      const layer = {
-        id: RADAR_LAYER_ID,
-        type: "raster",
-        source: RADAR_SOURCE_ID,
-        paint: {
-          "raster-opacity": radarOpacity,
-          "raster-fade-duration": 0,
-          "raster-resampling": "nearest"
-        },
-        layout: {
-          visibility: radarVisible ? "visible" : "none"
+        const manifest = await response.json();
+        if (!manifest?.tiles || !Array.isArray(manifest.bounds)) {
+          throw new Error("Manifest is missing tiles or bounds");
         }
-      };
 
-      const beforeId = firstSymbolLayerId();
-      if (beforeId) map.addLayer(layer, beforeId);
-      else map.addLayer(layer);
+        const tileTemplate = freshTileTemplate(
+          manifest.tiles,
+          response.url,
+          manifest.revision
+        );
 
-      lastManifest = manifest;
-      updateManifestMeta(manifest);
+        removeRadarLayer();
 
-      const valid = new Date(manifest.valid_time);
-      const validLabel = Number.isFinite(valid.getTime())
-        ? valid.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
-        : "unknown time";
-      setStatus(`Raw MRMS + Level II palette active • ${validLabel}`, "live");
+        map.addSource(RADAR_SOURCE_ID, {
+          type: "raster",
+          tiles: [tileTemplate],
+          tileSize: Number(manifest.tileSize || 256),
+          minzoom: Number(manifest.minzoom || 0),
+          maxzoom: Number(manifest.maxzoom || 7),
+          bounds: manifest.bounds,
+          attribution: "NOAA / NCEP / MRMS"
+        });
+
+        const layer = {
+          id: RADAR_LAYER_ID,
+          type: "raster",
+          source: RADAR_SOURCE_ID,
+          paint: {
+            "raster-opacity": radarOpacity,
+            "raster-fade-duration": 0,
+            "raster-resampling": "nearest"
+          },
+          layout: {
+            visibility: radarVisible ? "visible" : "none"
+          }
+        };
+
+        const beforeId = firstSymbolLayerId();
+        if (beforeId) map.addLayer(layer, beforeId);
+        else map.addLayer(layer);
+
+        updateManifestMeta(manifest);
+
+        const valid = new Date(manifest.valid_time);
+        const validLabel = Number.isFinite(valid.getTime())
+          ? valid.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+          : "unknown time";
+
+        setStatus(`Fresh Level II-colored MRMS tiles • ${validLabel}`, "live");
+      } catch (error) {
+        console.error("MRMS mosaic load failed:", error);
+        setStatus(`MRMS mosaic load failed: ${error.message}`, "error");
+      }
     }
 
     function scheduleReload() {
       window.clearInterval(reloadTimer);
-      reloadTimer = window.setInterval(() => {
-        loadRadarManifest({ automatic: true }).catch((error) => {
-          console.error("MRMS manifest reload failed:", error);
-        });
-      }, AUTO_RELOAD_MS);
+      reloadTimer = window.setInterval(
+        () => loadRadarManifest({ automatic: true }),
+        AUTO_RELOAD_MS
+      );
     }
 
     mapboxgl.accessToken = MAPBOX_TOKEN;
@@ -412,31 +392,12 @@
       attributionControl: true
     });
 
-    window.map = map;
     map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), "bottom-right");
-
-    if (location.protocol === "file:") {
-      localNote.classList.add("is-visible");
-    }
 
     map.on("load", () => {
       map.setProjection("mercator");
-      loadRadarManifest().catch((error) => {
-        console.error("Raw MRMS mosaic load failed:", error);
-        const fileHint = location.protocol === "file:"
-          ? " Use the local HTTP server command shown below."
-          : " Run the raw MRMS renderer first.";
-        setStatus(`Raw MRMS tiles unavailable.${fileHint}`, "error");
-      });
+      loadRadarManifest();
       scheduleReload();
-    });
-
-    map.on("error", (event) => {
-      const sourceId = event?.sourceId || event?.source?.id || "";
-      if (sourceId !== RADAR_SOURCE_ID) return;
-      radarErrorCount += 1;
-      console.error("Raw MRMS tile error:", event.error || event);
-      setStatus("A raw MRMS tile failed to load — check Console/Network.", "error");
     });
 
     toggleRadarButton.addEventListener("click", () => {
@@ -445,20 +406,9 @@
         map.setLayoutProperty(RADAR_LAYER_ID, "visibility", radarVisible ? "visible" : "none");
       }
       toggleRadarButton.textContent = radarVisible ? "Hide Radar" : "Show Radar";
-      setStatus(
-        radarVisible
-          ? (lastManifest ? "Raw MRMS mosaic visible" : "Waiting for raw MRMS tiles…")
-          : "Raw MRMS mosaic hidden",
-        radarVisible && lastManifest ? "live" : "loading"
-      );
     });
 
-    refreshRadarButton.addEventListener("click", () => {
-      loadRadarManifest().catch((error) => {
-        console.error("Raw MRMS reload failed:", error);
-        setStatus("Could not reload raw MRMS manifest.", "error");
-      });
-    });
+    refreshRadarButton.addEventListener("click", () => loadRadarManifest());
 
     radarOpacityInput.addEventListener("input", () => {
       radarOpacity = Number(radarOpacityInput.value);
