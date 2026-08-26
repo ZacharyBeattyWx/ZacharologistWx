@@ -139,6 +139,7 @@
       <strong>Source:</strong> NOAA/NCEP MRMS ReflectivityAtLowestAltitude<br>
       <strong>Color owner:</strong> Python Level II palette renderer<br>
       <strong>Map path:</strong> custom WebGL texture; no Mapbox radar coloring<br>
+      <strong>Buffer:</strong> encoded prefetch + decoded lookahead<br>
       <strong>Image:</strong> <span id="imageInfo">waiting…</span><br>
       <strong>Loop:</strong> <span id="loopInfo">waiting…</span><br>
       <strong>Valid:</strong> <span id="validTime">waiting…</span><br>
@@ -150,7 +151,9 @@
     const MAPBOX_STYLE = "mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
     const MANIFEST_URL = "./mrms-mosaic-loop-output/manifest.json";
     const CUSTOM_LAYER_ID = "mrms-python-colored-layer";
-    const FRAME_CACHE_LIMIT = 5;
+    const DECODED_FRAME_CACHE_LIMIT = 8;
+    const BLOB_PREFETCH_CONCURRENCY = 4;
+    const START_BUFFER_FRAMES = 4;
     const END_FRAME_HOLD_MS = 450;
 
     const statusText = document.getElementById("statusText");
@@ -179,10 +182,13 @@
     let isPlaying = false;
     let playbackGeneration = 0;
     let frameSwitchBusy = false;
+    let playbackStarting = false;
     let defaultFrameIntervalMs = 650;
 
-    const imageCache = new Map();
-    const imagePromises = new Map();
+    const blobCache = new Map();
+    const blobPromises = new Map();
+    const decodedCache = new Map();
+    const decodePromises = new Map();
     let cacheClock = 0;
 
     function setStatus(message, state = "loading") {
@@ -203,6 +209,14 @@
       return shader;
     }
 
+    function sourceWidth(source) {
+      return Number(source?.width || source?.naturalWidth || 0);
+    }
+
+    function sourceHeight(source) {
+      return Number(source?.height || source?.naturalHeight || 0);
+    }
+
     function createPythonColoredRadarLayer(image, bounds) {
       const [west, south, east, north] = bounds.map(Number);
 
@@ -218,18 +232,48 @@
         positionBuffer: null,
         uvBuffer: null,
         texture: null,
+        textureWidth: 0,
+        textureHeight: 0,
+        textureInitialized: false,
         initialImage: image,
 
         uploadImage(imageToUpload) {
           if (!this.gl || !this.texture || !imageToUpload) return;
           const gl = this.gl;
+          const width = sourceWidth(imageToUpload);
+          const height = sourceHeight(imageToUpload);
+          if (!width || !height) return;
+
           gl.bindTexture(gl.TEXTURE_2D, this.texture);
           gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
           gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
           if (gl.UNPACK_COLORSPACE_CONVERSION_WEBGL !== undefined) {
             gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
           }
-          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, imageToUpload);
+
+          if (this.textureInitialized && width === this.textureWidth && height === this.textureHeight) {
+            gl.texSubImage2D(
+              gl.TEXTURE_2D,
+              0,
+              0,
+              0,
+              gl.RGBA,
+              gl.UNSIGNED_BYTE,
+              imageToUpload
+            );
+          } else {
+            gl.texImage2D(
+              gl.TEXTURE_2D,
+              0,
+              gl.RGBA,
+              gl.RGBA,
+              gl.UNSIGNED_BYTE,
+              imageToUpload
+            );
+            this.textureWidth = width;
+            this.textureHeight = height;
+            this.textureInitialized = true;
+          }
         },
 
         onAdd(map, gl) {
@@ -336,6 +380,7 @@
           if (this.uvBuffer) gl.deleteBuffer(this.uvBuffer);
           if (this.program) gl.deleteProgram(this.program);
           this.gl = null;
+          this.textureInitialized = false;
         },
 
         setImage(imageToUpload) {
@@ -367,11 +412,26 @@
       return url.href;
     }
 
-    function evictImageCache() {
-      while (imageCache.size > FRAME_CACHE_LIMIT) {
+    function closeDecodedSource(source) {
+      if (source && typeof source.close === "function") {
+        try { source.close(); } catch (_) {}
+      }
+    }
+
+    function clearFrameCaches() {
+      for (const entry of decodedCache.values()) closeDecodedSource(entry.source);
+      decodedCache.clear();
+      decodePromises.clear();
+      blobCache.clear();
+      blobPromises.clear();
+      cacheClock = 0;
+    }
+
+    function evictDecodedCache() {
+      while (decodedCache.size > DECODED_FRAME_CACHE_LIMIT) {
         let oldestKey = null;
         let oldestUse = Infinity;
-        for (const [key, entry] of imageCache.entries()) {
+        for (const [key, entry] of decodedCache.entries()) {
           if (key === currentFrameIndex) continue;
           if (entry.used < oldestUse) {
             oldestUse = entry.used;
@@ -379,52 +439,133 @@
           }
         }
         if (oldestKey === null) break;
-        imageCache.delete(oldestKey);
+        const entry = decodedCache.get(oldestKey);
+        decodedCache.delete(oldestKey);
+        closeDecodedSource(entry?.source);
       }
     }
 
-    function loadImage(url) {
-      return new Promise((resolve, reject) => {
-        const image = new Image();
-        image.decoding = "async";
-        image.onload = () => resolve(image);
-        image.onerror = () => reject(new Error(`Image failed: ${url}`));
-        image.src = url;
-      });
-    }
+    async function fetchFrameBlob(index) {
+      if (blobCache.has(index)) return blobCache.get(index);
+      if (blobPromises.has(index)) return blobPromises.get(index);
 
-    async function loadFrameImage(index) {
-      if (imageCache.has(index)) {
-        const entry = imageCache.get(index);
-        entry.used = ++cacheClock;
-        return entry.image;
-      }
-      if (imagePromises.has(index)) return imagePromises.get(index);
-
-      const promise = loadImage(frameImageUrl(index))
-        .then(image => {
-          imageCache.set(index, { image, used: ++cacheClock });
-          imagePromises.delete(index);
-          evictImageCache();
-          return image;
+      const promise = fetch(frameImageUrl(index), { cache:"force-cache" })
+        .then(response => {
+          if (!response.ok) throw new Error(`Frame HTTP ${response.status}`);
+          return response.blob();
+        })
+        .then(blob => {
+          blobCache.set(index, blob);
+          blobPromises.delete(index);
+          return blob;
         })
         .catch(error => {
-          imagePromises.delete(index);
+          blobPromises.delete(index);
           throw error;
         });
-      imagePromises.set(index, promise);
+
+      blobPromises.set(index, promise);
       return promise;
     }
 
-    function preloadAround(index) {
+    function imageFromBlob(blob) {
+      return new Promise((resolve, reject) => {
+        const objectUrl = URL.createObjectURL(blob);
+        const image = new Image();
+        image.decoding = "async";
+        image.onload = () => {
+          URL.revokeObjectURL(objectUrl);
+          resolve(image);
+        };
+        image.onerror = () => {
+          URL.revokeObjectURL(objectUrl);
+          reject(new Error("Frame image decode failed"));
+        };
+        image.src = objectUrl;
+      });
+    }
+
+    async function decodeBlob(blob) {
+      if (typeof createImageBitmap === "function") {
+        try {
+          return await createImageBitmap(blob, {
+            premultiplyAlpha:"none",
+            colorSpaceConversion:"none",
+            imageOrientation:"none"
+          });
+        } catch (_) {
+          try { return await createImageBitmap(blob); } catch (_) {}
+        }
+      }
+      return imageFromBlob(blob);
+    }
+
+    async function loadFrameSource(index) {
+      if (decodedCache.has(index)) {
+        const entry = decodedCache.get(index);
+        entry.used = ++cacheClock;
+        return entry.source;
+      }
+      if (decodePromises.has(index)) return decodePromises.get(index);
+
+      const promise = fetchFrameBlob(index)
+        .then(blob => decodeBlob(blob))
+        .then(source => {
+          decodedCache.set(index, { source, used: ++cacheClock });
+          decodePromises.delete(index);
+          evictDecodedCache();
+          return source;
+        })
+        .catch(error => {
+          decodePromises.delete(index);
+          throw error;
+        });
+
+      decodePromises.set(index, promise);
+      return promise;
+    }
+
+    function decodeLookaheadCount() {
+      const speed = Math.max(.5, Number(speedSelect.value) || 1);
+      if (speed >= 2) return 7;
+      if (speed >= 1.5) return 6;
+      if (speed >= 1) return 5;
+      return 4;
+    }
+
+    function warmAround(index) {
       if (!frames.length) return;
-      const candidates = [
-        (index + 1) % frames.length,
-        (index + 2) % frames.length,
-        (index + 3) % frames.length,
-        (index - 1 + frames.length) % frames.length
-      ];
-      candidates.forEach(candidate => loadFrameImage(candidate).catch(() => {}));
+      const ahead = Math.min(decodeLookaheadCount(), frames.length - 1);
+      for (let offset = 1; offset <= ahead; offset += 1) {
+        loadFrameSource((index + offset) % frames.length).catch(() => {});
+      }
+      loadFrameSource((index - 1 + frames.length) % frames.length).catch(() => {});
+    }
+
+    async function primePlaybackBuffer(startIndex) {
+      if (!frames.length) return;
+      const count = Math.min(START_BUFFER_FRAMES, frames.length);
+      const jobs = [];
+      for (let offset = 0; offset < count; offset += 1) {
+        jobs.push(loadFrameSource((startIndex + offset) % frames.length));
+      }
+      await Promise.all(jobs);
+      warmAround(startIndex);
+    }
+
+    async function prefetchAllFrameBlobs() {
+      if (!frames.length) return;
+      let cursor = 0;
+      const worker = async () => {
+        while (cursor < frames.length) {
+          const index = cursor;
+          cursor += 1;
+          try { await fetchFrameBlob(index); } catch (error) { console.warn("MRMS frame prefetch failed", index, error); }
+        }
+      };
+      await Promise.all(
+        Array.from({ length: Math.min(BLOB_PREFETCH_CONCURRENCY, frames.length) }, () => worker())
+      );
     }
 
     function formatFrameTime(value) {
@@ -448,11 +589,11 @@
       frameSwitchBusy = true;
       try {
         const normalized = (Number(index) + frames.length) % frames.length;
-        const image = await loadFrameImage(normalized);
-        radarLayer?.setImage(image);
+        const source = await loadFrameSource(normalized);
+        radarLayer?.setImage(source);
         currentFrameIndex = normalized;
         updateFrameUi();
-        preloadAround(normalized);
+        warmAround(normalized);
         if (!options.quiet) setStatus(`MRMS frame ${normalized + 1}/${frames.length} • ${formatFrameTime(frames[normalized].valid_time)}`, "live");
         return true;
       } catch (error) {
@@ -466,7 +607,6 @@
 
     function playbackIntervalMs() {
       const speed = Math.max(.25, Number(speedSelect.value) || 1);
-      // Double the already-accelerated scale again: current 2× becomes the new 1×.
       return Math.max(40, Math.round(defaultFrameIntervalMs / (speed * 4)));
     }
 
@@ -478,24 +618,38 @@
 
     async function playbackLoop(generation) {
       if (!isPlaying || generation !== playbackGeneration || frames.length < 2) return;
+      const cycleStarted = performance.now();
       const next = (currentFrameIndex + 1) % frames.length;
       await showFrame(next, { quiet:true });
       if (!isPlaying || generation !== playbackGeneration) return;
 
       const atNewest = currentFrameIndex === frames.length - 1;
-      const delay = playbackIntervalMs() + (atNewest ? END_FRAME_HOLD_MS : 0);
+      const workTime = performance.now() - cycleStarted;
+      const cadenceDelay = Math.max(0, playbackIntervalMs() - workTime);
+      const delay = cadenceDelay + (atNewest ? END_FRAME_HOLD_MS : 0);
       window.setTimeout(() => playbackLoop(generation), delay);
     }
 
     async function startPlayback() {
-      if (frames.length < 2 || isPlaying) return;
-      if (currentFrameIndex === frames.length - 1) {
-        await showFrame(0, { quiet:true });
+      if (frames.length < 2 || isPlaying || playbackStarting) return;
+      playbackStarting = true;
+      try {
+        const startIndex = currentFrameIndex === frames.length - 1 ? 0 : currentFrameIndex;
+        setStatus("Buffering upcoming MRMS scans…");
+        await primePlaybackBuffer(startIndex);
+        if (startIndex !== currentFrameIndex) await showFrame(startIndex, { quiet:true });
+
+        isPlaying = true;
+        playPauseButton.textContent = "❚❚ Pause";
+        setStatus(`MRMS playback • ${formatFrameTime(frames[currentFrameIndex].valid_time)}`, "live");
+        const generation = ++playbackGeneration;
+        window.setTimeout(() => playbackLoop(generation), playbackIntervalMs());
+      } catch (error) {
+        console.error(error);
+        setStatus(`Playback buffer failed: ${error.message}`, "error");
+      } finally {
+        playbackStarting = false;
       }
-      isPlaying = true;
-      playPauseButton.textContent = "❚❚ Pause";
-      const generation = ++playbackGeneration;
-      window.setTimeout(() => playbackLoop(generation), playbackIntervalMs());
     }
 
     async function loadRadarLoop() {
@@ -509,20 +663,19 @@
           throw new Error("Loop manifest needs bounds and at least two frames");
         }
 
+        clearFrameCaches();
         manifest = nextManifest;
         manifest._responseUrl = response.url;
         frames = [...manifest.frames].sort((a,b) => String(a.valid_time).localeCompare(String(b.valid_time)));
         defaultFrameIntervalMs = Number(manifest.defaultFrameIntervalMs || 650);
-        imageCache.clear();
-        imagePromises.clear();
 
         currentFrameIndex = frames.length - 1;
         frameSlider.max = String(frames.length - 1);
         frameSlider.value = String(currentFrameIndex);
 
-        const initialImage = await loadFrameImage(currentFrameIndex);
+        const initialSource = await loadFrameSource(currentFrameIndex);
         if (map.getLayer(CUSTOM_LAYER_ID)) map.removeLayer(CUSTOM_LAYER_ID);
-        radarLayer = createPythonColoredRadarLayer(initialImage, manifest.bounds);
+        radarLayer = createPythonColoredRadarLayer(initialSource, manifest.bounds);
         radarLayer.opacity = Number(opacityInput.value);
         radarLayer.visible = radarVisible;
 
@@ -531,11 +684,15 @@
         else map.addLayer(radarLayer);
 
         imageInfo.textContent = `${manifest.imageWidth} × ${manifest.imageHeight} lossless WebP`;
-        loopInfo.textContent = `${frames.length} frames • ~${Math.round((frames.length - 1) * 2)} min`;
+        const span = Number(manifest.actualSpanMinutes);
+        loopInfo.textContent = Number.isFinite(span)
+          ? `${span.toFixed(1)} min • ${frames.length} observations`
+          : `${frames.length} observations`;
         revisionInfo.textContent = String(manifest.revision ?? "unknown");
         updateFrameUi();
-        preloadAround(currentFrameIndex);
-        setStatus(`MRMS loop ready • ${frames.length} frames`, "live");
+        warmAround(currentFrameIndex);
+        prefetchAllFrameBlobs().catch(error => console.warn("MRMS background prefetch failed", error));
+        setStatus(`MRMS loop ready • ${frames.length} observations`, "live");
       } catch (error) {
         console.error(error);
         setStatus(`Loop load failed: ${error.message}`, "error");
@@ -580,6 +737,8 @@
       stopPlayback();
       await showFrame(currentFrameIndex + 1);
     });
+
+    speedSelect.addEventListener("change", () => warmAround(currentFrameIndex));
 
     frameSlider.addEventListener("input", async () => {
       stopPlayback();
