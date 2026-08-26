@@ -466,7 +466,9 @@
 
     function playbackIntervalMs() {
       const speed = Math.max(.25, Number(speedSelect.value) || 1);
-      return Math.max(120, Math.round(defaultFrameIntervalMs / speed));
+      // The previous 2× cadence is now the baseline 1× speed.
+      // This preserves that snappier feel while making the new 2× twice as fast again.
+      return Math.max(80, Math.round(defaultFrameIntervalMs / (speed * 2)));
     }
 
     function stopPlayback() {
