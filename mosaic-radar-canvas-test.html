@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ZacharologistWx MRMS Canvas Radar Test</title>
+  <title>ZacharologistWx MRMS Map-Owned Canvas Test</title>
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
   <script src="mapbox-token.js"></script>
@@ -25,14 +25,9 @@
     body { overflow: hidden; background: #07111f; color: var(--text); font-family: Arial, Helvetica, sans-serif; }
 
     #map { position: fixed; inset: 0; background: #07111f; }
-    #radarOverlayCanvas {
-      position: fixed;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      z-index: 5;
-    }
+
+    /* This canvas is the radar texture. It is NOT displayed over the map.
+       Mapbox owns it through a CanvasSource and positions it geographically. */
     #radarCanvas {
       position: fixed;
       left: -99999px;
@@ -46,7 +41,7 @@
       top: 16px;
       left: 16px;
       z-index: 20;
-      width: min(395px, calc(100vw - 32px));
+      width: min(405px, calc(100vw - 32px));
       padding: 14px;
       border: 1px solid var(--border);
       border-radius: 14px;
@@ -89,13 +84,12 @@
 </head>
 <body>
   <div id="map"></div>
-  <canvas id="radarOverlayCanvas"></canvas>
   <canvas id="radarCanvas"></canvas>
 
   <section class="panel">
-    <div class="eyebrow">Site Radar Display Path</div>
+    <div class="eyebrow">Map-Owned Radar Layer</div>
     <h1>National MRMS Mosaic</h1>
-    <p class="subtitle">Same numeric MRMS dBZ colorizer, then the same HTML-canvas overlay architecture used by Site Radar. No Mapbox raster layer.</p>
+    <p class="subtitle">Same numeric MRMS dBZ colorizer, but the finished radar canvas is now geographically owned by Mapbox instead of floating above the map.</p>
 
     <div class="status-row">
       <span id="statusDot" class="status-dot"></span>
@@ -122,7 +116,8 @@
 
     <div class="meta">
       <strong>Source:</strong> NOAA/NCEP MRMS ReflectivityAtLowestAltitude<br>
-      <strong>Browser path:</strong> Site Radar canvas overlay<br>
+      <strong>Browser path:</strong> Mapbox CanvasSource → raster layer<br>
+      <strong>Map behavior:</strong> geographic pan/zoom/pitch/bearing<br>
       <strong>Image:</strong> <span id="imageInfo">waiting…</span><br>
       <strong>Valid:</strong> <span id="validTime">waiting…</span><br>
       <strong>Revision:</strong> <span id="revisionInfo">waiting…</span>
@@ -132,13 +127,11 @@
   <script>
     const MAPBOX_STYLE = "mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
     const MANIFEST_URL = "./mrms-mosaic-canvas-output/manifest.json";
-    const RADAR_OVERLAY_VERTICAL_STRIPS = 96;
-    const RADAR_OVERLAY_INTERACTION_VERTICAL_STRIPS = 32;
+    const RADAR_SOURCE_ID = "mrms-map-canvas-source";
+    const RADAR_LAYER_ID = "mrms-map-canvas-layer";
 
-    const overlay = document.getElementById("radarOverlayCanvas");
-    const overlayContext = overlay.getContext("2d");
     const radarCanvas = document.getElementById("radarCanvas");
-    const radarContext = radarCanvas.getContext("2d");
+    const radarContext = radarCanvas.getContext("2d", { alpha: true });
     const statusText = document.getElementById("statusText");
     const statusDot = document.getElementById("statusDot");
     const opacityInput = document.getElementById("radarOpacity");
@@ -149,10 +142,8 @@
     const validTime = document.getElementById("validTime");
     const revisionInfo = document.getElementById("revisionInfo");
 
-    let radarBounds = null;
     let radarVisible = true;
-    let isMapInteracting = false;
-    let redrawFrame = null;
+    let radarBounds = null;
 
     function setStatus(message, state = "loading") {
       statusText.textContent = message;
@@ -160,66 +151,53 @@
       statusDot.classList.toggle("is-error", state === "error");
     }
 
-    function overlayDevicePixelRatio() {
-      return Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    function firstSymbolLayerId() {
+      const layers = map.getStyle()?.layers || [];
+      return layers.find((layer) => layer.type === "symbol")?.id;
     }
 
-    function redrawRadarOverlay(options = {}) {
-      const dpr = overlayDevicePixelRatio();
-      const container = map.getContainer();
-      const width = Math.max(1, Math.round(container.clientWidth * dpr));
-      const height = Math.max(1, Math.round(container.clientHeight * dpr));
-
-      if (overlay.width !== width || overlay.height !== height) {
-        overlay.width = width;
-        overlay.height = height;
-      }
-
-      overlayContext.clearRect(0, 0, width, height);
-      if (!radarVisible || !radarBounds || !radarCanvas.width || !radarCanvas.height) return;
-
-      const stripCount = Number.isFinite(options.stripCount)
-        ? Math.max(1, Math.round(options.stripCount))
-        : RADAR_OVERLAY_VERTICAL_STRIPS;
-
-      overlayContext.globalAlpha = Number(opacityInput.value);
-      overlayContext.imageSmoothingEnabled = false;
-
-      const [west, south, east, north] = radarBounds;
-      const latSpan = north - south;
-
-      for (let strip = 0; strip < stripCount; strip += 1) {
-        const t0 = strip / stripCount;
-        const t1 = (strip + 1) / stripCount;
-        const srcY = t0 * radarCanvas.height;
-        const srcH = (t1 - t0) * radarCanvas.height;
-
-        const stripNorth = north - t0 * latSpan;
-        const stripSouth = north - t1 * latSpan;
-        const nw = map.project([west, stripNorth]);
-        const se = map.project([east, stripSouth]);
-
-        overlayContext.drawImage(
-          radarCanvas,
-          0, srcY, radarCanvas.width, srcH,
-          nw.x * dpr,
-          nw.y * dpr,
-          (se.x - nw.x) * dpr,
-          (se.y - nw.y) * dpr
-        );
-      }
-
-      overlayContext.globalAlpha = 1;
+    function radarCoordinates(bounds) {
+      const [west, south, east, north] = bounds.map(Number);
+      return [
+        [west, north],
+        [east, north],
+        [east, south],
+        [west, south]
+      ];
     }
 
-    function requestOverlayRedraw(interaction = false) {
-      if (redrawFrame !== null) return;
-      redrawFrame = requestAnimationFrame(() => {
-        redrawFrame = null;
-        redrawRadarOverlay({
-          stripCount: interaction ? RADAR_OVERLAY_INTERACTION_VERTICAL_STRIPS : RADAR_OVERLAY_VERTICAL_STRIPS
-        });
+    function removeMapRadar() {
+      if (map.getLayer(RADAR_LAYER_ID)) map.removeLayer(RADAR_LAYER_ID);
+      if (map.getSource(RADAR_SOURCE_ID)) map.removeSource(RADAR_SOURCE_ID);
+    }
+
+    function addMapRadar(bounds) {
+      removeMapRadar();
+
+      map.addSource(RADAR_SOURCE_ID, {
+        type: "canvas",
+        canvas: "radarCanvas",
+        animate: true,
+        coordinates: radarCoordinates(bounds)
       });
+
+      const layer = {
+        id: RADAR_LAYER_ID,
+        type: "raster",
+        source: RADAR_SOURCE_ID,
+        paint: {
+          "raster-opacity": Number(opacityInput.value),
+          "raster-fade-duration": 0,
+          "raster-resampling": "nearest"
+        },
+        layout: {
+          visibility: radarVisible ? "visible" : "none"
+        }
+      };
+
+      const beforeId = firstSymbolLayerId();
+      if (beforeId) map.addLayer(layer, beforeId);
+      else map.addLayer(layer);
     }
 
     function loadImage(url) {
@@ -234,11 +212,15 @@
 
     async function loadRadar() {
       try {
-        setStatus("Loading MRMS canvas image…");
+        setStatus("Loading MRMS map-owned canvas…");
+
         const response = await fetch(`${MANIFEST_URL}?_=${Date.now()}`, { cache: "no-store" });
         if (!response.ok) throw new Error(`Manifest HTTP ${response.status}`);
+
         const manifest = await response.json();
-        if (!Array.isArray(manifest.bounds) || !manifest.image) throw new Error("Manifest missing bounds/image");
+        if (!Array.isArray(manifest.bounds) || !manifest.image) {
+          throw new Error("Manifest missing bounds/image");
+        }
 
         const imageUrl = new URL(manifest.image, response.url);
         imageUrl.searchParams.set("rev", manifest.revision ?? Date.now());
@@ -248,16 +230,21 @@
         radarCanvas.width = image.naturalWidth || image.width;
         radarCanvas.height = image.naturalHeight || image.height;
         radarContext.clearRect(0, 0, radarCanvas.width, radarCanvas.height);
+        radarContext.imageSmoothingEnabled = false;
         radarContext.drawImage(image, 0, 0);
 
         radarBounds = manifest.bounds.map(Number);
+        addMapRadar(radarBounds);
+
         imageInfo.textContent = `${radarCanvas.width} × ${radarCanvas.height} lossless WebP`;
         revisionInfo.textContent = String(manifest.revision ?? "unknown");
-        const valid = new Date(manifest.valid_time);
-        validTime.textContent = Number.isFinite(valid.getTime()) ? valid.toLocaleString() : String(manifest.valid_time || "unknown");
 
-        redrawRadarOverlay();
-        setStatus("MRMS using Site Radar canvas path", "live");
+        const valid = new Date(manifest.valid_time);
+        validTime.textContent = Number.isFinite(valid.getTime())
+          ? valid.toLocaleString()
+          : String(manifest.valid_time || "unknown");
+
+        setStatus("MRMS anchored inside the Mapbox scene", "live");
       } catch (error) {
         console.error(error);
         setStatus(error.message, "error");
@@ -276,32 +263,29 @@
       attributionControl: true
     });
 
-    map.addControl(new mapboxgl.NavigationControl(), "bottom-right");
+    map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), "bottom-right");
+
     map.on("load", () => {
       map.setProjection("mercator");
       loadRadar();
     });
-    map.on("movestart", () => { isMapInteracting = true; });
-    map.on("zoomstart", () => { isMapInteracting = true; });
-    map.on("move", () => requestOverlayRedraw(true));
-    map.on("zoom", () => requestOverlayRedraw(true));
-    map.on("render", () => {
-      if (isMapInteracting) requestOverlayRedraw(true);
-    });
-    map.on("moveend", () => { isMapInteracting = false; requestOverlayRedraw(false); });
-    map.on("zoomend", () => { isMapInteracting = false; requestOverlayRedraw(false); });
-    map.on("resize", () => requestOverlayRedraw(false));
 
     toggleButton.addEventListener("click", () => {
       radarVisible = !radarVisible;
       toggleButton.textContent = radarVisible ? "Hide Radar" : "Show Radar";
-      redrawRadarOverlay();
+      if (map.getLayer(RADAR_LAYER_ID)) {
+        map.setLayoutProperty(RADAR_LAYER_ID, "visibility", radarVisible ? "visible" : "none");
+      }
     });
 
     reloadButton.addEventListener("click", loadRadar);
+
     opacityInput.addEventListener("input", () => {
-      opacityOutput.value = `${Math.round(Number(opacityInput.value) * 100)}%`;
-      redrawRadarOverlay();
+      const opacity = Number(opacityInput.value);
+      opacityOutput.value = `${Math.round(opacity * 100)}%`;
+      if (map.getLayer(RADAR_LAYER_ID)) {
+        map.setPaintProperty(RADAR_LAYER_ID, "raster-opacity", opacity);
+      }
     });
   </script>
 </body>
