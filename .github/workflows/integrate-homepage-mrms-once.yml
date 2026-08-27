@@ -1,0 +1,76 @@
+name: Integrate homepage MRMS once
+
+on:
+  push:
+    paths:
+      - ".github/workflows/integrate-homepage-mrms-once.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Replace homepage Windy radar with MRMS
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path("index.html")
+          text = path.read_text(encoding="utf-8")
+
+          replacements = [
+              (
+                  'title="Regional live radar"\n        src="https://embed.windy.com/embed2.html?lat=39.50&lon=-98.35&zoom=4&level=surface&overlay=radar&product=radar"',
+                  'title="Live national radar"\n        src="./mosaic-radar-home.html"'
+              ),
+              (
+                  'clean: "https://embed.windy.com/embed2.html?lat=39.5&lon=-96&zoom=4&level=surface&overlay=radar&product=radar"',
+                  'clean: "./mosaic-radar-home.html"'
+              ),
+              (
+                  '''    if (alertCenter) {
+      radarFrame.src =
+        `https://embed.windy.com/embed2.html?lat=${alertCenter.lat.toFixed(3)}` +
+        `&lon=${alertCenter.lon.toFixed(3)}` +
+        `&zoom=7&level=surface&overlay=radar&product=radar`;
+    } else {
+      radarFrame.src = radarUrls.clean;
+    }''',
+                  '''    // National MRMS replaces the former Windy clean-radar path.
+    // Alert-specific centering remains available in Site Radar modes.
+    radarFrame.src = radarUrls.clean;'''
+              ),
+          ]
+
+          for old, new in replacements:
+              count = text.count(old)
+              if count == 0:
+                  raise SystemExit(f"Expected homepage radar snippet was not found: {old[:90]!r}")
+              text = text.replace(old, new)
+
+          path.write_text(text, encoding="utf-8")
+
+      - name: Verify Windy homepage path is gone
+        shell: bash
+        run: |
+          grep -q 'src="./mosaic-radar-home.html"' index.html
+          grep -q 'clean: "./mosaic-radar-home.html"' index.html
+
+      - name: Commit homepage integration
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          if git diff --cached --quiet; then
+            echo "No homepage changes needed"
+            exit 0
+          fi
+          git commit -m "Replace homepage Windy radar with MRMS"
+          git push origin HEAD:main
