@@ -1,0 +1,40 @@
+name: Fix active MRMS 2x rate
+
+on:
+  push:
+    paths:
+      - .github/workflows/fix-active-mrms-2x-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lock active v2 player to fixed 24h 2x rate
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/radar/mrms-timelapse-playback-v2.js')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace('const TARGET_2X_KEYFRAMES = 90;', 'const TIMELAPSE_FRAME_STRIDE = 8;')
+          old = '  function playbackStride() {\n    if (speedValue() < 2 || !Array.isArray(frames) || frames.length < 2) return 1;\n    return Math.max(1, Math.ceil(frames.length / TARGET_2X_KEYFRAMES));\n  }'
+          new = '  function playbackStride() {\n    if (speedValue() < 2 || !Array.isArray(frames) || frames.length < 2) return 1;\n    // Same 2x meteorological timelapse rate at every history length.\n    // Eight ~2-minute MRMS scans equals about 16 weather-minutes per transition.\n    return Math.max(1, Math.min(TIMELAPSE_FRAME_STRIDE, frames.length - 1));\n  }'
+          if old not in text:
+              raise SystemExit('Active v2 stride function not found')
+          text = text.replace(old, new)
+          text = text.replace('target ~${TARGET_2X_KEYFRAMES} key scans per long loop', 'fixed ${TIMELAPSE_FRAME_STRIDE}-scan stride across every history window')
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Commit active 2x rate
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/radar/mrms-timelapse-playback-v2.js
+          git diff --cached --quiet && exit 0
+          git commit -m "Keep MRMS 2x rate consistent across history windows"
+          git push
