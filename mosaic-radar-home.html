@@ -168,7 +168,7 @@
         select.className = "home-radar-history-select";
         select.setAttribute("aria-label", "Radar history length");
         select.innerHTML = HISTORY_OPTIONS
-          .map(([minutes, label]) => `<option value="${minutes}"${minutes === 60 ? " selected" : ""}>${label}</option>`)
+          .map(([minutes, label]) => `<option value="${minutes}"${minutes === 180 ? " selected" : ""}>${label}</option>`)
           .join("");
 
         row.appendChild(select);
@@ -450,6 +450,32 @@
         installHistoryBehavior(doc);
         const historySelect = installHistorySelect(doc);
 
+        // Homepage defaults: full opacity, 3-hour history, and 2x timelapse.
+        const opacityControl = doc.getElementById("radarOpacity");
+        if (opacityControl) {
+          opacityControl.value = "1";
+          opacityControl.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+
+        const speedControl = doc.getElementById("speedSelect");
+        if (speedControl) {
+          speedControl.value = "2";
+          speedControl.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+
+        let startupHistoryApplied = false;
+        const applyStartupHistory = async () => {
+          if (startupHistoryApplied || !historySelect) return;
+          const win = engine.contentWindow;
+          const available = typeof win?.zwxAvailableHistoryMinutes === "function"
+            ? Number(win.zwxAvailableHistoryMinutes())
+            : 0;
+          if (available < 180 || typeof win?.zwxSetHistoryWindow !== "function") return;
+          startupHistoryApplied = true;
+          const selected = await win.zwxSetHistoryWindow(180);
+          historySelect.value = String(selected);
+        };
+
         const oldBadge = doc.getElementById("homeRadarBadge");
         if (oldBadge) oldBadge.remove();
 
@@ -478,7 +504,11 @@
         freshnessTimer = setInterval(updateFreshness, 30000);
 
         if (historySyncTimer) clearInterval(historySyncTimer);
-        historySyncTimer = setInterval(() => syncHistorySelect(historySelect), 1000);
+        historySyncTimer = setInterval(() => {
+          syncHistorySelect(historySelect);
+          applyStartupHistory().catch(() => {});
+        }, 1000);
+        applyStartupHistory().catch(() => {});
       }
 
       engine.addEventListener("load", installHomepageUi);

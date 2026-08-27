@@ -1,5 +1,5 @@
 (() => {
-  const TARGET_2X_KEYFRAMES = 90;
+  const TIMELAPSE_FRAME_STRIDE = 8;
   const TIMELAPSE_TRANSITION_MS = 55;
   const TIMELAPSE_END_HOLD_MS = 250;
   const TIMELAPSE_LOOKAHEAD = 6;
@@ -30,7 +30,9 @@
 
   function playbackStride() {
     if (speedValue() < 2 || !Array.isArray(frames) || frames.length < 2) return 1;
-    return Math.max(1, Math.ceil(frames.length / TARGET_2X_KEYFRAMES));
+    // Keep 2x at the same meteorological timelapse rate for every history window.
+    // MRMS is ~2-minute cadence, so 8 scans is ~16 minutes of weather per transition.
+    return Math.max(1, Math.min(TIMELAPSE_FRAME_STRIDE, frames.length - 1));
   }
 
   function nextPlaybackIndex() {
@@ -391,7 +393,7 @@
 
     console.info(
       "MRMS 2x smooth timelapse enabled:",
-      `${TIMELAPSE_TRANSITION_MS}ms GPU blends, target ~${TARGET_2X_KEYFRAMES} key scans per long loop`
+      `${TIMELAPSE_TRANSITION_MS}ms GPU blends, fixed ${TIMELAPSE_FRAME_STRIDE}-scan stride across every history window`
     );
   }
 
