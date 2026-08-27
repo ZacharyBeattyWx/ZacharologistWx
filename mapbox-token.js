@@ -5,7 +5,7 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
   if (!/\/mosaic-radar-canvas-test\.html$/i.test(path)) return;
 
   const script = document.createElement("script");
-  script.src = "scripts/radar/mrms-timelapse-playback.js";
+  script.src = "scripts/radar/mrms-timelapse-playback-v2.js";
   script.async = true;
   document.head.appendChild(script);
 })();
