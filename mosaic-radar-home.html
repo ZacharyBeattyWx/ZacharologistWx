@@ -41,8 +41,21 @@
     (() => {
       const engine = document.getElementById("radarEngine");
       const MANIFEST_URL = "./mrms-mosaic-loop-output/manifest.json";
+      const HISTORY_OPTIONS = [
+        [30, "30 min"],
+        [60, "1 hr"],
+        [120, "2 hrs"],
+        [180, "3 hrs"],
+        [240, "4 hrs"],
+        [360, "6 hrs"],
+        [720, "12 hrs"],
+        [1080, "18 hrs"],
+        [1440, "24 hrs"]
+      ];
+
       let badgeFreshness = null;
       let freshnessTimer = null;
+      let historySyncTimer = null;
 
       function relativeUpdateText(value) {
         const time = new Date(value).getTime();
@@ -71,6 +84,128 @@
             : "Updating automatically";
         } catch (_) {
           badgeFreshness.textContent = "Live radar";
+        }
+      }
+
+      function installHistoryBehavior(doc) {
+        if (doc.getElementById("homepage-radar-history-behavior")) return;
+
+        const behavior = doc.createElement("script");
+        behavior.id = "homepage-radar-history-behavior";
+        behavior.textContent = `
+          (() => {
+            const ZWX_HISTORY_OPTIONS = [30,60,120,180,240,360,720,1080,1440];
+
+            function historyTickLabel(minutes) {
+              if (minutes < 60) return \`-\${minutes}m\`;
+              const hours = minutes / 60;
+              return \`-\${Number.isInteger(hours) ? hours : hours.toFixed(1)}h\`;
+            }
+
+            function historyStatusLabel(minutes) {
+              if (minutes < 60) return \`\${minutes} min\`;
+              const hours = minutes / 60;
+              return \`\${Number.isInteger(hours) ? hours : hours.toFixed(1)} hr\`;
+            }
+
+            updateHistoryButtons = function() {
+              historyStartLabel.textContent = historyTickLabel(historyMinutes);
+              window.dispatchEvent(new CustomEvent("zwx-history-change", {
+                detail: { minutes: historyMinutes }
+              }));
+            };
+
+            applyHistoryWindow = function(minutes, preserveKey = currentFrameKey()) {
+              const requested = Number(minutes);
+              const available = Math.max(30, Number(manifest?.historyWindowMinutes || 60));
+              const choices = ZWX_HISTORY_OPTIONS.filter(value => value <= available);
+              const fallback = choices[choices.length - 1] || 60;
+              historyMinutes = choices.includes(requested) ? requested : fallback;
+
+              frames = filterHistory(allFrames, historyMinutes);
+              let nextIndex = frames.findIndex(frame => frameKey(frame) === preserveKey);
+              if (nextIndex < 0) nextIndex = frames.length - 1;
+              currentFrameIndex = Math.max(0, nextIndex);
+
+              updateHistoryButtons();
+              updateFrameUi();
+              warmAround(currentFrameIndex);
+            };
+
+            window.zwxSetHistoryWindow = async function(minutes) {
+              const preserveKey = currentFrameKey();
+              applyHistoryWindow(minutes, preserveKey);
+
+              if (!frames.some(frame => frameKey(frame) === preserveKey)) {
+                await showFrame(frames.length - 1, { quiet: true });
+              }
+
+              setStatus(\`MRMS playback window • \${historyStatusLabel(historyMinutes)}\`, "live");
+              return historyMinutes;
+            };
+
+            window.zwxAvailableHistoryMinutes = function() {
+              return Math.max(30, Number(manifest?.historyWindowMinutes || 60));
+            };
+
+            window.zwxCurrentHistoryMinutes = function() {
+              return historyMinutes;
+            };
+          })();
+        `;
+        doc.body.appendChild(behavior);
+      }
+
+      function installHistorySelect(doc) {
+        const row = doc.querySelector(".history-row");
+        if (!row) return null;
+
+        const existing = doc.getElementById("homeRadarHistorySelect");
+        if (existing) return existing;
+
+        const select = doc.createElement("select");
+        select.id = "homeRadarHistorySelect";
+        select.className = "home-radar-history-select";
+        select.setAttribute("aria-label", "Radar history length");
+        select.innerHTML = HISTORY_OPTIONS
+          .map(([minutes, label]) => `<option value="${minutes}"${minutes === 60 ? " selected" : ""}>${label}</option>`)
+          .join("");
+
+        row.appendChild(select);
+
+        select.addEventListener("change", async () => {
+          const win = engine.contentWindow;
+          if (typeof win?.zwxSetHistoryWindow !== "function") return;
+          select.disabled = true;
+          try {
+            const selected = await win.zwxSetHistoryWindow(Number(select.value));
+            select.value = String(selected);
+          } finally {
+            select.disabled = false;
+          }
+        });
+
+        return select;
+      }
+
+      function syncHistorySelect(select) {
+        if (!select) return;
+        const win = engine.contentWindow;
+        if (!win) return;
+
+        const available = typeof win.zwxAvailableHistoryMinutes === "function"
+          ? Number(win.zwxAvailableHistoryMinutes())
+          : 60;
+        const current = typeof win.zwxCurrentHistoryMinutes === "function"
+          ? Number(win.zwxCurrentHistoryMinutes())
+          : 60;
+
+        [...select.options].forEach(option => {
+          option.disabled = Number(option.value) > available;
+        });
+
+        if ([...select.options].some(option => Number(option.value) === current)) {
+          select.value = String(current);
         }
       }
 
@@ -155,7 +290,7 @@
             width: min(520px, calc(100vw - 28px)) !important;
             transform: translateX(-50%) !important;
             display: grid !important;
-            grid-template-columns: 126px 1fr !important;
+            grid-template-columns: 112px 1fr !important;
             grid-template-areas:
               "history controls"
               "readout readout"
@@ -171,26 +306,30 @@
 
           .homepage-radar-mode .history-row {
             grid-area: history !important;
-            display: grid !important;
-            grid-template-columns: 1fr !important;
-            gap: 4px !important;
+            display: block !important;
           }
 
-          .homepage-radar-mode .history-label {
+          .homepage-radar-mode .history-label,
+          .homepage-radar-mode .history-buttons {
             display: none !important;
           }
 
-          .homepage-radar-mode .history-buttons {
-            display: grid !important;
-            grid-template-columns: 1fr 1fr !important;
-            gap: 4px !important;
+          .homepage-radar-mode .home-radar-history-select {
+            width: 100% !important;
+            min-height: 31px !important;
+            padding: 5px 28px 5px 9px !important;
+            border: 1px solid rgba(56,189,248,.55) !important;
+            border-radius: 8px !important;
+            background: rgba(14,116,144,.22) !important;
+            color: #e0f2fe !important;
+            font-size: .68rem !important;
+            font-weight: 900 !important;
+            cursor: pointer !important;
           }
 
-          .homepage-radar-mode .history-btn {
-            min-height: 31px !important;
-            padding: 5px 6px !important;
-            border-radius: 8px !important;
-            font-size: .66rem !important;
+          .homepage-radar-mode .home-radar-history-select:disabled {
+            opacity: .72 !important;
+            cursor: wait !important;
           }
 
           .homepage-radar-mode .playback-buttons {
@@ -285,7 +424,7 @@
             .homepage-radar-mode .playback {
               bottom: 9px !important;
               width: calc(100vw - 18px) !important;
-              grid-template-columns: 108px 1fr !important;
+              grid-template-columns: 100px 1fr !important;
               padding: 7px 8px !important;
               gap: 5px 7px !important;
             }
@@ -295,21 +434,21 @@
             }
           }
 
-          @media (max-width: 430px) {
+          @media (max-width: 380px) {
             .homepage-radar-mode .playback {
               grid-template-columns: 1fr !important;
               grid-template-areas:
+                "history"
                 "controls"
                 "readout"
                 "timeline" !important;
             }
-
-            .homepage-radar-mode .history-row {
-              display: none !important;
-            }
           }
         `;
         doc.head.appendChild(style);
+
+        installHistoryBehavior(doc);
+        const historySelect = installHistorySelect(doc);
 
         const oldBadge = doc.getElementById("homeRadarBadge");
         if (oldBadge) oldBadge.remove();
@@ -333,9 +472,13 @@
 
         engine.classList.add("is-ready");
         updateFreshness();
+        syncHistorySelect(historySelect);
 
         if (freshnessTimer) clearInterval(freshnessTimer);
         freshnessTimer = setInterval(updateFreshness, 30000);
+
+        if (historySyncTimer) clearInterval(historySyncTimer);
+        historySyncTimer = setInterval(() => syncHistorySelect(historySelect), 1000);
       }
 
       engine.addEventListener("load", installHomepageUi);
