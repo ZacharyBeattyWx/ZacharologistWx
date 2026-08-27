@@ -1,0 +1,91 @@
+name: Publish rolling MRMS radar data
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/publish-mrms-radar-data.yml
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: zacharologist-mrms-radar-data
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install MRMS renderer dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libeccodes0 libeccodes-dev
+          python -m pip install --upgrade pip
+          python -m pip install numpy requests Pillow eccodes
+
+      - name: Restore previous rolling radar snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p mrms-mosaic-loop-output
+          if git fetch origin radar-data:refs/remotes/origin/radar-data 2>/dev/null; then
+            echo "Restoring cached MRMS frames from radar-data branch"
+            git archive origin/radar-data | tar -x -C mrms-mosaic-loop-output
+          else
+            echo "No radar-data branch yet; building initial archive"
+          fi
+
+      - name: Render rolling 24-hour MRMS archive
+        run: |
+          python scripts/radar/render_mrms_loop_archive.py
+
+      - name: Validate published manifest
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+
+          root = Path("mrms-mosaic-loop-output")
+          manifest_path = root / "manifest.json"
+          manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+          frames = manifest.get("frames") or []
+          if len(frames) < 2:
+              raise SystemExit("MRMS manifest has fewer than two observations")
+          missing = [frame.get("image") for frame in frames if not (root / frame.get("image", "")).exists()]
+          if missing:
+              raise SystemExit(f"MRMS manifest references {len(missing)} missing frame files")
+          print(f"Validated {len(frames)} observations; history={manifest.get('historyWindowMinutes')} minutes")
+
+      - name: Publish snapshot to radar-data branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          PUBLISH_DIR="$(mktemp -d)"
+          cp -a mrms-mosaic-loop-output/. "$PUBLISH_DIR/"
+          touch "$PUBLISH_DIR/.nojekyll"
+
+          git checkout --orphan radar-data-build
+          git rm -rf . >/dev/null 2>&1 || true
+          cp -a "$PUBLISH_DIR/." .
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Update rolling MRMS radar data"
+          git push --force origin HEAD:radar-data
