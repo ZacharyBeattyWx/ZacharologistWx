@@ -18,23 +18,16 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-
           path = Path('index.html')
           text = path.read_text(encoding='utf-8')
-
-          old_embed = '''title="Regional live radar"
-        src="https://embed.windy.com/embed2.html?lat=39.50&lon=-98.35&zoom=4&level=surface&overlay=radar&product=radar"'''
-          new_embed = '''title="Live national radar"
-        src="./mosaic-radar-home.html"'''
-
+          old_embed = 'title="Regional live radar"\n        src="https://embed.windy.com/embed2.html?lat=39.50&lon=-98.35&zoom=4&level=surface&overlay=radar&product=radar"'
+          new_embed = 'title="Live national radar"\n        src="./mosaic-radar-home.html"'
           old_clean = 'clean: "https://embed.windy.com/embed2.html?lat=39.5&lon=-96&zoom=4&level=surface&overlay=radar&product=radar"'
           new_clean = 'clean: "./mosaic-radar-home.html"'
-
           if old_embed not in text:
               raise SystemExit('Homepage Windy iframe snippet not found')
           if old_clean not in text:
               raise SystemExit('Homepage clean radar URL snippet not found')
-
           text = text.replace(old_embed, new_embed)
           text = text.replace(old_clean, new_clean)
           path.write_text(text, encoding='utf-8')
