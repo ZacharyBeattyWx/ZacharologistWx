@@ -40,7 +40,9 @@
   <script>
     (() => {
       const engine = document.getElementById("radarEngine");
-      const MANIFEST_URL = "./mrms-mosaic-loop-output/manifest.json";
+      const MANIFEST_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
+      ? "./mrms-mosaic-loop-output/manifest.json"
+      : "https://raw.githubusercontent.com/ZacharyBeattyWx/ZacharologistWx/radar-data/manifest.json";
       const HISTORY_OPTIONS = [
         [30, "30 min"],
         [60, "1 hr"],

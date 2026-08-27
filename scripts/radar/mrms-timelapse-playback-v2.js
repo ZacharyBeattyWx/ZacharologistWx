@@ -434,7 +434,7 @@
 
     console.info(
       "MRMS 2x stable timelapse enabled:",
-      `${TIMELAPSE_TRANSITION_MS}ms linear alpha-correct blends, target ~${TARGET_2X_KEYFRAMES} key scans`
+      `${TIMELAPSE_TRANSITION_MS}ms linear alpha-correct blends, fixed ${TIMELAPSE_FRAME_STRIDE}-scan stride`
     );
   }
 
