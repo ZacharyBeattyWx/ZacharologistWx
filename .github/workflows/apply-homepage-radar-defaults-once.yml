@@ -1,0 +1,100 @@
+name: Apply homepage radar defaults
+
+on:
+  push:
+    paths:
+      - .github/workflows/apply-homepage-radar-defaults-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply homepage radar defaults and uniform 2x rate
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          timelapse = Path('scripts/radar/mrms-timelapse-playback.js')
+          text = timelapse.read_text(encoding='utf-8')
+          text = text.replace('const TARGET_2X_KEYFRAMES = 90;', 'const TIMELAPSE_FRAME_STRIDE = 8;')
+          old_stride = '''  function playbackStride() {
+    if (speedValue() < 2 || !Array.isArray(frames) || frames.length < 2) return 1;
+    return Math.max(1, Math.ceil(frames.length / TARGET_2X_KEYFRAMES));
+  }'''
+          new_stride = '''  function playbackStride() {
+    if (speedValue() < 2 || !Array.isArray(frames) || frames.length < 2) return 1;
+    // Keep 2x at the same meteorological timelapse rate for every history window.
+    // MRMS is ~2-minute cadence, so 8 scans is ~16 minutes of weather per transition.
+    return Math.max(1, Math.min(TIMELAPSE_FRAME_STRIDE, frames.length - 1));
+  }'''
+          if old_stride not in text:
+              raise SystemExit('Timelapse stride function not found')
+          text = text.replace(old_stride, new_stride)
+          text = text.replace('target ~${TARGET_2X_KEYFRAMES} key scans per long loop', 'fixed ${TIMELAPSE_FRAME_STRIDE}-scan stride across every history window')
+          timelapse.write_text(text, encoding='utf-8')
+
+          home = Path('mosaic-radar-home.html')
+          text = home.read_text(encoding='utf-8')
+          text = text.replace('.map(([minutes, label]) => `<option value="${minutes}"${minutes === 60 ? " selected" : ""}>${label}</option>`)', '.map(([minutes, label]) => `<option value="${minutes}"${minutes === 180 ? " selected" : ""}>${label}</option>`)')
+          marker = '''        const historySelect = installHistorySelect(doc);
+
+        const oldBadge = doc.getElementById("homeRadarBadge");'''
+          replacement = '''        const historySelect = installHistorySelect(doc);
+
+        // Homepage defaults: full radar opacity, 3-hour history, and 2x timelapse speed.
+        const opacityControl = doc.getElementById("radarOpacity");
+        if (opacityControl) {
+          opacityControl.value = "1";
+          opacityControl.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+
+        const speedControl = doc.getElementById("speedSelect");
+        if (speedControl) {
+          speedControl.value = "2";
+          speedControl.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+
+        let startupHistoryApplied = false;
+        const applyStartupHistory = async () => {
+          if (startupHistoryApplied || !historySelect) return;
+          const win = engine.contentWindow;
+          const available = typeof win?.zwxAvailableHistoryMinutes === "function"
+            ? Number(win.zwxAvailableHistoryMinutes())
+            : 0;
+          if (available < 180 || typeof win?.zwxSetHistoryWindow !== "function") return;
+          startupHistoryApplied = true;
+          const selected = await win.zwxSetHistoryWindow(180);
+          historySelect.value = String(selected);
+        };
+
+        const oldBadge = doc.getElementById("homeRadarBadge");'''
+          if marker not in text:
+              raise SystemExit('Homepage install marker not found')
+          text = text.replace(marker, replacement)
+          old_timer = '''        if (historySyncTimer) clearInterval(historySyncTimer);
+        historySyncTimer = setInterval(() => syncHistorySelect(historySelect), 1000);'''
+          new_timer = '''        if (historySyncTimer) clearInterval(historySyncTimer);
+        historySyncTimer = setInterval(() => {
+          syncHistorySelect(historySelect);
+          applyStartupHistory().catch(() => {});
+        }, 1000);
+        applyStartupHistory().catch(() => {});'''
+          if old_timer not in text:
+              raise SystemExit('Homepage history sync timer not found')
+          text = text.replace(old_timer, new_timer)
+          home.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Commit radar defaults
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add mosaic-radar-home.html scripts/radar/mrms-timelapse-playback.js
+          git diff --cached --quiet && exit 0
+          git commit -m "Set homepage radar defaults and uniform 2x timelapse"
+          git push
