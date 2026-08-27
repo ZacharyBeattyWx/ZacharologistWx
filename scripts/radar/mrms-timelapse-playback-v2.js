@@ -1,5 +1,5 @@
 (() => {
-  const TARGET_2X_KEYFRAMES = 90;
+  const TIMELAPSE_FRAME_STRIDE = 8;
   const TIMELAPSE_TRANSITION_MS = 55;
   const TIMELAPSE_END_HOLD_MS = 250;
   const TIMELAPSE_LOOKAHEAD = 8;
@@ -30,7 +30,9 @@
 
   function playbackStride() {
     if (speedValue() < 2 || !Array.isArray(frames) || frames.length < 2) return 1;
-    return Math.max(1, Math.ceil(frames.length / TARGET_2X_KEYFRAMES));
+    // Same 2x meteorological timelapse rate at every history length.
+    // Eight ~2-minute MRMS scans equals about 16 weather-minutes per transition.
+    return Math.max(1, Math.min(TIMELAPSE_FRAME_STRIDE, frames.length - 1));
   }
 
   function nextPlaybackIndex() {
