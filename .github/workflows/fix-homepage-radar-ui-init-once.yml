@@ -1,0 +1,108 @@
+name: Fix homepage radar UI init once
+
+on:
+  push:
+    paths:
+      - .github/workflows/fix-homepage-radar-ui-init-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Make nested homepage radar UI initialization retry-safe
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('mosaic-radar-home.html')
+          text = path.read_text(encoding='utf-8')
+
+          old_start = '''        if (doc.documentElement.dataset.homepageRadarUiInstalled === "1") {
+          engine.classList.add("is-ready");
+          return;
+        }
+        doc.documentElement.dataset.homepageRadarUiInstalled = "1";
+        doc.documentElement.classList.add("homepage-radar-mode");'''
+
+          new_start = '''        const alreadyComplete =
+          doc.documentElement.dataset.homepageRadarUiInstalled === "1" &&
+          doc.getElementById("homepage-radar-mode-style") &&
+          doc.getElementById("homeRadarHistorySelect") &&
+          doc.getElementById("homeRadarBadge");
+
+        if (alreadyComplete) {
+          engine.classList.add("is-ready");
+          return true;
+        }
+
+        doc.documentElement.classList.add("homepage-radar-mode");'''
+
+          if old_start not in text:
+              raise SystemExit('installHomepageUi start marker not found')
+          text = text.replace(old_start, new_start, 1)
+
+          old_end = '''        applyStartupHistory().catch(() => {});
+      }
+
+      engine.addEventListener("load", installHomepageUi);
+      // The child iframe can finish before this script attaches its load handler, especially from production/browser cache.
+      if (engine.contentDocument?.readyState === "complete") {
+        installHomepageUi();
+      }'''
+
+          new_end = '''        applyStartupHistory().catch(() => {});
+        doc.documentElement.dataset.homepageRadarUiInstalled = "1";
+        return true;
+      }
+
+      function ensureHomepageUi() {
+        try {
+          const doc = engine.contentDocument;
+          if (!doc?.head || !doc?.body) return false;
+          return installHomepageUi() === true || doc.documentElement.dataset.homepageRadarUiInstalled === "1";
+        } catch (error) {
+          console.warn("Homepage radar UI init retry", error);
+          return false;
+        }
+      }
+
+      engine.addEventListener("load", ensureHomepageUi);
+
+      // Production/browser cache can complete the nested iframe before its load
+      // callback is observed. Poll until the actual homepage controls exist.
+      let uiInitAttempts = 0;
+      const uiInitTimer = setInterval(() => {
+        uiInitAttempts += 1;
+        if (ensureHomepageUi() || uiInitAttempts >= 100) {
+          clearInterval(uiInitTimer);
+        }
+      }, 100);
+
+      ensureHomepageUi();'''
+
+          if old_end not in text:
+              raise SystemExit('installHomepageUi end marker not found')
+          text = text.replace(old_end, new_end, 1)
+
+          # Bust the outer homepage iframe cache again so production gets this wrapper.
+          index = Path('index.html')
+          idx = index.read_text(encoding='utf-8')
+          idx = idx.replace('mosaic-radar-home.html?v=20260827b', 'mosaic-radar-home.html?v=20260827c')
+          index.write_text(idx, encoding='utf-8')
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Commit robust initialization
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add mosaic-radar-home.html index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "Make homepage radar UI initialization retry-safe"
+          git push
