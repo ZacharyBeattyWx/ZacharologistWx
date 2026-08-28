@@ -1,0 +1,40 @@
+name: Switch homepage to native MRMS once
+
+on:
+  push:
+    paths:
+      - .github/workflows/switch-homepage-to-native-mrms-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  switch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Point homepage directly at native radar mode
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('index.html')
+          text = path.read_text(encoding='utf-8')
+          old = './mosaic-radar-home.html?v=20260827b'
+          new = './mosaic-radar-canvas-test.html?home=1&v=20260828a'
+          count = text.count(old)
+          if count < 2:
+              raise SystemExit(f'Expected at least 2 homepage radar wrapper references, found {count}')
+          text = text.replace(old, new)
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Commit native homepage radar path
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "Use native MRMS homepage mode"
+          git push
