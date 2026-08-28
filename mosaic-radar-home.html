@@ -215,6 +215,11 @@
         const doc = engine.contentDocument;
         if (!doc?.head || !doc?.body) return;
 
+        if (doc.documentElement.dataset.homepageRadarUiInstalled === "1") {
+          engine.classList.add("is-ready");
+          return;
+        }
+        doc.documentElement.dataset.homepageRadarUiInstalled = "1";
         doc.documentElement.classList.add("homepage-radar-mode");
 
         const style = doc.createElement("style");
@@ -514,6 +519,10 @@
       }
 
       engine.addEventListener("load", installHomepageUi);
+      // The child iframe can finish before this script attaches its load handler, especially from production/browser cache.
+      if (engine.contentDocument?.readyState === "complete") {
+        installHomepageUi();
+      }
     })();
   </script>
 </body>
