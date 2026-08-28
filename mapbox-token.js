@@ -8,4 +8,12 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
   script.src = "scripts/radar/mrms-timelapse-playback-v2.js";
   script.async = true;
   document.head.appendChild(script);
+
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("home") === "1") {
+    const homeScript = document.createElement("script");
+    homeScript.src = "scripts/radar/mrms-homepage-mode.js";
+    homeScript.async = true;
+    document.head.appendChild(homeScript);
+  }
 })();
