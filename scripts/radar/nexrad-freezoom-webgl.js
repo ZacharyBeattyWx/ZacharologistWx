@@ -4,7 +4,7 @@
   const MAPBOX_STYLE = "mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
   const NATIONAL_MANIFEST = "./unidata-nexrad-mosaic-output/manifest.json";
   const LAYER_ID = "nexrad-freezoom-python-colored";
-  const DETAIL_SWITCH_ZOOM = 6.15;
+  const DETAIL_SWITCH_ZOOM = 6.85;
   const PAGE_SESSION = Date.now();
   const IS_LOCAL = location.hostname === "localhost" || location.hostname === "127.0.0.1";
   const DETAIL_SERVER = IS_LOCAL ? `http://${location.hostname}:8010` : (window.ZWX_NEXRAD_TILE_SERVER || "");
@@ -133,10 +133,9 @@
   }
 
   function sourceTileZoom(mapZoom) {
-    // 512px z7 tiles are roughly 0.5 km/pixel over the CONUS; z8 is roughly
-    // 0.25 km/pixel. Cap at z8 because higher slippy zooms would only oversample
-    // the native N0B data without adding meteorological information.
-    return Math.max(7, Math.min(8, Math.floor(mapZoom) + 1));
+    // Keep one fixed z8 source grid (~250 m pixels across much of the CONUS).
+    // Never swap tile pyramids while the camera zooms.
+    return 8;
   }
 
   function createPythonColoredFreeZoomLayer(map, nationalBitmap, nationalBounds) {
@@ -413,26 +412,35 @@
         gl.blendEquation(gl.FUNC_ADD);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
-        if (!this.serverOnline || this.map.getZoom() < DETAIL_SWITCH_ZOOM) {
+        const zoom = this.map.getZoom();
+        if (!this.serverOnline || zoom < DETAIL_SWITCH_ZOOM) {
           this.drawNationalFull(gl, matrix);
           this.updateUi();
           return;
         }
 
-        const current = this.visibleTiles();
-        const currentKey = current.map(t => t.key).join("|");
-        const wantedKey = [...this.wanted.keys()].join("|");
-        if (currentKey !== wantedKey) {
-          this.updateWantedTiles();
+        // Keep the current z8 radar texture set frozen while the camera zooms.
+        // The Mapbox matrix scales those same textures continuously.
+        if (!this.map.isZooming()) {
+          const current = this.visibleTiles();
+          const currentKey = current.map(t => t.key).join("|");
+          const wantedKey = [...this.wanted.keys()].join("|");
+          if (currentKey !== wantedKey) this.updateWantedTiles();
         }
 
-        // At detail zoom every visible map cell is drawn exactly once. A loaded
-        // Python RGBA detail texture wins; otherwise the same cell uses a crop of
-        // the Python-colored national texture. Nothing is stacked and Mapbox never
-        // recolors the radar.
-        for (const tile of this.wanted.values()) {
-          this.drawTileCell(gl, matrix, tile);
+        const visible = [...this.wanted.values()];
+        const allReady = visible.length > 0 && visible.every(tile => this.tileCache.has(tile.key));
+
+        // Atomic handoff: do not mix loaded detail rectangles with national
+        // fallback rectangles. Until every visible z8 tile is ready, draw the
+        // original national Python-colored texture as one continuous surface.
+        if (!allReady) {
+          this.drawNationalFull(gl, matrix);
+          this.updateUi();
+          return;
         }
+
+        for (const tile of visible) this.drawTileCell(gl, matrix, tile);
         this.updateUi();
       },
 
