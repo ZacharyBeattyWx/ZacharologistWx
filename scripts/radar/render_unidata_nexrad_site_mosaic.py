@@ -315,8 +315,7 @@ def sample_mosaic(sweeps: list[RadarSweep], bounds, width: int) -> np.ndarray:
         chunk_north = float(np.max(lats))
         lon_grid, lat_grid = np.meshgrid(lon_axis, lats)
         chunk_dbz = np.full(lon_grid.shape, NODATA, dtype=np.float32)
-        best_distance = np.full(lon_grid.shape, np.inf, dtype=np.float64)
-
+    
         for sweep in sweeps:
             # Cheap geographic rejection before the expensive geodesic calculation.
             lat_margin = sweep.max_range_km / 111.0
@@ -347,11 +346,12 @@ def sample_mosaic(sweeps: list[RadarSweep], bounds, width: int) -> np.ndarray:
             sampled = sweep.data[ray_index, gate_index]
             valid = in_range & np.isfinite(sampled)
 
-            # Nearest valid site wins in overlap zones. This avoids max-dBZ seam
-            # inflation and normally favors the radar with the best spatial sampling.
-            use = valid & (distance_km < best_distance)
+            # Reflectivity composite: strongest valid return wins. This avoids
+            # erasing convection when the geographically nearest radar is blocked or
+            # attenuated while a neighboring WSR-88D has a clean view.
+            empty = chunk_dbz <= -9000
+            use = valid & (empty | (sampled > chunk_dbz))
             chunk_dbz[use] = sampled[use]
-            best_distance[use] = distance_km[use]
 
         output[row0:row1] = chunk_dbz
         print(f"Site mosaic rows {row1}/{height}", end="\r", flush=True)
@@ -398,7 +398,11 @@ def render(args):
     # removing the visible coarse-pixel layer underneath the fine site pixels.
     combined_dbz = np.array(national_dbz, copy=True)
     site_valid = np.isfinite(site_dbz) & (site_dbz > -9000)
-    combined_dbz[site_valid] = site_dbz[site_valid]
+    national_valid = np.isfinite(national_dbz) & (national_dbz > -9000)
+    only_site = site_valid & ~national_valid
+    both = site_valid & national_valid
+    combined_dbz[only_site] = site_dbz[only_site]
+    combined_dbz[both] = np.maximum(national_dbz[both], site_dbz[both])
 
     valid = np.isfinite(combined_dbz) & (combined_dbz > -9000)
     if not np.any(valid):
@@ -438,7 +442,7 @@ def render(args):
         "siteSelection": site_selection,
         "nationalStationPoolCount": len(station_table) if station_table else None,
         "candidateSites": list(sites),
-        "mosaicMethod": "national N0B fallback; nearest valid individual N0B site replaces fallback before colorization",
+        "mosaicMethod": "national N0B fallback; strongest valid individual N0B reflectivity is composited with national fallback before colorization",
         "nativeReplacementPixels": replaced,
         "nativeReplacementPercent": round(replaced_pct, 3),
         "colorOwner": "Zacharologist Level II palette renderer",

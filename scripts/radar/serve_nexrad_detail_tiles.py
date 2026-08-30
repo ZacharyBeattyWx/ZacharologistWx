@@ -7,7 +7,7 @@ The browser requests ordinary Web Mercator {z}/{x}/{y} tiles. For every requeste
   1. Unidata's national 1-km N0B composite is sampled as the fallback.
   2. Only individual Level III N0B radar sites whose coverage intersects that tile
      are loaded.
-  3. The nearest valid individual radar replaces the national value before coloring.
+  3. The strongest valid individual reflectivity is composited with the national value before coloring.
   4. The finished numeric dBZ tile is colorized once with the Zacharologist palette.
 
 Nothing is tied to a named region. Panning to a new part of the CONUS simply requests
@@ -131,7 +131,6 @@ def station_distance_to_tile_km(station, bounds):
 
 def sample_site_sweeps(sweeps, lon_grid, lat_grid):
     output = np.full(lon_grid.shape, NODATA, dtype=np.float32)
-    best_distance = np.full(lon_grid.shape, np.inf, dtype=np.float64)
 
     west = float(np.nanmin(lon_grid))
     east = float(np.nanmax(lon_grid))
@@ -174,9 +173,12 @@ def sample_site_sweeps(sweeps, lon_grid, lat_grid):
         gate_index = np.clip(gate_index, 0, gate_count - 1)
         sampled = sweep.data[ray_index, gate_index]
         valid = in_range & np.isfinite(sampled)
-        use = valid & (distance_km < best_distance)
+        # Reflectivity composite: retain the strongest valid return from any
+        # radar that sees this pixel. A nearby blocked/attenuated radar must never
+        # erase a storm that another WSR-88D sees clearly.
+        empty = output <= -9000
+        use = valid & (empty | (sampled > output))
         output[use] = sampled[use]
-        best_distance[use] = distance_km[use]
 
     return output
 
@@ -321,7 +323,11 @@ class RadarTileEngine:
         site_valid = np.isfinite(site_dbz) & (site_dbz > -9000)
 
         combined = np.array(national_dbz, copy=True)
-        combined[site_valid] = site_dbz[site_valid]
+        national_valid = np.isfinite(national_dbz) & (national_dbz > -9000)
+        only_site = site_valid & ~national_valid
+        both = site_valid & national_valid
+        combined[only_site] = site_dbz[only_site]
+        combined[both] = np.maximum(national_dbz[both], site_dbz[both])
         rgba = palette_renderer.colorize_dbz_grid_for_tiles(combined)
 
         buffer = BytesIO()
