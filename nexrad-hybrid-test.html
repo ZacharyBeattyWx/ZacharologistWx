@@ -17,8 +17,8 @@
   <div id="map"></div>
   <section class="panel">
     <div class="eyebrow">Experimental / Hybrid NEXRAD</div>
-    <h1>National → Native Site Mosaic</h1>
-    <p>Wide views use Unidata's national 1-km N0B mosaic. Zooming in crossfades to a regional mosaic built from individual N0B radar sites.</p>
+    <h1>National + Native Site Detail</h1>
+    <p>The national 1-km N0B mosaic always stays visible. Zooming in overlays progressively sharper detail from individual N0B radar sites.</p>
     <div class="status"><span id="statusDot" class="dot"></span><span id="statusText">Loading radar layers…</span></div>
     <div class="mode">
       <strong id="modeTitle">National 1-km mosaic</strong>
@@ -123,7 +123,7 @@
     function updateBlend(map) {
       const z = map.getZoom();
       const mix = Math.max(0, Math.min(1, (z - FADE_START) / (FADE_END - FADE_START)));
-      nationalLayer?.setOpacity(1 - (mix * .82));
+      nationalLayer?.setOpacity(1);
       siteLayer?.setOpacity(mix);
       zoomValue.textContent = z.toFixed(2);
       detailBar.style.width = `${Math.round(mix*100)}%`;
@@ -131,8 +131,8 @@
         modeTitle.textContent = "National 1-km mosaic";
         modeDetail.textContent = "Zoom in to engage individual radar-site detail.";
       } else if (mix < .85) {
-        modeTitle.textContent = "Crossfading radar resolution";
-        modeDetail.textContent = `${Math.round(mix*100)}% native-site layer`;
+        modeTitle.textContent = "Adding native NEXRAD detail";
+        modeDetail.textContent = `${Math.round(mix*100)}% native-site overlay`;
       } else {
         modeTitle.textContent = "Native NEXRAD site mosaic";
         modeDetail.textContent = "Individual N0B radars are supplying the zoomed radar detail.";

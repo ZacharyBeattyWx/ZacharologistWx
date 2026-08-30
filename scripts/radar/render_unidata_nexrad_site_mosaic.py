@@ -35,7 +35,7 @@ import render_mrms_mosaic as palette_renderer  # noqa: E402
 
 DEFAULT_OUTPUT = REPO_ROOT / "unidata-nexrad-site-mosaic-output"
 DEFAULT_BOUNDS = (-96.0, 34.5, -84.0, 43.5)  # west, south, east, north
-DEFAULT_WIDTH = 3072
+DEFAULT_WIDTH = 4608
 DEFAULT_SITES = ("EAX", "SGF", "LSX", "ILX", "PAH", "VWX", "IND", "LVX", "DVN")
 HOSTS = ("https://tds.scigw.unidata.ucar.edu", "https://thredds.ucar.edu")
 PRODUCT = "N0B"
