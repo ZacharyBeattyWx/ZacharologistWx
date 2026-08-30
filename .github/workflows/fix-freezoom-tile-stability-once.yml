@@ -1,0 +1,100 @@
+name: Fix free zoom tile stability once
+
+on:
+  push:
+    paths:
+      - .github/workflows/fix-freezoom-tile-stability-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stabilize free zoom renderer
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('scripts/radar/nexrad-freezoom-webgl.js')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace('const DETAIL_SWITCH_ZOOM = 6.15;', 'const DETAIL_SWITCH_ZOOM = 6.85;')
+          s = re.sub(
+              r'  function sourceTileZoom\(mapZoom\) \{.*?\n  \}',
+              '''  function sourceTileZoom(mapZoom) {
+    // Once native detail engages, keep one fixed z8 source grid (~250 m pixels
+    // across much of the CONUS). Never swap tile pyramids while the camera zooms.
+    return 8;
+  }''',
+              s,
+              count=1,
+              flags=re.S,
+          )
+          render_re = re.compile(
+              r'      render\(gl, matrix\) \{.*?\n      \},\n\n      onRemove\(mapRef, gl\) \{',
+              re.S,
+          )
+          replacement = '''      render(gl, matrix) {
+        gl.disable(gl.DEPTH_TEST);
+        gl.enable(gl.BLEND);
+        gl.blendEquation(gl.FUNC_ADD);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+        const zoom = this.map.getZoom();
+        if (!this.serverOnline || zoom < DETAIL_SWITCH_ZOOM) {
+          this.drawNationalFull(gl, matrix);
+          this.updateUi();
+          return;
+        }
+
+        // Do not rebuild the radar tile grid during a camera zoom. Existing z8
+        // textures simply scale with Mapbox's matrix, giving one continuous zoom.
+        if (!this.map.isZooming()) {
+          const current = this.visibleTiles();
+          const currentKey = current.map(t => t.key).join("|");
+          const wantedKey = [...this.wanted.keys()].join("|");
+          if (currentKey !== wantedKey) this.updateWantedTiles();
+        }
+
+        const visible = [...this.wanted.values()];
+        const allReady = visible.length > 0 && visible.every(tile => this.tileCache.has(tile.key));
+
+        // Atomic handoff: never mix loaded detail rectangles with cropped national
+        // fallback rectangles. Until the entire visible z8 set is ready, render the
+        // original national Python-colored texture as one continuous surface.
+        if (!allReady) {
+          this.drawNationalFull(gl, matrix);
+          this.updateUi();
+          return;
+        }
+
+        // Every tile is now Python-colored detail, so each cell is drawn once and
+        // there is no coarse/fine stacking or checkerboard loading state.
+        for (const tile of visible) this.drawTileCell(gl, matrix, tile);
+        this.updateUi();
+      },
+
+      onRemove(mapRef, gl) {'''
+          s2, n = render_re.subn(replacement, s, count=1)
+          if n != 1:
+              raise SystemExit(f'Could not replace renderer block; matches={n}')
+          p.write_text(s2, encoding='utf-8')
+
+          p = Path('scripts/radar/serve_nexrad_detail_tiles.py')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace('DEFAULT_MAX_SITES_PER_TILE = 12', 'DEFAULT_MAX_SITES_PER_TILE = 24')
+          p.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Commit stability fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/radar/nexrad-freezoom-webgl.js scripts/radar/serve_nexrad_detail_tiles.py
+          git diff --cached --quiet && exit 0
+          git commit -m "Stabilize free zoom NEXRAD tile handoff"
+          git push
