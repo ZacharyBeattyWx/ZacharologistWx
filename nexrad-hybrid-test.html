@@ -9,27 +9,27 @@
   <script src="mapbox-token.js"></script>
   <style>
     html,body,#map{height:100%;width:100%;margin:0;background:#08111d;font-family:Inter,system-ui,sans-serif}
-    .panel{position:absolute;z-index:5;top:14px;left:14px;width:min(360px,calc(100vw - 28px));box-sizing:border-box;padding:14px 16px;border:1px solid rgba(125,211,252,.22);border-radius:14px;background:rgba(3,10,20,.93);color:#e5eef8;box-shadow:0 14px 40px rgba(0,0,0,.35)}
-    .eyebrow{font-size:11px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:#38bdf8}.panel h1{font-size:18px;margin:5px 0 7px}.panel p{font-size:12px;line-height:1.45;color:#b7c5d6;margin:0 0 10px}.status{display:flex;gap:8px;align-items:center;font-size:12px;padding-top:10px;border-top:1px solid rgba(148,163,184,.18)}.dot{width:8px;height:8px;border-radius:50%;background:#f59e0b}.dot.live{background:#22c55e}.mode{margin-top:10px;padding:9px 10px;border-radius:10px;background:rgba(15,23,42,.82);font-size:12px}.mode strong{display:block;font-size:13px;color:#fff}.bar{height:5px;border-radius:999px;background:rgba(148,163,184,.22);overflow:hidden;margin-top:7px}.bar span{display:block;height:100%;width:0;background:linear-gradient(90deg,#38bdf8,#22c55e)}.meta{margin-top:10px;font-size:11px;line-height:1.55;color:#9fb0c4}.legend{position:absolute;z-index:5;top:14px;right:14px;width:240px;padding:10px 12px;border-radius:12px;background:rgba(3,10,20,.9);border:1px solid rgba(148,163,184,.18);color:white;font-size:10px;font-weight:800;letter-spacing:.08em}.legend-bar{height:8px;margin:7px 0 4px;border-radius:6px;background:linear-gradient(90deg,rgba(73,117,152,.65),#4ca58e,#12a118,#cbdE01,#e38103,#c02514,#ca99b4,#c44a8a,#8b20d2,#5614a2,#6fd2db,#4a849a,#730a01,#ebbeff,#fff)}.labels{display:flex;justify-content:space-between;color:#aab8c8;font-size:8px}.mapboxgl-ctrl-bottom-left{display:none}@media(max-width:720px){.legend{display:none}.panel{width:calc(100vw - 28px)}}
+    .panel{position:absolute;z-index:5;top:14px;left:14px;width:min(390px,calc(100vw - 28px));box-sizing:border-box;padding:14px 16px;border:1px solid rgba(125,211,252,.22);border-radius:14px;background:rgba(3,10,20,.93);color:#e5eef8;box-shadow:0 14px 40px rgba(0,0,0,.35)}
+    .eyebrow{font-size:11px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:#38bdf8}.panel h1{font-size:18px;margin:5px 0 7px}.panel p{font-size:12px;line-height:1.45;color:#b7c5d6;margin:0 0 10px}.status{display:flex;gap:8px;align-items:center;font-size:12px;padding-top:10px;border-top:1px solid rgba(148,163,184,.18)}.dot{width:8px;height:8px;border-radius:50%;background:#f59e0b}.dot.live{background:#22c55e}.mode{margin-top:10px;padding:9px 10px;border-radius:10px;background:rgba(15,23,42,.82);font-size:12px}.mode strong{display:block;font-size:13px;color:#fff}.bar{height:5px;border-radius:999px;background:rgba(148,163,184,.22);overflow:hidden;margin-top:7px}.bar span{display:block;height:100%;width:0;background:linear-gradient(90deg,#38bdf8,#22c55e)}.meta{margin-top:10px;font-size:11px;line-height:1.55;color:#9fb0c4}.legend{position:absolute;z-index:5;top:14px;right:14px;width:240px;padding:10px 12px;border-radius:12px;background:rgba(3,10,20,.9);border:1px solid rgba(148,163,184,.18);color:white;font-size:10px;font-weight:800;letter-spacing:.08em}.legend-bar{height:8px;margin:7px 0 4px;border-radius:6px;background:linear-gradient(90deg,rgba(73,117,152,.65),#4ca58e,#12a118,#cbde01,#e38103,#c02514,#ca99b4,#c44a8a,#8b20d2,#5614a2,#6fd2db,#4a849a,#730a01,#ebbeff,#fff)}.labels{display:flex;justify-content:space-between;color:#aab8c8;font-size:8px}.mapboxgl-ctrl-bottom-left{display:none}@media(max-width:720px){.legend{display:none}.panel{width:calc(100vw - 28px)}}
   </style>
 </head>
 <body>
   <div id="map"></div>
   <section class="panel">
-    <div class="eyebrow">Experimental / Hybrid NEXRAD</div>
-    <h1>National + Native Site Detail</h1>
-    <p>The national 1-km N0B mosaic always stays visible. Zooming in overlays progressively sharper detail from individual N0B radar sites.</p>
+    <div class="eyebrow">Experimental / Merged NEXRAD</div>
+    <h1>National + Native Detail</h1>
+    <p>The regional texture is now merged before coloring: national N0B fills gaps and native individual-radar N0B replaces it where higher-resolution data exists. No colored radar layers are stacked.</p>
     <div class="status"><span id="statusDot" class="dot"></span><span id="statusText">Loading radar layers…</span></div>
     <div class="mode">
       <strong id="modeTitle">National 1-km mosaic</strong>
-      <span id="modeDetail">Zoom in to engage individual radar-site detail.</span>
+      <span id="modeDetail">Zoom in to switch to the merged native-detail texture.</span>
       <div class="bar"><span id="detailBar"></span></div>
     </div>
     <div class="meta">
       Zoom: <span id="zoomValue">--</span><br>
       National: <span id="nationalInfo">waiting…</span><br>
-      Site mosaic: <span id="siteInfo">waiting…</span><br>
-      Sites: <span id="siteNames">waiting…</span>
+      Merged detail: <span id="siteInfo">waiting…</span><br>
+      Sites used: <span id="siteNames">waiting…</span>
     </div>
   </section>
   <div class="legend">REFLECTIVITY (DBZ)<div class="legend-bar"></div><div class="labels"><span>0</span><span>10</span><span>20</span><span>30</span><span>40</span><span>50</span><span>60</span><span>70+</span></div></div>
@@ -37,11 +37,10 @@
   <script>
     const MAPBOX_STYLE = "mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
     const NATIONAL_MANIFEST = "./unidata-nexrad-mosaic-output/manifest.json";
-    const SITE_MANIFEST = "./unidata-nexrad-site-mosaic-output/manifest.json";
+    const DETAIL_MANIFEST = "./unidata-nexrad-site-mosaic-output/manifest.json";
     const NATIONAL_LAYER_ID = "nexrad-national-colored";
-    const SITE_LAYER_ID = "nexrad-sites-colored";
-    const FADE_START = 5.1;
-    const FADE_END = 6.15;
+    const DETAIL_LAYER_ID = "nexrad-merged-detail-colored";
+    const DETAIL_ZOOM = 5.65;
 
     const statusText = document.getElementById("statusText");
     const statusDot = document.getElementById("statusDot");
@@ -58,7 +57,7 @@
     }
 
     async function fetchManifest(url) {
-      const response = await fetch(`${url}?t=${Date.now()}`, { cache: "no-store" });
+      const response = await fetch(`${url}?t=${Date.now()}`, { cache:"no-store" });
       if (!response.ok) throw new Error(`${url} HTTP ${response.status}`);
       const manifest = await response.json();
       manifest._url = new URL(url, window.location.href).href;
@@ -67,100 +66,111 @@
 
     async function loadBitmap(manifest) {
       const url = new URL(manifest.image, manifest._url).href;
-      const response = await fetch(`${url}?rev=${manifest.revision ?? Date.now()}`, { cache: "force-cache" });
+      const response = await fetch(`${url}?rev=${manifest.revision ?? Date.now()}`, { cache:"force-cache" });
       if (!response.ok) throw new Error(`Radar image HTTP ${response.status}`);
       const blob = await response.blob();
       if (typeof createImageBitmap === "function") return createImageBitmap(blob);
-      return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = reject;
-        img.src = URL.createObjectURL(blob);
+      return new Promise((resolve,reject)=>{
+        const img=new Image();
+        img.onload=()=>resolve(img);
+        img.onerror=reject;
+        img.src=URL.createObjectURL(blob);
       });
     }
 
-    function compileShader(gl, type, source) {
-      const shader = gl.createShader(type);
-      gl.shaderSource(shader, source);
+    function compileShader(gl,type,source) {
+      const shader=gl.createShader(type);
+      gl.shaderSource(shader,source);
       gl.compileShader(shader);
-      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader) || "shader compile failed");
+      if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader)||"shader compile failed");
       return shader;
     }
 
-    function createColoredLayer(id, image, bounds, opacity = 1) {
-      const [west, south, east, north] = bounds.map(Number);
+    function createColoredLayer(id,image,bounds,opacity=1,maskBounds=null) {
+      const [west,south,east,north]=bounds.map(Number);
       return {
-        id, type:"custom", renderingMode:"2d", opacity, visible:true,
-        onAdd(map, gl) {
-          this.map = map; this.gl = gl;
-          const vs = compileShader(gl, gl.VERTEX_SHADER, `precision highp float;uniform mat4 u_matrix;attribute vec2 a_pos;attribute vec2 a_uv;varying vec2 v_uv;void main(){gl_Position=u_matrix*vec4(a_pos,0.,1.);v_uv=a_uv;}`);
-          const fs = compileShader(gl, gl.FRAGMENT_SHADER, `precision mediump float;uniform sampler2D u_texture;uniform float u_opacity;varying vec2 v_uv;void main(){vec4 r=texture2D(u_texture,v_uv);gl_FragColor=vec4(r.rgb,r.a*u_opacity);}`);
-          this.program = gl.createProgram(); gl.attachShader(this.program,vs); gl.attachShader(this.program,fs); gl.linkProgram(this.program); gl.deleteShader(vs); gl.deleteShader(fs);
-          if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(this.program));
+        id,type:"custom",renderingMode:"2d",opacity,visible:true,maskActive:false,maskUv:[0,0,0,0],
+        onAdd(map,gl) {
+          this.map=map; this.gl=gl;
+          const vs=compileShader(gl,gl.VERTEX_SHADER,`precision highp float;uniform mat4 u_matrix;attribute vec2 a_pos;attribute vec2 a_uv;varying vec2 v_uv;void main(){gl_Position=u_matrix*vec4(a_pos,0.,1.);v_uv=a_uv;}`);
+          const fs=compileShader(gl,gl.FRAGMENT_SHADER,`precision mediump float;uniform sampler2D u_texture;uniform float u_opacity;uniform float u_mask_active;uniform vec4 u_mask_uv;varying vec2 v_uv;void main(){if(u_mask_active>.5&&v_uv.x>=u_mask_uv.x&&v_uv.x<=u_mask_uv.z&&v_uv.y>=u_mask_uv.y&&v_uv.y<=u_mask_uv.w)discard;vec4 r=texture2D(u_texture,v_uv);gl_FragColor=vec4(r.rgb,r.a*u_opacity);}`);
+          this.program=gl.createProgram(); gl.attachShader(this.program,vs); gl.attachShader(this.program,fs); gl.linkProgram(this.program); gl.deleteShader(vs); gl.deleteShader(fs);
+          if(!gl.getProgramParameter(this.program,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(this.program));
+
           const nw=mapboxgl.MercatorCoordinate.fromLngLat([west,north]), ne=mapboxgl.MercatorCoordinate.fromLngLat([east,north]), sw=mapboxgl.MercatorCoordinate.fromLngLat([west,south]), se=mapboxgl.MercatorCoordinate.fromLngLat([east,south]);
           const pos=new Float32Array([nw.x,nw.y,sw.x,sw.y,ne.x,ne.y,ne.x,ne.y,sw.x,sw.y,se.x,se.y]);
           const uv=new Float32Array([0,0,0,1,1,0,1,0,0,1,1,1]);
           this.pb=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,this.pb); gl.bufferData(gl.ARRAY_BUFFER,pos,gl.STATIC_DRAW);
           this.ub=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,this.ub); gl.bufferData(gl.ARRAY_BUFFER,uv,gl.STATIC_DRAW);
+
+          if(maskBounds){
+            const [mw,ms,me,mn]=maskBounds.map(Number);
+            const maskNW=mapboxgl.MercatorCoordinate.fromLngLat([mw,mn]);
+            const maskSE=mapboxgl.MercatorCoordinate.fromLngLat([me,ms]);
+            const u0=(maskNW.x-nw.x)/(se.x-nw.x), u1=(maskSE.x-nw.x)/(se.x-nw.x);
+            const v0=(maskNW.y-nw.y)/(se.y-nw.y), v1=(maskSE.y-nw.y)/(se.y-nw.y);
+            this.maskUv=[Math.max(0,Math.min(1,u0)),Math.max(0,Math.min(1,v0)),Math.max(0,Math.min(1,u1)),Math.max(0,Math.min(1,v1))];
+          }
+
           this.texture=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,this.texture); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,false); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,image);
         },
-        render(gl, matrix) {
-          if (!this.visible || this.opacity <= .001) return;
+        render(gl,matrix) {
+          if(!this.visible||this.opacity<=.001)return;
           gl.useProgram(this.program); gl.disable(gl.DEPTH_TEST); gl.enable(gl.BLEND); gl.blendEquation(gl.FUNC_ADD); gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
-          gl.uniformMatrix4fv(gl.getUniformLocation(this.program,"u_matrix"),false,matrix); gl.uniform1f(gl.getUniformLocation(this.program,"u_opacity"),this.opacity); gl.uniform1i(gl.getUniformLocation(this.program,"u_texture"),0);
+          gl.uniformMatrix4fv(gl.getUniformLocation(this.program,"u_matrix"),false,matrix);
+          gl.uniform1f(gl.getUniformLocation(this.program,"u_opacity"),this.opacity);
+          gl.uniform1f(gl.getUniformLocation(this.program,"u_mask_active"),this.maskActive?1:0);
+          gl.uniform4fv(gl.getUniformLocation(this.program,"u_mask_uv"),this.maskUv);
+          gl.uniform1i(gl.getUniformLocation(this.program,"u_texture"),0);
           const p=gl.getAttribLocation(this.program,"a_pos"); gl.bindBuffer(gl.ARRAY_BUFFER,this.pb); gl.enableVertexAttribArray(p); gl.vertexAttribPointer(p,2,gl.FLOAT,false,0,0);
           const u=gl.getAttribLocation(this.program,"a_uv"); gl.bindBuffer(gl.ARRAY_BUFFER,this.ub); gl.enableVertexAttribArray(u); gl.vertexAttribPointer(u,2,gl.FLOAT,false,0,0);
           gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,this.texture); gl.drawArrays(gl.TRIANGLES,0,6);
         },
-        setOpacity(value){ this.opacity=Math.max(0,Math.min(1,Number(value)||0)); this.map?.triggerRepaint(); },
-        onRemove(map,gl){ if(this.texture)gl.deleteTexture(this.texture); if(this.pb)gl.deleteBuffer(this.pb); if(this.ub)gl.deleteBuffer(this.ub); if(this.program)gl.deleteProgram(this.program); }
+        setOpacity(value){this.opacity=Math.max(0,Math.min(1,Number(value)||0));this.map?.triggerRepaint();},
+        setMaskActive(value){this.maskActive=Boolean(value);this.map?.triggerRepaint();},
+        onRemove(map,gl){if(this.texture)gl.deleteTexture(this.texture);if(this.pb)gl.deleteBuffer(this.pb);if(this.ub)gl.deleteBuffer(this.ub);if(this.program)gl.deleteProgram(this.program);}
       };
     }
 
-    let nationalLayer = null;
-    let siteLayer = null;
+    let nationalLayer=null;
+    let detailLayer=null;
 
-    function updateBlend(map) {
-      const z = map.getZoom();
-      const mix = Math.max(0, Math.min(1, (z - FADE_START) / (FADE_END - FADE_START)));
-      nationalLayer?.setOpacity(1);
-      siteLayer?.setOpacity(mix);
-      zoomValue.textContent = z.toFixed(2);
-      detailBar.style.width = `${Math.round(mix*100)}%`;
-      if (mix < .15) {
-        modeTitle.textContent = "National 1-km mosaic";
-        modeDetail.textContent = "Zoom in to engage individual radar-site detail.";
-      } else if (mix < .85) {
-        modeTitle.textContent = "Adding native NEXRAD detail";
-        modeDetail.textContent = `${Math.round(mix*100)}% native-site overlay`;
-      } else {
-        modeTitle.textContent = "Native NEXRAD site mosaic";
-        modeDetail.textContent = "Individual N0B radars are supplying the zoomed radar detail.";
+    function updateDetailMode(map) {
+      const z=map.getZoom();
+      const active=z>=DETAIL_ZOOM;
+      nationalLayer?.setMaskActive(active);
+      detailLayer?.setOpacity(active?1:0);
+      zoomValue.textContent=z.toFixed(2);
+      detailBar.style.width=active?"100%":"0%";
+      if(active){
+        modeTitle.textContent="Merged native NEXRAD detail";
+        modeDetail.textContent="One merged texture is active here; the coarse national texture is masked underneath it.";
+      }else{
+        modeTitle.textContent="National 1-km mosaic";
+        modeDetail.textContent=`Zoom to ${DETAIL_ZOOM.toFixed(2)}+ for merged native-site detail.`;
       }
     }
 
-    mapboxgl.accessToken = window.MAPBOX_PUBLIC_TOKEN;
-    const map = new mapboxgl.Map({container:"map",style:MAPBOX_STYLE,center:[-90.1,39.1],zoom:5.15,minZoom:2,maxZoom:12,projection:"mercator"});
+    mapboxgl.accessToken=window.MAPBOX_PUBLIC_TOKEN;
+    const map=new mapboxgl.Map({container:"map",style:MAPBOX_STYLE,center:[-90.1,39.1],zoom:5.15,minZoom:2,maxZoom:12,projection:"mercator"});
     map.addControl(new mapboxgl.NavigationControl(),"bottom-right");
-    map.on("load", async () => {
-      try {
+    map.on("load",async()=>{
+      try{
         map.setProjection("mercator");
-        const [nationalManifest, siteManifest] = await Promise.all([fetchManifest(NATIONAL_MANIFEST), fetchManifest(SITE_MANIFEST)]);
-        const [nationalBitmap, siteBitmap] = await Promise.all([loadBitmap(nationalManifest), loadBitmap(siteManifest)]);
-        nationalLayer = createColoredLayer(NATIONAL_LAYER_ID,nationalBitmap,nationalManifest.bounds,1);
-        siteLayer = createColoredLayer(SITE_LAYER_ID,siteBitmap,siteManifest.bounds,0);
-        const before = firstSymbolLayerId(map);
-        map.addLayer(nationalLayer,before); map.addLayer(siteLayer,before);
-        nationalInfo.textContent = `${nationalManifest.imageWidth}×${nationalManifest.imageHeight} ${nationalManifest.product || "N0B"}`;
-        siteInfo.textContent = `${siteManifest.imageWidth}×${siteManifest.imageHeight} from ${siteManifest.sites?.length || 0} radars`;
-        siteNames.textContent = (siteManifest.sites || []).map(item=>item.site).join(", ") || "none";
-        statusText.textContent = "Hybrid radar layers ready"; statusDot.classList.add("live");
-        updateBlend(map);
-      } catch (error) {
-        console.error(error); statusText.textContent = `Load failed: ${error.message}`;
-      }
+        const [nationalManifest,detailManifest]=await Promise.all([fetchManifest(NATIONAL_MANIFEST),fetchManifest(DETAIL_MANIFEST)]);
+        const [nationalBitmap,detailBitmap]=await Promise.all([loadBitmap(nationalManifest),loadBitmap(detailManifest)]);
+        nationalLayer=createColoredLayer(NATIONAL_LAYER_ID,nationalBitmap,nationalManifest.bounds,1,detailManifest.bounds);
+        detailLayer=createColoredLayer(DETAIL_LAYER_ID,detailBitmap,detailManifest.bounds,0);
+        const before=firstSymbolLayerId(map);
+        map.addLayer(nationalLayer,before); map.addLayer(detailLayer,before);
+        nationalInfo.textContent=`${nationalManifest.imageWidth}×${nationalManifest.imageHeight} ${nationalManifest.product||"N0B"}`;
+        siteInfo.textContent=`${detailManifest.imageWidth}×${detailManifest.imageHeight} • ${detailManifest.nativeReplacementPercent??"?"}% native replacement`;
+        siteNames.textContent=(detailManifest.sites||[]).map(item=>item.site).join(", ")||"none";
+        statusText.textContent="Single-texture detail handoff ready"; statusDot.classList.add("live");
+        updateDetailMode(map);
+      }catch(error){console.error(error);statusText.textContent=`Load failed: ${error.message}`;}
     });
-    map.on("zoom",()=>updateBlend(map));
+    map.on("zoom",()=>updateDetailMode(map));
   </script>
 </body>
 </html>
