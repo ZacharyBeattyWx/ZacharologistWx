@@ -28,7 +28,10 @@
         typeof startPlayback === "function" &&
         typeof stopPlayback === "function" &&
         typeof opacityInput !== "undefined" &&
-        map && typeof map.addLayer === "function"
+        map && typeof map.addLayer === "function" &&
+        typeof map.isStyleLoaded === "function" && map.isStyleLoaded() &&
+        radarLayer &&
+        Array.isArray(frames) && frames.length > 0
       );
     } catch (_) {
       return false;
