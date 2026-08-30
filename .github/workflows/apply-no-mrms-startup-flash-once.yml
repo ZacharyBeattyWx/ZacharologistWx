@@ -1,0 +1,26 @@
+name: Apply no MRMS startup flash once
+
+on:
+  push:
+    paths:
+      - scripts/radar/patch_no_mrms_startup_flash_once.py
+      - .github/workflows/apply-no-mrms-startup-flash-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply no-flash homepage radar patch
+        run: python3 scripts/radar/patch_no_mrms_startup_flash_once.py
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add mosaic-radar-canvas-test.html scripts/radar/nexrad-main-live-overlay.js index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "Prevent MRMS flash before live NEXRAD"
+          git push
