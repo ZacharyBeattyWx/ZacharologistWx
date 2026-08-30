@@ -25,10 +25,31 @@
 
   async function fetchManifest() {
     const response = await fetch(`${MANIFEST_URL}?t=${Date.now()}`, { cache: "no-store" });
+    if (response.status === 404) return null;
     if (!response.ok) throw new Error(`Static radar manifest HTTP ${response.status}`);
     const manifest = await response.json();
     manifest._url = new URL(MANIFEST_URL, window.location.href).href;
     return manifest;
+  }
+
+  async function waitForFirstManifest() {
+    while (true) {
+      try {
+        const manifest = await fetchManifest();
+        if (manifest) return manifest;
+        statusDot.classList.remove("bad", "live");
+        statusText.textContent = "Building first pre-rendered radar snapshot…";
+        modeTitle.textContent = "Static radar build in progress";
+        modeDetail.textContent = "Waiting for the first complete pyramid; this page will load it automatically.";
+        detailInfo.textContent = "pre-rendering…";
+        nationalInfo.textContent = "waiting for first revision";
+      } catch (error) {
+        console.warn("Waiting for static radar manifest", error);
+        statusDot.classList.remove("bad", "live");
+        statusText.textContent = "Waiting for static radar builder…";
+      }
+      await new Promise(resolve => setTimeout(resolve, 5000));
+    }
   }
 
   async function bitmapFromUrl(url) {
@@ -389,7 +410,8 @@
     map.on("load", async () => {
       try {
         map.setProjection("mercator");
-        const manifest = await fetchManifest();
+        const manifest = await waitForFirstManifest();
+        statusDot.classList.remove("bad");
         statusDot.classList.add("live");
         statusText.textContent = "Static Python-colored radar pyramid ready";
         radarLayer = createStaticRadarLayer(map, manifest);
@@ -403,7 +425,7 @@
         setInterval(async () => {
           try {
             const next = await fetchManifest();
-            radarLayer.setManifest(next);
+            if (next) radarLayer.setManifest(next);
           } catch (error) {
             console.warn("Static radar manifest refresh failed", error);
           }
