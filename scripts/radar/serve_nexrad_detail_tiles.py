@@ -54,7 +54,7 @@ DEFAULT_REFRESH_SECONDS = 120
 DEFAULT_MIN_ZOOM = 5
 DEFAULT_MAX_ZOOM = 10
 DEFAULT_CACHE_TILES = 160
-DEFAULT_MAX_SITES_PER_TILE = 12
+DEFAULT_MAX_SITES_PER_TILE = 10
 
 
 def _utc_iso(value):
@@ -415,6 +415,7 @@ def make_handler(engine, min_zoom, max_zoom):
                         raise ValueError("tile outside supported range")
                     payload, meta = engine.render_tile(z, x, y)
                 except ValueError as exc:
+                    print(f"404 TILE {path}: {exc}")
                     self.send_error(404, str(exc))
                     return
                 except Exception as exc:

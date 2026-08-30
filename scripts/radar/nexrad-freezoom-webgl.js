@@ -8,8 +8,8 @@
   const PAGE_SESSION = Date.now();
   const IS_LOCAL = location.hostname === "localhost" || location.hostname === "127.0.0.1";
   const DETAIL_SERVER = IS_LOCAL ? `http://${location.hostname}:8010` : (window.ZWX_NEXRAD_TILE_SERVER || "");
-  const MAX_GPU_TILES = 96;
-  const MAX_FETCHES = 6;
+  const MAX_GPU_TILES = 160;
+  const MAX_FETCHES = 8;
 
   const statusText = document.getElementById("statusText");
   const statusDot = document.getElementById("statusDot");
@@ -39,7 +39,7 @@
 
   async function bitmapFromUrl(url) {
     const response = await fetch(url, { cache: "force-cache" });
-    if (!response.ok) throw new Error(`Radar image HTTP ${response.status}`);
+    if (!response.ok) throw new Error(`Radar image HTTP ${response.status}: ${url}`);
     const blob = await response.blob();
     if (typeof createImageBitmap === "function") {
       try {
@@ -223,10 +223,10 @@
         const north = Math.min(85.0, bounds.getNorth());
         const south = Math.max(-85.0, bounds.getSouth());
 
-        let x0 = lngToTileX(west, z) - 1;
-        let x1 = lngToTileX(east, z) + 1;
-        let y0 = latToTileY(north, z) - 1;
-        let y1 = latToTileY(south, z) + 1;
+        let x0 = lngToTileX(west, z);
+        let x1 = lngToTileX(east, z);
+        let y0 = latToTileY(north, z);
+        let y1 = latToTileY(south, z);
         x0 = Math.max(0, x0); x1 = Math.min(n - 1, x1);
         y0 = Math.max(0, y0); y1 = Math.min(n - 1, y1);
 
@@ -246,7 +246,26 @@
       },
 
       updateWantedTiles() {
-        const tiles = this.visibleTiles();
+        if (!this.serverOnline || this.map.getZoom() < DETAIL_SWITCH_ZOOM) {
+          this.wanted = new Map();
+          this.updateUi();
+          return;
+        }
+
+        const desiredZoom = sourceTileZoom(this.map.getZoom());
+        let loadZoom;
+        if (this.displayedZoom === null) {
+          // Always establish the quick base detail layer first. If the user zooms
+          // rapidly to z8/z9, do not abandon z7 and leave the 1-km national image
+          // enlarged on screen while dozens of finer tiles render.
+          loadZoom = 7;
+        } else if (desiredZoom > this.displayedZoom) {
+          loadZoom = Math.min(desiredZoom, this.displayedZoom + 1);
+        } else {
+          loadZoom = desiredZoom;
+        }
+
+        const tiles = this.visibleTilesAt(loadZoom);
         this.wanted = new Map(tiles.map(tile => [tile.key, tile]));
         this.sequence += 1;
         const seq = this.sequence;
@@ -407,7 +426,8 @@
           modeDetail.textContent = "Zoom in normally — no region selection required.";
         } else if (loaded < total) {
           modeTitle.textContent = this.displayedZoom !== null ? "Refining radar detail…" : "Loading Python-colored radar detail…";
-          modeDetail.textContent = `${loaded}/${total} z${sourceTileZoom(z)} tiles ready${this.displayedZoom !== null ? ` • showing z${this.displayedZoom} meanwhile` : ""}`;
+          const loadingZoom = tiles[0]?.z ?? sourceTileZoom(z);
+          modeDetail.textContent = `${loaded}/${total} z${loadingZoom} tiles ready${this.displayedZoom !== null ? ` • showing z${this.displayedZoom} meanwhile` : ""}`;
         } else {
           modeTitle.textContent = "Free-zoom native NEXRAD detail";
           modeDetail.textContent = `Python-colored z${this.displayedZoom ?? sourceTileZoom(z)} detail • Mapbox only positions the texture.`;
@@ -428,12 +448,10 @@
         }
 
         // Freeze the radar source set while the camera is actively zooming.
-        // The already-loaded texture simply scales with Mapbox's geographic matrix.
-        if (!this.map.isZooming()) {
-          const current = this.visibleTiles();
-          const currentKey = current.map(t => t.key).join("|");
-          const wantedKey = [...this.wanted.keys()].join("|");
-          if (currentKey !== wantedKey) this.updateWantedTiles();
+        // moveend/zoomend choose the next requested LOD; the current complete
+        // texture set simply scales with Mapbox's geographic matrix meanwhile.
+        if (!this.map.isZooming() && this.wanted.size === 0) {
+          this.updateWantedTiles();
         }
 
         const desired = [...this.wanted.values()];
@@ -443,8 +461,18 @@
         if (desiredReady) {
           // Atomic promotion: the new LOD becomes visible only when the entire
           // viewport is ready. No checkerboard of parent/child/fallback tiles.
+          const promotedZoom = desired[0].z;
+          const promotedKey = desired.map(tile => tile.key).join("|");
+          const displayedKey = [...this.displayed.keys()].join("|");
+          const changed = this.displayedZoom !== promotedZoom || promotedKey !== displayedKey;
           this.displayed = new Map(desired.map(tile => [tile.key, tile]));
-          this.displayedZoom = desired[0].z;
+          this.displayedZoom = promotedZoom;
+
+          // If the camera already warrants a finer LOD, start it only after this
+          // complete level is safely on screen (national -> z7 -> z8 -> z9).
+          if (changed && sourceTileZoom(zoom) > promotedZoom) {
+            setTimeout(() => this.updateWantedTiles(), 0);
+          }
         }
 
         let drawTiles = null;
