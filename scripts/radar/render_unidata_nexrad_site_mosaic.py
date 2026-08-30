@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-"""Render a high-resolution hybrid NEXRAD mosaic for the Midwest test region.
+"""Render a high-resolution hybrid NEXRAD mosaic for any requested CONUS region.
 
 The regional output is ONE numeric dBZ grid:
   1. Unidata national 1-km N0B fills every regional pixel as the fallback.
   2. Individual Level III N0B sites replace those values wherever native site data exists.
   3. The finished dBZ grid is colorized once with the Zacharologist Level-II palette.
 
-This avoids stacking a coarse colored national image beneath a partially transparent
-high-resolution colored image, which caused the visible big-pixel/small-pixel ghosting.
+By default the renderer discovers the national NEXRAD Level III station table from
+Unidata and automatically selects every radar whose coverage can intersect the requested
+bounds. That makes the same renderer usable anywhere in the CONUS instead of being tied
+to a hard-coded nine-site Midwest list.
 """
 
 from __future__ import annotations
@@ -17,6 +19,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from io import BytesIO
 import json
+import math
 from pathlib import Path
 import re
 import sys
@@ -39,12 +42,25 @@ from unidata_gini_decode import decode_gini  # noqa: E402
 DEFAULT_OUTPUT = REPO_ROOT / "unidata-nexrad-site-mosaic-output"
 DEFAULT_BOUNDS = (-96.0, 34.5, -84.0, 43.5)  # west, south, east, north
 DEFAULT_WIDTH = 4608
-DEFAULT_SITES = ("EAX", "SGF", "LSX", "ILX", "PAH", "VWX", "IND", "LVX", "DVN")
+DEFAULT_SITES = "auto"
+AUTO_SITE_RANGE_KM = 500.0
 HOSTS = ("https://tds.scigw.unidata.ucar.edu", "https://thredds.ucar.edu")
+RADAR_STATION_URLS = tuple(
+    f"{host}/thredds/radarServer/nexrad/level3/IDD/stations.xml" for host in HOSTS
+)
 PRODUCT = "N0B"
 NODATA = np.float32(-9999.0)
 STAMP_RE = re.compile(r"(?P<date>\d{8})[_-](?P<time>\d{4,6})")
 GEOD = Geod(ellps="WGS84")
+
+
+@dataclass(frozen=True)
+class RadarStation:
+    site: str
+    name: str
+    lat: float
+    lon: float
+    elevation_m: float
 
 
 @dataclass
@@ -70,6 +86,91 @@ def dataset_timestamp(name: str) -> datetime:
         return datetime.strptime(match.group("date") + clock, "%Y%m%d%H%M%S").replace(tzinfo=timezone.utc)
     except ValueError:
         return datetime.min.replace(tzinfo=timezone.utc)
+
+
+def _child_text(elem, name: str, default=""):
+    for child in elem:
+        if child.tag.rsplit("}", 1)[-1].lower() == name.lower():
+            return (child.text or default).strip()
+    return default
+
+
+def discover_radar_stations(session: requests.Session) -> dict[str, RadarStation]:
+    """Load Unidata's national NEXRAD Level III station table."""
+    errors = []
+    for url in RADAR_STATION_URLS:
+        try:
+            response = session.get(url, timeout=20)
+            if response.status_code != 200:
+                errors.append(f"{response.status_code} {url}")
+                continue
+            root = ET.fromstring(response.content)
+            stations: dict[str, RadarStation] = {}
+            for elem in root.iter():
+                if elem.tag.rsplit("}", 1)[-1].lower() != "station":
+                    continue
+                raw_id = (elem.attrib.get("id") or "").strip().upper()
+                if not raw_id:
+                    continue
+                # Unidata Level III directories use the three-character radar ID
+                # (EAX, RAX, TLX, etc.), while some station tables may expose Kxxx.
+                site = raw_id[-3:]
+                try:
+                    lat = float(_child_text(elem, "latitude"))
+                    lon = float(_child_text(elem, "longitude"))
+                    elevation = float(_child_text(elem, "elevation", "0") or 0)
+                except (TypeError, ValueError):
+                    continue
+                stations[site] = RadarStation(
+                    site=site,
+                    name=_child_text(elem, "name", site),
+                    lat=lat,
+                    lon=lon,
+                    elevation_m=elevation,
+                )
+            if stations:
+                print(f"Discovered {len(stations)} NEXRAD Level III stations from Unidata")
+                return stations
+            errors.append(f"No stations in {url}")
+        except Exception as exc:
+            errors.append(f"{url}: {exc}")
+
+    raise RuntimeError("Could not load Unidata NEXRAD station table. " + "; ".join(errors[-4:]))
+
+
+def station_intersects_bounds(station: RadarStation, bounds, range_km=AUTO_SITE_RANGE_KM) -> bool:
+    west, south, east, north = map(float, bounds)
+    nearest_lon = min(max(station.lon, west), east)
+    nearest_lat = min(max(station.lat, south), north)
+    _, _, distance_m = GEOD.inv(station.lon, station.lat, nearest_lon, nearest_lat)
+    return math.isfinite(distance_m) and distance_m <= float(range_km) * 1000.0
+
+
+def resolve_requested_sites(session: requests.Session, bounds, sites_arg: str):
+    requested = str(sites_arg or "auto").strip()
+    if requested.lower() != "auto":
+        sites = tuple(site.strip().upper().lstrip("K") for site in requested.split(",") if site.strip())
+        return sites, {}, "manual"
+
+    stations = discover_radar_stations(session)
+    selected = [station for station in stations.values() if station_intersects_bounds(station, bounds)]
+    west, south, east, north = map(float, bounds)
+    center_lon = (west + east) * 0.5
+    center_lat = (south + north) * 0.5
+
+    def center_distance(station: RadarStation):
+        _, _, distance_m = GEOD.inv(station.lon, station.lat, center_lon, center_lat)
+        return distance_m
+
+    selected.sort(key=center_distance)
+    sites = tuple(station.site for station in selected)
+    print(
+        f"Auto site selection: {len(sites)} of {len(stations)} national NEXRAD stations "
+        f"can intersect bounds {tuple(round(v, 2) for v in bounds)}"
+    )
+    if sites:
+        print("Selected sites: " + ", ".join(sites))
+    return sites, stations, "auto"
 
 
 def catalog_urls(site: str, day: datetime):
@@ -210,11 +311,22 @@ def sample_mosaic(sweeps: list[RadarSweep], bounds, width: int) -> np.ndarray:
     for row0 in range(0, height, chunk_rows):
         row1 = min(height, row0 + chunk_rows)
         lats = lat_axis[row0:row1]
+        chunk_south = float(np.min(lats))
+        chunk_north = float(np.max(lats))
         lon_grid, lat_grid = np.meshgrid(lon_axis, lats)
         chunk_dbz = np.full(lon_grid.shape, NODATA, dtype=np.float32)
         best_distance = np.full(lon_grid.shape, np.inf, dtype=np.float64)
 
         for sweep in sweeps:
+            # Cheap geographic rejection before the expensive geodesic calculation.
+            lat_margin = sweep.max_range_km / 111.0
+            lon_scale = max(0.2, math.cos(math.radians(sweep.lat)))
+            lon_margin = sweep.max_range_km / (111.0 * lon_scale)
+            if sweep.lat < chunk_south - lat_margin or sweep.lat > chunk_north + lat_margin:
+                continue
+            if sweep.lon < west - lon_margin or sweep.lon > east + lon_margin:
+                continue
+
             radar_lon = np.full(lon_grid.shape, sweep.lon, dtype=np.float64)
             radar_lat = np.full(lat_grid.shape, sweep.lat, dtype=np.float64)
             forward_az, _, distance_m = GEOD.inv(radar_lon, radar_lat, lon_grid, lat_grid)
@@ -251,17 +363,20 @@ def sample_mosaic(sweeps: list[RadarSweep], bounds, width: int) -> np.ndarray:
 def render(args):
     output_dir = Path(args.output).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
-    sites = tuple(site.strip().upper().lstrip("K") for site in args.sites.split(",") if site.strip())
     bounds = tuple(map(float, args.bounds))
 
     session = requests.Session()
     session.headers.update({"User-Agent": "ZacharologistWx/NEXRAD-hybrid-detail-test"})
 
+    sites, station_table, site_selection = resolve_requested_sites(session, bounds, args.sites)
+    if len(sites) < 2:
+        raise RuntimeError(f"Need at least two candidate radar sites; selected {len(sites)}")
+
     national_dbz, national_source, national_time = load_national_fallback(session, bounds, args.width)
 
     sweeps = []
     failures = []
-    print(f"Loading {PRODUCT} from {len(sites)} radar sites...")
+    print(f"Loading {PRODUCT} from {len(sites)} candidate radar sites...")
     for site in sites:
         try:
             sweeps.append(load_site_sweep(session, site))
@@ -272,14 +387,15 @@ def render(args):
     if len(sweeps) < 2:
         raise RuntimeError(f"Need at least two working radar sites; got {len(sweeps)}")
 
-    print(f"Building native-detail site grid from {len(sweeps)} sites...")
+    print(f"Building native-detail site grid from {len(sweeps)} working sites...")
     site_dbz = sample_mosaic(sweeps, bounds, args.width)
     if site_dbz.shape != national_dbz.shape:
         raise RuntimeError(
             f"National/site grid mismatch: national={national_dbz.shape}, site={site_dbz.shape}"
         )
 
-    # This is the key: merge numeric reflectivity FIRST, then colorize ONCE.
+    # Merge numeric reflectivity FIRST, then colorize ONCE. This is the key to
+    # removing the visible coarse-pixel layer underneath the fine site pixels.
     combined_dbz = np.array(national_dbz, copy=True)
     site_valid = np.isfinite(site_dbz) & (site_dbz > -9000)
     combined_dbz[site_valid] = site_dbz[site_valid]
@@ -319,6 +435,9 @@ def render(args):
         "imageWidth": int(combined_dbz.shape[1]),
         "imageHeight": int(combined_dbz.shape[0]),
         "bounds": list(bounds),
+        "siteSelection": site_selection,
+        "nationalStationPoolCount": len(station_table) if station_table else None,
+        "candidateSites": list(sites),
         "mosaicMethod": "national N0B fallback; nearest valid individual N0B site replaces fallback before colorization",
         "nativeReplacementPixels": replaced,
         "nativeReplacementPercent": round(replaced_pct, 3),
@@ -326,6 +445,7 @@ def render(args):
         "sites": [
             {
                 "site": sweep.site,
+                "name": station_table.get(sweep.site).name if sweep.site in station_table else sweep.site,
                 "lat": sweep.lat,
                 "lon": sweep.lon,
                 "valid_time": sweep.valid_time.isoformat(),
@@ -347,7 +467,11 @@ def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", default=str(DEFAULT_OUTPUT))
     parser.add_argument("--width", type=int, default=DEFAULT_WIDTH)
-    parser.add_argument("--sites", default=",".join(DEFAULT_SITES))
+    parser.add_argument(
+        "--sites",
+        default=DEFAULT_SITES,
+        help="Comma-separated Level III site IDs, or 'auto' to use the national Unidata station table.",
+    )
     parser.add_argument(
         "--bounds",
         type=float,
