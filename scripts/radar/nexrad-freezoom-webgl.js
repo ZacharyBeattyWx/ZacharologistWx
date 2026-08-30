@@ -4,7 +4,7 @@
   const MAPBOX_STYLE = "mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
   const NATIONAL_MANIFEST = "./unidata-nexrad-mosaic-output/manifest.json";
   const LAYER_ID = "nexrad-freezoom-python-colored";
-  const DETAIL_SWITCH_ZOOM = 6.85;
+  const DETAIL_SWITCH_ZOOM = 6.25;
   const PAGE_SESSION = Date.now();
   const IS_LOCAL = location.hostname === "localhost" || location.hostname === "127.0.0.1";
   const DETAIL_SERVER = IS_LOCAL ? `http://${location.hostname}:8010` : (window.ZWX_NEXRAD_TILE_SERVER || "");
@@ -133,9 +133,12 @@
   }
 
   function sourceTileZoom(mapZoom) {
-    // Keep one fixed z8 source grid (~250 m pixels across much of the CONUS).
-    // Never swap tile pyramids while the camera zooms.
-    return 8;
+    // Progressive LOD: get useful detail quickly, then refine only after the
+    // next complete viewport is ready. The currently displayed LOD stays put
+    // during the camera zoom, so there is no tile-pyramid rebuild under the user.
+    if (mapZoom >= 8.75) return 9;  // ~120 m rendered pixels
+    if (mapZoom >= 7.45) return 8;  // ~240 m rendered pixels
+    return 7;                       // ~480 m rendered pixels
   }
 
   function createPythonColoredFreeZoomLayer(map, nationalBitmap, nationalBounds) {
@@ -149,6 +152,8 @@
       tileCache: new Map(),
       pending: new Set(),
       wanted: new Map(),
+      displayed: new Map(),
+      displayedZoom: null,
       fetchQueue: [],
       activeFetches: 0,
       sequence: 0,
@@ -209,9 +214,8 @@
         return `${z}/${x}/${y}`;
       },
 
-      visibleTiles() {
+      visibleTilesAt(z) {
         if (!this.serverOnline || this.map.getZoom() < DETAIL_SWITCH_ZOOM) return [];
-        const z = sourceTileZoom(this.map.getZoom());
         const n = 2 ** z;
         const bounds = this.map.getBounds();
         const west = Math.max(-179.999, bounds.getWest());
@@ -235,6 +239,10 @@
           }
         }
         return tiles;
+      },
+
+      visibleTiles() {
+        return this.visibleTilesAt(sourceTileZoom(this.map.getZoom()));
       },
 
       updateWantedTiles() {
@@ -302,7 +310,7 @@
       evictOldTiles() {
         if (!this.gl || this.tileCache.size <= MAX_GPU_TILES) return;
         const removable = [...this.tileCache.entries()]
-          .filter(([key]) => !this.wanted.has(key))
+          .filter(([key]) => !this.wanted.has(key) && !this.displayed.has(key))
           .sort((a, b) => a[1].lastUsed - b[1].lastUsed);
         while (this.tileCache.size > MAX_GPU_TILES && removable.length) {
           const [key, value] = removable.shift();
@@ -398,11 +406,11 @@
           modeTitle.textContent = "National 1-km mosaic";
           modeDetail.textContent = "Zoom in normally — no region selection required.";
         } else if (loaded < total) {
-          modeTitle.textContent = "Loading Python-colored radar detail…";
-          modeDetail.textContent = `${loaded}/${total} visible detail tiles ready`;
+          modeTitle.textContent = this.displayedZoom !== null ? "Refining radar detail…" : "Loading Python-colored radar detail…";
+          modeDetail.textContent = `${loaded}/${total} z${sourceTileZoom(z)} tiles ready${this.displayedZoom !== null ? ` • showing z${this.displayedZoom} meanwhile` : ""}`;
         } else {
           modeTitle.textContent = "Free-zoom native NEXRAD detail";
-          modeDetail.textContent = "Python owns every displayed radar color; Mapbox only positions the texture.";
+          modeDetail.textContent = `Python-colored z${this.displayedZoom ?? sourceTileZoom(z)} detail • Mapbox only positions the texture.`;
         }
       },
 
@@ -419,8 +427,8 @@
           return;
         }
 
-        // Keep the current z8 radar texture set frozen while the camera zooms.
-        // The Mapbox matrix scales those same textures continuously.
+        // Freeze the radar source set while the camera is actively zooming.
+        // The already-loaded texture simply scales with Mapbox's geographic matrix.
         if (!this.map.isZooming()) {
           const current = this.visibleTiles();
           const currentKey = current.map(t => t.key).join("|");
@@ -428,19 +436,39 @@
           if (currentKey !== wantedKey) this.updateWantedTiles();
         }
 
-        const visible = [...this.wanted.values()];
-        const allReady = visible.length > 0 && visible.every(tile => this.tileCache.has(tile.key));
+        const desired = [...this.wanted.values()];
+        const desiredReady = desired.length > 0 &&
+          desired.every(tile => this.tileCache.has(tile.key));
 
-        // Atomic handoff: do not mix loaded detail rectangles with national
-        // fallback rectangles. Until every visible z8 tile is ready, draw the
-        // original national Python-colored texture as one continuous surface.
-        if (!allReady) {
+        if (desiredReady) {
+          // Atomic promotion: the new LOD becomes visible only when the entire
+          // viewport is ready. No checkerboard of parent/child/fallback tiles.
+          this.displayed = new Map(desired.map(tile => [tile.key, tile]));
+          this.displayedZoom = desired[0].z;
+        }
+
+        let drawTiles = null;
+        if (desiredReady) {
+          drawTiles = desired;
+        } else if (this.displayedZoom !== null) {
+          // Keep the previous complete LOD on screen while the finer LOD loads.
+          // This is the key to retaining sharpness during z7 -> z8 -> z9 refinement.
+          const fallback = this.visibleTilesAt(this.displayedZoom);
+          const fallbackReady = fallback.length > 0 &&
+            fallback.every(tile => this.tileCache.has(tile.key));
+          if (fallbackReady) drawTiles = fallback;
+        }
+
+        if (!drawTiles) {
+          // A pan can expose uncached territory. Until one complete detail set is
+          // ready for the new viewport, use one continuous national surface rather
+          // than mixing coarse and fine rectangles.
           this.drawNationalFull(gl, matrix);
           this.updateUi();
           return;
         }
 
-        for (const tile of visible) this.drawTileCell(gl, matrix, tile);
+        for (const tile of drawTiles) this.drawTileCell(gl, matrix, tile);
         this.updateUi();
       },
 
