@@ -3,36 +3,36 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ZacharologistWx Free-Zoom NEXRAD Test</title>
+  <title>ZacharologistWx Static NEXRAD Test</title>
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
   <script src="mapbox-token.js"></script>
   <style>
     html,body,#map{height:100%;width:100%;margin:0;background:#08111d;font-family:Inter,system-ui,sans-serif}
-    .panel{position:absolute;z-index:5;top:14px;left:14px;width:min(380px,calc(100vw - 28px));box-sizing:border-box;padding:14px 16px;border:1px solid rgba(125,211,252,.22);border-radius:14px;background:rgba(3,10,20,.93);color:#e5eef8;box-shadow:0 14px 40px rgba(0,0,0,.35)}
+    .panel{position:absolute;z-index:5;top:14px;left:14px;width:min(390px,calc(100vw - 28px));box-sizing:border-box;padding:14px 16px;border:1px solid rgba(125,211,252,.22);border-radius:14px;background:rgba(3,10,20,.93);color:#e5eef8;box-shadow:0 14px 40px rgba(0,0,0,.35)}
     .eyebrow{font-size:11px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:#38bdf8}.panel h1{font-size:18px;margin:5px 0 7px}.panel p{font-size:12px;line-height:1.45;color:#b7c5d6;margin:0 0 10px}.status{display:flex;gap:8px;align-items:center;font-size:12px;padding-top:10px;border-top:1px solid rgba(148,163,184,.18)}.dot{width:8px;height:8px;border-radius:50%;background:#f59e0b}.dot.live{background:#22c55e}.dot.bad{background:#ef4444}.mode{margin-top:10px;padding:9px 10px;border-radius:10px;background:rgba(15,23,42,.82);font-size:12px}.mode strong{display:block;font-size:13px;color:#fff}.bar{height:5px;border-radius:999px;background:rgba(148,163,184,.22);overflow:hidden;margin-top:7px}.bar span{display:block;height:100%;width:0;background:linear-gradient(90deg,#38bdf8,#22c55e);transition:width .18s ease}.meta{margin-top:10px;font-size:11px;line-height:1.55;color:#9fb0c4;overflow-wrap:anywhere}.legend{position:absolute;z-index:5;top:14px;right:14px;width:240px;padding:10px 12px;border-radius:12px;background:rgba(3,10,20,.9);border:1px solid rgba(148,163,184,.18);color:white;font-size:10px;font-weight:800;letter-spacing:.08em}.legend-bar{height:8px;margin:7px 0 4px;border-radius:6px;background:linear-gradient(90deg,rgba(73,117,152,.65),#4ca58e,#12a118,#cbde01,#e38103,#c02514,#ca99b4,#c44a8a,#8b20d2,#5614a2,#6fd2db,#4a849a,#730a01,#ebbeff,#fff)}.labels{display:flex;justify-content:space-between;color:#aab8c8;font-size:8px}.mapboxgl-ctrl-bottom-left{display:none}@media(max-width:720px){.legend{display:none}.panel{width:calc(100vw - 28px)}}
   </style>
 </head>
 <body>
   <div id="map"></div>
   <section class="panel">
-    <div class="eyebrow">Experimental / Python-Colored Free-Zoom</div>
-    <h1>National Radar — Continuous Detail</h1>
-    <p>Python owns all radar colors. Mapbox supplies only the map camera and geographic matrix. Pan and zoom anywhere; high-resolution NEXRAD tiles load for the exact area on screen.</p>
-    <div class="status"><span id="statusDot" class="dot"></span><span id="statusText">Checking Python detail renderer…</span></div>
+    <div class="eyebrow">Experimental / Static Python-Colored NEXRAD</div>
+    <h1>National Radar — Pre-Rendered Detail</h1>
+    <p>Python builds one complete high-resolution radar pyramid when a new scan arrives. Pan and zoom only read static WebPs; they never trigger radar rendering.</p>
+    <div class="status"><span id="statusDot" class="dot"></span><span id="statusText">Looking for static radar snapshot…</span></div>
     <div class="mode">
-      <strong id="modeTitle">National 1-km mosaic</strong>
-      <span id="modeDetail">Zoom in for native radar-site detail.</span>
+      <strong id="modeTitle">Loading static radar snapshot…</strong>
+      <span id="modeDetail">Waiting for the current pre-rendered revision.</span>
       <div class="bar"><span id="detailBar"></span></div>
     </div>
     <div class="meta">
       Zoom: <span id="zoomValue">--</span><br>
       Detail source: <span id="detailInfo">checking…</span><br>
-      National: <span id="nationalInfo">waiting…</span><br>
+      Revision: <span id="nationalInfo">waiting…</span><br>
       Tile cache: <span id="tileInfo">--</span>
     </div>
   </section>
   <div class="legend">REFLECTIVITY (DBZ)<div class="legend-bar"></div><div class="labels"><span>0</span><span>10</span><span>20</span><span>30</span><span>40</span><span>50</span><span>60</span><span>70+</span></div></div>
-  <script src="scripts/radar/nexrad-freezoom-webgl.js?v=20260830a"></script>
+  <script src="scripts/radar/nexrad-static-pyramid-webgl.js?v=20260830a"></script>
 </body>
 </html>
