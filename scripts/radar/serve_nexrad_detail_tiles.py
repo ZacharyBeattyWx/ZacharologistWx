@@ -262,21 +262,33 @@ class RadarTileEngine:
             self._sweep_loaded_at[site] = time.time()
             return sweep
 
-    def _candidate_sites(self, bounds):
+    def _candidate_sites(self, bounds, z):
         candidates = []
         for station in self.station_table.values():
             distance_km = station_distance_to_tile_km(station, bounds)
             if distance_km <= site_renderer.AUTO_SITE_RANGE_KM:
                 candidates.append((distance_km, station.site))
         candidates.sort(key=lambda item: item[0])
-        return [site for _, site in candidates[: self.max_sites_per_tile]]
+
+        # Wide-view tiles cover much more geography and therefore need a larger
+        # radar pool to remain a true site-derived national composite. Close-up
+        # tiles can stay lean for speed because far fewer radars intersect them.
+        if z <= 5:
+            cap = 40
+        elif z == 6:
+            cap = 30
+        elif z == 7:
+            cap = 22
+        else:
+            cap = self.max_sites_per_tile
+        return [site for _, site in candidates[:cap]]
 
     def _load_sweeps(self, sites):
         if not sites:
             return [], []
         sweeps = []
         failures = []
-        workers = min(6, len(sites))
+        workers = min(10, len(sites))
         with ThreadPoolExecutor(max_workers=workers) as pool:
             future_map = {pool.submit(self._get_site_sweep, site): site for site in sites}
             for future in as_completed(future_map):
@@ -317,7 +329,7 @@ class RadarTileEngine:
         gini, national_source = self._get_national()
         national_dbz = sample_national(gini, lon_grid, lat_grid)
 
-        candidate_sites = self._candidate_sites(bounds)
+        candidate_sites = self._candidate_sites(bounds, z)
         sweeps, failures = self._load_sweeps(candidate_sites)
         site_dbz = sample_site_sweeps(sweeps, lon_grid, lat_grid)
         site_valid = np.isfinite(site_dbz) & (site_dbz > -9000)
@@ -368,7 +380,7 @@ class RadarTileEngine:
             hits = self.tile_cache_hits
         return {
             "ok": True,
-            "mode": "viewport-driven hybrid NEXRAD slippy tiles",
+            "mode": "all-zoom site-derived NEXRAD slippy pyramid",
             "tileSize": self.tile_size,
             "refreshSeconds": self.refresh_seconds,
             "stationCount": len(self.station_table),
