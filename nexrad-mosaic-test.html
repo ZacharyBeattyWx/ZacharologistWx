@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZacharologistWx NEXRAD Site Mosaic Test</title>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
+  <script src="mapbox-token.js"></script>
+  <style>
+    html, body, #map { width:100%; height:100%; margin:0; }
+    body { overflow:hidden; background:#07111f; font-family:Arial,sans-serif; color:#f8fafc; }
+    .panel {
+      position:fixed; top:14px; left:14px; z-index:20; width:min(390px,calc(100vw - 28px));
+      padding:14px 15px; border:1px solid rgba(148,163,184,.28); border-radius:13px;
+      background:rgba(4,10,22,.91); box-shadow:0 16px 38px rgba(0,0,0,.35); backdrop-filter:blur(12px);
+    }
+    .eyebrow { color:#38bdf8; font-size:.68rem; font-weight:900; letter-spacing:.12em; text-transform:uppercase; }
+    h1 { margin:5px 0 6px; font-size:1.08rem; }
+    p { margin:0; color:#cbd5e1; font-size:.76rem; line-height:1.42; }
+    .status { display:flex; gap:8px; align-items:center; margin-top:10px; color:#94a3b8; font-size:.72rem; font-weight:700; }
+    .dot { width:8px; height:8px; border-radius:50%; background:#f59e0b; box-shadow:0 0 10px rgba(245,158,11,.6); }
+    .dot.live { background:#4ade80; box-shadow:0 0 10px rgba(74,222,128,.7); }
+    .dot.error { background:#fb7185; box-shadow:0 0 10px rgba(251,113,133,.7); }
+    .meta { margin-top:11px; padding-top:10px; border-top:1px solid rgba(148,163,184,.18); color:#94a3b8; font-size:.66rem; line-height:1.5; }
+    .meta strong { color:#dbeafe; }
+    .legend {
+      position:fixed; top:14px; right:14px; z-index:20; width:230px; padding:9px 11px;
+      border:1px solid rgba(148,163,184,.24); border-radius:10px; background:rgba(4,10,22,.84);
+      backdrop-filter:blur(10px); box-shadow:0 10px 24px rgba(0,0,0,.25);
+    }
+    .legend-title { font-size:.61rem; color:#cbd5e1; font-weight:900; letter-spacing:.06em; text-transform:uppercase; margin-bottom:6px; }
+    .legend-bar { height:8px; border-radius:99px; background:linear-gradient(90deg,#1c5f8c,#2873a5,#49a2c5,#4ca58e,#127618,#cbdE01,#d7cb00,#e38103,#b95f0a,#c02514,#ca99b4,#c44a8a,#8b20d2,#5614a2,#6fd2db,#4a849a,#730a01,#ebbeff,#ffe6f5,#fff); }
+    .legend-labels { display:flex; justify-content:space-between; margin-top:4px; color:#94a3b8; font-size:.52rem; }
+    @media (max-width:760px) { .legend { display:none; } .panel { width:280px; } }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <section class="panel">
+    <div class="eyebrow">Experimental / direct NEXRAD composite</div>
+    <h1>Unidata National Site Mosaic</h1>
+    <p>National NEXRAD composite rebuilt from Unidata's GINI product, converted back to dBZ and recolored with the same Zacharologist Level-II palette.</p>
+    <div class="status"><span id="statusDot" class="dot"></span><span id="statusText">Waiting for rendered test image…</span></div>
+    <div class="meta">
+      <strong>Product:</strong> <span id="product">--</span><br>
+      <strong>Valid:</strong> <span id="valid">--</span><br>
+      <strong>Source grid:</strong> <span id="sourceGrid">--</span><br>
+      <strong>Map texture:</strong> <span id="textureGrid">--</span><br>
+      <strong>Projection:</strong> <span id="projection">--</span><br>
+      <strong>Calibration:</strong> <span id="calibration">--</span>
+    </div>
+  </section>
+
+  <div class="legend">
+    <div class="legend-title">Reflectivity (dBZ)</div>
+    <div class="legend-bar"></div>
+    <div class="legend-labels"><span>0</span><span>10</span><span>20</span><span>30</span><span>40</span><span>50</span><span>60</span><span>70+</span></div>
+  </div>
+
+  <script>
+    const MAPBOX_STYLE = "mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
+    const MANIFEST_URL = "./unidata-nexrad-mosaic-output/manifest.json";
+    const LAYER_ID = "unidata-nexrad-python-colored-layer";
+
+    const statusDot = document.getElementById("statusDot");
+    const statusText = document.getElementById("statusText");
+
+    function setStatus(text, state="loading") {
+      statusText.textContent = text;
+      statusDot.classList.toggle("live", state === "live");
+      statusDot.classList.toggle("error", state === "error");
+    }
+
+    function compileShader(gl, type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        throw new Error(gl.getShaderInfoLog(shader) || "shader compile failed");
+      }
+      return shader;
+    }
+
+    function createRadarLayer(image, bounds) {
+      const [west, south, east, north] = bounds.map(Number);
+      return {
+        id:LAYER_ID, type:"custom", renderingMode:"2d", map:null, gl:null, program:null,
+        positionBuffer:null, uvBuffer:null, texture:null,
+        onAdd(map, gl) {
+          this.map = map; this.gl = gl;
+          const vertexSource = `
+            precision highp float;
+            uniform mat4 u_matrix;
+            attribute vec2 a_pos;
+            attribute vec2 a_uv;
+            varying vec2 v_uv;
+            void main(){ gl_Position=u_matrix*vec4(a_pos,0.0,1.0); v_uv=a_uv; }
+          `;
+          const fragmentSource = `
+            precision mediump float;
+            uniform sampler2D u_texture;
+            varying vec2 v_uv;
+            void main(){ gl_FragColor=texture2D(u_texture,v_uv); }
+          `;
+          const vs = compileShader(gl, gl.VERTEX_SHADER, vertexSource);
+          const fs = compileShader(gl, gl.FRAGMENT_SHADER, fragmentSource);
+          this.program = gl.createProgram();
+          gl.attachShader(this.program,vs); gl.attachShader(this.program,fs); gl.linkProgram(this.program);
+          gl.deleteShader(vs); gl.deleteShader(fs);
+          if (!gl.getProgramParameter(this.program,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(this.program)||"radar shader link failed");
+
+          const nw=mapboxgl.MercatorCoordinate.fromLngLat([west,north]);
+          const ne=mapboxgl.MercatorCoordinate.fromLngLat([east,north]);
+          const sw=mapboxgl.MercatorCoordinate.fromLngLat([west,south]);
+          const se=mapboxgl.MercatorCoordinate.fromLngLat([east,south]);
+          const positions=new Float32Array([nw.x,nw.y,sw.x,sw.y,ne.x,ne.y,ne.x,ne.y,sw.x,sw.y,se.x,se.y]);
+          const uvs=new Float32Array([0,0,0,1,1,0,1,0,0,1,1,1]);
+
+          this.positionBuffer=gl.createBuffer();
+          gl.bindBuffer(gl.ARRAY_BUFFER,this.positionBuffer); gl.bufferData(gl.ARRAY_BUFFER,positions,gl.STATIC_DRAW);
+          this.uvBuffer=gl.createBuffer();
+          gl.bindBuffer(gl.ARRAY_BUFFER,this.uvBuffer); gl.bufferData(gl.ARRAY_BUFFER,uvs,gl.STATIC_DRAW);
+
+          this.texture=gl.createTexture();
+          gl.bindTexture(gl.TEXTURE_2D,this.texture);
+          gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);
+          gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+          gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
+          gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,false);
+          if (gl.UNPACK_COLORSPACE_CONVERSION_WEBGL !== undefined) gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL,gl.NONE);
+          gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,image);
+        },
+        render(gl,matrix) {
+          gl.useProgram(this.program); gl.disable(gl.DEPTH_TEST); gl.enable(gl.BLEND);
+          gl.blendEquation(gl.FUNC_ADD); gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
+          gl.uniformMatrix4fv(gl.getUniformLocation(this.program,"u_matrix"),false,matrix);
+          const pos=gl.getAttribLocation(this.program,"a_pos");
+          gl.bindBuffer(gl.ARRAY_BUFFER,this.positionBuffer); gl.enableVertexAttribArray(pos); gl.vertexAttribPointer(pos,2,gl.FLOAT,false,0,0);
+          const uv=gl.getAttribLocation(this.program,"a_uv");
+          gl.bindBuffer(gl.ARRAY_BUFFER,this.uvBuffer); gl.enableVertexAttribArray(uv); gl.vertexAttribPointer(uv,2,gl.FLOAT,false,0,0);
+          gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,this.texture);
+          gl.uniform1i(gl.getUniformLocation(this.program,"u_texture"),0);
+          gl.drawArrays(gl.TRIANGLES,0,6);
+        },
+        onRemove(map,gl) {
+          if(this.texture)gl.deleteTexture(this.texture); if(this.positionBuffer)gl.deleteBuffer(this.positionBuffer);
+          if(this.uvBuffer)gl.deleteBuffer(this.uvBuffer); if(this.program)gl.deleteProgram(this.program);
+        }
+      };
+    }
+
+    function firstSymbolLayerId(map) {
+      return (map.getStyle()?.layers || []).find(layer => layer.type === "symbol")?.id;
+    }
+
+    async function loadRadar(map) {
+      try {
+        setStatus("Loading Unidata mosaic manifest…");
+        const response = await fetch(`${MANIFEST_URL}?t=${Date.now()}`, {cache:"no-store"});
+        if (!response.ok) throw new Error(`Manifest HTTP ${response.status}`);
+        const manifest = await response.json();
+        const imageUrl = new URL(manifest.image, response.url);
+        imageUrl.searchParams.set("rev",manifest.revision || Date.now());
+        setStatus(`Loading ${manifest.product} national composite…`);
+        const imageResponse = await fetch(imageUrl,{cache:"force-cache"});
+        if(!imageResponse.ok) throw new Error(`Image HTTP ${imageResponse.status}`);
+        const blob = await imageResponse.blob();
+        const image = await createImageBitmap(blob);
+
+        const layer = createRadarLayer(image,manifest.bounds);
+        map.addLayer(layer,firstSymbolLayerId(map));
+
+        document.getElementById("product").textContent=manifest.product || "--";
+        document.getElementById("valid").textContent=new Date(manifest.valid_time).toLocaleString();
+        document.getElementById("sourceGrid").textContent=`${manifest.sourceGridWidth} × ${manifest.sourceGridHeight}`;
+        document.getElementById("textureGrid").textContent=`${manifest.imageWidth} × ${manifest.imageHeight}`;
+        document.getElementById("projection").textContent=manifest.projection || "--";
+        document.getElementById("calibration").textContent=manifest.calibration || "--";
+        setStatus(`${manifest.product} site mosaic ready`,"live");
+      } catch(error) {
+        console.error(error); setStatus(`Load failed: ${error.message}`,"error");
+      }
+    }
+
+    mapboxgl.accessToken=window.MAPBOX_PUBLIC_TOKEN;
+    const map=new mapboxgl.Map({container:"map",style:MAPBOX_STYLE,center:[-96.5,38.4],zoom:3.35,minZoom:2,maxZoom:12,projection:"mercator",attributionControl:true});
+    map.addControl(new mapboxgl.NavigationControl(),"bottom-right");
+    map.on("load",()=>{map.setProjection("mercator");loadRadar(map);});
+  </script>
+</body>
+</html>
