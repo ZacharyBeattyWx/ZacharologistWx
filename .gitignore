@@ -14,6 +14,9 @@ workers/radar-h2-dispatcher/.wrangler/
 # Raw MRMS national mosaic test tiles are generated locally / in deployment jobs.
 /mrms-mosaic-output/
 
+# Pre-rendered NEXRAD pyramid is generated per radar scan and served as static files.
+/nexrad-static-pyramid-output/
+
 # Local Node dependencies
 cloudflare/model-api/node_modules/
 
