@@ -288,7 +288,7 @@
     select.className = "home-radar-history-select";
     select.setAttribute("aria-label", "Radar history length");
     select.innerHTML = HISTORY_OPTIONS
-      .map(([minutes, label]) => `<option value="${minutes}"${minutes === 180 ? " selected" : ""}>${label}</option>`)
+      .map(([minutes, label]) => `<option value="${minutes}"${minutes === 720 ? " selected" : ""}>${label}</option>`)
       .join("");
     row.appendChild(select);
 
@@ -308,8 +308,8 @@
     const legendTitle = document.querySelector(".legend-title");
     if (legendTitle) legendTitle.textContent = "Radar Intensity (dBZ)";
 
-    // Exact homepage defaults requested: 3 hr, 2x, 100% opacity.
-    historyMinutes = 180;
+    // Homepage defaults: 12 hr, 2x, 100% opacity.
+    historyMinutes = 720;
     speedSelect.value = "2";
     opacityInput.value = "1";
     opacityOutput.value = "100%";
@@ -323,11 +323,11 @@
         option.disabled = Number(option.value) > available;
       });
 
-      if (!startupHistoryApplied && manifest && allFrames.length && available >= 180) {
+      if (!startupHistoryApplied && manifest && allFrames.length && available >= 720) {
         startupHistoryApplied = true;
         const preserveKey = currentFrameKey();
-        applyHistoryWindow(180, preserveKey);
-        select.value = "180";
+        applyHistoryWindow(720, preserveKey);
+        select.value = "720";
         if (!frames.some(frame => frameKey(frame) === preserveKey)) {
           showFrame(frames.length - 1, { quiet: true }).catch(() => {});
         }
@@ -357,7 +357,7 @@
       if (syncTimer) window.clearInterval(syncTimer);
     }, { once: true });
 
-    console.info("MRMS native homepage mode: 3 hr / 2x / 100% opacity");
+    console.info("MRMS native homepage mode: 12 hr / 2x / 100% opacity");
     return true;
   }
 

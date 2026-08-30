@@ -30,9 +30,10 @@
 
   function playbackStride() {
     if (speedValue() < 2 || !Array.isArray(frames) || frames.length < 2) return 1;
-    // Same 2x meteorological timelapse rate at every history length.
-    // Eight ~2-minute MRMS scans equals about 16 weather-minutes per transition.
-    return Math.max(1, Math.min(TIMELAPSE_FRAME_STRIDE, frames.length - 1));
+    // Scale 2x stride with the selected history: 3h=1, 6h=2, 12h=4, 18h=6, 24h=8.
+    const selectedMinutes = Math.max(30, Number(historyMinutes) || 60);
+    const proportionalStride = Math.max(1, Math.round(selectedMinutes / 180));
+    return Math.max(1, Math.min(TIMELAPSE_FRAME_STRIDE, proportionalStride, frames.length - 1));
   }
 
   function nextPlaybackIndex() {
@@ -434,7 +435,7 @@
 
     console.info(
       "MRMS 2x stable timelapse enabled:",
-      `${TIMELAPSE_TRANSITION_MS}ms linear alpha-correct blends, fixed ${TIMELAPSE_FRAME_STRIDE}-scan stride`
+      `${TIMELAPSE_TRANSITION_MS}ms linear alpha-correct blends, history-scaled stride up to ${TIMELAPSE_FRAME_STRIDE} scans`
     );
   }
 
