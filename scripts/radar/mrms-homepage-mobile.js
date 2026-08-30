@@ -8,13 +8,44 @@
   const startedAt = Date.now();
   const timeoutMs = 12000;
 
+  function resizeHostFrame() {
+    try {
+      const frame = window.frameElement;
+      if (!frame || !frame.classList?.contains("radar-frame")) return;
+
+      const landscapePhone = window.matchMedia(
+        "(max-height: 500px) and (pointer: coarse) and (orientation: landscape)"
+      ).matches;
+      const portraitPhone = window.matchMedia(
+        "(max-width: 720px) and (orientation: portrait)"
+      ).matches;
+
+      if (landscapePhone) {
+        frame.style.setProperty("height", "420px", "important");
+        frame.style.setProperty("min-height", "420px", "important");
+        frame.style.setProperty("max-height", "420px", "important");
+      } else if (portraitPhone) {
+        frame.style.setProperty("height", "620px", "important");
+        frame.style.setProperty("min-height", "620px", "important");
+        frame.style.setProperty("max-height", "620px", "important");
+      } else {
+        frame.style.removeProperty("height");
+        frame.style.removeProperty("min-height");
+        frame.style.removeProperty("max-height");
+      }
+    } catch (_) {}
+  }
+
   function resizeMapSoon() {
+    resizeHostFrame();
     window.requestAnimationFrame(() => {
-      try {
-        if (typeof map !== "undefined" && map && typeof map.resize === "function") {
-          map.resize();
-        }
-      } catch (_) {}
+      window.requestAnimationFrame(() => {
+        try {
+          if (typeof map !== "undefined" && map && typeof map.resize === "function") {
+            map.resize();
+          }
+        } catch (_) {}
+      });
     });
   }
 
