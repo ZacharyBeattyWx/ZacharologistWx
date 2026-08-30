@@ -1,0 +1,26 @@
+name: Wire Unidata GINI fallback once
+
+on:
+  push:
+    paths:
+      - .github/workflows/wire-unidata-gini-fallback-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wire decoder
+        run: |
+          python3 -c "from pathlib import Path; p=Path('scripts/radar/render_unidata_nexrad_mosaic.py'); s=p.read_text(encoding='utf-8'); s=s.replace('import render_mrms_mosaic as palette_renderer  # noqa: E402','import render_mrms_mosaic as palette_renderer  # noqa: E402\nfrom unidata_gini_decode import decode_gini  # noqa: E402'); s=s.replace('gini = GiniFile(BytesIO(response.content))','gini = decode_gini(response.content)'); p.write_text(s,encoding='utf-8')"
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/radar/render_unidata_nexrad_mosaic.py
+          git diff --cached --quiet && exit 0
+          git commit -m "Decode PNG-compressed Unidata GINI mosaics"
+          git push
