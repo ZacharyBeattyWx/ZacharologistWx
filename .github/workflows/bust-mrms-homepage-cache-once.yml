@@ -1,0 +1,29 @@
+name: Bust MRMS homepage cache once
+
+on:
+  push:
+    paths:
+      - .github/workflows/bust-mrms-homepage-cache-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bust radar document and loader cache
+        run: |
+          python3 -c "from pathlib import Path; p=Path('index.html'); s=p.read_text(encoding='utf-8'); s=s.replace('mosaic-radar-canvas-test.html?home=1&v=20260828a','mosaic-radar-canvas-test.html?home=1&v=20260829b'); p.write_text(s,encoding='utf-8')"
+          python3 -c "from pathlib import Path; p=Path('mosaic-radar-canvas-test.html'); s=p.read_text(encoding='utf-8'); s=s.replace('src=\"mapbox-token.js\"','src=\"mapbox-token.js?v=20260829b\"'); p.write_text(s,encoding='utf-8')"
+
+      - name: Commit cache bust
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html mosaic-radar-canvas-test.html
+          git diff --cached --quiet && exit 0
+          git commit -m "Refresh MRMS homepage cache keys"
+          git push
