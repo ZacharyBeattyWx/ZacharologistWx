@@ -1,0 +1,32 @@
+name: Sharpen NEXRAD hybrid once
+
+on:
+  push:
+    paths:
+      - .github/workflows/sharpen-nexrad-hybrid-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Increase native mosaic resolution
+        run: |
+          python3 -c "from pathlib import Path; p=Path('scripts/radar/render_unidata_nexrad_site_mosaic.py'); s=p.read_text(encoding='utf-8'); s=s.replace('DEFAULT_WIDTH = 3072','DEFAULT_WIDTH = 4608'); p.write_text(s,encoding='utf-8')"
+
+      - name: Keep national radar underneath native detail
+        run: |
+          python3 -c "from pathlib import Path; p=Path('nexrad-hybrid-test.html'); s=p.read_text(encoding='utf-8'); s=s.replace('National → Native Site Mosaic','National + Native Site Detail'); s=s.replace(\"Wide views use Unidata's national 1-km N0B mosaic. Zooming in crossfades to a regional mosaic built from individual N0B radar sites.\",\"The national 1-km N0B mosaic always stays visible. Zooming in overlays progressively sharper detail from individual N0B radar sites.\"); s=s.replace('nationalLayer?.setOpacity(1 - (mix * .82));','nationalLayer?.setOpacity(1);'); s=s.replace('Crossfading radar resolution','Adding native NEXRAD detail'); s=s.replace('% native-site layer','% native-site overlay'); p.write_text(s,encoding='utf-8')"
+
+      - name: Commit sharp hybrid proof
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/radar/render_unidata_nexrad_site_mosaic.py nexrad-hybrid-test.html
+          git diff --cached --quiet && exit 0
+          git commit -m "Sharpen hybrid NEXRAD detail layer"
+          git push
