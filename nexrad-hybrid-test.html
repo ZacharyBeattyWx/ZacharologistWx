@@ -9,17 +9,17 @@
   <script src="mapbox-token.js"></script>
   <style>
     html,body,#map{height:100%;width:100%;margin:0;background:#08111d;font-family:Inter,system-ui,sans-serif}
-    .panel{position:absolute;z-index:5;top:14px;left:14px;width:min(370px,calc(100vw - 28px));box-sizing:border-box;padding:14px 16px;border:1px solid rgba(125,211,252,.22);border-radius:14px;background:rgba(3,10,20,.93);color:#e5eef8;box-shadow:0 14px 40px rgba(0,0,0,.35)}
+    .panel{position:absolute;z-index:5;top:14px;left:14px;width:min(380px,calc(100vw - 28px));box-sizing:border-box;padding:14px 16px;border:1px solid rgba(125,211,252,.22);border-radius:14px;background:rgba(3,10,20,.93);color:#e5eef8;box-shadow:0 14px 40px rgba(0,0,0,.35)}
     .eyebrow{font-size:11px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:#38bdf8}.panel h1{font-size:18px;margin:5px 0 7px}.panel p{font-size:12px;line-height:1.45;color:#b7c5d6;margin:0 0 10px}.status{display:flex;gap:8px;align-items:center;font-size:12px;padding-top:10px;border-top:1px solid rgba(148,163,184,.18)}.dot{width:8px;height:8px;border-radius:50%;background:#f59e0b}.dot.live{background:#22c55e}.dot.bad{background:#ef4444}.mode{margin-top:10px;padding:9px 10px;border-radius:10px;background:rgba(15,23,42,.82);font-size:12px}.mode strong{display:block;font-size:13px;color:#fff}.bar{height:5px;border-radius:999px;background:rgba(148,163,184,.22);overflow:hidden;margin-top:7px}.bar span{display:block;height:100%;width:0;background:linear-gradient(90deg,#38bdf8,#22c55e);transition:width .18s ease}.meta{margin-top:10px;font-size:11px;line-height:1.55;color:#9fb0c4;overflow-wrap:anywhere}.legend{position:absolute;z-index:5;top:14px;right:14px;width:240px;padding:10px 12px;border-radius:12px;background:rgba(3,10,20,.9);border:1px solid rgba(148,163,184,.18);color:white;font-size:10px;font-weight:800;letter-spacing:.08em}.legend-bar{height:8px;margin:7px 0 4px;border-radius:6px;background:linear-gradient(90deg,rgba(73,117,152,.65),#4ca58e,#12a118,#cbde01,#e38103,#c02514,#ca99b4,#c44a8a,#8b20d2,#5614a2,#6fd2db,#4a849a,#730a01,#ebbeff,#fff)}.labels{display:flex;justify-content:space-between;color:#aab8c8;font-size:8px}.mapboxgl-ctrl-bottom-left{display:none}@media(max-width:720px){.legend{display:none}.panel{width:calc(100vw - 28px)}}
   </style>
 </head>
 <body>
   <div id="map"></div>
   <section class="panel">
-    <div class="eyebrow">Experimental / Free-Zoom NEXRAD</div>
+    <div class="eyebrow">Experimental / Python-Colored Free-Zoom</div>
     <h1>National Radar — Continuous Detail</h1>
-    <p>No regional boxes. Pan and zoom anywhere. Wide views use the national N0B mosaic; detailed views request Python-colored NEXRAD tiles for the exact area on screen.</p>
-    <div class="status"><span id="statusDot" class="dot"></span><span id="statusText">Checking detail tile server…</span></div>
+    <p>Python owns all radar colors. Mapbox supplies only the map camera and geographic matrix. Pan and zoom anywhere; high-resolution NEXRAD tiles load for the exact area on screen.</p>
+    <div class="status"><span id="statusDot" class="dot"></span><span id="statusText">Checking Python detail renderer…</span></div>
     <div class="mode">
       <strong id="modeTitle">National 1-km mosaic</strong>
       <span id="modeDetail">Zoom in for native radar-site detail.</span>
@@ -33,188 +33,6 @@
     </div>
   </section>
   <div class="legend">REFLECTIVITY (DBZ)<div class="legend-bar"></div><div class="labels"><span>0</span><span>10</span><span>20</span><span>30</span><span>40</span><span>50</span><span>60</span><span>70+</span></div></div>
-
-  <script>
-    const MAPBOX_STYLE = "mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
-    const NATIONAL_MANIFEST = "./unidata-nexrad-mosaic-output/manifest.json";
-    const NATIONAL_SOURCE_ID = "nexrad-national-source";
-    const NATIONAL_LAYER_ID = "nexrad-national-layer";
-    const DETAIL_SOURCE_ID = "nexrad-freezoom-source";
-    const DETAIL_LAYER_ID = "nexrad-freezoom-layer";
-    const DETAIL_SWITCH_ZOOM = 6.15;
-    const PAGE_SESSION = Date.now();
-    const IS_LOCAL = location.hostname === "localhost" || location.hostname === "127.0.0.1";
-    const DETAIL_SERVER = IS_LOCAL ? `http://${location.hostname}:8010` : (window.ZWX_NEXRAD_TILE_SERVER || "");
-
-    const statusText = document.getElementById("statusText");
-    const statusDot = document.getElementById("statusDot");
-    const modeTitle = document.getElementById("modeTitle");
-    const modeDetail = document.getElementById("modeDetail");
-    const detailBar = document.getElementById("detailBar");
-    const zoomValue = document.getElementById("zoomValue");
-    const detailInfo = document.getElementById("detailInfo");
-    const nationalInfo = document.getElementById("nationalInfo");
-    const tileInfo = document.getElementById("tileInfo");
-
-    let tileServerOnline = false;
-    let detailEverReady = false;
-    let latestStatus = null;
-
-    function firstSymbolLayerId(map) {
-      return (map.getStyle()?.layers || []).find(layer => layer.type === "symbol")?.id;
-    }
-
-    async function fetchManifest(url) {
-      const response = await fetch(`${url}?t=${Date.now()}`, { cache: "no-store" });
-      if (!response.ok) throw new Error(`${url} HTTP ${response.status}`);
-      const manifest = await response.json();
-      manifest._url = new URL(url, window.location.href).href;
-      return manifest;
-    }
-
-    async function checkTileServer() {
-      if (!DETAIL_SERVER) {
-        statusDot.classList.add("bad");
-        statusText.textContent = "Detail server not configured; national fallback only";
-        detailInfo.textContent = "offline";
-        return null;
-      }
-      try {
-        const response = await fetch(`${DETAIL_SERVER}/status.json?t=${Date.now()}`, { cache: "no-store" });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
-        tileServerOnline = !!data.ok;
-        latestStatus = data;
-        statusDot.classList.toggle("live", tileServerOnline);
-        statusDot.classList.toggle("bad", !tileServerOnline);
-        statusText.textContent = tileServerOnline ? "Free-zoom detail server ready" : "Detail server unavailable";
-        detailInfo.textContent = tileServerOnline ? `${data.tileSize}px slippy tiles • ${data.stationCount} stations` : "offline";
-        tileInfo.textContent = `${data.cachedTiles || 0} tiles • ${data.cachedSites || 0} sites cached`;
-        return data;
-      } catch (error) {
-        tileServerOnline = false;
-        statusDot.classList.remove("live");
-        statusDot.classList.add("bad");
-        statusText.textContent = "Start serve_nexrad_detail_tiles.py for sharp zoom";
-        detailInfo.textContent = "server offline";
-        return null;
-      }
-    }
-
-    function setRasterOpacity(map, id, value) {
-      if (map.getLayer(id)) map.setPaintProperty(id, "raster-opacity", value);
-    }
-
-    function syncMode(map) {
-      const z = map.getZoom();
-      zoomValue.textContent = z.toFixed(2);
-      const wantsDetail = tileServerOnline && z >= DETAIL_SWITCH_ZOOM;
-      let detailLoaded = false;
-      if (wantsDetail && map.getSource(DETAIL_SOURCE_ID)) {
-        try { detailLoaded = map.isSourceLoaded(DETAIL_SOURCE_ID); } catch (_) {}
-      }
-      if (detailLoaded) detailEverReady = true;
-
-      // Never stack the two radar products at full opacity. The high-resolution
-      // tile already contains the national N0B fallback numerically, so once its
-      // visible tiles are ready it completely replaces the coarse national image.
-      const useDetail = wantsDetail && (detailLoaded || detailEverReady);
-      setRasterOpacity(map, NATIONAL_LAYER_ID, useDetail ? 0 : 1);
-      setRasterOpacity(map, DETAIL_LAYER_ID, useDetail ? 1 : 0);
-
-      const progress = Math.max(0, Math.min(1, (z - 5.2) / 3.0));
-      detailBar.style.width = `${Math.round(progress * 100)}%`;
-
-      if (!tileServerOnline) {
-        modeTitle.textContent = "National 1-km mosaic";
-        modeDetail.textContent = "High-resolution tile server is offline.";
-      } else if (z < DETAIL_SWITCH_ZOOM) {
-        modeTitle.textContent = "National 1-km mosaic";
-        modeDetail.textContent = "Zoom in normally — no region selection required.";
-      } else if (!useDetail) {
-        modeTitle.textContent = "Loading local radar detail…";
-        modeDetail.textContent = "The radars needed for this viewport are being cached.";
-      } else {
-        modeTitle.textContent = "Free-zoom native NEXRAD detail";
-        modeDetail.textContent = "This viewport is one merged Python-colored radar surface.";
-      }
-    }
-
-    mapboxgl.accessToken = window.MAPBOX_PUBLIC_TOKEN;
-    const map = new mapboxgl.Map({
-      container: "map",
-      style: MAPBOX_STYLE,
-      center: [-96.0, 38.5],
-      zoom: 4.4,
-      minZoom: 2,
-      maxZoom: 12,
-      projection: "mercator"
-    });
-    map.addControl(new mapboxgl.NavigationControl(), "bottom-right");
-
-    map.on("load", async () => {
-      try {
-        map.setProjection("mercator");
-        const nationalManifest = await fetchManifest(NATIONAL_MANIFEST);
-        const nationalUrl = new URL(nationalManifest.image, nationalManifest._url).href + `?rev=${nationalManifest.revision || PAGE_SESSION}`;
-        const [west, south, east, north] = nationalManifest.bounds.map(Number);
-        map.addSource(NATIONAL_SOURCE_ID, {
-          type: "image",
-          url: nationalUrl,
-          coordinates: [[west,north],[east,north],[east,south],[west,south]]
-        });
-        map.addLayer({
-          id: NATIONAL_LAYER_ID,
-          type: "raster",
-          source: NATIONAL_SOURCE_ID,
-          paint: {
-            "raster-opacity": 1,
-            "raster-resampling": "nearest",
-            "raster-fade-duration": 0
-          }
-        }, firstSymbolLayerId(map));
-        nationalInfo.textContent = `${nationalManifest.imageWidth}×${nationalManifest.imageHeight} ${nationalManifest.product || "N0B"}`;
-
-        await checkTileServer();
-        if (tileServerOnline) {
-          map.addSource(DETAIL_SOURCE_ID, {
-            type: "raster",
-            tiles: [`${DETAIL_SERVER}/tiles/{z}/{x}/{y}.webp?session=${PAGE_SESSION}`],
-            tileSize: latestStatus?.tileSize || 512,
-            minzoom: 5,
-            maxzoom: 10
-          });
-          map.addLayer({
-            id: DETAIL_LAYER_ID,
-            type: "raster",
-            source: DETAIL_SOURCE_ID,
-            minzoom: 5,
-            paint: {
-              "raster-opacity": 0,
-              "raster-resampling": "nearest",
-              "raster-fade-duration": 0
-            }
-          }, firstSymbolLayerId(map));
-        }
-        syncMode(map);
-      } catch (error) {
-        console.error(error);
-        statusDot.classList.add("bad");
-        statusText.textContent = `Load failed: ${error.message}`;
-      }
-    });
-
-    map.on("zoom", () => syncMode(map));
-    map.on("moveend", () => {
-      syncMode(map);
-      if (tileServerOnline) setTimeout(checkTileServer, 150);
-    });
-    map.on("sourcedata", event => {
-      if (event.sourceId === DETAIL_SOURCE_ID) syncMode(map);
-    });
-    setInterval(() => {
-      if (tileServerOnline) checkTileServer();
-    }, 15000);
-  </script>
+  <script src="scripts/radar/nexrad-freezoom-webgl.js?v=20260830a"></script>
 </body>
 </html>
