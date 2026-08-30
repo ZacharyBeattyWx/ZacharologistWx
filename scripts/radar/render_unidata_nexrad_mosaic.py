@@ -43,6 +43,7 @@ REPO_ROOT = SCRIPT_DIR.parents[1]
 sys.path.insert(0, str(SCRIPT_DIR))
 
 import render_mrms_mosaic as palette_renderer  # noqa: E402
+from unidata_gini_decode import decode_gini  # noqa: E402
 
 DEFAULT_OUTPUT = REPO_ROOT / "unidata-nexrad-mosaic-output"
 DEFAULT_BOUNDS = (-130.0, 20.0, -60.0, 55.0)  # west, south, east, north
@@ -210,7 +211,7 @@ def render(args) -> Path:
     response.raise_for_status()
     print(f"Downloaded {len(response.content) / 1024:.1f} KiB")
 
-    gini = GiniFile(BytesIO(response.content))
+    gini = decode_gini(response.content)
     print(gini)
     print(f"Raw raster: {gini.data.shape[1]}x{gini.data.shape[0]} values={int(np.min(gini.data))}..{int(np.max(gini.data))}")
 
