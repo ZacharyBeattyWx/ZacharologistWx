@@ -658,7 +658,8 @@
       if (map.getLayer(CUSTOM_LAYER_ID)) map.removeLayer(CUSTOM_LAYER_ID);
       radarLayer = createPythonColoredRadarLayer(initialSource,manifest.bounds);
       radarLayer.opacity = Number(opacityInput.value);
-      radarLayer.visible = radarVisible;
+      const suppressMrmsForLiveNexrad = new URLSearchParams(window.location.search).get("home") === "1";
+      radarLayer.visible = radarVisible && !suppressMrmsForLiveNexrad;
       const beforeId = firstSymbolLayerId();
       if (beforeId) map.addLayer(radarLayer,beforeId); else map.addLayer(radarLayer);
 
@@ -781,6 +782,6 @@
       }
     });
   </script>
-  <script src="scripts/radar/nexrad-main-live-overlay.js?v=20260830b"></script>
+  <script src="scripts/radar/nexrad-main-live-overlay.js?v=20260830c"></script>
 </body>
 </html>

@@ -2,6 +2,7 @@
   "use strict";
 
   const params = new URLSearchParams(window.location.search);
+  const HOME_MODE = params.get("home") === "1";
   const STATIC_MANIFEST_URL = "./nexrad-static-pyramid-output/manifest.json";
   const LAYER_ID = "nexrad-main-live-static-overlay";
   const MAX_GPU_TILES = 96;
@@ -307,7 +308,13 @@
           return;
         }
         const sharpReady = this.ready(this.wantedDesired) || this.ready(this.wantedBase);
-        radarLayer?.setVisible(!sharpReady && radarVisible);
+        if (HOME_MODE) {
+          // Never flash the coarse MRMS live frame underneath the homepage radar.
+          // Keep the basemap visible until a complete static NEXRAD set is ready.
+          radarLayer?.setVisible(false);
+        } else {
+          radarLayer?.setVisible(!sharpReady && radarVisible);
+        }
       },
 
       evict() {
@@ -408,6 +415,7 @@
   async function install(manifest) {
     if (installed || !manifest || !ready()) return false;
     installed = true;
+    if (HOME_MODE) radarLayer?.setVisible(false);
     overlay = createOverlay(manifest);
     const beforeId = firstSymbolLayerId();
     if (beforeId) map.addLayer(overlay, beforeId); else map.addLayer(overlay);
@@ -464,8 +472,14 @@
 
   async function tryInstall() {
     if (installed) return;
+    const elapsed = Date.now() - STARTED_AT;
     if (!ready()) {
-      if (Date.now() - STARTED_AT < INSTALL_TIMEOUT_MS) window.setTimeout(tryInstall, 100);
+      if (elapsed < INSTALL_TIMEOUT_MS) {
+        window.setTimeout(tryInstall, 100);
+      } else if (HOME_MODE && typeof radarLayer !== "undefined" && radarLayer) {
+        radarLayer.setVisible(radarVisible);
+        console.warn("Static NEXRAD startup timed out; restored MRMS fallback");
+      }
       return;
     }
     try {
@@ -477,7 +491,12 @@
     } catch (error) {
       console.warn("Static NEXRAD live overlay unavailable", error);
     }
-    if (Date.now() - STARTED_AT < INSTALL_TIMEOUT_MS) window.setTimeout(tryInstall, 1000);
+    if (Date.now() - STARTED_AT < INSTALL_TIMEOUT_MS) {
+      window.setTimeout(tryInstall, 1000);
+    } else if (HOME_MODE) {
+      radarLayer?.setVisible(radarVisible);
+      console.warn("Static NEXRAD manifest unavailable; restored MRMS fallback");
+    }
   }
 
   tryInstall();
