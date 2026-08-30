@@ -49,12 +49,12 @@ import render_unidata_nexrad_site_mosaic as site_renderer  # noqa: E402
 from unidata_gini_decode import decode_gini  # noqa: E402
 
 NODATA = np.float32(-9999.0)
-DEFAULT_TILE_SIZE = 512
+DEFAULT_TILE_SIZE = 1024
 DEFAULT_REFRESH_SECONDS = 120
 DEFAULT_MIN_ZOOM = 5
 DEFAULT_MAX_ZOOM = 10
-DEFAULT_CACHE_TILES = 160
-DEFAULT_MAX_SITES_PER_TILE = 10
+DEFAULT_CACHE_TILES = 96
+DEFAULT_MAX_SITES_PER_TILE = 18
 
 
 def _utc_iso(value):
@@ -322,12 +322,13 @@ class RadarTileEngine:
         site_dbz = sample_site_sweeps(sweeps, lon_grid, lat_grid)
         site_valid = np.isfinite(site_dbz) & (site_dbz > -9000)
 
+        # Site data is the primary high-resolution surface. The national 1-km
+        # mosaic is used only where no individual N0B site provides a valid sample.
+        # This prevents coarse 1-km blocks from surviving inside otherwise sharp
+        # detail tiles. sample_site_sweeps() already composites the strongest valid
+        # return from the expanded surrounding-radar pool.
         combined = np.array(national_dbz, copy=True)
-        national_valid = np.isfinite(national_dbz) & (national_dbz > -9000)
-        only_site = site_valid & ~national_valid
-        both = site_valid & national_valid
-        combined[only_site] = site_dbz[only_site]
-        combined[both] = np.maximum(national_dbz[both], site_dbz[both])
+        combined[site_valid] = site_dbz[site_valid]
         rgba = palette_renderer.colorize_dbz_grid_for_tiles(combined)
 
         buffer = BytesIO()

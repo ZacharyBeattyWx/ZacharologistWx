@@ -8,8 +8,8 @@
   const PAGE_SESSION = Date.now();
   const IS_LOCAL = location.hostname === "localhost" || location.hostname === "127.0.0.1";
   const DETAIL_SERVER = IS_LOCAL ? `http://${location.hostname}:8010` : (window.ZWX_NEXRAD_TILE_SERVER || "");
-  const MAX_GPU_TILES = 160;
-  const MAX_FETCHES = 8;
+  const MAX_GPU_TILES = 64;
+  const MAX_FETCHES = 6;
 
   const statusText = document.getElementById("statusText");
   const statusDot = document.getElementById("statusDot");
@@ -133,12 +133,11 @@
   }
 
   function sourceTileZoom(mapZoom) {
-    // Progressive LOD: get useful detail quickly, then refine only after the
-    // next complete viewport is ready. The currently displayed LOD stays put
-    // during the camera zoom, so there is no tile-pyramid rebuild under the user.
-    if (mapZoom >= 8.75) return 9;  // ~120 m rendered pixels
-    if (mapZoom >= 7.45) return 8;  // ~240 m rendered pixels
-    return 7;                       // ~480 m rendered pixels
+    // 1024px radar tiles: z7 already lands near the native ~240 m N0B sampling
+    // across much of the CONUS, which recreates the earlier 4K-style detail with
+    // far fewer requests than z8/512. z8 is a closer-zoom refinement only.
+    if (mapZoom >= 8.60) return 8;  // ~120 m rendered pixels (oversampled refinement)
+    return 7;                       // ~240 m rendered pixels (native-detail base)
   }
 
   function createPythonColoredFreeZoomLayer(map, nationalBitmap, nationalBounds) {
