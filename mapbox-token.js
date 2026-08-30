@@ -17,7 +17,7 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
     document.head.appendChild(homeScript);
 
     const mobileScript = document.createElement("script");
-    mobileScript.src = "scripts/radar/mrms-homepage-mobile.js?v=20260830a";
+    mobileScript.src = "scripts/radar/mrms-homepage-mobile.js?v=20260830b";
     mobileScript.async = true;
     document.head.appendChild(mobileScript);
   }
