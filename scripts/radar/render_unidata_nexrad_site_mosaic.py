@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Render a high-resolution regional NEXRAD N0B mosaic from individual radar sites.
+"""Render a high-resolution hybrid NEXRAD mosaic for the Midwest test region.
 
-This is phase two of the ZacharologistWx hybrid radar experiment:
-  * wide view: Unidata's 1-km national N0B composite
-  * zoomed view: individual N0B Level III sites sampled at their native radial/gate detail
+The regional output is ONE numeric dBZ grid:
+  1. Unidata national 1-km N0B fills every regional pixel as the fallback.
+  2. Individual Level III N0B sites replace those values wherever native site data exists.
+  3. The finished dBZ grid is colorized once with the Zacharologist Level-II palette.
 
-The output is a regular lon/lat RGBA WebP colored with the same Zacharologist
-Level-II reflectivity palette used by the national MRMS and NEXRAD experiments.
+This avoids stacking a coarse colored national image beneath a partially transparent
+high-resolution colored image, which caused the visible big-pixel/small-pixel ghosting.
 """
 
 from __future__ import annotations
@@ -32,6 +33,8 @@ REPO_ROOT = SCRIPT_DIR.parents[1]
 sys.path.insert(0, str(SCRIPT_DIR))
 
 import render_mrms_mosaic as palette_renderer  # noqa: E402
+import render_unidata_nexrad_mosaic as national_renderer  # noqa: E402
+from unidata_gini_decode import decode_gini  # noqa: E402
 
 DEFAULT_OUTPUT = REPO_ROOT / "unidata-nexrad-site-mosaic-output"
 DEFAULT_BOUNDS = (-96.0, 34.5, -84.0, 43.5)  # west, south, east, north
@@ -180,6 +183,21 @@ def load_site_sweep(session: requests.Session, site: str) -> RadarSweep:
     )
 
 
+def load_national_fallback(session: requests.Session, bounds, width: int):
+    print("Loading national N0B fallback for the same regional grid...")
+    source = national_renderer.discover_latest_gini(session, "n0b")
+    print(f"National: {source['dataset_name']}")
+    response = session.get(source["file_url"], timeout=60)
+    response.raise_for_status()
+    gini = decode_gini(response.content)
+    dbz = national_renderer.reproject_gini_to_lonlat(gini, "N0B", bounds, width)
+    valid_time = source["timestamp"]
+    if valid_time.year <= 1900:
+        valid_time = gini.prod_desc.datetime.replace(tzinfo=timezone.utc)
+    print(f"  fallback grid={dbz.shape[1]}x{dbz.shape[0]} valid={valid_time.isoformat()}")
+    return dbz, source, valid_time
+
+
 def sample_mosaic(sweeps: list[RadarSweep], bounds, width: int) -> np.ndarray:
     west, south, east, north = map(float, bounds)
     width = max(512, int(width))
@@ -206,7 +224,10 @@ def sample_mosaic(sweeps: list[RadarSweep], bounds, width: int) -> np.ndarray:
                 continue
 
             bearing = np.mod(forward_az, 360.0)
-            az_bin = np.mod(np.rint(bearing * (len(sweep.ray_lookup) / 360.0)).astype(np.int32), len(sweep.ray_lookup))
+            az_bin = np.mod(
+                np.rint(bearing * (len(sweep.ray_lookup) / 360.0)).astype(np.int32),
+                len(sweep.ray_lookup),
+            )
             ray_index = sweep.ray_lookup[az_bin]
             gate_count = sweep.data.shape[1]
             gate_index = np.floor(distance_km / sweep.max_range_km * gate_count).astype(np.int32)
@@ -214,14 +235,14 @@ def sample_mosaic(sweeps: list[RadarSweep], bounds, width: int) -> np.ndarray:
             sampled = sweep.data[ray_index, gate_index]
             valid = in_range & np.isfinite(sampled)
 
-            # In overlap zones, use the nearest radar with valid data. This preserves
-            # the highest practical spatial detail and avoids max-dBZ seam inflation.
+            # Nearest valid site wins in overlap zones. This avoids max-dBZ seam
+            # inflation and normally favors the radar with the best spatial sampling.
             use = valid & (distance_km < best_distance)
             chunk_dbz[use] = sampled[use]
             best_distance[use] = distance_km[use]
 
         output[row0:row1] = chunk_dbz
-        print(f"Mosaic rows {row1}/{height}", end="\r", flush=True)
+        print(f"Site mosaic rows {row1}/{height}", end="\r", flush=True)
 
     print()
     return output
@@ -231,9 +252,12 @@ def render(args):
     output_dir = Path(args.output).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
     sites = tuple(site.strip().upper().lstrip("K") for site in args.sites.split(",") if site.strip())
+    bounds = tuple(map(float, args.bounds))
 
     session = requests.Session()
-    session.headers.update({"User-Agent": "ZacharologistWx/NEXRAD-site-mosaic-test"})
+    session.headers.update({"User-Agent": "ZacharologistWx/NEXRAD-hybrid-detail-test"})
+
+    national_dbz, national_source, national_time = load_national_fallback(session, bounds, args.width)
 
     sweeps = []
     failures = []
@@ -248,17 +272,35 @@ def render(args):
     if len(sweeps) < 2:
         raise RuntimeError(f"Need at least two working radar sites; got {len(sweeps)}")
 
-    print(f"Building native-detail mosaic from {len(sweeps)} sites...")
-    dbz = sample_mosaic(sweeps, args.bounds, args.width)
-    valid = dbz > -9000
-    if not np.any(valid):
-        raise RuntimeError("Regional site mosaic produced no valid radar pixels")
+    print(f"Building native-detail site grid from {len(sweeps)} sites...")
+    site_dbz = sample_mosaic(sweeps, bounds, args.width)
+    if site_dbz.shape != national_dbz.shape:
+        raise RuntimeError(
+            f"National/site grid mismatch: national={national_dbz.shape}, site={site_dbz.shape}"
+        )
 
+    # This is the key: merge numeric reflectivity FIRST, then colorize ONCE.
+    combined_dbz = np.array(national_dbz, copy=True)
+    site_valid = np.isfinite(site_dbz) & (site_dbz > -9000)
+    combined_dbz[site_valid] = site_dbz[site_valid]
+
+    valid = np.isfinite(combined_dbz) & (combined_dbz > -9000)
+    if not np.any(valid):
+        raise RuntimeError("Hybrid regional mosaic produced no valid radar pixels")
+
+    replaced = int(np.count_nonzero(site_valid))
+    total = int(site_valid.size)
+    replaced_pct = 100.0 * replaced / max(1, total)
     print(
-        f"Regional grid: {dbz.shape[1]}x{dbz.shape[0]} | "
-        f"dBZ={float(np.nanmin(dbz[valid])):.1f}..{float(np.nanmax(dbz[valid])):.1f}"
+        f"Hybrid grid: {combined_dbz.shape[1]}x{combined_dbz.shape[0]} | "
+        f"dBZ={float(np.nanmin(combined_dbz[valid])):.1f}..{float(np.nanmax(combined_dbz[valid])):.1f}"
     )
-    rgba = palette_renderer.colorize_dbz_grid_for_tiles(dbz)
+    print(
+        f"Native site replacement: {replaced:,}/{total:,} pixels "
+        f"({replaced_pct:.1f}%) | national N0B fills the remainder"
+    )
+
+    rgba = palette_renderer.colorize_dbz_grid_for_tiles(combined_dbz)
     image_path = output_dir / "desktop.webp"
     Image.fromarray(rgba, mode="RGBA").save(image_path, "WEBP", lossless=True, method=4)
 
@@ -266,15 +308,20 @@ def render(args):
     oldest = min(s.valid_time for s in sweeps)
     manifest = {
         "revision": int(datetime.now(timezone.utc).timestamp()),
-        "source": "NSF Unidata individual NEXRAD Level III N0B",
+        "source": "Hybrid Unidata NEXRAD: national N0B fallback + individual Level III N0B replacement",
         "product": PRODUCT,
         "valid_time": newest.isoformat(),
         "oldest_site_time": oldest.isoformat(),
+        "national_valid_time": national_time.isoformat(),
+        "national_dataset": national_source["dataset_name"],
+        "national_source_url": national_source["file_url"],
         "image": "desktop.webp",
-        "imageWidth": int(dbz.shape[1]),
-        "imageHeight": int(dbz.shape[0]),
-        "bounds": list(map(float, args.bounds)),
-        "mosaicMethod": "nearest valid radar",
+        "imageWidth": int(combined_dbz.shape[1]),
+        "imageHeight": int(combined_dbz.shape[0]),
+        "bounds": list(bounds),
+        "mosaicMethod": "national N0B fallback; nearest valid individual N0B site replaces fallback before colorization",
+        "nativeReplacementPixels": replaced,
+        "nativeReplacementPercent": round(replaced_pct, 3),
         "colorOwner": "Zacharologist Level II palette renderer",
         "sites": [
             {
