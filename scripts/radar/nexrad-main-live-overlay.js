@@ -10,6 +10,7 @@
   const POLL_MS = 30000;
   const STARTED_AT = Date.now();
   const INSTALL_TIMEOUT_MS = 20000;
+  const LOCAL_STATIC_PYRAMID = ["localhost", "127.0.0.1"].includes(window.location.hostname);
 
   let installed = false;
   let overlay = null;
@@ -486,6 +487,14 @@
       const manifest = await fetchManifest();
       if (manifest) {
         await install(manifest);
+        return;
+      }
+      if (!LOCAL_STATIC_PYRAMID) {
+        // The generated static NEXRAD pyramid is currently a local/test artifact.
+        // On production, reveal the already-preloaded MRMS layer immediately instead
+        // of hiding radar while retrying a file that is not published.
+        if (HOME_MODE) radarLayer?.setVisible(radarVisible);
+        console.info("Static NEXRAD pyramid not published here; using immediate MRMS fallback");
         return;
       }
     } catch (error) {

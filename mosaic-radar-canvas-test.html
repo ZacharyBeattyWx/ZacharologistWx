@@ -199,6 +199,7 @@
     let playbackStarting = false;
     let manifestRefreshBusy = false;
     let defaultFrameIntervalMs = 650;
+    let initialRadarStartupPromise = null;
 
     const blobCache = new Map();
     const blobPromises = new Map();
@@ -647,7 +648,8 @@
     }
 
     async function installInitialManifest(nextManifest) {
-      clearFrameCaches();
+      // Preserve the frame decoded during parallel startup. Reloads still clear stale caches.
+      if (manifest) clearFrameCaches();
       manifest = nextManifest;
       allFrames = sortedManifestFrames(manifest);
       defaultFrameIntervalMs = Number(manifest.defaultFrameIntervalMs || 650);
@@ -709,14 +711,28 @@
       return true;
     }
 
+    async function prepareInitialRadarStartup() {
+      const nextManifest = await fetchManifest();
+      const sorted = sortedManifestFrames(nextManifest);
+      const newest = sorted[sorted.length - 1];
+      if (newest) await loadFrameSource(newest, nextManifest);
+      return nextManifest;
+    }
+
     async function loadRadarLoop() {
       stopPlayback();
       try {
         setStatus("Loading MRMS loop manifest…");
-        const nextManifest = await fetchManifest();
+        let nextManifest = null;
+        if (initialRadarStartupPromise) {
+          nextManifest = await initialRadarStartupPromise;
+          initialRadarStartupPromise = null;
+        }
+        if (!nextManifest) nextManifest = await fetchManifest();
         await installInitialManifest(nextManifest);
       } catch (error) {
         console.error(error);
+        initialRadarStartupPromise = null;
         setStatus(`Loop load failed: ${error.message}`,"error");
       }
     }
@@ -731,6 +747,12 @@
         console.warn("MRMS manifest refresh failed",error);
       } finally { manifestRefreshBusy = false; }
     }
+
+    // Start radar I/O immediately so Mapbox and the first radar frame load in parallel.
+    initialRadarStartupPromise = prepareInitialRadarStartup().catch(error => {
+      console.warn("Parallel MRMS startup preload failed", error);
+      return null;
+    });
 
     mapboxgl.accessToken = window.MAPBOX_PUBLIC_TOKEN;
     const map = new mapboxgl.Map({
