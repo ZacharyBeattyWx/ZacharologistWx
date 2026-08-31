@@ -9,6 +9,7 @@ on:
       - scripts/radar/render_mrms_loop.py
       - scripts/radar/render_mrms_loop_archive.py
       - scripts/radar/render_mrms_mosaic.py
+      - scripts/radar/update_mrms_archive_incremental.py
       - scripts/radar/palettes/**
   workflow_dispatch:
   schedule:
@@ -46,41 +47,83 @@ jobs:
       - name: Check ecCodes runtime
         run: python -m eccodes selfcheck
 
-      - name: Restore radar-data as an incremental worktree
+      - name: Sparse-clone current radar-data index
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          rm -rf mrms-mosaic-loop-output
+          REPO_URL="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git clone \
+            --filter=blob:none \
+            --depth=1 \
+            --single-branch \
+            --branch radar-data \
+            --sparse \
+            "$REPO_URL" \
+            mrms-mosaic-loop-output
+
+      - name: Render only missing MRMS observations
         shell: bash
         run: |
           set -euo pipefail
-          git fetch --depth=1 origin radar-data:refs/remotes/origin/radar-data
-          rm -rf mrms-mosaic-loop-output
-          git worktree add --detach mrms-mosaic-loop-output refs/remotes/origin/radar-data
+          python scripts/radar/update_mrms_archive_incremental.py \
+            --output "$GITHUB_WORKSPACE/mrms-mosaic-loop-output" \
+            --new-ids-file "$RUNNER_TEMP/mrms-new-ids.txt" \
+            --prune-ids-file "$RUNNER_TEMP/mrms-prune-ids.txt"
 
-      - name: Render rolling 24-hour MRMS archive
+      - name: Stage incremental radar-data changes
+        shell: bash
         run: |
-          python scripts/radar/render_mrms_loop_archive.py \
-            --output "$GITHUB_WORKSPACE/mrms-mosaic-loop-output"
+          set -euo pipefail
+          cd "$GITHUB_WORKSPACE/mrms-mosaic-loop-output"
+          touch .nojekyll
 
-      - name: Validate published manifest
+          while IFS= read -r frame_id; do
+            [ -n "$frame_id" ] || continue
+            git update-index --force-remove -- \
+              "frames/${frame_id}.webp" \
+              "meta/${frame_id}.json"
+          done < "$RUNNER_TEMP/mrms-prune-ids.txt"
+
+          git add manifest.json .nojekyll
+
+          while IFS= read -r frame_id; do
+            [ -n "$frame_id" ] || continue
+            git add --sparse -- \
+              "frames/${frame_id}.webp" \
+              "meta/${frame_id}.json"
+          done < "$RUNNER_TEMP/mrms-new-ids.txt"
+
+      - name: Validate staged manifest
         shell: python
         run: |
           import json
+          import subprocess
           from datetime import UTC, datetime
           from pathlib import Path
 
           root = Path("mrms-mosaic-loop-output")
-          manifest_path = root / "manifest.json"
-          manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+          manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
           frames = manifest.get("frames") or []
           if len(frames) < 2:
               raise SystemExit("MRMS manifest has fewer than two observations")
 
+          tracked = set(
+              subprocess.check_output(
+                  ["git", "-C", str(root), "ls-files"],
+                  text=True,
+              ).splitlines()
+          )
           missing = [
               frame.get("image")
               for frame in frames
-              if not (root / frame.get("image", "")).exists()
+              if frame.get("image") not in tracked
           ]
           if missing:
               raise SystemExit(
-                  f"MRMS manifest references {len(missing)} missing frame files"
+                  f"MRMS manifest references {len(missing)} untracked frame files"
               )
 
           end_time = datetime.fromisoformat(manifest["endTime"])
@@ -90,24 +133,21 @@ jobs:
               f"history={manifest.get('historyWindowMinutes')} minutes; "
               f"latest source age={age_minutes:.1f} minutes"
           )
-
-          # Do not publish a silently ancient snapshot if NOAA's listing or the
-          # renderer ever gets stuck. Normal source latency is only a few minutes.
           if age_minutes > 20:
               raise SystemExit(
                   f"Newest MRMS observation is unexpectedly stale ({age_minutes:.1f} minutes)"
               )
 
-      - name: Publish only changed radar-data files
+      - name: Publish incremental radar-data commit
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           cd "$GITHUB_WORKSPACE/mrms-mosaic-loop-output"
-          touch .nojekyll
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
 
           if git diff --cached --quiet; then
             echo "No MRMS data changes to publish"
