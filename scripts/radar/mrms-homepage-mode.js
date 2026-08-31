@@ -353,6 +353,7 @@
     expandButton.setAttribute("title", "Open radar full screen");
     expandButton.innerHTML = `<span class="home-radar-expand-icon" aria-hidden="true">⛶</span>`;
     document.body.appendChild(expandButton);
+    const expandIcon = expandButton.querySelector(".home-radar-expand-icon");
 
     const parentDoc = (() => {
       try {
@@ -378,11 +379,44 @@
       }
     }
 
+    function isStandaloneRadar() {
+      try {
+        return window.parent === window;
+      } catch (_) {
+        return true;
+      }
+    }
+
     function syncFullscreenButton() {
-      const active = isRadarFullscreen();
-      expandButton.setAttribute("aria-label", active ? "Exit radar full screen" : "Open radar full screen");
-      expandButton.setAttribute("title", active ? "Exit radar full screen" : "Open radar full screen");
+      const fullscreen = isRadarFullscreen();
+      const standalone = isStandaloneRadar();
+      const active = fullscreen || standalone;
+      const label = fullscreen
+        ? "Exit radar full screen"
+        : standalone
+          ? "Back to home"
+          : "Open radar full screen";
+
+      expandButton.setAttribute("aria-label", label);
+      expandButton.setAttribute("title", label);
       expandButton.classList.toggle("is-fullscreen", active);
+      if (expandIcon) expandIcon.textContent = active ? "⤡" : "⛶";
+    }
+
+    function returnToHomepage() {
+      window.location.assign(new URL("./index.html", window.location.href).href);
+    }
+
+    function openStandaloneRadar() {
+      try {
+        if (window.top && window.top !== window) {
+          window.top.location.assign(window.location.href);
+          return;
+        }
+      } catch (_) {
+        // Fall through and use the current browsing context.
+      }
+      window.location.assign(window.location.href);
     }
 
     async function toggleFullscreen() {
@@ -393,16 +427,18 @@
           if (typeof exitDoc.exitFullscreen === "function") {
             await exitDoc.exitFullscreen();
           }
+        } else if (isStandaloneRadar()) {
+          returnToHomepage();
         } else if (target && typeof target.requestFullscreen === "function") {
           await target.requestFullscreen({ navigationUI: "hide" });
         } else if (document.documentElement.requestFullscreen) {
           await document.documentElement.requestFullscreen({ navigationUI: "hide" });
         } else {
-          window.open(window.location.href, "_blank", "noopener");
+          openStandaloneRadar();
         }
       } catch (error) {
-        console.warn("Radar fullscreen request failed; opening standalone view instead.", error);
-        window.open(window.location.href, "_blank", "noopener");
+        console.warn("Radar fullscreen request failed; switching to standalone view instead.", error);
+        openStandaloneRadar();
       } finally {
         window.setTimeout(syncFullscreenButton, 0);
       }
