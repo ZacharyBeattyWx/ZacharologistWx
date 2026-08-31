@@ -109,6 +109,41 @@
         line-height: 1.1;
       }
 
+      .mrms-native-home .home-radar-expand {
+        position: fixed;
+        top: 14px;
+        right: 250px;
+        z-index: 32;
+        width: 38px;
+        height: 38px;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        border: 1px solid rgba(148,163,184,.30);
+        border-radius: 10px;
+        background: rgba(4,10,22,.88);
+        color: #e2e8f0;
+        box-shadow: 0 10px 24px rgba(0,0,0,.24);
+        backdrop-filter: blur(10px);
+        cursor: pointer;
+        transition: background .16s ease, border-color .16s ease, transform .16s ease;
+      }
+      .mrms-native-home .home-radar-expand:hover {
+        background: rgba(15,23,42,.96);
+        border-color: rgba(56,189,248,.62);
+        color: #f8fafc;
+        transform: translateY(-1px);
+      }
+      .mrms-native-home .home-radar-expand:focus-visible {
+        outline: 2px solid rgba(56,189,248,.9);
+        outline-offset: 2px;
+      }
+      .mrms-native-home .home-radar-expand-icon {
+        font-size: 1.2rem;
+        line-height: 1;
+        transform: translateY(-1px);
+      }
+
       .mrms-native-home .playback {
         position: fixed !important;
         left: 50% !important;
@@ -217,6 +252,12 @@
         .mrms-native-home .home-radar-badge strong { font-size: .65rem !important; }
         .mrms-native-home .home-radar-badge-copy > span { font-size: .56rem !important; }
         .mrms-native-home .legend { display: none !important; }
+        .mrms-native-home .home-radar-expand {
+          top: 9px;
+          right: 9px;
+          width: 36px;
+          height: 36px;
+        }
         .mrms-native-home .playback {
           bottom: 9px !important;
           width: calc(100vw - 18px) !important;
@@ -303,6 +344,74 @@
       </span>
     `;
     document.body.appendChild(badge);
+
+    const expandButton = document.createElement("button");
+    expandButton.id = "homeRadarExpand";
+    expandButton.className = "home-radar-expand";
+    expandButton.type = "button";
+    expandButton.setAttribute("aria-label", "Open radar full screen");
+    expandButton.setAttribute("title", "Open radar full screen");
+    expandButton.innerHTML = `<span class="home-radar-expand-icon" aria-hidden="true">⛶</span>`;
+    document.body.appendChild(expandButton);
+
+    const parentDoc = (() => {
+      try {
+        return window.parent && window.parent !== window ? window.parent.document : document;
+      } catch (_) {
+        return document;
+      }
+    })();
+
+    function fullscreenTarget() {
+      try {
+        return window.frameElement || document.documentElement;
+      } catch (_) {
+        return document.documentElement;
+      }
+    }
+
+    function isRadarFullscreen() {
+      try {
+        return parentDoc.fullscreenElement === fullscreenTarget() || document.fullscreenElement === document.documentElement;
+      } catch (_) {
+        return Boolean(document.fullscreenElement);
+      }
+    }
+
+    function syncFullscreenButton() {
+      const active = isRadarFullscreen();
+      expandButton.setAttribute("aria-label", active ? "Exit radar full screen" : "Open radar full screen");
+      expandButton.setAttribute("title", active ? "Exit radar full screen" : "Open radar full screen");
+      expandButton.classList.toggle("is-fullscreen", active);
+    }
+
+    async function toggleFullscreen() {
+      const target = fullscreenTarget();
+      try {
+        if (isRadarFullscreen()) {
+          const exitDoc = parentDoc.fullscreenElement ? parentDoc : document;
+          if (typeof exitDoc.exitFullscreen === "function") {
+            await exitDoc.exitFullscreen();
+          }
+        } else if (target && typeof target.requestFullscreen === "function") {
+          await target.requestFullscreen({ navigationUI: "hide" });
+        } else if (document.documentElement.requestFullscreen) {
+          await document.documentElement.requestFullscreen({ navigationUI: "hide" });
+        } else {
+          window.open(window.location.href, "_blank", "noopener");
+        }
+      } catch (error) {
+        console.warn("Radar fullscreen request failed; opening standalone view instead.", error);
+        window.open(window.location.href, "_blank", "noopener");
+      } finally {
+        window.setTimeout(syncFullscreenButton, 0);
+      }
+    }
+
+    expandButton.addEventListener("click", toggleFullscreen);
+    parentDoc.addEventListener("fullscreenchange", syncFullscreenButton);
+    if (parentDoc !== document) document.addEventListener("fullscreenchange", syncFullscreenButton);
+    syncFullscreenButton();
 
     const freshness = document.getElementById("homeRadarFreshness");
     const legendTitle = document.querySelector(".legend-title");
