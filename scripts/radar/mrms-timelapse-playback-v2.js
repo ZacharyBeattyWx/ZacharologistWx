@@ -1,7 +1,7 @@
 (() => {
   const TIMELAPSE_FRAME_STRIDE = 8;
-  const TIMELAPSE_TRANSITION_MS = 55;
-  const TIMELAPSE_END_HOLD_MS = 250;
+  const TIMELAPSE_TRANSITION_MS = 42;
+  const TIMELAPSE_END_HOLD_MS = 180;
   const TIMELAPSE_LOOKAHEAD = 8;
   const PATCH_RETRY_MS = 50;
   const PATCH_TIMEOUT_MS = 10000;
@@ -30,9 +30,9 @@
 
   function playbackStride() {
     if (speedValue() < 2 || !Array.isArray(frames) || frames.length < 2) return 1;
-    // Scale 2x stride with the selected history: 3h=1, 6h=2, 12h=4, 18h=6, 24h=8.
+    // Keep 2x visibly faster while scaling stride with history: 1h=2, 3h=2, 6h=3, 12h=6, 18h+=8.
     const selectedMinutes = Math.max(30, Number(historyMinutes) || 60);
-    const proportionalStride = Math.max(1, Math.round(selectedMinutes / 180));
+    const proportionalStride = Math.max(2, Math.round(selectedMinutes / 120));
     return Math.max(1, Math.min(TIMELAPSE_FRAME_STRIDE, proportionalStride, frames.length - 1));
   }
 

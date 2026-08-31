@@ -4,7 +4,7 @@
   const startedAt = Date.now();
   const PATCH_TIMEOUT_MS = 12000;
   const PATCH_RETRY_MS = 50;
-  const FAST_LOOKAHEAD = 4;
+  const FAST_LOOKAHEAD = 5;
   const START_AHEAD = 3;
 
   function ready() {
@@ -29,7 +29,7 @@
   function playbackStride() {
     if (speedValue() < 2 || !Array.isArray(frames) || frames.length < 2) return 1;
     const selectedMinutes = Math.max(30, Number(historyMinutes) || 60);
-    const proportionalStride = Math.max(1, Math.round(selectedMinutes / 180));
+    const proportionalStride = Math.max(2, Math.round(selectedMinutes / 120));
     return Math.max(1, Math.min(8, proportionalStride, frames.length - 1));
   }
 
