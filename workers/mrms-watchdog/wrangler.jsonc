@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "zacharologist-mrms-watchdog",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-30",
+  "triggers": {
+    "crons": ["*/2 * * * *"]
+  },
+  "observability": {
+    "enabled": true
+  }
+}
