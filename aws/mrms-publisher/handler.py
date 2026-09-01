@@ -75,7 +75,7 @@ def select_work(
     max_render: int,
     live_priority_count: int,
 ) -> list[dict]:
-    """Choose newest scans first, then oldest gaps with remaining capacity."""
+    """Choose newest scans first and grow history backward from the live edge."""
     if not missing_sources:
         return []
 
@@ -93,9 +93,10 @@ def select_work(
         selected.append(source)
         selected_ids.add(source["slug"])
 
-    # Spend the rest of the invocation filling the oldest holes. This gradually
-    # restores the full history without ever blocking the newest observation.
-    for source in missing_sources:
+    # Spend the rest of the invocation on the next-newest missing observations.
+    # That grows one continuous recent loop backward instead of creating a sparse
+    # manifest with jumps to the oldest missing scans in the 24-hour window.
+    for source in newest_first:
         if len(selected) >= max_render:
             break
         if source["slug"] in selected_ids:
