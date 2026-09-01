@@ -1,0 +1,128 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: ZacharologistWx MRMS Lambda publisher and private S3 archive
+
+Parameters:
+  ImageUri:
+    Type: String
+    Description: ECR image URI for the MRMS Lambda worker
+  ScheduleState:
+    Type: String
+    Default: DISABLED
+    AllowedValues:
+      - ENABLED
+      - DISABLED
+  ScheduleExpression:
+    Type: String
+    Default: rate(2 minutes)
+  HistoryMinutes:
+    Type: Number
+    Default: 1440
+  MaxRenderPerRun:
+    Type: Number
+    Default: 4
+  LivePriorityCount:
+    Type: Number
+    Default: 2
+
+Resources:
+  RadarBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireOldRadarFrames
+            Status: Enabled
+            Prefix: mrms/frames/
+            ExpirationInDays: 2
+
+  PublisherRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: RadarBucketAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource: !Sub '${RadarBucket.Arn}/*'
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: '*'
+
+  PublisherFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      PackageType: Image
+      Code:
+        ImageUri: !Ref ImageUri
+      Role: !GetAtt PublisherRole.Arn
+      Architectures:
+        - x86_64
+      MemorySize: 3072
+      Timeout: 240
+      EphemeralStorage:
+        Size: 2048
+      ReservedConcurrentExecutions: 1
+      Environment:
+        Variables:
+          RADAR_BUCKET: !Ref RadarBucket
+          RADAR_PREFIX: mrms
+          HISTORY_MINUTES: !Ref HistoryMinutes
+          MAX_WIDTH: '4096'
+          MAX_RENDER_PER_RUN: !Ref MaxRenderPerRun
+          LIVE_PRIORITY_COUNT: !Ref LivePriorityCount
+
+  PublisherSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Poll NOAA MRMS and publish the newest radar frames
+      ScheduleExpression: !Ref ScheduleExpression
+      State: !Ref ScheduleState
+      Targets:
+        - Arn: !GetAtt PublisherFunction.Arn
+          Id: MrmsPublisherLambda
+
+  ScheduleInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref PublisherFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt PublisherSchedule.Arn
+
+Outputs:
+  RadarBucketName:
+    Description: Private S3 bucket containing the MRMS archive
+    Value: !Ref RadarBucket
+  PublisherFunctionName:
+    Description: Lambda function name
+    Value: !Ref PublisherFunction
+  PublisherScheduleName:
+    Description: EventBridge scheduled rule name
+    Value: !Ref PublisherSchedule
+  ManifestS3Uri:
+    Description: S3 URI for the generated radar manifest
+    Value: !Sub 's3://${RadarBucket}/mrms/manifest.json'
