@@ -23,6 +23,15 @@ fi
 aws ecr get-login-password --region "$REGION" \
   | docker login --username AWS --password-stdin "$ECR_HOST"
 
+# CloudShell has a small persistent filesystem. Previous BuildKit layers can
+# consume enough space to make an otherwise small rebuild fail near the end.
+printf '\nCleaning stale local Docker build data...\n'
+docker builder prune --all --force >/dev/null 2>&1 || true
+docker system prune --all --force >/dev/null 2>&1 || true
+
+printf 'Disk available before build:\n'
+df -h "$HOME" | tail -1
+
 docker buildx build \
   --platform linux/amd64 \
   --provenance=false \
@@ -33,6 +42,11 @@ docker buildx build \
 
 docker tag "$ECR_REPOSITORY:$IMAGE_TAG" "$IMAGE_URI"
 docker push "$IMAGE_URI"
+
+# The pushed copy in ECR is authoritative; release local layers immediately so
+# repeated CloudShell deploys do not accumulate several container images.
+docker builder prune --all --force >/dev/null 2>&1 || true
+docker image prune --all --force >/dev/null 2>&1 || true
 
 aws cloudformation deploy \
   --region "$REGION" \
