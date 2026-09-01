@@ -63,21 +63,26 @@ fill older history while continuing to keep the newest observation first.
 ## Enable the two-minute schedule after validation
 
 ```bash
+REGION="${AWS_REGION:-us-east-1}"
+STACK_NAME="${STACK_NAME:-zwx-mrms-publisher}"
+FUNCTION_NAME="$(aws cloudformation describe-stacks \
+  --region "$REGION" \
+  --stack-name "$STACK_NAME" \
+  --query 'Stacks[0].Outputs[?OutputKey==`PublisherFunctionName`].OutputValue' \
+  --output text)"
+IMAGE_URI="$(aws lambda get-function \
+  --region "$REGION" \
+  --function-name "$FUNCTION_NAME" \
+  --query 'Code.ImageUri' \
+  --output text)"
+
 aws cloudformation deploy \
-  --region "${AWS_REGION:-us-east-1}" \
-  --stack-name "${STACK_NAME:-zwx-mrms-publisher}" \
+  --region "$REGION" \
+  --stack-name "$STACK_NAME" \
   --template-file aws/mrms-publisher/template.yaml \
   --capabilities CAPABILITY_IAM \
   --parameter-overrides \
-    ImageUri="$(aws lambda get-function \
-      --region "${AWS_REGION:-us-east-1}" \
-      --function-name "$(aws cloudformation describe-stacks \
-        --region "${AWS_REGION:-us-east-1}" \
-        --stack-name "${STACK_NAME:-zwx-mrms-publisher}" \
-        --query 'Stacks[0].Outputs[?OutputKey==`PublisherFunctionName`].OutputValue' \
-        --output text)" \
-      --query 'Code.Location' \
-      --output text)" \
+    ImageUri="$IMAGE_URI" \
     ScheduleState=ENABLED
 ```
 
