@@ -24,6 +24,7 @@ sys.path.insert(0, str(RADAR_SCRIPT_DIR))
 
 import render_mrms_loop as base  # noqa: E402
 import render_mrms_mosaic as mrms  # noqa: E402
+import render_mrms_native_chunks as native_detail  # noqa: E402
 
 S3 = boto3.client("s3")
 
@@ -129,6 +130,50 @@ def upload_manifest(bucket: str, manifest_key: str, manifest: dict) -> None:
     )
 
 
+def upload_detail_chunks(
+    bucket: str,
+    prefix: str,
+    output_root: Path,
+    manifest: dict,
+) -> None:
+    for chunk in manifest.get("chunks") or []:
+        relative_path = str(chunk["image"])
+        S3.upload_file(
+            str(output_root / relative_path),
+            bucket,
+            object_key(prefix, relative_path),
+            ExtraArgs={
+                "ContentType": "image/webp",
+                "CacheControl": "public,max-age=31536000,immutable",
+            },
+        )
+
+
+def delete_object_prefix(bucket: str, prefix: str) -> int:
+    deleted = 0
+    continuation = None
+    while True:
+        request = {"Bucket": bucket, "Prefix": prefix}
+        if continuation:
+            request["ContinuationToken"] = continuation
+        response = S3.list_objects_v2(**request)
+        keys = [item["Key"] for item in response.get("Contents") or []]
+        for start in range(0, len(keys), 1000):
+            chunk = keys[start : start + 1000]
+            S3.delete_objects(
+                Bucket=bucket,
+                Delete={
+                    "Objects": [{"Key": key} for key in chunk],
+                    "Quiet": True,
+                },
+            )
+            deleted += len(chunk)
+        if not response.get("IsTruncated"):
+            break
+        continuation = response.get("NextContinuationToken")
+    return deleted
+
+
 def delete_pruned_frames(bucket: str, prefix: str, frame_ids: list[str]) -> None:
     if not frame_ids:
         return
@@ -152,6 +197,9 @@ def lambda_handler(event, context):
     history_minutes = env_int("HISTORY_MINUTES", 24 * 60, minimum=5)
     max_width = env_int("MAX_WIDTH", 4096, minimum=512)
     max_render = env_int("MAX_RENDER_PER_RUN", 4, minimum=1)
+    detail_prefix = os.environ.get("RADAR_DETAIL_PREFIX", "mrms-detail").strip("/")
+    detail_chunk_pixels = env_int("DETAIL_CHUNK_PIXELS", 2048, minimum=512)
+    detail_manifest_key = object_key(detail_prefix, "manifest.json")
     live_priority_count = min(
         max_render,
         env_int("LIVE_PRIORITY_COUNT", 2, minimum=1),
@@ -160,6 +208,7 @@ def lambda_handler(event, context):
 
     started = time.monotonic()
     existing_manifest = load_manifest(bucket, manifest_key)
+    existing_detail_manifest = load_manifest(bucket, detail_manifest_key)
     old_frames = existing_manifest.get("frames") or []
     old_by_id = {
         str(frame["id"]): frame
@@ -251,16 +300,75 @@ def lambda_handler(event, context):
                 f"MRMS geometry changed for {payload.get('id')}; full archive rebuild required"
             )
 
+    detail_status = "current"
+    detail_revision = existing_detail_manifest.get("revision")
+    detail_error = None
+    newest_source = sources[-1]
+    if str(detail_revision or "") != str(newest_source["slug"]):
+        try:
+            detail_root = work_root / "native-detail"
+            detail_manifest = native_detail.render_native_chunks(
+                session,
+                newest_source,
+                detail_root,
+                detail_chunk_pixels,
+            )
+            previous_revision = existing_detail_manifest.get("revision")
+            obsolete_revision = existing_detail_manifest.get("previousRevision")
+            if previous_revision and previous_revision != detail_manifest["revision"]:
+                detail_manifest["previousRevision"] = previous_revision
+            detail_manifest["publisher"] = {
+                "platform": "aws-lambda-s3",
+                "strategy": "native-grid-fixed-chunks",
+            }
+
+            upload_detail_chunks(
+                bucket,
+                detail_prefix,
+                detail_root,
+                detail_manifest,
+            )
+            upload_manifest(bucket, detail_manifest_key, detail_manifest)
+            detail_revision = detail_manifest["revision"]
+            detail_status = "published"
+
+            keep_revisions = {
+                str(detail_manifest["revision"]),
+                str(detail_manifest.get("previousRevision") or ""),
+            }
+            if obsolete_revision and str(obsolete_revision) not in keep_revisions:
+                delete_object_prefix(
+                    bucket,
+                    object_key(
+                        detail_prefix,
+                        f"revisions/{obsolete_revision}/",
+                    ),
+                )
+        except Exception as error:
+            detail_status = "error"
+            detail_error = str(error)
+            print(f"Native MRMS detail publish failed: {error}", flush=True)
+
     keep_ids = {str(frame["id"]) for frame in frames}
     prune_ids = sorted(set(old_by_id) - keep_ids)
 
-    if not rendered_ids and not prune_ids and existing_manifest:
+    if (
+        not rendered_ids
+        and not prune_ids
+        and existing_manifest
+        and detail_status != "published"
+    ):
         latest = parse_iso_time(frames[-1]["valid_time"])
         lag_minutes = max(0.0, (datetime.now(UTC) - latest).total_seconds() / 60.0)
         return {
             "status": "no-change",
             "latest": latest.isoformat(),
             "lagMinutes": round(lag_minutes, 2),
+            "nativeDetail": {
+                "status": detail_status,
+                "revision": detail_revision,
+                "error": detail_error,
+            },
             "elapsedSeconds": round(time.monotonic() - started, 2),
         }
 
@@ -292,6 +400,8 @@ def lambda_handler(event, context):
             "lagMinutesAtPublish": round(lag_minutes, 2),
             "renderedThisRun": len(rendered_ids),
             "missingAfterRun": max(0, len(missing_sources) - len(rendered_ids)),
+            "nativeDetailStatus": detail_status,
+            "nativeDetailRevision": detail_revision,
         },
         "frames": frames,
     }
@@ -310,5 +420,10 @@ def lambda_handler(event, context):
         "latest": end_time.isoformat(),
         "lagMinutes": round(lag_minutes, 2),
         "remainingMissing": max(0, len(missing_sources) - len(rendered_ids)),
+        "nativeDetail": {
+            "status": detail_status,
+            "revision": detail_revision,
+            "error": detail_error,
+        },
         "elapsedSeconds": round(time.monotonic() - started, 2),
     }
