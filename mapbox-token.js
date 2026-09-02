@@ -17,7 +17,7 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
   const params = new URLSearchParams(window.location.search);
   if (params.get("home") === "1") {
     const homeScript = document.createElement("script");
-    homeScript.src = "scripts/radar/mrms-homepage-mode.js?v=20260902b";
+    homeScript.src = "scripts/radar/mrms-homepage-mode.js?v=20260902c";
     homeScript.async = true;
     document.head.appendChild(homeScript);
 
