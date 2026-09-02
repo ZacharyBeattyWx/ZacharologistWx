@@ -285,35 +285,12 @@
             void main(){ gl_Position=u_matrix*vec4(a_pos,0.0,1.0); v_uv=a_uv; }
           `;
           const fragmentSource = `
-            precision highp float;
+            precision mediump float;
             uniform sampler2D u_texture;
             uniform float u_opacity;
-            uniform float u_mercator_north;
-            uniform float u_mercator_south;
-            uniform float u_latitude_north;
-            uniform float u_latitude_south;
             varying vec2 v_uv;
-            const float PI = 3.14159265358979323846;
-
-            float latitudeFromMercatorY(float y) {
-              float mercatorAngle = PI * (1.0 - 2.0 * y);
-              float sinhValue = 0.5 * (exp(mercatorAngle) - exp(-mercatorAngle));
-              return atan(sinhValue);
-            }
-
             void main() {
-              // The MRMS raster is a regular latitude/longitude grid, while the
-              // map quad is Web Mercator. Convert the interpolated Mercator row
-              // back to latitude before choosing the source-image row.
-              float mercatorY = mix(u_mercator_north, u_mercator_south, v_uv.y);
-              float latitude = latitudeFromMercatorY(mercatorY);
-              float geographicV = clamp(
-                (u_latitude_north - latitude) /
-                (u_latitude_north - u_latitude_south),
-                0.0,
-                1.0
-              );
-              vec4 radar = texture2D(u_texture, vec2(v_uv.x, geographicV));
+              vec4 radar = texture2D(u_texture, v_uv);
               gl_FragColor = vec4(radar.rgb, radar.a * u_opacity);
             }
           `;
@@ -328,18 +305,37 @@
           if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program) || "radar shader link failed");
           this.program = program;
 
-          const nw = mapboxgl.MercatorCoordinate.fromLngLat([west,north]);
-          const ne = mapboxgl.MercatorCoordinate.fromLngLat([east,north]);
-          const sw = mapboxgl.MercatorCoordinate.fromLngLat([west,south]);
-          const se = mapboxgl.MercatorCoordinate.fromLngLat([east,south]);
-          const positions = new Float32Array([nw.x,nw.y,sw.x,sw.y,ne.x,ne.y,ne.x,ne.y,sw.x,sw.y,se.x,se.y]);
-          this.mercatorNorth = nw.y;
-          this.mercatorSouth = sw.y;
-          this.latitudeNorth = north * Math.PI / 180;
-          this.latitudeSouth = south * Math.PI / 180;
-          // Python/WebP row 0 is north. With an unflipped upload, v=0 samples that
-          // top row, so north uses v=0 and south uses v=1.
-          const uvs = new Float32Array([0,0,0,1,1,0,1,0,0,1,1,1]);
+          // The source texture is a regular latitude/longitude grid, while Mapbox
+          // renders in Web Mercator. Split the CONUS surface into narrow latitude
+          // bands so every texture row stays geographically anchored during camera
+          // movement and animated frame swaps.
+          const latitudeSegments = 256;
+          const westX = mapboxgl.MercatorCoordinate.fromLngLat([west, north]).x;
+          const eastX = mapboxgl.MercatorCoordinate.fromLngLat([east, north]).x;
+          const positionValues = [];
+          const uvValues = [];
+
+          for (let band = 0; band < latitudeSegments; band += 1) {
+            const v0 = band / latitudeSegments;
+            const v1 = (band + 1) / latitudeSegments;
+            const latitude0 = north + (south - north) * v0;
+            const latitude1 = north + (south - north) * v1;
+            const y0 = mapboxgl.MercatorCoordinate.fromLngLat([west, latitude0]).y;
+            const y1 = mapboxgl.MercatorCoordinate.fromLngLat([west, latitude1]).y;
+
+            positionValues.push(
+              westX, y0, westX, y1, eastX, y0,
+              eastX, y0, westX, y1, eastX, y1
+            );
+            uvValues.push(
+              0, v0, 0, v1, 1, v0,
+              1, v0, 0, v1, 1, v1
+            );
+          }
+
+          const positions = new Float32Array(positionValues);
+          const uvs = new Float32Array(uvValues);
+          this.vertexCount = latitudeSegments * 6;
 
           this.positionBuffer = gl.createBuffer();
           gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
@@ -367,10 +363,6 @@
           gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
           gl.uniformMatrix4fv(gl.getUniformLocation(this.program,"u_matrix"),false,matrix);
           gl.uniform1f(gl.getUniformLocation(this.program,"u_opacity"),this.opacity);
-          gl.uniform1f(gl.getUniformLocation(this.program,"u_mercator_north"),this.mercatorNorth);
-          gl.uniform1f(gl.getUniformLocation(this.program,"u_mercator_south"),this.mercatorSouth);
-          gl.uniform1f(gl.getUniformLocation(this.program,"u_latitude_north"),this.latitudeNorth);
-          gl.uniform1f(gl.getUniformLocation(this.program,"u_latitude_south"),this.latitudeSouth);
           gl.uniform1i(gl.getUniformLocation(this.program,"u_texture"),0);
 
           const posLocation = gl.getAttribLocation(this.program,"a_pos");
@@ -383,7 +375,7 @@
           gl.vertexAttribPointer(uvLocation,2,gl.FLOAT,false,0,0);
           gl.activeTexture(gl.TEXTURE0);
           gl.bindTexture(gl.TEXTURE_2D,this.texture);
-          gl.drawArrays(gl.TRIANGLES,0,6);
+          gl.drawArrays(gl.TRIANGLES,0,this.vertexCount);
         },
 
         onRemove(map, gl) {
