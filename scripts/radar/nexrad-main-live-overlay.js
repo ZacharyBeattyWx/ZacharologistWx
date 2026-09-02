@@ -7,8 +7,12 @@
     "https://dt0cd6bl1yqh2.cloudfront.net/mrms-detail/manifest.json";
   const LAYER_ID = "mrms-native-detail-overlay";
   const MIN_DETAIL_MAP_ZOOM = 4.6;
-  const MAX_GPU_CHUNKS = 16;
-  const MAX_FETCHES = 4;
+  const MOBILE_DEVICE =
+    window.matchMedia?.("(pointer: coarse)")?.matches ||
+    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const MAX_GPU_CHUNKS = MOBILE_DEVICE ? 10 : 24;
+  const MAX_FETCHES = MOBILE_DEVICE ? 2 : 4;
+  const PREFETCH_FRAMES = MOBILE_DEVICE ? 2 : 4;
   const POLL_MS = 30000;
   const STARTED_AT = Date.now();
   const INSTALL_TIMEOUT_MS = 20000;
@@ -121,6 +125,31 @@
         currentBaseFrameId()
       )
     );
+  }
+
+  function playbackStride() {
+    try {
+      const speed = Math.max(0.25, Number(speedSelect?.value) || 1);
+      if (speed < 2 || frames.length < 2) return 1;
+      const selectedMinutes = Math.max(30, Number(historyMinutes) || 60);
+      return Math.max(
+        1,
+        Math.min(8, Math.max(2, Math.round(selectedMinutes / 120)), frames.length - 1)
+      );
+    } catch (_) {
+      return 1;
+    }
+  }
+
+  function prefetchUpcomingDetail() {
+    if (!overlay?.enabled || !isPlaying || !frames.length) return;
+    const frameIds = [];
+    const stride = playbackStride();
+    for (let offset = 1; offset <= PREFETCH_FRAMES; offset += 1) {
+      const index = (currentFrameIndex + (offset * stride)) % frames.length;
+      frameIds.push(String(frames[index]?.id || ""));
+    }
+    overlay.prefetchFrames(frameIds);
   }
 
   async function bitmapFromUrl(url) {
@@ -314,20 +343,20 @@
         this.updateWanted();
       },
 
-      key(chunk) {
-        return String(this.manifest.revision) + ":" + String(chunk.id);
+      key(chunk, manifest = this.manifest) {
+        return String(manifest.revision) + ":" + String(chunk.id);
       },
 
-      chunkUrl(chunk) {
+      chunkUrl(chunk, manifestUrl = this.manifest._url) {
         return new URL(
           String(chunk.image),
-          new URL(".", this.manifest._url)
+          new URL(".", manifestUrl)
         ).href;
       },
 
-      visibleChunks() {
+      visibleChunks(manifest = this.manifest) {
         const bounds = this.map.getBounds();
-        return this.manifest.chunks.filter(
+        return manifest.chunks.filter(
           chunk => chunkIntersects(chunk, bounds)
         );
       },
@@ -338,19 +367,42 @@
         this.wanted = new Map(
           visible.map(chunk => [this.key(chunk), chunk])
         );
-        this.queueChunks(visible);
+        this.queueChunks(visible, this.manifest, true);
         this.evict();
         this.syncVisibility();
       },
 
-      queueChunks(chunks) {
+      queueChunks(chunks, manifest = this.manifest, priority = false) {
+        const additions = [];
+        const requestedKeys = new Set();
         for (const chunk of chunks) {
-          const key = this.key(chunk);
+          const key = this.key(chunk, manifest);
+          requestedKeys.add(key);
           if (this.cache.has(key) || this.pending.has(key)) continue;
           this.pending.add(key);
-          this.queue.push({ chunk, key });
+          additions.push({
+            chunk,
+            key,
+            manifestUrl: manifest._url
+          });
+        }
+        if (priority) {
+          const promoted = this.queue.filter(item => requestedKeys.has(item.key));
+          this.queue = this.queue.filter(item => !requestedKeys.has(item.key));
+          this.queue.unshift(...promoted, ...additions);
+        } else {
+          this.queue.push(...additions);
         }
         this.pump();
+      },
+
+      prefetchFrames(frameIds) {
+        if (!this.enabled || !detailArchive || !Array.isArray(frameIds)) return;
+        for (const frameId of frameIds) {
+          const manifest = frameManifestFromArchive(detailArchive, frameId);
+          if (!manifest) continue;
+          this.queueChunks(this.visibleChunks(manifest), manifest, false);
+        }
       },
 
       async pump() {
@@ -374,7 +426,7 @@
       async fetchChunk(item) {
         try {
           const bitmap = await bitmapFromUrl(
-            this.chunkUrl(item.chunk)
+            this.chunkUrl(item.chunk, item.manifestUrl)
           );
           if (!this.gl) return;
           const texture = createTexture(this.gl, bitmap);
@@ -426,8 +478,6 @@
         }
         this.frameAvailable = true;
         this.manifest = next;
-        this.queue = [];
-        this.pending.clear();
         this.wanted = new Map();
         this.drawSet = [];
         if (this.enabled) this.updateWanted();
@@ -598,13 +648,16 @@
       const result = await originalShowFrame(...args);
       syncFrameManifest();
       syncMode();
+      prefetchUpcomingDetail();
       return result;
     };
 
     const originalStartPlayback = startPlayback;
     startPlayback = async function (...args) {
       radarLayer?.setVisible(radarVisible);
-      return originalStartPlayback(...args);
+      const result = await originalStartPlayback(...args);
+      prefetchUpcomingDetail();
+      return result;
     };
 
     const originalStopPlayback = stopPlayback;
@@ -616,11 +669,17 @@
 
     map.on("moveend", () => {
       syncMode();
-      if (overlay?.enabled) overlay.updateWanted();
+      if (overlay?.enabled) {
+        overlay.updateWanted();
+        prefetchUpcomingDetail();
+      }
     });
     map.on("zoomend", () => {
       syncMode();
-      if (overlay?.enabled) overlay.updateWanted();
+      if (overlay?.enabled) {
+        overlay.updateWanted();
+        prefetchUpcomingDetail();
+      }
     });
 
     opacityInput?.addEventListener(
