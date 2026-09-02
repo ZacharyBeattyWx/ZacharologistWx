@@ -462,6 +462,22 @@
     speedSelect.dispatchEvent(new Event("change", { bubbles: true }));
     updateHistoryButtons();
 
+    // Fit the full Lower 48 to the actual homepage radar viewport once at startup.
+    // A responsive bounds fit keeps both coasts visible without affecting later
+    // user-driven pan or zoom.
+    const fitHomepageConusView = () => {
+      map.resize();
+      map.fitBounds(
+        [[-127, 23], [-65, 50.5]],
+        { padding: 12, duration: 0 }
+      );
+    };
+    if (map.loaded()) {
+      window.requestAnimationFrame(fitHomepageConusView);
+    } else {
+      map.once("load", () => window.requestAnimationFrame(fitHomepageConusView));
+    }
+
     function sync() {
       const available = Math.max(30, Number(manifest?.historyWindowMinutes || 60));
       [...select.options].forEach(option => {
