@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: ZacharologistWx MRMS Lambda publisher and private S3 archive
+Description: ZacharologistWx MRMS loop and native-detail publisher
 
 Parameters:
   ImageUri:
@@ -40,6 +40,10 @@ Resources:
           - Id: ExpireOldRadarFrames
             Status: Enabled
             Prefix: mrms/frames/
+            ExpirationInDays: 2
+          - Id: ExpireOrphanedDetailRevisions
+            Status: Enabled
+            Prefix: mrms-detail/revisions/
             ExpirationInDays: 2
 
   PublisherRole:
@@ -85,14 +89,16 @@ Resources:
       Role: !GetAtt PublisherRole.Arn
       Architectures:
         - x86_64
-      MemorySize: 3008
-      Timeout: 240
+      MemorySize: 4096
+      Timeout: 600
       EphemeralStorage:
-        Size: 2048
+        Size: 4096
       Environment:
         Variables:
           RADAR_BUCKET: !Ref RadarBucket
           RADAR_PREFIX: mrms
+          RADAR_DETAIL_PREFIX: mrms-detail
+          DETAIL_CHUNK_PIXELS: '2048'
           HISTORY_MINUTES: !Ref HistoryMinutes
           MAX_WIDTH: '4096'
           MAX_RENDER_PER_RUN: !Ref MaxRenderPerRun
@@ -129,3 +135,7 @@ Outputs:
   ManifestS3Uri:
     Description: S3 URI for the generated radar manifest
     Value: !Sub 's3://${RadarBucket}/mrms/manifest.json'
+
+  NativeDetailManifestS3Uri:
+    Description: S3 URI for the newest native-resolution detail manifest
+    Value: !Sub 's3://${RadarBucket}/mrms-detail/manifest.json'
