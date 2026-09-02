@@ -148,6 +148,10 @@ def render_native_chunks(session, source, output_root: Path, chunk_pixels: int =
         if revision_root.exists():
             shutil.rmtree(revision_root, ignore_errors=True)
         staging.replace(revision_root)
+        revisions_root = output_root / "revisions"
+        for old in revisions_root.iterdir():
+            if old.is_dir() and old.name != revision:
+                shutil.rmtree(old, ignore_errors=True)
         return manifest
     except Exception:
         shutil.rmtree(staging, ignore_errors=True)
