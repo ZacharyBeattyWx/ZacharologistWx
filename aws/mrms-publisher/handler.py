@@ -191,6 +191,39 @@ def delete_pruned_frames(bucket: str, prefix: str, frame_ids: list[str]) -> None
         )
 
 
+def detail_frame_entry(manifest: dict) -> dict | None:
+    revision = manifest.get("revision")
+    valid_time = manifest.get("validTime")
+    if not revision or not valid_time:
+        return None
+    return {
+        "revision": str(revision),
+        "validTime": valid_time,
+        "sourceName": manifest.get("sourceName"),
+    }
+
+
+def detail_archive_frames(manifest: dict) -> list[dict]:
+    if manifest.get("mode") == "native-grid-chunk-archive":
+        return [
+            frame
+            for frame in (manifest.get("frames") or [])
+            if frame.get("revision") and frame.get("validTime")
+        ]
+    entry = detail_frame_entry(manifest)
+    return [entry] if entry and manifest.get("chunks") else []
+
+
+def detail_chunk_layout(manifest: dict) -> list[dict]:
+    if manifest.get("mode") == "native-grid-chunk-archive":
+        return list(manifest.get("chunkLayout") or [])
+    keys = ("id", "bounds", "width", "height", "row", "column")
+    return [
+        {key: chunk[key] for key in keys if key in chunk}
+        for chunk in (manifest.get("chunks") or [])
+    ]
+
+
 def lambda_handler(event, context):
     bucket = os.environ["RADAR_BUCKET"]
     prefix = os.environ.get("RADAR_PREFIX", "mrms").strip("/")
@@ -301,53 +334,115 @@ def lambda_handler(event, context):
             )
 
     detail_status = "current"
-    detail_revision = existing_detail_manifest.get("revision")
     detail_error = None
+    existing_detail_frames = detail_archive_frames(existing_detail_manifest)
+    original_detail_ids = {
+        str(frame["revision"]) for frame in existing_detail_frames
+    }
+    retained_detail = {
+        str(frame["revision"]): frame
+        for frame in existing_detail_frames
+        if parse_iso_time(frame["validTime"]) >= cutoff
+    }
     newest_source = sources[-1]
-    if str(detail_revision or "") != str(newest_source["slug"]):
-        try:
-            detail_root = work_root / "native-detail"
-            detail_manifest = native_detail.render_native_chunks(
+    detail_root = work_root / "native-detail"
+    rendered_detail_manifest = None
+
+    try:
+        if newest_source["slug"] not in retained_detail:
+            rendered_detail_manifest = native_detail.render_native_chunks(
                 session,
                 newest_source,
                 detail_root,
                 detail_chunk_pixels,
             )
-            previous_revision = existing_detail_manifest.get("revision")
-            obsolete_revision = existing_detail_manifest.get("previousRevision")
-            if previous_revision and previous_revision != detail_manifest["revision"]:
-                detail_manifest["previousRevision"] = previous_revision
-            detail_manifest["publisher"] = {
-                "platform": "aws-lambda-s3",
-                "strategy": "native-grid-fixed-chunks",
-            }
-
             upload_detail_chunks(
                 bucket,
                 detail_prefix,
                 detail_root,
-                detail_manifest,
+                rendered_detail_manifest,
             )
-            upload_manifest(bucket, detail_manifest_key, detail_manifest)
-            detail_revision = detail_manifest["revision"]
-            detail_status = "published"
+            entry = detail_frame_entry(rendered_detail_manifest)
+            if entry:
+                retained_detail[entry["revision"]] = entry
 
-            keep_revisions = {
-                str(detail_manifest["revision"]),
-                str(detail_manifest.get("previousRevision") or ""),
+        detail_frames = sorted(
+            retained_detail.values(),
+            key=lambda frame: parse_iso_time(frame["validTime"]),
+        )
+        retained_detail_ids = {
+            str(frame["revision"]) for frame in detail_frames
+        }
+        pruned_detail_ids = sorted(
+            original_detail_ids - retained_detail_ids
+        )
+        needs_archive_publish = bool(
+            rendered_detail_manifest
+            or pruned_detail_ids
+            or (
+                existing_detail_frames
+                and existing_detail_manifest.get("mode")
+                != "native-grid-chunk-archive"
+            )
+        )
+
+        geometry_source = (
+            rendered_detail_manifest
+            if rendered_detail_manifest
+            else existing_detail_manifest
+        )
+        layout = detail_chunk_layout(geometry_source)
+
+        if needs_archive_publish and detail_frames and layout:
+            newest_detail = detail_frames[-1]
+            archive_manifest = {
+                "revision": newest_detail["revision"],
+                "generatedAt": datetime.now(UTC).isoformat(),
+                "mode": "native-grid-chunk-archive",
+                "source": "NOAA/NCEP MRMS ReflectivityAtLowestAltitude",
+                "historyWindowMinutes": history_minutes,
+                "frameCount": len(detail_frames),
+                "bounds": geometry_source.get("bounds"),
+                "nativeWidth": geometry_source.get("nativeWidth"),
+                "nativeHeight": geometry_source.get("nativeHeight"),
+                "chunkPixels": geometry_source.get("chunkPixels"),
+                "rows": geometry_source.get("rows"),
+                "columns": geometry_source.get("columns"),
+                "chunkCount": len(layout),
+                "chunkLayout": layout,
+                "imageTemplate": (
+                    "revisions/{revision}/chunks/{chunkId}.webp"
+                ),
+                "frames": detail_frames,
+                "publisher": {
+                    "platform": "aws-lambda-s3",
+                    "strategy": "native-grid-chunk-archive",
+                },
             }
-            if obsolete_revision and str(obsolete_revision) not in keep_revisions:
+            upload_manifest(
+                bucket,
+                detail_manifest_key,
+                archive_manifest,
+            )
+            for revision_id in pruned_detail_ids:
                 delete_object_prefix(
                     bucket,
                     object_key(
                         detail_prefix,
-                        f"revisions/{obsolete_revision}/",
+                        f"revisions/{revision_id}/",
                     ),
                 )
-        except Exception as error:
-            detail_status = "error"
-            detail_error = str(error)
-            print(f"Native MRMS detail publish failed: {error}", flush=True)
+            detail_status = "published"
+            detail_revision = archive_manifest["revision"]
+        elif detail_frames:
+            detail_revision = detail_frames[-1]["revision"]
+        else:
+            detail_revision = None
+    except Exception as error:
+        detail_status = "error"
+        detail_revision = existing_detail_manifest.get("revision")
+        detail_error = str(error)
+        print(f"Native MRMS detail archive failed: {error}", flush=True)
 
     keep_ids = {str(frame["id"]) for frame in frames}
     prune_ids = sorted(set(old_by_id) - keep_ids)
