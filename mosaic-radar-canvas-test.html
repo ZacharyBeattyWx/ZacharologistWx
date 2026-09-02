@@ -285,11 +285,37 @@
             void main(){ gl_Position=u_matrix*vec4(a_pos,0.0,1.0); v_uv=a_uv; }
           `;
           const fragmentSource = `
-            precision mediump float;
+            precision highp float;
             uniform sampler2D u_texture;
             uniform float u_opacity;
+            uniform float u_mercator_north;
+            uniform float u_mercator_south;
+            uniform float u_latitude_north;
+            uniform float u_latitude_south;
             varying vec2 v_uv;
-            void main(){ vec4 radar=texture2D(u_texture,v_uv); gl_FragColor=vec4(radar.rgb,radar.a*u_opacity); }
+            const float PI = 3.14159265358979323846;
+
+            float latitudeFromMercatorY(float y) {
+              float mercatorAngle = PI * (1.0 - 2.0 * y);
+              float sinhValue = 0.5 * (exp(mercatorAngle) - exp(-mercatorAngle));
+              return atan(sinhValue);
+            }
+
+            void main() {
+              // The MRMS raster is a regular latitude/longitude grid, while the
+              // map quad is Web Mercator. Convert the interpolated Mercator row
+              // back to latitude before choosing the source-image row.
+              float mercatorY = mix(u_mercator_north, u_mercator_south, v_uv.y);
+              float latitude = latitudeFromMercatorY(mercatorY);
+              float geographicV = clamp(
+                (u_latitude_north - latitude) /
+                (u_latitude_north - u_latitude_south),
+                0.0,
+                1.0
+              );
+              vec4 radar = texture2D(u_texture, vec2(v_uv.x, geographicV));
+              gl_FragColor = vec4(radar.rgb, radar.a * u_opacity);
+            }
           `;
           const vertexShader = compileShader(gl, gl.VERTEX_SHADER, vertexSource);
           const fragmentShader = compileShader(gl, gl.FRAGMENT_SHADER, fragmentSource);
@@ -307,6 +333,10 @@
           const sw = mapboxgl.MercatorCoordinate.fromLngLat([west,south]);
           const se = mapboxgl.MercatorCoordinate.fromLngLat([east,south]);
           const positions = new Float32Array([nw.x,nw.y,sw.x,sw.y,ne.x,ne.y,ne.x,ne.y,sw.x,sw.y,se.x,se.y]);
+          this.mercatorNorth = nw.y;
+          this.mercatorSouth = sw.y;
+          this.latitudeNorth = north * Math.PI / 180;
+          this.latitudeSouth = south * Math.PI / 180;
           // Python/WebP row 0 is north. With an unflipped upload, v=0 samples that
           // top row, so north uses v=0 and south uses v=1.
           const uvs = new Float32Array([0,0,0,1,1,0,1,0,0,1,1,1]);
@@ -337,6 +367,10 @@
           gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
           gl.uniformMatrix4fv(gl.getUniformLocation(this.program,"u_matrix"),false,matrix);
           gl.uniform1f(gl.getUniformLocation(this.program,"u_opacity"),this.opacity);
+          gl.uniform1f(gl.getUniformLocation(this.program,"u_mercator_north"),this.mercatorNorth);
+          gl.uniform1f(gl.getUniformLocation(this.program,"u_mercator_south"),this.mercatorSouth);
+          gl.uniform1f(gl.getUniformLocation(this.program,"u_latitude_north"),this.latitudeNorth);
+          gl.uniform1f(gl.getUniformLocation(this.program,"u_latitude_south"),this.latitudeSouth);
           gl.uniform1i(gl.getUniformLocation(this.program,"u_texture"),0);
 
           const posLocation = gl.getAttribLocation(this.program,"a_pos");
