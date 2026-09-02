@@ -6,7 +6,7 @@
   <title>ZacharologistWx MRMS Loop Test</title>
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
-  <script src="mapbox-token.js?v=20260902a"></script>
+  <script src="mapbox-token.js?v=20260902b"></script>
   <style>
     :root {
       color-scheme: dark;
@@ -781,10 +781,18 @@
     });
 
     mapboxgl.accessToken = window.MAPBOX_PUBLIC_TOKEN;
-    const map = new mapboxgl.Map({
+    const homepageMode = new URLSearchParams(window.location.search).get("home") === "1";
+    const mapOptions = {
       container:"map",style:MAPBOX_STYLE,center:[-96.5,38.4],zoom:3.35,
       minZoom:2,maxZoom:12,projection:"mercator",attributionControl:true
-    });
+    };
+    if (homepageMode) {
+      // Establish the responsive CONUS view during construction so no delayed
+      // callback can override a user's pan or zoom after interaction begins.
+      mapOptions.bounds = [[-127,23],[-65,50.5]];
+      mapOptions.fitBoundsOptions = { padding:12 };
+    }
+    const map = new mapboxgl.Map(mapOptions);
     map.addControl(new mapboxgl.NavigationControl(),"bottom-right");
     map.on("load",()=>{ map.setProjection("mercator");loadRadarLoop(); });
 
