@@ -16,6 +16,7 @@
 
   let installed = false;
   let overlay = null;
+  let detailArchive = null;
   let pollTimer = null;
   let syncTimer = null;
   let retryTimer = null;
@@ -57,15 +58,69 @@
       throw new Error("Native MRMS detail manifest HTTP " + response.status);
     }
     const manifest = await response.json();
-    if (
-      manifest.mode !== "native-grid-chunks" ||
-      !Array.isArray(manifest.chunks) ||
-      !manifest.chunks.length
-    ) {
+    const singleFrame =
+      manifest.mode === "native-grid-chunks" &&
+      Array.isArray(manifest.chunks) &&
+      manifest.chunks.length > 0;
+    const archive =
+      manifest.mode === "native-grid-chunk-archive" &&
+      Array.isArray(manifest.frames) &&
+      Array.isArray(manifest.chunkLayout) &&
+      typeof manifest.imageTemplate === "string";
+    if (!singleFrame && !archive) {
       throw new Error("Native MRMS detail manifest is incomplete");
     }
     manifest._url = DETAIL_MANIFEST_URL;
     return manifest;
+  }
+
+  function currentBaseFrameId() {
+    return String(frames?.[currentFrameIndex]?.id || "");
+  }
+
+  function frameManifestFromArchive(archive, frameId) {
+    if (!archive || !frameId) return null;
+    if (archive.mode === "native-grid-chunks") {
+      return String(archive.revision) === String(frameId)
+        ? archive
+        : null;
+    }
+
+    const frame = (archive.frames || []).find(
+      item => String(item.revision) === String(frameId)
+    );
+    if (!frame) return null;
+
+    const chunks = (archive.chunkLayout || []).map(layout => {
+      const image = archive.imageTemplate
+        .replace("{revision}", String(frame.revision))
+        .replace("{chunkId}", String(layout.id));
+      return { ...layout, image };
+    });
+    return {
+      revision: String(frame.revision),
+      validTime: frame.validTime,
+      sourceName: frame.sourceName,
+      mode: "native-grid-chunks",
+      bounds: archive.bounds,
+      nativeWidth: archive.nativeWidth,
+      nativeHeight: archive.nativeHeight,
+      chunkPixels: archive.chunkPixels,
+      rows: archive.rows,
+      columns: archive.columns,
+      chunks,
+      _url: archive._url
+    };
+  }
+
+  function syncFrameManifest() {
+    if (!overlay) return;
+    overlay.setManifest(
+      frameManifestFromArchive(
+        detailArchive,
+        currentBaseFrameId()
+      )
+    );
   }
 
   async function bitmapFromUrl(url) {
@@ -202,6 +257,7 @@
       type: "custom",
       renderingMode: "2d",
       manifest: initialManifest,
+      frameAvailable: Boolean(initialManifest),
       enabled: false,
       cache: new Map(),
       pending: new Set(),
@@ -352,8 +408,23 @@
       },
 
       setManifest(next) {
-        if (!next || next.revision === this.manifest.revision) return;
-        this.clearTextures();
+        if (!next) {
+          this.frameAvailable = false;
+          this.enabled = false;
+          this.wanted = new Map();
+          this.drawSet = [];
+          this.syncVisibility();
+          this.map?.triggerRepaint();
+          return;
+        }
+        if (
+          this.frameAvailable &&
+          this.manifest &&
+          next.revision === this.manifest.revision
+        ) {
+          return;
+        }
+        this.frameAvailable = true;
         this.manifest = next;
         this.queue = [];
         this.pending.clear();
@@ -496,9 +567,8 @@
   function shouldShowDetail() {
     try {
       return (
-        !isPlaying &&
         frames.length > 0 &&
-        currentFrameIndex === frames.length - 1 &&
+        overlay?.frameAvailable &&
         radarVisible &&
         map.getZoom() >= MIN_DETAIL_MAP_ZOOM
       );
@@ -526,13 +596,13 @@
     const originalShowFrame = showFrame;
     showFrame = async function (...args) {
       const result = await originalShowFrame(...args);
+      syncFrameManifest();
       syncMode();
       return result;
     };
 
     const originalStartPlayback = startPlayback;
     startPlayback = async function (...args) {
-      overlay?.setEnabled(false);
       radarLayer?.setVisible(radarVisible);
       return originalStartPlayback(...args);
     };
@@ -562,7 +632,11 @@
     pollTimer = window.setInterval(async () => {
       try {
         const next = await fetchManifest();
-        if (next) overlay?.setManifest(next);
+        if (next) {
+          detailArchive = next;
+          syncFrameManifest();
+          syncMode();
+        }
       } catch (error) {
         console.warn(
           "Native MRMS detail manifest refresh failed",
@@ -583,13 +657,12 @@
 
     syncMode();
     console.info(
-      "Main radar native-detail revision " +
-        manifest.revision +
-        " (" +
+      "Main radar native-detail archive: " +
+        String(detailArchive?.frames?.length || 1) +
+        " frame(s), " +
         manifest.nativeWidth +
         "x" +
-        manifest.nativeHeight +
-        ")"
+        manifest.nativeHeight
     );
     return true;
   }
@@ -610,8 +683,15 @@
     try {
       const manifest = await fetchManifest();
       if (manifest) {
-        await install(manifest);
-        return;
+        detailArchive = manifest;
+        const frameManifest = frameManifestFromArchive(
+          detailArchive,
+          currentBaseFrameId()
+        );
+        if (frameManifest) {
+          await install(frameManifest);
+          return;
+        }
       }
       radarLayer?.setVisible(radarVisible);
       console.info(
