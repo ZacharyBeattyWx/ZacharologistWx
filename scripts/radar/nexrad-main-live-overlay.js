@@ -52,7 +52,7 @@
       DETAIL_MANIFEST_URL + separator + "t=" + Date.now(),
       { cache: "no-store" }
     );
-    if (response.status === 404) return null;
+    if (response.status === 403 || response.status === 404) return null;
     if (!response.ok) {
       throw new Error("Native MRMS detail manifest HTTP " + response.status);
     }
