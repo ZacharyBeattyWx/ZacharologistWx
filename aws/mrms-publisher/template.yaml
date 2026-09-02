@@ -89,10 +89,11 @@ Resources:
       Role: !GetAtt PublisherRole.Arn
       Architectures:
         - x86_64
-      MemorySize: 4096
+      MemorySize: 3008
       Timeout: 600
+      ReservedConcurrentExecutions: 1
       EphemeralStorage:
-        Size: 4096
+        Size: 2048
       Environment:
         Variables:
           RADAR_BUCKET: !Ref RadarBucket
