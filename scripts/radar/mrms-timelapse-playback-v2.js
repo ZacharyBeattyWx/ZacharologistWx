@@ -260,7 +260,11 @@
       renderGl.bindTexture(renderGl.TEXTURE_2D, this.__zwxBlendV2Texture);
       renderGl.uniform1i(renderGl.getUniformLocation(blendProgram, "u_texture_b"), 1);
 
-      renderGl.drawArrays(renderGl.TRIANGLES, 0, 6);
+      renderGl.drawArrays(
+        renderGl.TRIANGLES,
+        0,
+        Number(this.vertexCount) || 6
+      );
 
       // Critical: don't leak texture unit 1 into Mapbox's next draw call.
       renderGl.activeTexture(renderGl.TEXTURE0);
