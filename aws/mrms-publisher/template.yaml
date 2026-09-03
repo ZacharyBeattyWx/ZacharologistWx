@@ -136,7 +136,7 @@ Outputs:
     Value: !Ref RadarBucket
   PublisherFunctionName:
     Description: Lambda function name
-    Value: !GetAtt PublisherFunction.Arn
+    Value: !Ref PublisherFunction
   PublisherScheduleName:
     Description: EventBridge scheduled rule name
     Value: !Ref PublisherSchedule
