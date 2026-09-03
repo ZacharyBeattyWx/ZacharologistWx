@@ -5,7 +5,10 @@ RUN pip install --no-cache-dir -r ${LAMBDA_TASK_ROOT}/requirements.txt
 
 COPY aws/mrms-publisher/handler_v2.py ${LAMBDA_TASK_ROOT}/handler.py
 COPY scripts/radar/render_mrms_loop.py ${LAMBDA_TASK_ROOT}/scripts/radar/render_mrms_loop.py
-COPY scripts/radar/render_mrms_mosaic.py ${LAMBDA_TASK_ROOT}/scripts/radar/render_mrms_mosaic.py
+# Keep the shared decoder/palette implementation intact, then expose the
+# production display profile under the module name used by the publisher.
+COPY scripts/radar/render_mrms_mosaic.py ${LAMBDA_TASK_ROOT}/scripts/radar/render_mrms_mosaic_base.py
+COPY scripts/radar/render_mrms_mosaic_display.py ${LAMBDA_TASK_ROOT}/scripts/radar/render_mrms_mosaic.py
 COPY scripts/radar/render_mrms_frame_bundle.py ${LAMBDA_TASK_ROOT}/scripts/radar/render_mrms_frame_bundle.py
 COPY scripts/radar/palettes/zacharologist-reflectivity.pal ${LAMBDA_TASK_ROOT}/scripts/radar/palettes/zacharologist-reflectivity.pal
 
