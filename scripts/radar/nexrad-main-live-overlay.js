@@ -898,6 +898,22 @@
         return true;
       },
 
+      fetchConcurrency() {
+        const chunkPixels =
+          Number(this.manifest?.chunkPixels) || 2048;
+
+        // The newer 1024px native chunks are substantially cheaper to decode
+        // and upload, so fast playback can safely use the wider fetch pool.
+        if (
+          chunkPixels <= 1024 &&
+          currentPlaybackSpeed() >= 1.5
+        ) {
+          return FAST_NATIVE_FETCHES;
+        }
+
+        return MAX_FETCHES;
+      },
+
       async pump() {
         while (
           this.activeFetches < this.fetchConcurrency() &&
