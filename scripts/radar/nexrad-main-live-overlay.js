@@ -13,6 +13,9 @@
   const MAX_GPU_CHUNKS = MOBILE_DEVICE ? 10 : 24;
   const MAX_FETCHES = MOBILE_DEVICE ? 2 : 4;
   const PREFETCH_FRAMES = MOBILE_DEVICE ? 2 : 4;
+  const VIEWPORT_SYNC_MS = MOBILE_DEVICE ? 140 : 90;
+  const FRAME_READY_POLL_MS = 16;
+  const FAST_FRAME_WAIT_MS = MOBILE_DEVICE ? 260 : 180;
   const POLL_MS = 30000;
   const STARTED_AT = Date.now();
   const INSTALL_TIMEOUT_MS = 20000;
@@ -127,15 +130,26 @@
     );
   }
 
-  function prefetchUpcomingDetail() {
-    if (!overlay?.enabled || !isPlaying || frames.length < 2) return;
-
-    let speed = 1;
+  function currentPlaybackSpeed() {
     try {
       if (typeof speedSelect !== "undefined") {
-        speed = Math.max(0.25, Number(speedSelect.value) || 1);
+        return Math.max(0.25, Number(speedSelect.value) || 1);
       }
     } catch (_) {}
+    return 1;
+  }
+
+  function prefetchUpcomingDetail() {
+    if (
+      !overlay?.enabled ||
+      !isPlaying ||
+      frames.length < 2 ||
+      map?.isMoving?.()
+    ) {
+      return;
+    }
+
+    const speed = currentPlaybackSpeed();
 
     // Mobile 2x playback has very little decode/GPU headroom. Prioritize the
     // exact next observation instead of spending bandwidth several frames out.
@@ -295,6 +309,7 @@
       frameAvailable: Boolean(initialManifest),
       enabled: false,
       cache: new Map(),
+      geometryCache: new Map(),
       pending: new Set(),
       queue: [],
       activeFetches: 0,
@@ -344,9 +359,50 @@
         this.uMatrix = gl.getUniformLocation(this.program, "u_matrix");
         this.uTexture = gl.getUniformLocation(this.program, "u_texture");
         this.uOpacity = gl.getUniformLocation(this.program, "u_opacity");
-        this.posBuffer = gl.createBuffer();
-        this.uvBuffer = gl.createBuffer();
         this.updateWanted();
+      },
+
+      geometryKey(chunk) {
+        return (
+          String(chunk.id) +
+          ":" +
+          (chunk.bounds || []).map(Number).join(",")
+        );
+      },
+
+      geometryForChunk(chunk) {
+        const key = this.geometryKey(chunk);
+        const existing = this.geometryCache.get(key);
+        if (existing) return existing;
+        if (!this.gl) return null;
+
+        const gl = this.gl;
+        const mesh = meshForChunk(chunk);
+
+        const posBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+        gl.bufferData(
+          gl.ARRAY_BUFFER,
+          mesh.positions,
+          gl.STATIC_DRAW
+        );
+
+        const uvBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, uvBuffer);
+        gl.bufferData(
+          gl.ARRAY_BUFFER,
+          mesh.uvs,
+          gl.STATIC_DRAW
+        );
+
+        const geometry = {
+          posBuffer,
+          uvBuffer,
+          vertexCount: mesh.vertexCount
+        };
+
+        this.geometryCache.set(key, geometry);
+        return geometry;
       },
 
       key(chunk, manifest = this.manifest) {
@@ -367,12 +423,36 @@
         );
       },
 
+      pruneQueueForViewport(chunks) {
+        const visibleIds = new Set(
+          chunks.map(chunk => String(chunk.id))
+        );
+        const keep = [];
+
+        for (const item of this.queue) {
+          if (visibleIds.has(String(item.chunk.id))) {
+            keep.push(item);
+          } else {
+            this.pending.delete(item.key);
+          }
+        }
+
+        this.queue = keep;
+      },
+
       updateWanted() {
         if (!this.enabled) return;
+
         const visible = this.visibleChunks();
+
+        // Don't let requests for a viewport the user already left sit ahead of
+        // the chunks needed for the new camera position.
+        this.pruneQueueForViewport(visible);
+
         this.wanted = new Map(
           visible.map(chunk => [this.key(chunk), chunk])
         );
+
         this.queueChunks(visible, this.manifest, true);
         this.evict();
         this.syncVisibility();
@@ -419,6 +499,63 @@
         });
       },
 
+      frameReady(frameId) {
+        if (!detailArchive || !frameId) return false;
+
+        const manifest = frameManifestFromArchive(
+          detailArchive,
+          frameId
+        );
+
+        if (!manifest) return false;
+
+        const chunks = this.visibleChunks(manifest);
+        if (!chunks.length) return false;
+
+        return chunks.every(chunk =>
+          this.cache.has(this.key(chunk, manifest))
+        );
+      },
+
+      async waitForFrame(frameId, timeoutMs) {
+        if (!this.enabled || !detailArchive || !frameId) return false;
+
+        const manifest = frameManifestFromArchive(
+          detailArchive,
+          frameId
+        );
+
+        if (!manifest) return false;
+
+        const chunks = this.visibleChunks(manifest);
+        if (!chunks.length) return false;
+
+        this.queueChunks(chunks, manifest, true);
+
+        const ready = () =>
+          chunks.every(chunk =>
+            this.cache.has(this.key(chunk, manifest))
+          );
+
+        if (ready()) return true;
+
+        const deadline =
+          performance.now() + Math.max(0, Number(timeoutMs) || 0);
+
+        while (
+          this.enabled &&
+          performance.now() < deadline
+        ) {
+          await new Promise(resolve =>
+            window.setTimeout(resolve, FRAME_READY_POLL_MS)
+          );
+
+          if (ready()) return true;
+        }
+
+        return ready();
+      },
+
       async pump() {
         while (
           this.activeFetches < MAX_FETCHES &&
@@ -445,10 +582,17 @@
           if (!this.gl) return;
           const texture = createTexture(this.gl, bitmap);
           if (bitmap.close) bitmap.close();
+
+          const geometry = this.geometryForChunk(item.chunk);
+          if (!geometry) {
+            this.gl.deleteTexture(texture);
+            return;
+          }
+
           this.cache.set(item.key, {
             texture,
             chunk: item.chunk,
-            mesh: meshForChunk(item.chunk),
+            geometry,
             lastUsed: performance.now()
           });
         } catch (error) {
@@ -471,6 +615,20 @@
           }
         }
         this.cache.clear();
+      },
+
+      clearGeometry() {
+        if (this.gl) {
+          for (const geometry of this.geometryCache.values()) {
+            if (geometry.posBuffer) {
+              this.gl.deleteBuffer(geometry.posBuffer);
+            }
+            if (geometry.uvBuffer) {
+              this.gl.deleteBuffer(geometry.uvBuffer);
+            }
+          }
+        }
+        this.geometryCache.clear();
       },
 
       setManifest(next) {
@@ -498,12 +656,18 @@
       },
 
       setEnabled(value) {
-        this.enabled = Boolean(value);
-        if (this.enabled) this.updateWanted();
-        else {
+        const next = Boolean(value);
+        if (next === this.enabled) return;
+
+        this.enabled = next;
+
+        if (this.enabled) {
+          this.updateWanted();
+        } else {
           this.wanted = new Map();
           this.syncVisibility();
         }
+
         this.map?.triggerRepaint();
       },
 
@@ -545,8 +709,11 @@
 
       drawChunk(gl, matrix, item) {
         const cached = this.cache.get(item.key);
-        if (!cached?.texture) return;
+        if (!cached?.texture || !cached?.geometry) return;
+
         cached.lastUsed = performance.now();
+
+        const geometry = cached.geometry;
 
         gl.useProgram(this.program);
         gl.uniformMatrix4fv(this.uMatrix, false, matrix);
@@ -555,11 +722,10 @@
           this.uOpacity,
           Number(opacityInput?.value ?? 1)
         );
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.posBuffer);
-        gl.bufferData(
+
+        gl.bindBuffer(
           gl.ARRAY_BUFFER,
-          cached.mesh.positions,
-          gl.DYNAMIC_DRAW
+          geometry.posBuffer
         );
         gl.enableVertexAttribArray(this.aPos);
         gl.vertexAttribPointer(
@@ -570,11 +736,10 @@
           0,
           0
         );
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.uvBuffer);
-        gl.bufferData(
+
+        gl.bindBuffer(
           gl.ARRAY_BUFFER,
-          cached.mesh.uvs,
-          gl.DYNAMIC_DRAW
+          geometry.uvBuffer
         );
         gl.enableVertexAttribArray(this.aUv);
         gl.vertexAttribPointer(
@@ -585,21 +750,32 @@
           0,
           0
         );
+
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, cached.texture);
+
         gl.drawArrays(
           gl.TRIANGLES,
           0,
-          cached.mesh.vertexCount
+          geometry.vertexCount
         );
       },
 
       render(gl, matrix) {
-        if (
-          !this.enabled ||
-          !radarVisible ||
-          !this.readyForViewport()
-        ) {
+        if (!this.enabled || !radarVisible) {
+          this.syncVisibility();
+          return;
+        }
+
+        // Progressive refinement: render every native chunk that is already
+        // available instead of waiting for the slowest chunk in the viewport.
+        // The lightweight national layer remains underneath until all wanted
+        // chunks for this frame are ready.
+        this.drawSet = [...this.wanted.entries()]
+          .filter(([key]) => this.cache.has(key))
+          .map(([key, chunk]) => ({ key, chunk }));
+
+        if (!this.drawSet.length) {
           this.syncVisibility();
           return;
         }
@@ -607,21 +783,21 @@
         gl.disable(gl.DEPTH_TEST);
         gl.enable(gl.BLEND);
         gl.blendEquation(gl.FUNC_ADD);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-
-        this.drawSet = [...this.wanted.entries()].map(
-          ([key, chunk]) => ({ key, chunk })
+        gl.blendFunc(
+          gl.SRC_ALPHA,
+          gl.ONE_MINUS_SRC_ALPHA
         );
+
         for (const item of this.drawSet) {
           this.drawChunk(gl, matrix, item);
         }
+
         this.syncVisibility();
       },
 
       onRemove(mapRef, gl) {
         this.clearTextures();
-        if (this.posBuffer) gl.deleteBuffer(this.posBuffer);
-        if (this.uvBuffer) gl.deleteBuffer(this.uvBuffer);
+        this.clearGeometry();
         if (this.program) gl.deleteProgram(this.program);
         this.gl = null;
       }
@@ -659,6 +835,40 @@
 
     const originalShowFrame = showFrame;
     showFrame = async function (...args) {
+      // Camera interaction gets first priority. Re-uploading the 4096px base
+      // texture while Mapbox is pinch-zooming/panning competes heavily with
+      // map rendering and native chunk decoding, especially on mobile.
+      // Playback automatically resumes from the same frame after moveend.
+      if (isPlaying && map?.isMoving?.()) {
+        return false;
+      }
+
+      const requestedIndex = Number(args[0]);
+
+      if (
+        isPlaying &&
+        overlay?.enabled &&
+        !map?.isMoving?.() &&
+        frames.length > 1 &&
+        Number.isFinite(requestedIndex) &&
+        currentPlaybackSpeed() >= 1.5
+      ) {
+        const normalized =
+          ((requestedIndex % frames.length) + frames.length) %
+          frames.length;
+
+        const requestedFrameId = String(
+          frames[normalized]?.id || ""
+        );
+
+        if (requestedFrameId) {
+          await overlay.waitForFrame(
+            requestedFrameId,
+            FAST_FRAME_WAIT_MS
+          );
+        }
+      }
+
       const result = await originalShowFrame(...args);
       syncFrameManifest();
       syncMode();
@@ -681,19 +891,54 @@
       return result;
     };
 
+    let viewportSyncTimer = null;
+    let lastViewportSyncAt = 0;
+
+    const refreshViewportDetail = (includePrefetch = false) => {
+      syncMode();
+
+      if (overlay?.enabled) {
+        overlay.updateWanted();
+
+        if (includePrefetch) {
+          prefetchUpcomingDetail();
+        }
+      }
+    };
+
+    const scheduleViewportDetail = () => {
+      if (viewportSyncTimer) return;
+
+      const elapsed =
+        performance.now() - lastViewportSyncAt;
+
+      const delay = Math.max(
+        0,
+        VIEWPORT_SYNC_MS - elapsed
+      );
+
+      viewportSyncTimer = window.setTimeout(() => {
+        viewportSyncTimer = null;
+        lastViewportSyncAt = performance.now();
+
+        // Load only the current observation while the user is manipulating
+        // the map. This keeps bandwidth/GPU work focused on responsiveness.
+        refreshViewportDetail(false);
+      }, delay);
+    };
+
+    map.on("move", scheduleViewportDetail);
+
     map.on("moveend", () => {
-      syncMode();
-      if (overlay?.enabled) {
-        overlay.updateWanted();
-        prefetchUpcomingDetail();
+      if (viewportSyncTimer) {
+        window.clearTimeout(viewportSyncTimer);
+        viewportSyncTimer = null;
       }
-    });
-    map.on("zoomend", () => {
-      syncMode();
-      if (overlay?.enabled) {
-        overlay.updateWanted();
-        prefetchUpcomingDetail();
-      }
+
+      lastViewportSyncAt = performance.now();
+
+      // Camera is settled; resume normal playback lookahead.
+      refreshViewportDetail(true);
     });
 
     opacityInput?.addEventListener(
@@ -724,6 +969,9 @@
         if (syncTimer) window.clearInterval(syncTimer);
         if (pollTimer) window.clearInterval(pollTimer);
         if (retryTimer) window.clearTimeout(retryTimer);
+        if (viewportSyncTimer) {
+          window.clearTimeout(viewportSyncTimer);
+        }
       },
       { once: true }
     );
