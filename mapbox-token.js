@@ -4,15 +4,9 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
   const path = String(window.location.pathname || "");
   if (!/\/mosaic-radar-canvas-test\.html$/i.test(path)) return;
 
-  const script = document.createElement("script");
-  script.src = "scripts/radar/mrms-timelapse-playback-v2.js?v=20260902a";
-  script.async = true;
-  document.head.appendChild(script);
-
-  const performanceScript = document.createElement("script");
-  performanceScript.src = "scripts/radar/mrms-playback-performance.js?v=20260830b";
-  performanceScript.async = true;
-  document.head.appendChild(performanceScript);
+  // X2 playback is now owned by the core radar scheduler and native-detail
+  // buffer. Do not load the legacy timelapse/stride overrides here; they
+  // replaced the 5 fps cadence and caused competing playback clocks.
 
   const params = new URLSearchParams(window.location.search);
   if (params.get("home") === "1") {
