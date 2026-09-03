@@ -127,28 +127,34 @@
     );
   }
 
-  function playbackStride() {
-    try {
-      const speed = Math.max(0.25, Number(speedSelect?.value) || 1);
-      if (speed < 2 || frames.length < 2) return 1;
-      const selectedMinutes = Math.max(30, Number(historyMinutes) || 60);
-      return Math.max(
-        1,
-        Math.min(8, Math.max(2, Math.round(selectedMinutes / 120)), frames.length - 1)
-      );
-    } catch (_) {
-      return 1;
-    }
-  }
-
   function prefetchUpcomingDetail() {
-    if (!overlay?.enabled || !isPlaying || !frames.length) return;
+    if (!overlay?.enabled || !isPlaying || frames.length < 2) return;
+
+    let speed = 1;
+    try {
+      if (typeof speedSelect !== "undefined") {
+        speed = Math.max(0.25, Number(speedSelect.value) || 1);
+      }
+    } catch (_) {}
+
+    // Mobile 2x playback has very little decode/GPU headroom. Prioritize the
+    // exact next observation instead of spending bandwidth several frames out.
+    const lookahead =
+      MOBILE_DEVICE && speed >= 2
+        ? 1
+        : Math.min(PREFETCH_FRAMES, frames.length - 1);
+
     const frameIds = [];
-    const stride = playbackStride();
-    for (let offset = 1; offset <= PREFETCH_FRAMES; offset += 1) {
-      const index = (currentFrameIndex + (offset * stride)) % frames.length;
-      frameIds.push(String(frames[index]?.id || ""));
+
+    for (let offset = 1; offset <= lookahead; offset += 1) {
+      const index = (currentFrameIndex + offset) % frames.length;
+      const frameId = String(frames[index]?.id || "");
+
+      if (frameId && !frameIds.includes(frameId)) {
+        frameIds.push(frameId);
+      }
     }
+
     overlay.prefetchFrames(frameIds);
   }
 
@@ -398,11 +404,19 @@
 
       prefetchFrames(frameIds) {
         if (!this.enabled || !detailArchive || !Array.isArray(frameIds)) return;
-        for (const frameId of frameIds) {
+
+        frameIds.forEach((frameId, index) => {
           const manifest = frameManifestFromArchive(detailArchive, frameId);
-          if (!manifest) continue;
-          this.queueChunks(this.visibleChunks(manifest), manifest, false);
-        }
+          if (!manifest) return;
+
+          // The immediate next frame gets promoted ahead of older speculative
+          // work. Additional lookahead remains lower-priority background work.
+          this.queueChunks(
+            this.visibleChunks(manifest),
+            manifest,
+            index === 0
+          );
+        });
       },
 
       async pump() {
