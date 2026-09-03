@@ -18,6 +18,7 @@
   const MAX_GPU_CHUNKS = MOBILE_DEVICE ? 48 : 96;
 
   const MAX_FETCHES = MOBILE_DEVICE ? 2 : 4;
+  const FAST_NATIVE_FETCHES = MOBILE_DEVICE ? 3 : 6;
   const PREFETCH_FRAMES = MOBILE_DEVICE ? 2 : 4;
 
   // X2 runs at 5 fps. Keep five native observations ahead whenever the
@@ -197,7 +198,7 @@
 
     const speed = currentPlaybackSpeed();
     const lookahead =
-      speed >= 2
+      speed >= 1.5
         ? Math.min(
             NATIVE_X2_BUFFER_FRAMES,
             frames.length - 1
@@ -721,6 +722,74 @@
         });
       },
 
+      async primePlaybackBuffer(
+        startIndex,
+        count = NATIVE_X2_BUFFER_FRAMES
+      ) {
+        if (
+          !this.enabled ||
+          !detailArchive ||
+          !Array.isArray(frames) ||
+          !frames.length
+        ) {
+          return 0;
+        }
+
+        const frameIds = [];
+
+        for (
+          let offset = 0;
+          offset < Math.min(count, frames.length);
+          offset += 1
+        ) {
+          const index =
+            (startIndex + offset) % frames.length;
+
+          const frameId =
+            String(frames[index]?.id || "");
+
+          if (frameId && !frameIds.includes(frameId)) {
+            frameIds.push(frameId);
+          }
+        }
+
+        // Queue the entire startup buffer first so all available fetch lanes
+        // can work in parallel rather than loading each observation serially.
+        this.prefetchFrames(frameIds);
+
+        const deadline =
+          performance.now() +
+          (MOBILE_DEVICE ? 4000 : 3000);
+
+        while (performance.now() < deadline) {
+          let readyCount = 0;
+
+          for (const frameId of frameIds) {
+            if (this.frameReady(frameId)) {
+              readyCount += 1;
+            }
+          }
+
+          // Three complete observations are enough to start smoothly while
+          // frames four and five continue filling in the background.
+          const required =
+            Math.min(3, frameIds.length);
+
+          if (readyCount >= required) {
+            return readyCount;
+          }
+
+          await new Promise(
+            resolve =>
+              window.setTimeout(resolve, 25)
+          );
+        }
+
+        return frameIds.filter(
+          frameId => this.frameReady(frameId)
+        ).length;
+      },
+
       frameReady(frameId) {
         if (!frameId || !detailArchive) {
           return false;
@@ -827,9 +896,23 @@
         return ready();
       },
 
+      fetchConcurrency() {
+        const chunkPixels =
+          Number(this.manifest?.chunkPixels) || 2048;
+
+        if (
+          chunkPixels <= 1024 &&
+          currentPlaybackSpeed() >= 1.5
+        ) {
+          return FAST_NATIVE_FETCHES;
+        }
+
+        return MAX_FETCHES;
+      },
+
       async pump() {
         while (
-          this.activeFetches < MAX_FETCHES &&
+          this.activeFetches < this.fetchConcurrency() &&
           this.queue.length
         ) {
           const item = this.queue.shift();
@@ -1376,18 +1459,28 @@
               ? 0
               : currentFrameIndex;
 
-          const startFrameId =
-            String(
-              frames[startIndex]?.id ||
-              ""
+          // At 1.5x/2x, do the expensive work before the playback clock
+          // starts. Once running, consume one ready native observation while
+          // the freed slot is replenished in the background.
+          if (currentPlaybackSpeed() >= 1.5) {
+            await overlay.primePlaybackBuffer(
+              startIndex,
+              NATIVE_X2_BUFFER_FRAMES
             );
+          } else {
+            const startFrameId =
+              String(
+                frames[startIndex]?.id ||
+                ""
+              );
 
-          overlay.prefetchFrames([
-            startFrameId,
-            ...playbackLookaheadFrameIds(
-              startIndex
-            )
-          ].filter(Boolean));
+            overlay.prefetchFrames([
+              startFrameId,
+              ...playbackLookaheadFrameIds(
+                startIndex
+              )
+            ].filter(Boolean));
+          }
         }
 
         const result =
