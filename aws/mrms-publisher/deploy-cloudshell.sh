@@ -33,11 +33,12 @@ fi
 aws ecr get-login-password --region "$REGION" \
   | docker login --username AWS --password-stdin "$ECR_HOST"
 
-# CloudShell has a small persistent filesystem. Previous BuildKit layers can
-# consume enough space to make an otherwise small rebuild fail near the end.
+# CloudShell has a very small persistent filesystem. Remove every stale Docker
+# layer before building and stream the finished image directly to ECR instead of
+# loading a second full copy into the local Docker image store.
 printf '\nCleaning stale local Docker build data...\n'
 docker builder prune --all --force >/dev/null 2>&1 || true
-docker system prune --all --force >/dev/null 2>&1 || true
+docker system prune --all --force --volumes >/dev/null 2>&1 || true
 
 printf 'Disk available before build:\n'
 df -h "$HOME" | tail -1
@@ -45,18 +46,15 @@ df -h "$HOME" | tail -1
 docker buildx build \
   --platform linux/amd64 \
   --provenance=false \
-  --load \
+  --push \
   -f aws/mrms-publisher/Dockerfile \
-  -t "$ECR_REPOSITORY:$IMAGE_TAG" \
+  -t "$IMAGE_URI" \
   .
 
-docker tag "$ECR_REPOSITORY:$IMAGE_TAG" "$IMAGE_URI"
-docker push "$IMAGE_URI"
-
-# The pushed copy in ECR is authoritative; release local layers immediately so
-# repeated CloudShell deploys do not accumulate several container images.
+# BuildKit may retain intermediate layers even when the final image was pushed
+# directly to ECR. Release them immediately before CloudFormation work.
 docker builder prune --all --force >/dev/null 2>&1 || true
-docker image prune --all --force >/dev/null 2>&1 || true
+docker system prune --all --force --volumes >/dev/null 2>&1 || true
 
 aws cloudformation deploy \
   --region "$REGION" \
