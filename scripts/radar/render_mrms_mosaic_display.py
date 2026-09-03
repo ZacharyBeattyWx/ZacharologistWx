@@ -4,7 +4,7 @@
 This module wraps the shared MRMS decoder/palette implementation and only
 changes the low-reflectivity presentation used by the public mosaic. Stronger
 returns keep the established ZacharologistWx palette. Weak echoes are retained
-farther down the dBZ scale and drawn with a subdued gray/blue ramp so light
+well into negative dBZ and drawn with a subdued gray/blue ramp so light
 precipitation and clear-air texture remain visible instead of disappearing.
 """
 
@@ -15,20 +15,39 @@ import numpy as np
 import render_mrms_mosaic_base as _base
 from render_mrms_mosaic_base import *  # noqa: F401,F403
 
-# Keep more of the weak-return field visible, similar to traditional NEXRAD
-# mosaic presentation. Values below this remain transparent.
-TILE_DISPLAY_MIN_DBZ = -10.0
+# Traditional mosaic products can display very weak negative-dBZ returns.
+# Keep the field down to -30 dBZ; the shared decoder already preserves values
+# to -32 dBZ, so this is presentation-only and does not alter the source data.
+TILE_DISPLAY_MIN_DBZ = -30.0
 
-_WEAK_DBZ = np.asarray([-10.0, -5.0, 0.0, 5.0, 10.0], dtype=np.float32)
-_WEAK_RED = np.asarray([75, 50, 35, 40, 60], dtype=np.float32)
-_WEAK_GREEN = np.asarray([75, 85, 105, 125, 145], dtype=np.float32)
-_WEAK_BLUE = np.asarray([85, 125, 165, 190, 195], dtype=np.float32)
+_WEAK_DBZ = np.asarray(
+    [-30.0, -25.0, -20.0, -15.0, -10.0, -5.0, 0.0, 5.0, 10.0],
+    dtype=np.float32,
+)
+_WEAK_RED = np.asarray(
+    [72, 88, 105, 118, 92, 66, 45, 38, 56],
+    dtype=np.float32,
+)
+_WEAK_GREEN = np.asarray(
+    [72, 82, 94, 105, 112, 122, 135, 150, 165],
+    dtype=np.float32,
+)
+_WEAK_BLUE = np.asarray(
+    [78, 92, 108, 124, 142, 162, 184, 202, 205],
+    dtype=np.float32,
+)
 
-# Approximate target visibility:
-# -10 dBZ 18%, -5 dBZ 28%, 0 dBZ 43%, 5 dBZ 63%,
-# 10 dBZ 80%, 15 dBZ 96%. 20+ dBZ uses the normal palette alpha.
-_WEAK_ALPHA_DBZ = np.asarray([-10.0, -5.0, 0.0, 5.0, 10.0, 15.0], dtype=np.float32)
-_WEAK_ALPHA = np.asarray([46, 72, 110, 160, 205, 245], dtype=np.float32)
+# COD-like visibility target for the weak field. Negative returns remain muted
+# but clearly visible against the dark basemap, then progressively strengthen
+# into the normal precipitation palette.
+_WEAK_ALPHA_DBZ = np.asarray(
+    [-30.0, -25.0, -20.0, -15.0, -10.0, -5.0, 0.0, 5.0, 10.0, 15.0],
+    dtype=np.float32,
+)
+_WEAK_ALPHA = np.asarray(
+    [34, 44, 56, 70, 88, 110, 138, 168, 205, 245],
+    dtype=np.float32,
+)
 
 
 def colorize_dbz_grid_for_tiles(grid: np.ndarray, nodata: float = NODATA) -> np.ndarray:
