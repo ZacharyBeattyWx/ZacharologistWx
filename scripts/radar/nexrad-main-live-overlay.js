@@ -21,12 +21,13 @@
   const FAST_NATIVE_FETCHES = MOBILE_DEVICE ? 3 : 6;
   const PREFETCH_FRAMES = MOBILE_DEVICE ? 2 : 4;
 
-  // X2 runs at 5 fps. Keep five native observations ahead whenever the
-  // viewport/memory budget allows it.
-  const NATIVE_X2_BUFFER_FRAMES = 5;
-  const NATIVE_FRAME_WAIT_SLICE_MS =
-    MOBILE_DEVICE ? 165 : 140;
-  const NATIVE_MAX_HOLD_CYCLES = 8;
+  // Fast playback uses a real GPU-resident native frame ring. The actual
+  // frame switch must never fetch, decode, or upload the 4096px base frame.
+  // Memory protection below can shorten the effective ring for wide views.
+  const NATIVE_X2_BUFFER_FRAMES =
+    MOBILE_DEVICE ? 6 : 8;
+  const NATIVE_START_READY_FRAMES =
+    MOBILE_DEVICE ? 5 : 6;
 
   const VIEWPORT_SYNC_MS = MOBILE_DEVICE ? 140 : 90;
   const POLL_MS = 30000;
@@ -759,21 +760,30 @@
 
         const deadline =
           performance.now() +
-          (MOBILE_DEVICE ? 4000 : 3000);
+          (MOBILE_DEVICE ? 7000 : 5500);
 
-        while (performance.now() < deadline) {
-          let readyCount = 0;
+        const consecutiveReady = () => {
+          let count = 0;
 
           for (const frameId of frameIds) {
-            if (this.frameReady(frameId)) {
-              readyCount += 1;
+            if (!this.frameReady(frameId)) {
+              break;
             }
+            count += 1;
           }
 
-          // Three complete observations are enough to start smoothly while
-          // frames four and five continue filling in the background.
-          const required =
-            Math.min(3, frameIds.length);
+          return count;
+        };
+
+        const required =
+          Math.min(
+            NATIVE_START_READY_FRAMES,
+            frameIds.length
+          );
+
+        while (performance.now() < deadline) {
+          const readyCount =
+            consecutiveReady();
 
           if (readyCount >= required) {
             return readyCount;
@@ -781,13 +791,11 @@
 
           await new Promise(
             resolve =>
-              window.setTimeout(resolve, 25)
+              window.setTimeout(resolve, 20)
           );
         }
 
-        return frameIds.filter(
-          frameId => this.frameReady(frameId)
-        ).length;
+        return consecutiveReady();
       },
 
       frameReady(frameId) {
@@ -816,10 +824,7 @@
         );
       },
 
-      async waitForFrame(
-        frameId,
-        timeoutMs
-      ) {
+      activateReadyFrame(frameId) {
         if (
           !this.enabled ||
           !frameId ||
@@ -828,86 +833,69 @@
           return false;
         }
 
-        const manifest =
+        const next =
           frameManifestFromArchive(
             detailArchive,
             frameId
           );
 
-        if (!manifest) return false;
+        if (!next) return false;
 
-        const chunks =
-          this.visibleChunks(manifest);
+        const visible =
+          this.visibleChunks(next);
 
-        if (!chunks.length) return false;
-
-        const targetKeys = new Set(
-          chunks.map(
+        if (
+          !visible.length ||
+          !visible.every(
             chunk =>
-              this.key(chunk, manifest)
+              this.cache.has(
+                this.key(chunk, next)
+              )
+          )
+        ) {
+          return false;
+        }
+
+        // This is the hot playback path. Everything below is already resident
+        // in GPU memory: no fetch(), no createImageBitmap(), no texImage2D().
+        this.frameAvailable = true;
+        this.manifest = next;
+
+        this.wanted = new Map(
+          visible.map(
+            chunk => [
+              this.key(chunk, next),
+              chunk
+            ]
           )
         );
 
-        const ready = () =>
-          chunks.every(
-            chunk =>
-              this.cache.has(
-                this.key(chunk, manifest)
-              )
-          );
-
-        if (ready()) return true;
-
-        // The exact observation about to be displayed outranks speculative
-        // frame+2/frame+3 work. Free mobile fetch slots immediately.
-        for (const key of this.activeKeys) {
-          if (targetKeys.has(key)) continue;
-          this.controllers.get(key)?.abort();
-        }
-
-        this.queueChunks(
-          chunks,
-          manifest,
-          true
+        this.drawSet = visible.map(
+          chunk => ({
+            key: this.key(chunk, next),
+            chunk
+          })
         );
 
-        const deadline =
-          performance.now() +
-          Math.max(
-            0,
-            Number(timeoutMs) || 0
-          );
+        const now = performance.now();
 
-        while (
-          this.enabled &&
-          performance.now() < deadline
-        ) {
-          await new Promise(
-            resolve =>
-              window.setTimeout(
-                resolve,
-                16
-              )
-          );
+        for (const item of this.drawSet) {
+          const cached =
+            this.cache.get(item.key);
 
-          if (ready()) return true;
+          if (cached) {
+            cached.lastUsed = now;
+          }
         }
 
-        return ready();
-      },
+        // Native is complete for this exact observation. Keep the base texture
+        // hidden and switch only the native texture set.
+        radarLayer?.setVisible(false);
 
-      fetchConcurrency() {
-        const chunkPixels =
-          Number(this.manifest?.chunkPixels) || 2048;
+        this.evict();
+        this.map?.triggerRepaint();
 
-        if (
-          chunkPixels <= 1024 &&
-          currentPlaybackSpeed() >= 1.5
-        ) {
-          return FAST_NATIVE_FETCHES;
-        }
-
-        return MAX_FETCHES;
+        return true;
       },
 
       async pump() {
@@ -1329,13 +1317,48 @@
     if (beforeId) map.addLayer(overlay, beforeId);
     else map.addLayer(overlay);
 
-    const nativeHoldMisses = new Map();
-
     const originalShowFrame = showFrame;
 
+    // Track the observation actually stored in the lower-resolution base
+    // texture. Native playback intentionally allows this to lag behind.
+    let baseTextureFrameId =
+      currentBaseFrameId();
+
+    let baseSyncBusy = false;
+
+    const syncBaseTextureToTimeline =
+      async () => {
+        if (
+          baseSyncBusy ||
+          isPlaying ||
+          baseTextureFrameId ===
+            currentBaseFrameId()
+        ) {
+          return false;
+        }
+
+        baseSyncBusy = true;
+
+        try {
+          const result =
+            await originalShowFrame(
+              currentFrameIndex,
+              { quiet: true }
+            );
+
+          if (result) {
+            baseTextureFrameId =
+              currentBaseFrameId();
+          }
+
+          return result;
+        } finally {
+          baseSyncBusy = false;
+        }
+      };
+
     showFrame = async function (...args) {
-      // Camera interaction gets first priority. Playback holds the current
-      // complete observation while Mapbox is actively moving.
+      // Map interaction always gets priority.
       if (isPlaying && map?.isMoving?.()) {
         return false;
       }
@@ -1343,9 +1366,15 @@
       const requestedIndex =
         Number(args[0]);
 
-      let nativeTransitionReady = false;
-      let requestedFrameId = "";
-
+      // TRUE NATIVE PLAYBACK PATH:
+      //
+      // If the requested observation is already resident in the native GPU
+      // ring, the frame change becomes only:
+      //
+      //   currentFrameIndex -> wanted texture keys -> repaint
+      //
+      // We deliberately do NOT call originalShowFrame(), because doing so
+      // decodes and uploads the entire 4096px national texture every tick.
       if (
         playbackBufferActive() &&
         overlay?.enabled &&
@@ -1363,7 +1392,7 @@
           ) %
           frames.length;
 
-        requestedFrameId =
+        const requestedFrameId =
           String(
             frames[normalized]?.id ||
             ""
@@ -1376,7 +1405,8 @@
           );
 
         if (requestedManifest) {
-          // Seed the requested observation plus the next X2 buffer frames.
+          // Keep the requested observation and future ring fed entirely in
+          // the background. queueChunks() performs all I/O outside the clock.
           overlay.prefetchFrames([
             requestedFrameId,
             ...playbackLookaheadFrameIds(
@@ -1384,58 +1414,51 @@
             )
           ]);
 
-          nativeTransitionReady =
-            await overlay.waitForFrame(
-              requestedFrameId,
-              NATIVE_FRAME_WAIT_SLICE_MS
-            );
-
-          if (!nativeTransitionReady) {
-            const misses =
-              (
-                nativeHoldMisses.get(
-                  requestedFrameId
-                ) || 0
-              ) + 1;
-
-            nativeHoldMisses.set(
-              requestedFrameId,
-              misses
-            );
-
-            // Keep the current sharp frame and current timestamp together.
-            // The playback loop will retry this exact observation on its next
-            // cadence. Only fall back after an extended native failure so the
-            // animation can never become permanently stuck.
-            if (
-              misses <
-              NATIVE_MAX_HOLD_CYCLES
-            ) {
-              return false;
-            }
-
-            nativeHoldMisses.delete(
+          // Never wait inside the playback clock. If the producer has not
+          // filled this ring slot yet, keep the current frame for one cadence.
+          if (
+            !overlay.frameReady(
               requestedFrameId
-            );
-          } else {
-            nativeHoldMisses.delete(
-              requestedFrameId
-            );
+            )
+          ) {
+            return false;
           }
+
+          const previousIndex =
+            currentFrameIndex;
+
+          currentFrameIndex =
+            normalized;
+
+          if (
+            !overlay.activateReadyFrame(
+              requestedFrameId
+            )
+          ) {
+            currentFrameIndex =
+              previousIndex;
+            return false;
+          }
+
+          updateFrameUi();
+
+          // Now that one slot was consumed, immediately replenish farther
+          // ahead while this native observation is being displayed.
+          prefetchUpcomingDetail();
+
+          return true;
         }
       }
 
-      // Only expose the 4096px fallback when we genuinely do not have a
-      // complete native observation ready. Normal buffered playback therefore
-      // transitions sharp-native -> sharp-native with no quality flash.
-      if (!nativeTransitionReady) {
-        radarLayer?.setVisible(
-          radarVisible
-        );
-      }
-
+      // Outside native playback (manual stepping, zoomed-out playback, missing
+      // native history), retain the normal 4096px baked Mapbox path.
       const result =
         await originalShowFrame(...args);
+
+      if (result) {
+        baseTextureFrameId =
+          currentBaseFrameId();
+      }
 
       syncFrameManifest();
       syncMode();
@@ -1449,60 +1472,129 @@
 
     startPlayback =
       async function (...args) {
-        if (
+        const useNativeClock =
           overlay?.enabled &&
-          frames.length > 1
+          !map?.isMoving?.() &&
+          currentPlaybackSpeed() >= 1.5 &&
+          frames.length > 1;
+
+        if (!useNativeClock) {
+          return await originalStartPlayback(
+            ...args
+          );
+        }
+
+        if (
+          frames.length < 2 ||
+          isPlaying ||
+          playbackStarting
         ) {
+          return;
+        }
+
+        playbackStarting = true;
+
+        try {
           const startIndex =
             currentFrameIndex ===
             frames.length - 1
               ? 0
               : currentFrameIndex;
 
-          // At 1.5x/2x, do the expensive work before the playback clock
-          // starts. Once running, consume one ready native observation while
-          // the freed slot is replenished in the background.
-          if (currentPlaybackSpeed() >= 1.5) {
-            await overlay.primePlaybackBuffer(
-              startIndex,
-              NATIVE_X2_BUFFER_FRAMES
-            );
-          } else {
-            const startFrameId =
-              String(
-                frames[startIndex]?.id ||
-                ""
-              );
-
-            overlay.prefetchFrames([
-              startFrameId,
-              ...playbackLookaheadFrameIds(
-                startIndex
-              )
-            ].filter(Boolean));
-          }
-        }
-
-        const result =
-          await originalStartPlayback(
-            ...args
+          setStatus(
+            "Buffering native MRMS texture ring…"
           );
 
-        prefetchUpcomingDetail();
-        return result;
+          await overlay.primePlaybackBuffer(
+            startIndex,
+            NATIVE_X2_BUFFER_FRAMES
+          );
+
+          const startFrameId =
+            String(
+              frames[startIndex]?.id ||
+              ""
+            );
+
+          // Start directly on a cached native observation whenever possible.
+          if (
+            startFrameId &&
+            overlay.frameReady(startFrameId)
+          ) {
+            currentFrameIndex =
+              startIndex;
+
+            overlay.activateReadyFrame(
+              startFrameId
+            );
+
+            updateFrameUi();
+          } else {
+            // Safety fallback only. This path is not expected once the native
+            // archive/ring is healthy.
+            const result =
+              await originalShowFrame(
+                startIndex,
+                { quiet: true }
+              );
+
+            if (result) {
+              baseTextureFrameId =
+                currentBaseFrameId();
+            }
+
+            syncFrameManifest();
+            syncMode();
+          }
+
+          isPlaying = true;
+          playPauseButton.textContent =
+            "❚❚ Pause";
+
+          setStatus(
+            `MRMS native playback • ${historyMinutes} min history`,
+            "live"
+          );
+
+          const generation =
+            ++playbackGeneration;
+
+          prefetchUpcomingDetail();
+
+          window.setTimeout(
+            () =>
+              playbackLoop(generation),
+            playbackIntervalMs()
+          );
+        } catch (error) {
+          console.error(error);
+
+          setStatus(
+            `Native playback buffer failed: ${error.message}`,
+            "error"
+          );
+        } finally {
+          playbackStarting = false;
+        }
       };
 
     const originalStopPlayback =
       stopPlayback;
 
     stopPlayback = function (...args) {
-      nativeHoldMisses.clear();
-
       const result =
         originalStopPlayback(...args);
 
       window.setTimeout(
-        syncMode,
+        async () => {
+          syncMode();
+
+          // Native remains visible while the lower-resolution Mapbox texture
+          // catches up. This work is therefore off the animation clock.
+          await syncBaseTextureToTimeline();
+
+          syncMode();
+        },
         0
       );
 
@@ -1513,6 +1605,9 @@
     let lastViewportSyncAt = 0;
 
     const refreshViewportDetail = (includePrefetch = false) => {
+      const wasEnabled =
+        Boolean(overlay?.enabled);
+
       syncMode();
 
       if (overlay?.enabled) {
@@ -1521,6 +1616,26 @@
         if (includePrefetch) {
           prefetchUpcomingDetail();
         }
+
+        return;
+      }
+
+      // We just crossed below the native-detail zoom threshold. Keep the old
+      // base hidden until its texture catches up to the timeline observation.
+      if (
+        wasEnabled &&
+        baseTextureFrameId !==
+          currentBaseFrameId()
+      ) {
+        radarLayer?.setVisible(false);
+
+        syncBaseTextureToTimeline()
+          .finally(() => {
+            radarLayer?.setVisible(
+              radarVisible
+            );
+            map?.triggerRepaint?.();
+          });
       }
     };
 
