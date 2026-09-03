@@ -1,34 +1,57 @@
 # AWS MRMS publisher
 
-This is the parallel AWS publisher for the ZacharologistWx national MRMS radar.
-It is intentionally isolated from the current production feed until it is proven.
+This is the AWS publisher for the ZacharologistWx national MRMS radar.
 
 ## Architecture
 
-NOAA MRMS -> Lambda container -> private S3 archive -> CloudFront\n\nThe worker publishes two coordinated products:\n\n- `mrms/`: the lightweight 4096px rolling loop used for playback.\n- `mrms-detail/`: the newest native-resolution scan split into a small fixed grid of lossless WebP chunks. Browsers fetch only chunks intersecting the zoomed viewport.
+NOAA MRMS -> Lambda container -> private S3 archive -> CloudFront
 
-The worker prioritizes the newest missing observations first. Remaining invocation
-capacity is used to backfill older gaps, preventing a large backlog from blocking
-live radar recovery.
+The active publisher uses a **paired transactional frame model**. Every playable
+observation has both products before it is added to the public timeline:
 
-## First deploy from AWS CloudShell
+- `mrms/`: a lightweight 4096px overview texture for national/regional playback.
+- `mrms-detail/`: the same observation at native MRMS grid resolution, split into
+  1024px lossless WebP chunks for close zooms.
+
+Each observation is downloaded and decoded **once**. The decoded numeric dBZ grid
+feeds both the overview texture and the native chunks. The detail manifest is
+published first and the overview/base manifest is published last, so a client
+that discovers a new public frame can expect its matching native assets to have
+already been published.
+
+The worker prioritizes the newest missing or unpaired observations first, then
+uses remaining invocation capacity to grow paired history backward. The public
+base timeline is the intersection of available overview and native-detail frames;
+this prevents playback from advancing onto a frame that has no matching detail
+representation.
+
+The browser keeps the base radar playback scheduler as the **single animation
+clock**. Native detail acts as a level-of-detail texture service underneath that
+clock rather than owning a competing play/stop loop.
+
+## Deploy from AWS CloudShell
 
 From the repository root:
 
 ```bash
+git pull origin main
 chmod +x aws/mrms-publisher/deploy-cloudshell.sh
 ./aws/mrms-publisher/deploy-cloudshell.sh
 ```
 
 The deploy script:
 
-1. Creates/reuses a private ECR repository.
-2. Builds the Lambda-compatible container image.
+1. Creates/reuses the private ECR repository.
+2. Builds the Lambda-compatible container image from the current Git commit.
 3. Pushes the image to ECR.
-4. Deploys a private S3 bucket, Lambda function, IAM role, and EventBridge rule.
-5. Preserves the current EventBridge schedule state on an existing stack. A brand-new stack remains **DISABLED** for its first test.
+4. Deploys/updates the CloudFormation stack.
+5. Preserves the stack's existing EventBridge schedule state unless
+   `SCHEDULE_STATE` is explicitly supplied.
 
-## Manual first invocation
+The current Docker image uses `handler_v2.py` and
+`render_mrms_frame_bundle.py`.
+
+## Manual validation
 
 ```bash
 REGION="${AWS_REGION:-us-east-1}"
@@ -54,47 +77,65 @@ aws lambda invoke \
   /tmp/mrms-response.json
 
 cat /tmp/mrms-response.json
-aws s3 cp "s3://${BUCKET_NAME}/mrms/manifest.json" - | head -60\naws s3 cp "s3://${BUCKET_NAME}/mrms-detail/manifest.json" - | head -80
+
+aws s3 cp \
+  "s3://${BUCKET_NAME}/mrms/manifest.json" \
+  /tmp/mrms-manifest.json >/dev/null
+
+aws s3 cp \
+  "s3://${BUCKET_NAME}/mrms-detail/manifest.json" \
+  /tmp/mrms-detail-manifest.json >/dev/null
+
+python3 - <<'PY'
+import json
+
+with open('/tmp/mrms-manifest.json') as f:
+    base = json.load(f)
+with open('/tmp/mrms-detail-manifest.json') as f:
+    detail = json.load(f)
+
+base_ids = [str(frame['id']) for frame in base.get('frames', [])]
+detail_ids = [str(frame['revision']) for frame in detail.get('frames', [])]
+
+print('Base mode:', base.get('mode'))
+print('Detail mode:', detail.get('mode'))
+print('Base frames:', len(base_ids))
+print('Detail frames:', len(detail_ids))
+print('1:1 paired:', base_ids == detail_ids)
+print('Base newest:', base_ids[-1] if base_ids else None)
+print('Detail newest:', detail_ids[-1] if detail_ids else None)
+print('Publisher:', base.get('publisher', {}).get('strategy'))
+PY
 ```
 
-The first invocation creates only a small, current loop. Subsequent invocations
-fill older history while continuing to keep the newest observation first.
+Expected values after the new publisher has run:
 
-## Enable the two-minute schedule after validation
+- Base mode: `paired-overview-native-archive`
+- Detail mode: `native-grid-chunk-archive`
+- `1:1 paired: True`
+- Publisher strategy: `paired-transactional-v2`
+
+## Schedule
+
+The stack normally runs every two minutes. To explicitly enable the schedule:
 
 ```bash
-REGION="${AWS_REGION:-us-east-1}"
-STACK_NAME="${STACK_NAME:-zwx-mrms-publisher}"
-FUNCTION_NAME="$(aws cloudformation describe-stacks \
-  --region "$REGION" \
-  --stack-name "$STACK_NAME" \
-  --query 'Stacks[0].Outputs[?OutputKey==`PublisherFunctionName`].OutputValue' \
-  --output text)"
-IMAGE_URI="$(aws lambda get-function \
-  --region "$REGION" \
-  --function-name "$FUNCTION_NAME" \
-  --query 'Code.ImageUri' \
-  --output text)"
-
-aws cloudformation deploy \
-  --region "$REGION" \
-  --stack-name "$STACK_NAME" \
-  --template-file aws/mrms-publisher/template.yaml \
-  --capabilities CAPABILITY_IAM \
-  --parameter-overrides \
-    ImageUri="$IMAGE_URI" \
-    ScheduleState=ENABLED
+SCHEDULE_STATE=ENABLED ./aws/mrms-publisher/deploy-cloudshell.sh
 ```
 
-Do not use the enable command above until the first manual invocation has been
-validated. The production website should not be pointed at this S3 archive until
-the AWS publisher has remained current under repeated tests.
+The default deploy command without `SCHEDULE_STATE` preserves the current state.
 
+## Native-detail browser behavior
 
-## Native-detail behavior
+At close zoom, the browser uses native MRMS chunks with:
 
-The detail feed is intentionally latest-frame only. It keeps storage and S3 request
-costs low while restoring native MRMS resolution for close zooms. Historical
-playback continues to use the lightweight rolling frames. The browser retains the
-rolling frame until every visible native chunk is ready, so a detail publishing
-failure falls back cleanly without blanking the radar.
+- one base playback clock at every speed;
+- atomic observation-to-observation texture swaps;
+- zoom hysteresis to prevent LOD thrashing during pinch zoom;
+- viewport overscan so nearby chunks begin loading before they enter view;
+- GPU-memory-aware lookahead depth rather than a fixed frame ring;
+- continued playback while the user pans or zooms the map.
+
+When leaving detail zoom, the previous complete native frame stays visible until
+the overview texture has synchronized to the same timeline observation. This
+prevents stale low-resolution radar from flashing during the LOD handoff.
