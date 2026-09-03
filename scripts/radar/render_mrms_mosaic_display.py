@@ -37,15 +37,14 @@ _WEAK_BLUE = np.asarray(
     dtype=np.float32,
 )
 
-# COD-like visibility target for the weak field. Negative returns remain muted
-# but clearly visible against the dark basemap, then progressively strengthen
-# into the normal precipitation palette.
+# Negative returns are deliberately visible rather than merely nonzero. The
+# low end stays muted gray/blue, then ramps smoothly into the normal palette.
 _WEAK_ALPHA_DBZ = np.asarray(
     [-30.0, -25.0, -20.0, -15.0, -10.0, -5.0, 0.0, 5.0, 10.0, 15.0],
     dtype=np.float32,
 )
 _WEAK_ALPHA = np.asarray(
-    [34, 44, 56, 70, 88, 110, 138, 168, 205, 245],
+    [48, 58, 72, 88, 108, 132, 158, 185, 215, 245],
     dtype=np.float32,
 )
 
