@@ -70,11 +70,19 @@ def dataset_timestamp(name: str) -> datetime:
 
 
 def discover_latest_gini(session: requests.Session, requested_product: str = "auto"):
+    """Return the freshest dataset for the highest-priority available product.
+
+    Unidata's mirrored THREDDS hosts can temporarily differ in freshness. Do not
+    return as soon as the first host has a valid file; scan every candidate host
+    and layout for a product, then choose the newest timestamp across them.
+    """
     now = datetime.now(timezone.utc)
     products = PRODUCTS if requested_product == "auto" else (requested_product.lower(),)
     errors: list[str] = []
 
     for product in products:
+        candidates: list[dict] = []
+
         for day_offset in range(0, 3):
             day = now - timedelta(days=day_offset)
             for host, catalog_url in catalog_candidates(product, day):
@@ -96,22 +104,28 @@ def discover_latest_gini(session: requests.Session, requested_product: str = "au
                     url_path = elem.attrib.get("urlPath", "")
                     if not url_path or ".gini" not in (name + url_path).lower():
                         continue
-                    datasets.append((dataset_timestamp(name or url_path), name, url_path))
+                    timestamp = dataset_timestamp(name or url_path)
+                    if timestamp.year <= 1900:
+                        continue
+                    datasets.append((timestamp, name, url_path))
 
                 if not datasets:
-                    errors.append(f"No GINI datasets in {catalog_url}")
+                    errors.append(f"No timestamped GINI datasets in {catalog_url}")
                     continue
 
-                datasets.sort(key=lambda item: item[0], reverse=True)
-                timestamp, name, url_path = datasets[0]
-                file_url = f"{host}/thredds/fileServer/{url_path.lstrip('/')}"
-                return {
-                    "product": product.upper(),
-                    "catalog_url": catalog_url,
-                    "file_url": file_url,
-                    "dataset_name": name,
-                    "timestamp": timestamp,
-                }
+                timestamp, name, url_path = max(datasets, key=lambda item: item[0])
+                candidates.append(
+                    {
+                        "product": product.upper(),
+                        "catalog_url": catalog_url,
+                        "file_url": f"{host}/thredds/fileServer/{url_path.lstrip('/')}",
+                        "dataset_name": name,
+                        "timestamp": timestamp,
+                    }
+                )
+
+        if candidates:
+            return max(candidates, key=lambda item: item["timestamp"])
 
     detail = "\n  ".join(errors[-12:])
     raise RuntimeError(f"Could not discover a current Unidata national NEXRAD GINI composite.\n  {detail}")
