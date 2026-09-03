@@ -1,10 +1,10 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: ZacharologistWx MRMS loop and native-detail publisher
+Description: ZacharologistWx MRMS and NEXRAD radar publisher
 
 Parameters:
   ImageUri:
     Type: String
-    Description: ECR image URI for the MRMS Lambda worker
+    Description: ECR image URI for the radar Lambda worker
   ScheduleState:
     Type: String
     Default: DISABLED
@@ -44,6 +44,10 @@ Resources:
           - Id: ExpireOrphanedDetailRevisions
             Status: Enabled
             Prefix: mrms-detail/revisions/
+            ExpirationInDays: 2
+          - Id: ExpireOldNexradFrames
+            Status: Enabled
+            Prefix: nexrad-n0b/frames/
             ExpirationInDays: 2
 
   PublisherRole:
@@ -103,16 +107,20 @@ Resources:
           MAX_WIDTH: '4096'
           MAX_RENDER_PER_RUN: !Ref MaxRenderPerRun
           LIVE_PRIORITY_COUNT: !Ref LivePriorityCount
+          NEXRAD_PREFIX: nexrad-n0b
+          NEXRAD_HISTORY_MINUTES: !Ref HistoryMinutes
+          NEXRAD_MAX_WIDTH: '4096'
+          NEXRAD_BOUNDS: '-130,20,-60,55'
 
   PublisherSchedule:
     Type: AWS::Events::Rule
     Properties:
-      Description: Poll NOAA MRMS and publish the newest radar frames
+      Description: Poll NOAA MRMS and Unidata NEXRAD and publish radar frames
       ScheduleExpression: !Ref ScheduleExpression
       State: !Ref ScheduleState
       Targets:
         - Arn: !GetAtt PublisherFunction.Arn
-          Id: MrmsPublisherLambda
+          Id: RadarPublisherLambda
 
   ScheduleInvokePermission:
     Type: AWS::Lambda::Permission
@@ -124,18 +132,22 @@ Resources:
 
 Outputs:
   RadarBucketName:
-    Description: Private S3 bucket containing the MRMS archive
+    Description: Private S3 bucket containing the radar archives
     Value: !Ref RadarBucket
   PublisherFunctionName:
     Description: Lambda function name
-    Value: !Ref PublisherFunction
+    Value: !GetAtt PublisherFunction.Arn
   PublisherScheduleName:
     Description: EventBridge scheduled rule name
     Value: !Ref PublisherSchedule
   ManifestS3Uri:
-    Description: S3 URI for the generated radar manifest
+    Description: S3 URI for the generated MRMS manifest
     Value: !Sub 's3://${RadarBucket}/mrms/manifest.json'
 
   NativeDetailManifestS3Uri:
-    Description: S3 URI for the newest native-resolution detail manifest
+    Description: S3 URI for the MRMS native-resolution detail manifest
     Value: !Sub 's3://${RadarBucket}/mrms-detail/manifest.json'
+
+  NexradManifestS3Uri:
+    Description: S3 URI for the NEXRAD N0B base-reflectivity archive
+    Value: !Sub 's3://${RadarBucket}/nexrad-n0b/manifest.json'
