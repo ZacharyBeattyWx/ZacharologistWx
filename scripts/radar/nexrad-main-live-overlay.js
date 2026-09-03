@@ -14,8 +14,6 @@
   const MAX_FETCHES = MOBILE_DEVICE ? 2 : 4;
   const PREFETCH_FRAMES = MOBILE_DEVICE ? 2 : 4;
   const VIEWPORT_SYNC_MS = MOBILE_DEVICE ? 140 : 90;
-  const FRAME_READY_POLL_MS = 16;
-  const FAST_FRAME_WAIT_MS = MOBILE_DEVICE ? 260 : 180;
   const POLL_MS = 30000;
   const STARTED_AT = Date.now();
   const INSTALL_TIMEOUT_MS = 20000;
@@ -98,12 +96,29 @@
     );
     if (!frame) return null;
 
-    const chunks = (archive.chunkLayout || []).map(layout => {
+    // Newer archive manifests can retain multiple chunk layouts at once.
+    // That lets us migrate from large 2048px textures to smaller 1024px
+    // textures without invalidating historical native-detail revisions.
+    const layoutId = String(frame.layoutId || "");
+    const frameLayout =
+      layoutId &&
+      archive.layouts &&
+      typeof archive.layouts === "object"
+        ? archive.layouts[layoutId]
+        : null;
+
+    const chunkLayout =
+      frameLayout?.chunkLayout ||
+      archive.chunkLayout ||
+      [];
+
+    const chunks = chunkLayout.map(layout => {
       const image = archive.imageTemplate
         .replace("{revision}", String(frame.revision))
         .replace("{chunkId}", String(layout.id));
       return { ...layout, image };
     });
+
     return {
       revision: String(frame.revision),
       validTime: frame.validTime,
@@ -112,9 +127,15 @@
       bounds: archive.bounds,
       nativeWidth: archive.nativeWidth,
       nativeHeight: archive.nativeHeight,
-      chunkPixels: archive.chunkPixels,
-      rows: archive.rows,
-      columns: archive.columns,
+      chunkPixels:
+        frameLayout?.chunkPixels ??
+        archive.chunkPixels,
+      rows:
+        frameLayout?.rows ??
+        archive.rows,
+      columns:
+        frameLayout?.columns ??
+        archive.columns,
       chunks,
       _url: archive._url
     };
@@ -154,8 +175,11 @@
     // Mobile 2x playback has very little decode/GPU headroom. Prioritize the
     // exact next observation instead of spending bandwidth several frames out.
     const lookahead =
-      MOBILE_DEVICE && speed >= 2
-        ? 1
+      speed >= 2
+        ? Math.min(
+            MOBILE_DEVICE ? 1 : 2,
+            frames.length - 1
+          )
         : Math.min(PREFETCH_FRAMES, frames.length - 1);
 
     const frameIds = [];
@@ -172,8 +196,11 @@
     overlay.prefetchFrames(frameIds);
   }
 
-  async function bitmapFromUrl(url) {
-    const response = await fetch(url, { cache: "force-cache" });
+  async function bitmapFromUrl(url, signal = undefined) {
+    const response = await fetch(url, {
+      cache: "force-cache",
+      signal
+    });
     if (!response.ok) {
       throw new Error(
         "Native MRMS detail chunk HTTP " + response.status + ": " + url
@@ -311,6 +338,8 @@
       cache: new Map(),
       geometryCache: new Map(),
       pending: new Set(),
+      controllers: new Map(),
+      activeKeys: new Set(),
       queue: [],
       activeFetches: 0,
       wanted: new Map(),
@@ -423,21 +452,48 @@
         );
       },
 
-      pruneQueueForViewport(chunks) {
-        const visibleIds = new Set(
-          chunks.map(chunk => String(chunk.id))
+      prioritizeCurrentViewport(
+        chunks,
+        manifest = this.manifest
+      ) {
+        const allowedKeys = new Set(
+          chunks.map(chunk =>
+            this.key(chunk, manifest)
+          )
         );
-        const keep = [];
+
+        const keepQueue = [];
 
         for (const item of this.queue) {
-          if (visibleIds.has(String(item.chunk.id))) {
-            keep.push(item);
-          } else {
+          if (allowedKeys.has(item.key)) {
+            keepQueue.push(item);
+            continue;
+          }
+
+          const controller =
+            this.controllers.get(item.key);
+
+          if (
+            controller &&
+            !this.activeKeys.has(item.key)
+          ) {
+            controller.abort();
+          }
+
+          if (!this.activeKeys.has(item.key)) {
             this.pending.delete(item.key);
+            this.controllers.delete(item.key);
           }
         }
 
-        this.queue = keep;
+        this.queue = keepQueue;
+
+        // Abort stale requests already consuming one of the limited fetch
+        // slots. The CURRENT observation and CURRENT viewport always win.
+        for (const key of this.activeKeys) {
+          if (allowedKeys.has(key)) continue;
+          this.controllers.get(key)?.abort();
+        }
       },
 
       updateWanted() {
@@ -445,40 +501,77 @@
 
         const visible = this.visibleChunks();
 
-        // Don't let requests for a viewport the user already left sit ahead of
-        // the chunks needed for the new camera position.
-        this.pruneQueueForViewport(visible);
+        this.prioritizeCurrentViewport(
+          visible,
+          this.manifest
+        );
 
         this.wanted = new Map(
           visible.map(chunk => [this.key(chunk), chunk])
         );
 
-        this.queueChunks(visible, this.manifest, true);
+        this.queueChunks(
+          visible,
+          this.manifest,
+          true
+        );
+
         this.evict();
         this.syncVisibility();
       },
 
-      queueChunks(chunks, manifest = this.manifest, priority = false) {
+      queueChunks(
+        chunks,
+        manifest = this.manifest,
+        priority = false
+      ) {
         const additions = [];
         const requestedKeys = new Set();
+
         for (const chunk of chunks) {
           const key = this.key(chunk, manifest);
           requestedKeys.add(key);
-          if (this.cache.has(key) || this.pending.has(key)) continue;
+
+          if (
+            this.cache.has(key) ||
+            this.pending.has(key)
+          ) {
+            continue;
+          }
+
+          const controller =
+            new AbortController();
+
           this.pending.add(key);
+          this.controllers.set(key, controller);
+
           additions.push({
             chunk,
             key,
-            manifestUrl: manifest._url
+            manifestUrl: manifest._url,
+            controller
           });
         }
+
         if (priority) {
-          const promoted = this.queue.filter(item => requestedKeys.has(item.key));
-          this.queue = this.queue.filter(item => !requestedKeys.has(item.key));
-          this.queue.unshift(...promoted, ...additions);
+          const promoted =
+            this.queue.filter(item =>
+              requestedKeys.has(item.key)
+            );
+
+          this.queue =
+            this.queue.filter(item =>
+              !requestedKeys.has(item.key)
+            );
+
+          this.queue.unshift(
+            ...promoted,
+            ...additions
+          );
         } else {
           this.queue.push(...additions);
         }
+
         this.pump();
       },
 
@@ -499,75 +592,30 @@
         });
       },
 
-      frameReady(frameId) {
-        if (!detailArchive || !frameId) return false;
-
-        const manifest = frameManifestFromArchive(
-          detailArchive,
-          frameId
-        );
-
-        if (!manifest) return false;
-
-        const chunks = this.visibleChunks(manifest);
-        if (!chunks.length) return false;
-
-        return chunks.every(chunk =>
-          this.cache.has(this.key(chunk, manifest))
-        );
-      },
-
-      async waitForFrame(frameId, timeoutMs) {
-        if (!this.enabled || !detailArchive || !frameId) return false;
-
-        const manifest = frameManifestFromArchive(
-          detailArchive,
-          frameId
-        );
-
-        if (!manifest) return false;
-
-        const chunks = this.visibleChunks(manifest);
-        if (!chunks.length) return false;
-
-        this.queueChunks(chunks, manifest, true);
-
-        const ready = () =>
-          chunks.every(chunk =>
-            this.cache.has(this.key(chunk, manifest))
-          );
-
-        if (ready()) return true;
-
-        const deadline =
-          performance.now() + Math.max(0, Number(timeoutMs) || 0);
-
-        while (
-          this.enabled &&
-          performance.now() < deadline
-        ) {
-          await new Promise(resolve =>
-            window.setTimeout(resolve, FRAME_READY_POLL_MS)
-          );
-
-          if (ready()) return true;
-        }
-
-        return ready();
-      },
-
       async pump() {
         while (
           this.activeFetches < MAX_FETCHES &&
           this.queue.length
         ) {
           const item = this.queue.shift();
+
           if (this.cache.has(item.key)) {
             this.pending.delete(item.key);
+            this.controllers.delete(item.key);
             continue;
           }
+
+          if (item.controller?.signal?.aborted) {
+            this.pending.delete(item.key);
+            this.controllers.delete(item.key);
+            continue;
+          }
+
           this.activeFetches += 1;
+          this.activeKeys.add(item.key);
+
           this.fetchChunk(item).finally(() => {
+            this.activeKeys.delete(item.key);
             this.activeFetches -= 1;
             this.pump();
           });
@@ -577,7 +625,11 @@
       async fetchChunk(item) {
         try {
           const bitmap = await bitmapFromUrl(
-            this.chunkUrl(item.chunk, item.manifestUrl)
+            this.chunkUrl(
+              item.chunk,
+              item.manifestUrl
+            ),
+            item.controller?.signal
           );
           if (!this.gl) return;
           const texture = createTexture(this.gl, bitmap);
@@ -596,12 +648,17 @@
             lastUsed: performance.now()
           });
         } catch (error) {
-          console.warn(
-            "Native MRMS detail chunk " + item.key + " failed",
-            error
-          );
+          if (error?.name !== "AbortError") {
+            console.warn(
+              "Native MRMS detail chunk " +
+                item.key +
+                " failed",
+              error
+            );
+          }
         } finally {
           this.pending.delete(item.key);
+          this.controllers.delete(item.key);
           this.evict();
           this.syncVisibility();
           this.map?.triggerRepaint();
@@ -637,10 +694,18 @@
           this.enabled = false;
           this.wanted = new Map();
           this.drawSet = [];
+
+          for (const controller of this.controllers.values()) {
+            controller.abort();
+          }
+
+          this.queue = [];
+          radarLayer?.setVisible(radarVisible);
           this.syncVisibility();
           this.map?.triggerRepaint();
           return;
         }
+
         if (
           this.frameAvailable &&
           this.manifest &&
@@ -648,11 +713,22 @@
         ) {
           return;
         }
+
+        // The lower-resolution 4096px observation is authoritative for
+        // animation. Never let an old native frame remain visually dominant
+        // after the timeline advances.
+        radarLayer?.setVisible(radarVisible);
+
         this.frameAvailable = true;
         this.manifest = next;
         this.wanted = new Map();
         this.drawSet = [];
-        if (this.enabled) this.updateWanted();
+
+        this.map?.triggerRepaint();
+
+        if (this.enabled) {
+          this.updateWanted();
+        }
       },
 
       setEnabled(value) {
@@ -679,11 +755,19 @@
       },
 
       syncVisibility() {
+        const revisionMatches =
+          String(this.manifest?.revision || "") ===
+          currentBaseFrameId();
+
         const detailReady =
           this.enabled &&
           radarVisible &&
+          revisionMatches &&
           this.readyForViewport();
-        radarLayer?.setVisible(radarVisible && !detailReady);
+
+        radarLayer?.setVisible(
+          radarVisible && !detailReady
+        );
       },
 
       evict() {
@@ -762,7 +846,16 @@
       },
 
       render(gl, matrix) {
-        if (!this.enabled || !radarVisible) {
+        const revisionMatches =
+          String(this.manifest?.revision || "") ===
+          currentBaseFrameId();
+
+        if (
+          !this.enabled ||
+          !radarVisible ||
+          !revisionMatches
+        ) {
+          this.drawSet = [];
           this.syncVisibility();
           return;
         }
@@ -835,44 +928,24 @@
 
     const originalShowFrame = showFrame;
     showFrame = async function (...args) {
-      // Camera interaction gets first priority. Re-uploading the 4096px base
-      // texture while Mapbox is pinch-zooming/panning competes heavily with
-      // map rendering and native chunk decoding, especially on mobile.
-      // Playback automatically resumes from the same frame after moveend.
+      // Camera interaction gets first priority. Playback holds the current
+      // observation only while Mapbox is actively moving.
       if (isPlaying && map?.isMoving?.()) {
         return false;
       }
 
-      const requestedIndex = Number(args[0]);
+      // Base animation is authoritative. Native detail must never delay the
+      // observation clock or leave an older sharp frame over a newer base
+      // observation.
+      radarLayer?.setVisible(radarVisible);
 
-      if (
-        isPlaying &&
-        overlay?.enabled &&
-        !map?.isMoving?.() &&
-        frames.length > 1 &&
-        Number.isFinite(requestedIndex) &&
-        currentPlaybackSpeed() >= 1.5
-      ) {
-        const normalized =
-          ((requestedIndex % frames.length) + frames.length) %
-          frames.length;
+      const result =
+        await originalShowFrame(...args);
 
-        const requestedFrameId = String(
-          frames[normalized]?.id || ""
-        );
-
-        if (requestedFrameId) {
-          await overlay.waitForFrame(
-            requestedFrameId,
-            FAST_FRAME_WAIT_MS
-          );
-        }
-      }
-
-      const result = await originalShowFrame(...args);
       syncFrameManifest();
       syncMode();
       prefetchUpcomingDetail();
+
       return result;
     };
 

@@ -36,7 +36,7 @@ def _chunk_bounds(bounds, width, height, x0, y0, x1, y1):
     ]
 
 
-def render_native_chunks(session, source, output_root: Path, chunk_pixels: int = 2048):
+def render_native_chunks(session, source, output_root: Path, chunk_pixels: int = 1024):
     output_root = Path(output_root)
     revision = str(source["slug"])
     revision_root = output_root / "revisions" / revision

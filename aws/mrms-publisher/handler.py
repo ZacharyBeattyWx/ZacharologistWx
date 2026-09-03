@@ -191,29 +191,6 @@ def delete_pruned_frames(bucket: str, prefix: str, frame_ids: list[str]) -> None
         )
 
 
-def detail_frame_entry(manifest: dict) -> dict | None:
-    revision = manifest.get("revision")
-    valid_time = manifest.get("validTime")
-    if not revision or not valid_time:
-        return None
-    return {
-        "revision": str(revision),
-        "validTime": valid_time,
-        "sourceName": manifest.get("sourceName"),
-    }
-
-
-def detail_archive_frames(manifest: dict) -> list[dict]:
-    if manifest.get("mode") == "native-grid-chunk-archive":
-        return [
-            frame
-            for frame in (manifest.get("frames") or [])
-            if frame.get("revision") and frame.get("validTime")
-        ]
-    entry = detail_frame_entry(manifest)
-    return [entry] if entry and manifest.get("chunks") else []
-
-
 def detail_chunk_layout(manifest: dict) -> list[dict]:
     if manifest.get("mode") == "native-grid-chunk-archive":
         return list(manifest.get("chunkLayout") or [])
@@ -224,6 +201,79 @@ def detail_chunk_layout(manifest: dict) -> list[dict]:
     ]
 
 
+def detail_layout_id(manifest: dict) -> str | None:
+    layout = detail_chunk_layout(manifest)
+    if not layout:
+        return None
+
+    chunk_pixels = int(manifest.get("chunkPixels") or 0)
+    rows = int(manifest.get("rows") or 0)
+    columns = int(manifest.get("columns") or 0)
+
+    return (
+        f"{chunk_pixels or 'native'}:"
+        f"{rows}x{columns}:"
+        f"{len(layout)}"
+    )
+
+
+def detail_layout_descriptor(manifest: dict) -> dict | None:
+    layout = detail_chunk_layout(manifest)
+    if not layout:
+        return None
+
+    return {
+        "chunkPixels": manifest.get("chunkPixels"),
+        "rows": manifest.get("rows"),
+        "columns": manifest.get("columns"),
+        "chunkCount": len(layout),
+        "chunkLayout": layout,
+    }
+
+
+def detail_frame_entry(manifest: dict) -> dict | None:
+    revision = manifest.get("revision")
+    valid_time = manifest.get("validTime")
+    if not revision or not valid_time:
+        return None
+
+    entry = {
+        "revision": str(revision),
+        "validTime": valid_time,
+        "sourceName": manifest.get("sourceName"),
+    }
+
+    layout_id = detail_layout_id(manifest)
+    if layout_id:
+        entry["layoutId"] = layout_id
+
+    return entry
+
+
+def detail_archive_frames(manifest: dict) -> list[dict]:
+    if manifest.get("mode") == "native-grid-chunk-archive":
+        default_layout_id = detail_layout_id(manifest)
+        frames = []
+
+        for frame in manifest.get("frames") or []:
+            if not frame.get("revision") or not frame.get("validTime"):
+                continue
+
+            item = dict(frame)
+
+            # Backfill a layout id for archive frames written before
+            # per-layout metadata was introduced.
+            if default_layout_id and not item.get("layoutId"):
+                item["layoutId"] = default_layout_id
+
+            frames.append(item)
+
+        return frames
+
+    entry = detail_frame_entry(manifest)
+    return [entry] if entry and manifest.get("chunks") else []
+
+
 def lambda_handler(event, context):
     bucket = os.environ["RADAR_BUCKET"]
     prefix = os.environ.get("RADAR_PREFIX", "mrms").strip("/")
@@ -231,7 +281,7 @@ def lambda_handler(event, context):
     max_width = env_int("MAX_WIDTH", 4096, minimum=512)
     max_render = env_int("MAX_RENDER_PER_RUN", 4, minimum=1)
     detail_prefix = os.environ.get("RADAR_DETAIL_PREFIX", "mrms-detail").strip("/")
-    detail_chunk_pixels = env_int("DETAIL_CHUNK_PIXELS", 2048, minimum=512)
+    detail_chunk_pixels = env_int("DETAIL_CHUNK_PIXELS", 1024, minimum=512)
     detail_manifest_key = object_key(detail_prefix, "manifest.json")
     live_priority_count = min(
         max_render,
@@ -336,6 +386,26 @@ def lambda_handler(event, context):
     detail_status = "current"
     detail_error = None
     existing_detail_frames = detail_archive_frames(existing_detail_manifest)
+
+    # Preserve every chunk layout that may still be referenced by retained
+    # historical native-detail frames.
+    layout_catalog = dict(
+        existing_detail_manifest.get("layouts") or {}
+    )
+
+    legacy_layout_id = detail_layout_id(
+        existing_detail_manifest
+    )
+    legacy_layout = detail_layout_descriptor(
+        existing_detail_manifest
+    )
+
+    if legacy_layout_id and legacy_layout:
+        layout_catalog.setdefault(
+            legacy_layout_id,
+            legacy_layout,
+        )
+
     original_detail_ids = {
         str(frame["revision"]) for frame in existing_detail_frames
     }
@@ -365,6 +435,16 @@ def lambda_handler(event, context):
             entry = detail_frame_entry(rendered_detail_manifest)
             if entry:
                 retained_detail[entry["revision"]] = entry
+
+            new_layout_id = detail_layout_id(
+                rendered_detail_manifest
+            )
+            new_layout = detail_layout_descriptor(
+                rendered_detail_manifest
+            )
+
+            if new_layout_id and new_layout:
+                layout_catalog[new_layout_id] = new_layout
 
         detail_frames = sorted(
             retained_detail.values(),
@@ -410,6 +490,7 @@ def lambda_handler(event, context):
                 "columns": geometry_source.get("columns"),
                 "chunkCount": len(layout),
                 "chunkLayout": layout,
+                "layouts": layout_catalog,
                 "imageTemplate": (
                     "revisions/{revision}/chunks/{chunkId}.webp"
                 ),

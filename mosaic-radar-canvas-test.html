@@ -160,9 +160,16 @@
       ? "./mrms-mosaic-loop-output/manifest.json"
       : "https://dt0cd6bl1yqh2.cloudfront.net/mrms/manifest.json";
     const CUSTOM_LAYER_ID = "mrms-python-colored-layer";
-    const DECODED_FRAME_CACHE_LIMIT = 8;
-    const BLOB_PREFETCH_CONCURRENCY = 4;
-    const START_BUFFER_FRAMES = 4;
+    const BASE_MOBILE_DEVICE =
+      window.matchMedia?.("(pointer: coarse)")?.matches ||
+      /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+    // Decoded 4096px frames are expensive. Keep enough nearby observations
+    // ready for smooth playback without forcing mobile browsers to retain
+    // hundreds of megabytes of decoded image data.
+    const DECODED_FRAME_CACHE_LIMIT = BASE_MOBILE_DEVICE ? 4 : 8;
+    const BLOB_PREFETCH_CONCURRENCY = BASE_MOBILE_DEVICE ? 2 : 4;
+    const START_BUFFER_FRAMES = BASE_MOBILE_DEVICE ? 3 : 4;
     const END_FRAME_HOLD_MS = 450;
     const MANIFEST_POLL_MS = 30000;
 
@@ -496,10 +503,17 @@
 
     function decodeLookaheadCount() {
       const speed = Math.max(.5,Number(speedSelect.value) || 1);
-      if (speed >= 2) return 7;
-      if (speed >= 1.5) return 6;
-      if (speed >= 1) return 5;
-      return 4;
+
+      if (speed >= 2) {
+        return BASE_MOBILE_DEVICE ? 3 : 5;
+      }
+      if (speed >= 1.5) {
+        return BASE_MOBILE_DEVICE ? 3 : 4;
+      }
+      if (speed >= 1) {
+        return BASE_MOBILE_DEVICE ? 2 : 4;
+      }
+      return BASE_MOBILE_DEVICE ? 2 : 3;
     }
 
     function warmAround(index) {
@@ -617,8 +631,15 @@
     }
 
     function playbackIntervalMs() {
-      const speed = Math.max(.25,Number(speedSelect.value) || 1);
-      return Math.max(40,Math.round(defaultFrameIntervalMs/(speed*4)));
+      const speed = Math.max(.5,Number(speedSelect.value) || 1);
+
+      // Keep radar playback visually smooth without overwhelming image decode,
+      // WebGL texture upload, Mapbox rendering, and native-detail processing.
+      // 2x is intentionally capped at 5 observations per second.
+      if (speed >= 2) return 200;
+      if (speed >= 1.5) return 267;
+      if (speed >= 1) return 400;
+      return 800;
     }
 
     function stopPlayback() {
@@ -838,6 +859,6 @@
       }
     });
   </script>
-  <script src="scripts/radar/nexrad-main-live-overlay.js?v=20260902f"></script>
+  <script src="scripts/radar/nexrad-main-live-overlay.js?v=20260902g"></script>
 </body>
 </html>
