@@ -1023,16 +1023,20 @@
       setManifest(next) {
         if (!next) {
           this.frameAvailable = false;
-          this.enabled = false;
           this.wanted = new Map();
-          this.drawSet = [];
 
           for (const controller of this.controllers.values()) {
             controller.abort();
           }
 
           this.queue = [];
-          radarLayer?.setVisible(radarVisible);
+
+          // Once native detail mode is active, the lower-resolution national
+          // radar is never allowed to appear as a visual fallback.
+          radarLayer?.setVisible(
+            this.enabled ? false : radarVisible
+          );
+
           this.syncVisibility();
           this.map?.triggerRepaint();
           return;
@@ -1063,16 +1067,22 @@
               )
           );
 
-        if (!nextReady) {
-          radarLayer?.setVisible(
-            radarVisible
-          );
+        // Native detail owns the screen completely once enabled. If the next
+        // observation is not ready, leave the PREVIOUS complete native frame
+        // visible instead of exposing the 4096px fallback.
+        if (this.enabled) {
+          radarLayer?.setVisible(false);
         }
 
         this.frameAvailable = true;
         this.manifest = next;
         this.wanted = new Map();
-        this.drawSet = [];
+
+        // Preserve the previous complete native drawSet until the replacement
+        // observation is fully resident. updateWanted() will load the new set.
+        if (!this.enabled) {
+          this.drawSet = [];
+        }
 
         this.map?.triggerRepaint();
 
@@ -1088,9 +1098,14 @@
         this.enabled = next;
 
         if (this.enabled) {
+          // Native mode becomes visually exclusive immediately. If this is the
+          // first native load, the basemap may be visible briefly while chunks
+          // fill, but blurry radar will never flash underneath.
+          radarLayer?.setVisible(false);
           this.updateWanted();
         } else {
           this.wanted = new Map();
+          this.drawSet = [];
           this.syncVisibility();
         }
 
@@ -1105,19 +1120,17 @@
       },
 
       syncVisibility() {
-        const revisionMatches =
-          String(this.manifest?.revision || "") ===
-          currentBaseFrameId();
+        // At native-detail zoom, there is only ONE radar renderer: native.
+        // Never expose the 4096px national texture while native mode is active.
+        //
+        // When a replacement native observation is still loading, the previous
+        // complete native observation remains on screen instead.
+        if (this.enabled) {
+          radarLayer?.setVisible(false);
+          return;
+        }
 
-        const detailReady =
-          this.enabled &&
-          radarVisible &&
-          revisionMatches &&
-          this.readyForViewport();
-
-        radarLayer?.setVisible(
-          radarVisible && !detailReady
-        );
+        radarLayer?.setVisible(radarVisible);
       },
 
       evict() {
@@ -1257,23 +1270,20 @@
           return;
         }
 
-        // During animation, only display a COMPLETE native observation.
-        // Partial progressive drawing is useful while paused, but during
-        // playback it creates visible sharp/blocky/sharp quality flicker.
-        if (
-          playbackBufferActive() &&
-          !this.readyForViewport()
-        ) {
-          this.drawSet = [];
-          this.syncVisibility();
-          return;
+        // Never partially replace one native observation with another.
+        // Until every visible chunk for the target observation is resident,
+        // continue drawing the previous COMPLETE native drawSet.
+        if (!this.readyForViewport()) {
+          if (!this.drawSet.length) {
+            this.syncVisibility();
+            return;
+          }
+        } else {
+          // The replacement observation is complete. Swap the entire native
+          // viewport atomically.
+          this.drawSet = [...this.wanted.entries()]
+            .map(([key, chunk]) => ({ key, chunk }));
         }
-
-        // While paused, retain progressive refinement so deep-zoom detail can
-        // sharpen chunk-by-chunk as the user explores the map.
-        this.drawSet = [...this.wanted.entries()]
-          .filter(([key]) => this.cache.has(key))
-          .map(([key, chunk]) => ({ key, chunk }));
 
         if (!this.drawSet.length) {
           this.syncVisibility();
