@@ -10,9 +10,23 @@
   const MOBILE_DEVICE =
     window.matchMedia?.("(pointer: coarse)")?.matches ||
     /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  const MAX_GPU_CHUNKS = MOBILE_DEVICE ? 10 : 24;
+  // Preserve roughly the same native-texture memory ceiling we had with
+  // 2048px chunks, but let the new 1024px layout use that memory for a deeper
+  // frame buffer instead of being artificially limited to ten textures.
+  const MAX_GPU_TEXTURE_BYTES =
+    (MOBILE_DEVICE ? 160 : 384) * 1024 * 1024;
+  const MAX_GPU_CHUNKS = MOBILE_DEVICE ? 48 : 96;
+
   const MAX_FETCHES = MOBILE_DEVICE ? 2 : 4;
   const PREFETCH_FRAMES = MOBILE_DEVICE ? 2 : 4;
+
+  // X2 runs at 5 fps. Keep five native observations ahead whenever the
+  // viewport/memory budget allows it.
+  const NATIVE_X2_BUFFER_FRAMES = 5;
+  const NATIVE_FRAME_WAIT_SLICE_MS =
+    MOBILE_DEVICE ? 165 : 140;
+  const NATIVE_MAX_HOLD_CYCLES = 8;
+
   const VIEWPORT_SYNC_MS = MOBILE_DEVICE ? 140 : 90;
   const POLL_MS = 30000;
   const STARTED_AT = Date.now();
@@ -160,6 +174,60 @@
     return 1;
   }
 
+  function playbackBufferActive() {
+    try {
+      return Boolean(
+        isPlaying ||
+        (
+          typeof playbackStarting !== "undefined" &&
+          playbackStarting
+        )
+      );
+    } catch (_) {
+      return Boolean(isPlaying);
+    }
+  }
+
+  function playbackLookaheadFrameIds(
+    startIndex = currentFrameIndex
+  ) {
+    if (!Array.isArray(frames) || frames.length < 2) {
+      return [];
+    }
+
+    const speed = currentPlaybackSpeed();
+    const lookahead =
+      speed >= 2
+        ? Math.min(
+            NATIVE_X2_BUFFER_FRAMES,
+            frames.length - 1
+          )
+        : Math.min(
+            PREFETCH_FRAMES,
+            frames.length - 1
+          );
+
+    const ids = [];
+
+    for (
+      let offset = 1;
+      offset <= lookahead;
+      offset += 1
+    ) {
+      const index =
+        (startIndex + offset) % frames.length;
+
+      const frameId =
+        String(frames[index]?.id || "");
+
+      if (frameId && !ids.includes(frameId)) {
+        ids.push(frameId);
+      }
+    }
+
+    return ids;
+  }
+
   function prefetchUpcomingDetail() {
     if (
       !overlay?.enabled ||
@@ -170,30 +238,11 @@
       return;
     }
 
-    const speed = currentPlaybackSpeed();
-
-    // Mobile 2x playback has very little decode/GPU headroom. Prioritize the
-    // exact next observation instead of spending bandwidth several frames out.
-    const lookahead =
-      speed >= 2
-        ? Math.min(
-            MOBILE_DEVICE ? 1 : 2,
-            frames.length - 1
-          )
-        : Math.min(PREFETCH_FRAMES, frames.length - 1);
-
-    const frameIds = [];
-
-    for (let offset = 1; offset <= lookahead; offset += 1) {
-      const index = (currentFrameIndex + offset) % frames.length;
-      const frameId = String(frames[index]?.id || "");
-
-      if (frameId && !frameIds.includes(frameId)) {
-        frameIds.push(frameId);
-      }
-    }
-
-    overlay.prefetchFrames(frameIds);
+    overlay.prefetchFrames(
+      playbackLookaheadFrameIds(
+        currentFrameIndex
+      )
+    );
   }
 
   async function bitmapFromUrl(url, signal = undefined) {
@@ -452,6 +501,77 @@
         );
       },
 
+      playbackProtectedKeys() {
+        const keys = new Set();
+
+        if (
+          !playbackBufferActive() ||
+          this.map?.isMoving?.() ||
+          !detailArchive
+        ) {
+          return keys;
+        }
+
+        // Leave headroom for the currently displayed native observation.
+        const futureBudget =
+          MAX_GPU_TEXTURE_BYTES * 0.75;
+
+        let projectedBytes = 0;
+
+        for (
+          const frameId of playbackLookaheadFrameIds(
+            currentFrameIndex
+          )
+        ) {
+          const manifest =
+            frameManifestFromArchive(
+              detailArchive,
+              frameId
+            );
+
+          if (!manifest) continue;
+
+          const chunks =
+            this.visibleChunks(manifest);
+
+          const frameBytes =
+            chunks.reduce(
+              (total, chunk) =>
+                total +
+                (
+                  Math.max(
+                    1,
+                    Number(chunk.width) || 1
+                  ) *
+                  Math.max(
+                    1,
+                    Number(chunk.height) || 1
+                  ) *
+                  4
+                ),
+              0
+            );
+
+          if (
+            keys.size &&
+            projectedBytes + frameBytes >
+              futureBudget
+          ) {
+            break;
+          }
+
+          projectedBytes += frameBytes;
+
+          for (const chunk of chunks) {
+            keys.add(
+              this.key(chunk, manifest)
+            );
+          }
+        }
+
+        return keys;
+      },
+
       prioritizeCurrentViewport(
         chunks,
         manifest = this.manifest
@@ -461,6 +581,15 @@
             this.key(chunk, manifest)
           )
         );
+
+        // Keep useful native lookahead alive while playback is running.
+        // Camera movement intentionally drops this protection so CURRENT
+        // viewport responsiveness still wins.
+        for (
+          const key of this.playbackProtectedKeys()
+        ) {
+          allowedKeys.add(key);
+        }
 
         const keepQueue = [];
 
@@ -592,6 +721,112 @@
         });
       },
 
+      frameReady(frameId) {
+        if (!frameId || !detailArchive) {
+          return false;
+        }
+
+        const manifest =
+          frameManifestFromArchive(
+            detailArchive,
+            frameId
+          );
+
+        if (!manifest) return false;
+
+        const chunks =
+          this.visibleChunks(manifest);
+
+        if (!chunks.length) return false;
+
+        return chunks.every(
+          chunk =>
+            this.cache.has(
+              this.key(chunk, manifest)
+            )
+        );
+      },
+
+      async waitForFrame(
+        frameId,
+        timeoutMs
+      ) {
+        if (
+          !this.enabled ||
+          !frameId ||
+          !detailArchive
+        ) {
+          return false;
+        }
+
+        const manifest =
+          frameManifestFromArchive(
+            detailArchive,
+            frameId
+          );
+
+        if (!manifest) return false;
+
+        const chunks =
+          this.visibleChunks(manifest);
+
+        if (!chunks.length) return false;
+
+        const targetKeys = new Set(
+          chunks.map(
+            chunk =>
+              this.key(chunk, manifest)
+          )
+        );
+
+        const ready = () =>
+          chunks.every(
+            chunk =>
+              this.cache.has(
+                this.key(chunk, manifest)
+              )
+          );
+
+        if (ready()) return true;
+
+        // The exact observation about to be displayed outranks speculative
+        // frame+2/frame+3 work. Free mobile fetch slots immediately.
+        for (const key of this.activeKeys) {
+          if (targetKeys.has(key)) continue;
+          this.controllers.get(key)?.abort();
+        }
+
+        this.queueChunks(
+          chunks,
+          manifest,
+          true
+        );
+
+        const deadline =
+          performance.now() +
+          Math.max(
+            0,
+            Number(timeoutMs) || 0
+          );
+
+        while (
+          this.enabled &&
+          performance.now() < deadline
+        ) {
+          await new Promise(
+            resolve =>
+              window.setTimeout(
+                resolve,
+                16
+              )
+          );
+
+          if (ready()) return true;
+        }
+
+        return ready();
+      },
+
       async pump() {
         while (
           this.activeFetches < MAX_FETCHES &&
@@ -645,6 +880,16 @@
             texture,
             chunk: item.chunk,
             geometry,
+            byteSize:
+              Math.max(
+                1,
+                Number(item.chunk.width) || 1
+              ) *
+              Math.max(
+                1,
+                Number(item.chunk.height) || 1
+              ) *
+              4,
             lastUsed: performance.now()
           });
         } catch (error) {
@@ -714,10 +959,28 @@
           return;
         }
 
-        // The lower-resolution 4096px observation is authoritative for
-        // animation. Never let an old native frame remain visually dominant
-        // after the timeline advances.
-        radarLayer?.setVisible(radarVisible);
+        // If every visible chunk for the incoming observation is already
+        // cached, transition native -> native without briefly exposing the
+        // lower-resolution 4096px layer between observations.
+        const nextVisible =
+          this.enabled
+            ? this.visibleChunks(next)
+            : [];
+
+        const nextReady =
+          nextVisible.length > 0 &&
+          nextVisible.every(
+            chunk =>
+              this.cache.has(
+                this.key(chunk, next)
+              )
+          );
+
+        if (!nextReady) {
+          radarLayer?.setVisible(
+            radarVisible
+          );
+        }
 
         this.frameAvailable = true;
         this.manifest = next;
@@ -771,22 +1034,69 @@
       },
 
       evict() {
-        if (!this.gl || this.cache.size <= MAX_GPU_CHUNKS) return;
+        if (!this.gl) return;
+
+        let totalBytes =
+          [...this.cache.values()]
+            .reduce(
+              (total, value) =>
+                total +
+                Math.max(
+                  0,
+                  Number(value.byteSize) || 0
+                ),
+              0
+            );
+
+        if (
+          this.cache.size <= MAX_GPU_CHUNKS &&
+          totalBytes <= MAX_GPU_TEXTURE_BYTES
+        ) {
+          return;
+        }
+
         const protectedKeys = new Set([
           ...this.wanted.keys(),
-          ...this.drawSet.map(item => item.key)
+          ...this.drawSet.map(
+            item => item.key
+          ),
+          ...this.playbackProtectedKeys()
         ]);
-        const removable = [...this.cache.entries()]
-          .filter(([key]) => !protectedKeys.has(key))
-          .sort((a, b) => a[1].lastUsed - b[1].lastUsed);
+
+        const removable =
+          [...this.cache.entries()]
+            .filter(
+              ([key]) =>
+                !protectedKeys.has(key)
+            )
+            .sort(
+              (a, b) =>
+                a[1].lastUsed -
+                b[1].lastUsed
+            );
+
         while (
-          this.cache.size > MAX_GPU_CHUNKS &&
+          (
+            this.cache.size >
+              MAX_GPU_CHUNKS ||
+            totalBytes >
+              MAX_GPU_TEXTURE_BYTES
+          ) &&
           removable.length
         ) {
-          const entry = removable.shift();
-          const key = entry[0];
-          const value = entry[1];
-          this.gl.deleteTexture(value.texture);
+          const [key, value] =
+            removable.shift();
+
+          this.gl.deleteTexture(
+            value.texture
+          );
+
+          totalBytes -=
+            Math.max(
+              0,
+              Number(value.byteSize) || 0
+            );
+
           this.cache.delete(key);
         }
       },
@@ -860,10 +1170,20 @@
           return;
         }
 
-        // Progressive refinement: render every native chunk that is already
-        // available instead of waiting for the slowest chunk in the viewport.
-        // The lightweight national layer remains underneath until all wanted
-        // chunks for this frame are ready.
+        // During animation, only display a COMPLETE native observation.
+        // Partial progressive drawing is useful while paused, but during
+        // playback it creates visible sharp/blocky/sharp quality flicker.
+        if (
+          playbackBufferActive() &&
+          !this.readyForViewport()
+        ) {
+          this.drawSet = [];
+          this.syncVisibility();
+          return;
+        }
+
+        // While paused, retain progressive refinement so deep-zoom detail can
+        // sharpen chunk-by-chunk as the user explores the map.
         this.drawSet = [...this.wanted.entries()]
           .filter(([key]) => this.cache.has(key))
           .map(([key, chunk]) => ({ key, chunk }));
@@ -926,18 +1246,110 @@
     if (beforeId) map.addLayer(overlay, beforeId);
     else map.addLayer(overlay);
 
+    const nativeHoldMisses = new Map();
+
     const originalShowFrame = showFrame;
+
     showFrame = async function (...args) {
       // Camera interaction gets first priority. Playback holds the current
-      // observation only while Mapbox is actively moving.
+      // complete observation while Mapbox is actively moving.
       if (isPlaying && map?.isMoving?.()) {
         return false;
       }
 
-      // Base animation is authoritative. Native detail must never delay the
-      // observation clock or leave an older sharp frame over a newer base
-      // observation.
-      radarLayer?.setVisible(radarVisible);
+      const requestedIndex =
+        Number(args[0]);
+
+      let nativeTransitionReady = false;
+      let requestedFrameId = "";
+
+      if (
+        playbackBufferActive() &&
+        overlay?.enabled &&
+        !map?.isMoving?.() &&
+        frames.length > 0 &&
+        Number.isFinite(requestedIndex)
+      ) {
+        const normalized =
+          (
+            (
+              requestedIndex %
+              frames.length
+            ) +
+            frames.length
+          ) %
+          frames.length;
+
+        requestedFrameId =
+          String(
+            frames[normalized]?.id ||
+            ""
+          );
+
+        const requestedManifest =
+          frameManifestFromArchive(
+            detailArchive,
+            requestedFrameId
+          );
+
+        if (requestedManifest) {
+          // Seed the requested observation plus the next X2 buffer frames.
+          overlay.prefetchFrames([
+            requestedFrameId,
+            ...playbackLookaheadFrameIds(
+              normalized
+            )
+          ]);
+
+          nativeTransitionReady =
+            await overlay.waitForFrame(
+              requestedFrameId,
+              NATIVE_FRAME_WAIT_SLICE_MS
+            );
+
+          if (!nativeTransitionReady) {
+            const misses =
+              (
+                nativeHoldMisses.get(
+                  requestedFrameId
+                ) || 0
+              ) + 1;
+
+            nativeHoldMisses.set(
+              requestedFrameId,
+              misses
+            );
+
+            // Keep the current sharp frame and current timestamp together.
+            // The playback loop will retry this exact observation on its next
+            // cadence. Only fall back after an extended native failure so the
+            // animation can never become permanently stuck.
+            if (
+              misses <
+              NATIVE_MAX_HOLD_CYCLES
+            ) {
+              return false;
+            }
+
+            nativeHoldMisses.delete(
+              requestedFrameId
+            );
+          } else {
+            nativeHoldMisses.delete(
+              requestedFrameId
+            );
+          }
+        }
+      }
+
+      // Only expose the 4096px fallback when we genuinely do not have a
+      // complete native observation ready. Normal buffered playback therefore
+      // transitions sharp-native -> sharp-native with no quality flash.
+      if (!nativeTransitionReady) {
+        radarLayer?.setVisible(
+          radarVisible
+        );
+      }
 
       const result =
         await originalShowFrame(...args);
@@ -949,18 +1361,58 @@
       return result;
     };
 
-    const originalStartPlayback = startPlayback;
-    startPlayback = async function (...args) {
-      radarLayer?.setVisible(radarVisible);
-      const result = await originalStartPlayback(...args);
-      prefetchUpcomingDetail();
-      return result;
-    };
+    const originalStartPlayback =
+      startPlayback;
 
-    const originalStopPlayback = stopPlayback;
+    startPlayback =
+      async function (...args) {
+        if (
+          overlay?.enabled &&
+          frames.length > 1
+        ) {
+          const startIndex =
+            currentFrameIndex ===
+            frames.length - 1
+              ? 0
+              : currentFrameIndex;
+
+          const startFrameId =
+            String(
+              frames[startIndex]?.id ||
+              ""
+            );
+
+          overlay.prefetchFrames([
+            startFrameId,
+            ...playbackLookaheadFrameIds(
+              startIndex
+            )
+          ].filter(Boolean));
+        }
+
+        const result =
+          await originalStartPlayback(
+            ...args
+          );
+
+        prefetchUpcomingDetail();
+        return result;
+      };
+
+    const originalStopPlayback =
+      stopPlayback;
+
     stopPlayback = function (...args) {
-      const result = originalStopPlayback(...args);
-      window.setTimeout(syncMode, 0);
+      nativeHoldMisses.clear();
+
+      const result =
+        originalStopPlayback(...args);
+
+      window.setTimeout(
+        syncMode,
+        0
+      );
+
       return result;
     };
 
