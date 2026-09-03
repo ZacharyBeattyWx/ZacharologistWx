@@ -1,35 +1,25 @@
 (() => {
   "use strict";
 
-  const params = new URLSearchParams(window.location.search);
-  const HOME_MODE = params.get("home") === "1";
   const DETAIL_MANIFEST_URL =
     "https://dt0cd6bl1yqh2.cloudfront.net/mrms-detail/manifest.json";
   const LAYER_ID = "mrms-native-detail-overlay";
-  const MIN_DETAIL_MAP_ZOOM = 4.6;
+
+  // Hysteresis prevents touch/pinch zoom from rapidly bouncing between LODs.
+  const ENTER_DETAIL_ZOOM = 4.8;
+  const EXIT_DETAIL_ZOOM = 4.35;
+
   const MOBILE_DEVICE =
     window.matchMedia?.("(pointer: coarse)")?.matches ||
     /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  // Preserve roughly the same native-texture memory ceiling we had with
-  // 2048px chunks, but let the new 1024px layout use that memory for a deeper
-  // frame buffer instead of being artificially limited to ten textures.
+
   const MAX_GPU_TEXTURE_BYTES =
     (MOBILE_DEVICE ? 160 : 384) * 1024 * 1024;
-  const MAX_GPU_CHUNKS = MOBILE_DEVICE ? 48 : 96;
-
+  const MAX_GPU_CHUNKS = MOBILE_DEVICE ? 72 : 160;
   const MAX_FETCHES = MOBILE_DEVICE ? 2 : 4;
-  const FAST_NATIVE_FETCHES = MOBILE_DEVICE ? 3 : 6;
-  const PREFETCH_FRAMES = MOBILE_DEVICE ? 2 : 4;
-
-  // Fast playback uses a real GPU-resident native frame ring. The actual
-  // frame switch must never fetch, decode, or upload the 4096px base frame.
-  // Memory protection below can shorten the effective ring for wide views.
-  const NATIVE_X2_BUFFER_FRAMES =
-    MOBILE_DEVICE ? 6 : 8;
-  const NATIVE_START_READY_FRAMES =
-    MOBILE_DEVICE ? 5 : 6;
-
-  const VIEWPORT_SYNC_MS = MOBILE_DEVICE ? 140 : 90;
+  const FAST_FETCHES = MOBILE_DEVICE ? 3 : 6;
+  const VIEWPORT_SYNC_MS = MOBILE_DEVICE ? 120 : 75;
+  const VIEWPORT_OVERSCAN = MOBILE_DEVICE ? 0.22 : 0.28;
   const POLL_MS = 30000;
   const STARTED_AT = Date.now();
   const INSTALL_TIMEOUT_MS = 20000;
@@ -38,9 +28,14 @@
   let installed = false;
   let overlay = null;
   let detailArchive = null;
+  let detailMode = false;
+  let leavingDetail = false;
+  let baseTextureFrameId = "";
+  let baseSyncBusy = false;
   let pollTimer = null;
-  let syncTimer = null;
   let retryTimer = null;
+  let viewportTimer = null;
+  let lastViewportSyncAt = 0;
 
   function ready() {
     try {
@@ -52,8 +47,8 @@
         typeof currentFrameIndex !== "undefined" &&
         typeof isPlaying !== "undefined" &&
         typeof showFrame === "function" &&
-        typeof startPlayback === "function" &&
-        typeof stopPlayback === "function" &&
+        typeof primePlaybackBuffer === "function" &&
+        typeof updateFrameUi === "function" &&
         typeof opacityInput !== "undefined" &&
         map &&
         typeof map.addLayer === "function" &&
@@ -74,10 +69,16 @@
       DETAIL_MANIFEST_URL + separator + "t=" + Date.now(),
       { cache: "no-store" }
     );
-    if (response.status === 403 || response.status === 404) return null;
-    if (!response.ok) {
-      throw new Error("Native MRMS detail manifest HTTP " + response.status);
+
+    if (response.status === 403 || response.status === 404) {
+      return null;
     }
+    if (!response.ok) {
+      throw new Error(
+        "Native MRMS detail manifest HTTP " + response.status
+      );
+    }
+
     const manifest = await response.json();
     const singleFrame =
       manifest.mode === "native-grid-chunks" &&
@@ -86,21 +87,38 @@
     const archive =
       manifest.mode === "native-grid-chunk-archive" &&
       Array.isArray(manifest.frames) &&
-      Array.isArray(manifest.chunkLayout) &&
-      typeof manifest.imageTemplate === "string";
+      typeof manifest.imageTemplate === "string" &&
+      (
+        Array.isArray(manifest.chunkLayout) ||
+        (
+          manifest.layouts &&
+          typeof manifest.layouts === "object"
+        )
+      );
+
     if (!singleFrame && !archive) {
-      throw new Error("Native MRMS detail manifest is incomplete");
+      throw new Error(
+        "Native MRMS detail manifest is incomplete"
+      );
     }
+
     manifest._url = DETAIL_MANIFEST_URL;
     return manifest;
   }
 
-  function currentBaseFrameId() {
-    return String(frames?.[currentFrameIndex]?.id || "");
+  function frameIdAt(index = currentFrameIndex) {
+    return String(frames?.[index]?.id || "");
+  }
+
+  function frameIndexForId(frameId) {
+    return frames.findIndex(
+      frame => String(frame?.id || "") === String(frameId)
+    );
   }
 
   function frameManifestFromArchive(archive, frameId) {
     if (!archive || !frameId) return null;
+
     if (archive.mode === "native-grid-chunks") {
       return String(archive.revision) === String(frameId)
         ? archive
@@ -112,9 +130,6 @@
     );
     if (!frame) return null;
 
-    // Newer archive manifests can retain multiple chunk layouts at once.
-    // That lets us migrate from large 2048px textures to smaller 1024px
-    // textures without invalidating historical native-detail revisions.
     const layoutId = String(frame.layoutId || "");
     const frameLayout =
       layoutId &&
@@ -128,11 +143,16 @@
       archive.chunkLayout ||
       [];
 
+    if (!chunkLayout.length) return null;
+
     const chunks = chunkLayout.map(layout => {
       const image = archive.imageTemplate
         .replace("{revision}", String(frame.revision))
         .replace("{chunkId}", String(layout.id));
-      return { ...layout, image };
+      return {
+        ...layout,
+        image
+      };
     });
 
     return {
@@ -157,12 +177,11 @@
     };
   }
 
-  function syncFrameManifest() {
-    if (!overlay) return;
-    overlay.setManifest(
+  function nativeFrameExists(frameId) {
+    return Boolean(
       frameManifestFromArchive(
         detailArchive,
-        currentBaseFrameId()
+        frameId
       )
     );
   }
@@ -170,94 +189,62 @@
   function currentPlaybackSpeed() {
     try {
       if (typeof speedSelect !== "undefined") {
-        return Math.max(0.25, Number(speedSelect.value) || 1);
+        return Math.max(
+          0.25,
+          Number(speedSelect.value) || 1
+        );
       }
     } catch (_) {}
     return 1;
   }
 
-  function playbackBufferActive() {
-    try {
-      return Boolean(
-        isPlaying ||
-        (
-          typeof playbackStarting !== "undefined" &&
-          playbackStarting
-        )
-      );
-    } catch (_) {
-      return Boolean(isPlaying);
-    }
+  function normalizeIndex(index) {
+    if (!frames.length) return 0;
+    return (
+      (
+        Number(index) % frames.length
+      ) + frames.length
+    ) % frames.length;
   }
 
-  function playbackLookaheadFrameIds(
-    startIndex = currentFrameIndex
-  ) {
-    if (!Array.isArray(frames) || frames.length < 2) {
-      return [];
-    }
+  function nextNativeIndex(index) {
+    if (!frames.length) return -1;
 
-    const speed = currentPlaybackSpeed();
-    const lookahead =
-      speed >= 1.5
-        ? Math.min(
-            NATIVE_X2_BUFFER_FRAMES,
-            frames.length - 1
-          )
-        : Math.min(
-            PREFETCH_FRAMES,
-            frames.length - 1
-          );
-
-    const ids = [];
-
+    const start = normalizeIndex(index);
     for (
-      let offset = 1;
-      offset <= lookahead;
+      let offset = 0;
+      offset < frames.length;
       offset += 1
     ) {
-      const index =
-        (startIndex + offset) % frames.length;
-
-      const frameId =
-        String(frames[index]?.id || "");
-
-      if (frameId && !ids.includes(frameId)) {
-        ids.push(frameId);
+      const candidate =
+        (start + offset) % frames.length;
+      if (nativeFrameExists(frameIdAt(candidate))) {
+        return candidate;
       }
     }
-
-    return ids;
+    return -1;
   }
 
-  function prefetchUpcomingDetail() {
-    if (
-      !overlay?.enabled ||
-      !isPlaying ||
-      frames.length < 2 ||
-      map?.isMoving?.()
-    ) {
-      return;
-    }
-
-    overlay.prefetchFrames(
-      playbackLookaheadFrameIds(
-        currentFrameIndex
-      )
-    );
-  }
-
-  async function bitmapFromUrl(url, signal = undefined) {
+  async function bitmapFromUrl(
+    url,
+    signal = undefined
+  ) {
     const response = await fetch(url, {
       cache: "force-cache",
       signal
     });
+
     if (!response.ok) {
       throw new Error(
-        "Native MRMS detail chunk HTTP " + response.status + ": " + url
+        "Native MRMS detail chunk HTTP " +
+          response.status +
+          ": " +
+          url
       );
     }
+
     const blob = await response.blob();
+
     if (typeof createImageBitmap === "function") {
       try {
         return await createImageBitmap(blob, {
@@ -268,46 +255,98 @@
         return await createImageBitmap(blob);
       }
     }
-    return await new Promise((resolve, reject) => {
-      const image = new Image();
-      const objectUrl = URL.createObjectURL(blob);
-      image.decoding = "async";
-      image.onload = () => {
-        URL.revokeObjectURL(objectUrl);
-        resolve(image);
-      };
-      image.onerror = () => {
-        URL.revokeObjectURL(objectUrl);
-        reject(new Error("Native MRMS detail chunk decode failed"));
-      };
-      image.src = objectUrl;
-    });
+
+    return await new Promise(
+      (resolve, reject) => {
+        const image = new Image();
+        const objectUrl =
+          URL.createObjectURL(blob);
+        image.decoding = "async";
+
+        image.onload = () => {
+          URL.revokeObjectURL(objectUrl);
+          resolve(image);
+        };
+
+        image.onerror = () => {
+          URL.revokeObjectURL(objectUrl);
+          reject(
+            new Error(
+              "Native MRMS detail chunk decode failed"
+            )
+          );
+        };
+
+        image.src = objectUrl;
+      }
+    );
   }
 
   function compileShader(gl, type, source) {
     const shader = gl.createShader(type);
     gl.shaderSource(shader, source);
     gl.compileShader(shader);
-    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-      const message = gl.getShaderInfoLog(shader) || "shader compile failed";
+
+    if (
+      !gl.getShaderParameter(
+        shader,
+        gl.COMPILE_STATUS
+      )
+    ) {
+      const message =
+        gl.getShaderInfoLog(shader) ||
+        "shader compile failed";
       gl.deleteShader(shader);
       throw new Error(message);
     }
+
     return shader;
   }
 
   function createTexture(gl, image) {
     const texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
-    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
-    if (gl.UNPACK_COLORSPACE_CONVERSION_WEBGL !== undefined) {
-      gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
+
+    gl.texParameteri(
+      gl.TEXTURE_2D,
+      gl.TEXTURE_WRAP_S,
+      gl.CLAMP_TO_EDGE
+    );
+    gl.texParameteri(
+      gl.TEXTURE_2D,
+      gl.TEXTURE_WRAP_T,
+      gl.CLAMP_TO_EDGE
+    );
+    gl.texParameteri(
+      gl.TEXTURE_2D,
+      gl.TEXTURE_MIN_FILTER,
+      gl.NEAREST
+    );
+    gl.texParameteri(
+      gl.TEXTURE_2D,
+      gl.TEXTURE_MAG_FILTER,
+      gl.NEAREST
+    );
+
+    gl.pixelStorei(
+      gl.UNPACK_FLIP_Y_WEBGL,
+      false
+    );
+    gl.pixelStorei(
+      gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,
+      false
+    );
+
+    if (
+      gl.UNPACK_COLORSPACE_CONVERSION_WEBGL !==
+      undefined
+    ) {
+      gl.pixelStorei(
+        gl.UNPACK_COLORSPACE_CONVERSION_WEBGL,
+        gl.NONE
+      );
     }
+
     gl.texImage2D(
       gl.TEXTURE_2D,
       0,
@@ -316,7 +355,29 @@
       gl.UNSIGNED_BYTE,
       image
     );
+
     return texture;
+  }
+
+  function expandedViewportBounds() {
+    const bounds = map.getBounds();
+    const west = Number(bounds.getWest());
+    const east = Number(bounds.getEast());
+    const south = Number(bounds.getSouth());
+    const north = Number(bounds.getNorth());
+    const lonPad =
+      Math.max(0, east - west) *
+      VIEWPORT_OVERSCAN;
+    const latPad =
+      Math.max(0, north - south) *
+      VIEWPORT_OVERSCAN;
+
+    return {
+      getWest: () => west - lonPad,
+      getEast: () => east + lonPad,
+      getSouth: () => south - latPad,
+      getNorth: () => north + latPad
+    };
   }
 
   function chunkIntersects(chunk, bounds) {
@@ -325,6 +386,7 @@
     const south = values[1];
     const east = values[2];
     const north = values[3];
+
     return !(
       east <= bounds.getWest() ||
       west >= bounds.getEast() ||
@@ -339,8 +401,16 @@
     const south = values[1];
     const east = values[2];
     const north = values[3];
-    const x0 = mapboxgl.MercatorCoordinate.fromLngLat([west, 0]).x;
-    const x1 = mapboxgl.MercatorCoordinate.fromLngLat([east, 0]).x;
+
+    const x0 =
+      mapboxgl.MercatorCoordinate.fromLngLat(
+        [west, 0]
+      ).x;
+    const x1 =
+      mapboxgl.MercatorCoordinate.fromLngLat(
+        [east, 0]
+      ).x;
+
     const positions = [];
     const uvs = [];
 
@@ -349,56 +419,81 @@
       uvs.push(u, v);
     }
 
-    for (let band = 0; band < LATITUDE_SEGMENTS; band += 1) {
-      const v0 = band / LATITUDE_SEGMENTS;
-      const v1 = (band + 1) / LATITUDE_SEGMENTS;
-      const lat0 = north - (north - south) * v0;
-      const lat1 = north - (north - south) * v1;
-      const y0 = mapboxgl.MercatorCoordinate.fromLngLat([0, lat0]).y;
-      const y1 = mapboxgl.MercatorCoordinate.fromLngLat([0, lat1]).y;
+    for (
+      let band = 0;
+      band < LATITUDE_SEGMENTS;
+      band += 1
+    ) {
+      const v0 =
+        band / LATITUDE_SEGMENTS;
+      const v1 =
+        (band + 1) / LATITUDE_SEGMENTS;
+      const lat0 =
+        north - (north - south) * v0;
+      const lat1 =
+        north - (north - south) * v1;
+
+      const y0 =
+        mapboxgl.MercatorCoordinate.fromLngLat(
+          [0, lat0]
+        ).y;
+      const y1 =
+        mapboxgl.MercatorCoordinate.fromLngLat(
+          [0, lat1]
+        ).y;
 
       append(x0, y0, 0, v0);
       append(x0, y1, 0, v1);
       append(x1, y0, 1, v0);
+
       append(x1, y0, 1, v0);
       append(x0, y1, 0, v1);
       append(x1, y1, 1, v1);
     }
 
     return {
-      positions: new Float32Array(positions),
-      uvs: new Float32Array(uvs),
-      vertexCount: LATITUDE_SEGMENTS * 6
+      positions:
+        new Float32Array(positions),
+      uvs:
+        new Float32Array(uvs),
+      vertexCount:
+        LATITUDE_SEGMENTS * 6
     };
   }
 
   function firstSymbolLayerId() {
-    return (map.getStyle()?.layers || []).find(
+    return (
+      map.getStyle()?.layers || []
+    ).find(
       layer => layer.type === "symbol"
     )?.id;
   }
 
-  function createOverlay(initialManifest) {
+  function createOverlay() {
     return {
       id: LAYER_ID,
       type: "custom",
       renderingMode: "2d",
-      manifest: initialManifest,
-      frameAvailable: Boolean(initialManifest),
-      enabled: false,
+
+      map: null,
+      gl: null,
+      program: null,
+      nativeVisible: false,
+      currentManifest: null,
       cache: new Map(),
       geometryCache: new Map(),
+      queue: [],
       pending: new Set(),
       controllers: new Map(),
-      activeKeys: new Set(),
-      queue: [],
       activeFetches: 0,
+      activeKeys: new Set(),
       wanted: new Map(),
       drawSet: [],
 
       onAdd(mapRef, gl) {
         this.map = mapRef;
         this.gl = gl;
+
         const vertexSource = [
           "precision highp float;",
           "uniform mat4 u_matrix;",
@@ -410,6 +505,7 @@
           "  v_uv = a_uv;",
           "}"
         ].join("\n");
+
         const fragmentSource = [
           "precision mediump float;",
           "uniform sampler2D u_texture;",
@@ -420,55 +516,106 @@
           "  gl_FragColor = vec4(radar.rgb, radar.a * u_opacity);",
           "}"
         ].join("\n");
-        const vs = compileShader(gl, gl.VERTEX_SHADER, vertexSource);
-        const fs = compileShader(gl, gl.FRAGMENT_SHADER, fragmentSource);
+
+        const vs = compileShader(
+          gl,
+          gl.VERTEX_SHADER,
+          vertexSource
+        );
+        const fs = compileShader(
+          gl,
+          gl.FRAGMENT_SHADER,
+          fragmentSource
+        );
+
         this.program = gl.createProgram();
         gl.attachShader(this.program, vs);
         gl.attachShader(this.program, fs);
         gl.linkProgram(this.program);
         gl.deleteShader(vs);
         gl.deleteShader(fs);
-        if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) {
+
+        if (
+          !gl.getProgramParameter(
+            this.program,
+            gl.LINK_STATUS
+          )
+        ) {
           throw new Error(
-            gl.getProgramInfoLog(this.program) ||
+            gl.getProgramInfoLog(
+              this.program
+            ) ||
               "Native MRMS detail shader link failed"
           );
         }
-        this.aPos = gl.getAttribLocation(this.program, "a_pos");
-        this.aUv = gl.getAttribLocation(this.program, "a_uv");
-        this.uMatrix = gl.getUniformLocation(this.program, "u_matrix");
-        this.uTexture = gl.getUniformLocation(this.program, "u_texture");
-        this.uOpacity = gl.getUniformLocation(this.program, "u_opacity");
-        this.updateWanted();
+
+        this.aPos =
+          gl.getAttribLocation(
+            this.program,
+            "a_pos"
+          );
+        this.aUv =
+          gl.getAttribLocation(
+            this.program,
+            "a_uv"
+          );
+        this.uMatrix =
+          gl.getUniformLocation(
+            this.program,
+            "u_matrix"
+          );
+        this.uTexture =
+          gl.getUniformLocation(
+            this.program,
+            "u_texture"
+          );
+        this.uOpacity =
+          gl.getUniformLocation(
+            this.program,
+            "u_opacity"
+          );
       },
 
       geometryKey(chunk) {
         return (
           String(chunk.id) +
           ":" +
-          (chunk.bounds || []).map(Number).join(",")
+          (chunk.bounds || [])
+            .map(Number)
+            .join(",")
         );
       },
 
       geometryForChunk(chunk) {
-        const key = this.geometryKey(chunk);
-        const existing = this.geometryCache.get(key);
+        const key =
+          this.geometryKey(chunk);
+        const existing =
+          this.geometryCache.get(key);
+
         if (existing) return existing;
         if (!this.gl) return null;
 
         const gl = this.gl;
         const mesh = meshForChunk(chunk);
 
-        const posBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+        const posBuffer =
+          gl.createBuffer();
+        gl.bindBuffer(
+          gl.ARRAY_BUFFER,
+          posBuffer
+        );
         gl.bufferData(
           gl.ARRAY_BUFFER,
           mesh.positions,
           gl.STATIC_DRAW
         );
 
-        const uvBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, uvBuffer);
+        const uvBuffer =
+          gl.createBuffer();
+        gl.bindBuffer(
+          gl.ARRAY_BUFFER,
+          uvBuffer
+        );
         gl.bufferData(
           gl.ARRAY_BUFFER,
           mesh.uvs,
@@ -478,189 +625,172 @@
         const geometry = {
           posBuffer,
           uvBuffer,
-          vertexCount: mesh.vertexCount
+          vertexCount:
+            mesh.vertexCount
         };
 
-        this.geometryCache.set(key, geometry);
+        this.geometryCache.set(
+          key,
+          geometry
+        );
         return geometry;
       },
 
-      key(chunk, manifest = this.manifest) {
-        return String(manifest.revision) + ":" + String(chunk.id);
+      key(chunk, manifest) {
+        return (
+          String(manifest.revision) +
+          ":" +
+          String(chunk.id)
+        );
       },
 
-      chunkUrl(chunk, manifestUrl = this.manifest._url) {
+      chunkUrl(chunk, manifest) {
         return new URL(
           String(chunk.image),
-          new URL(".", manifestUrl)
+          new URL(".", manifest._url)
         ).href;
       },
 
-      visibleChunks(manifest = this.manifest) {
-        const bounds = this.map.getBounds();
+      visibleChunks(manifest) {
+        if (!manifest?.chunks?.length) {
+          return [];
+        }
+
+        const bounds =
+          expandedViewportBounds();
+
         return manifest.chunks.filter(
-          chunk => chunkIntersects(chunk, bounds)
+          chunk =>
+            chunkIntersects(
+              chunk,
+              bounds
+            )
         );
       },
 
-      playbackProtectedKeys() {
-        const keys = new Set();
-
-        if (
-          !playbackBufferActive() ||
-          this.map?.isMoving?.() ||
-          !detailArchive
-        ) {
-          return keys;
-        }
-
-        // Leave headroom for the currently displayed native observation.
-        const futureBudget =
-          MAX_GPU_TEXTURE_BYTES * 0.75;
-
-        let projectedBytes = 0;
-
-        for (
-          const frameId of playbackLookaheadFrameIds(
-            currentFrameIndex
-          )
-        ) {
-          const manifest =
-            frameManifestFromArchive(
-              detailArchive,
-              frameId
-            );
-
-          if (!manifest) continue;
-
-          const chunks =
-            this.visibleChunks(manifest);
-
-          const frameBytes =
-            chunks.reduce(
-              (total, chunk) =>
-                total +
-                (
-                  Math.max(
-                    1,
-                    Number(chunk.width) || 1
-                  ) *
-                  Math.max(
-                    1,
-                    Number(chunk.height) || 1
-                  ) *
-                  4
-                ),
-              0
-            );
-
-          if (
-            keys.size &&
-            projectedBytes + frameBytes >
-              futureBudget
-          ) {
-            break;
-          }
-
-          projectedBytes += frameBytes;
-
-          for (const chunk of chunks) {
-            keys.add(
-              this.key(chunk, manifest)
-            );
-          }
-        }
-
-        return keys;
+      frameBytes(manifest) {
+        return this.visibleChunks(
+          manifest
+        ).reduce(
+          (total, chunk) =>
+            total +
+            Math.max(
+              1,
+              Number(chunk.width) || 1
+            ) *
+              Math.max(
+                1,
+                Number(chunk.height) || 1
+              ) *
+              4,
+          0
+        );
       },
 
-      prioritizeCurrentViewport(
-        chunks,
-        manifest = this.manifest
+      desiredRingDepth(
+        startIndex =
+          currentFrameIndex
       ) {
-        const allowedKeys = new Set(
-          chunks.map(chunk =>
-            this.key(chunk, manifest)
+        const currentId =
+          frameIdAt(startIndex);
+        const manifest =
+          frameManifestFromArchive(
+            detailArchive,
+            currentId
+          );
+
+        if (!manifest) return 2;
+
+        const bytesPerFrame =
+          Math.max(
+            1,
+            this.frameBytes(manifest)
+          );
+
+        // Reserve headroom for the current frame, camera movement and Mapbox.
+        const futureBudget =
+          MAX_GPU_TEXTURE_BYTES * 0.62;
+
+        const memoryDepth =
+          Math.max(
+            2,
+            Math.floor(
+              futureBudget /
+                bytesPerFrame
+            )
+          );
+
+        const speed =
+          currentPlaybackSpeed();
+        const desired =
+          speed >= 1.5
+            ? 10
+            : speed >= 1
+              ? 7
+              : 4;
+        const deviceCap =
+          MOBILE_DEVICE ? 7 : 12;
+
+        return Math.max(
+          2,
+          Math.min(
+            memoryDepth,
+            desired,
+            deviceCap,
+            frames.length
           )
         );
-
-        // Keep useful native lookahead alive while playback is running.
-        // Camera movement intentionally drops this protection so CURRENT
-        // viewport responsiveness still wins.
-        for (
-          const key of this.playbackProtectedKeys()
-        ) {
-          allowedKeys.add(key);
-        }
-
-        const keepQueue = [];
-
-        for (const item of this.queue) {
-          if (allowedKeys.has(item.key)) {
-            keepQueue.push(item);
-            continue;
-          }
-
-          const controller =
-            this.controllers.get(item.key);
-
-          if (
-            controller &&
-            !this.activeKeys.has(item.key)
-          ) {
-            controller.abort();
-          }
-
-          if (!this.activeKeys.has(item.key)) {
-            this.pending.delete(item.key);
-            this.controllers.delete(item.key);
-          }
-        }
-
-        this.queue = keepQueue;
-
-        // Abort stale requests already consuming one of the limited fetch
-        // slots. The CURRENT observation and CURRENT viewport always win.
-        for (const key of this.activeKeys) {
-          if (allowedKeys.has(key)) continue;
-          this.controllers.get(key)?.abort();
-        }
       },
 
-      updateWanted() {
-        if (!this.enabled) return;
+      lookaheadFrameIds(
+        startIndex =
+          currentFrameIndex
+      ) {
+        const depth =
+          this.desiredRingDepth(
+            startIndex
+          );
+        const ids = [];
 
-        const visible = this.visibleChunks();
+        for (
+          let offset = 1;
+          offset < depth;
+          offset += 1
+        ) {
+          const index =
+            (
+              startIndex + offset
+            ) % frames.length;
+          const frameId =
+            frameIdAt(index);
 
-        this.prioritizeCurrentViewport(
-          visible,
-          this.manifest
-        );
+          if (
+            frameId &&
+            nativeFrameExists(frameId) &&
+            !ids.includes(frameId)
+          ) {
+            ids.push(frameId);
+          }
+        }
 
-        this.wanted = new Map(
-          visible.map(chunk => [this.key(chunk), chunk])
-        );
-
-        this.queueChunks(
-          visible,
-          this.manifest,
-          true
-        );
-
-        this.evict();
-        this.syncVisibility();
+        return ids;
       },
 
       queueChunks(
         chunks,
-        manifest = this.manifest,
+        manifest,
         priority = false
       ) {
         const additions = [];
-        const requestedKeys = new Set();
+        const requestedKeys =
+          new Set();
 
         for (const chunk of chunks) {
-          const key = this.key(chunk, manifest);
+          const key =
+            this.key(
+              chunk,
+              manifest
+            );
           requestedKeys.add(key);
 
           if (
@@ -674,25 +804,34 @@
             new AbortController();
 
           this.pending.add(key);
-          this.controllers.set(key, controller);
+          this.controllers.set(
+            key,
+            controller
+          );
 
           additions.push({
-            chunk,
             key,
-            manifestUrl: manifest._url,
+            chunk,
+            manifest,
             controller
           });
         }
 
         if (priority) {
           const promoted =
-            this.queue.filter(item =>
-              requestedKeys.has(item.key)
+            this.queue.filter(
+              item =>
+                requestedKeys.has(
+                  item.key
+                )
             );
 
           this.queue =
-            this.queue.filter(item =>
-              !requestedKeys.has(item.key)
+            this.queue.filter(
+              item =>
+                !requestedKeys.has(
+                  item.key
+                )
             );
 
           this.queue.unshift(
@@ -700,215 +839,395 @@
             ...additions
           );
         } else {
-          this.queue.push(...additions);
+          this.queue.push(
+            ...additions
+          );
         }
 
         this.pump();
       },
 
-      prefetchFrames(frameIds) {
-        if (!this.enabled || !detailArchive || !Array.isArray(frameIds)) return;
-
-        frameIds.forEach((frameId, index) => {
-          const manifest = frameManifestFromArchive(detailArchive, frameId);
-          if (!manifest) return;
-
-          // The immediate next frame gets promoted ahead of older speculative
-          // work. Additional lookahead remains lower-priority background work.
-          this.queueChunks(
-            this.visibleChunks(manifest),
-            manifest,
-            index === 0
-          );
-        });
-      },
-
-      async primePlaybackBuffer(
-        startIndex,
-        count = NATIVE_X2_BUFFER_FRAMES
+      requestFrame(
+        frameId,
+        priority = true
       ) {
-        if (
-          !this.enabled ||
-          !detailArchive ||
-          !Array.isArray(frames) ||
-          !frames.length
-        ) {
-          return 0;
-        }
-
-        const frameIds = [];
-
-        for (
-          let offset = 0;
-          offset < Math.min(count, frames.length);
-          offset += 1
-        ) {
-          const index =
-            (startIndex + offset) % frames.length;
-
-          const frameId =
-            String(frames[index]?.id || "");
-
-          if (frameId && !frameIds.includes(frameId)) {
-            frameIds.push(frameId);
-          }
-        }
-
-        // Queue the entire startup buffer first so all available fetch lanes
-        // can work in parallel rather than loading each observation serially.
-        this.prefetchFrames(frameIds);
-
-        const deadline =
-          performance.now() +
-          (MOBILE_DEVICE ? 7000 : 5500);
-
-        const consecutiveReady = () => {
-          let count = 0;
-
-          for (const frameId of frameIds) {
-            if (!this.frameReady(frameId)) {
-              break;
-            }
-            count += 1;
-          }
-
-          return count;
-        };
-
-        const required =
-          Math.min(
-            NATIVE_START_READY_FRAMES,
-            frameIds.length
-          );
-
-        while (performance.now() < deadline) {
-          const readyCount =
-            consecutiveReady();
-
-          if (readyCount >= required) {
-            return readyCount;
-          }
-
-          await new Promise(
-            resolve =>
-              window.setTimeout(resolve, 20)
-          );
-        }
-
-        return consecutiveReady();
-      },
-
-      frameReady(frameId) {
-        if (!frameId || !detailArchive) {
-          return false;
-        }
-
         const manifest =
           frameManifestFromArchive(
             detailArchive,
             frameId
           );
-
         if (!manifest) return false;
 
         const chunks =
           this.visibleChunks(manifest);
 
-        if (!chunks.length) return false;
-
-        return chunks.every(
-          chunk =>
-            this.cache.has(
-              this.key(chunk, manifest)
-            )
-        );
-      },
-
-      activateReadyFrame(frameId) {
-        if (
-          !this.enabled ||
-          !frameId ||
-          !detailArchive
-        ) {
+        if (!chunks.length) {
           return false;
         }
 
-        const next =
+        this.queueChunks(
+          chunks,
+          manifest,
+          priority
+        );
+
+        return true;
+      },
+
+      prefetchFrameIds(frameIds) {
+        if (
+          !Array.isArray(frameIds)
+        ) {
+          return;
+        }
+
+        frameIds.forEach(
+          (frameId, index) => {
+            const manifest =
+              frameManifestFromArchive(
+                detailArchive,
+                frameId
+              );
+
+            if (!manifest) return;
+
+            this.queueChunks(
+              this.visibleChunks(
+                manifest
+              ),
+              manifest,
+              index === 0
+            );
+          }
+        );
+      },
+
+      frameReady(frameId) {
+        const manifest =
           frameManifestFromArchive(
             detailArchive,
             frameId
           );
+        if (!manifest) return false;
 
-        if (!next) return false;
+        const chunks =
+          this.visibleChunks(
+            manifest
+          );
+
+        if (!chunks.length) {
+          return false;
+        }
+
+        return chunks.every(
+          chunk =>
+            this.cache.has(
+              this.key(
+                chunk,
+                manifest
+              )
+            )
+        );
+      },
+
+      async waitForFrame(
+        frameId,
+        timeoutMs
+      ) {
+        if (this.frameReady(frameId)) {
+          return true;
+        }
+
+        this.requestFrame(
+          frameId,
+          true
+        );
+
+        const deadline =
+          performance.now() +
+          Math.max(
+            0,
+            Number(timeoutMs) || 0
+          );
+
+        while (
+          performance.now() <
+          deadline
+        ) {
+          if (
+            this.frameReady(
+              frameId
+            )
+          ) {
+            return true;
+          }
+
+          await new Promise(
+            resolve =>
+              window.setTimeout(
+                resolve,
+                20
+              )
+          );
+        }
+
+        return this.frameReady(
+          frameId
+        );
+      },
+
+      async prime(
+        startIndex
+      ) {
+        const normalized =
+          normalizeIndex(
+            startIndex
+          );
+        const startId =
+          frameIdAt(normalized);
+
+        if (!nativeFrameExists(startId)) {
+          return 0;
+        }
+
+        const ids = [
+          startId,
+          ...this.lookaheadFrameIds(
+            normalized
+          )
+        ];
+
+        this.prefetchFrameIds(ids);
+
+        const required =
+          Math.min(
+            MOBILE_DEVICE ? 3 : 4,
+            ids.length
+          );
+        const deadline =
+          performance.now() +
+          (MOBILE_DEVICE
+            ? 4500
+            : 3500);
+
+        while (
+          performance.now() <
+          deadline
+        ) {
+          let readyCount = 0;
+
+          for (const frameId of ids) {
+            if (
+              !this.frameReady(
+                frameId
+              )
+            ) {
+              break;
+            }
+            readyCount += 1;
+          }
+
+          if (
+            readyCount >= required
+          ) {
+            return readyCount;
+          }
+
+          await new Promise(
+            resolve =>
+              window.setTimeout(
+                resolve,
+                20
+              )
+          );
+        }
+
+        let readyCount = 0;
+        for (const frameId of ids) {
+          if (
+            !this.frameReady(
+              frameId
+            )
+          ) {
+            break;
+          }
+          readyCount += 1;
+        }
+
+        return readyCount;
+      },
+
+      activate(frameId) {
+        const manifest =
+          frameManifestFromArchive(
+            detailArchive,
+            frameId
+          );
+        if (!manifest) return false;
 
         const visible =
-          this.visibleChunks(next);
+          this.visibleChunks(
+            manifest
+          );
 
         if (
           !visible.length ||
           !visible.every(
             chunk =>
               this.cache.has(
-                this.key(chunk, next)
+                this.key(
+                  chunk,
+                  manifest
+                )
               )
           )
         ) {
           return false;
         }
 
-        // This is the hot playback path. Everything below is already resident
-        // in GPU memory: no fetch(), no createImageBitmap(), no texImage2D().
-        this.frameAvailable = true;
-        this.manifest = next;
-
+        this.currentManifest =
+          manifest;
         this.wanted = new Map(
           visible.map(
             chunk => [
-              this.key(chunk, next),
+              this.key(
+                chunk,
+                manifest
+              ),
               chunk
             ]
           )
         );
 
-        this.drawSet = visible.map(
-          chunk => ({
-            key: this.key(chunk, next),
-            chunk
-          })
-        );
+        this.drawSet =
+          visible.map(
+            chunk => ({
+              key:
+                this.key(
+                  chunk,
+                  manifest
+                ),
+              chunk
+            })
+          );
 
-        const now = performance.now();
+        const now =
+          performance.now();
 
-        for (const item of this.drawSet) {
+        for (
+          const item of
+            this.drawSet
+        ) {
           const cached =
-            this.cache.get(item.key);
-
+            this.cache.get(
+              item.key
+            );
           if (cached) {
             cached.lastUsed = now;
           }
         }
 
-        // Native is complete for this exact observation. Keep the base texture
-        // hidden and switch only the native texture set.
-        radarLayer?.setVisible(false);
-
+        this.nativeVisible = true;
         this.evict();
         this.map?.triggerRepaint();
 
         return true;
       },
 
+      updateCurrentViewport() {
+        if (
+          !this.nativeVisible ||
+          !this.currentManifest
+        ) {
+          return;
+        }
+
+        const currentId =
+          frameIdAt();
+
+        if (
+          String(
+            this.currentManifest
+              .revision
+          ) !== String(currentId)
+        ) {
+          return;
+        }
+
+        const visible =
+          this.visibleChunks(
+            this.currentManifest
+          );
+
+        this.wanted =
+          new Map(
+            visible.map(
+              chunk => [
+                this.key(
+                  chunk,
+                  this.currentManifest
+                ),
+                chunk
+              ]
+            )
+          );
+
+        this.queueChunks(
+          visible,
+          this.currentManifest,
+          true
+        );
+
+        // Geographic expansion for the SAME observation may refine
+        // progressively. Observation-to-observation swaps remain atomic.
+        const readyVisible =
+          visible
+            .filter(
+              chunk =>
+                this.cache.has(
+                  this.key(
+                    chunk,
+                    this.currentManifest
+                  )
+                )
+            )
+            .map(
+              chunk => ({
+                key:
+                  this.key(
+                    chunk,
+                    this.currentManifest
+                  ),
+                chunk
+              })
+            );
+
+        if (readyVisible.length) {
+          this.drawSet =
+            readyVisible;
+        }
+
+        this.evict();
+        this.map?.triggerRepaint();
+      },
+
       fetchConcurrency() {
         const chunkPixels =
-          Number(this.manifest?.chunkPixels) || 2048;
+          Number(
+            this.currentManifest
+              ?.chunkPixels
+          ) ||
+          Number(
+            detailArchive
+              ?.chunkPixels
+          ) ||
+          1024;
 
-        // The newer 1024px native chunks are substantially cheaper to decode
-        // and upload, so fast playback can safely use the wider fetch pool.
         if (
           chunkPixels <= 1024 &&
           currentPlaybackSpeed() >= 1.5
         ) {
-          return FAST_NATIVE_FETCHES;
+          return FAST_FETCHES;
         }
 
         return MAX_FETCHES;
@@ -916,28 +1235,52 @@
 
       async pump() {
         while (
-          this.activeFetches < this.fetchConcurrency() &&
+          this.activeFetches <
+            this.fetchConcurrency() &&
           this.queue.length
         ) {
-          const item = this.queue.shift();
+          const item =
+            this.queue.shift();
 
-          if (this.cache.has(item.key)) {
-            this.pending.delete(item.key);
-            this.controllers.delete(item.key);
+          if (
+            this.cache.has(
+              item.key
+            )
+          ) {
+            this.pending.delete(
+              item.key
+            );
+            this.controllers.delete(
+              item.key
+            );
             continue;
           }
 
-          if (item.controller?.signal?.aborted) {
-            this.pending.delete(item.key);
-            this.controllers.delete(item.key);
+          if (
+            item.controller
+              ?.signal
+              ?.aborted
+          ) {
+            this.pending.delete(
+              item.key
+            );
+            this.controllers.delete(
+              item.key
+            );
             continue;
           }
 
           this.activeFetches += 1;
-          this.activeKeys.add(item.key);
+          this.activeKeys.add(
+            item.key
+          );
 
-          this.fetchChunk(item).finally(() => {
-            this.activeKeys.delete(item.key);
+          this.fetchChunk(
+            item
+          ).finally(() => {
+            this.activeKeys.delete(
+              item.key
+            );
             this.activeFetches -= 1;
             this.pump();
           });
@@ -946,41 +1289,70 @@
 
       async fetchChunk(item) {
         try {
-          const bitmap = await bitmapFromUrl(
-            this.chunkUrl(
-              item.chunk,
-              item.manifestUrl
-            ),
-            item.controller?.signal
-          );
-          if (!this.gl) return;
-          const texture = createTexture(this.gl, bitmap);
-          if (bitmap.close) bitmap.close();
+          const bitmap =
+            await bitmapFromUrl(
+              this.chunkUrl(
+                item.chunk,
+                item.manifest
+              ),
+              item.controller
+                ?.signal
+            );
 
-          const geometry = this.geometryForChunk(item.chunk);
+          if (!this.gl) return;
+
+          const texture =
+            createTexture(
+              this.gl,
+              bitmap
+            );
+
+          if (bitmap.close) {
+            bitmap.close();
+          }
+
+          const geometry =
+            this.geometryForChunk(
+              item.chunk
+            );
+
           if (!geometry) {
-            this.gl.deleteTexture(texture);
+            this.gl.deleteTexture(
+              texture
+            );
             return;
           }
 
-          this.cache.set(item.key, {
-            texture,
-            chunk: item.chunk,
-            geometry,
-            byteSize:
-              Math.max(
-                1,
-                Number(item.chunk.width) || 1
-              ) *
-              Math.max(
-                1,
-                Number(item.chunk.height) || 1
-              ) *
-              4,
-            lastUsed: performance.now()
-          });
+          this.cache.set(
+            item.key,
+            {
+              texture,
+              chunk:
+                item.chunk,
+              geometry,
+              byteSize:
+                Math.max(
+                  1,
+                  Number(
+                    item.chunk.width
+                  ) || 1
+                ) *
+                Math.max(
+                  1,
+                  Number(
+                    item.chunk.height
+                  ) || 1
+                ) *
+                4,
+              lastUsed:
+                performance.now()
+            }
+          );
         } catch (error) {
-          if (error?.name !== "AbortError") {
+          if (
+            error?.name !==
+            "AbortError"
+          ) {
             console.warn(
               "Native MRMS detail chunk " +
                 item.key +
@@ -989,148 +1361,125 @@
             );
           }
         } finally {
-          this.pending.delete(item.key);
-          this.controllers.delete(item.key);
-          this.evict();
-          this.syncVisibility();
-          this.map?.triggerRepaint();
-        }
-      },
-
-      clearTextures() {
-        if (this.gl) {
-          for (const value of this.cache.values()) {
-            if (value.texture) this.gl.deleteTexture(value.texture);
-          }
-        }
-        this.cache.clear();
-      },
-
-      clearGeometry() {
-        if (this.gl) {
-          for (const geometry of this.geometryCache.values()) {
-            if (geometry.posBuffer) {
-              this.gl.deleteBuffer(geometry.posBuffer);
-            }
-            if (geometry.uvBuffer) {
-              this.gl.deleteBuffer(geometry.uvBuffer);
-            }
-          }
-        }
-        this.geometryCache.clear();
-      },
-
-      setManifest(next) {
-        if (!next) {
-          this.frameAvailable = false;
-          this.wanted = new Map();
-
-          for (const controller of this.controllers.values()) {
-            controller.abort();
-          }
-
-          this.queue = [];
-
-          // Once native detail mode is active, the lower-resolution national
-          // radar is never allowed to appear as a visual fallback.
-          radarLayer?.setVisible(
-            this.enabled ? false : radarVisible
+          this.pending.delete(
+            item.key
+          );
+          this.controllers.delete(
+            item.key
           );
 
-          this.syncVisibility();
+          if (
+            detailMode &&
+            !this.nativeVisible
+          ) {
+            const currentId =
+              frameIdAt();
+
+            if (
+              nativeFrameExists(
+                currentId
+              ) &&
+              this.frameReady(
+                currentId
+              )
+            ) {
+              this.activate(
+                currentId
+              );
+              syncVisualOwnership();
+            }
+          } else {
+            this.updateCurrentViewport();
+          }
+
+          this.evict();
           this.map?.triggerRepaint();
-          return;
         }
+      },
+
+      protectedKeys() {
+        const keys =
+          new Set([
+            ...this.wanted.keys(),
+            ...this.drawSet.map(
+              item => item.key
+            )
+          ]);
 
         if (
-          this.frameAvailable &&
-          this.manifest &&
-          next.revision === this.manifest.revision
+          !detailMode ||
+          !detailArchive ||
+          !frames.length
         ) {
-          return;
+          return keys;
         }
 
-        // If every visible chunk for the incoming observation is already
-        // cached, transition native -> native without briefly exposing the
-        // lower-resolution 4096px layer between observations.
-        const nextVisible =
-          this.enabled
-            ? this.visibleChunks(next)
-            : [];
+        const futureBudget =
+          MAX_GPU_TEXTURE_BYTES *
+          0.62;
+        let projected = 0;
 
-        const nextReady =
-          nextVisible.length > 0 &&
-          nextVisible.every(
-            chunk =>
-              this.cache.has(
-                this.key(chunk, next)
+        for (
+          const frameId of
+            this.lookaheadFrameIds(
+              currentFrameIndex
+            )
+        ) {
+          const manifest =
+            frameManifestFromArchive(
+              detailArchive,
+              frameId
+            );
+
+          if (!manifest) continue;
+
+          const chunks =
+            this.visibleChunks(
+              manifest
+            );
+          const bytes =
+            chunks.reduce(
+              (total, chunk) =>
+                total +
+                Math.max(
+                  1,
+                  Number(
+                    chunk.width
+                  ) || 1
+                ) *
+                Math.max(
+                  1,
+                  Number(
+                    chunk.height
+                  ) || 1
+                ) *
+                4,
+              0
+            );
+
+          if (
+            projected &&
+            projected + bytes >
+              futureBudget
+          ) {
+            break;
+          }
+
+          projected += bytes;
+
+          for (
+            const chunk of chunks
+          ) {
+            keys.add(
+              this.key(
+                chunk,
+                manifest
               )
-          );
-
-        // Native detail owns the screen completely once enabled. If the next
-        // observation is not ready, leave the PREVIOUS complete native frame
-        // visible instead of exposing the 4096px fallback.
-        if (this.enabled) {
-          radarLayer?.setVisible(false);
+            );
+          }
         }
 
-        this.frameAvailable = true;
-        this.manifest = next;
-        this.wanted = new Map();
-
-        // Preserve the previous complete native drawSet until the replacement
-        // observation is fully resident. updateWanted() will load the new set.
-        if (!this.enabled) {
-          this.drawSet = [];
-        }
-
-        this.map?.triggerRepaint();
-
-        if (this.enabled) {
-          this.updateWanted();
-        }
-      },
-
-      setEnabled(value) {
-        const next = Boolean(value);
-        if (next === this.enabled) return;
-
-        this.enabled = next;
-
-        if (this.enabled) {
-          // Native mode becomes visually exclusive immediately. If this is the
-          // first native load, the basemap may be visible briefly while chunks
-          // fill, but blurry radar will never flash underneath.
-          radarLayer?.setVisible(false);
-          this.updateWanted();
-        } else {
-          this.wanted = new Map();
-          this.drawSet = [];
-          this.syncVisibility();
-        }
-
-        this.map?.triggerRepaint();
-      },
-
-      readyForViewport() {
-        return (
-          this.wanted.size > 0 &&
-          [...this.wanted.keys()].every(key => this.cache.has(key))
-        );
-      },
-
-      syncVisibility() {
-        // At native-detail zoom, there is only ONE radar renderer: native.
-        // Never expose the 4096px national texture while native mode is active.
-        //
-        // When a replacement native observation is still loading, the previous
-        // complete native observation remains on screen instead.
-        if (this.enabled) {
-          radarLayer?.setVisible(false);
-          return;
-        }
-
-        radarLayer?.setVisible(radarVisible);
+        return keys;
       },
 
       evict() {
@@ -1143,31 +1492,32 @@
                 total +
                 Math.max(
                   0,
-                  Number(value.byteSize) || 0
+                  Number(
+                    value.byteSize
+                  ) || 0
                 ),
               0
             );
 
         if (
-          this.cache.size <= MAX_GPU_CHUNKS &&
-          totalBytes <= MAX_GPU_TEXTURE_BYTES
+          this.cache.size <=
+            MAX_GPU_CHUNKS &&
+          totalBytes <=
+            MAX_GPU_TEXTURE_BYTES
         ) {
           return;
         }
 
-        const protectedKeys = new Set([
-          ...this.wanted.keys(),
-          ...this.drawSet.map(
-            item => item.key
-          ),
-          ...this.playbackProtectedKeys()
-        ]);
+        const protectedKeys =
+          this.protectedKeys();
 
         const removable =
           [...this.cache.entries()]
             .filter(
               ([key]) =>
-                !protectedKeys.has(key)
+                !protectedKeys.has(
+                  key
+                )
             )
             .sort(
               (a, b) =>
@@ -1194,34 +1544,65 @@
           totalBytes -=
             Math.max(
               0,
-              Number(value.byteSize) || 0
+              Number(
+                value.byteSize
+              ) || 0
             );
 
           this.cache.delete(key);
         }
       },
 
-      drawChunk(gl, matrix, item) {
-        const cached = this.cache.get(item.key);
-        if (!cached?.texture || !cached?.geometry) return;
+      drawChunk(
+        gl,
+        matrix,
+        item
+      ) {
+        const cached =
+          this.cache.get(
+            item.key
+          );
 
-        cached.lastUsed = performance.now();
+        if (
+          !cached?.texture ||
+          !cached?.geometry
+        ) {
+          return;
+        }
 
-        const geometry = cached.geometry;
+        cached.lastUsed =
+          performance.now();
 
-        gl.useProgram(this.program);
-        gl.uniformMatrix4fv(this.uMatrix, false, matrix);
-        gl.uniform1i(this.uTexture, 0);
+        const geometry =
+          cached.geometry;
+
+        gl.useProgram(
+          this.program
+        );
+        gl.uniformMatrix4fv(
+          this.uMatrix,
+          false,
+          matrix
+        );
+        gl.uniform1i(
+          this.uTexture,
+          0
+        );
         gl.uniform1f(
           this.uOpacity,
-          Number(opacityInput?.value ?? 1)
+          Number(
+            opacityInput?.value ??
+              1
+          )
         );
 
         gl.bindBuffer(
           gl.ARRAY_BUFFER,
           geometry.posBuffer
         );
-        gl.enableVertexAttribArray(this.aPos);
+        gl.enableVertexAttribArray(
+          this.aPos
+        );
         gl.vertexAttribPointer(
           this.aPos,
           2,
@@ -1235,7 +1616,9 @@
           gl.ARRAY_BUFFER,
           geometry.uvBuffer
         );
-        gl.enableVertexAttribArray(this.aUv);
+        gl.enableVertexAttribArray(
+          this.aUv
+        );
         gl.vertexAttribPointer(
           this.aUv,
           2,
@@ -1245,8 +1628,13 @@
           0
         );
 
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, cached.texture);
+        gl.activeTexture(
+          gl.TEXTURE0
+        );
+        gl.bindTexture(
+          gl.TEXTURE_2D,
+          cached.texture
+        );
 
         gl.drawArrays(
           gl.TRIANGLES,
@@ -1256,532 +1644,674 @@
       },
 
       render(gl, matrix) {
-        const revisionMatches =
-          String(this.manifest?.revision || "") ===
-          currentBaseFrameId();
+        syncVisualOwnership();
 
         if (
-          !this.enabled ||
+          !this.nativeVisible ||
           !radarVisible ||
-          !revisionMatches
+          !this.drawSet.length
         ) {
-          this.drawSet = [];
-          this.syncVisibility();
           return;
         }
 
-        // Never partially replace one native observation with another.
-        // Until every visible chunk for the target observation is resident,
-        // continue drawing the previous COMPLETE native drawSet.
-        if (!this.readyForViewport()) {
-          if (!this.drawSet.length) {
-            this.syncVisibility();
-            return;
-          }
-        } else {
-          // The replacement observation is complete. Swap the entire native
-          // viewport atomically.
-          this.drawSet = [...this.wanted.entries()]
-            .map(([key, chunk]) => ({ key, chunk }));
-        }
-
-        if (!this.drawSet.length) {
-          this.syncVisibility();
-          return;
-        }
-
-        gl.disable(gl.DEPTH_TEST);
+        gl.disable(
+          gl.DEPTH_TEST
+        );
         gl.enable(gl.BLEND);
-        gl.blendEquation(gl.FUNC_ADD);
+        gl.blendEquation(
+          gl.FUNC_ADD
+        );
         gl.blendFunc(
           gl.SRC_ALPHA,
           gl.ONE_MINUS_SRC_ALPHA
         );
 
-        for (const item of this.drawSet) {
-          this.drawChunk(gl, matrix, item);
+        for (
+          const item of
+            this.drawSet
+        ) {
+          this.drawChunk(
+            gl,
+            matrix,
+            item
+          );
+        }
+      },
+
+      clearTextures() {
+        if (this.gl) {
+          for (
+            const value of
+              this.cache.values()
+          ) {
+            if (value.texture) {
+              this.gl.deleteTexture(
+                value.texture
+              );
+            }
+          }
         }
 
-        this.syncVisibility();
+        this.cache.clear();
+      },
+
+      clearGeometry() {
+        if (this.gl) {
+          for (
+            const geometry of
+              this.geometryCache.values()
+          ) {
+            if (
+              geometry.posBuffer
+            ) {
+              this.gl.deleteBuffer(
+                geometry.posBuffer
+              );
+            }
+            if (
+              geometry.uvBuffer
+            ) {
+              this.gl.deleteBuffer(
+                geometry.uvBuffer
+              );
+            }
+          }
+        }
+
+        this.geometryCache.clear();
       },
 
       onRemove(mapRef, gl) {
         this.clearTextures();
         this.clearGeometry();
-        if (this.program) gl.deleteProgram(this.program);
+
+        if (this.program) {
+          gl.deleteProgram(
+            this.program
+          );
+        }
+
         this.gl = null;
       }
     };
   }
 
-  function shouldShowDetail() {
-    try {
-      return (
-        frames.length > 0 &&
-        overlay?.frameAvailable &&
+  function syncVisualOwnership() {
+    if (!radarLayer) return;
+
+    const baseVisible =
+      Boolean(
         radarVisible &&
-        map.getZoom() >= MIN_DETAIL_MAP_ZOOM
+        !overlay?.nativeVisible
       );
-    } catch (_) {
+
+    radarLayer.setVisible(
+      baseVisible
+    );
+  }
+
+  function currentZoomWantsDetail() {
+    const zoom =
+      Number(map?.getZoom?.());
+
+    if (!Number.isFinite(zoom)) {
       return false;
     }
-  }
 
-  function syncMode() {
-    if (!overlay) return;
-    overlay.setEnabled(shouldShowDetail());
-    if (!overlay.enabled) {
-      radarLayer?.setVisible(radarVisible);
+    if (detailMode) {
+      return zoom >=
+        EXIT_DETAIL_ZOOM;
     }
+
+    return zoom >=
+      ENTER_DETAIL_ZOOM;
   }
 
-  async function install(manifest) {
-    if (installed || !manifest || !ready()) return false;
-    installed = true;
-    overlay = createOverlay(manifest);
-    const beforeId = firstSymbolLayerId();
-    if (beforeId) map.addLayer(overlay, beforeId);
-    else map.addLayer(overlay);
+  function prefetchUpcomingDetail() {
+    if (
+      !detailMode ||
+      !detailArchive ||
+      !frames.length
+    ) {
+      return;
+    }
 
-    const originalShowFrame = showFrame;
+    overlay?.prefetchFrameIds(
+      overlay.lookaheadFrameIds(
+        currentFrameIndex
+      )
+    );
+  }
 
-    // Track the observation actually stored in the lower-resolution base
-    // texture. Native playback intentionally allows this to lag behind.
-    let baseTextureFrameId =
-      currentBaseFrameId();
+  async function enterDetailMode() {
+    if (
+      detailMode ||
+      !overlay
+    ) {
+      return;
+    }
 
-    let baseSyncBusy = false;
+    detailMode = true;
+    leavingDetail = false;
 
-    const syncBaseTextureToTimeline =
-      async () => {
-        if (
-          baseSyncBusy ||
-          isPlaying ||
-          baseTextureFrameId ===
-            currentBaseFrameId()
-        ) {
-          return false;
-        }
+    const currentId =
+      frameIdAt();
 
-        baseSyncBusy = true;
+    if (
+      !nativeFrameExists(
+        currentId
+      )
+    ) {
+      syncVisualOwnership();
+      return;
+    }
 
-        try {
-          const result =
-            await originalShowFrame(
-              currentFrameIndex,
-              { quiet: true }
-            );
+    overlay.requestFrame(
+      currentId,
+      true
+    );
 
-          if (result) {
-            baseTextureFrameId =
-              currentBaseFrameId();
-          }
+    if (
+      overlay.frameReady(
+        currentId
+      )
+    ) {
+      overlay.activate(
+        currentId
+      );
+      syncVisualOwnership();
+    }
 
-          return result;
-        } finally {
-          baseSyncBusy = false;
-        }
-      };
+    prefetchUpcomingDetail();
+  }
 
-    showFrame = async function (...args) {
-      // Map interaction always gets priority.
-      if (isPlaying && map?.isMoving?.()) {
-        return false;
-      }
+  async function syncBaseToTimeline() {
+    if (
+      baseSyncBusy ||
+      !overlay
+    ) {
+      return false;
+    }
 
-      const requestedIndex =
-        Number(args[0]);
+    if (
+      baseTextureFrameId ===
+      frameIdAt()
+    ) {
+      overlay.nativeVisible =
+        false;
+      leavingDetail = false;
+      syncVisualOwnership();
+      overlay.map?.triggerRepaint();
+      return true;
+    }
 
-      // TRUE NATIVE PLAYBACK PATH:
-      //
-      // If the requested observation is already resident in the native GPU
-      // ring, the frame change becomes only:
-      //
-      //   currentFrameIndex -> wanted texture keys -> repaint
-      //
-      // We deliberately do NOT call originalShowFrame(), because doing so
-      // decodes and uploads the entire 4096px national texture every tick.
-      if (
-        playbackBufferActive() &&
-        overlay?.enabled &&
-        !map?.isMoving?.() &&
-        frames.length > 0 &&
-        Number.isFinite(requestedIndex)
-      ) {
-        const normalized =
-          (
-            (
-              requestedIndex %
-              frames.length
-            ) +
-            frames.length
-          ) %
-          frames.length;
+    baseSyncBusy = true;
 
-        const requestedFrameId =
-          String(
-            frames[normalized]?.id ||
-            ""
-          );
-
-        const requestedManifest =
-          frameManifestFromArchive(
-            detailArchive,
-            requestedFrameId
-          );
-
-        if (requestedManifest) {
-          // Keep the requested observation and future ring fed entirely in
-          // the background. queueChunks() performs all I/O outside the clock.
-          overlay.prefetchFrames([
-            requestedFrameId,
-            ...playbackLookaheadFrameIds(
-              normalized
-            )
-          ]);
-
-          // Never wait inside the playback clock. If the producer has not
-          // filled this ring slot yet, keep the current frame for one cadence.
-          if (
-            !overlay.frameReady(
-              requestedFrameId
-            )
-          ) {
-            return false;
-          }
-
-          const previousIndex =
-            currentFrameIndex;
-
-          currentFrameIndex =
-            normalized;
-
-          if (
-            !overlay.activateReadyFrame(
-              requestedFrameId
-            )
-          ) {
-            currentFrameIndex =
-              previousIndex;
-            return false;
-          }
-
-          updateFrameUi();
-
-          // Now that one slot was consumed, immediately replenish farther
-          // ahead while this native observation is being displayed.
-          prefetchUpcomingDetail();
-
-          return true;
-        }
-      }
-
-      // Outside native playback (manual stepping, zoomed-out playback, missing
-      // native history), retain the normal 4096px baked Mapbox path.
+    try {
       const result =
-        await originalShowFrame(...args);
+        await originalShowFrame(
+          currentFrameIndex,
+          { quiet: true }
+        );
 
       if (result) {
         baseTextureFrameId =
-          currentBaseFrameId();
+          frameIdAt();
+        overlay.nativeVisible =
+          false;
+        leavingDetail = false;
+        syncVisualOwnership();
+        overlay.map?.triggerRepaint();
       }
 
-      syncFrameManifest();
-      syncMode();
-      prefetchUpcomingDetail();
-
       return result;
-    };
+    } finally {
+      baseSyncBusy = false;
+    }
+  }
 
-    const originalStartPlayback =
-      startPlayback;
+  async function exitDetailMode() {
+    if (
+      !detailMode ||
+      !overlay
+    ) {
+      return;
+    }
 
-    startPlayback =
-      async function (...args) {
-        const useNativeClock =
-          overlay?.enabled &&
-          !map?.isMoving?.() &&
-          currentPlaybackSpeed() >= 1.5 &&
-          frames.length > 1;
+    detailMode = false;
+    leavingDetail =
+      overlay.nativeVisible;
 
-        if (!useNativeClock) {
-          return await originalStartPlayback(
-            ...args
-          );
-        }
+    // Keep the last complete native observation visible while the overview
+    // texture catches up to the same timeline observation.
+    if (leavingDetail) {
+      await syncBaseToTimeline();
+    } else {
+      syncVisualOwnership();
+    }
+  }
+
+  function refreshMode() {
+    if (!overlay) return;
+
+    const wantsDetail =
+      currentZoomWantsDetail();
+
+    if (
+      wantsDetail &&
+      !detailMode
+    ) {
+      enterDetailMode()
+        .catch(error =>
+          console.warn(
+            "Native detail enter failed",
+            error
+          )
+        );
+      return;
+    }
+
+    if (
+      !wantsDetail &&
+      detailMode
+    ) {
+      exitDetailMode()
+        .catch(error =>
+          console.warn(
+            "Native detail exit failed",
+            error
+          )
+        );
+      return;
+    }
+
+    if (detailMode) {
+      overlay.updateCurrentViewport();
+      prefetchUpcomingDetail();
+    }
+  }
+
+  function scheduleViewportRefresh() {
+    if (viewportTimer) return;
+
+    const elapsed =
+      performance.now() -
+      lastViewportSyncAt;
+
+    const delay =
+      Math.max(
+        0,
+        VIEWPORT_SYNC_MS -
+          elapsed
+      );
+
+    viewportTimer =
+      window.setTimeout(
+        () => {
+          viewportTimer = null;
+          lastViewportSyncAt =
+            performance.now();
+          refreshMode();
+        },
+        delay
+      );
+  }
+
+  let originalShowFrame = null;
+  let originalPrimePlaybackBuffer = null;
+
+  async function install(manifest) {
+    if (
+      installed ||
+      !manifest ||
+      !ready()
+    ) {
+      return false;
+    }
+
+    installed = true;
+    detailArchive = manifest;
+    overlay = createOverlay();
+
+    const beforeId =
+      firstSymbolLayerId();
+
+    if (beforeId) {
+      map.addLayer(
+        overlay,
+        beforeId
+      );
+    } else {
+      map.addLayer(overlay);
+    }
+
+    baseTextureFrameId =
+      frameIdAt();
+
+    originalShowFrame =
+      showFrame;
+    originalPrimePlaybackBuffer =
+      primePlaybackBuffer;
+
+    // Playback ownership stays in the base radar. The base playbackLoop()
+    // remains the ONLY animation clock. This wrapper only decides which
+    // already-published texture representation satisfies the requested frame.
+    showFrame =
+      async function (
+        index,
+        options = {}
+      ) {
+        const requested =
+          normalizeIndex(index);
 
         if (
-          frames.length < 2 ||
-          isPlaying ||
-          playbackStarting
+          detailMode &&
+          detailArchive &&
+          frames.length
         ) {
-          return;
-        }
-
-        playbackStarting = true;
-
-        try {
-          const startIndex =
-            currentFrameIndex ===
-            frames.length - 1
-              ? 0
-              : currentFrameIndex;
-
-          setStatus(
-            "Buffering native MRMS texture ring…"
-          );
-
-          await overlay.primePlaybackBuffer(
-            startIndex,
-            NATIVE_X2_BUFFER_FRAMES
-          );
-
-          const startFrameId =
-            String(
-              frames[startIndex]?.id ||
-              ""
+          let nativeIndex =
+            requested;
+          let nativeId =
+            frameIdAt(
+              nativeIndex
             );
 
-          // Start directly on a cached native observation whenever possible.
           if (
-            startFrameId &&
-            overlay.frameReady(startFrameId)
+            !nativeFrameExists(
+              nativeId
+            )
           ) {
-            currentFrameIndex =
-              startIndex;
-
-            overlay.activateReadyFrame(
-              startFrameId
-            );
-
-            updateFrameUi();
-          } else {
-            // Safety fallback only. This path is not expected once the native
-            // archive/ring is healthy.
-            const result =
-              await originalShowFrame(
-                startIndex,
-                { quiet: true }
-              );
-
-            if (result) {
-              baseTextureFrameId =
-                currentBaseFrameId();
+            if (isPlaying) {
+              nativeIndex =
+                nextNativeIndex(
+                  requested
+                );
+              if (
+                nativeIndex >= 0
+              ) {
+                nativeId =
+                  frameIdAt(
+                    nativeIndex
+                  );
+              }
             }
-
-            syncFrameManifest();
-            syncMode();
           }
 
-          isPlaying = true;
-          playPauseButton.textContent =
-            "❚❚ Pause";
+          if (
+            nativeIndex >= 0 &&
+            nativeFrameExists(
+              nativeId
+            )
+          ) {
+            overlay.requestFrame(
+              nativeId,
+              true
+            );
 
-          setStatus(
-            `MRMS native playback • ${historyMinutes} min history`,
-            "live"
-          );
+            const readyNow =
+              overlay.frameReady(
+                nativeId
+              );
 
-          const generation =
-            ++playbackGeneration;
+            const ready =
+              readyNow ||
+              (
+                !isPlaying &&
+                await overlay.waitForFrame(
+                  nativeId,
+                  MOBILE_DEVICE
+                    ? 2600
+                    : 1800
+                )
+              );
 
-          prefetchUpcomingDetail();
+            if (ready) {
+              currentFrameIndex =
+                nativeIndex;
 
-          window.setTimeout(
-            () =>
-              playbackLoop(generation),
-            playbackIntervalMs()
-          );
-        } catch (error) {
-          console.error(error);
+              if (
+                overlay.activate(
+                  nativeId
+                )
+              ) {
+                updateFrameUi();
+                syncVisualOwnership();
+                prefetchUpcomingDetail();
+                return true;
+              }
+            }
 
-          setStatus(
-            `Native playback buffer failed: ${error.message}`,
-            "error"
-          );
-        } finally {
-          playbackStarting = false;
+            // Hold the last complete native observation if the requested
+            // detail frame is still loading. Never expose a base-frame fallback
+            // while detail LOD owns the timeline.
+            return false;
+          }
+
+          // A paired publisher should make this unreachable. During migration
+          // or a transient manifest skew, keep the current complete frame rather
+          // than letting the timestamp advance onto a different renderer.
+          return false;
         }
+
+        const result =
+          await originalShowFrame(
+            index,
+            options
+          );
+
+        if (result) {
+          baseTextureFrameId =
+            frameIdAt();
+
+          if (leavingDetail) {
+            overlay.nativeVisible =
+              false;
+            leavingDetail =
+              false;
+          }
+        }
+
+        syncVisualOwnership();
+        return result;
       };
 
-    const originalStopPlayback =
-      stopPlayback;
-
-    stopPlayback = function (...args) {
-      const result =
-        originalStopPlayback(...args);
-
-      window.setTimeout(
-        async () => {
-          syncMode();
-
-          // Native remains visible while the lower-resolution Mapbox texture
-          // catches up. This work is therefore off the animation clock.
-          await syncBaseTextureToTimeline();
-
-          syncMode();
-        },
-        0
-      );
-
-      return result;
-    };
-
-    let viewportSyncTimer = null;
-    let lastViewportSyncAt = 0;
-
-    const refreshViewportDetail = (includePrefetch = false) => {
-      const wasEnabled =
-        Boolean(overlay?.enabled);
-
-      syncMode();
-
-      if (overlay?.enabled) {
-        overlay.updateWanted();
-
-        if (includePrefetch) {
-          prefetchUpcomingDetail();
+    // Keep base startPlayback()/stopPlayback()/playbackLoop() untouched.
+    // Only replace the startup BUFFER source while detail LOD is active.
+    primePlaybackBuffer =
+      async function (
+        startIndex,
+        ...args
+      ) {
+        if (
+          detailMode &&
+          overlay &&
+          nativeFrameExists(
+            frameIdAt(
+              normalizeIndex(
+                startIndex
+              )
+            )
+          )
+        ) {
+          return await overlay.prime(
+            startIndex
+          );
         }
 
-        return;
+        return await originalPrimePlaybackBuffer(
+          startIndex,
+          ...args
+        );
+      };
+
+    map.on(
+      "move",
+      scheduleViewportRefresh
+    );
+
+    map.on(
+      "moveend",
+      () => {
+        if (viewportTimer) {
+          window.clearTimeout(
+            viewportTimer
+          );
+          viewportTimer = null;
+        }
+
+        lastViewportSyncAt =
+          performance.now();
+        refreshMode();
+
+        if (
+          !detailMode &&
+          leavingDetail
+        ) {
+          syncBaseToTimeline()
+            .catch(() => {});
+        }
       }
-
-      // We just crossed below the native-detail zoom threshold. Keep the old
-      // base hidden until its texture catches up to the timeline observation.
-      if (
-        wasEnabled &&
-        baseTextureFrameId !==
-          currentBaseFrameId()
-      ) {
-        radarLayer?.setVisible(false);
-
-        syncBaseTextureToTimeline()
-          .finally(() => {
-            radarLayer?.setVisible(
-              radarVisible
-            );
-            map?.triggerRepaint?.();
-          });
-      }
-    };
-
-    const scheduleViewportDetail = () => {
-      if (viewportSyncTimer) return;
-
-      const elapsed =
-        performance.now() - lastViewportSyncAt;
-
-      const delay = Math.max(
-        0,
-        VIEWPORT_SYNC_MS - elapsed
-      );
-
-      viewportSyncTimer = window.setTimeout(() => {
-        viewportSyncTimer = null;
-        lastViewportSyncAt = performance.now();
-
-        // Load only the current observation while the user is manipulating
-        // the map. This keeps bandwidth/GPU work focused on responsiveness.
-        refreshViewportDetail(false);
-      }, delay);
-    };
-
-    map.on("move", scheduleViewportDetail);
-
-    map.on("moveend", () => {
-      if (viewportSyncTimer) {
-        window.clearTimeout(viewportSyncTimer);
-        viewportSyncTimer = null;
-      }
-
-      lastViewportSyncAt = performance.now();
-
-      // Camera is settled; resume normal playback lookahead.
-      refreshViewportDetail(true);
-    });
+    );
 
     opacityInput?.addEventListener(
       "input",
-      () => overlay?.map?.triggerRepaint()
+      () =>
+        overlay?.map
+          ?.triggerRepaint()
     );
 
-    syncTimer = window.setInterval(syncMode, 500);
-    pollTimer = window.setInterval(async () => {
-      try {
-        const next = await fetchManifest();
-        if (next) {
-          detailArchive = next;
-          syncFrameManifest();
-          syncMode();
-        }
-      } catch (error) {
-        console.warn(
-          "Native MRMS detail manifest refresh failed",
-          error
-        );
-      }
-    }, POLL_MS);
+    pollTimer =
+      window.setInterval(
+        async () => {
+          try {
+            const next =
+              await fetchManifest();
+
+            if (!next) return;
+
+            detailArchive = next;
+
+            if (detailMode) {
+              const currentId =
+                frameIdAt();
+
+              if (
+                nativeFrameExists(
+                  currentId
+                )
+              ) {
+                overlay.requestFrame(
+                  currentId,
+                  true
+                );
+              }
+
+              prefetchUpcomingDetail();
+            }
+          } catch (error) {
+            console.warn(
+              "Native MRMS detail manifest refresh failed",
+              error
+            );
+          }
+        },
+        POLL_MS
+      );
 
     window.addEventListener(
       "beforeunload",
       () => {
-        if (syncTimer) window.clearInterval(syncTimer);
-        if (pollTimer) window.clearInterval(pollTimer);
-        if (retryTimer) window.clearTimeout(retryTimer);
-        if (viewportSyncTimer) {
-          window.clearTimeout(viewportSyncTimer);
+        if (pollTimer) {
+          window.clearInterval(
+            pollTimer
+          );
+        }
+
+        if (retryTimer) {
+          window.clearTimeout(
+            retryTimer
+          );
+        }
+
+        if (viewportTimer) {
+          window.clearTimeout(
+            viewportTimer
+          );
         }
       },
       { once: true }
     );
 
-    syncMode();
+    if (
+      map.getZoom() >=
+      ENTER_DETAIL_ZOOM
+    ) {
+      await enterDetailMode();
+    } else {
+      syncVisualOwnership();
+    }
+
     console.info(
-      "Main radar native-detail archive: " +
-        String(detailArchive?.frames?.length || 1) +
-        " frame(s), " +
-        manifest.nativeWidth +
-        "x" +
-        manifest.nativeHeight
+      "MRMS detail LOD v2: one playback clock, " +
+        String(
+          detailArchive?.frames
+            ?.length || 1
+        ) +
+        " paired native frame(s)"
     );
+
     return true;
   }
 
   async function tryInstall() {
     if (installed) return;
-    const elapsed = Date.now() - STARTED_AT;
+
+    const elapsed =
+      Date.now() -
+      STARTED_AT;
+
     if (!ready()) {
-      if (elapsed < INSTALL_TIMEOUT_MS) {
-        retryTimer = window.setTimeout(tryInstall, 100);
-      } else {
-        radarLayer?.setVisible(radarVisible);
-        retryTimer = window.setTimeout(tryInstall, POLL_MS);
-      }
+      retryTimer =
+        window.setTimeout(
+          tryInstall,
+          elapsed <
+            INSTALL_TIMEOUT_MS
+            ? 100
+            : POLL_MS
+        );
       return;
     }
 
     try {
-      const manifest = await fetchManifest();
+      const manifest =
+        await fetchManifest();
+
       if (manifest) {
-        detailArchive = manifest;
-        const frameManifest = frameManifestFromArchive(
-          detailArchive,
-          currentBaseFrameId()
-        );
-        if (frameManifest) {
-          await install(frameManifest);
-          return;
-        }
+        await install(manifest);
+        return;
       }
-      radarLayer?.setVisible(radarVisible);
+
+      radarLayer?.setVisible(
+        radarVisible
+      );
       console.info(
-        "Native MRMS detail is not published yet; using rolling-frame fallback"
+        "Native MRMS detail is not published yet; using overview radar"
       );
     } catch (error) {
-      radarLayer?.setVisible(radarVisible);
-      console.warn("Native MRMS detail unavailable", error);
+      radarLayer?.setVisible(
+        radarVisible
+      );
+      console.warn(
+        "Native MRMS detail unavailable",
+        error
+      );
     }
-    retryTimer = window.setTimeout(tryInstall, POLL_MS);
+
+    retryTimer =
+      window.setTimeout(
+        tryInstall,
+        POLL_MS
+      );
   }
 
   tryInstall();
