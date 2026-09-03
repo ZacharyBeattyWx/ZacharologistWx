@@ -9,17 +9,17 @@ Source priority:
   2. DHR 1-km digital hybrid reflectivity national composite
   3. legacy N0R 1-km base reflectivity national composite
 
-Unidata publishes these as PNG-compressed GINI images. MetPy decodes the GINI raster
-and projection; this script converts the image calibration back to dBZ, reprojects the
-Lambert/GINI grid onto the same regular lon/lat texture geometry used by our MRMS map,
-and then calls the existing Zacharologist Level-II colorizer.
+Unidata publishes these as PNG-compressed GINI images. A lightweight local decoder
+reads only the GINI navigation and embedded raster fields needed here; this script
+converts the image calibration back to dBZ, reprojects the Lambert/GINI grid onto the
+same regular lon/lat texture geometry used by our MRMS map, and then calls the
+existing Zacharologist reflectivity colorizer.
 """
 
 from __future__ import annotations
 
 import argparse
 from datetime import datetime, timedelta, timezone
-from io import BytesIO
 import json
 import re
 from pathlib import Path
@@ -30,20 +30,12 @@ import numpy as np
 from PIL import Image
 import requests
 
-try:
-    from metpy.io import GiniFile
-except ImportError as exc:  # pragma: no cover - user-facing install guidance
-    raise SystemExit(
-        "MetPy is required for the Unidata GINI experiment. Install it with:\n"
-        "  .\\.venv-mrms\\Scripts\\python.exe -m pip install 'metpy>=1.7,<2'"
-    ) from exc
-
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parents[1]
 sys.path.insert(0, str(SCRIPT_DIR))
 
 import render_mrms_mosaic as palette_renderer  # noqa: E402
-from unidata_gini_decode import decode_gini  # noqa: E402
+from unidata_gini_lite import GiniFileLite, decode_gini  # noqa: E402
 
 DEFAULT_OUTPUT = REPO_ROOT / "unidata-nexrad-mosaic-output"
 DEFAULT_BOUNDS = (-130.0, 20.0, -60.0, 55.0)  # west, south, east, north
@@ -60,7 +52,6 @@ STAMP_RE = re.compile(r"(?P<date>\d{8})[_-](?P<time>\d{4,6})")
 def catalog_candidates(product: str, day: datetime):
     stamp = day.strftime("%Y%m%d")
     for host in CATALOG_HOSTS:
-        # Current/legacy THREDDS layouts have both existed; try both.
         yield host, f"{host}/thredds/catalog/nexrad/composite/gini/{product}/1km/{stamp}/catalog.xml"
         yield host, f"{host}/thredds/catalog/nexrad/composite/gini/{product}/{stamp}/catalog.xml"
 
@@ -133,14 +124,11 @@ def calibrate_to_dbz(raw: np.ndarray, product: str) -> np.ndarray:
     product = product.upper()
 
     if product == "N0B":
-        # Unidata nex2gini.tbl: 0..255 -> -32..95 dBZ.
         out[:] = -32.0 + values * (127.0 / 255.0)
     elif product == "DHR":
-        # 0 = missing, 1 = bad; 2..255 -> -32..94.5 dBZ (0.5 dBZ steps).
         valid = values >= 2
         out[valid] = -32.0 + (values[valid] - 2.0) * 0.5
     elif product == "N0R":
-        # Legacy 4-bit-ish mapping: 0..105 -> -30..75 dBZ.
         valid = values <= 105
         out[valid] = values[valid] - 30.0
     else:
@@ -149,14 +137,14 @@ def calibrate_to_dbz(raw: np.ndarray, product: str) -> np.ndarray:
     return out
 
 
-def reproject_gini_to_lonlat(gini: GiniFile, product: str, bounds, max_width: int) -> np.ndarray:
+def reproject_gini_to_lonlat(gini: GiniFileLite, product: str, bounds, max_width: int) -> np.ndarray:
     west, south, east, north = map(float, bounds)
     width = max(512, int(max_width))
     height = max(256, int(round(width * (north - south) / (east - west))))
 
     raw = np.asarray(gini.data)
     ny, nx = raw.shape
-    proj, dx_km, dy_km = gini._get_proj_and_res()  # MetPy's decoded GINI navigation.
+    proj, dx_km, dy_km = gini._get_proj_and_res()
 
     x0, y0 = proj(gini.prod_desc.lo1, gini.prod_desc.la1)
     dx_m = float(dx_km) * 1000.0
@@ -250,7 +238,7 @@ def render(args) -> Path:
         "sourceGridWidth": int(gini.data.shape[1]),
         "sourceGridHeight": int(gini.data.shape[0]),
         "projection": gini.prod_desc.projection.name,
-        "colorOwner": "Zacharologist Level II palette renderer",
+        "colorOwner": "Zacharologist reflectivity palette renderer",
         "calibration": {
             "N0B": "raw 0..255 -> -32..95 dBZ",
             "DHR": "raw 0/1 missing/bad; 2..255 -> -32..94.5 dBZ",
