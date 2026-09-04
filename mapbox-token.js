@@ -8,6 +8,11 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
   // Do not load the legacy timelapse/stride overrides here; they created
   // competing playback clocks.
 
+  const performanceScript = document.createElement("script");
+  performanceScript.src = "scripts/radar/mrms-playback-performance.js?v=20260904a";
+  performanceScript.async = false;
+  document.head.appendChild(performanceScript);
+
   const SCRUB_RETRY_MS = 50;
   const SCRUB_INSTALL_TIMEOUT_MS = 20000;
   const scrubInstallStartedAt = Date.now();
