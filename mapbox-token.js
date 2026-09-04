@@ -226,13 +226,6 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
 
   patchScrubberWhenReady();
 
-  // Individual-site NEXRAD is a presentation LOD only. It watches the existing
-  // authoritative timeline and never installs another playback clock.
-  const siteDetailScript = document.createElement("script");
-  siteDetailScript.src = "scripts/radar/nexrad-site-detail-overlay.js?v=20260904a";
-  siteDetailScript.async = true;
-  document.head.appendChild(siteDetailScript);
-
   const params = new URLSearchParams(window.location.search);
   if (params.get("home") === "1") {
     const homeScript = document.createElement("script");
