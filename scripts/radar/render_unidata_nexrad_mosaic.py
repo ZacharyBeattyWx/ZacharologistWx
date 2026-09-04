@@ -11,9 +11,9 @@ Source priority:
 
 Unidata publishes these as PNG-compressed GINI images. A lightweight local decoder
 reads only the GINI navigation and embedded raster fields needed here; this script
-converts the image calibration back to dBZ, reprojects the Lambert/GINI grid onto the
-same regular lon/lat texture geometry used by our MRMS map, and then calls the
-existing Zacharologist reflectivity colorizer.
+converts the image calibration back to dBZ, reprojects the Lambert/GINI grid onto a
+Web-Mercator-aligned texture geometry, and then calls the existing Zacharologist
+reflectivity colorizer.
 """
 
 from __future__ import annotations
@@ -47,6 +47,7 @@ CATALOG_HOSTS = (
 PRODUCTS = ("n0b", "dhr", "n0r")
 NODATA = np.float32(-9999.0)
 STAMP_RE = re.compile(r"(?P<date>\d{8})[_-](?P<time>\d{4,6})")
+WEB_MERCATOR_MAX_LAT = 85.05112878
 
 
 def catalog_candidates(product: str, day: datetime):
@@ -151,10 +152,47 @@ def calibrate_to_dbz(raw: np.ndarray, product: str) -> np.ndarray:
     return out
 
 
+def _web_mercator_y(latitudes) -> np.ndarray:
+    """Return normalized Web Mercator Y for latitude values."""
+    lat = np.clip(
+        np.asarray(latitudes, dtype=np.float64),
+        -WEB_MERCATOR_MAX_LAT,
+        WEB_MERCATOR_MAX_LAT,
+    )
+    radians = np.deg2rad(lat)
+    return (1.0 - np.arcsinh(np.tan(radians)) / np.pi) / 2.0
+
+
+def _latitude_from_web_mercator_y(values) -> np.ndarray:
+    """Inverse normalized Web Mercator Y back to degrees latitude."""
+    y = np.asarray(values, dtype=np.float64)
+    return np.rad2deg(np.arctan(np.sinh(np.pi * (1.0 - 2.0 * y))))
+
+
 def reproject_gini_to_lonlat(gini: GiniFileLite, product: str, bounds, max_width: int) -> np.ndarray:
+    """Reproject GINI data onto the texture geometry used by Mapbox.
+
+    The custom WebGL layer maps the texture rectangle linearly in Web Mercator
+    coordinates. Longitude is already linear in Mercator X, but latitude is not
+    linear in Mercator Y. Therefore output rows must be uniformly spaced in Web
+    Mercator Y rather than uniformly spaced in degrees latitude. Using a regular
+    latitude raster here causes interior echoes to plot roughly 1-2 degrees too
+    far north across the CONUS even though the four image corners are correct.
+    """
     west, south, east, north = map(float, bounds)
     width = max(512, int(max_width))
-    height = max(256, int(round(width * (north - south) / (east - west))))
+
+    north_y = float(_web_mercator_y(north))
+    south_y = float(_web_mercator_y(south))
+    x_span = (east - west) / 360.0
+    y_span = south_y - north_y
+    if x_span <= 0 or y_span <= 0:
+        raise ValueError(f"Invalid reprojection bounds: {bounds!r}")
+
+    # Keep approximately square pixels in the same Web Mercator coordinate
+    # system used by the browser. For the default CONUS envelope this produces
+    # about 4096x2675 instead of the old equirectangular 4096x2048 raster.
+    height = max(256, int(round(width * y_span / x_span)))
 
     raw = np.asarray(gini.data)
     ny, nx = raw.shape
@@ -166,7 +204,8 @@ def reproject_gini_to_lonlat(gini: GiniFileLite, product: str, bounds, max_width
     top_y = y0 + (ny - 1) * dy_m
 
     lon_axis = np.linspace(west, east, width, dtype=np.float64)
-    lat_axis = np.linspace(north, south, height, dtype=np.float64)
+    mercator_y_axis = np.linspace(north_y, south_y, height, dtype=np.float64)
+    lat_axis = _latitude_from_web_mercator_y(mercator_y_axis)
     output = np.full((height, width), NODATA, dtype=np.float32)
 
     chunk_rows = 96
@@ -251,7 +290,7 @@ def render(args) -> Path:
         "bounds": list(map(float, bounds)),
         "sourceGridWidth": int(gini.data.shape[1]),
         "sourceGridHeight": int(gini.data.shape[0]),
-        "projection": gini.prod_desc.projection.name,
+        "projection": "web_mercator_texture_from_" + gini.prod_desc.projection.name,
         "colorOwner": "Zacharologist reflectivity palette renderer",
         "calibration": {
             "N0B": "raw 0..255 -> -32..95 dBZ",
