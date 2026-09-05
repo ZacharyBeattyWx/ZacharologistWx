@@ -16,7 +16,7 @@
     .meta{margin-top:11px;padding-top:10px;border-top:1px solid rgba(148,163,184,.18);color:var(--muted);font-size:.66rem;line-height:1.55}.meta strong{color:#dbeafe}.metric{color:#67e8f9}
     .playback{position:fixed;left:50%;bottom:14px;z-index:20;transform:translateX(-50%);width:min(590px,calc(100vw - 28px));padding:10px;border:1px solid var(--border);border-radius:13px;background:var(--panel);box-shadow:0 14px 34px rgba(0,0,0,.34);backdrop-filter:blur(12px)}
     .playback-row{display:grid;grid-template-columns:40px 1fr 40px 72px;gap:6px}button,select{min-height:34px;border:1px solid rgba(148,163,184,.34);border-radius:8px;background:rgba(15,23,42,.94);color:#fff;font:inherit;font-size:.72rem;font-weight:800}button{cursor:pointer}.readout{display:flex;justify-content:space-between;gap:10px;margin:8px 2px 5px;color:#dbeafe;font-size:.69rem;font-weight:800;font-variant-numeric:tabular-nums}.readout span:last-child{color:var(--muted)}#frameSlider{width:100%;accent-color:var(--accent)}.timeline-labels{display:flex;justify-content:space-between;margin-top:2px;color:#64748b;font-size:.54rem;font-weight:800;text-transform:uppercase}
-    .legend{position:fixed;top:14px;right:14px;z-index:20;width:278px;padding:9px 11px;border:1px solid rgba(148,163,184,.24);border-radius:10px;background:rgba(4,10,22,.84);backdrop-filter:blur(10px);box-shadow:0 10px 24px rgba(0,0,0,.25)}.legend-title{font-size:.61rem;color:#cbd5e1;font-weight:900;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px}.legend-bar{height:8px;border-radius:99px;background:linear-gradient(90deg,#48484e 0%,#58606c 12%,#697887 24%,#426f8e 34%,#2d87b8 44%,#267f62 54%,#127618 62%,#cbde01 70%,#e38103 79%,#c02514 87%,#c44a8a 93%,#8b20d2 97%,#fff 100%)}.legend-labels{display:flex;justify-content:space-between;margin-top:4px;color:#94a3b8;font-size:.50rem}
+    .legend{position:fixed;top:14px;right:14px;z-index:20;width:278px;padding:9px 11px;border:1px solid rgba(148,163,184,.24);border-radius:10px;background:rgba(4,10,22,.84);backdrop-filter:blur(10px);box-shadow:0 10px 24px rgba(0,0,0,.25)}.legend-title{font-size:.61rem;color:#cbd5e1;font-weight:900;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px}.legend-bar{height:8px;border-radius:99px;background:linear-gradient(90deg,#000 0%,#12141a 10%,#181d2b 20%,#1d253c 30%,#596f81 42%,#21ba48 55%,#056501 63%,#fbfc00 70%,#fd9502 78%,#fd2600 86%,#c81777 92%,#a502d7 96%,#87fffd 100%)}.legend-labels{display:flex;justify-content:space-between;margin-top:4px;color:#94a3b8;font-size:.50rem}
     @media(max-width:760px){.legend{display:none}.panel{width:min(310px,calc(100vw - 20px));top:10px;left:10px}.playback{bottom:9px;width:calc(100vw - 18px)}}
   </style>
 </head>
@@ -78,16 +78,98 @@
   let manifest=null,frames=[],currentIndex=0,layer=null,playing=false,playGeneration=0,targetTick=0;
   const loading=new Map();
 
-  const PALETTE_STOPS=[
-    [-32,88,54,128,8],[-30,96,62,138,10],[-28,105,72,145,12],[-26,116,85,150,15],[-24,128,99,153,18],[-22,139,113,153,22],[-20,148,128,150,28],[-18,155,140,145,34],[-16,160,150,138,42],[-14,163,157,130,52],[-12,160,158,123,62],[-10,156,155,119,72],[-8,167,167,136,80],[-6,175,176,150,88],[-4,158,163,150,98],[-2,135,144,145,108],[0,115,128,142,120],[2,92,109,137,132],[4,73,93,133,144],[6,55,81,132,156],[8,63,97,141,168],[10,73,117,152,180],[15,76,165,142,205],[20,18,118,24,230],[25,203,222,1,245],[30,215,203,0,255],[35,227,129,3,255],[40,185,95,10,255],[45,192,37,20,255],[50,202,153,180,255],[55,196,74,138,255],[60,139,32,210,255],[65,86,20,162,255],[70,111,210,219,255],[75,74,132,154,255],[80,115,10,1,255],[85,235,190,255,255],[90,255,230,245,255],[95,255,255,255,255]
-  ];
-  const WEAK_DBZ=[-30,-25,-20,-15,-10,-5,0,5,10],WEAK_R=[64,78,94,106,83,59,40,34,50],WEAK_G=[64,73,84,94,100,109,121,135,149],WEAK_B=[70,83,97,112,128,146,166,182,185];
-  const WEAK_A_DBZ=[-30,-25,-20,-15,-10,-5,0,5,10,15],WEAK_A=[36,44,56,70,88,108,134,162,196,228];
+  // RadarScope1 hybrid display profile.
+  //
+  // +5 dBZ and above follows the user's RadarScope palette.
+  // Below +5 dBZ we extend the palette through charcoal/navy so the
+  // negative-dBZ clutter, clear-air returns and boundaries remain visible
+  // instead of becoming transparent.
+  //
+  // IMPORTANT: this changes DISPLAY ONLY. Numeric dBZ values are untouched.
 
-  function setStatus(text,state="loading"){statusText.textContent=text;statusDot.classList.toggle("live",state==="live");statusDot.classList.toggle("error",state==="error");}
-  function interp(x,xs,ys){if(x<=xs[0])return ys[0];for(let i=1;i<xs.length;i++){if(x<=xs[i]){const t=(x-xs[i-1])/(xs[i]-xs[i-1]);return ys[i-1]+(ys[i]-ys[i-1])*t;}}return ys[ys.length-1];}
-  function paletteComponent(dbz,index){const xs=PALETTE_STOPS.map(s=>s[0]),ys=PALETTE_STOPS.map(s=>s[index]);return interp(dbz,xs,ys);}
-  function makePaletteLut(){const out=new Uint8Array(256*4);for(let code=1;code<256;code++){const dbz=-32+(code-1)*.5;let r=paletteComponent(dbz,1),g=paletteComponent(dbz,2),b=paletteComponent(dbz,3),a=paletteComponent(dbz,4);if(dbz<-30){a=0;}else{if(dbz<10){r=interp(dbz,WEAK_DBZ,WEAK_R);g=interp(dbz,WEAK_DBZ,WEAK_G);b=interp(dbz,WEAK_DBZ,WEAK_B);}if(dbz<20)a=interp(dbz,WEAK_A_DBZ,WEAK_A);}const p=code*4;out[p]=Math.round(r);out[p+1]=Math.round(g);out[p+2]=Math.round(b);out[p+3]=Math.round(a);}return out;}
+  const RS_SEGMENTS = [
+    // Extended negative / weak-return range.
+    {lo:-32.0, hi:-25.0, c0:[0,0,0],      c1:[8,9,12],      a0:10,  a1:18},
+    {lo:-25.0, hi:-20.0, c0:[8,9,12],     c1:[18,20,26],    a0:18,  a1:28},
+    {lo:-20.0, hi:-15.0, c0:[18,20,26],   c1:[28,31,40],    a0:28,  a1:40},
+    {lo:-15.0, hi:-10.0, c0:[28,31,40],   c1:[24,29,43],    a0:40,  a1:55},
+    {lo:-10.0, hi: -5.0, c0:[24,29,43],   c1:[22,30,48],    a0:55,  a1:72},
+    {lo: -5.0, hi:  0.0, c0:[22,30,48],   c1:[24,33,53],    a0:72,  a1:92},
+    {lo:  0.0, hi:  5.0, c0:[24,33,53],   c1:[29,37,60],    a0:92,  a1:120},
+
+    // RadarScope1 palette.
+    {lo:  5.0, hi:10.0, c0:[29,37,60],    c1:[22,43,88],    a0:120, a1:140},
+    {lo: 10.0, hi:15.0, c0:[22,43,88],    c1:[18,62,125],   a0:140, a1:165},
+    {lo: 15.0, hi:20.0, c0:[18,62,125],   c1:[22,92,165],   a0:165, a1:190},
+    {lo: 20.0, hi:22.5, c0:[22,92,165],   c1:[35,125,180],  a0:190, a1:205},
+    {lo: 22.5, hi:25.0, c0:[35,125,180],  c1:[20,110,85],   a0:205, a1:220},
+    {lo: 25.0, hi:32.5, c0:[20,110,85],   c1:[5,101,1],     a0:220, a1:250},
+    {lo: 32.5, hi:37.5, c0:[5,101,1],     c1:[251,252,0],   a0:250, a1:255},
+
+    // Dual-color RadarScope ranges.
+    {lo: 37.5, hi:42.5, c0:[251,252,0],   c1:[199,176,0],   a0:255, a1:255},
+    {lo: 42.5, hi:50.0, c0:[253,149,2],   c1:[172,92,2],    a0:255, a1:255},
+    {lo: 50.0, hi:60.0, c0:[253,38,0],    c1:[135,43,22],   a0:255, a1:255},
+    {lo: 60.0, hi:70.0, c0:[193,148,179], c1:[200,23,119],  a0:255, a1:255},
+    {lo: 70.0, hi:75.0, c0:[165,2,215],   c1:[64,0,146],    a0:255, a1:255},
+    {lo: 75.0, hi:80.0, c0:[135,255,253], c1:[54,120,142],  a0:255, a1:255},
+    {lo: 80.0, hi:85.0, c0:[173,99,64],   c1:[105,0,4],     a0:255, a1:255},
+    {lo: 85.0, hi:95.0, c0:[105,0,4],     c1:[0,0,0],       a0:255, a1:255}
+  ];
+
+  function setStatus(text,state="loading"){
+    statusText.textContent=text;
+    statusDot.classList.toggle("live",state==="live");
+    statusDot.classList.toggle("error",state==="error");
+  }
+
+  function mixValue(a,b,t){
+    return a+(b-a)*t;
+  }
+
+  function sampleRadarScope(dbz){
+    if(dbz >= 95){
+      return [0,0,0,255];
+    }
+
+    for(const seg of RS_SEGMENTS){
+      if(dbz >= seg.lo && dbz < seg.hi){
+        const t=Math.max(0,Math.min(1,(dbz-seg.lo)/(seg.hi-seg.lo)));
+        return [
+          Math.round(mixValue(seg.c0[0],seg.c1[0],t)),
+          Math.round(mixValue(seg.c0[1],seg.c1[1],t)),
+          Math.round(mixValue(seg.c0[2],seg.c1[2],t)),
+          Math.round(mixValue(seg.a0,seg.a1,t))
+        ];
+      }
+    }
+
+    return [0,0,0,0];
+  }
+
+  function makePaletteLut(){
+    const out=new Uint8Array(256*4);
+
+    // Numeric code 0 is true no-data.
+    out[0]=0;
+    out[1]=0;
+    out[2]=0;
+    out[3]=0;
+
+    for(let code=1;code<256;code++){
+      const dbz=-32+(code-1)*0.5;
+      const rgba=sampleRadarScope(dbz);
+      const p=code*4;
+
+      out[p]=rgba[0];
+      out[p+1]=rgba[1];
+      out[p+2]=rgba[2];
+      out[p+3]=rgba[3];
+    }
+
+    return out;
+  }
+
   const PALETTE_LUT=makePaletteLut();
 
   function frameMs(frame){return Date.parse(frame?.valid_time||"");}
@@ -120,7 +202,7 @@
   async function maybeDecompress(bytes){if(bytes.byteLength===expectedBytes())return new Uint8Array(bytes);const probe=new Uint8Array(bytes);if(probe[0]===0x1f&&probe[1]===0x8b&&typeof DecompressionStream!=="undefined"){const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));const unpacked=await new Response(stream).arrayBuffer();return new Uint8Array(unpacked);}return probe;}
   async function loadTexture(index){if(!frames.length)return false;const normalized=(index+frames.length)%frames.length,frame=frames[normalized],key=String(frame.id);if(layer.hasTexture(key))return true;if(loading.has(key))return loading.get(key);const promise=(async()=>{const started=performance.now();const response=await fetch(numericUrl(frame),{cache:"force-cache"});if(!response.ok)throw new Error(`Numeric frame HTTP ${response.status}`);const packedLength=Number(response.headers.get("content-length")||0);const bytes=await maybeDecompress(await response.arrayBuffer());if(bytes.byteLength!==expectedBytes())throw new Error(`Numeric frame size ${bytes.byteLength.toLocaleString()} != expected ${expectedBytes().toLocaleString()}`);layer.addTexture(key,bytes);frame._lastFetchMs=performance.now()-started;frame._transferBytes=packedLength||Number(frame.dbzCompressedBytes||0);return true;})();loading.set(key,promise);try{return await promise;}finally{loading.delete(key);}};
 
-  function desiredIndices(start=currentIndex){const set=new Set();if(!frames.length)return set;set.add(currentIndex);set.add((currentIndex-1+frames.length)%frames.length);for(let n=0;n<Math.min(GPU_DEPTH,frames.length);n++)set.add((start+n)%frames.length);return set;}
+  function desiredIndices(start=currentIndex){const set=new Set();if(!frames.length)return set;const limit=Math.min(GPU_DEPTH,frames.length);for(let n=0;n<limit;n++)set.add((start+n)%frames.length);return set;}
   async function fillBuffer(start=currentIndex,blockCount=0){if(!frames.length)return 0;const targets=[...desiredIndices(start)];let cursor=0,ready=0;const worker=async()=>{while(cursor<targets.length){const index=targets[cursor++];try{await loadTexture(index);ready++;updateGpuInfo();}catch(error){console.warn("Numeric radar prefetch failed",frames[index]?.id,error);}}};const workers=Array.from({length:Math.min(FETCH_CONCURRENCY,targets.length)},()=>worker());if(blockCount>0){while(true){const contiguous=countReadyAhead(start);if(contiguous>=Math.min(blockCount,frames.length))break;if(workers.every(p=>p.__done))break;await new Promise(r=>setTimeout(r,25));}}
     await Promise.all(workers);const keep=new Set([...desiredIndices(currentIndex)].map(i=>String(frames[i].id)));layer.evictExcept(keep);updateGpuInfo();return ready;}
   function countReadyAhead(start=currentIndex){let count=0;for(let n=0;n<Math.min(GPU_DEPTH,frames.length);n++){const i=(start+n)%frames.length;if(!layer.hasTexture(String(frames[i].id)))break;count++;}return count;}
