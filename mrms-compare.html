@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZacharologistWx MRMS Product Comparison</title>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
+  <script src="mapbox-token.js?v=20260904c"></script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --panel: rgba(4,10,22,.92);
+      --border: rgba(148,163,184,.28);
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --good: #86efac;
+      --bad: #fca5a5;
+    }
+    * { box-sizing:border-box; }
+    html,body,#map { width:100%;height:100%;margin:0; }
+    body { overflow:hidden;background:#07111f;color:#f8fafc;font-family:Arial,Helvetica,sans-serif; }
+    #map { position:fixed;inset:0;background:#07111f; }
+
+    .panel {
+      position:fixed;top:16px;left:16px;z-index:20;
+      width:min(430px,calc(100vw - 32px));padding:14px;
+      border:1px solid var(--border);border-radius:14px;background:var(--panel);
+      box-shadow:0 18px 42px rgba(0,0,0,.38);backdrop-filter:blur(12px);
+    }
+    .eyebrow { margin-bottom:4px;color:var(--accent);font-size:.68rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase; }
+    h1 { margin:0;font-size:1.05rem; }
+    .subtitle { margin:6px 0 12px;color:#cbd5e1;font-size:.76rem;line-height:1.35; }
+    .status-row { display:flex;gap:8px;align-items:flex-start;min-height:20px;margin-bottom:12px;color:var(--muted);font-size:.74rem;line-height:1.35; }
+    .status-dot { width:8px;height:8px;margin-top:2px;flex:0 0 auto;border-radius:50%;background:#fde68a; }
+    .status-dot.is-live { background:var(--good);box-shadow:0 0 10px rgba(134,239,172,.45); }
+    .status-dot.is-error { background:var(--bad);box-shadow:0 0 10px rgba(252,165,165,.45); }
+
+    .controls { display:grid;gap:10px; }
+    .button-row { display:grid;grid-template-columns:1fr 1fr;gap:8px; }
+    button,select {
+      min-width:0;padding:8px 10px;border:1px solid rgba(148,163,184,.34);border-radius:8px;
+      background:rgba(15,23,42,.94);color:#fff;font:inherit;font-size:.76rem;font-weight:800;
+    }
+    button { cursor:pointer; }
+    button:hover { border-color:rgba(56,189,248,.72); }
+    button:disabled { opacity:.45;cursor:default; }
+
+    .playback { display:grid;gap:8px;padding:10px;border:1px solid rgba(148,163,184,.20);border-radius:10px;background:rgba(15,23,42,.48); }
+    .history-row { display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:center; }
+    .history-label { color:#94a3b8;font-size:.66rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em; }
+    .history-buttons { display:grid;grid-template-columns:1fr 1fr;gap:5px; }
+    .history-btn { padding:6px 8px;font-size:.7rem;background:rgba(15,23,42,.8); }
+    .history-btn.is-active { border-color:rgba(56,189,248,.85);background:rgba(14,116,144,.28);color:#e0f2fe;box-shadow:inset 0 0 0 1px rgba(56,189,248,.12); }
+    .playback-buttons { display:grid;grid-template-columns:46px 1fr 46px 82px;gap:7px; }
+    .playback-buttons button { padding:7px 6px; }
+    .frame-readout { display:flex;align-items:center;justify-content:space-between;gap:10px;color:#dbeafe;font-size:.72rem;font-weight:800;font-variant-numeric:tabular-nums; }
+    .frame-readout span:last-child { color:#94a3b8;font-weight:800; }
+    .timeline { display:grid;grid-template-columns:1fr;gap:4px; }
+    .timeline input[type="range"] { width:100%; }
+    .timeline-labels { display:flex;justify-content:space-between;color:#64748b;font-size:.58rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em; }
+
+    .range-row { display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;color:#bfdbfe;font-size:.72rem;font-weight:800; }
+    input[type="range"] { width:100%;accent-color:var(--accent); }
+    output { min-width:38px;text-align:right;font-variant-numeric:tabular-nums; }
+
+    .legend { margin-top:12px;padding-top:10px;border-top:1px solid rgba(148,163,184,.18); }
+    .legend-title { margin-bottom:6px;color:#bfdbfe;font-size:.68rem;font-weight:800; }
+    .legend-bar { height:10px;border-radius:999px;border:1px solid rgba(255,255,255,.15);background:linear-gradient(90deg,#2873a5 0%,#46d2e6 10%,#497598 15%,#4ca58e 22%,#127618 30%,#cbde01 38%,#d7cb00 45%,#e38103 52%,#b95f0a 58%,#c02514 64%,#ca99b4 70%,#c44a8a 76%,#8b20d2 82%,#5614a2 87%,#6fd2db 91%,#730a01 95%,#fff 100%); }
+    .legend-labels { display:flex;justify-content:space-between;margin-top:4px;color:#94a3b8;font-size:.62rem; }
+    .meta { margin-top:10px;color:#94a3b8;font-size:.68rem;line-height:1.45; }
+    .meta strong { color:#dbeafe; }
+    .meta span { color:#cbd5e1; }
+
+    @media (max-width:640px) {
+      .panel { top:10px;left:10px;width:calc(100vw - 20px);padding:12px; }
+      .playback-buttons { grid-template-columns:42px 1fr 42px 76px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <section class="panel">
+    <div class="eyebrow">Python-colored / Map-anchored / Live Loop</div>
+    <h1 id="productTitle">MRMS Product Comparison</h1>
+    <p class="subtitle">Same renderer, same map and same palette — only the underlying MRMS product changes.</p>
+
+    <div class="status-row">
+      <span id="statusDot" class="status-dot"></span>
+      <span id="statusText">Initializing…</span>
+    </div>
+
+    <div class="controls">
+      <div class="button-row">
+        <button id="toggleRadar" type="button">Hide Radar</button>
+        <button id="reloadRadar" type="button">Reload Loop</button>
+      </div>
+
+      <div class="playback">
+        <div class="history-row">
+          <span class="history-label">History</span>
+          <div class="history-buttons">
+            <button class="history-btn" type="button" data-history-minutes="30">30 min</button>
+            <button class="history-btn is-active" type="button" data-history-minutes="60">60 min</button>
+          </div>
+        </div>
+
+        <div class="playback-buttons">
+          <button id="prevFrame" type="button" title="Previous observation">◀</button>
+          <button id="playPause" type="button">▶ Play</button>
+          <button id="nextFrame" type="button" title="Next observation">▶</button>
+          <select id="speedSelect" aria-label="Playback speed">
+            <option value="0.5">0.5×</option>
+            <option value="1" selected>1×</option>
+            <option value="1.5">1.5×</option>
+            <option value="2">2×</option>
+          </select>
+        </div>
+
+        <div class="frame-readout">
+          <span id="frameTime">--:--</span>
+          <span id="frameAge">-- min</span>
+        </div>
+        <label class="timeline" for="frameSlider">
+          <input id="frameSlider" type="range" min="0" max="0" step="1" value="0">
+          <span class="timeline-labels"><span id="historyStartLabel">-60m</span><span>Now</span></span>
+        </label>
+      </div>
+
+      <label class="range-row" for="radarOpacity">
+        <span>Opacity</span>
+        <input id="radarOpacity" type="range" min="0" max="1" step="0.05" value="0.95">
+        <output id="radarOpacityValue">95%</output>
+      </label>
+    </div>
+
+    <div class="legend">
+      <div class="legend-title">Reflectivity (dBZ)</div>
+      <div class="legend-bar"></div>
+      <div class="legend-labels"><span>0</span><span>10</span><span>20</span><span>30</span><span>40</span><span>50</span><span>60</span><span>70+</span></div>
+    </div>
+
+    <div class="meta">
+      <strong>Source:</strong> <span id="productSource">MRMS comparison</span><br>
+      <strong>Color owner:</strong> Python Level II palette renderer<br>
+      <strong>Map path:</strong> custom WebGL texture; no Mapbox radar coloring<br>
+      <strong>Buffer:</strong> encoded prefetch + decoded lookahead<br>
+      <strong>Auto-update:</strong> manifest check every 30 seconds<br>
+      <strong>Image:</strong> <span id="imageInfo">waiting…</span><br>
+      <strong>Loop:</strong> <span id="loopInfo">waiting…</span><br>
+      <strong>Valid:</strong> <span id="validTime">waiting…</span><br>
+      <strong>Revision:</strong> <span id="revisionInfo">waiting…</span>
+    </div>
+  </section>
+
+  <script>
+    const MAPBOX_STYLE = "mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
+    const PRODUCT_KEY =
+(new URLSearchParams(window.location.search).get("product") || "rala")
+.toLowerCase();
+
+const PRODUCT_CONFIG = {
+rala: {
+label: "ReflectivityAtLowestAltitude",
+prefix: "mrms-test-rala"
+},
+
+mrala: {
+label: "MergedReflectivityAtLowestAltitude",
+prefix: "mrms-test-mrala"
+},
+
+mbr: {
+label: "MergedBaseReflectivity",
+prefix: "mrms-test-mbr"
+}
+};
+
+const ACTIVE_PRODUCT =
+PRODUCT_CONFIG[PRODUCT_KEY] ||
+PRODUCT_CONFIG.rala;
+
+const MANIFEST_URL =
+"https://dt0cd6bl1yqh2.cloudfront.net/" +
+ACTIVE_PRODUCT.prefix +
+"/manifest.json";
+
+const CUSTOM_LAYER_ID = "mrms-python-colored-layer";
+    document.getElementById("productTitle").textContent =
+"MRMS • " + ACTIVE_PRODUCT.label;
+
+const BASE_MOBILE_DEVICE =
+      window.matchMedia?.("(pointer: coarse)")?.matches ||
+      /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+    // Decoded 4096px frames are expensive. Keep enough nearby observations
+    // ready for smooth playback without forcing mobile browsers to retain
+    // hundreds of megabytes of decoded image data.
+    const DECODED_FRAME_CACHE_LIMIT = BASE_MOBILE_DEVICE ? 4 : 8;
+    const BLOB_PREFETCH_CONCURRENCY = BASE_MOBILE_DEVICE ? 2 : 4;
+    const START_BUFFER_FRAMES = BASE_MOBILE_DEVICE ? 3 : 4;
+    const END_FRAME_HOLD_MS = 450;
+    const MANIFEST_POLL_MS = 30000;
+
+    document.getElementById("productSource").textContent =
+"NOAA/NCEP MRMS " + ACTIVE_PRODUCT.label;
+
+const statusText = document.getElementById("statusText");
+    const statusDot = document.getElementById("statusDot");
+    const opacityInput = document.getElementById("radarOpacity");
+    const opacityOutput = document.getElementById("radarOpacityValue");
+    const toggleButton = document.getElementById("toggleRadar");
+    const reloadButton = document.getElementById("reloadRadar");
+    const playPauseButton = document.getElementById("playPause");
+    const prevFrameButton = document.getElementById("prevFrame");
+    const nextFrameButton = document.getElementById("nextFrame");
+    const speedSelect = document.getElementById("speedSelect");
+    const frameSlider = document.getElementById("frameSlider");
+    const frameTime = document.getElementById("frameTime");
+    const frameAge = document.getElementById("frameAge");
+    const historyStartLabel = document.getElementById("historyStartLabel");
+    const historyButtons = [...document.querySelectorAll("[data-history-minutes]")];
+    const imageInfo = document.getElementById("imageInfo");
+    const loopInfo = document.getElementById("loopInfo");
+    const validTime = document.getElementById("validTime");
+    const revisionInfo = document.getElementById("revisionInfo");
+
+    let radarVisible = true;
+    let radarLayer = null;
+    let manifest = null;
+    let allFrames = [];
+    let frames = [];
+    let historyMinutes = 60;
+    let currentFrameIndex = 0;
+    let isPlaying = false;
+    let playbackGeneration = 0;
+    let frameSwitchBusy = false;
+    let playbackStarting = false;
+    let manifestRefreshBusy = false;
+    let defaultFrameIntervalMs = 650;
+    let initialRadarStartupPromise = null;
+
+    const blobCache = new Map();
+    const blobPromises = new Map();
+    const decodedCache = new Map();
+    const decodePromises = new Map();
+    let cacheClock = 0;
+
+    function setStatus(message, state = "loading") {
+      statusText.textContent = message;
+      statusDot.classList.toggle("is-live", state === "live");
+      statusDot.classList.toggle("is-error", state === "error");
+    }
+
+    function compileShader(gl, type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        const message = gl.getShaderInfoLog(shader) || "shader compile failed";
+        gl.deleteShader(shader);
+        throw new Error(message);
+      }
+      return shader;
+    }
+
+    function sourceWidth(source) { return Number(source?.width || source?.naturalWidth || 0); }
+    function sourceHeight(source) { return Number(source?.height || source?.naturalHeight || 0); }
+
+    function createPythonColoredRadarLayer(image, bounds) {
+      const [west, south, east, north] = bounds.map(Number);
+      return {
+        id:CUSTOM_LAYER_ID,
+        type:"custom",
+        renderingMode:"2d",
+        opacity:Number(opacityInput.value),
+        visible:true,
+        map:null,
+        gl:null,
+        program:null,
+        positionBuffer:null,
+        uvBuffer:null,
+        texture:null,
+        textureWidth:0,
+        textureHeight:0,
+        textureInitialized:false,
+        initialImage:image,
+
+        uploadImage(imageToUpload) {
+          if (!this.gl || !this.texture || !imageToUpload) return;
+          const gl = this.gl;
+          const width = sourceWidth(imageToUpload);
+          const height = sourceHeight(imageToUpload);
+          if (!width || !height) return;
+
+          gl.bindTexture(gl.TEXTURE_2D, this.texture);
+          // Keep upload orientation untouched. The north/south correction is handled
+          // deterministically by the UV mapping so ImageBitmap and <img> behave the same.
+          gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+          gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+          if (gl.UNPACK_COLORSPACE_CONVERSION_WEBGL !== undefined) {
+            gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
+          }
+
+          if (this.textureInitialized && width === this.textureWidth && height === this.textureHeight) {
+            gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,gl.RGBA,gl.UNSIGNED_BYTE,imageToUpload);
+          } else {
+            gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,imageToUpload);
+            this.textureWidth = width;
+            this.textureHeight = height;
+            this.textureInitialized = true;
+          }
+        },
+
+        onAdd(map, gl) {
+          this.map = map;
+          this.gl = gl;
+          const vertexSource = `
+            precision highp float;
+            uniform mat4 u_matrix;
+            attribute vec2 a_pos;
+            attribute vec2 a_uv;
+            varying vec2 v_uv;
+            void main(){ gl_Position=u_matrix*vec4(a_pos,0.0,1.0); v_uv=a_uv; }
+          `;
+          const fragmentSource = `
+            precision mediump float;
+            uniform sampler2D u_texture;
+            uniform float u_opacity;
+            varying vec2 v_uv;
+            void main() {
+              vec4 radar = texture2D(u_texture, v_uv);
+              gl_FragColor = vec4(radar.rgb, radar.a * u_opacity);
+            }
+          `;
+          const vertexShader = compileShader(gl, gl.VERTEX_SHADER, vertexSource);
+          const fragmentShader = compileShader(gl, gl.FRAGMENT_SHADER, fragmentSource);
+          const program = gl.createProgram();
+          gl.attachShader(program, vertexShader);
+          gl.attachShader(program, fragmentShader);
+          gl.linkProgram(program);
+          gl.deleteShader(vertexShader);
+          gl.deleteShader(fragmentShader);
+          if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program) || "radar shader link failed");
+          this.program = program;
+
+          // The source texture is a regular latitude/longitude grid, while Mapbox
+          // renders in Web Mercator. Split the CONUS surface into narrow latitude
+          // bands so every texture row stays geographically anchored during camera
+          // movement and animated frame swaps.
+          const latitudeSegments = 256;
+          const westX = mapboxgl.MercatorCoordinate.fromLngLat([west, north]).x;
+          const eastX = mapboxgl.MercatorCoordinate.fromLngLat([east, north]).x;
+          const positionValues = [];
+          const uvValues = [];
+
+          for (let band = 0; band < latitudeSegments; band += 1) {
+            const v0 = band / latitudeSegments;
+            const v1 = (band + 1) / latitudeSegments;
+            const latitude0 = north + (south - north) * v0;
+            const latitude1 = north + (south - north) * v1;
+            const y0 = mapboxgl.MercatorCoordinate.fromLngLat([west, latitude0]).y;
+            const y1 = mapboxgl.MercatorCoordinate.fromLngLat([west, latitude1]).y;
+
+            positionValues.push(
+              westX, y0, westX, y1, eastX, y0,
+              eastX, y0, westX, y1, eastX, y1
+            );
+            uvValues.push(
+              0, v0, 0, v1, 1, v0,
+              1, v0, 0, v1, 1, v1
+            );
+          }
+
+          const positions = new Float32Array(positionValues);
+          const uvs = new Float32Array(uvValues);
+          this.vertexCount = latitudeSegments * 6;
+
+          this.positionBuffer = gl.createBuffer();
+          gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
+          gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+          this.uvBuffer = gl.createBuffer();
+          gl.bindBuffer(gl.ARRAY_BUFFER, this.uvBuffer);
+          gl.bufferData(gl.ARRAY_BUFFER, uvs, gl.STATIC_DRAW);
+
+          this.texture = gl.createTexture();
+          gl.bindTexture(gl.TEXTURE_2D, this.texture);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+          this.uploadImage(this.initialImage);
+          this.initialImage = null;
+        },
+
+        render(gl, matrix) {
+          if (!this.visible || !this.program || !this.texture) return;
+          gl.useProgram(this.program);
+          gl.disable(gl.DEPTH_TEST);
+          gl.enable(gl.BLEND);
+          gl.blendEquation(gl.FUNC_ADD);
+          gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+          gl.uniformMatrix4fv(gl.getUniformLocation(this.program,"u_matrix"),false,matrix);
+          gl.uniform1f(gl.getUniformLocation(this.program,"u_opacity"),this.opacity);
+          gl.uniform1i(gl.getUniformLocation(this.program,"u_texture"),0);
+
+          const posLocation = gl.getAttribLocation(this.program,"a_pos");
+          gl.bindBuffer(gl.ARRAY_BUFFER,this.positionBuffer);
+          gl.enableVertexAttribArray(posLocation);
+          gl.vertexAttribPointer(posLocation,2,gl.FLOAT,false,0,0);
+          const uvLocation = gl.getAttribLocation(this.program,"a_uv");
+          gl.bindBuffer(gl.ARRAY_BUFFER,this.uvBuffer);
+          gl.enableVertexAttribArray(uvLocation);
+          gl.vertexAttribPointer(uvLocation,2,gl.FLOAT,false,0,0);
+          gl.activeTexture(gl.TEXTURE0);
+          gl.bindTexture(gl.TEXTURE_2D,this.texture);
+          gl.drawArrays(gl.TRIANGLES,0,this.vertexCount);
+        },
+
+        onRemove(map, gl) {
+          if (this.texture) gl.deleteTexture(this.texture);
+          if (this.positionBuffer) gl.deleteBuffer(this.positionBuffer);
+          if (this.uvBuffer) gl.deleteBuffer(this.uvBuffer);
+          if (this.program) gl.deleteProgram(this.program);
+          this.gl = null;
+          this.textureInitialized = false;
+        },
+        setImage(imageToUpload){ this.uploadImage(imageToUpload);this.map?.triggerRepaint(); },
+        setOpacity(value){ this.opacity=Number(value);this.map?.triggerRepaint(); },
+        setVisible(value){ this.visible=Boolean(value);this.map?.triggerRepaint(); }
+      };
+    }
+
+    function firstSymbolLayerId() {
+      const layers = map.getStyle()?.layers || [];
+      return layers.find(layer => layer.type === "symbol")?.id;
+    }
+
+    function frameKey(frame) { return String(frame?.id || frame?.valid_time || frame?.image || ""); }
+
+    function frameImageUrl(frame, manifestLike = manifest) {
+      const url = new URL(frame.image, manifestLike._responseUrl);
+      url.searchParams.set("rev", manifestLike.revision ?? "none");
+      return url.href;
+    }
+
+    function closeDecodedSource(source) {
+      if (source && typeof source.close === "function") {
+        try { source.close(); } catch (_) {}
+      }
+    }
+
+    function clearFrameCaches() {
+      for (const entry of decodedCache.values()) closeDecodedSource(entry.source);
+      decodedCache.clear();
+      decodePromises.clear();
+      blobCache.clear();
+      blobPromises.clear();
+      cacheClock = 0;
+    }
+
+    function currentFrame() { return frames[currentFrameIndex] || null; }
+    function currentFrameKey() { return frameKey(currentFrame()); }
+
+    function evictDecodedCache() {
+      const protectedKey = currentFrameKey();
+      while (decodedCache.size > DECODED_FRAME_CACHE_LIMIT) {
+        let oldestKey = null;
+        let oldestUse = Infinity;
+        for (const [key, entry] of decodedCache.entries()) {
+          if (key === protectedKey) continue;
+          if (entry.used < oldestUse) { oldestUse = entry.used;oldestKey = key; }
+        }
+        if (oldestKey === null) break;
+        const entry = decodedCache.get(oldestKey);
+        decodedCache.delete(oldestKey);
+        closeDecodedSource(entry?.source);
+      }
+    }
+
+    async function fetchFrameBlob(frame, manifestLike = manifest) {
+      const key = frameKey(frame);
+      if (blobCache.has(key)) return blobCache.get(key);
+      if (blobPromises.has(key)) return blobPromises.get(key);
+      const promise = fetch(frameImageUrl(frame, manifestLike), { cache:"force-cache" })
+        .then(response => {
+          if (!response.ok) throw new Error(`Frame HTTP ${response.status}`);
+          return response.blob();
+        })
+        .then(blob => { blobCache.set(key,blob);blobPromises.delete(key);return blob; })
+        .catch(error => { blobPromises.delete(key);throw error; });
+      blobPromises.set(key,promise);
+      return promise;
+    }
+
+    function imageFromBlob(blob) {
+      return new Promise((resolve,reject) => {
+        const objectUrl = URL.createObjectURL(blob);
+        const image = new Image();
+        image.decoding = "async";
+        image.onload = () => { URL.revokeObjectURL(objectUrl);resolve(image); };
+        image.onerror = () => { URL.revokeObjectURL(objectUrl);reject(new Error("Frame image decode failed")); };
+        image.src = objectUrl;
+      });
+    }
+
+    async function decodeBlob(blob) {
+      if (typeof createImageBitmap === "function") {
+        try { return await createImageBitmap(blob,{premultiplyAlpha:"none",colorSpaceConversion:"none",imageOrientation:"none"}); }
+        catch (_) { try { return await createImageBitmap(blob); } catch (_) {} }
+      }
+      return imageFromBlob(blob);
+    }
+
+    async function loadFrameSource(frame, manifestLike = manifest) {
+      const key = frameKey(frame);
+      if (decodedCache.has(key)) {
+        const entry = decodedCache.get(key);
+        entry.used = ++cacheClock;
+        return entry.source;
+      }
+      if (decodePromises.has(key)) return decodePromises.get(key);
+      const promise = fetchFrameBlob(frame, manifestLike)
+        .then(blob => decodeBlob(blob))
+        .then(source => {
+          decodedCache.set(key,{source,used:++cacheClock});
+          decodePromises.delete(key);
+          evictDecodedCache();
+          return source;
+        })
+        .catch(error => { decodePromises.delete(key);throw error; });
+      decodePromises.set(key,promise);
+      return promise;
+    }
+
+    function decodeLookaheadCount() {
+      const speed = Math.max(.5,Number(speedSelect.value) || 1);
+
+      if (speed >= 2) {
+        return BASE_MOBILE_DEVICE ? 3 : 5;
+      }
+      if (speed >= 1.5) {
+        return BASE_MOBILE_DEVICE ? 3 : 4;
+      }
+      if (speed >= 1) {
+        return BASE_MOBILE_DEVICE ? 2 : 4;
+      }
+      return BASE_MOBILE_DEVICE ? 2 : 3;
+    }
+
+    function warmAround(index) {
+      if (!frames.length) return;
+      const ahead = Math.min(decodeLookaheadCount(),frames.length - 1);
+      for (let offset=1;offset<=ahead;offset+=1) loadFrameSource(frames[(index+offset)%frames.length]).catch(()=>{});
+      loadFrameSource(frames[(index-1+frames.length)%frames.length]).catch(()=>{});
+    }
+
+    async function primePlaybackBuffer(startIndex) {
+      if (!frames.length) return;
+      const count = Math.min(START_BUFFER_FRAMES,frames.length);
+      const jobs = [];
+      for (let offset=0;offset<count;offset+=1) jobs.push(loadFrameSource(frames[(startIndex+offset)%frames.length]));
+      await Promise.all(jobs);
+      warmAround(startIndex);
+    }
+
+    async function prefetchFrameBlobs(frameList = frames, manifestLike = manifest) {
+      if (!frameList.length) return;
+      let cursor = 0;
+      const worker = async () => {
+        while (cursor < frameList.length) {
+          const frame = frameList[cursor++];
+          try { await fetchFrameBlob(frame,manifestLike); }
+          catch (error) { console.warn("MRMS frame prefetch failed",frameKey(frame),error); }
+        }
+      };
+      await Promise.all(Array.from({length:Math.min(BLOB_PREFETCH_CONCURRENCY,frameList.length)},()=>worker()));
+    }
+
+    function parseFrameTime(frame) {
+      const value = new Date(frame?.valid_time).getTime();
+      return Number.isFinite(value) ? value : 0;
+    }
+
+    function formatFrameTime(value) {
+      const date = new Date(value);
+      if (!Number.isFinite(date.getTime())) return "Unknown time";
+      return date.toLocaleTimeString([], {hour:"numeric",minute:"2-digit"});
+    }
+
+    function relativeAgeText(frame) {
+      if (!frame || !allFrames.length) return "-- min";
+      const newest = parseFrameTime(allFrames[allFrames.length - 1]);
+      const ageMinutes = Math.max(0,Math.round((newest - parseFrameTime(frame))/60000));
+      return ageMinutes <= 0 ? "Now" : `-${ageMinutes} min`;
+    }
+
+    function activeSpanMinutes() {
+      if (frames.length < 2) return 0;
+      return Math.max(0,(parseFrameTime(frames[frames.length-1])-parseFrameTime(frames[0]))/60000);
+    }
+
+    function updateHistoryButtons() {
+      historyButtons.forEach(button => button.classList.toggle("is-active",Number(button.dataset.historyMinutes) === historyMinutes));
+      historyStartLabel.textContent = `-${historyMinutes}m`;
+    }
+
+    function updateLoopInfo() {
+      loopInfo.textContent = `${activeSpanMinutes().toFixed(1)} min • ${frames.length} observations • ${historyMinutes} min view`;
+    }
+
+    function updateFrameUi() {
+      const frame = currentFrame();
+      if (!frame) return;
+      frameSlider.max = String(Math.max(0,frames.length - 1));
+      frameSlider.value = String(currentFrameIndex);
+      frameTime.textContent = formatFrameTime(frame.valid_time);
+      frameAge.textContent = relativeAgeText(frame);
+      const valid = new Date(frame.valid_time);
+      validTime.textContent = Number.isFinite(valid.getTime()) ? valid.toLocaleString() : String(frame.valid_time || "unknown");
+      updateLoopInfo();
+    }
+
+    function filterHistory(sourceFrames, minutes) {
+      if (sourceFrames.length < 2) return [...sourceFrames];
+      const newest = parseFrameTime(sourceFrames[sourceFrames.length - 1]);
+      const cutoff = newest - Math.max(1,minutes) * 60000;
+      const selected = sourceFrames.filter(frame => parseFrameTime(frame) >= cutoff);
+      return selected.length >= 2 ? selected : sourceFrames.slice(-2);
+    }
+
+    function applyHistoryWindow(minutes, preserveKey = currentFrameKey()) {
+      historyMinutes = Number(minutes) === 30 ? 30 : 60;
+      const nextFrames = filterHistory(allFrames,historyMinutes);
+      frames = nextFrames;
+      let nextIndex = frames.findIndex(frame => frameKey(frame) === preserveKey);
+      if (nextIndex < 0) nextIndex = frames.length - 1;
+      currentFrameIndex = Math.max(0,nextIndex);
+      updateHistoryButtons();
+      updateFrameUi();
+      warmAround(currentFrameIndex);
+      prefetchFrameBlobs(frames).catch(error => console.warn("MRMS history prefetch failed",error));
+    }
+
+    async function showFrame(index, options = {}) {
+      if (!frames.length || frameSwitchBusy) return false;
+      frameSwitchBusy = true;
+      try {
+        const normalized = (Number(index)+frames.length)%frames.length;
+        const frame = frames[normalized];
+        const source = await loadFrameSource(frame);
+        radarLayer?.setImage(source);
+        currentFrameIndex = normalized;
+        updateFrameUi();
+        warmAround(normalized);
+        if (!options.quiet) setStatus(`${formatFrameTime(frame.valid_time)} • ${relativeAgeText(frame)}`,"live");
+        return true;
+      } catch (error) {
+        console.error(error);
+        setStatus(`Observation load failed: ${error.message}`,"error");
+        return false;
+      } finally { frameSwitchBusy = false; }
+    }
+
+    function playbackIntervalMs() {
+      const speed = Math.max(.5,Number(speedSelect.value) || 1);
+
+      // Keep radar playback visually smooth without overwhelming image decode,
+      // WebGL texture upload, Mapbox rendering, and native-detail processing.
+      // 2x is intentionally capped at 5 observations per second.
+      if (speed >= 2) return 200;
+      if (speed >= 1.5) return 267;
+      if (speed >= 1) return 400;
+      return 800;
+    }
+
+    function stopPlayback() {
+      isPlaying = false;
+      playbackGeneration += 1;
+      playPauseButton.textContent = "▶ Play";
+    }
+
+    async function playbackLoop(generation) {
+      if (!isPlaying || generation !== playbackGeneration || frames.length < 2) return;
+      const cycleStarted = performance.now();
+      const next = (currentFrameIndex + 1) % frames.length;
+      await showFrame(next,{quiet:true});
+      if (!isPlaying || generation !== playbackGeneration) return;
+      const atNewest = currentFrameIndex === frames.length - 1;
+      const workTime = performance.now() - cycleStarted;
+      const cadenceDelay = Math.max(0,playbackIntervalMs() - workTime);
+      window.setTimeout(()=>playbackLoop(generation),cadenceDelay + (atNewest ? END_FRAME_HOLD_MS : 0));
+    }
+
+    async function startPlayback() {
+      if (frames.length < 2 || isPlaying || playbackStarting) return;
+      playbackStarting = true;
+      try {
+        const startIndex = currentFrameIndex === frames.length - 1 ? 0 : currentFrameIndex;
+        setStatus("Buffering upcoming MRMS observations…");
+        await primePlaybackBuffer(startIndex);
+        if (startIndex !== currentFrameIndex) await showFrame(startIndex,{quiet:true});
+        isPlaying = true;
+        playPauseButton.textContent = "❚❚ Pause";
+        setStatus(`MRMS playback • ${historyMinutes} min history`,"live");
+        const generation = ++playbackGeneration;
+        window.setTimeout(()=>playbackLoop(generation),playbackIntervalMs());
+      } catch (error) {
+        console.error(error);
+        setStatus(`Playback buffer failed: ${error.message}`,"error");
+      } finally { playbackStarting = false; }
+    }
+
+    async function fetchManifest() {
+      const response = await fetch(`${MANIFEST_URL}?_=${Date.now()}`,{cache:"no-store"});
+      if (!response.ok) throw new Error(`Manifest HTTP ${response.status}`);
+      const nextManifest = await response.json();
+      if (!Array.isArray(nextManifest.bounds) || !Array.isArray(nextManifest.frames) || nextManifest.frames.length < 2) {
+        throw new Error("Loop manifest needs bounds and at least two observations");
+      }
+      nextManifest._responseUrl = response.url;
+      return nextManifest;
+    }
+
+    function sortedManifestFrames(manifestLike) {
+      return [...manifestLike.frames].sort((a,b)=>parseFrameTime(a)-parseFrameTime(b));
+    }
+
+    async function installInitialManifest(nextManifest) {
+      // Preserve the frame decoded during parallel startup. Reloads still clear stale caches.
+      if (manifest) clearFrameCaches();
+      manifest = nextManifest;
+      allFrames = sortedManifestFrames(manifest);
+      defaultFrameIntervalMs = Number(manifest.defaultFrameIntervalMs || 650);
+      applyHistoryWindow(historyMinutes,"");
+      currentFrameIndex = frames.length - 1;
+      const initialSource = await loadFrameSource(currentFrame());
+
+      if (map.getLayer(CUSTOM_LAYER_ID)) map.removeLayer(CUSTOM_LAYER_ID);
+      radarLayer = createPythonColoredRadarLayer(initialSource,manifest.bounds);
+      radarLayer.opacity = Number(opacityInput.value);
+      const suppressMrmsForLiveNexrad = new URLSearchParams(window.location.search).get("home") === "1";
+      radarLayer.visible = radarVisible && !suppressMrmsForLiveNexrad;
+      const beforeId = firstSymbolLayerId();
+      if (beforeId) map.addLayer(radarLayer,beforeId); else map.addLayer(radarLayer);
+
+      imageInfo.textContent = `${manifest.imageWidth} × ${manifest.imageHeight} lossless WebP`;
+      revisionInfo.textContent = String(manifest.revision ?? "unknown");
+      updateFrameUi();
+      warmAround(currentFrameIndex);
+      prefetchFrameBlobs(frames).catch(error => console.warn("MRMS background prefetch failed",error));
+      setStatus(`MRMS live loop ready • ${historyMinutes} min history`,"live");
+    }
+
+    async function adoptBackgroundManifest(nextManifest) {
+      const nextAllFrames = sortedManifestFrames(nextManifest);
+      const oldIds = new Set(allFrames.map(frameKey));
+      const newFrames = nextAllFrames.filter(frame => !oldIds.has(frameKey(frame)));
+      if (!newFrames.length && String(nextManifest.revision) === String(manifest?.revision)) return false;
+
+      const previousCurrentKey = currentFrameKey();
+      const previousNewestKey = frameKey(allFrames[allFrames.length - 1]);
+      const wasAtNewest = previousCurrentKey === previousNewestKey;
+      const wasPlaying = isPlaying;
+
+      const staged = newFrames.slice(-2);
+      await Promise.all(staged.map(frame => loadFrameSource(frame,nextManifest).catch(error => {
+        console.warn("MRMS incoming observation preload failed",frameKey(frame),error);
+        return null;
+      })));
+
+      manifest = nextManifest;
+      allFrames = nextAllFrames;
+      defaultFrameIntervalMs = Number(manifest.defaultFrameIntervalMs || defaultFrameIntervalMs || 650);
+      applyHistoryWindow(historyMinutes,previousCurrentKey);
+      revisionInfo.textContent = String(manifest.revision ?? "unknown");
+      imageInfo.textContent = `${manifest.imageWidth} × ${manifest.imageHeight} lossless WebP`;
+
+      if (!wasPlaying && wasAtNewest && newFrames.length) {
+        await showFrame(frames.length - 1,{quiet:true});
+      } else {
+        updateFrameUi();
+      }
+
+      prefetchFrameBlobs(newFrames,manifest).catch(error => console.warn("MRMS new observation prefetch failed",error));
+      if (newFrames.length) {
+        const newest = nextAllFrames[nextAllFrames.length - 1];
+        setStatus(`New MRMS observation • ${formatFrameTime(newest.valid_time)}`,"live");
+      }
+      return true;
+    }
+
+    async function prepareInitialRadarStartup() {
+      const nextManifest = await fetchManifest();
+      const sorted = sortedManifestFrames(nextManifest);
+      const newest = sorted[sorted.length - 1];
+      if (newest) await loadFrameSource(newest, nextManifest);
+      return nextManifest;
+    }
+
+    async function loadRadarLoop() {
+      stopPlayback();
+      try {
+        setStatus("Loading MRMS loop manifest…");
+        let nextManifest = null;
+        if (initialRadarStartupPromise) {
+          nextManifest = await initialRadarStartupPromise;
+          initialRadarStartupPromise = null;
+        }
+        if (!nextManifest) nextManifest = await fetchManifest();
+        await installInitialManifest(nextManifest);
+      } catch (error) {
+        console.error(error);
+        initialRadarStartupPromise = null;
+        setStatus(`Loop load failed: ${error.message}`,"error");
+      }
+    }
+
+    async function checkForLoopUpdate() {
+      if (manifestRefreshBusy || !manifest || document.hidden) return;
+      manifestRefreshBusy = true;
+      try {
+        const nextManifest = await fetchManifest();
+        if (String(nextManifest.revision) !== String(manifest.revision)) await adoptBackgroundManifest(nextManifest);
+      } catch (error) {
+        console.warn("MRMS manifest refresh failed",error);
+      } finally { manifestRefreshBusy = false; }
+    }
+
+    // Start radar I/O immediately so Mapbox and the first radar frame load in parallel.
+    initialRadarStartupPromise = prepareInitialRadarStartup().catch(error => {
+      console.warn("Parallel MRMS startup preload failed", error);
+      return null;
+    });
+
+    mapboxgl.accessToken = window.MAPBOX_PUBLIC_TOKEN;
+    const homepageMode = new URLSearchParams(window.location.search).get("home") === "1";
+    const mapOptions = {
+      container:"map",style:MAPBOX_STYLE,center:[-96.5,38.4],zoom:3.35,
+      minZoom:2,maxZoom:12,projection:"mercator",attributionControl:true
+    };
+    if (homepageMode) {
+      // Establish the responsive CONUS view during construction so no delayed
+      // callback can override a user's pan or zoom after interaction begins.
+      mapOptions.bounds = [[-127,23],[-65,50.5]];
+      mapOptions.fitBoundsOptions = { padding:12 };
+    }
+    const map = new mapboxgl.Map(mapOptions);
+    map.addControl(new mapboxgl.NavigationControl(),"bottom-right");
+    map.on("load",()=>{ map.setProjection("mercator");loadRadarLoop(); });
+
+    toggleButton.addEventListener("click",()=>{
+      radarVisible = !radarVisible;
+      toggleButton.textContent = radarVisible ? "Hide Radar" : "Show Radar";
+      radarLayer?.setVisible(radarVisible);
+    });
+
+    reloadButton.addEventListener("click",loadRadarLoop);
+    playPauseButton.addEventListener("click",()=>{ if (isPlaying) stopPlayback(); else startPlayback(); });
+    prevFrameButton.addEventListener("click",async()=>{ stopPlayback();await showFrame(currentFrameIndex - 1); });
+    nextFrameButton.addEventListener("click",async()=>{ stopPlayback();await showFrame(currentFrameIndex + 1); });
+    speedSelect.addEventListener("change",()=>warmAround(currentFrameIndex));
+
+    historyButtons.forEach(button => button.addEventListener("click",async()=>{
+      const requested = Number(button.dataset.historyMinutes);
+      if (requested === historyMinutes) return;
+      const preserveKey = currentFrameKey();
+      applyHistoryWindow(requested,preserveKey);
+      if (!frames.some(frame => frameKey(frame) === preserveKey)) await showFrame(frames.length - 1,{quiet:true});
+      setStatus(`MRMS playback window • ${historyMinutes} min`,"live");
+    }));
+
+    frameSlider.addEventListener("input",async()=>{ stopPlayback();await showFrame(Number(frameSlider.value)); });
+    opacityInput.addEventListener("input",()=>{
+      opacityOutput.value = `${Math.round(Number(opacityInput.value)*100)}%`;
+      radarLayer?.setOpacity(opacityInput.value);
+    });
+
+    document.addEventListener("visibilitychange",()=>{ if (!document.hidden) checkForLoopUpdate(); });
+    window.setInterval(checkForLoopUpdate,MANIFEST_POLL_MS);
+
+    document.addEventListener("keydown",event=>{
+      if (event.target && ["INPUT","SELECT","BUTTON"].includes(event.target.tagName)) return;
+      if (event.code === "Space") {
+        event.preventDefault();
+        if (isPlaying) stopPlayback(); else startPlayback();
+      } else if (event.key === "ArrowLeft") {
+        stopPlayback();showFrame(currentFrameIndex - 1);
+      } else if (event.key === "ArrowRight") {
+        stopPlayback();showFrame(currentFrameIndex + 1);
+      }
+    });
+  </script>
+  
+</body>
+</html>
