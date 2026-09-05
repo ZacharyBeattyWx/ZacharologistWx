@@ -25,7 +25,7 @@
   <section class="panel">
     <div class="eyebrow">Numeric texture experiment / isolated</div>
     <h1>Native MRALA Numeric GPU Loop</h1>
-    <p>Full native 7000×3500 MRALA reflectivity. Each radar cell remains one numeric byte; WebGL reproduces the same Python Level II palette used by the native WebP renderer with NEAREST sampling.</p>
+    <p>Mercator-corrected native 7000×3500 MRALA reflectivity. Each radar cell remains one numeric byte; WebGL reproduces the same Python Level II palette used by the native WebP renderer with NEAREST sampling.</p>
     <div class="status"><span id="statusDot" class="dot"></span><span id="statusText">Loading native numeric MRALA manifest…</span></div>
     <div class="meta">
       <strong>Encoding:</strong> <span id="encodingInfo">--</span><br>
@@ -120,11 +120,145 @@ ctx.putImageData(image,0,0);
   function compileShader(gl,type,source){const shader=gl.createShader(type);gl.shaderSource(shader,source);gl.compileShader(shader);if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(shader)||"shader compile failed");return shader;}
 
   function createNumericLayer(bounds,width,height){
-    const [west,south,east,north]=bounds.map(Number);
+
+const [
+westCenter,
+southCenter,
+eastCenter,
+northCenter
+]=bounds.map(Number);
+
+// MRMS bounds are centers of the outermost grid cells.
+// Expand by half a cell so source pixels remain centered
+// on their real geographic coordinates.
+const lonStep=
+width>1
+? (eastCenter-westCenter)/(width-1)
+: 0;
+
+const latStep=
+height>1
+? (northCenter-southCenter)/(height-1)
+: 0;
+
+const west=
+westCenter-(lonStep/2);
+
+const east=
+eastCenter+(lonStep/2);
+
+const south=
+southCenter-(latStep/2);
+
+const north=
+northCenter+(latStep/2);
+
+
+// Mapbox works in Web Mercator Y.
+// MRMS rows are regular geographic latitude.
+// These values let the shader convert Mercator position
+// back into the proper native MRMS row.
+const northMercY=
+mapboxgl.MercatorCoordinate
+.fromLngLat([0,north]).y;
+
+const southMercY=
+mapboxgl.MercatorCoordinate
+.fromLngLat([0,south]).y;
     return {id:LAYER_ID,type:"custom",renderingMode:"2d",map:null,gl:null,program:null,pos:null,uv:null,palette:null,textures:new Map(),activeKey:"",width,height,isWebGL2:false,
       onAdd(map,gl){this.map=map;this.gl=gl;const maxTexture=Number(gl.getParameter(gl.MAX_TEXTURE_SIZE)||0);if(width>maxTexture||height>maxTexture)throw new Error(`Native MRMS ${width}x${height} exceeds GPU texture limit ${maxTexture}`);this.isWebGL2=typeof WebGL2RenderingContext!=="undefined"&&gl instanceof WebGL2RenderingContext;
         const vs=compileShader(gl,gl.VERTEX_SHADER,`precision highp float;uniform mat4 u_matrix;attribute vec2 a_pos;attribute vec2 a_uv;varying vec2 v_uv;void main(){gl_Position=u_matrix*vec4(a_pos,0.0,1.0);v_uv=a_uv;}`);
-        const fs=compileShader(gl,gl.FRAGMENT_SHADER,`precision mediump float;uniform sampler2D u_dbz;uniform sampler2D u_palette;varying vec2 v_uv;void main(){float sampleValue=texture2D(u_dbz,v_uv).r;float code=floor(sampleValue*255.0+0.5);vec2 paletteUv=vec2((code+0.5)/256.0,0.5);gl_FragColor=texture2D(u_palette,paletteUv);}`);
+        const fs=compileShader(gl,gl.FRAGMENT_SHADER,`
+precision highp float;
+
+uniform sampler2D u_dbz;
+uniform sampler2D u_palette;
+
+uniform float u_north_merc_y;
+uniform float u_south_merc_y;
+uniform float u_north_lat;
+uniform float u_south_lat;
+
+varying vec2 v_uv;
+
+const float PI=3.14159265358979323846;
+
+void main(){
+
+// Interpolated texture Y corresponds to Web-Mercator Y.
+float mercY=
+mix(
+u_north_merc_y,
+u_south_merc_y,
+v_uv.y
+);
+
+
+// Convert Web-Mercator Y back to geographic latitude.
+float latitude=
+(
+2.0*
+atan(
+exp(
+(0.5-mercY)
+*2.0
+*PI
+)
+)
+-(PI*0.5)
+)
+*180.0
+/PI;
+
+
+// MRMS itself is equally spaced by latitude,
+// so select the source row using true latitude.
+float sourceV=
+clamp(
+(
+u_north_lat
+-latitude
+)
+/
+(
+u_north_lat
+-u_south_lat
+),
+0.0,
+1.0
+);
+
+
+float sampleValue=
+texture2D(
+u_dbz,
+vec2(
+v_uv.x,
+sourceV
+)
+).r;
+
+
+float code=
+floor(
+sampleValue*255.0+0.5
+);
+
+
+vec2 paletteUv=
+vec2(
+(code+0.5)/256.0,
+0.5
+);
+
+
+gl_FragColor=
+texture2D(
+u_palette,
+paletteUv
+);
+}
+`);
         this.program=gl.createProgram();gl.attachShader(this.program,vs);gl.attachShader(this.program,fs);gl.linkProgram(this.program);gl.deleteShader(vs);gl.deleteShader(fs);if(!gl.getProgramParameter(this.program,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(this.program)||"numeric radar shader link failed");
         const nw=mapboxgl.MercatorCoordinate.fromLngLat([west,north]),ne=mapboxgl.MercatorCoordinate.fromLngLat([east,north]),sw=mapboxgl.MercatorCoordinate.fromLngLat([west,south]),se=mapboxgl.MercatorCoordinate.fromLngLat([east,south]);
         const positions=new Float32Array([nw.x,nw.y,sw.x,sw.y,ne.x,ne.y,ne.x,ne.y,sw.x,sw.y,se.x,se.y]),uvs=new Float32Array([0,0,0,1,1,0,1,0,0,1,1,1]);
@@ -134,7 +268,7 @@ ctx.putImageData(image,0,0);
       addTexture(key,data){if(this.textures.has(key))return;const gl=this.gl;if(!gl)throw new Error("WebGL layer is not ready");const texture=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,texture);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);if(this.isWebGL2)gl.texImage2D(gl.TEXTURE_2D,0,gl.R8,this.width,this.height,0,gl.RED,gl.UNSIGNED_BYTE,data);else gl.texImage2D(gl.TEXTURE_2D,0,gl.LUMINANCE,this.width,this.height,0,gl.LUMINANCE,gl.UNSIGNED_BYTE,data);this.textures.set(key,{texture,lastUsed:performance.now()});},
       hasTexture(key){return this.textures.has(String(key));},activate(key){const item=this.textures.get(String(key));if(!item)return false;this.activeKey=String(key);item.lastUsed=performance.now();this.map?.triggerRepaint();return true;},
       evictExcept(keep){for(const[key,item]of this.textures){if(keep.has(key))continue;this.gl?.deleteTexture(item.texture);this.textures.delete(key);}},
-      render(gl,matrix){const active=this.textures.get(this.activeKey);if(!active)return;active.lastUsed=performance.now();gl.useProgram(this.program);gl.disable(gl.DEPTH_TEST);gl.enable(gl.BLEND);gl.blendEquation(gl.FUNC_ADD);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.uniformMatrix4fv(gl.getUniformLocation(this.program,"u_matrix"),false,matrix);const p=gl.getAttribLocation(this.program,"a_pos");gl.bindBuffer(gl.ARRAY_BUFFER,this.pos);gl.enableVertexAttribArray(p);gl.vertexAttribPointer(p,2,gl.FLOAT,false,0,0);const u=gl.getAttribLocation(this.program,"a_uv");gl.bindBuffer(gl.ARRAY_BUFFER,this.uv);gl.enableVertexAttribArray(u);gl.vertexAttribPointer(u,2,gl.FLOAT,false,0,0);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,active.texture);gl.uniform1i(gl.getUniformLocation(this.program,"u_dbz"),0);gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,this.palette);gl.uniform1i(gl.getUniformLocation(this.program,"u_palette"),1);gl.drawArrays(gl.TRIANGLES,0,6);},
+      render(gl,matrix){const active=this.textures.get(this.activeKey);if(!active)return;active.lastUsed=performance.now();gl.useProgram(this.program);gl.disable(gl.DEPTH_TEST);gl.enable(gl.BLEND);gl.blendEquation(gl.FUNC_ADD);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.uniformMatrix4fv(gl.getUniformLocation(this.program,"u_matrix"),false,matrix);gl.uniform1f(gl.getUniformLocation(this.program,"u_north_merc_y"),northMercY);gl.uniform1f(gl.getUniformLocation(this.program,"u_south_merc_y"),southMercY);gl.uniform1f(gl.getUniformLocation(this.program,"u_north_lat"),north);gl.uniform1f(gl.getUniformLocation(this.program,"u_south_lat"),south);const p=gl.getAttribLocation(this.program,"a_pos");gl.bindBuffer(gl.ARRAY_BUFFER,this.pos);gl.enableVertexAttribArray(p);gl.vertexAttribPointer(p,2,gl.FLOAT,false,0,0);const u=gl.getAttribLocation(this.program,"a_uv");gl.bindBuffer(gl.ARRAY_BUFFER,this.uv);gl.enableVertexAttribArray(u);gl.vertexAttribPointer(u,2,gl.FLOAT,false,0,0);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,active.texture);gl.uniform1i(gl.getUniformLocation(this.program,"u_dbz"),0);gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,this.palette);gl.uniform1i(gl.getUniformLocation(this.program,"u_palette"),1);gl.drawArrays(gl.TRIANGLES,0,6);},
       onRemove(map,gl){for(const item of this.textures.values())gl.deleteTexture(item.texture);this.textures.clear();if(this.palette)gl.deleteTexture(this.palette);if(this.pos)gl.deleteBuffer(this.pos);if(this.uv)gl.deleteBuffer(this.uv);if(this.program)gl.deleteProgram(this.program);}
     };
   }
