@@ -25,7 +25,7 @@
   <section class="panel">
     <div class="eyebrow">Numeric texture experiment / isolated</div>
     <h1>Native MRALA Numeric GPU Loop</h1>
-    <p>Full native 7000×3500 MRALA reflectivity. Each radar cell remains one numeric byte and WebGL applies the palette with NEAREST sampling.</p>
+    <p>Full native 7000×3500 MRALA reflectivity. Each radar cell remains one numeric byte; WebGL reproduces the same Python Level II palette used by the native WebP renderer with NEAREST sampling.</p>
     <div class="status"><span id="statusDot" class="dot"></span><span id="statusText">Loading native numeric MRALA manifest…</span></div>
     <div class="meta">
       <strong>Encoding:</strong> <span id="encodingInfo">--</span><br>
@@ -38,7 +38,7 @@
     </div>
   </section>
   <div class="legend">
-    <div class="legend-title">GPU-shaded Reflectivity (dBZ)</div>
+    <div class="legend-title">Python Level II GPU Reflectivity (dBZ)</div>
     <canvas id="legendBar" class="legend-bar" width="256" height="1"></canvas>
     <div class="legend-labels"><span>-30</span><span>-20</span><span>-10</span><span>0</span><span>10</span><span>20</span><span>30</span><span>40</span><span>50</span><span>60+</span></div>
   </div>
@@ -83,7 +83,7 @@
 // 256 RGBA entries = 1024 bytes.
 // Numeric radar values remain untouched.
 
-const PALETTE_LUT_B64="AAAAAAAAAAgBAQEJAQECCQICAwoCAwMKAwMECwMEBQsEBAYMBQUHDQUGCA0GBgkOBgcJDgcICg8HCAsPCAkMEAkKDREKCw8SCwwQEgwNEhMNDhMUDhAUFQ8RFhYQEhcWERMZFxIUGhgTFRsZFBYdGhUXHhsWGCAcFxohHRgbIh4ZHCQfGh0lIBseJyEcHygiGx8oIxseKCQaHikmGh0pJxkdKSgYHSkpGBwpKhccKiwXGyotFhsqLhYbKy8VGysxFRssMhUbLDQUGy01FBsuNhQbLjgUGy85ExsvOxMbMDwTGzA+ExwxPxQcMkEUHDJCFBwyRBQdM0YUHTRHFR00SRUeNEoVHjVMFh82ThcfNlAXIDdSGCE4VBkiOFYaIjlYGyM6WhskO1wcJDteHSU8YB8qQGIiLkVkJDNJZyc4TmkpPVJrK0FXbS5GW28wS2ByM09kdDVUaHY3WW15Ol5xezxidn4/Z3qBQWx/hENxg4ZGdYeJSHqMjEt/kI5Ng5WRT4iZlFKNnpZUkqKZV5annFmbq55TnqGhTqGXpEikjadDp4OpPap6rDeucLAysWa0LLRcuCe3UrwhukjAILZExB6yQcgdrT3MG6k60BqlNtQZoDPWF5wv2BaYLNsUlCjdE5Ak3xKLIeEQhx3jD4Ma5g1+FugMehPqC3YP7AlyDO4IbgjxBmkF8wVlAfUedAH2NoMB90+SAfhnoQH5gLAA+pnAAPuxzwD8yt4A/eLtAP77/AD/9vQA//HtAP/r5QD/5t4A/+HWAP/czgD/18cA/9G/AP/MuAD//ZUC//iRAv/yjQL/7YoC/+eGAv/iggL/3X4C/9d6Av/SdwL/zHMC/8dvAv/CawL/vGcC/7dkAv+xYAL//SYA//cmAf/xJgL/6ycD/+UnBP/gJwb/2igH/9QoCP/OKAn/yCgK/8IoC/+8KQz/tikN/7ApDv+qKg//pCoQ/58qEv+ZKhP/kyoU/40rFf/BlLP/wY6w/8KIrf/Cgar/wnun/8N1pP/DbqH/w2ie/8Rim//EXJj/xFaV/8VPkv/FSY//xkOM/8Y8if/GNob/xzCD/8cqgP/HJH3/yB16/6UC1/+bAtD/kQLJ/4cBwv99Abv/cgG0/2gBrv9eAaf/VACg/0oAmf+H//3/f/Ly/3fk5/9v1tz/Z8nR/168xv9Wrrr/TqCv/0aTpP8+hpn/rWNA/6ZZOv+fTzT/mUUu/5I7KP+LMiL/hCgc/30eFv93FBD/cAoK/2kABP9kAAT/XgAE/1kAA/9UAAP/TwAD/0oAA/9EAAP/PwAC/zoAAv80AAL/LwAC/yoAAv8lAAH/IAAB/xoAAf8VAAH/EAAB/woAAP8FAAD/AAAA/w==";
+const PALETTE_LUT_B64="AAAAAFg2gABaOIIAXDqFAF48hwBgPooAYkCLAGRDjQBmRY8AaUiRAGtLkgBuTpMAcVGUAHRVlgB3WJYAelyXAH1fmACAY5kAgmaZAIVqmQCIbZkAi3GZAI10mACPeJcAkXyWAJSAlgCVg5QAl4aTAJmJkgCbjJEAnI6PAJ2RjQCek4sAoJaKAKCXiAChmYYAopuEAKOdggCinYAAoZ1+AKCdfACgnnsAn516AJ6ceQCdm3gAnJt3AJ6eewChoX8ApKSDAKeniACpqYsAq6uPAK2tkgCvsJYAqqyWABxfjAodYY4MHmORDx9lkxEgZ5YUImmYFiNrmxkkbZ0bJW+gHiZxoiAoc6UjKXeoJyt8qyssga4vLoayNC+KtTgxj7g8MpS7QDSZv0U1ncJJN6LFTTinyFE6rMxWO7DPWj210l4+utViQL/ZZ0HD3GtDyN9vRM3ic0l1mH1JeZeFSX6WjEmDlZRKiJSbSo2To0qRkqtLlpGzS5uQu0ugj8RMpY7NRqCCz0CbdtI6lmrUNJJe1y+NU9kpiEfcI4Q73h1/L+EXeiPjEnYY5iSAFec3ihPpSZUR6lyfDuxuqgztgbQK75O+B/CmyQXyuNMD88veAfXM3AD2zdoA987YAPjP1gD50dQA+tLSAPvT0AD81M4A/dXMAP7XywD/2MMA/9m8AP/atAD/260B/92mAf/engH/35cC/+CPAv/hiAL/44ED/959A//aegT/1nYF/9JzBf/OcAb/yWwH/8VpB//BZQj/vWIJ/7lfCv+5WQv/ulMM/7tNDf+7Rw7/vEIP/708EP+9NhH/vjAS/78qE//AJRT/wTAk/8I8NP/DR0T/xFNU/8VfZP/GanT/x3aE/8iBlP/JjaT/ypm0/8mRr//Iiav/yIGn/8d5o//HcZ//xmma/8Vhlv/FWZL/xFGO/8RKiv++RZH/uEGY/7I9n/+tOab/pzWu/6Ewtf+cLLz/lijD/5Akyv+LINL/hR7N/4AdyP97HMP/dRu+/3Aauv9rGLX/ZRew/2AWq/9bFab/VhSi/1gnp/9bOq3/XU2z/2BguP9ic77/ZYbE/2eZyf9qrM//bL/V/2/S2/9rytT/Z8LO/2O6x/9gssH/XKu6/1ijtP9Vm63/UZOn/02LoP9KhJr/TneK/1Jre/9WX2z/WlNc/15HTf9iOj7/Zi4u/2oiH/9uFhD/cwoB/38cGv+LLjP/l0BN/6NSZv+vZID/u3aZ/8eIsv/Tmsz/36zl/+u+///twv7/78b9//HK/P/zzvv/9dL6//fW+f/52vj/+973//3i9v//5vX//+j2///r9///7fj///D5///y+v//9fv///f8///6/f///P7//////w==";
 
 const PALETTE_LUT=Uint8Array.from(
 atob(PALETTE_LUT_B64),
