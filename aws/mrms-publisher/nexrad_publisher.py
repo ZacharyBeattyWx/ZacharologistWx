@@ -3,12 +3,23 @@
 
 This feed is intentionally independent of MRMS. It gives the browser a
 traditional base-reflectivity mosaic with negative-dBZ/clear-air returns while
-MRMS remains the stable nationwide fallback. A later frontend LOD can consume
-this archive without changing the MRMS timeline or assets.
+MRMS remains the stable nationwide fallback.
+
+Each observation is published in two representations:
+  * lossless RGBA WebP for the existing browser/test renderer
+  * gzipped row-major uint8 dBZ grid for the numeric-texture experiment
+
+Numeric encoding:
+  0       = no data
+  1..255  = -32.0..+95.0 dBZ in 0.5 dBZ increments
+
+The numeric path lets WebGL keep one byte per radar pixel and apply the palette
+in a shader instead of decoding/storing a four-byte RGBA image per pixel.
 """
 
 from __future__ import annotations
 
+import gzip
 import json
 import os
 import sys
@@ -27,6 +38,13 @@ import render_mrms_mosaic as palette  # noqa: E402
 import render_unidata_nexrad_mosaic as nexrad  # noqa: E402
 
 S3 = boto3.client("s3")
+
+NUMERIC_NODATA_CODE = 0
+NUMERIC_MIN_CODE = 1
+NUMERIC_MAX_CODE = 255
+NUMERIC_MIN_DBZ = -32.0
+NUMERIC_STEP_DBZ = 0.5
+NUMERIC_MAX_DBZ = NUMERIC_MIN_DBZ + (NUMERIC_MAX_CODE - NUMERIC_MIN_CODE) * NUMERIC_STEP_DBZ
 
 
 def _env_int(name: str, default: int, minimum: int = 1) -> int:
@@ -90,8 +108,50 @@ def _upload_image(bucket: str, key: str, path: Path) -> None:
     )
 
 
+def _encode_numeric_grid(dbz: np.ndarray) -> np.ndarray:
+    """Quantize a float dBZ grid into the public 8-bit numeric texture format."""
+    sampled = np.asarray(dbz, dtype=np.float32)
+    encoded = np.zeros(sampled.shape, dtype=np.uint8)
+    valid = np.isfinite(sampled) & (sampled > -9000)
+    if not np.any(valid):
+        return encoded
+
+    clipped = np.clip(sampled[valid], NUMERIC_MIN_DBZ, NUMERIC_MAX_DBZ)
+    codes = np.rint((clipped - NUMERIC_MIN_DBZ) / NUMERIC_STEP_DBZ).astype(np.int16) + NUMERIC_MIN_CODE
+    encoded[valid] = np.clip(codes, NUMERIC_MIN_CODE, NUMERIC_MAX_CODE).astype(np.uint8)
+    return encoded
+
+
+def _upload_numeric_grid(bucket: str, key: str, encoded: np.ndarray) -> tuple[int, int]:
+    raw = np.ascontiguousarray(encoded, dtype=np.uint8).tobytes(order="C")
+    compressed = gzip.compress(raw, compresslevel=4)
+    S3.put_object(
+        Bucket=bucket,
+        Key=key,
+        Body=compressed,
+        ContentType="application/octet-stream",
+        ContentEncoding="gzip",
+        CacheControl="public,max-age=31536000,immutable",
+        Metadata={
+            "zwx-format": "uint8-dbz-grid-v1",
+            "zwx-width": str(encoded.shape[1]),
+            "zwx-height": str(encoded.shape[0]),
+        },
+    )
+    return len(raw), len(compressed)
+
+
 def _delete_frame(bucket: str, prefix: str, frame_id: str) -> None:
-    S3.delete_object(Bucket=bucket, Key=f"{prefix}/frames/{frame_id}.webp")
+    S3.delete_objects(
+        Bucket=bucket,
+        Delete={
+            "Objects": [
+                {"Key": f"{prefix}/frames/{frame_id}.webp"},
+                {"Key": f"{prefix}/frames/{frame_id}.dbz"},
+            ],
+            "Quiet": True,
+        },
+    )
 
 
 def publish_nexrad_n0b(event: dict | None = None) -> dict:
@@ -134,12 +194,13 @@ def publish_nexrad_n0b(event: dict | None = None) -> dict:
     ]
     existing_by_id = {str(frame["id"]): frame for frame in existing_frames}
 
-    if frame_id in existing_by_id:
+    if frame_id in existing_by_id and existing_by_id[frame_id].get("dbz"):
         return {
             "status": "no-change",
             "product": "N0B",
             "latest": source_time.isoformat(),
             "frameCount": len(existing_frames),
+            "numeric": True,
         }
 
     response = session.get(source["file_url"], timeout=60)
@@ -159,6 +220,7 @@ def publish_nexrad_n0b(event: dict | None = None) -> dict:
 
     work_root = Path("/tmp/nexrad-n0b")
     work_root.mkdir(parents=True, exist_ok=True)
+
     image_path = work_root / f"{frame_id}.webp"
     rgba = palette.colorize_dbz_grid_for_tiles(dbz)
     Image.fromarray(rgba, mode="RGBA").save(
@@ -170,10 +232,21 @@ def publish_nexrad_n0b(event: dict | None = None) -> dict:
     image_key = f"{prefix}/frames/{frame_id}.webp"
     _upload_image(bucket, image_key, image_path)
 
+    encoded = _encode_numeric_grid(dbz)
+    numeric_key = f"{prefix}/frames/{frame_id}.dbz"
+    numeric_raw_bytes, numeric_compressed_bytes = _upload_numeric_grid(
+        bucket,
+        numeric_key,
+        encoded,
+    )
+
     frame = {
         "id": frame_id,
         "valid_time": source_time.isoformat(),
         "image": f"frames/{frame_id}.webp",
+        "dbz": f"frames/{frame_id}.dbz",
+        "dbzRawBytes": numeric_raw_bytes,
+        "dbzCompressedBytes": numeric_compressed_bytes,
         "product": "N0B",
         "dataset": source["dataset_name"],
         "minDbz": round(float(np.min(dbz[valid])), 2),
@@ -212,9 +285,21 @@ def publish_nexrad_n0b(event: dict | None = None) -> dict:
         "startTime": retained[0]["valid_time"],
         "endTime": retained[-1]["valid_time"],
         "calibration": "N0B raw 0..255 -> -32..95 dBZ",
+        "numericEncoding": {
+            "format": "uint8-dbz-grid-v1",
+            "layout": "row-major",
+            "compression": "gzip-http-content-encoding",
+            "noDataCode": NUMERIC_NODATA_CODE,
+            "minCode": NUMERIC_MIN_CODE,
+            "maxCode": NUMERIC_MAX_CODE,
+            "minDbz": NUMERIC_MIN_DBZ,
+            "stepDbz": NUMERIC_STEP_DBZ,
+            "maxDbz": NUMERIC_MAX_DBZ,
+            "bytesPerPixel": 1,
+        },
         "publisher": {
             "platform": "aws-lambda-s3",
-            "strategy": "independent-nexrad-n0b-v1",
+            "strategy": "independent-nexrad-n0b-v2-numeric-texture",
         },
         "frames": retained,
     }
@@ -231,5 +316,11 @@ def publish_nexrad_n0b(event: dict | None = None) -> dict:
         "frameCount": len(retained),
         "minDbz": frame["minDbz"],
         "maxDbz": frame["maxDbz"],
+        "numericRawBytes": numeric_raw_bytes,
+        "numericCompressedBytes": numeric_compressed_bytes,
+        "numericCompressionRatio": round(
+            numeric_compressed_bytes / max(1, numeric_raw_bytes),
+            4,
+        ),
         "pruned": len(pruned),
     }
