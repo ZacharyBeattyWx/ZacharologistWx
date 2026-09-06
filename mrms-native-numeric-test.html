@@ -279,8 +279,72 @@ paletteUv
   async function loadTexture(index){if(!frames.length)return false;const normalized=(index+frames.length)%frames.length,frame=frames[normalized],key=String(frame.id);if(layer.hasTexture(key))return true;if(loading.has(key))return loading.get(key);const promise=(async()=>{const started=performance.now();const response=await fetch(numericUrl(frame),{cache:"force-cache"});if(!response.ok)throw new Error(`Numeric frame HTTP ${response.status}`);const packedLength=Number(response.headers.get("content-length")||0);const bytes=await maybeDecompress(await response.arrayBuffer());if(bytes.byteLength!==expectedBytes())throw new Error(`Numeric frame size ${bytes.byteLength.toLocaleString()} != expected ${expectedBytes().toLocaleString()}`);layer.addTexture(key,bytes);frame._lastFetchMs=performance.now()-started;frame._transferBytes=packedLength||Number(frame.dbzCompressedBytes||0);return true;})();loading.set(key,promise);try{return await promise;}finally{loading.delete(key);}};
 
   function desiredIndices(start=currentIndex){const set=new Set();if(!frames.length)return set;const limit=Math.min(GPU_DEPTH,frames.length);for(let n=0;n<limit;n++)set.add((start+n)%frames.length);return set;}
-  async function fillBuffer(start=currentIndex,blockCount=0){if(!frames.length)return 0;const targets=[...desiredIndices(start)];let cursor=0,ready=0;const worker=async()=>{while(cursor<targets.length){const index=targets[cursor++];try{await loadTexture(index);ready++;updateGpuInfo();}catch(error){console.warn("Numeric radar prefetch failed",frames[index]?.id,error);}}};const workers=Array.from({length:Math.min(FETCH_CONCURRENCY,targets.length)},()=>worker());if(blockCount>0){while(true){const contiguous=countReadyAhead(start);if(contiguous>=Math.min(blockCount,frames.length))break;if(workers.every(p=>p.__done))break;await new Promise(r=>setTimeout(r,25));}}
-    await Promise.all(workers);const keep=new Set([...desiredIndices(currentIndex)].map(i=>String(frames[i].id)));layer.evictExcept(keep);updateGpuInfo();return ready;}
+  async function fillBuffer(start=currentIndex,blockCount=0){
+    if(!frames.length)return 0;
+
+    const targets=[...desiredIndices(start)];
+    let cursor=0;
+    let ready=0;
+
+    const worker=async()=>{
+      while(cursor<targets.length){
+        const index=targets[cursor++];
+
+        try{
+          await loadTexture(index);
+          ready++;
+          updateGpuInfo();
+        }catch(error){
+          console.warn(
+            "Numeric radar prefetch failed",
+            frames[index]?.id,
+            error
+          );
+        }
+      }
+    };
+
+    const workers=Array.from(
+      {
+        length:Math.min(
+          FETCH_CONCURRENCY,
+          targets.length
+        )
+      },
+      ()=>worker()
+    );
+
+    // Wait for the actual fetch workers to finish.
+    // The previous __done polling check could never become true
+    // and could leave playback permanently stuck at "Building...".
+    await Promise.all(workers);
+
+    if(blockCount>0){
+      const required=Math.min(
+        blockCount,
+        frames.length,
+        GPU_DEPTH
+      );
+
+      const contiguous=countReadyAhead(start);
+
+      if(contiguous<required){
+        throw new Error(
+          `Only ${contiguous}/${required} startup frames became ready`
+        );
+      }
+    }
+
+    const keep=new Set(
+      [...desiredIndices(currentIndex)]
+        .map(i=>String(frames[i].id))
+    );
+
+    layer.evictExcept(keep);
+    updateGpuInfo();
+
+    return ready;
+  }
   function countReadyAhead(start=currentIndex){let count=0;for(let n=0;n<Math.min(GPU_DEPTH,frames.length);n++){const i=(start+n)%frames.length;if(!layer.hasTexture(String(frames[i].id)))break;count++;}return count;}
   function maintainBuffer(){fillBuffer(currentIndex,0).catch(error=>console.warn("Numeric rolling buffer failed",error));}
 
@@ -293,7 +357,7 @@ paletteUv
   function playbackTick(generation){if(!playing||generation!==playGeneration||frames.length<2)return;const immediate=(currentIndex+1)%frames.length;let chosen=-1;if(layer.hasTexture(String(frames[immediate].id)))chosen=immediate;else{for(let step=2;step<=Math.min(4,frames.length);step++){const candidate=(currentIndex+step)%frames.length;if(layer.hasTexture(String(frames[candidate].id))){chosen=candidate;break;}}}if(chosen>=0){layer.activate(String(frames[chosen].id));currentIndex=chosen;updateUi();maintainBuffer();}scheduleTick(generation);}
   async function startPlayback(){if(playing||frames.length<2)return;const start=currentIndex===frames.length-1?0:currentIndex;playPause.disabled=true;setStatus(`Building ${Math.min(GPU_DEPTH,frames.length)}-frame numeric GPU buffer…`);try{await showFrame(start,{buffer:false});await fillBuffer(start,Math.min(MOBILE?4:8,frames.length));currentIndex=start;layer.activate(String(frames[start].id));updateUi();playing=true;playPause.textContent="❚❚ Pause";setStatus(`Numeric GPU playback ready • ${countReadyAhead(start)} frames ahead`,"live");const generation=++playGeneration;targetTick=performance.now();scheduleTick(generation);}catch(error){console.error(error);setStatus(`Buffer failed: ${error.message}`,"error");}finally{playPause.disabled=false;}}
 
-  async function loadArchive(map){try{const response=await fetch(`${MANIFEST_URL}?t=${Date.now()}`,{cache:"no-store"});if(!response.ok)throw new Error(`Manifest HTTP ${response.status}`);manifest=await response.json();const encoding=manifest.numericEncoding;if(!encoding)throw new Error("Publisher has not produced numericEncoding yet; deploy the numeric publisher first");frames=recentNumericFrames(manifest.frames||[]);if(!frames.length)throw new Error("No native numeric MRALA frames yet. Invoke the updated publisher once, then refresh.");encodingInfo.textContent=`${encoding.format} • ${encoding.stepDbz} dBZ/code • gzip`;gridInfo.textContent=`${manifest.imageWidth} × ${manifest.imageHeight} • ${(expectedBytes()/1048576).toFixed(2)} MiB/frame on GPU`;archiveInfo.textContent=`${frames.length} numeric frame${frames.length===1?"":"s"} in last 3 hr`;frameSlider.max=String(frames.length-1);currentIndex=frames.length-1;layer=createNumericLayer(manifest.bounds,Number(manifest.imageWidth),Number(manifest.imageHeight));const before=firstSymbolLayerId(map);if(before)map.addLayer(layer,before);else map.addLayer(layer);await showFrame(currentIndex);setStatus(`Numeric N0B ready • ${frames.length} frame${frames.length===1?"":"s"}`,"live");console.info("MRMS native numeric texture v1:",`${manifest.imageWidth}x${manifest.imageHeight}`,`${(expectedBytes()/1048576).toFixed(2)} MiB/GPU frame`,`${GPU_DEPTH}-frame ring`);}catch(error){console.error(error);setStatus(error.message,"error");}}
+  async function loadArchive(map){try{const response=await fetch(`${MANIFEST_URL}?t=${Date.now()}`,{cache:"no-store"});if(!response.ok)throw new Error(`Manifest HTTP ${response.status}`);manifest=await response.json();const encoding=manifest.numericEncoding;if(!encoding)throw new Error("Publisher has not produced numericEncoding yet; deploy the numeric publisher first");frames=recentNumericFrames(manifest.frames||[]);if(!frames.length)throw new Error("No native numeric MRALA frames yet. Invoke the updated publisher once, then refresh.");encodingInfo.textContent=`${encoding.format} • ${encoding.stepDbz} dBZ/code • gzip`;gridInfo.textContent=`${manifest.imageWidth} × ${manifest.imageHeight} • ${(expectedBytes()/1048576).toFixed(2)} MiB/frame on GPU`;archiveInfo.textContent=`${frames.length} numeric frame${frames.length===1?"":"s"} in last 3 hr`;frameSlider.max=String(frames.length-1);currentIndex=frames.length-1;layer=createNumericLayer(manifest.bounds,Number(manifest.imageWidth),Number(manifest.imageHeight));const before=firstSymbolLayerId(map);if(before)map.addLayer(layer,before);else map.addLayer(layer);await showFrame(currentIndex);setStatus(`Native MRALA numeric ready • ${frames.length} frame${frames.length===1?"":"s"}`,"live");console.info("MRMS native numeric texture v1:",`${manifest.imageWidth}x${manifest.imageHeight}`,`${(expectedBytes()/1048576).toFixed(2)} MiB/GPU frame`,`${GPU_DEPTH}-frame ring`);}catch(error){console.error(error);setStatus(error.message,"error");}}
 
   mapboxgl.accessToken=window.MAPBOX_PUBLIC_TOKEN;
   drawLegendBar();
