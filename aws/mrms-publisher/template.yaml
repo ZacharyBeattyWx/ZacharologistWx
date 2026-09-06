@@ -170,6 +170,7 @@ Resources:
           MRALA_NUMERIC_MAX_RENDER_PER_RUN: !Ref MralaNumericMaxRenderPerRun
           MRALA_NUMERIC_COMPRESSLEVEL: '4'
           MRALA_NUMERIC_OVERVIEW_MAX_WIDTH: '3500'
+          MRALA_NUMERIC_CHUNK_PIXELS: '1024'
 
   MralaNumericSchedule:
     Type: AWS::Events::Rule

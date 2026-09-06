@@ -17,6 +17,7 @@ from __future__ import annotations
 import gzip
 import html
 import json
+import math
 import os
 import re
 import shutil
@@ -300,6 +301,74 @@ def _read_numeric_grid(
     )
 
 
+def _native_chunk_layout(
+    bounds: list[float],
+    width: int,
+    height: int,
+    chunk_pixels: int,
+) -> tuple[list[dict], int, int]:
+    """Describe native MRALA chunks using true outer cell edges."""
+    west_center, south_center, east_center, north_center = map(
+        float,
+        bounds,
+    )
+
+    lon_step = (
+        (east_center - west_center) / (width - 1)
+        if width > 1
+        else 0.0
+    )
+
+    lat_step = (
+        (north_center - south_center) / (height - 1)
+        if height > 1
+        else 0.0
+    )
+
+    west_edge = west_center - (lon_step / 2.0)
+    north_edge = north_center + (lat_step / 2.0)
+
+    columns = int(math.ceil(width / chunk_pixels))
+    rows = int(math.ceil(height / chunk_pixels))
+
+    layout: list[dict] = []
+
+    for row in range(rows):
+        y0 = row * chunk_pixels
+        y1 = min(height, y0 + chunk_pixels)
+
+        for column in range(columns):
+            x0 = column * chunk_pixels
+            x1 = min(width, x0 + chunk_pixels)
+
+            chunk_id = f"r{row}-c{column}"
+
+            west = west_edge + (lon_step * x0)
+            east = west_edge + (lon_step * x1)
+            north = north_edge - (lat_step * y0)
+            south = north_edge - (lat_step * y1)
+
+            layout.append(
+                {
+                    "id": chunk_id,
+                    "row": row,
+                    "column": column,
+                    "x": x0,
+                    "y": y0,
+                    "width": int(x1 - x0),
+                    "height": int(y1 - y0),
+                    "bounds": [
+                        round(west, 8),
+                        round(south, 8),
+                        round(east, 8),
+                        round(north, 8),
+                    ],
+                }
+            )
+
+    return layout, rows, columns
+
+
 def _upload_numeric_grid(
     bucket: str,
     key: str,
@@ -325,6 +394,100 @@ def _upload_numeric_grid(
         },
     )
     return len(raw), len(compressed)
+
+
+def _upload_native_chunks(
+    bucket: str,
+    prefix: str,
+    frame_id: str,
+    encoded: np.ndarray,
+    layout: list[dict],
+    compresslevel: int,
+) -> tuple[int, int, int]:
+    raw_total = 0
+    compressed_total = 0
+    count = 0
+
+    for chunk in layout:
+        x0 = int(chunk["x"])
+        y0 = int(chunk["y"])
+        width = int(chunk["width"])
+        height = int(chunk["height"])
+
+        data = np.ascontiguousarray(
+            encoded[
+                y0 : y0 + height,
+                x0 : x0 + width,
+            ],
+            dtype=np.uint8,
+        )
+
+        key = (
+            f"{prefix}/native-chunks/"
+            f"{frame_id}/{chunk['id']}.dbz"
+        )
+
+        raw_bytes, compressed_bytes = _upload_numeric_grid(
+            bucket,
+            key,
+            data,
+            compresslevel,
+        )
+
+        raw_total += raw_bytes
+        compressed_total += compressed_bytes
+        count += 1
+
+    return raw_total, compressed_total, count
+
+
+def _delete_object_prefix(
+    bucket: str,
+    prefix: str,
+) -> int:
+    deleted = 0
+    continuation = None
+
+    while True:
+        request = {
+            "Bucket": bucket,
+            "Prefix": prefix,
+        }
+
+        if continuation:
+            request["ContinuationToken"] = continuation
+
+        response = S3.list_objects_v2(**request)
+
+        keys = [
+            item["Key"]
+            for item in (response.get("Contents") or [])
+        ]
+
+        for start in range(0, len(keys), 1000):
+            chunk = keys[start : start + 1000]
+
+            S3.delete_objects(
+                Bucket=bucket,
+                Delete={
+                    "Objects": [
+                        {"Key": key}
+                        for key in chunk
+                    ],
+                    "Quiet": True,
+                },
+            )
+
+            deleted += len(chunk)
+
+        if not response.get("IsTruncated"):
+            break
+
+        continuation = response.get(
+            "NextContinuationToken"
+        )
+
+    return deleted
 
 
 def _delete_frames(bucket: str, prefix: str, frame_ids: list[str]) -> None:
@@ -355,6 +518,12 @@ def _delete_frames(bucket: str, prefix: str, frame_ids: list[str]) -> None:
                 "Quiet": True,
             },
         )
+
+        for frame_id in chunk:
+            _delete_object_prefix(
+                bucket,
+                f"{prefix}/native-chunks/{frame_id}/",
+            )
 
 
 def publish_mrala_numeric(event: dict | None = None) -> dict:
@@ -388,6 +557,12 @@ def publish_mrala_numeric(event: dict | None = None) -> dict:
     overview_max_width = _env_int(
         "MRALA_NUMERIC_OVERVIEW_MAX_WIDTH",
         3500,
+        minimum=512,
+    )
+
+    native_chunk_pixels = _env_int(
+        "MRALA_NUMERIC_CHUNK_PIXELS",
+        1024,
         minimum=512,
     )
 
@@ -440,7 +615,10 @@ def publish_mrala_numeric(event: dict | None = None) -> dict:
         (
             frame
             for frame in retained.values()
-            if not frame.get("overview")
+            if (
+                not frame.get("overview")
+                or not frame.get("nativeChunksReady")
+            )
         ),
         key=lambda frame: _parse_iso(
             frame["valid_time"]
@@ -462,12 +640,16 @@ def publish_mrala_numeric(event: dict | None = None) -> dict:
 
     rendered_ids: list[str] = []
     upgraded_overview_ids: list[str] = []
+    upgraded_native_chunk_ids: list[str] = []
 
     rendered_raw = 0
     rendered_compressed = 0
 
     overview_raw = 0
     overview_compressed = 0
+
+    native_chunk_raw = 0
+    native_chunk_compressed = 0
 
     for source in selected:
         decoded = _decode_source(session, source)
@@ -526,6 +708,33 @@ def publish_mrala_numeric(event: dict | None = None) -> dict:
         overview_raw += overview_raw_bytes
         overview_compressed += overview_compressed_bytes
 
+        (
+            native_layout,
+            native_rows,
+            native_columns,
+        ) = _native_chunk_layout(
+            current_geometry[0],
+            current_geometry[1],
+            current_geometry[2],
+            native_chunk_pixels,
+        )
+
+        (
+            native_chunk_raw_bytes,
+            native_chunk_compressed_bytes,
+            native_chunk_count,
+        ) = _upload_native_chunks(
+            bucket,
+            prefix,
+            frame_id,
+            encoded,
+            native_layout,
+            compresslevel,
+        )
+
+        native_chunk_raw += native_chunk_raw_bytes
+        native_chunk_compressed += native_chunk_compressed_bytes
+
         valid_time = decoded.get("valid_time") or source["filename_time"]
 
         frame = {
@@ -550,6 +759,17 @@ def publish_mrala_numeric(event: dict | None = None) -> dict:
             "overviewCompressedBytes":
                 overview_compressed_bytes,
 
+            "nativeChunksReady": True,
+
+            "nativeChunkCount":
+                native_chunk_count,
+
+            "nativeChunkRawBytes":
+                native_chunk_raw_bytes,
+
+            "nativeChunkCompressedBytes":
+                native_chunk_compressed_bytes,
+
             "source_name": source["name"],
             "product": PRODUCT,
             "productKey": PRODUCT_KEY,
@@ -570,7 +790,18 @@ def publish_mrala_numeric(event: dict | None = None) -> dict:
 
 
     if geometry is not None and upgrade_selected:
-        _, native_width, native_height = geometry
+        bounds, native_width, native_height = geometry
+
+        (
+            native_layout,
+            native_rows,
+            native_columns,
+        ) = _native_chunk_layout(
+            bounds,
+            native_width,
+            native_height,
+            native_chunk_pixels,
+        )
 
         for frame in upgrade_selected:
             frame_id = str(frame["id"])
@@ -586,63 +817,104 @@ def publish_mrala_numeric(event: dict | None = None) -> dict:
                 native_height,
             )
 
-            overview = _downsample_nearest_uint8(
-                encoded,
-                overview_max_width,
-            )
+            if not frame.get("overview"):
+                overview = _downsample_nearest_uint8(
+                    encoded,
+                    overview_max_width,
+                )
 
-            overview_key = (
-                f"{prefix}/overview/{frame_id}.dbz"
-            )
+                overview_key = (
+                    f"{prefix}/overview/{frame_id}.dbz"
+                )
 
-            (
-                overview_raw_bytes,
-                overview_compressed_bytes,
-            ) = _upload_numeric_grid(
-                bucket,
-                overview_key,
-                overview,
-                compresslevel,
-            )
+                (
+                    overview_raw_bytes,
+                    overview_compressed_bytes,
+                ) = _upload_numeric_grid(
+                    bucket,
+                    overview_key,
+                    overview,
+                    compresslevel,
+                )
 
-            frame["overview"] = (
-                f"overview/{frame_id}.dbz"
-            )
+                frame["overview"] = (
+                    f"overview/{frame_id}.dbz"
+                )
 
-            frame["overviewWidth"] = int(
-                overview.shape[1]
-            )
+                frame["overviewWidth"] = int(
+                    overview.shape[1]
+                )
 
-            frame["overviewHeight"] = int(
-                overview.shape[0]
-            )
+                frame["overviewHeight"] = int(
+                    overview.shape[0]
+                )
 
-            frame["overviewRawBytes"] = (
-                overview_raw_bytes
-            )
+                frame["overviewRawBytes"] = (
+                    overview_raw_bytes
+                )
 
-            frame["overviewCompressedBytes"] = (
-                overview_compressed_bytes
-            )
+                frame["overviewCompressedBytes"] = (
+                    overview_compressed_bytes
+                )
+
+                upgraded_overview_ids.append(
+                    frame_id
+                )
+
+                overview_raw += overview_raw_bytes
+                overview_compressed += (
+                    overview_compressed_bytes
+                )
+
+                print(
+                    f"Overview backfill {frame_id}: "
+                    f"{overview.shape[1]}x{overview.shape[0]} "
+                    f"gzip="
+                    f"{overview_compressed_bytes / 1048576:.2f} MiB",
+                    flush=True,
+                )
+
+            if not frame.get("nativeChunksReady"):
+                (
+                    chunk_raw_bytes,
+                    chunk_compressed_bytes,
+                    chunk_count,
+                ) = _upload_native_chunks(
+                    bucket,
+                    prefix,
+                    frame_id,
+                    encoded,
+                    native_layout,
+                    compresslevel,
+                )
+
+                frame["nativeChunksReady"] = True
+                frame["nativeChunkCount"] = chunk_count
+                frame["nativeChunkRawBytes"] = (
+                    chunk_raw_bytes
+                )
+                frame["nativeChunkCompressedBytes"] = (
+                    chunk_compressed_bytes
+                )
+
+                upgraded_native_chunk_ids.append(
+                    frame_id
+                )
+
+                native_chunk_raw += chunk_raw_bytes
+                native_chunk_compressed += (
+                    chunk_compressed_bytes
+                )
+
+                print(
+                    f"Native chunk backfill {frame_id}: "
+                    f"{chunk_count} chunks "
+                    f"gzip="
+                    f"{chunk_compressed_bytes / 1048576:.2f} MiB",
+                    flush=True,
+                )
 
             retained[frame_id] = frame
-
-            upgraded_overview_ids.append(
-                frame_id
-            )
-
-            overview_raw += overview_raw_bytes
-            overview_compressed += (
-                overview_compressed_bytes
-            )
-
-            print(
-                f"Overview backfill {frame_id}: "
-                f"{overview.shape[1]}x{overview.shape[0]} "
-                f"gzip="
-                f"{overview_compressed_bytes / 1048576:.2f} MiB",
-                flush=True,
-            )
 
 
     if geometry is None:
@@ -676,6 +948,23 @@ def publish_mrala_numeric(event: dict | None = None) -> dict:
         if not frame.get("overview")
     )
 
+    (
+        native_chunk_layout,
+        native_chunk_rows,
+        native_chunk_columns,
+    ) = _native_chunk_layout(
+        bounds,
+        width,
+        height,
+        native_chunk_pixels,
+    )
+
+    remaining_native_chunks = sum(
+        1
+        for frame in retained.values()
+        if not frame.get("nativeChunksReady")
+    )
+
     now = datetime.now(UTC)
     manifest = {
         "generated_at": now.isoformat(),
@@ -702,8 +991,22 @@ def publish_mrala_numeric(event: dict | None = None) -> dict:
                 "width": width,
                 "height": height,
                 "pathField": "dbz",
+                "mode": "viewport-chunks",
                 "recommendedMinZoom": 4.6,
             },
+        },
+
+        "nativeChunking": {
+            "mode": "viewport-numeric-chunks-v1",
+            "chunkPixels": native_chunk_pixels,
+            "rows": native_chunk_rows,
+            "columns": native_chunk_columns,
+            "chunkCount": len(native_chunk_layout),
+            "template": (
+                "native-chunks/"
+                "{frameId}/{chunkId}.dbz"
+            ),
+            "layout": native_chunk_layout,
         },
 
         "historyWindowMinutes": history_minutes,
@@ -724,14 +1027,22 @@ def publish_mrala_numeric(event: dict | None = None) -> dict:
         },
         "publisher": {
             "platform": "aws-lambda-s3",
-            "strategy": "mrala-numeric-lod-v2",
+            "strategy": "mrala-numeric-viewport-chunks-v3",
         },
         "frames": frames,
     }
     _upload_manifest(bucket, manifest_key, manifest)
 
     return {
-        "status": "published" if rendered_ids else "current",
+        "status": (
+            "published"
+            if (
+                rendered_ids
+                or upgraded_overview_ids
+                or upgraded_native_chunk_ids
+            )
+            else "current"
+        ),
         "product": PRODUCT,
         "prefix": prefix,
         "historyMinutes": history_minutes,
@@ -749,6 +1060,33 @@ def publish_mrala_numeric(event: dict | None = None) -> dict:
 
         "remainingOverview":
             remaining_overview,
+
+        "upgradedNativeChunks":
+            upgraded_native_chunk_ids,
+
+        "remainingNativeChunks":
+            remaining_native_chunks,
+
+        "nativeChunkPixels":
+            native_chunk_pixels,
+
+        "nativeChunkGrid":
+            f"{native_chunk_columns}x{native_chunk_rows}",
+
+        "nativeChunkCount":
+            len(native_chunk_layout),
+
+        "nativeChunkRawMiB":
+            round(
+                native_chunk_raw / 1048576,
+                2,
+            ),
+
+        "nativeChunkGzipMiB":
+            round(
+                native_chunk_compressed / 1048576,
+                2,
+            ),
 
         "gpuMiBPerFrame":
             round(width * height / 1048576, 2),
