@@ -25,7 +25,7 @@
   <section class="panel">
     <div class="eyebrow">Numeric texture experiment / isolated</div>
     <h1>Native MRALA Numeric GPU Loop</h1>
-    <p>Mercator-corrected native 7000×3500 MRALA reflectivity. Each radar cell remains one numeric byte; WebGL reproduces the same Python Level II palette with NEAREST sampling. Playback uses display-only GPU crossfades between consecutive real MRMS observations.</p>
+    <p>Seamless numeric MRALA LOD test. National/regional playback uses the lightweight 3500×1750 numeric overview; zoomed detail switches to the native 7000×3500 grid. Both use the same dBZ encoding, palette, timeline, NEAREST sampling, and display-only GPU interpolation.</p>
     <div class="status"><span id="statusDot" class="dot"></span><span id="statusText">Loading native numeric MRALA manifest…</span></div>
     <div class="meta">
       <strong>Encoding:</strong> <span id="encodingInfo">--</span><br>
@@ -68,14 +68,24 @@
   const LAYER_ID="mrms-native-numeric-dbz-layer";
   const HISTORY_MS=3*60*60*1000;
   const MOBILE=window.matchMedia?.("(pointer: coarse)")?.matches||/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  const GPU_DEPTH=MOBILE?3:10;
-  const FETCH_CONCURRENCY=MOBILE?1:3;
+  const GPU_DEPTH_OVERVIEW=MOBILE?6:18;
+  const GPU_DEPTH_NATIVE=MOBILE?3:8;
+
+  const FETCH_CONCURRENCY_OVERVIEW=MOBILE?2:4;
+  const FETCH_CONCURRENCY_NATIVE=MOBILE?1:3;
+
+  const INTERPOLATION_FPS=MOBILE?24:30;
 
   const statusDot=document.getElementById("statusDot"),statusText=document.getElementById("statusText");
   const frameSlider=document.getElementById("frameSlider"),playPause=document.getElementById("playPause"),prevFrame=document.getElementById("prevFrame"),nextFrame=document.getElementById("nextFrame"),speedSelect=document.getElementById("speedSelect"),frameTime=document.getElementById("frameTime"),frameAge=document.getElementById("frameAge");
   const encodingInfo=document.getElementById("encodingInfo"),gridInfo=document.getElementById("gridInfo"),archiveInfo=document.getElementById("archiveInfo"),validInfo=document.getElementById("validInfo"),dbzInfo=document.getElementById("dbzInfo"),gpuInfo=document.getElementById("gpuInfo"),transferInfo=document.getElementById("transferInfo");
 
   let manifest=null,frames=[],currentIndex=0,layer=null,playing=false,playGeneration=0,targetTick=0,playbackRaf=0,bufferBusy=false,bufferPending=false;
+
+  let activeTier="overview";
+  let tierSwitching=false;
+  let tierSwitchGeneration=0;
+  let lastBlendPaint=0;
   const loading=new Map();
 
   // Precompiled full RadarScope palette LUT.
@@ -115,7 +125,131 @@ ctx.putImageData(image,0,0);
 }
 
   function frameMs(frame){return Date.parse(frame?.valid_time||"");}
-  function numericUrl(frame){return new URL(frame.dbz,ARCHIVE_BASE).toString();}
+  function tierDimensions(tier=activeTier){
+    if(tier==="overview"){
+      const lod=manifest?.lod?.overview||{};
+
+      return {
+        width:Number(
+          lod.width
+          ||frames[0]?.overviewWidth
+          ||manifest?.imageWidth
+          ||0
+        ),
+        height:Number(
+          lod.height
+          ||frames[0]?.overviewHeight
+          ||manifest?.imageHeight
+          ||0
+        )
+      };
+    }
+
+    return {
+      width:Number(
+        manifest?.imageWidth||0
+      ),
+      height:Number(
+        manifest?.imageHeight||0
+      )
+    };
+  }
+
+  function tierLabel(tier=activeTier){
+    return tier==="overview"
+      ? "Overview"
+      : "Native";
+  }
+
+  function gpuDepth(tier=activeTier){
+    return tier==="overview"
+      ? GPU_DEPTH_OVERVIEW
+      : GPU_DEPTH_NATIVE;
+  }
+
+  function fetchConcurrency(tier=activeTier){
+    return tier==="overview"
+      ? FETCH_CONCURRENCY_OVERVIEW
+      : FETCH_CONCURRENCY_NATIVE;
+  }
+
+  function tierPath(frame,tier=activeTier){
+    const path=
+      tier==="overview"
+        ? frame?.overview
+        : frame?.dbz;
+
+    if(!path){
+      throw new Error(
+        `Missing ${tier} numeric path for ${frame?.id||"frame"}`
+      );
+    }
+
+    return path;
+  }
+
+  function numericUrl(frame,tier=activeTier){
+    return new URL(
+      tierPath(frame,tier),
+      ARCHIVE_BASE
+    ).toString();
+  }
+
+  function textureKey(index,tier=activeTier){
+    if(!frames.length)return "";
+
+    const normalized=
+      (Number(index)+frames.length)
+      %frames.length;
+
+    return (
+      tier
+      +":"
+      +String(frames[normalized].id)
+    );
+  }
+
+  function expectedBytes(tier=activeTier){
+    const dims=tierDimensions(tier);
+
+    return dims.width*dims.height;
+  }
+
+  function initialTierForZoom(zoom){
+    const nativeEnter=Number(
+      manifest?.lod?.overview
+        ?.recommendedMaxZoom
+      ??4.9
+    );
+
+    return zoom>=nativeEnter
+      ? "native"
+      : "overview";
+  }
+
+  function tierForZoom(zoom){
+    const nativeEnter=Number(
+      manifest?.lod?.overview
+        ?.recommendedMaxZoom
+      ??4.9
+    );
+
+    const overviewEnter=Number(
+      manifest?.lod?.native
+        ?.recommendedMinZoom
+      ??4.6
+    );
+
+    if(activeTier==="native"){
+      return zoom<=overviewEnter
+        ? "overview"
+        : "native";
+    }
+
+    return zoom>=nativeEnter
+      ? "native"
+      : "overview";
+  }
   function recentNumericFrames(items){const valid=items.filter(f=>f?.dbz&&Number.isFinite(frameMs(f))).sort((a,b)=>frameMs(a)-frameMs(b));if(!valid.length)return[];const cutoff=frameMs(valid[valid.length-1])-HISTORY_MS;return valid.filter(f=>frameMs(f)>=cutoff);}
   function compileShader(gl,type,source){const shader=gl.createShader(type);gl.shaderSource(shader,source);gl.compileShader(shader);if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(shader)||"shader compile failed");return shader;}
 
@@ -295,7 +429,106 @@ u_mix,
         this.pos=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,this.pos);gl.bufferData(gl.ARRAY_BUFFER,positions,gl.STATIC_DRAW);this.uv=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,this.uv);gl.bufferData(gl.ARRAY_BUFFER,uvs,gl.STATIC_DRAW);
         this.palette=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,this.palette);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,256,1,0,gl.RGBA,gl.UNSIGNED_BYTE,PALETTE_LUT);
       },
-      addTexture(key,data){if(this.textures.has(key))return;const gl=this.gl;if(!gl)throw new Error("WebGL layer is not ready");const texture=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,texture);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);if(this.isWebGL2)gl.texImage2D(gl.TEXTURE_2D,0,gl.R8,this.width,this.height,0,gl.RED,gl.UNSIGNED_BYTE,data);else gl.texImage2D(gl.TEXTURE_2D,0,gl.LUMINANCE,this.width,this.height,0,gl.LUMINANCE,gl.UNSIGNED_BYTE,data);this.textures.set(key,{texture,lastUsed:performance.now()});},
+      addTexture(key,data,textureWidth,textureHeight){
+        if(this.textures.has(key)){
+          return;
+        }
+
+        const gl=this.gl;
+
+        if(!gl){
+          throw new Error(
+            "WebGL layer is not ready"
+          );
+        }
+
+        const width=Number(textureWidth);
+        const height=Number(textureHeight);
+
+        if(
+          !Number.isFinite(width)
+          ||!Number.isFinite(height)
+          ||width<1
+          ||height<1
+        ){
+          throw new Error(
+            "Invalid numeric texture dimensions"
+          );
+        }
+
+        const texture=
+          gl.createTexture();
+
+        gl.bindTexture(
+          gl.TEXTURE_2D,
+          texture
+        );
+
+        gl.texParameteri(
+          gl.TEXTURE_2D,
+          gl.TEXTURE_WRAP_S,
+          gl.CLAMP_TO_EDGE
+        );
+
+        gl.texParameteri(
+          gl.TEXTURE_2D,
+          gl.TEXTURE_WRAP_T,
+          gl.CLAMP_TO_EDGE
+        );
+
+        gl.texParameteri(
+          gl.TEXTURE_2D,
+          gl.TEXTURE_MIN_FILTER,
+          gl.NEAREST
+        );
+
+        gl.texParameteri(
+          gl.TEXTURE_2D,
+          gl.TEXTURE_MAG_FILTER,
+          gl.NEAREST
+        );
+
+        gl.pixelStorei(
+          gl.UNPACK_ALIGNMENT,
+          1
+        );
+
+        if(this.isWebGL2){
+          gl.texImage2D(
+            gl.TEXTURE_2D,
+            0,
+            gl.R8,
+            width,
+            height,
+            0,
+            gl.RED,
+            gl.UNSIGNED_BYTE,
+            data
+          );
+        }else{
+          gl.texImage2D(
+            gl.TEXTURE_2D,
+            0,
+            gl.LUMINANCE,
+            width,
+            height,
+            0,
+            gl.LUMINANCE,
+            gl.UNSIGNED_BYTE,
+            data
+          );
+        }
+
+        this.textures.set(
+          key,
+          {
+            texture,
+            width,
+            height,
+            lastUsed:performance.now()
+          }
+        );
+      },
       hasTexture(key){
         return this.textures.has(String(key));
       },
@@ -579,40 +812,278 @@ u_mix,
   }
 
   function firstSymbolLayerId(map){return(map.getStyle()?.layers||[]).find(l=>l.type==="symbol")?.id;}
-  function expectedBytes(){return Number(manifest?.imageWidth||0)*Number(manifest?.imageHeight||0);}
-  async function maybeDecompress(bytes){if(bytes.byteLength===expectedBytes())return new Uint8Array(bytes);const probe=new Uint8Array(bytes);if(probe[0]===0x1f&&probe[1]===0x8b&&typeof DecompressionStream!=="undefined"){const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));const unpacked=await new Response(stream).arrayBuffer();return new Uint8Array(unpacked);}return probe;}
-  async function loadTexture(index){if(!frames.length)return false;const normalized=(index+frames.length)%frames.length,frame=frames[normalized],key=String(frame.id);if(layer.hasTexture(key))return true;if(loading.has(key))return loading.get(key);const promise=(async()=>{const started=performance.now();const response=await fetch(numericUrl(frame),{cache:"force-cache"});if(!response.ok)throw new Error(`Numeric frame HTTP ${response.status}`);const packedLength=Number(response.headers.get("content-length")||0);const bytes=await maybeDecompress(await response.arrayBuffer());if(bytes.byteLength!==expectedBytes())throw new Error(`Numeric frame size ${bytes.byteLength.toLocaleString()} != expected ${expectedBytes().toLocaleString()}`);layer.addTexture(key,bytes);frame._lastFetchMs=performance.now()-started;frame._transferBytes=packedLength||Number(frame.dbzCompressedBytes||0);return true;})();loading.set(key,promise);try{return await promise;}finally{loading.delete(key);}};
+  async function maybeDecompress(
+    bytes,
+    expectedLength
+  ){
+    if(bytes.byteLength===expectedLength){
+      return new Uint8Array(bytes);
+    }
 
-  function desiredIndices(start=currentIndex){const set=new Set();if(!frames.length)return set;const limit=Math.min(GPU_DEPTH,frames.length);for(let n=0;n<limit;n++)set.add((start+n)%frames.length);return set;}
-  async function fillBuffer(start=currentIndex,blockCount=0){
-    if(!frames.length)return 0;
+    const probe=
+      new Uint8Array(bytes);
 
-    const targets=[...desiredIndices(start)];
+    if(
+      probe[0]===0x1f
+      &&probe[1]===0x8b
+      &&typeof DecompressionStream!=="undefined"
+    ){
+      const stream=
+        new Blob([bytes])
+          .stream()
+          .pipeThrough(
+            new DecompressionStream(
+              "gzip"
+            )
+          );
+
+      const unpacked=
+        await new Response(stream)
+          .arrayBuffer();
+
+      return new Uint8Array(
+        unpacked
+      );
+    }
+
+    return probe;
+  }
+
+  async function loadTexture(
+    index,
+    tier=activeTier
+  ){
+    if(!frames.length){
+      return false;
+    }
+
+    const normalized=
+      (Number(index)+frames.length)
+      %frames.length;
+
+    const frame=
+      frames[normalized];
+
+    const key=
+      textureKey(
+        normalized,
+        tier
+      );
+
+    if(layer.hasTexture(key)){
+      return true;
+    }
+
+    if(loading.has(key)){
+      return loading.get(key);
+    }
+
+    const promise=(async()=>{
+      const started=
+        performance.now();
+
+      const dims=
+        tierDimensions(tier);
+
+      const expected=
+        dims.width*dims.height;
+
+      const response=
+        await fetch(
+          numericUrl(frame,tier),
+          {cache:"force-cache"}
+        );
+
+      if(!response.ok){
+        throw new Error(
+          `${tierLabel(tier)} frame HTTP ${response.status}`
+        );
+      }
+
+      const packedLength=
+        Number(
+          response.headers.get(
+            "content-length"
+          )||0
+        );
+
+      const bytes=
+        await maybeDecompress(
+          await response.arrayBuffer(),
+          expected
+        );
+
+      if(bytes.byteLength!==expected){
+        throw new Error(
+          `${tierLabel(tier)} frame size ${bytes.byteLength.toLocaleString()} != expected ${expected.toLocaleString()}`
+        );
+      }
+
+      layer.addTexture(
+        key,
+        bytes,
+        dims.width,
+        dims.height
+      );
+
+      frame._fetchStats=
+        frame._fetchStats||{};
+
+      const fallbackPacked=
+        tier==="overview"
+          ? Number(
+              frame.overviewCompressedBytes
+              ||0
+            )
+          : Number(
+              frame.dbzCompressedBytes
+              ||0
+            );
+
+      frame._fetchStats[tier]={
+        ms:
+          performance.now()
+          -started,
+
+        transferBytes:
+          packedLength
+          ||fallbackPacked
+      };
+
+      return true;
+    })();
+
+    loading.set(
+      key,
+      promise
+    );
+
+    try{
+      return await promise;
+    }finally{
+      loading.delete(key);
+    }
+  }
+
+
+  function desiredIndices(
+    start=currentIndex,
+    tier=activeTier
+  ){
+    const set=new Set();
+
+    if(!frames.length){
+      return set;
+    }
+
+    const limit=Math.min(
+      gpuDepth(tier),
+      frames.length
+    );
+
+    for(let n=0;n<limit;n++){
+      set.add(
+        (start+n)%frames.length
+      );
+    }
+
+    return set;
+  }
+
+  function countReadyAhead(
+    start=currentIndex,
+    tier=activeTier
+  ){
+    let count=0;
+
+    const limit=Math.min(
+      gpuDepth(tier),
+      frames.length
+    );
+
+    for(let n=0;n<limit;n++){
+      const index=
+        (start+n)%frames.length;
+
+      if(
+        !layer.hasTexture(
+          textureKey(
+            index,
+            tier
+          )
+        )
+      ){
+        break;
+      }
+
+      count++;
+    }
+
+    return count;
+  }
+
+  async function fillBuffer(
+    start=currentIndex,
+    blockCount=0,
+    tier=activeTier
+  ){
+    if(!frames.length){
+      return 0;
+    }
+
+    const depth=
+      gpuDepth(tier);
+
+    const targets=[
+      ...desiredIndices(
+        start,
+        tier
+      )
+    ];
+
     let cursor=0;
     let ready=0;
 
     const worker=async()=>{
       while(cursor<targets.length){
-        const index=targets[cursor++];
+        const index=
+          targets[cursor++];
 
         try{
-          await loadTexture(index);
-
-          const liveKeep=new Set(
-            [...desiredIndices(currentIndex)]
-              .map(i=>String(frames[i].id))
+          await loadTexture(
+            index,
+            tier
           );
 
-          layer.trimTo(
-            GPU_DEPTH,
-            liveKeep
-          );
+          if(tier===activeTier){
+            const liveKeep=
+              new Set(
+                [
+                  ...desiredIndices(
+                    currentIndex,
+                    tier
+                  )
+                ].map(
+                  i=>
+                    textureKey(
+                      i,
+                      tier
+                    )
+                )
+              );
+
+            layer.trimTo(
+              depth,
+              liveKeep
+            );
+
+            updateGpuInfo();
+          }
 
           ready++;
-          updateGpuInfo();
         }catch(error){
           console.warn(
-            "Numeric radar prefetch failed",
+            `${tierLabel(tier)} radar prefetch failed`,
             frames[index]?.id,
             error
           );
@@ -620,46 +1091,66 @@ u_mix,
       }
     };
 
-    const workers=Array.from(
-      {
-        length:Math.min(
-          FETCH_CONCURRENCY,
-          targets.length
-        )
-      },
-      ()=>worker()
-    );
+    const workers=
+      Array.from(
+        {
+          length:Math.min(
+            fetchConcurrency(tier),
+            targets.length
+          )
+        },
+        ()=>worker()
+      );
 
-    // Wait for the actual fetch workers to finish.
-    // The previous __done polling check could never become true
-    // and could leave playback permanently stuck at "Building...".
     await Promise.all(workers);
 
     if(blockCount>0){
-      const required=Math.min(
-        blockCount,
-        frames.length,
-        GPU_DEPTH
-      );
+      const required=
+        Math.min(
+          blockCount,
+          frames.length,
+          depth
+        );
 
-      const contiguous=countReadyAhead(start);
+      const contiguous=
+        countReadyAhead(
+          start,
+          tier
+        );
 
       if(contiguous<required){
         throw new Error(
-          `Only ${contiguous}/${required} startup frames became ready`
+          `Only ${contiguous}/${required} ${tier} startup frames became ready`
         );
       }
     }
 
-    const keep=new Set(
-      [...desiredIndices(currentIndex)]
-        .map(i=>String(frames[i].id))
-    );
+    // A LOD switch may have occurred while these fetches
+    // were running. Never let an old tier evict the new tier.
+    if(tier!==activeTier){
+      return ready;
+    }
+
+    const keep=
+      new Set(
+        [
+          ...desiredIndices(
+            currentIndex,
+            tier
+          )
+        ].map(
+          i=>
+            textureKey(
+              i,
+              tier
+            )
+        )
+      );
 
     layer.evictExcept(keep);
 
     layer.trimTo(
-      GPU_DEPTH,
+      depth,
       keep
     );
 
@@ -667,7 +1158,7 @@ u_mix,
 
     return ready;
   }
-  function countReadyAhead(start=currentIndex){let count=0;for(let n=0;n<Math.min(GPU_DEPTH,frames.length);n++){const i=(start+n)%frames.length;if(!layer.hasTexture(String(frames[i].id)))break;count++;}return count;}
+
   async function maintainBuffer(){
     if(bufferBusy){
       bufferPending=true;
@@ -679,13 +1170,22 @@ u_mix,
     try{
       do{
         bufferPending=false;
-        const start=currentIndex;
+
+        const tier=
+          activeTier;
+
+        const start=
+          currentIndex;
 
         try{
-          await fillBuffer(start,0);
+          await fillBuffer(
+            start,
+            0,
+            tier
+          );
         }catch(error){
           console.warn(
-            "Numeric rolling buffer failed",
+            `${tierLabel(tier)} rolling buffer failed`,
             error
           );
         }
@@ -695,9 +1195,259 @@ u_mix,
     }
   }
 
-  function updateGpuInfo(){if(!layer||!frames.length){gpuInfo.textContent="--";return;}const perFrame=expectedBytes();gpuInfo.textContent=`${layer.textures.size}/${Math.min(GPU_DEPTH,frames.length)} textures • ${(layer.textures.size*perFrame/1048576).toFixed(1)} MiB single-channel`;}
-  function updateUi(){const frame=frames[currentIndex];if(!frame)return;const ms=frameMs(frame),d=new Date(ms);frameSlider.value=String(currentIndex);frameTime.textContent=d.toLocaleTimeString([],{hour:"numeric",minute:"2-digit"});const age=Math.max(0,Math.round((Date.now()-ms)/60000));frameAge.textContent=age?`${age} min ago`:"Now";validInfo.textContent=d.toLocaleString();dbzInfo.textContent=`${frame.minDbz??"--"} to ${frame.maxDbz??"--"} dBZ`;const raw=Number(frame.dbzRawBytes||expectedBytes()),packed=Number(frame.dbzCompressedBytes||0);transferInfo.textContent=packed?`${(packed/1048576).toFixed(2)} MiB gzip → ${(raw/1048576).toFixed(2)} MiB GPU texture${frame._lastFetchMs?` • ${Math.round(frame._lastFetchMs)} ms`:""}`:`${(raw/1048576).toFixed(2)} MiB raw`;updateGpuInfo();}
-  async function showFrame(index,{buffer=true}={}){if(!frames.length)return false;const normalized=(Number(index)+frames.length)%frames.length;if(!layer.hasTexture(String(frames[normalized].id)))await loadTexture(normalized);if(!layer.activate(String(frames[normalized].id)))return false;currentIndex=normalized;updateUi();if(buffer)maintainBuffer();return true;}
+  function updateGridInfo(){
+    if(!manifest){
+      gridInfo.textContent="--";
+      return;
+    }
+
+    const dims=
+      tierDimensions(
+        activeTier
+      );
+
+    const perFrame=
+      dims.width
+      *dims.height;
+
+    gridInfo.textContent=
+      `${tierLabel(activeTier)} ${dims.width} × ${dims.height} • ${(perFrame/1048576).toFixed(2)} MiB/frame • z${map.getZoom().toFixed(2)}`;
+  }
+
+  function updateGpuInfo(){
+    if(!layer||!frames.length){
+      gpuInfo.textContent="--";
+      return;
+    }
+
+    let totalBytes=0;
+
+    for(
+      const item
+      of layer.textures.values()
+    ){
+      totalBytes+=
+        Number(item.width||0)
+        *Number(item.height||0);
+    }
+
+    gpuInfo.textContent=
+      `${tierLabel(activeTier)} • ${layer.textures.size}/${Math.min(gpuDepth(activeTier),frames.length)} textures • ${(totalBytes/1048576).toFixed(1)} MiB single-channel`;
+  }
+
+  function updateUi(){
+    const frame=
+      frames[currentIndex];
+
+    if(!frame){
+      return;
+    }
+
+    const ms=
+      frameMs(frame);
+
+    const d=
+      new Date(ms);
+
+    frameSlider.value=
+      String(currentIndex);
+
+    frameTime.textContent=
+      d.toLocaleTimeString(
+        [],
+        {
+          hour:"numeric",
+          minute:"2-digit"
+        }
+      );
+
+    const age=
+      Math.max(
+        0,
+        Math.round(
+          (Date.now()-ms)/60000
+        )
+      );
+
+    frameAge.textContent=
+      age
+        ? `${age} min ago`
+        : "Now";
+
+    validInfo.textContent=
+      d.toLocaleString();
+
+    dbzInfo.textContent=
+      `${frame.minDbz??"--"} to ${frame.maxDbz??"--"} dBZ`;
+
+    const overview=
+      activeTier==="overview";
+
+    const raw=
+      Number(
+        overview
+          ? frame.overviewRawBytes
+          : frame.dbzRawBytes
+      )
+      ||expectedBytes(
+        activeTier
+      );
+
+    const packed=
+      Number(
+        overview
+          ? frame.overviewCompressedBytes
+          : frame.dbzCompressedBytes
+      )
+      ||0;
+
+    const stats=
+      frame._fetchStats?.[
+        activeTier
+      ];
+
+    transferInfo.textContent=
+      packed
+        ? `${(packed/1048576).toFixed(2)} MiB gzip → ${(raw/1048576).toFixed(2)} MiB ${activeTier} texture${stats?.ms ? ` • ${Math.round(stats.ms)} ms` : ""}`
+        : `${(raw/1048576).toFixed(2)} MiB raw`;
+
+    updateGridInfo();
+    updateGpuInfo();
+  }
+
+  async function showFrame(
+    index,
+    {
+      buffer=true,
+      tier=activeTier
+    }={}
+  ){
+    if(!frames.length){
+      return false;
+    }
+
+    const normalized=
+      (Number(index)+frames.length)
+      %frames.length;
+
+    const key=
+      textureKey(
+        normalized,
+        tier
+      );
+
+    if(!layer.hasTexture(key)){
+      await loadTexture(
+        normalized,
+        tier
+      );
+    }
+
+    if(!layer.activate(key)){
+      return false;
+    }
+
+    currentIndex=
+      normalized;
+
+    updateUi();
+
+    if(buffer){
+      maintainBuffer();
+    }
+
+    return true;
+  }
+
+  async function switchTierForZoom(){
+    if(
+      !manifest
+      ||!layer
+      ||!frames.length
+    ){
+      return;
+    }
+
+    const desired=
+      tierForZoom(
+        map.getZoom()
+      );
+
+    if(desired===activeTier){
+      if(tierSwitching){
+        tierSwitchGeneration++;
+        tierSwitching=false;
+      }
+
+      updateGridInfo();
+      return;
+    }
+
+    const generation=
+      ++tierSwitchGeneration;
+
+    tierSwitching=true;
+
+    setStatus(
+      `Preparing ${tierLabel(desired)} radar LOD…`
+    );
+
+    try{
+      await loadTexture(
+        currentIndex,
+        desired
+      );
+
+      if(
+        generation
+        !==tierSwitchGeneration
+      ){
+        return;
+      }
+
+      const key=
+        textureKey(
+          currentIndex,
+          desired
+        );
+
+      if(!layer.activate(key)){
+        throw new Error(
+          `Could not activate ${desired} LOD`
+        );
+      }
+
+      activeTier=
+        desired;
+
+      lastBlendPaint=0;
+      targetTick=
+        performance.now();
+
+      updateUi();
+
+      setStatus(
+        `${tierLabel(activeTier)} MRALA LOD active • z${map.getZoom().toFixed(2)}`,
+        "live"
+      );
+    }catch(error){
+      console.error(error);
+
+      setStatus(
+        `LOD switch failed: ${error.message}`,
+        "error"
+      );
+    }finally{
+      if(
+        generation
+        ===tierSwitchGeneration
+      ){
+        tierSwitching=false;
+        maintainBuffer();
+      }
+    }
+  }
+
   function intervalMs(){
     return Math.max(
       100,
@@ -721,39 +1471,61 @@ u_mix,
 
   function playbackTick(now,generation){
     if(
-      !playing ||
-      generation!==playGeneration ||
-      frames.length<2
+      !playing
+      ||generation!==playGeneration
+      ||frames.length<2
     ){
       return;
     }
 
-    const interval=intervalMs();
+    if(tierSwitching){
+      playbackRaf=
+        requestAnimationFrame(
+          timestamp=>
+            playbackTick(
+              timestamp,
+              generation
+            )
+        );
+
+      return;
+    }
+
+    const interval=
+      intervalMs();
 
     if(!targetTick){
       targetTick=now;
     }
 
     const currentKey=
-      String(frames[currentIndex].id);
+      textureKey(
+        currentIndex,
+        activeTier
+      );
 
     const nextIndex=
-      (currentIndex+1)%frames.length;
+      (currentIndex+1)
+      %frames.length;
 
     const nextKey=
-      String(frames[nextIndex].id);
+      textureKey(
+        nextIndex,
+        activeTier
+      );
 
     if(!layer.hasTexture(nextKey)){
-      layer.setBlend(
-        currentKey,
-        currentKey,
-        0
-      );
+      if(
+        layer.nextKey
+        ||layer.mixAmount
+      ){
+        layer.activate(
+          currentKey
+        );
+      }
 
       maintainBuffer();
 
-      // Restart this transition once the exact next
-      // observation becomes available.
       targetTick=now;
 
       playbackRaf=
@@ -773,26 +1545,45 @@ u_mix,
         0,
         Math.min(
           1,
-          (now-targetTick)/interval
+          (now-targetTick)
+          /interval
         )
       );
 
-    layer.setBlend(
-      currentKey,
-      nextKey,
-      progress
-    );
+    const paintInterval=
+      1000
+      /INTERPOLATION_FPS;
+
+    if(
+      progress>=1
+      ||now-lastBlendPaint
+        >=paintInterval
+    ){
+      layer.setBlend(
+        currentKey,
+        nextKey,
+        progress
+      );
+
+      lastBlendPaint=now;
+    }
 
     if(progress>=1){
-      currentIndex=nextIndex;
+      currentIndex=
+        nextIndex;
 
-      layer.activate(nextKey);
+      layer.activate(
+        nextKey
+      );
+
+      lastBlendPaint=now;
 
       updateUi();
 
       maintainBuffer();
 
-      targetTick+=interval;
+      targetTick+=
+        interval;
 
       if(
         now-targetTick>
@@ -814,70 +1605,85 @@ u_mix,
 
   async function startPlayback(){
     if(
-      playing ||
-      frames.length<2
+      playing
+      ||frames.length<2
     ){
       return;
     }
 
     const start=
-      currentIndex===frames.length-1
+      currentIndex
+      ===frames.length-1
         ? 0
         : currentIndex;
+
+    const tier=
+      activeTier;
+
+    const depth=
+      Math.min(
+        gpuDepth(tier),
+        frames.length
+      );
 
     playPause.disabled=true;
 
     setStatus(
-      `Building ${Math.min(
-        GPU_DEPTH,
-        frames.length
-      )}-frame video-style GPU buffer…`
+      `Building ${depth}-frame ${tierLabel(tier).toLowerCase()} GPU buffer…`
     );
 
     try{
       await showFrame(
         start,
-        {buffer:false}
+        {
+          buffer:false,
+          tier
+        }
       );
 
-      // Before the clock begins, completely fill the available
-      // GPU ring. Playback therefore starts from ready textures,
-      // not from network requests.
       await fillBuffer(
         start,
-        Math.min(
-          GPU_DEPTH,
-          frames.length
-        )
+        depth,
+        tier
       );
 
       currentIndex=start;
 
       layer.activate(
-        String(frames[start].id)
+        textureKey(
+          start,
+          tier
+        )
       );
 
       updateUi();
 
       playing=true;
-      playPause.textContent="❚❚ Pause";
+
+      playPause.textContent=
+        "❚❚ Pause";
 
       setStatus(
-        `Video-style MRALA playback ready • ${countReadyAhead(start)} frames ahead`,
+        `${tierLabel(tier)} video-style MRALA ready • ${countReadyAhead(start,tier)} frames ahead`,
         "live"
       );
 
-      const generation=++playGeneration;
+      const generation=
+        ++playGeneration;
 
       targetTick=
         performance.now();
 
-      playbackRaf=requestAnimationFrame(
-        timestamp=>playbackTick(
-          timestamp,
-          generation
-        )
-      );
+      lastBlendPaint=0;
+
+      playbackRaf=
+        requestAnimationFrame(
+          timestamp=>
+            playbackTick(
+              timestamp,
+              generation
+            )
+        );
     }catch(error){
       console.error(error);
 
@@ -890,23 +1696,252 @@ u_mix,
     }
   }
 
-  async function loadArchive(map){try{const response=await fetch(`${MANIFEST_URL}?t=${Date.now()}`,{cache:"no-store"});if(!response.ok)throw new Error(`Manifest HTTP ${response.status}`);manifest=await response.json();const encoding=manifest.numericEncoding;if(!encoding)throw new Error("Publisher has not produced numericEncoding yet; deploy the numeric publisher first");frames=recentNumericFrames(manifest.frames||[]);if(!frames.length)throw new Error("No native numeric MRALA frames yet. Invoke the updated publisher once, then refresh.");encodingInfo.textContent=`${encoding.format} • ${encoding.stepDbz} dBZ/code • gzip`;gridInfo.textContent=`${manifest.imageWidth} × ${manifest.imageHeight} • ${(expectedBytes()/1048576).toFixed(2)} MiB/frame on GPU`;archiveInfo.textContent=`${frames.length} numeric frame${frames.length===1?"":"s"} in last 3 hr`;frameSlider.max=String(frames.length-1);currentIndex=frames.length-1;layer=createNumericLayer(manifest.bounds,Number(manifest.imageWidth),Number(manifest.imageHeight));const before=firstSymbolLayerId(map);if(before)map.addLayer(layer,before);else map.addLayer(layer);await showFrame(currentIndex);setStatus(`Native MRALA numeric ready • ${frames.length} frame${frames.length===1?"":"s"}`,"live");console.info("MRMS native numeric texture v1:",`${manifest.imageWidth}x${manifest.imageHeight}`,`${(expectedBytes()/1048576).toFixed(2)} MiB/GPU frame`,`${GPU_DEPTH}-frame ring`);}catch(error){console.error(error);setStatus(error.message,"error");}}
+  async function loadArchive(map){
+    try{
+      const response=
+        await fetch(
+          `${MANIFEST_URL}?t=${Date.now()}`,
+          {cache:"no-store"}
+        );
+
+      if(!response.ok){
+        throw new Error(
+          `Manifest HTTP ${response.status}`
+        );
+      }
+
+      manifest=
+        await response.json();
+
+      const encoding=
+        manifest.numericEncoding;
+
+      if(!encoding){
+        throw new Error(
+          "Publisher has not produced numericEncoding yet"
+        );
+      }
+
+      if(
+        !manifest?.lod?.overview
+        ||!manifest?.lod?.native
+      ){
+        throw new Error(
+          "LOD manifest metadata is missing"
+        );
+      }
+
+      frames=
+        recentNumericFrames(
+          manifest.frames||[]
+        );
+
+      if(!frames.length){
+        throw new Error(
+          "No MRALA numeric frames available"
+        );
+      }
+
+      const missingOverview=
+        frames.filter(
+          frame=>
+            !frame.overview
+        );
+
+      if(missingOverview.length){
+        throw new Error(
+          `${missingOverview.length} archive frames still lack overview LOD`
+        );
+      }
+
+      encodingInfo.textContent=
+        `${encoding.format} • ${encoding.stepDbz} dBZ/code • gzip • seamless LOD`;
+
+      archiveInfo.textContent=
+        `${frames.length} numeric frames in last 3 hr • overview complete`;
+
+      frameSlider.max=
+        String(
+          frames.length-1
+        );
+
+      currentIndex=
+        frames.length-1;
+
+      activeTier=
+        initialTierForZoom(
+          map.getZoom()
+        );
+
+      layer=
+        createNumericLayer(
+          manifest.bounds,
+          Number(
+            manifest.imageWidth
+          ),
+          Number(
+            manifest.imageHeight
+          )
+        );
+
+      const before=
+        firstSymbolLayerId(map);
+
+      if(before){
+        map.addLayer(
+          layer,
+          before
+        );
+      }else{
+        map.addLayer(layer);
+      }
+
+      await showFrame(
+        currentIndex,
+        {
+          buffer:false,
+          tier:activeTier
+        }
+      );
+
+      maintainBuffer();
+
+      setStatus(
+        `${tierLabel(activeTier)} MRALA LOD ready • ${frames.length} frames`,
+        "live"
+      );
+
+      const overview=
+        tierDimensions(
+          "overview"
+        );
+
+      const native=
+        tierDimensions(
+          "native"
+        );
+
+      console.info(
+        "MRALA numeric LOD:",
+        `overview ${overview.width}x${overview.height}`,
+        `native ${native.width}x${native.height}`,
+        `${INTERPOLATION_FPS}fps interpolation`
+      );
+    }catch(error){
+      console.error(error);
+
+      setStatus(
+        error.message,
+        "error"
+      );
+    }
+  }
 
   mapboxgl.accessToken=window.MAPBOX_PUBLIC_TOKEN;
   drawLegendBar();
 
- const map=new mapboxgl.Map({container:"map",style:MAPBOX_STYLE,center:[-96.5,38.4],zoom:3.35,minZoom:2,maxZoom:12,projection:"mercator",attributionControl:true});map.addControl(new mapboxgl.NavigationControl(),"bottom-right");map.on("load",()=>{map.setProjection("mercator");loadArchive(map);});
-  playPause.addEventListener("click",()=>playing?stopPlayback():startPlayback());prevFrame.addEventListener("click",async()=>{stopPlayback();await showFrame(currentIndex-1);});nextFrame.addEventListener("click",async()=>{stopPlayback();await showFrame(currentIndex+1);});frameSlider.addEventListener("input",async()=>{stopPlayback();await showFrame(Number(frameSlider.value));});speedSelect.addEventListener("change",()=>{
-  if(playing){
-    targetTick=performance.now();
+ const map=new mapboxgl.Map({
+   container:"map",
+   style:MAPBOX_STYLE,
+   center:[-96.5,38.4],
+   zoom:3.35,
+   minZoom:2,
+   maxZoom:12,
+   projection:"mercator",
+   attributionControl:true
+ });
 
-    layer.activate(
-      String(frames[currentIndex].id)
-    );
-  }
+ map.addControl(
+   new mapboxgl.NavigationControl(),
+   "bottom-right"
+ );
 
-  maintainBuffer();
-});
+ map.on(
+   "load",
+   async()=>{
+     map.setProjection(
+       "mercator"
+     );
+
+     await loadArchive(map);
+   }
+ );
+
+ map.on(
+   "zoomend",
+   ()=>{
+     switchTierForZoom()
+       .catch(
+         error=>
+           console.warn(
+             "MRALA LOD zoom switch failed",
+             error
+           )
+       );
+   }
+ );
+
+ playPause.addEventListener(
+   "click",
+   ()=>
+     playing
+       ? stopPlayback()
+       : startPlayback()
+ );
+
+ prevFrame.addEventListener(
+   "click",
+   async()=>{
+     stopPlayback();
+     await showFrame(
+       currentIndex-1
+     );
+   }
+ );
+
+ nextFrame.addEventListener(
+   "click",
+   async()=>{
+     stopPlayback();
+     await showFrame(
+       currentIndex+1
+     );
+   }
+ );
+
+ frameSlider.addEventListener(
+   "input",
+   async()=>{
+     stopPlayback();
+
+     await showFrame(
+       Number(
+         frameSlider.value
+       )
+     );
+   }
+ );
+
+ speedSelect.addEventListener(
+   "change",
+   ()=>{
+     if(playing){
+       targetTick=
+         performance.now();
+
+       lastBlendPaint=0;
+
+       layer.activate(
+         textureKey(
+           currentIndex,
+           activeTier
+         )
+       );
+     }
+
+     maintainBuffer();
+   }
+ );
 })();
 </script>
 </body>
