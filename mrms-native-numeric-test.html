@@ -25,7 +25,7 @@
   <section class="panel">
     <div class="eyebrow">Numeric texture experiment / isolated</div>
     <h1>Native MRALA Numeric GPU Loop</h1>
-    <p>Mercator-corrected native 7000×3500 MRALA reflectivity. Each radar cell remains one numeric byte; WebGL reproduces the same Python Level II palette used by the native WebP renderer with NEAREST sampling.</p>
+    <p>Mercator-corrected native 7000×3500 MRALA reflectivity. Each radar cell remains one numeric byte; WebGL reproduces the same Python Level II palette with NEAREST sampling. Playback uses display-only GPU crossfades between consecutive real MRMS observations.</p>
     <div class="status"><span id="statusDot" class="dot"></span><span id="statusText">Loading native numeric MRALA manifest…</span></div>
     <div class="meta">
       <strong>Encoding:</strong> <span id="encodingInfo">--</span><br>
@@ -165,19 +165,21 @@ mapboxgl.MercatorCoordinate
 const southMercY=
 mapboxgl.MercatorCoordinate
 .fromLngLat([0,south]).y;
-    return {id:LAYER_ID,type:"custom",renderingMode:"2d",map:null,gl:null,program:null,pos:null,uv:null,palette:null,textures:new Map(),activeKey:"",width,height,isWebGL2:false,
+    return {id:LAYER_ID,type:"custom",renderingMode:"2d",map:null,gl:null,program:null,pos:null,uv:null,palette:null,textures:new Map(),activeKey:"",nextKey:"",mixAmount:0,width,height,isWebGL2:false,
       onAdd(map,gl){this.map=map;this.gl=gl;const maxTexture=Number(gl.getParameter(gl.MAX_TEXTURE_SIZE)||0);if(width>maxTexture||height>maxTexture)throw new Error(`Native MRMS ${width}x${height} exceeds GPU texture limit ${maxTexture}`);this.isWebGL2=typeof WebGL2RenderingContext!=="undefined"&&gl instanceof WebGL2RenderingContext;
         const vs=compileShader(gl,gl.VERTEX_SHADER,`precision highp float;uniform mat4 u_matrix;attribute vec2 a_pos;attribute vec2 a_uv;varying vec2 v_uv;void main(){gl_Position=u_matrix*vec4(a_pos,0.0,1.0);v_uv=a_uv;}`);
         const fs=compileShader(gl,gl.FRAGMENT_SHADER,`
 precision highp float;
 
 uniform sampler2D u_dbz;
+uniform sampler2D u_dbz_next;
 uniform sampler2D u_palette;
 
 uniform float u_north_merc_y;
 uniform float u_south_merc_y;
 uniform float u_north_lat;
 uniform float u_south_lat;
+uniform float u_mix;
 
 varying vec2 v_uv;
 
@@ -229,7 +231,7 @@ u_north_lat
 );
 
 
-float sampleValue=
+float sampleValueA=
 texture2D(
 u_dbz,
 vec2(
@@ -238,24 +240,52 @@ sourceV
 )
 ).r;
 
-
-float code=
-floor(
-sampleValue*255.0+0.5
-);
-
-
-vec2 paletteUv=
+float sampleValueB=
+texture2D(
+u_dbz_next,
 vec2(
-(code+0.5)/256.0,
-0.5
+v_uv.x,
+sourceV
+)
+).r;
+
+float codeA=
+floor(
+sampleValueA*255.0+0.5
 );
 
+float codeB=
+floor(
+sampleValueB*255.0+0.5
+);
 
-gl_FragColor=
+vec4 colorA=
 texture2D(
 u_palette,
-paletteUv
+vec2(
+(codeA+0.5)/256.0,
+0.5
+)
+);
+
+vec4 colorB=
+texture2D(
+u_palette,
+vec2(
+(codeB+0.5)/256.0,
+0.5
+)
+);
+
+gl_FragColor=
+mix(
+colorA,
+colorB,
+clamp(
+u_mix,
+0.0,
+1.0
+)
 );
 }
 `);
@@ -266,9 +296,284 @@ paletteUv
         this.palette=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,this.palette);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,256,1,0,gl.RGBA,gl.UNSIGNED_BYTE,PALETTE_LUT);
       },
       addTexture(key,data){if(this.textures.has(key))return;const gl=this.gl;if(!gl)throw new Error("WebGL layer is not ready");const texture=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,texture);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);if(this.isWebGL2)gl.texImage2D(gl.TEXTURE_2D,0,gl.R8,this.width,this.height,0,gl.RED,gl.UNSIGNED_BYTE,data);else gl.texImage2D(gl.TEXTURE_2D,0,gl.LUMINANCE,this.width,this.height,0,gl.LUMINANCE,gl.UNSIGNED_BYTE,data);this.textures.set(key,{texture,lastUsed:performance.now()});},
-      hasTexture(key){return this.textures.has(String(key));},activate(key){const item=this.textures.get(String(key));if(!item)return false;this.activeKey=String(key);item.lastUsed=performance.now();this.map?.triggerRepaint();return true;},
+      hasTexture(key){
+        return this.textures.has(String(key));
+      },
+
+      activate(key){
+        const item=this.textures.get(String(key));
+
+        if(!item)return false;
+
+        this.activeKey=String(key);
+        this.nextKey="";
+        this.mixAmount=0;
+
+        item.lastUsed=performance.now();
+
+        this.map?.triggerRepaint();
+
+        return true;
+      },
+
+      setBlend(fromKey,toKey,amount){
+        const from=this.textures.get(String(fromKey));
+        const to=this.textures.get(String(toKey));
+
+        if(!from || !to){
+          return false;
+        }
+
+        this.activeKey=String(fromKey);
+        this.nextKey=String(toKey);
+
+        this.mixAmount=Math.max(
+          0,
+          Math.min(
+            1,
+            Number(amount)||0
+          )
+        );
+
+        const now=performance.now();
+
+        from.lastUsed=now;
+        to.lastUsed=now;
+
+        this.map?.triggerRepaint();
+
+        return true;
+      },
+
+      trimTo(limit,keep=new Set()){
+        const max=Math.max(
+          1,
+          Number(limit)||1
+        );
+
+        const protectedKeys=new Set(
+          [...keep]
+            .filter(Boolean)
+            .map(String)
+        );
+
+        if(this.activeKey){
+          protectedKeys.add(this.activeKey);
+        }
+
+        if(this.nextKey){
+          protectedKeys.add(this.nextKey);
+        }
+
+        while(this.textures.size>max){
+          let victimKey="";
+          let victimTime=Infinity;
+
+          for(const [key,item] of this.textures){
+            if(protectedKeys.has(key)){
+              continue;
+            }
+
+            if(item.lastUsed<victimTime){
+              victimTime=item.lastUsed;
+              victimKey=key;
+            }
+          }
+
+          if(!victimKey){
+            break;
+          }
+
+          const victim=this.textures.get(victimKey);
+
+          if(victim){
+            this.gl?.deleteTexture(victim.texture);
+          }
+
+          this.textures.delete(victimKey);
+        }
+      },
       evictExcept(keep){for(const[key,item]of this.textures){if(keep.has(key))continue;this.gl?.deleteTexture(item.texture);this.textures.delete(key);}},
-      render(gl,matrix){const active=this.textures.get(this.activeKey);if(!active)return;active.lastUsed=performance.now();gl.useProgram(this.program);gl.disable(gl.DEPTH_TEST);gl.enable(gl.BLEND);gl.blendEquation(gl.FUNC_ADD);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.uniformMatrix4fv(gl.getUniformLocation(this.program,"u_matrix"),false,matrix);gl.uniform1f(gl.getUniformLocation(this.program,"u_north_merc_y"),northMercY);gl.uniform1f(gl.getUniformLocation(this.program,"u_south_merc_y"),southMercY);gl.uniform1f(gl.getUniformLocation(this.program,"u_north_lat"),north);gl.uniform1f(gl.getUniformLocation(this.program,"u_south_lat"),south);const p=gl.getAttribLocation(this.program,"a_pos");gl.bindBuffer(gl.ARRAY_BUFFER,this.pos);gl.enableVertexAttribArray(p);gl.vertexAttribPointer(p,2,gl.FLOAT,false,0,0);const u=gl.getAttribLocation(this.program,"a_uv");gl.bindBuffer(gl.ARRAY_BUFFER,this.uv);gl.enableVertexAttribArray(u);gl.vertexAttribPointer(u,2,gl.FLOAT,false,0,0);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,active.texture);gl.uniform1i(gl.getUniformLocation(this.program,"u_dbz"),0);gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,this.palette);gl.uniform1i(gl.getUniformLocation(this.program,"u_palette"),1);gl.drawArrays(gl.TRIANGLES,0,6);},
+      render(gl,matrix){
+        const active=
+          this.textures.get(this.activeKey);
+
+        if(!active){
+          return;
+        }
+
+        const next=
+          this.textures.get(this.nextKey)
+          || active;
+
+        const now=performance.now();
+
+        active.lastUsed=now;
+        next.lastUsed=now;
+
+        gl.useProgram(this.program);
+
+        gl.disable(gl.DEPTH_TEST);
+
+        gl.enable(gl.BLEND);
+
+        gl.blendEquation(gl.FUNC_ADD);
+
+        gl.blendFunc(
+          gl.SRC_ALPHA,
+          gl.ONE_MINUS_SRC_ALPHA
+        );
+
+        gl.uniformMatrix4fv(
+          gl.getUniformLocation(
+            this.program,
+            "u_matrix"
+          ),
+          false,
+          matrix
+        );
+
+        gl.uniform1f(
+          gl.getUniformLocation(
+            this.program,
+            "u_north_merc_y"
+          ),
+          northMercY
+        );
+
+        gl.uniform1f(
+          gl.getUniformLocation(
+            this.program,
+            "u_south_merc_y"
+          ),
+          southMercY
+        );
+
+        gl.uniform1f(
+          gl.getUniformLocation(
+            this.program,
+            "u_north_lat"
+          ),
+          north
+        );
+
+        gl.uniform1f(
+          gl.getUniformLocation(
+            this.program,
+            "u_south_lat"
+          ),
+          south
+        );
+
+        gl.uniform1f(
+          gl.getUniformLocation(
+            this.program,
+            "u_mix"
+          ),
+          Math.max(
+            0,
+            Math.min(
+              1,
+              this.mixAmount||0
+            )
+          )
+        );
+
+        const p=
+          gl.getAttribLocation(
+            this.program,
+            "a_pos"
+          );
+
+        gl.bindBuffer(
+          gl.ARRAY_BUFFER,
+          this.pos
+        );
+
+        gl.enableVertexAttribArray(p);
+
+        gl.vertexAttribPointer(
+          p,
+          2,
+          gl.FLOAT,
+          false,
+          0,
+          0
+        );
+
+        const u=
+          gl.getAttribLocation(
+            this.program,
+            "a_uv"
+          );
+
+        gl.bindBuffer(
+          gl.ARRAY_BUFFER,
+          this.uv
+        );
+
+        gl.enableVertexAttribArray(u);
+
+        gl.vertexAttribPointer(
+          u,
+          2,
+          gl.FLOAT,
+          false,
+          0,
+          0
+        );
+
+        gl.activeTexture(gl.TEXTURE0);
+
+        gl.bindTexture(
+          gl.TEXTURE_2D,
+          active.texture
+        );
+
+        gl.uniform1i(
+          gl.getUniformLocation(
+            this.program,
+            "u_dbz"
+          ),
+          0
+        );
+
+        gl.activeTexture(gl.TEXTURE1);
+
+        gl.bindTexture(
+          gl.TEXTURE_2D,
+          next.texture
+        );
+
+        gl.uniform1i(
+          gl.getUniformLocation(
+            this.program,
+            "u_dbz_next"
+          ),
+          1
+        );
+
+        gl.activeTexture(gl.TEXTURE2);
+
+        gl.bindTexture(
+          gl.TEXTURE_2D,
+          this.palette
+        );
+
+        gl.uniform1i(
+          gl.getUniformLocation(
+            this.program,
+            "u_palette"
+          ),
+          2
+        );
+
+        gl.drawArrays(
+          gl.TRIANGLES,
+          0,
+          6
+        );
+      },
       onRemove(map,gl){for(const item of this.textures.values())gl.deleteTexture(item.texture);this.textures.clear();if(this.palette)gl.deleteTexture(this.palette);if(this.pos)gl.deleteBuffer(this.pos);if(this.uv)gl.deleteBuffer(this.uv);if(this.program)gl.deleteProgram(this.program);}
     };
   }
@@ -292,6 +597,17 @@ paletteUv
 
         try{
           await loadTexture(index);
+
+          const liveKeep=new Set(
+            [...desiredIndices(currentIndex)]
+              .map(i=>String(frames[i].id))
+          );
+
+          layer.trimTo(
+            GPU_DEPTH,
+            liveKeep
+          );
+
           ready++;
           updateGpuInfo();
         }catch(error){
@@ -336,11 +652,17 @@ paletteUv
     }
 
     const keep=new Set(
-      [...desiredIndices(start)]
+      [...desiredIndices(currentIndex)]
         .map(i=>String(frames[i].id))
     );
 
     layer.evictExcept(keep);
+
+    layer.trimTo(
+      GPU_DEPTH,
+      keep
+    );
+
     updateGpuInfo();
 
     return ready;
@@ -393,6 +715,7 @@ paletteUv
     }
 
     targetTick=0;
+
     playPause.textContent="▶ Play";
   }
 
@@ -408,53 +731,85 @@ paletteUv
     const interval=intervalMs();
 
     if(!targetTick){
-      targetTick=now+interval;
+      targetTick=now;
     }
 
-    if(now>=targetTick){
-      const nextIndex=
-        (currentIndex+1)%frames.length;
+    const currentKey=
+      String(frames[currentIndex].id);
 
-      const nextKey=
-        String(frames[nextIndex].id);
+    const nextIndex=
+      (currentIndex+1)%frames.length;
 
-      if(layer.hasTexture(nextKey)){
-        layer.activate(nextKey);
+    const nextKey=
+      String(frames[nextIndex].id);
 
-        currentIndex=nextIndex;
-        updateUi();
+    if(!layer.hasTexture(nextKey)){
+      layer.setBlend(
+        currentKey,
+        currentKey,
+        0
+      );
 
-        // Start replenishing the rolling ring immediately.
-        maintainBuffer();
+      maintainBuffer();
 
-        // Advance from the ideal clock rather than from the
-        // completion time of the previous frame.
-        targetTick+=interval;
+      // Restart this transition once the exact next
+      // observation becomes available.
+      targetTick=now;
 
-        // Never burst through several observations trying to
-        // catch up after a slow browser frame.
-        if(now-targetTick>interval){
-          targetTick=now+interval;
-        }
-      }else{
-        // Preserve temporal order. Do not jump over an unloaded
-        // observation just to keep the timer moving.
-        maintainBuffer();
-
-        // Retry quickly while preserving the displayed frame.
-        targetTick=now+Math.min(
-          100,
-          interval*0.35
+      playbackRaf=
+        requestAnimationFrame(
+          timestamp=>
+            playbackTick(
+              timestamp,
+              generation
+            )
         );
+
+      return;
+    }
+
+    const progress=
+      Math.max(
+        0,
+        Math.min(
+          1,
+          (now-targetTick)/interval
+        )
+      );
+
+    layer.setBlend(
+      currentKey,
+      nextKey,
+      progress
+    );
+
+    if(progress>=1){
+      currentIndex=nextIndex;
+
+      layer.activate(nextKey);
+
+      updateUi();
+
+      maintainBuffer();
+
+      targetTick+=interval;
+
+      if(
+        now-targetTick>
+        interval
+      ){
+        targetTick=now;
       }
     }
 
-    playbackRaf=requestAnimationFrame(
-      timestamp=>playbackTick(
-        timestamp,
-        generation
-      )
-    );
+    playbackRaf=
+      requestAnimationFrame(
+        timestamp=>
+          playbackTick(
+            timestamp,
+            generation
+          )
+      );
   }
 
   async function startPlayback(){
@@ -515,8 +870,7 @@ paletteUv
       const generation=++playGeneration;
 
       targetTick=
-        performance.now()+
-        intervalMs();
+        performance.now();
 
       playbackRaf=requestAnimationFrame(
         timestamp=>playbackTick(
@@ -542,7 +896,17 @@ paletteUv
   drawLegendBar();
 
  const map=new mapboxgl.Map({container:"map",style:MAPBOX_STYLE,center:[-96.5,38.4],zoom:3.35,minZoom:2,maxZoom:12,projection:"mercator",attributionControl:true});map.addControl(new mapboxgl.NavigationControl(),"bottom-right");map.on("load",()=>{map.setProjection("mercator");loadArchive(map);});
-  playPause.addEventListener("click",()=>playing?stopPlayback():startPlayback());prevFrame.addEventListener("click",async()=>{stopPlayback();await showFrame(currentIndex-1);});nextFrame.addEventListener("click",async()=>{stopPlayback();await showFrame(currentIndex+1);});frameSlider.addEventListener("input",async()=>{stopPlayback();await showFrame(Number(frameSlider.value));});speedSelect.addEventListener("change",()=>{if(playing){targetTick=performance.now()+intervalMs();}maintainBuffer();});
+  playPause.addEventListener("click",()=>playing?stopPlayback():startPlayback());prevFrame.addEventListener("click",async()=>{stopPlayback();await showFrame(currentIndex-1);});nextFrame.addEventListener("click",async()=>{stopPlayback();await showFrame(currentIndex+1);});frameSlider.addEventListener("input",async()=>{stopPlayback();await showFrame(Number(frameSlider.value));});speedSelect.addEventListener("change",()=>{
+  if(playing){
+    targetTick=performance.now();
+
+    layer.activate(
+      String(frames[currentIndex].id)
+    );
+  }
+
+  maintainBuffer();
+});
 })();
 </script>
 </body>
