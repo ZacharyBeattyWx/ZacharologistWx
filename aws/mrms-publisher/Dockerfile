@@ -7,6 +7,7 @@ RUN pip install --no-cache-dir -r ${LAMBDA_TASK_ROOT}/requirements.txt
 # publisher. If the NEXRAD feed fails, MRMS remains independently valid.
 COPY aws/mrms-publisher/handler_v2.py ${LAMBDA_TASK_ROOT}/handler_v2.py
 COPY aws/mrms-publisher/nexrad_publisher.py ${LAMBDA_TASK_ROOT}/nexrad_publisher.py
+COPY aws/mrms-publisher/mrala_numeric_publisher.py ${LAMBDA_TASK_ROOT}/mrala_numeric_publisher.py
 COPY aws/mrms-publisher/handler_v3.py ${LAMBDA_TASK_ROOT}/handler.py
 
 COPY scripts/radar/render_mrms_loop.py ${LAMBDA_TASK_ROOT}/scripts/radar/render_mrms_loop.py
