@@ -197,6 +197,109 @@ def _encode_numeric_grid(grid: np.ndarray) -> np.ndarray:
     return encoded
 
 
+
+def _downsample_nearest_uint8(
+    grid: np.ndarray,
+    max_width: int,
+) -> np.ndarray:
+    """Create a lightweight numeric overview without inventing dBZ values."""
+    sampled = np.asarray(grid, dtype=np.uint8)
+    height, width = sampled.shape
+
+    if width <= max_width:
+        return np.ascontiguousarray(sampled)
+
+    scale = max_width / float(width)
+
+    out_width = max(
+        1,
+        int(round(width * scale)),
+    )
+
+    out_height = max(
+        1,
+        int(round(height * scale)),
+    )
+
+    x_idx = (
+        np.linspace(
+            0,
+            width - 1,
+            out_width,
+        )
+        .round()
+        .astype(np.int32)
+    )
+
+    y_idx = (
+        np.linspace(
+            0,
+            height - 1,
+            out_height,
+        )
+        .round()
+        .astype(np.int32)
+    )
+
+    return np.ascontiguousarray(
+        sampled[np.ix_(y_idx, x_idx)]
+    )
+
+
+def _overview_shape(
+    width: int,
+    height: int,
+    max_width: int,
+) -> tuple[int, int]:
+    if width <= max_width:
+        return width, height
+
+    scale = max_width / float(width)
+
+    return (
+        max(1, int(round(width * scale))),
+        max(1, int(round(height * scale))),
+    )
+
+
+def _read_numeric_grid(
+    bucket: str,
+    key: str,
+    width: int,
+    height: int,
+) -> np.ndarray:
+    """Read an existing native numeric frame so old frames can gain LOD."""
+    response = S3.get_object(
+        Bucket=bucket,
+        Key=key,
+    )
+
+    payload = response["Body"].read()
+
+    if payload[:2] == b"\x1f\x8b":
+        payload = gzip.decompress(payload)
+
+    expected = width * height
+
+    if len(payload) != expected:
+        raise RuntimeError(
+            f"Existing numeric frame {key} has "
+            f"{len(payload)} bytes; expected {expected}"
+        )
+
+    return (
+        np.frombuffer(
+            payload,
+            dtype=np.uint8,
+        )
+        .reshape(
+            height,
+            width,
+        )
+        .copy()
+    )
+
+
 def _upload_numeric_grid(
     bucket: str,
     key: str,
@@ -229,13 +332,26 @@ def _delete_frames(bucket: str, prefix: str, frame_ids: list[str]) -> None:
         return
     for start in range(0, len(frame_ids), 1000):
         chunk = frame_ids[start : start + 1000]
+        objects = []
+
+        for frame_id in chunk:
+            objects.extend(
+                [
+                    {
+                        "Key":
+                            f"{prefix}/frames/{frame_id}.dbz"
+                    },
+                    {
+                        "Key":
+                            f"{prefix}/overview/{frame_id}.dbz"
+                    },
+                ]
+            )
+
         S3.delete_objects(
             Bucket=bucket,
             Delete={
-                "Objects": [
-                    {"Key": f"{prefix}/frames/{frame_id}.dbz"}
-                    for frame_id in chunk
-                ],
+                "Objects": objects,
                 "Quiet": True,
             },
         )
@@ -268,6 +384,13 @@ def publish_mrala_numeric(event: dict | None = None) -> dict:
         minimum=1,
     )
     compresslevel = min(9, compresslevel)
+
+    overview_max_width = _env_int(
+        "MRALA_NUMERIC_OVERVIEW_MAX_WIDTH",
+        3500,
+        minimum=512,
+    )
+
     manifest_key = f"{prefix}/manifest.json"
 
     session = requests.Session()
@@ -308,6 +431,27 @@ def publish_mrala_numeric(event: dict | None = None) -> dict:
     # one continuous archive backward from the newest retained frame.
     selected = list(reversed(missing))[:max_render]
 
+    remaining_budget = max(
+        0,
+        max_render - len(selected),
+    )
+
+    upgrade_candidates = sorted(
+        (
+            frame
+            for frame in retained.values()
+            if not frame.get("overview")
+        ),
+        key=lambda frame: _parse_iso(
+            frame["valid_time"]
+        ),
+        reverse=True,
+    )
+
+    upgrade_selected = (
+        upgrade_candidates[:remaining_budget]
+    )
+
     geometry: tuple[list[float], int, int] | None = None
     if existing.get("bounds") and existing.get("imageWidth") and existing.get("imageHeight"):
         geometry = (
@@ -317,8 +461,13 @@ def publish_mrala_numeric(event: dict | None = None) -> dict:
         )
 
     rendered_ids: list[str] = []
+    upgraded_overview_ids: list[str] = []
+
     rendered_raw = 0
     rendered_compressed = 0
+
+    overview_raw = 0
+    overview_compressed = 0
 
     for source in selected:
         decoded = _decode_source(session, source)
@@ -355,13 +504,52 @@ def publish_mrala_numeric(event: dict | None = None) -> dict:
             compresslevel,
         )
 
+        overview = _downsample_nearest_uint8(
+            encoded,
+            overview_max_width,
+        )
+
+        overview_key = (
+            f"{prefix}/overview/{frame_id}.dbz"
+        )
+
+        (
+            overview_raw_bytes,
+            overview_compressed_bytes,
+        ) = _upload_numeric_grid(
+            bucket,
+            overview_key,
+            overview,
+            compresslevel,
+        )
+
+        overview_raw += overview_raw_bytes
+        overview_compressed += overview_compressed_bytes
+
         valid_time = decoded.get("valid_time") or source["filename_time"]
+
         frame = {
             "id": frame_id,
             "valid_time": valid_time.isoformat(),
             "dbz": f"frames/{frame_id}.dbz",
             "dbzRawBytes": raw_bytes,
             "dbzCompressedBytes": compressed_bytes,
+
+            "overview":
+                f"overview/{frame_id}.dbz",
+
+            "overviewWidth":
+                int(overview.shape[1]),
+
+            "overviewHeight":
+                int(overview.shape[0]),
+
+            "overviewRawBytes":
+                overview_raw_bytes,
+
+            "overviewCompressedBytes":
+                overview_compressed_bytes,
+
             "source_name": source["name"],
             "product": PRODUCT,
             "productKey": PRODUCT_KEY,
@@ -380,6 +568,83 @@ def publish_mrala_numeric(event: dict | None = None) -> dict:
             flush=True,
         )
 
+
+    if geometry is not None and upgrade_selected:
+        _, native_width, native_height = geometry
+
+        for frame in upgrade_selected:
+            frame_id = str(frame["id"])
+
+            native_key = (
+                f"{prefix}/{frame['dbz']}"
+            )
+
+            encoded = _read_numeric_grid(
+                bucket,
+                native_key,
+                native_width,
+                native_height,
+            )
+
+            overview = _downsample_nearest_uint8(
+                encoded,
+                overview_max_width,
+            )
+
+            overview_key = (
+                f"{prefix}/overview/{frame_id}.dbz"
+            )
+
+            (
+                overview_raw_bytes,
+                overview_compressed_bytes,
+            ) = _upload_numeric_grid(
+                bucket,
+                overview_key,
+                overview,
+                compresslevel,
+            )
+
+            frame["overview"] = (
+                f"overview/{frame_id}.dbz"
+            )
+
+            frame["overviewWidth"] = int(
+                overview.shape[1]
+            )
+
+            frame["overviewHeight"] = int(
+                overview.shape[0]
+            )
+
+            frame["overviewRawBytes"] = (
+                overview_raw_bytes
+            )
+
+            frame["overviewCompressedBytes"] = (
+                overview_compressed_bytes
+            )
+
+            retained[frame_id] = frame
+
+            upgraded_overview_ids.append(
+                frame_id
+            )
+
+            overview_raw += overview_raw_bytes
+            overview_compressed += (
+                overview_compressed_bytes
+            )
+
+            print(
+                f"Overview backfill {frame_id}: "
+                f"{overview.shape[1]}x{overview.shape[0]} "
+                f"gzip="
+                f"{overview_compressed_bytes / 1048576:.2f} MiB",
+                flush=True,
+            )
+
+
     if geometry is None:
         raise RuntimeError("MRALA native geometry is unavailable")
 
@@ -395,6 +660,22 @@ def publish_mrala_numeric(event: dict | None = None) -> dict:
     _delete_frames(bucket, prefix, pruned_ids)
 
     bounds, width, height = geometry
+
+    (
+        overview_width,
+        overview_height,
+    ) = _overview_shape(
+        width,
+        height,
+        overview_max_width,
+    )
+
+    remaining_overview = sum(
+        1
+        for frame in retained.values()
+        if not frame.get("overview")
+    )
+
     now = datetime.now(UTC)
     manifest = {
         "generated_at": now.isoformat(),
@@ -409,6 +690,22 @@ def publish_mrala_numeric(event: dict | None = None) -> dict:
         "imageHeight": height,
         "sourceGridWidth": width,
         "sourceGridHeight": height,
+
+        "lod": {
+            "overview": {
+                "width": overview_width,
+                "height": overview_height,
+                "pathField": "overview",
+                "recommendedMaxZoom": 4.9,
+            },
+            "native": {
+                "width": width,
+                "height": height,
+                "pathField": "dbz",
+                "recommendedMinZoom": 4.6,
+            },
+        },
+
         "historyWindowMinutes": history_minutes,
         "observationCount": len(frames),
         "startTime": frames[0]["valid_time"],
@@ -427,7 +724,7 @@ def publish_mrala_numeric(event: dict | None = None) -> dict:
         },
         "publisher": {
             "platform": "aws-lambda-s3",
-            "strategy": "native-mrala-numeric-v1",
+            "strategy": "mrala-numeric-lod-v2",
         },
         "frames": frames,
     }
@@ -443,7 +740,26 @@ def publish_mrala_numeric(event: dict | None = None) -> dict:
         "remainingMissing": max(0, len(missing) - len(rendered_ids)),
         "latest": frames[-1]["valid_time"],
         "grid": f"{width}x{height}",
-        "gpuMiBPerFrame": round(width * height / 1048576, 2),
+
+        "overviewGrid":
+            f"{overview_width}x{overview_height}",
+
+        "upgradedOverview":
+            upgraded_overview_ids,
+
+        "remainingOverview":
+            remaining_overview,
+
+        "gpuMiBPerFrame":
+            round(width * height / 1048576, 2),
+
+        "overviewGpuMiBPerFrame":
+            round(
+                overview_width
+                * overview_height
+                / 1048576,
+                2,
+            ),
         "renderedRawMiB": round(rendered_raw / 1048576, 2),
         "renderedGzipMiB": round(rendered_compressed / 1048576, 2),
         "pruned": len(pruned_ids),

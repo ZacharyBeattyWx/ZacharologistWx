@@ -169,6 +169,7 @@ Resources:
           MRALA_NUMERIC_HISTORY_MINUTES: !Ref MralaNumericHistoryMinutes
           MRALA_NUMERIC_MAX_RENDER_PER_RUN: !Ref MralaNumericMaxRenderPerRun
           MRALA_NUMERIC_COMPRESSLEVEL: '4'
+          MRALA_NUMERIC_OVERVIEW_MAX_WIDTH: '3500'
 
   MralaNumericSchedule:
     Type: AWS::Events::Rule
