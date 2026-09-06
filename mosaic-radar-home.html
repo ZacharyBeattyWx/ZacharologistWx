@@ -3,600 +3,3804 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Live National Radar | ZacharologistWx</title>
+  <title>ZacharologistWx Native Numeric MRALA Test</title>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
+  <script src="mapbox-token.js?v=20260904c"></script>
   <style>
-    html,
-    body {
-      width: 100%;
-      height: 100%;
-      margin: 0;
-      overflow: hidden;
-      background: #07111f;
-    }
-
-    #radarEngine {
-      display: block;
-      width: 100%;
-      height: 100%;
-      border: 0;
-      opacity: 1;
-      transition: none;
-      background: #07111f;
-    }
-
-    #radarEngine.is-ready {
-      opacity: 1;
-    }
+    :root{color-scheme:dark;--panel:rgba(4,10,22,.93);--border:rgba(148,163,184,.28);--accent:#38bdf8;--muted:#94a3b8}
+    *{box-sizing:border-box}html,body,#map{width:100%;height:100%;margin:0}body{overflow:hidden;background:#07111f;color:#f8fafc;font-family:Arial,Helvetica,sans-serif}#map{position:fixed;inset:0;background:#07111f}
+    .panel{position:fixed;top:14px;left:14px;z-index:20;width:min(430px,calc(100vw - 28px));padding:14px 15px;border:1px solid var(--border);border-radius:13px;background:var(--panel);box-shadow:0 16px 38px rgba(0,0,0,.35);backdrop-filter:blur(12px)}
+    .eyebrow{color:var(--accent);font-size:.68rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase}h1{margin:5px 0 6px;font-size:1.08rem}p{margin:0;color:#cbd5e1;font-size:.76rem;line-height:1.42}
+    .status{display:flex;gap:8px;align-items:center;margin-top:10px;color:var(--muted);font-size:.72rem;font-weight:700}.dot{width:8px;height:8px;border-radius:50%;background:#f59e0b;box-shadow:0 0 10px rgba(245,158,11,.6)}.dot.live{background:#4ade80;box-shadow:0 0 10px rgba(74,222,128,.7)}.dot.error{background:#fb7185;box-shadow:0 0 10px rgba(251,113,133,.7)}
+    .meta{margin-top:11px;padding-top:10px;border-top:1px solid rgba(148,163,184,.18);color:var(--muted);font-size:.66rem;line-height:1.55}.meta strong{color:#dbeafe}.metric{color:#67e8f9}
+    .playback{position:fixed;left:50%;bottom:14px;z-index:20;transform:translateX(-50%);width:min(590px,calc(100vw - 28px));padding:10px;border:1px solid var(--border);border-radius:13px;background:var(--panel);box-shadow:0 14px 34px rgba(0,0,0,.34);backdrop-filter:blur(12px)}
+    .playback-row{display:grid;grid-template-columns:40px 1fr 40px 72px;gap:6px}button,select{min-height:34px;border:1px solid rgba(148,163,184,.34);border-radius:8px;background:rgba(15,23,42,.94);color:#fff;font:inherit;font-size:.72rem;font-weight:800}button{cursor:pointer}.readout{display:flex;justify-content:space-between;gap:10px;margin:8px 2px 5px;color:#dbeafe;font-size:.69rem;font-weight:800;font-variant-numeric:tabular-nums}.readout span:last-child{color:var(--muted)}#frameSlider{width:100%;accent-color:var(--accent)}.timeline-labels{display:flex;justify-content:space-between;margin-top:2px;color:#64748b;font-size:.54rem;font-weight:800;text-transform:uppercase}
+    .legend{position:fixed;top:14px;right:14px;z-index:20;width:278px;padding:9px 11px;border:1px solid rgba(148,163,184,.24);border-radius:10px;background:rgba(4,10,22,.84);backdrop-filter:blur(10px);box-shadow:0 10px 24px rgba(0,0,0,.25)}.legend-title{font-size:.61rem;color:#cbd5e1;font-weight:900;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px}.legend-bar{display:block;width:100%;height:8px;border-radius:99px}.legend-labels{display:flex;justify-content:space-between;margin-top:4px;color:#94a3b8;font-size:.50rem}
+    @media(max-width:760px){.legend{display:none}.panel{width:min(310px,calc(100vw - 20px));top:10px;left:10px}.playback{bottom:9px;width:calc(100vw - 18px)}}
   </style>
 </head>
 <body>
-  <iframe
-    id="radarEngine"
-    src="./mrms-native-numeric-home.html?v=20260906a"
-    title="Live national radar"
-    allowfullscreen>
-  </iframe>
+  <div id="map"></div>
+  <section class="panel">
+    <div class="eyebrow">Numeric texture experiment / isolated</div>
+    <h1>Native MRALA Numeric GPU Loop</h1>
+    <p>Seamless numeric MRALA viewport-LOD test. National/regional playback uses the lightweight 3500×1750 numeric overview. Zoomed detail keeps that overview underneath while loading only the native 1024×1024 chunks intersecting the viewport. Both use the same dBZ encoding, palette, timeline, NEAREST sampling, and display-only GPU interpolation.</p>
+    <div class="status"><span id="statusDot" class="dot"></span><span id="statusText">Loading native numeric MRALA manifest…</span></div>
+    <div class="meta">
+      <strong>Encoding:</strong> <span id="encodingInfo">--</span><br>
+      <strong>Grid:</strong> <span id="gridInfo">--</span><br>
+      <strong>Numeric frames:</strong> <span id="archiveInfo">--</span><br>
+      <strong>Current:</strong> <span id="validInfo">--</span><br>
+      <strong>dBZ:</strong> <span id="dbzInfo">--</span><br>
+      <strong>GPU buffer:</strong> <span id="gpuInfo" class="metric">--</span><br>
+      <strong>Current transfer:</strong> <span id="transferInfo">--</span>
+    </div>
+  </section>
+  <div class="legend">
+    <div class="legend-title">Python Level II GPU Reflectivity (dBZ)</div>
+    <canvas id="legendBar" class="legend-bar" width="256" height="1"></canvas>
+    <div class="legend-labels"><span>-30</span><span>-20</span><span>-10</span><span>0</span><span>10</span><span>20</span><span>30</span><span>40</span><span>50</span><span>60+</span></div>
+  </div>
+  <div class="playback">
+    <div class="playback-row">
+      <button id="prevFrame" type="button">◀</button>
+      <button id="playPause" type="button">▶ Play</button>
+      <button id="nextFrame" type="button">▶</button>
+      <select id="speedSelect" aria-label="Playback speed">
+        <option value="800">0.5×</option>
+        <option value="500" selected>1×</option>
+        <option value="330">1.5×</option>
+        <option value="250">2×</option>
+      </select>
+    </div>
+    <div class="readout"><span id="frameTime">--:--</span><span id="frameAge">--</span></div>
+    <input id="frameSlider" type="range" min="0" max="0" step="1" value="0">
+    <div class="timeline-labels"><span>-3h</span><span>Now</span></div>
+  </div>
+<script>
+(() => {
+  "use strict";
 
-  <script>
-    (() => {
-      const engine = document.getElementById("radarEngine");
-      const MANIFEST_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
-      ? "./mrms-mosaic-loop-output/manifest.json"
-      : "https://dt0cd6bl1yqh2.cloudfront.net/mrms-native-numeric/manifest.json";
-      const HISTORY_OPTIONS = [
-        [30, "30 min"],
-        [60, "1 hr"],
-        [120, "2 hrs"],
-        [180, "3 hrs"],
-        [240, "4 hrs"],
-        [360, "6 hrs"],
-        [720, "12 hrs"],
-        [1080, "18 hrs"],
-        [1440, "24 hrs"]
-      ];
+  const MAPBOX_STYLE="mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
+  const MANIFEST_URL="https://dt0cd6bl1yqh2.cloudfront.net/mrms-native-numeric/manifest.json";
+  const ARCHIVE_BASE="https://dt0cd6bl1yqh2.cloudfront.net/mrms-native-numeric/";
+  const LAYER_ID="mrms-native-numeric-dbz-layer";
+  const CHUNK_LAYER_ID="mrms-native-numeric-viewport-chunks";
+  const HISTORY_MS=3*60*60*1000;
+  const MOBILE=window.matchMedia?.("(pointer: coarse)")?.matches||/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-      let badgeFreshness = null;
-      let freshnessTimer = null;
-      let historySyncTimer = null;
+  // The national/regional loop always remains the lightweight
+  // numeric overview. Native detail is now a viewport-only overlay.
+  const BASE_TIER="overview";
 
-      function relativeUpdateText(value) {
-        const time = new Date(value).getTime();
-        if (!Number.isFinite(time)) return "Updating automatically";
+  const GPU_DEPTH_OVERVIEW=MOBILE?6:18;
+  const FETCH_CONCURRENCY_OVERVIEW=MOBILE?2:4;
 
-        const minutes = Math.max(0, Math.round((Date.now() - time) / 60000));
-        if (minutes <= 1) return "Updated just now";
-        if (minutes < 60) return `Updated ${minutes} min ago`;
-        return `Updated at ${new Date(time).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
-      }
+  // Keep a small temporal ring of only the chunks intersecting
+  // the user's current viewport.
+  const CHUNK_FRAME_DEPTH=MOBILE?3:6;
+  const CHUNK_FETCH_CONCURRENCY=MOBILE?2:4;
+  const CHUNK_VIEWPORT_PAD=0.12;
 
-      async function updateFreshness() {
-        if (!badgeFreshness) return;
-        try {
-          const response = await fetch(`${MANIFEST_URL}?_=${Date.now()}`, { cache: "no-store" });
-          if (!response.ok) throw new Error(`HTTP ${response.status}`);
-          const manifest = await response.json();
-          const observations = Array.isArray(manifest.frames) ? manifest.frames : [];
-          const newest = observations
-            .map(frame => new Date(frame?.valid_time).getTime())
-            .filter(Number.isFinite)
-            .sort((a, b) => b - a)[0];
+  const INTERPOLATION_FPS=MOBILE?24:30;
 
-          badgeFreshness.textContent = Number.isFinite(newest)
-            ? relativeUpdateText(newest)
-            : "Updating automatically";
-        } catch (_) {
-          badgeFreshness.textContent = "Live radar";
-        }
-      }
+  const statusDot=document.getElementById("statusDot"),statusText=document.getElementById("statusText");
+  const frameSlider=document.getElementById("frameSlider"),playPause=document.getElementById("playPause"),prevFrame=document.getElementById("prevFrame"),nextFrame=document.getElementById("nextFrame"),speedSelect=document.getElementById("speedSelect"),frameTime=document.getElementById("frameTime"),frameAge=document.getElementById("frameAge");
+  const encodingInfo=document.getElementById("encodingInfo"),gridInfo=document.getElementById("gridInfo"),archiveInfo=document.getElementById("archiveInfo"),validInfo=document.getElementById("validInfo"),dbzInfo=document.getElementById("dbzInfo"),gpuInfo=document.getElementById("gpuInfo"),transferInfo=document.getElementById("transferInfo");
 
-      function installHistoryBehavior(doc) {
-        if (doc.getElementById("homepage-radar-history-behavior")) return;
+  let manifest=null,frames=[],currentIndex=0,layer=null,playing=false,playGeneration=0,targetTick=0,playbackRaf=0,bufferBusy=false,bufferPending=false;
 
-        const behavior = doc.createElement("script");
-        behavior.id = "homepage-radar-history-behavior";
-        behavior.textContent = `
-          (() => {
-            const ZWX_HISTORY_OPTIONS = [30,60,120,180,240,360,720,1080,1440];
+  let activeTier="overview";
+  let tierSwitching=false;
+  let tierSwitchGeneration=0;
+  let lastBlendPaint=0;
 
-            function historyTickLabel(minutes) {
-              if (minutes < 60) return \`-\${minutes}m\`;
-              const hours = minutes / 60;
-              return \`-\${Number.isInteger(hours) ? hours : hours.toFixed(1)}h\`;
-            }
+  let chunkLayer=null;
+  let visibleChunkIds=[];
+  let chunkBufferBusy=false;
+  let chunkBufferPending=false;
+  let chunkViewportGeneration=0;
 
-            function historyStatusLabel(minutes) {
-              if (minutes < 60) return \`\${minutes} min\`;
-              const hours = minutes / 60;
-              return \`\${Number.isInteger(hours) ? hours : hours.toFixed(1)} hr\`;
-            }
+  let chunkLastFetchMs=0;
+  let chunkLastTransferBytes=0;
+  let chunkLastRawBytes=0;
 
-            updateHistoryButtons = function() {
-              historyStartLabel.textContent = historyTickLabel(historyMinutes);
-              window.dispatchEvent(new CustomEvent("zwx-history-change", {
-                detail: { minutes: historyMinutes }
-              }));
-            };
+  const loading=new Map();
+  const chunkLoading=new Map();
 
-            applyHistoryWindow = function(minutes, preserveKey = currentFrameKey()) {
-              const requested = Number(minutes);
-              const available = Math.max(30, Number(manifest?.historyWindowMinutes || 60));
-              const choices = ZWX_HISTORY_OPTIONS.filter(value => value <= available);
-              const fallback = choices[choices.length - 1] || 60;
-              historyMinutes = choices.includes(requested) ? requested : fallback;
+  // Precompiled full RadarScope palette LUT.
+// Generated from assets/palettes/RadarScope1.pal.
+// 256 RGBA entries = 1024 bytes.
+// Numeric radar values remain untouched.
 
-              frames = filterHistory(allFrames, historyMinutes);
-              let nextIndex = frames.findIndex(frame => frameKey(frame) === preserveKey);
-              if (nextIndex < 0) nextIndex = frames.length - 1;
-              currentFrameIndex = Math.max(0, nextIndex);
+const PALETTE_LUT_B64="AAAAAFg2gABaOIIAXDqFAF48hwBgPooAYkCLAGRDjQBmRY8AaUiRAGtLkgBuTpMAcVGUAHRVlgB3WJYAelyXAH1fmACAY5kAgmaZAIVqmQCIbZkAi3GZAI10mACPeJcAkXyWAJSAlgCVg5QAl4aTAJmJkgCbjJEAnI6PAJ2RjQCek4sAoJaKAKCXiAChmYYAopuEAKOdggCinYAAoZ1+AKCdfACgnnsAn516AJ6ceQCdm3gAnJt3AJ6eewChoX8ApKSDAKeniACpqYsAq6uPAK2tkgCvsJYAqqyWABxfjAodYY4MHmORDx9lkxEgZ5YUImmYFiNrmxkkbZ0bJW+gHiZxoiAoc6UjKXeoJyt8qyssga4vLoayNC+KtTgxj7g8MpS7QDSZv0U1ncJJN6LFTTinyFE6rMxWO7DPWj210l4+utViQL/ZZ0HD3GtDyN9vRM3ic0l1mH1JeZeFSX6WjEmDlZRKiJSbSo2To0qRkqtLlpGzS5uQu0ugj8RMpY7NRqCCz0CbdtI6lmrUNJJe1y+NU9kpiEfcI4Q73h1/L+EXeiPjEnYY5iSAFec3ihPpSZUR6lyfDuxuqgztgbQK75O+B/CmyQXyuNMD88veAfXM3AD2zdoA987YAPjP1gD50dQA+tLSAPvT0AD81M4A/dXMAP7XywD/2MMA/9m8AP/atAD/260B/92mAf/engH/35cC/+CPAv/hiAL/44ED/959A//aegT/1nYF/9JzBf/OcAb/yWwH/8VpB//BZQj/vWIJ/7lfCv+5WQv/ulMM/7tNDf+7Rw7/vEIP/708EP+9NhH/vjAS/78qE//AJRT/wTAk/8I8NP/DR0T/xFNU/8VfZP/GanT/x3aE/8iBlP/JjaT/ypm0/8mRr//Iiav/yIGn/8d5o//HcZ//xmma/8Vhlv/FWZL/xFGO/8RKiv++RZH/uEGY/7I9n/+tOab/pzWu/6Ewtf+cLLz/lijD/5Akyv+LINL/hR7N/4AdyP97HMP/dRu+/3Aauv9rGLX/ZRew/2AWq/9bFab/VhSi/1gnp/9bOq3/XU2z/2BguP9ic77/ZYbE/2eZyf9qrM//bL/V/2/S2/9rytT/Z8LO/2O6x/9gssH/XKu6/1ijtP9Vm63/UZOn/02LoP9KhJr/TneK/1Jre/9WX2z/WlNc/15HTf9iOj7/Zi4u/2oiH/9uFhD/cwoB/38cGv+LLjP/l0BN/6NSZv+vZID/u3aZ/8eIsv/Tmsz/36zl/+u+///twv7/78b9//HK/P/zzvv/9dL6//fW+f/52vj/+973//3i9v//5vX//+j2///r9///7fj///D5///y+v//9fv///f8///6/f///P7//////w==";
 
-              updateHistoryButtons();
-              updateFrameUi();
-              warmAround(currentFrameIndex);
-            };
+const PALETTE_LUT=Uint8Array.from(
+atob(PALETTE_LUT_B64),
+ch=>ch.charCodeAt(0)
+);
 
-            window.zwxSetHistoryWindow = async function(minutes) {
-              const preserveKey = currentFrameKey();
-              applyHistoryWindow(minutes, preserveKey);
+function setStatus(text,state="loading"){
+statusText.textContent=text;
+statusDot.classList.toggle("live",state==="live");
+statusDot.classList.toggle("error",state==="error");
+}
 
-              if (!frames.some(frame => frameKey(frame) === preserveKey)) {
-                await showFrame(frames.length - 1, { quiet: true });
-              }
+function drawLegendBar(){
+const canvas=document.getElementById("legendBar");
+if(!canvas) return;
 
-              setStatus(\`MRMS playback window • \${historyStatusLabel(historyMinutes)}\`, "live");
-              return historyMinutes;
-            };
+const ctx=canvas.getContext("2d");
+const image=ctx.createImageData(256,1);
 
-            window.zwxAvailableHistoryMinutes = function() {
-              return Math.max(30, Number(manifest?.historyWindowMinutes || 60));
-            };
+for(let x=0;x<256;x++){
+const p=x*4;
+image.data[p]=PALETTE_LUT[p];
+image.data[p+1]=PALETTE_LUT[p+1];
+image.data[p+2]=PALETTE_LUT[p+2];
+image.data[p+3]=255;
+}
 
-            window.zwxCurrentHistoryMinutes = function() {
-              return historyMinutes;
-            };
-          })();
-        `;
-        doc.body.appendChild(behavior);
-      }
+ctx.putImageData(image,0,0);
+}
 
-      function installHistorySelect(doc) {
-        const row = doc.querySelector(".history-row");
-        if (!row) return null;
+  function frameMs(frame){return Date.parse(frame?.valid_time||"");}
+  function tierDimensions(tier=activeTier){
+    if(tier==="overview"){
+      const lod=manifest?.lod?.overview||{};
 
-        const existing = doc.getElementById("homeRadarHistorySelect");
-        if (existing) return existing;
+      return {
+        width:Number(
+          lod.width
+          ||frames[0]?.overviewWidth
+          ||manifest?.imageWidth
+          ||0
+        ),
+        height:Number(
+          lod.height
+          ||frames[0]?.overviewHeight
+          ||manifest?.imageHeight
+          ||0
+        )
+      };
+    }
 
-        const select = doc.createElement("select");
-        select.id = "homeRadarHistorySelect";
-        select.className = "home-radar-history-select";
-        select.setAttribute("aria-label", "Radar history length");
-        select.innerHTML = HISTORY_OPTIONS
-          .map(([minutes, label]) => `<option value="${minutes}"${minutes === 180 ? " selected" : ""}>${label}</option>`)
-          .join("");
+    return {
+      width:Number(
+        manifest?.imageWidth||0
+      ),
+      height:Number(
+        manifest?.imageHeight||0
+      )
+    };
+  }
 
-        row.appendChild(select);
+  function tierLabel(tier=activeTier){
+    return tier==="overview"
+      ? "Overview"
+      : "Native";
+  }
 
-        select.addEventListener("change", async () => {
-          const win = engine.contentWindow;
-          if (typeof win?.zwxSetHistoryWindow !== "function") return;
-          select.disabled = true;
-          try {
-            const selected = await win.zwxSetHistoryWindow(Number(select.value));
-            select.value = String(selected);
-          } finally {
-            select.disabled = false;
-          }
-        });
+  function gpuDepth(tier=activeTier){
+    return tier==="overview"
+      ? GPU_DEPTH_OVERVIEW
+      : GPU_DEPTH_NATIVE;
+  }
 
-        return select;
-      }
+  function fetchConcurrency(tier=activeTier){
+    return tier==="overview"
+      ? FETCH_CONCURRENCY_OVERVIEW
+      : FETCH_CONCURRENCY_NATIVE;
+  }
 
-      function syncHistorySelect(select) {
-        if (!select) return;
-        const win = engine.contentWindow;
-        if (!win) return;
+  function tierPath(frame,tier=activeTier){
+    const path=
+      tier==="overview"
+        ? frame?.overview
+        : frame?.dbz;
 
-        const available = typeof win.zwxAvailableHistoryMinutes === "function"
-          ? Number(win.zwxAvailableHistoryMinutes())
-          : 60;
-        const current = typeof win.zwxCurrentHistoryMinutes === "function"
-          ? Number(win.zwxCurrentHistoryMinutes())
-          : 60;
+    if(!path){
+      throw new Error(
+        `Missing ${tier} numeric path for ${frame?.id||"frame"}`
+      );
+    }
 
-        [...select.options].forEach(option => {
-          option.disabled = Number(option.value) > available;
-        });
+    return path;
+  }
 
-        if ([...select.options].some(option => Number(option.value) === current)) {
-          select.value = String(current);
-        }
-      }
+  function numericUrl(frame,tier=activeTier){
+    return new URL(
+      tierPath(frame,tier),
+      ARCHIVE_BASE
+    ).toString();
+  }
 
-      function installHomepageUi() {
-        const doc = engine.contentDocument;
-        if (!doc?.head || !doc?.body) return;
+  function textureKey(index,tier=activeTier){
+    if(!frames.length)return "";
 
-        if (doc.documentElement.dataset.homepageRadarUiInstalled === "1") {
-          engine.classList.add("is-ready");
+    const normalized=
+      (Number(index)+frames.length)
+      %frames.length;
+
+    return (
+      tier
+      +":"
+      +String(frames[normalized].id)
+    );
+  }
+
+  function expectedBytes(tier=activeTier){
+    const dims=tierDimensions(tier);
+
+    return dims.width*dims.height;
+  }
+
+  function initialTierForZoom(zoom){
+    const nativeEnter=Number(
+      manifest?.lod?.overview
+        ?.recommendedMaxZoom
+      ??4.9
+    );
+
+    return zoom>=nativeEnter
+      ? "native"
+      : "overview";
+  }
+
+  function tierForZoom(zoom){
+    const nativeEnter=Number(
+      manifest?.lod?.overview
+        ?.recommendedMaxZoom
+      ??4.9
+    );
+
+    const overviewEnter=Number(
+      manifest?.lod?.native
+        ?.recommendedMinZoom
+      ??4.6
+    );
+
+    if(activeTier==="native"){
+      return zoom<=overviewEnter
+        ? "overview"
+        : "native";
+    }
+
+    return zoom>=nativeEnter
+      ? "native"
+      : "overview";
+  }
+  function recentNumericFrames(items){const valid=items.filter(f=>f?.dbz&&Number.isFinite(frameMs(f))).sort((a,b)=>frameMs(a)-frameMs(b));if(!valid.length)return[];const cutoff=frameMs(valid[valid.length-1])-HISTORY_MS;return valid.filter(f=>frameMs(f)>=cutoff);}
+  function compileShader(gl,type,source){const shader=gl.createShader(type);gl.shaderSource(shader,source);gl.compileShader(shader);if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(shader)||"shader compile failed");return shader;}
+
+  function createNumericLayer(bounds,width,height){
+
+const [
+westCenter,
+southCenter,
+eastCenter,
+northCenter
+]=bounds.map(Number);
+
+// MRMS bounds are centers of the outermost grid cells.
+// Expand by half a cell so source pixels remain centered
+// on their real geographic coordinates.
+const lonStep=
+width>1
+? (eastCenter-westCenter)/(width-1)
+: 0;
+
+const latStep=
+height>1
+? (northCenter-southCenter)/(height-1)
+: 0;
+
+const west=
+westCenter-(lonStep/2);
+
+const east=
+eastCenter+(lonStep/2);
+
+const south=
+southCenter-(latStep/2);
+
+const north=
+northCenter+(latStep/2);
+
+
+// Mapbox works in Web Mercator Y.
+// MRMS rows are regular geographic latitude.
+// These values let the shader convert Mercator position
+// back into the proper native MRMS row.
+const northMercY=
+mapboxgl.MercatorCoordinate
+.fromLngLat([0,north]).y;
+
+const southMercY=
+mapboxgl.MercatorCoordinate
+.fromLngLat([0,south]).y;
+    return {id:LAYER_ID,type:"custom",renderingMode:"2d",map:null,gl:null,program:null,pos:null,uv:null,palette:null,textures:new Map(),activeKey:"",nextKey:"",mixAmount:0,width,height,isWebGL2:false,
+      onAdd(map,gl){this.map=map;this.gl=gl;this.maxTexture=Number(gl.getParameter(gl.MAX_TEXTURE_SIZE)||0);this.isWebGL2=typeof WebGL2RenderingContext!=="undefined"&&gl instanceof WebGL2RenderingContext;
+        const vs=compileShader(gl,gl.VERTEX_SHADER,`precision highp float;uniform mat4 u_matrix;attribute vec2 a_pos;attribute vec2 a_uv;varying vec2 v_uv;void main(){gl_Position=u_matrix*vec4(a_pos,0.0,1.0);v_uv=a_uv;}`);
+        const fs=compileShader(gl,gl.FRAGMENT_SHADER,`
+precision highp float;
+
+uniform sampler2D u_dbz;
+uniform sampler2D u_dbz_next;
+uniform sampler2D u_palette;
+
+uniform float u_north_merc_y;
+uniform float u_south_merc_y;
+uniform float u_north_lat;
+uniform float u_south_lat;
+uniform float u_mix;
+
+varying vec2 v_uv;
+
+const float PI=3.14159265358979323846;
+
+void main(){
+
+// Interpolated texture Y corresponds to Web-Mercator Y.
+float mercY=
+mix(
+u_north_merc_y,
+u_south_merc_y,
+v_uv.y
+);
+
+
+// Convert Web-Mercator Y back to geographic latitude.
+float latitude=
+(
+2.0*
+atan(
+exp(
+(0.5-mercY)
+*2.0
+*PI
+)
+)
+-(PI*0.5)
+)
+*180.0
+/PI;
+
+
+// MRMS itself is equally spaced by latitude,
+// so select the source row using true latitude.
+float sourceV=
+clamp(
+(
+u_north_lat
+-latitude
+)
+/
+(
+u_north_lat
+-u_south_lat
+),
+0.0,
+1.0
+);
+
+
+float sampleValueA=
+texture2D(
+u_dbz,
+vec2(
+v_uv.x,
+sourceV
+)
+).r;
+
+float sampleValueB=
+texture2D(
+u_dbz_next,
+vec2(
+v_uv.x,
+sourceV
+)
+).r;
+
+float codeA=
+floor(
+sampleValueA*255.0+0.5
+);
+
+float codeB=
+floor(
+sampleValueB*255.0+0.5
+);
+
+vec4 colorA=
+texture2D(
+u_palette,
+vec2(
+(codeA+0.5)/256.0,
+0.5
+)
+);
+
+vec4 colorB=
+texture2D(
+u_palette,
+vec2(
+(codeB+0.5)/256.0,
+0.5
+)
+);
+
+gl_FragColor=
+mix(
+colorA,
+colorB,
+clamp(
+u_mix,
+0.0,
+1.0
+)
+);
+}
+`);
+        this.program=gl.createProgram();gl.attachShader(this.program,vs);gl.attachShader(this.program,fs);gl.linkProgram(this.program);gl.deleteShader(vs);gl.deleteShader(fs);if(!gl.getProgramParameter(this.program,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(this.program)||"numeric radar shader link failed");
+        const nw=mapboxgl.MercatorCoordinate.fromLngLat([west,north]),ne=mapboxgl.MercatorCoordinate.fromLngLat([east,north]),sw=mapboxgl.MercatorCoordinate.fromLngLat([west,south]),se=mapboxgl.MercatorCoordinate.fromLngLat([east,south]);
+        const positions=new Float32Array([nw.x,nw.y,sw.x,sw.y,ne.x,ne.y,ne.x,ne.y,sw.x,sw.y,se.x,se.y]),uvs=new Float32Array([0,0,0,1,1,0,1,0,0,1,1,1]);
+        this.pos=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,this.pos);gl.bufferData(gl.ARRAY_BUFFER,positions,gl.STATIC_DRAW);this.uv=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,this.uv);gl.bufferData(gl.ARRAY_BUFFER,uvs,gl.STATIC_DRAW);
+        this.palette=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,this.palette);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,256,1,0,gl.RGBA,gl.UNSIGNED_BYTE,PALETTE_LUT);
+      },
+      addTexture(key,data,textureWidth,textureHeight){
+        if(this.textures.has(key)){
           return;
         }
-        doc.documentElement.dataset.homepageRadarUiInstalled = "1";
-        doc.documentElement.classList.add("homepage-radar-mode");
 
-        const style = doc.createElement("style");
-        style.id = "homepage-radar-mode-style";
-        style.textContent = `
-          .homepage-radar-mode .panel {
-            display: contents !important;
+        const gl=this.gl;
+
+        if(!gl){
+          throw new Error(
+            "WebGL layer is not ready"
+          );
+        }
+
+        const width=Number(textureWidth);
+        const height=Number(textureHeight);
+
+        if(
+          !Number.isFinite(width)
+          ||!Number.isFinite(height)
+          ||width<1
+          ||height<1
+        ){
+          throw new Error(
+            "Invalid numeric texture dimensions"
+          );
+        }
+
+        if(
+          width>this.maxTexture
+          ||height>this.maxTexture
+        ){
+          throw new Error(
+            "Numeric texture "
+            +width+"x"+height
+            +" exceeds GPU texture limit "
+            +this.maxTexture
+          );
+        }
+
+        const texture=
+          gl.createTexture();
+
+        gl.bindTexture(
+          gl.TEXTURE_2D,
+          texture
+        );
+
+        gl.texParameteri(
+          gl.TEXTURE_2D,
+          gl.TEXTURE_WRAP_S,
+          gl.CLAMP_TO_EDGE
+        );
+
+        gl.texParameteri(
+          gl.TEXTURE_2D,
+          gl.TEXTURE_WRAP_T,
+          gl.CLAMP_TO_EDGE
+        );
+
+        gl.texParameteri(
+          gl.TEXTURE_2D,
+          gl.TEXTURE_MIN_FILTER,
+          gl.NEAREST
+        );
+
+        gl.texParameteri(
+          gl.TEXTURE_2D,
+          gl.TEXTURE_MAG_FILTER,
+          gl.NEAREST
+        );
+
+        gl.pixelStorei(
+          gl.UNPACK_ALIGNMENT,
+          1
+        );
+
+        if(this.isWebGL2){
+          gl.texImage2D(
+            gl.TEXTURE_2D,
+            0,
+            gl.R8,
+            width,
+            height,
+            0,
+            gl.RED,
+            gl.UNSIGNED_BYTE,
+            data
+          );
+        }else{
+          gl.texImage2D(
+            gl.TEXTURE_2D,
+            0,
+            gl.LUMINANCE,
+            width,
+            height,
+            0,
+            gl.LUMINANCE,
+            gl.UNSIGNED_BYTE,
+            data
+          );
+        }
+
+        this.textures.set(
+          key,
+          {
+            texture,
+            width,
+            height,
+            lastUsed:performance.now()
           }
+        );
+      },
+      hasTexture(key){
+        return this.textures.has(String(key));
+      },
 
-          .homepage-radar-mode .panel > .eyebrow,
-          .homepage-radar-mode .panel > h1,
-          .homepage-radar-mode .panel > .subtitle,
-          .homepage-radar-mode .panel > .status-row,
-          .homepage-radar-mode .button-row,
-          .homepage-radar-mode .range-row,
-          .homepage-radar-mode .meta {
-            display: none !important;
-          }
+      activate(key){
+        const item=this.textures.get(String(key));
 
-          .homepage-radar-mode .home-radar-badge {
-            position: fixed;
-            top: 14px;
-            left: 14px;
-            z-index: 30;
-            display: flex;
-            align-items: center;
-            gap: 9px;
-            min-width: 186px;
-            padding: 9px 12px;
-            border: 1px solid rgba(148,163,184,.28);
-            border-radius: 11px;
-            background: rgba(4,10,22,.88);
-            box-shadow: 0 10px 26px rgba(0,0,0,.28);
-            backdrop-filter: blur(10px);
-            pointer-events: none;
-          }
+        if(!item)return false;
 
-          .homepage-radar-mode .home-radar-live-dot {
-            width: 8px;
-            height: 8px;
-            flex: 0 0 auto;
-            border-radius: 50%;
-            background: #4ade80;
-            box-shadow: 0 0 10px rgba(74,222,128,.7);
-          }
+        this.activeKey=String(key);
+        this.nextKey="";
+        this.mixAmount=0;
 
-          .homepage-radar-mode .home-radar-badge-copy {
-            min-width: 0;
-          }
+        item.lastUsed=performance.now();
 
-          .homepage-radar-mode .home-radar-badge strong {
-            display: block;
-            color: #f8fafc;
-            font-size: .72rem;
-            font-weight: 900;
-            letter-spacing: .055em;
-            text-transform: uppercase;
-            line-height: 1.1;
-          }
+        this.map?.triggerRepaint();
 
-          .homepage-radar-mode .home-radar-badge span:last-child {
-            display: block;
-            margin-top: 3px;
-            color: #94a3b8;
-            font-size: .62rem;
-            font-weight: 700;
-            line-height: 1.1;
-          }
+        return true;
+      },
 
-          .homepage-radar-mode .playback {
-            position: fixed !important;
-            left: 50% !important;
-            bottom: 14px !important;
-            z-index: 30 !important;
-            width: min(520px, calc(100vw - 28px)) !important;
-            transform: translateX(-50%) !important;
-            display: grid !important;
-            grid-template-columns: 112px 1fr !important;
-            grid-template-areas:
-              "history controls"
-              "readout readout"
-              "timeline timeline" !important;
-            gap: 7px 9px !important;
-            padding: 9px 10px 8px !important;
-            border: 1px solid rgba(148,163,184,.28) !important;
-            border-radius: 13px !important;
-            background: rgba(4,10,22,.90) !important;
-            box-shadow: 0 14px 34px rgba(0,0,0,.34) !important;
-            backdrop-filter: blur(12px) !important;
-          }
+      setBlend(fromKey,toKey,amount){
+        const from=this.textures.get(String(fromKey));
+        const to=this.textures.get(String(toKey));
 
-          .homepage-radar-mode .history-row {
-            grid-area: history !important;
-            display: block !important;
-          }
+        if(!from || !to){
+          return false;
+        }
 
-          .homepage-radar-mode .history-label,
-          .homepage-radar-mode .history-buttons {
-            display: none !important;
-          }
+        this.activeKey=String(fromKey);
+        this.nextKey=String(toKey);
 
-          .homepage-radar-mode .home-radar-history-select {
-            width: 100% !important;
-            min-height: 31px !important;
-            padding: 5px 28px 5px 9px !important;
-            border: 1px solid rgba(56,189,248,.55) !important;
-            border-radius: 8px !important;
-            background: rgba(14,116,144,.22) !important;
-            color: #e0f2fe !important;
-            font-size: .68rem !important;
-            font-weight: 900 !important;
-            cursor: pointer !important;
-          }
+        this.mixAmount=Math.max(
+          0,
+          Math.min(
+            1,
+            Number(amount)||0
+          )
+        );
 
-          .homepage-radar-mode .home-radar-history-select:disabled {
-            opacity: .72 !important;
-            cursor: wait !important;
-          }
+        const now=performance.now();
 
-          .homepage-radar-mode .playback-buttons {
-            grid-area: controls !important;
-            display: grid !important;
-            grid-template-columns: 36px 1fr 36px 68px !important;
-            gap: 5px !important;
-          }
+        from.lastUsed=now;
+        to.lastUsed=now;
 
-          .homepage-radar-mode .playback-buttons button,
-          .homepage-radar-mode .playback-buttons select {
-            min-height: 31px !important;
-            padding: 5px !important;
-            border-radius: 8px !important;
-            font-size: .68rem !important;
-          }
+        this.map?.triggerRepaint();
 
-          .homepage-radar-mode .frame-readout {
-            grid-area: readout !important;
-            display: flex !important;
-            justify-content: space-between !important;
-            padding-inline: 2px !important;
-            color: #dbeafe !important;
-            font-size: .67rem !important;
-          }
+        return true;
+      },
 
-          .homepage-radar-mode .timeline {
-            grid-area: timeline !important;
-            gap: 2px !important;
-          }
+      trimTo(limit,keep=new Set()){
+        const max=Math.max(
+          1,
+          Number(limit)||1
+        );
 
-          .homepage-radar-mode .timeline input[type="range"] {
-            margin: 0 !important;
-          }
+        const protectedKeys=new Set(
+          [...keep]
+            .filter(Boolean)
+            .map(String)
+        );
 
-          .homepage-radar-mode .timeline-labels {
-            font-size: .52rem !important;
-          }
+        if(this.activeKey){
+          protectedKeys.add(this.activeKey);
+        }
 
-          .homepage-radar-mode .legend {
-            position: fixed !important;
-            top: 14px !important;
-            right: 14px !important;
-            z-index: 30 !important;
-            width: 224px !important;
-            margin: 0 !important;
-            padding: 8px 10px !important;
-            border: 1px solid rgba(148,163,184,.24) !important;
-            border-radius: 10px !important;
-            background: rgba(4,10,22,.82) !important;
-            box-shadow: 0 10px 24px rgba(0,0,0,.24) !important;
-            backdrop-filter: blur(10px) !important;
-          }
+        if(this.nextKey){
+          protectedKeys.add(this.nextKey);
+        }
 
-          .homepage-radar-mode .legend-title {
-            margin-bottom: 5px !important;
-            color: #cbd5e1 !important;
-            font-size: .60rem !important;
-            text-transform: uppercase !important;
-            letter-spacing: .06em !important;
-          }
+        while(this.textures.size>max){
+          let victimKey="";
+          let victimTime=Infinity;
 
-          .homepage-radar-mode .legend-bar {
-            height: 7px !important;
-          }
-
-          .homepage-radar-mode .legend-labels {
-            margin-top: 3px !important;
-            font-size: .50rem !important;
-          }
-
-          @media (max-width: 720px), (max-height: 440px) {
-            .homepage-radar-mode .home-radar-badge {
-              top: 9px !important;
-              left: 9px !important;
-              min-width: 0 !important;
-              padding: 7px 9px !important;
+          for(const [key,item] of this.textures){
+            if(protectedKeys.has(key)){
+              continue;
             }
 
-            .homepage-radar-mode .home-radar-badge strong {
-              font-size: .65rem !important;
-            }
-
-            .homepage-radar-mode .home-radar-badge span:last-child {
-              font-size: .56rem !important;
-            }
-
-            .homepage-radar-mode .legend {
-              display: none !important;
-            }
-
-            .homepage-radar-mode .playback {
-              bottom: 9px !important;
-              width: calc(100vw - 18px) !important;
-              grid-template-columns: 100px 1fr !important;
-              padding: 7px 8px !important;
-              gap: 5px 7px !important;
-            }
-
-            .homepage-radar-mode .playback-buttons {
-              grid-template-columns: 32px 1fr 32px 60px !important;
+            if(item.lastUsed<victimTime){
+              victimTime=item.lastUsed;
+              victimKey=key;
             }
           }
 
-          @media (max-width: 380px) {
-            .homepage-radar-mode .playback {
-              grid-template-columns: 1fr !important;
-              grid-template-areas:
-                "history"
-                "controls"
-                "readout"
-                "timeline" !important;
-            }
+          if(!victimKey){
+            break;
           }
-        `;
-        doc.head.appendChild(style);
 
-        const numericStyle =
-          doc.createElement("style");
+          const victim=this.textures.get(victimKey);
 
-        numericStyle.id =
-          "homepage-numeric-radar-mode-style";
+          if(victim){
+            this.gl?.deleteTexture(victim.texture);
+          }
 
-        numericStyle.textContent = [
-          ".homepage-radar-mode .panel {",
-          "  display: none !important;",
-          "}",
+          this.textures.delete(victimKey);
+        }
+      },
+      evictExcept(keep){for(const[key,item]of this.textures){if(keep.has(key))continue;this.gl?.deleteTexture(item.texture);this.textures.delete(key);}},
+      render(gl,matrix){
+        const active=
+          this.textures.get(this.activeKey);
 
-          ".homepage-radar-mode .playback {",
-          "  display: block !important;",
-          "  left: 50% !important;",
-          "  bottom: 14px !important;",
-          "  width: min(520px, calc(100vw - 28px)) !important;",
-          "  padding: 9px 10px 8px !important;",
-          "  transform: translateX(-50%) !important;",
-          "}",
+        if(!active){
+          return;
+        }
 
-          ".homepage-radar-mode .playback-row {",
-          "  display: grid !important;",
-          "  grid-template-columns: 36px minmax(0,1fr) 36px 68px !important;",
-          "  gap: 5px !important;",
-          "}",
+        const next=
+          this.textures.get(this.nextKey)
+          || active;
 
-          ".homepage-radar-mode .playback-row button,",
-          ".homepage-radar-mode .playback-row select {",
-          "  min-height: 31px !important;",
-          "  padding: 5px !important;",
-          "  border-radius: 8px !important;",
-          "  font-size: .68rem !important;",
-          "}",
+        const now=performance.now();
 
-          ".homepage-radar-mode .readout {",
-          "  display: flex !important;",
-          "  justify-content: space-between !important;",
-          "  gap: 10px !important;",
-          "  margin: 7px 2px 4px !important;",
-          "  padding: 0 !important;",
-          "  color: #dbeafe !important;",
-          "  font-size: .67rem !important;",
-          "}",
+        active.lastUsed=now;
+        next.lastUsed=now;
 
-          ".homepage-radar-mode #frameSlider {",
-          "  display: block !important;",
-          "  width: 100% !important;",
-          "  margin: 0 !important;",
-          "}",
+        gl.useProgram(this.program);
 
-          ".homepage-radar-mode .timeline-labels {",
-          "  display: flex !important;",
-          "  justify-content: space-between !important;",
-          "  margin-top: 2px !important;",
-          "  font-size: .52rem !important;",
-          "}",
+        gl.disable(gl.DEPTH_TEST);
 
-          "@media (max-width: 720px), (max-height: 440px) {",
-          "  .homepage-radar-mode .playback {",
-          "    bottom: 9px !important;",
-          "    width: calc(100vw - 18px) !important;",
-          "    padding: 7px 8px !important;",
-          "  }",
+        gl.enable(gl.BLEND);
 
-          "  .homepage-radar-mode .playback-row {",
-          "    grid-template-columns: 32px minmax(0,1fr) 32px 60px !important;",
-          "  }",
+        gl.blendEquation(gl.FUNC_ADD);
+
+        gl.blendFunc(
+          gl.SRC_ALPHA,
+          gl.ONE_MINUS_SRC_ALPHA
+        );
+
+        gl.uniformMatrix4fv(
+          gl.getUniformLocation(
+            this.program,
+            "u_matrix"
+          ),
+          false,
+          matrix
+        );
+
+        gl.uniform1f(
+          gl.getUniformLocation(
+            this.program,
+            "u_north_merc_y"
+          ),
+          northMercY
+        );
+
+        gl.uniform1f(
+          gl.getUniformLocation(
+            this.program,
+            "u_south_merc_y"
+          ),
+          southMercY
+        );
+
+        gl.uniform1f(
+          gl.getUniformLocation(
+            this.program,
+            "u_north_lat"
+          ),
+          north
+        );
+
+        gl.uniform1f(
+          gl.getUniformLocation(
+            this.program,
+            "u_south_lat"
+          ),
+          south
+        );
+
+        gl.uniform1f(
+          gl.getUniformLocation(
+            this.program,
+            "u_mix"
+          ),
+          Math.max(
+            0,
+            Math.min(
+              1,
+              this.mixAmount||0
+            )
+          )
+        );
+
+        const p=
+          gl.getAttribLocation(
+            this.program,
+            "a_pos"
+          );
+
+        gl.bindBuffer(
+          gl.ARRAY_BUFFER,
+          this.pos
+        );
+
+        gl.enableVertexAttribArray(p);
+
+        gl.vertexAttribPointer(
+          p,
+          2,
+          gl.FLOAT,
+          false,
+          0,
+          0
+        );
+
+        const u=
+          gl.getAttribLocation(
+            this.program,
+            "a_uv"
+          );
+
+        gl.bindBuffer(
+          gl.ARRAY_BUFFER,
+          this.uv
+        );
+
+        gl.enableVertexAttribArray(u);
+
+        gl.vertexAttribPointer(
+          u,
+          2,
+          gl.FLOAT,
+          false,
+          0,
+          0
+        );
+
+        gl.activeTexture(gl.TEXTURE0);
+
+        gl.bindTexture(
+          gl.TEXTURE_2D,
+          active.texture
+        );
+
+        gl.uniform1i(
+          gl.getUniformLocation(
+            this.program,
+            "u_dbz"
+          ),
+          0
+        );
+
+        gl.activeTexture(gl.TEXTURE1);
+
+        gl.bindTexture(
+          gl.TEXTURE_2D,
+          next.texture
+        );
+
+        gl.uniform1i(
+          gl.getUniformLocation(
+            this.program,
+            "u_dbz_next"
+          ),
+          1
+        );
+
+        gl.activeTexture(gl.TEXTURE2);
+
+        gl.bindTexture(
+          gl.TEXTURE_2D,
+          this.palette
+        );
+
+        gl.uniform1i(
+          gl.getUniformLocation(
+            this.program,
+            "u_palette"
+          ),
+          2
+        );
+
+        gl.drawArrays(
+          gl.TRIANGLES,
+          0,
+          6
+        );
+      },
+      onRemove(map,gl){for(const item of this.textures.values())gl.deleteTexture(item.texture);this.textures.clear();if(this.palette)gl.deleteTexture(this.palette);if(this.pos)gl.deleteBuffer(this.pos);if(this.uv)gl.deleteBuffer(this.uv);if(this.program)gl.deleteProgram(this.program);}
+    };
+  }
+
+
+  function createNativeChunkLayer(layout){
+    const chunksById=
+      new Map(
+        (layout||[]).map(
+          chunk=>[
+            String(chunk.id),
+            chunk
+          ]
+        )
+      );
+
+    return {
+      id:CHUNK_LAYER_ID,
+      type:"custom",
+      renderingMode:"2d",
+
+      map:null,
+      gl:null,
+      program:null,
+      palette:null,
+      uv:null,
+      loc:null,
+
+      geometries:new Map(),
+      textures:new Map(),
+
+      visibleIds:[],
+      enabled:false,
+
+      fromFrame:"",
+      toFrame:"",
+      mixAmount:0,
+
+      isWebGL2:false,
+      maxTexture:0,
+
+      onAdd(map,gl){
+        this.map=map;
+        this.gl=gl;
+
+        this.maxTexture=
+          Number(
+            gl.getParameter(
+              gl.MAX_TEXTURE_SIZE
+            )||0
+          );
+
+        this.isWebGL2=
+          typeof WebGL2RenderingContext!=="undefined"
+          &&gl instanceof WebGL2RenderingContext;
+
+        const vsSource=[
+          "precision highp float;",
+          "uniform mat4 u_matrix;",
+          "attribute vec2 a_pos;",
+          "attribute vec2 a_uv;",
+          "varying vec2 v_uv;",
+          "void main(){",
+          "gl_Position=u_matrix*vec4(a_pos,0.0,1.0);",
+          "v_uv=a_uv;",
           "}"
         ].join("\n");
 
-        doc.head.appendChild(
-          numericStyle
+        const fsSource=[
+          "precision highp float;",
+          "uniform sampler2D u_dbz;",
+          "uniform sampler2D u_dbz_next;",
+          "uniform sampler2D u_palette;",
+          "uniform float u_north_merc_y;",
+          "uniform float u_south_merc_y;",
+          "uniform float u_north_lat;",
+          "uniform float u_south_lat;",
+          "uniform float u_mix;",
+          "varying vec2 v_uv;",
+          "const float PI=3.14159265358979323846;",
+          "void main(){",
+          "float mercY=mix(u_north_merc_y,u_south_merc_y,v_uv.y);",
+          "float latitude=(2.0*atan(exp((0.5-mercY)*2.0*PI))-(PI*0.5))*180.0/PI;",
+          "float sourceV=clamp((u_north_lat-latitude)/(u_north_lat-u_south_lat),0.0,1.0);",
+          "float sampleA=texture2D(u_dbz,vec2(v_uv.x,sourceV)).r;",
+          "float sampleB=texture2D(u_dbz_next,vec2(v_uv.x,sourceV)).r;",
+          "float codeA=floor(sampleA*255.0+0.5);",
+          "float codeB=floor(sampleB*255.0+0.5);",
+          "vec4 colorA=texture2D(u_palette,vec2((codeA+0.5)/256.0,0.5));",
+          "vec4 colorB=texture2D(u_palette,vec2((codeB+0.5)/256.0,0.5));",
+          "gl_FragColor=mix(colorA,colorB,clamp(u_mix,0.0,1.0));",
+          "}"
+        ].join("\n");
+
+        const vs=
+          compileShader(
+            gl,
+            gl.VERTEX_SHADER,
+            vsSource
+          );
+
+        const fs=
+          compileShader(
+            gl,
+            gl.FRAGMENT_SHADER,
+            fsSource
+          );
+
+        this.program=
+          gl.createProgram();
+
+        gl.attachShader(
+          this.program,
+          vs
         );
 
-        const historySelect = null;
+        gl.attachShader(
+          this.program,
+          fs
+        );
 
-        // Homepage defaults: full opacity, 3-hour history, and 2x timelapse.
-        const opacityControl = doc.getElementById("radarOpacity");
-        if (opacityControl) {
-          opacityControl.value = "1";
-          opacityControl.dispatchEvent(new Event("input", { bubbles: true }));
+        gl.linkProgram(
+          this.program
+        );
+
+        gl.deleteShader(vs);
+        gl.deleteShader(fs);
+
+        if(
+          !gl.getProgramParameter(
+            this.program,
+            gl.LINK_STATUS
+          )
+        ){
+          throw new Error(
+            gl.getProgramInfoLog(
+              this.program
+            )
+            ||"native chunk shader link failed"
+          );
         }
 
-        const speedControl = doc.getElementById("speedSelect");
-        if (speedControl) {
-          speedControl.value = "250";
-          speedControl.dispatchEvent(new Event("change", { bubbles: true }));
-        }
+        this.loc={
+          matrix:
+            gl.getUniformLocation(
+              this.program,
+              "u_matrix"
+            ),
 
-        let startupHistoryApplied = false;
-        const applyStartupHistory = async () => {
-          if (startupHistoryApplied || !historySelect) return;
-          const win = engine.contentWindow;
-          const available = typeof win?.zwxAvailableHistoryMinutes === "function"
-            ? Number(win.zwxAvailableHistoryMinutes())
-            : 0;
-          if (available < 180 || typeof win?.zwxSetHistoryWindow !== "function") return;
-          startupHistoryApplied = true;
-          const selected = await win.zwxSetHistoryWindow(180);
-          historySelect.value = String(selected);
+          northMerc:
+            gl.getUniformLocation(
+              this.program,
+              "u_north_merc_y"
+            ),
+
+          southMerc:
+            gl.getUniformLocation(
+              this.program,
+              "u_south_merc_y"
+            ),
+
+          northLat:
+            gl.getUniformLocation(
+              this.program,
+              "u_north_lat"
+            ),
+
+          southLat:
+            gl.getUniformLocation(
+              this.program,
+              "u_south_lat"
+            ),
+
+          mix:
+            gl.getUniformLocation(
+              this.program,
+              "u_mix"
+            ),
+
+          dbz:
+            gl.getUniformLocation(
+              this.program,
+              "u_dbz"
+            ),
+
+          dbzNext:
+            gl.getUniformLocation(
+              this.program,
+              "u_dbz_next"
+            ),
+
+          palette:
+            gl.getUniformLocation(
+              this.program,
+              "u_palette"
+            ),
+
+          pos:
+            gl.getAttribLocation(
+              this.program,
+              "a_pos"
+            ),
+
+          uv:
+            gl.getAttribLocation(
+              this.program,
+              "a_uv"
+            )
         };
 
-        const oldBadge = doc.getElementById("homeRadarBadge");
-        if (oldBadge) oldBadge.remove();
+        this.uv=
+          gl.createBuffer();
 
-        const badge = doc.createElement("div");
-        badge.id = "homeRadarBadge";
-        badge.className = "home-radar-badge";
-        badge.innerHTML = `
-          <span class="home-radar-live-dot" aria-hidden="true"></span>
-          <span class="home-radar-badge-copy">
-            <strong>Live National Radar</strong>
-            <span id="homeRadarFreshness">Updating automatically</span>
-          </span>
-        `;
-        doc.body.appendChild(badge);
+        gl.bindBuffer(
+          gl.ARRAY_BUFFER,
+          this.uv
+        );
 
-        badgeFreshness = doc.getElementById("homeRadarFreshness");
+        gl.bufferData(
+          gl.ARRAY_BUFFER,
+          new Float32Array([
+            0,0,
+            0,1,
+            1,0,
+            1,0,
+            0,1,
+            1,1
+          ]),
+          gl.STATIC_DRAW
+        );
 
-        const legendTitle = doc.querySelector(".legend-title");
-        if (legendTitle) legendTitle.textContent = "Radar Intensity (dBZ)";
+        this.palette=
+          gl.createTexture();
 
-        engine.classList.add("is-ready");
-        updateFreshness();
-        syncHistorySelect(historySelect);
+        gl.bindTexture(
+          gl.TEXTURE_2D,
+          this.palette
+        );
 
-        if (freshnessTimer) clearInterval(freshnessTimer);
-        freshnessTimer = setInterval(updateFreshness, 30000);
+        gl.texParameteri(
+          gl.TEXTURE_2D,
+          gl.TEXTURE_WRAP_S,
+          gl.CLAMP_TO_EDGE
+        );
 
-        if (historySyncTimer) clearInterval(historySyncTimer);
-        historySyncTimer = setInterval(() => {
-          syncHistorySelect(historySelect);
-          applyStartupHistory().catch(() => {});
-        }, 1000);
-        applyStartupHistory().catch(() => {});
+        gl.texParameteri(
+          gl.TEXTURE_2D,
+          gl.TEXTURE_WRAP_T,
+          gl.CLAMP_TO_EDGE
+        );
+
+        gl.texParameteri(
+          gl.TEXTURE_2D,
+          gl.TEXTURE_MIN_FILTER,
+          gl.NEAREST
+        );
+
+        gl.texParameteri(
+          gl.TEXTURE_2D,
+          gl.TEXTURE_MAG_FILTER,
+          gl.NEAREST
+        );
+
+        gl.pixelStorei(
+          gl.UNPACK_ALIGNMENT,
+          1
+        );
+
+        gl.texImage2D(
+          gl.TEXTURE_2D,
+          0,
+          gl.RGBA,
+          256,
+          1,
+          0,
+          gl.RGBA,
+          gl.UNSIGNED_BYTE,
+          PALETTE_LUT
+        );
+
+        for(
+          const chunk
+          of chunksById.values()
+        ){
+          const bounds=
+            (chunk.bounds||[])
+              .map(Number);
+
+          if(bounds.length!==4){
+            continue;
+          }
+
+          const [
+            west,
+            south,
+            east,
+            north
+          ]=bounds;
+
+          const nw=
+            mapboxgl.MercatorCoordinate
+              .fromLngLat(
+                [west,north]
+              );
+
+          const ne=
+            mapboxgl.MercatorCoordinate
+              .fromLngLat(
+                [east,north]
+              );
+
+          const sw=
+            mapboxgl.MercatorCoordinate
+              .fromLngLat(
+                [west,south]
+              );
+
+          const se=
+            mapboxgl.MercatorCoordinate
+              .fromLngLat(
+                [east,south]
+              );
+
+          const pos=
+            gl.createBuffer();
+
+          gl.bindBuffer(
+            gl.ARRAY_BUFFER,
+            pos
+          );
+
+          gl.bufferData(
+            gl.ARRAY_BUFFER,
+            new Float32Array([
+              nw.x,nw.y,
+              sw.x,sw.y,
+              ne.x,ne.y,
+
+              ne.x,ne.y,
+              sw.x,sw.y,
+              se.x,se.y
+            ]),
+            gl.STATIC_DRAW
+          );
+
+          this.geometries.set(
+            String(chunk.id),
+            {
+              pos,
+              north,
+              south,
+
+              northMerc:
+                mapboxgl.MercatorCoordinate
+                  .fromLngLat(
+                    [0,north]
+                  ).y,
+
+              southMerc:
+                mapboxgl.MercatorCoordinate
+                  .fromLngLat(
+                    [0,south]
+                  ).y
+            }
+          );
+        }
+      },
+
+      textureKey(
+        frameId,
+        chunkId
+      ){
+        return (
+          String(frameId)
+          +":"
+          +String(chunkId)
+        );
+      },
+
+      addTexture(
+        frameId,
+        chunk,
+        data
+      ){
+        const key=
+          this.textureKey(
+            frameId,
+            chunk.id
+          );
+
+        if(
+          this.textures.has(key)
+        ){
+          return;
+        }
+
+        const width=
+          Number(chunk.width);
+
+        const height=
+          Number(chunk.height);
+
+        if(
+          width>this.maxTexture
+          ||height>this.maxTexture
+        ){
+          throw new Error(
+            "Native chunk "
+            +width+"x"+height
+            +" exceeds GPU limit "
+            +this.maxTexture
+          );
+        }
+
+        const gl=this.gl;
+
+        const texture=
+          gl.createTexture();
+
+        gl.bindTexture(
+          gl.TEXTURE_2D,
+          texture
+        );
+
+        gl.texParameteri(
+          gl.TEXTURE_2D,
+          gl.TEXTURE_WRAP_S,
+          gl.CLAMP_TO_EDGE
+        );
+
+        gl.texParameteri(
+          gl.TEXTURE_2D,
+          gl.TEXTURE_WRAP_T,
+          gl.CLAMP_TO_EDGE
+        );
+
+        gl.texParameteri(
+          gl.TEXTURE_2D,
+          gl.TEXTURE_MIN_FILTER,
+          gl.NEAREST
+        );
+
+        gl.texParameteri(
+          gl.TEXTURE_2D,
+          gl.TEXTURE_MAG_FILTER,
+          gl.NEAREST
+        );
+
+        gl.pixelStorei(
+          gl.UNPACK_ALIGNMENT,
+          1
+        );
+
+        if(this.isWebGL2){
+          gl.texImage2D(
+            gl.TEXTURE_2D,
+            0,
+            gl.R8,
+            width,
+            height,
+            0,
+            gl.RED,
+            gl.UNSIGNED_BYTE,
+            data
+          );
+        }else{
+          gl.texImage2D(
+            gl.TEXTURE_2D,
+            0,
+            gl.LUMINANCE,
+            width,
+            height,
+            0,
+            gl.LUMINANCE,
+            gl.UNSIGNED_BYTE,
+            data
+          );
+        }
+
+        this.textures.set(
+          key,
+          {
+            texture,
+            width,
+            height,
+            lastUsed:performance.now()
+          }
+        );
+      },
+
+      hasFrame(
+        frameId,
+        ids=this.visibleIds
+      ){
+        if(!ids.length){
+          return false;
+        }
+
+        return ids.every(
+          chunkId=>
+            this.textures.has(
+              this.textureKey(
+                frameId,
+                chunkId
+              )
+            )
+        );
+      },
+
+      setVisible(ids){
+        this.visibleIds=[
+          ...new Set(
+            (ids||[])
+              .map(String)
+          )
+        ].filter(
+          id=>
+            chunksById.has(id)
+        );
+
+        this.map?.triggerRepaint();
+      },
+
+      setEnabled(enabled){
+        this.enabled=
+          Boolean(enabled);
+
+        this.map?.triggerRepaint();
+      },
+
+      activateFrame(frameId){
+        const value=
+          String(frameId);
+
+        if(
+          !this.hasFrame(value)
+        ){
+          return false;
+        }
+
+        this.fromFrame=value;
+        this.toFrame=value;
+        this.mixAmount=0;
+
+        this.map?.triggerRepaint();
+
+        return true;
+      },
+
+      setBlendFrames(
+        fromFrame,
+        toFrame,
+        amount
+      ){
+        const from=
+          String(fromFrame);
+
+        const to=
+          String(toFrame);
+
+        if(
+          !this.hasFrame(from)
+          ||!this.hasFrame(to)
+        ){
+          return false;
+        }
+
+        this.fromFrame=from;
+        this.toFrame=to;
+
+        this.mixAmount=
+          Math.max(
+            0,
+            Math.min(
+              1,
+              Number(amount)||0
+            )
+          );
+
+        this.map?.triggerRepaint();
+
+        return true;
+      },
+
+      evictExcept(keep){
+        const wanted=
+          keep||new Set();
+
+        for(
+          const [
+            key,
+            item
+          ]
+          of this.textures
+        ){
+          if(wanted.has(key)){
+            continue;
+          }
+
+          this.gl?.deleteTexture(
+            item.texture
+          );
+
+          this.textures.delete(key);
+        }
+      },
+
+      gpuBytes(){
+        let total=0;
+
+        for(
+          const item
+          of this.textures.values()
+        ){
+          total+=
+            Number(item.width||0)
+            *Number(item.height||0);
+        }
+
+        return total;
+      },
+
+      render(gl,matrix){
+        if(
+          !this.enabled
+          ||!this.fromFrame
+          ||!this.visibleIds.length
+        ){
+          return;
+        }
+
+        gl.useProgram(
+          this.program
+        );
+
+        gl.disable(
+          gl.DEPTH_TEST
+        );
+
+        gl.enable(
+          gl.BLEND
+        );
+
+        gl.blendEquation(
+          gl.FUNC_ADD
+        );
+
+        gl.blendFunc(
+          gl.SRC_ALPHA,
+          gl.ONE_MINUS_SRC_ALPHA
+        );
+
+        gl.uniformMatrix4fv(
+          this.loc.matrix,
+          false,
+          matrix
+        );
+
+        gl.bindBuffer(
+          gl.ARRAY_BUFFER,
+          this.uv
+        );
+
+        gl.enableVertexAttribArray(
+          this.loc.uv
+        );
+
+        gl.vertexAttribPointer(
+          this.loc.uv,
+          2,
+          gl.FLOAT,
+          false,
+          0,
+          0
+        );
+
+        gl.activeTexture(
+          gl.TEXTURE2
+        );
+
+        gl.bindTexture(
+          gl.TEXTURE_2D,
+          this.palette
+        );
+
+        gl.uniform1i(
+          this.loc.palette,
+          2
+        );
+
+        const now=
+          performance.now();
+
+        for(
+          const chunkId
+          of this.visibleIds
+        ){
+          const geometry=
+            this.geometries.get(
+              chunkId
+            );
+
+          if(!geometry){
+            continue;
+          }
+
+          const from=
+            this.textures.get(
+              this.textureKey(
+                this.fromFrame,
+                chunkId
+              )
+            );
+
+          if(!from){
+            continue;
+          }
+
+          const next=
+            this.textures.get(
+              this.textureKey(
+                this.toFrame,
+                chunkId
+              )
+            )
+            ||from;
+
+          from.lastUsed=now;
+          next.lastUsed=now;
+
+          gl.uniform1f(
+            this.loc.northMerc,
+            geometry.northMerc
+          );
+
+          gl.uniform1f(
+            this.loc.southMerc,
+            geometry.southMerc
+          );
+
+          gl.uniform1f(
+            this.loc.northLat,
+            geometry.north
+          );
+
+          gl.uniform1f(
+            this.loc.southLat,
+            geometry.south
+          );
+
+          gl.uniform1f(
+            this.loc.mix,
+            this.mixAmount
+          );
+
+          gl.bindBuffer(
+            gl.ARRAY_BUFFER,
+            geometry.pos
+          );
+
+          gl.enableVertexAttribArray(
+            this.loc.pos
+          );
+
+          gl.vertexAttribPointer(
+            this.loc.pos,
+            2,
+            gl.FLOAT,
+            false,
+            0,
+            0
+          );
+
+          gl.activeTexture(
+            gl.TEXTURE0
+          );
+
+          gl.bindTexture(
+            gl.TEXTURE_2D,
+            from.texture
+          );
+
+          gl.uniform1i(
+            this.loc.dbz,
+            0
+          );
+
+          gl.activeTexture(
+            gl.TEXTURE1
+          );
+
+          gl.bindTexture(
+            gl.TEXTURE_2D,
+            next.texture
+          );
+
+          gl.uniform1i(
+            this.loc.dbzNext,
+            1
+          );
+
+          gl.drawArrays(
+            gl.TRIANGLES,
+            0,
+            6
+          );
+        }
+      },
+
+      onRemove(map,gl){
+        for(
+          const item
+          of this.textures.values()
+        ){
+          gl.deleteTexture(
+            item.texture
+          );
+        }
+
+        this.textures.clear();
+
+        for(
+          const geometry
+          of this.geometries.values()
+        ){
+          gl.deleteBuffer(
+            geometry.pos
+          );
+        }
+
+        this.geometries.clear();
+
+        if(this.palette){
+          gl.deleteTexture(
+            this.palette
+          );
+        }
+
+        if(this.uv){
+          gl.deleteBuffer(
+            this.uv
+          );
+        }
+
+        if(this.program){
+          gl.deleteProgram(
+            this.program
+          );
+        }
+      }
+    };
+  }
+
+
+  function firstSymbolLayerId(map){return(map.getStyle()?.layers||[]).find(l=>l.type==="symbol")?.id;}
+  async function maybeDecompress(
+    bytes,
+    expectedLength
+  ){
+    if(bytes.byteLength===expectedLength){
+      return new Uint8Array(bytes);
+    }
+
+    const probe=
+      new Uint8Array(bytes);
+
+    if(
+      probe[0]===0x1f
+      &&probe[1]===0x8b
+      &&typeof DecompressionStream!=="undefined"
+    ){
+      const stream=
+        new Blob([bytes])
+          .stream()
+          .pipeThrough(
+            new DecompressionStream(
+              "gzip"
+            )
+          );
+
+      const unpacked=
+        await new Response(stream)
+          .arrayBuffer();
+
+      return new Uint8Array(
+        unpacked
+      );
+    }
+
+    return probe;
+  }
+
+  async function loadTexture(
+    index,
+    tier=BASE_TIER
+  ){
+    if(!frames.length){
+      return false;
+    }
+
+    const normalized=
+      (Number(index)+frames.length)
+      %frames.length;
+
+    const frame=
+      frames[normalized];
+
+    const key=
+      textureKey(
+        normalized,
+        tier
+      );
+
+    if(layer.hasTexture(key)){
+      return true;
+    }
+
+    if(loading.has(key)){
+      return loading.get(key);
+    }
+
+    const promise=(async()=>{
+      const started=
+        performance.now();
+
+      const dims=
+        tierDimensions(tier);
+
+      const expected=
+        dims.width*dims.height;
+
+      const response=
+        await fetch(
+          numericUrl(frame,tier),
+          {cache:"force-cache"}
+        );
+
+      if(!response.ok){
+        throw new Error(
+          `${tierLabel(tier)} frame HTTP ${response.status}`
+        );
       }
 
-      engine.addEventListener("load", installHomepageUi);
-      // The child iframe can finish before this script attaches its load handler, especially from production/browser cache.
-      if (engine.contentDocument?.readyState === "complete") {
-        installHomepageUi();
+      const packedLength=
+        Number(
+          response.headers.get(
+            "content-length"
+          )||0
+        );
+
+      const bytes=
+        await maybeDecompress(
+          await response.arrayBuffer(),
+          expected
+        );
+
+      if(bytes.byteLength!==expected){
+        throw new Error(
+          `${tierLabel(tier)} frame size ${bytes.byteLength.toLocaleString()} != expected ${expected.toLocaleString()}`
+        );
       }
+
+      layer.addTexture(
+        key,
+        bytes,
+        dims.width,
+        dims.height
+      );
+
+      frame._fetchStats=
+        frame._fetchStats||{};
+
+      const fallbackPacked=
+        tier==="overview"
+          ? Number(
+              frame.overviewCompressedBytes
+              ||0
+            )
+          : Number(
+              frame.dbzCompressedBytes
+              ||0
+            );
+
+      frame._fetchStats[tier]={
+        ms:
+          performance.now()
+          -started,
+
+        transferBytes:
+          packedLength
+          ||fallbackPacked
+      };
+
+      return true;
     })();
-  </script>
+
+    loading.set(
+      key,
+      promise
+    );
+
+    try{
+      return await promise;
+    }finally{
+      loading.delete(key);
+    }
+  }
+
+
+  function nativeChunkLayout(){
+    return (
+      manifest?.nativeChunking
+        ?.layout
+      ||[]
+    );
+  }
+
+  function nativeChunkUrl(
+    frameId,
+    chunkId
+  ){
+    const template=
+      String(
+        manifest?.nativeChunking
+          ?.template
+        ||"native-chunks/{frameId}/{chunkId}.dbz"
+      );
+
+    const relative=
+      template
+        .replace(
+          "{frameId}",
+          encodeURIComponent(
+            String(frameId)
+          )
+        )
+        .replace(
+          "{chunkId}",
+          encodeURIComponent(
+            String(chunkId)
+          )
+        );
+
+    return new URL(
+      relative,
+      ARCHIVE_BASE
+    ).toString();
+  }
+
+  function visibleNativeChunks(){
+    if(
+      !manifest
+      ||!map
+    ){
+      return [];
+    }
+
+    const bounds=
+      map.getBounds();
+
+    let west=
+      bounds.getWest();
+
+    let east=
+      bounds.getEast();
+
+    let south=
+      bounds.getSouth();
+
+    let north=
+      bounds.getNorth();
+
+    const lonPad=
+      Math.max(
+        0.02,
+        Math.abs(
+          east-west
+        )*CHUNK_VIEWPORT_PAD
+      );
+
+    const latPad=
+      Math.max(
+        0.02,
+        Math.abs(
+          north-south
+        )*CHUNK_VIEWPORT_PAD
+      );
+
+    west-=lonPad;
+    east+=lonPad;
+    south-=latPad;
+    north+=latPad;
+
+    return nativeChunkLayout()
+      .filter(
+        chunk=>{
+          const b=
+            (chunk.bounds||[])
+              .map(Number);
+
+          if(b.length!==4){
+            return false;
+          }
+
+          const [
+            chunkWest,
+            chunkSouth,
+            chunkEast,
+            chunkNorth
+          ]=b;
+
+          return (
+            chunkEast>=west
+            &&chunkWest<=east
+            &&chunkNorth>=south
+            &&chunkSouth<=north
+          );
+        }
+      );
+  }
+
+  function chunkTextureKey(
+    frameId,
+    chunkId
+  ){
+    return (
+      String(frameId)
+      +":"
+      +String(chunkId)
+    );
+  }
+
+  async function loadNativeChunk(
+    index,
+    chunk
+  ){
+    if(
+      !frames.length
+      ||!chunkLayer
+      ||!chunk
+    ){
+      return false;
+    }
+
+    const normalized=
+      (
+        Number(index)
+        +frames.length
+      )%frames.length;
+
+    const frame=
+      frames[normalized];
+
+    if(
+      !frame
+      ||!frame.nativeChunksReady
+    ){
+      return false;
+    }
+
+    const key=
+      chunkTextureKey(
+        frame.id,
+        chunk.id
+      );
+
+    if(
+      chunkLayer.textures.has(key)
+    ){
+      return true;
+    }
+
+    if(
+      chunkLoading.has(key)
+    ){
+      return chunkLoading.get(key);
+    }
+
+    const promise=
+      (async()=>{
+        const started=
+          performance.now();
+
+        const expected=
+          Number(chunk.width)
+          *Number(chunk.height);
+
+        const response=
+          await fetch(
+            nativeChunkUrl(
+              frame.id,
+              chunk.id
+            ),
+            {
+              cache:"force-cache"
+            }
+          );
+
+        if(!response.ok){
+          throw new Error(
+            "Native chunk "
+            +chunk.id
+            +" HTTP "
+            +response.status
+          );
+        }
+
+        const packed=
+          Number(
+            response.headers.get(
+              "content-length"
+            )||0
+          );
+
+        const bytes=
+          await maybeDecompress(
+            await response.arrayBuffer(),
+            expected
+          );
+
+        if(
+          bytes.byteLength
+          !==expected
+        ){
+          throw new Error(
+            "Native chunk "
+            +chunk.id
+            +" size "
+            +bytes.byteLength.toLocaleString()
+            +" != "
+            +expected.toLocaleString()
+          );
+        }
+
+        chunkLayer.addTexture(
+          frame.id,
+          chunk,
+          bytes
+        );
+
+        chunkLastFetchMs=
+          performance.now()
+          -started;
+
+        chunkLastTransferBytes=
+          packed;
+
+        chunkLastRawBytes=
+          expected;
+
+        updateGpuInfo();
+
+        return true;
+      })();
+
+    chunkLoading.set(
+      key,
+      promise
+    );
+
+    try{
+      return await promise;
+    }finally{
+      chunkLoading.delete(key);
+    }
+  }
+
+  async function loadNativeChunkSet(
+    index,
+    chunks
+  ){
+    const targets=
+      [...chunks];
+
+    let cursor=0;
+
+    const worker=
+      async()=>{
+        while(
+          cursor<targets.length
+        ){
+          const chunk=
+            targets[cursor++];
+
+          try{
+            await loadNativeChunk(
+              index,
+              chunk
+            );
+          }catch(error){
+            console.warn(
+              "Native viewport chunk failed",
+              frames[index]?.id,
+              chunk?.id,
+              error
+            );
+          }
+        }
+      };
+
+    const workers=
+      Array.from(
+        {
+          length:Math.min(
+            CHUNK_FETCH_CONCURRENCY,
+            targets.length
+          )
+        },
+        ()=>worker()
+      );
+
+    await Promise.all(
+      workers
+    );
+  }
+
+  function desiredIndices(
+    start=currentIndex,
+    tier=BASE_TIER
+  ){
+    const set=
+      new Set();
+
+    if(!frames.length){
+      return set;
+    }
+
+    const limit=
+      Math.min(
+        gpuDepth(tier),
+        frames.length
+      );
+
+    for(
+      let n=0;
+      n<limit;
+      n++
+    ){
+      set.add(
+        (start+n)
+        %frames.length
+      );
+    }
+
+    return set;
+  }
+
+  function countReadyAhead(
+    start=currentIndex,
+    tier=BASE_TIER
+  ){
+    let count=0;
+
+    const limit=
+      Math.min(
+        gpuDepth(tier),
+        frames.length
+      );
+
+    for(
+      let n=0;
+      n<limit;
+      n++
+    ){
+      const index=
+        (start+n)
+        %frames.length;
+
+      if(
+        !layer.hasTexture(
+          textureKey(
+            index,
+            tier
+          )
+        )
+      ){
+        break;
+      }
+
+      count++;
+    }
+
+    return count;
+  }
+
+  async function fillBuffer(
+    start=currentIndex,
+    blockCount=0,
+    tier=BASE_TIER
+  ){
+    if(!frames.length){
+      return 0;
+    }
+
+    const depth=
+      gpuDepth(tier);
+
+    const targets=[
+      ...desiredIndices(
+        start,
+        tier
+      )
+    ];
+
+    let cursor=0;
+    let ready=0;
+
+    const worker=
+      async()=>{
+        while(
+          cursor<targets.length
+        ){
+          const index=
+            targets[cursor++];
+
+          try{
+            await loadTexture(
+              index,
+              tier
+            );
+
+            const liveKeep=
+              new Set(
+                [
+                  ...desiredIndices(
+                    currentIndex,
+                    BASE_TIER
+                  )
+                ].map(
+                  i=>
+                    textureKey(
+                      i,
+                      BASE_TIER
+                    )
+                )
+              );
+
+            layer.trimTo(
+              GPU_DEPTH_OVERVIEW,
+              liveKeep
+            );
+
+            ready++;
+
+            updateGpuInfo();
+          }catch(error){
+            console.warn(
+              "Overview radar prefetch failed",
+              frames[index]?.id,
+              error
+            );
+          }
+        }
+      };
+
+    const workers=
+      Array.from(
+        {
+          length:Math.min(
+            fetchConcurrency(tier),
+            targets.length
+          )
+        },
+        ()=>worker()
+      );
+
+    await Promise.all(
+      workers
+    );
+
+    if(blockCount>0){
+      const required=
+        Math.min(
+          blockCount,
+          frames.length,
+          depth
+        );
+
+      const contiguous=
+        countReadyAhead(
+          start,
+          tier
+        );
+
+      if(
+        contiguous<required
+      ){
+        throw new Error(
+          "Only "
+          +contiguous
+          +"/"
+          +required
+          +" overview startup frames became ready"
+        );
+      }
+    }
+
+    const keep=
+      new Set(
+        [
+          ...desiredIndices(
+            currentIndex,
+            BASE_TIER
+          )
+        ].map(
+          i=>
+            textureKey(
+              i,
+              BASE_TIER
+            )
+        )
+      );
+
+    layer.evictExcept(
+      keep
+    );
+
+    layer.trimTo(
+      GPU_DEPTH_OVERVIEW,
+      keep
+    );
+
+    updateGpuInfo();
+
+    return ready;
+  }
+
+  async function maintainBuffer(){
+    if(bufferBusy){
+      bufferPending=true;
+      return;
+    }
+
+    bufferBusy=true;
+
+    try{
+      do{
+        bufferPending=false;
+
+        try{
+          await fillBuffer(
+            currentIndex,
+            0,
+            BASE_TIER
+          );
+        }catch(error){
+          console.warn(
+            "Overview rolling buffer failed",
+            error
+          );
+        }
+      }while(bufferPending);
+    }finally{
+      bufferBusy=false;
+    }
+  }
+
+  function syncNativeCurrent(){
+    if(
+      activeTier!=="native"
+      ||!chunkLayer
+      ||!visibleChunkIds.length
+    ){
+      return false;
+    }
+
+    const frameId=
+      String(
+        frames[currentIndex]?.id
+        ||""
+      );
+
+    if(
+      !frameId
+      ||!chunkLayer.hasFrame(
+        frameId,
+        visibleChunkIds
+      )
+    ){
+      return false;
+    }
+
+    return chunkLayer.activateFrame(
+      frameId
+    );
+  }
+
+  function syncNativeBlend(
+    fromIndex,
+    toIndex,
+    amount
+  ){
+    if(
+      activeTier!=="native"
+      ||!chunkLayer
+      ||!visibleChunkIds.length
+    ){
+      return false;
+    }
+
+    const fromId=
+      String(
+        frames[fromIndex]?.id
+        ||""
+      );
+
+    const toId=
+      String(
+        frames[toIndex]?.id
+        ||""
+      );
+
+    if(
+      chunkLayer.hasFrame(
+        fromId,
+        visibleChunkIds
+      )
+      &&chunkLayer.hasFrame(
+        toId,
+        visibleChunkIds
+      )
+    ){
+      return chunkLayer
+        .setBlendFrames(
+          fromId,
+          toId,
+          amount
+        );
+    }
+
+    // Do not draw a partially loaded native observation.
+    // Keep the previous COMPLETE native draw while the
+    // lightweight overview continues underneath.
+    if(
+      chunkLayer.hasFrame(
+        fromId,
+        visibleChunkIds
+      )
+    ){
+      if(
+        chunkLayer.fromFrame
+        !==fromId
+      ){
+        chunkLayer.activateFrame(
+          fromId
+        );
+      }
+
+      return true;
+    }
+
+    return false;
+  }
+
+  async function fillNativeChunkBuffer(){
+    if(
+      activeTier!=="native"
+      ||!chunkLayer
+      ||!visibleChunkIds.length
+    ){
+      return;
+    }
+
+    const generation=
+      chunkViewportGeneration;
+
+    const byId=
+      new Map(
+        nativeChunkLayout()
+          .map(
+            chunk=>[
+              String(chunk.id),
+              chunk
+            ]
+          )
+      );
+
+    const chunks=
+      visibleChunkIds
+        .map(
+          id=>byId.get(id)
+        )
+        .filter(Boolean);
+
+    if(!chunks.length){
+      return;
+    }
+
+    const frameIndices=[];
+
+    for(
+      let n=0;
+      n<Math.min(
+        CHUNK_FRAME_DEPTH,
+        frames.length
+      );
+      n++
+    ){
+      frameIndices.push(
+        (currentIndex+n)
+        %frames.length
+      );
+    }
+
+    const targets=[];
+
+    for(
+      const index
+      of frameIndices
+    ){
+      for(
+        const chunk
+        of chunks
+      ){
+        targets.push(
+          {
+            index,
+            chunk
+          }
+        );
+      }
+    }
+
+    let cursor=0;
+
+    const worker=
+      async()=>{
+        while(
+          cursor<targets.length
+        ){
+          const target=
+            targets[cursor++];
+
+          try{
+            await loadNativeChunk(
+              target.index,
+              target.chunk
+            );
+          }catch(error){
+            console.warn(
+              "Native chunk prefetch failed",
+              error
+            );
+          }
+        }
+      };
+
+    const workers=
+      Array.from(
+        {
+          length:Math.min(
+            CHUNK_FETCH_CONCURRENCY,
+            targets.length
+          )
+        },
+        ()=>worker()
+      );
+
+    await Promise.all(
+      workers
+    );
+
+    if(
+      generation
+      !==chunkViewportGeneration
+      ||activeTier!=="native"
+    ){
+      return;
+    }
+
+    const keep=
+      new Set();
+
+    for(
+      const index
+      of frameIndices
+    ){
+      const frameId=
+        frames[index]?.id;
+
+      for(
+        const chunkId
+        of visibleChunkIds
+      ){
+        keep.add(
+          chunkTextureKey(
+            frameId,
+            chunkId
+          )
+        );
+      }
+    }
+
+    // Preserve the sticky complete frame during a transition.
+    for(
+      const frameId
+      of [
+        chunkLayer.fromFrame,
+        chunkLayer.toFrame
+      ]
+    ){
+      if(!frameId){
+        continue;
+      }
+
+      for(
+        const chunkId
+        of visibleChunkIds
+      ){
+        keep.add(
+          chunkTextureKey(
+            frameId,
+            chunkId
+          )
+        );
+      }
+    }
+
+    chunkLayer.evictExcept(
+      keep
+    );
+
+    syncNativeCurrent();
+
+    updateGridInfo();
+    updateGpuInfo();
+  }
+
+  async function maintainNativeChunkBuffer(){
+    if(
+      activeTier!=="native"
+      ||!chunkLayer
+    ){
+      return;
+    }
+
+    if(chunkBufferBusy){
+      chunkBufferPending=true;
+      return;
+    }
+
+    chunkBufferBusy=true;
+
+    try{
+      do{
+        chunkBufferPending=false;
+
+        try{
+          await fillNativeChunkBuffer();
+        }catch(error){
+          console.warn(
+            "Native viewport rolling buffer failed",
+            error
+          );
+        }
+      }while(chunkBufferPending);
+    }finally{
+      chunkBufferBusy=false;
+    }
+  }
+
+  async function refreshNativeViewport(
+    blockCurrent=false
+  ){
+    if(
+      activeTier!=="native"
+      ||!chunkLayer
+    ){
+      return;
+    }
+
+    const generation=
+      ++chunkViewportGeneration;
+
+    const chunks=
+      visibleNativeChunks();
+
+    visibleChunkIds=
+      chunks.map(
+        chunk=>
+          String(chunk.id)
+      );
+
+    chunkLayer.setVisible(
+      visibleChunkIds
+    );
+
+    if(!chunks.length){
+      updateUi();
+      return;
+    }
+
+    if(blockCurrent){
+      await loadNativeChunkSet(
+        currentIndex,
+        chunks
+      );
+
+      if(
+        generation
+        !==chunkViewportGeneration
+        ||activeTier!=="native"
+      ){
+        return;
+      }
+
+      syncNativeCurrent();
+    }
+
+    updateUi();
+
+    maintainNativeChunkBuffer();
+  }
+
+  function updateGridInfo(){
+    if(!manifest){
+      gridInfo.textContent="--";
+      return;
+    }
+
+    if(activeTier==="native"){
+      const chunking=
+        manifest.nativeChunking||{};
+
+      gridInfo.textContent=
+        "Native viewport • "
+        +visibleChunkIds.length
+        +"/"
+        +Number(
+          chunking.chunkCount||0
+        )
+        +" chunks • "
+        +Number(
+          chunking.chunkPixels||0
+        )
+        +"px • z"
+        +map.getZoom().toFixed(2);
+
+      return;
+    }
+
+    const dims=
+      tierDimensions(
+        BASE_TIER
+      );
+
+    gridInfo.textContent=
+      "Overview "
+      +dims.width
+      +" × "
+      +dims.height
+      +" • "
+      +(expectedBytes(BASE_TIER)/1048576)
+        .toFixed(2)
+      +" MiB/frame • z"
+      +map.getZoom().toFixed(2);
+  }
+
+  function updateGpuInfo(){
+    if(
+      !layer
+      ||!frames.length
+    ){
+      gpuInfo.textContent="--";
+      return;
+    }
+
+    let overviewBytes=0;
+
+    for(
+      const item
+      of layer.textures.values()
+    ){
+      overviewBytes+=
+        Number(item.width||0)
+        *Number(item.height||0);
+    }
+
+    if(
+      activeTier==="native"
+      &&chunkLayer
+    ){
+      gpuInfo.textContent=
+        "Overview "
+        +layer.textures.size
+        +"/"
+        +Math.min(
+          GPU_DEPTH_OVERVIEW,
+          frames.length
+        )
+        +" • "
+        +(overviewBytes/1048576)
+          .toFixed(1)
+        +" MiB + Native "
+        +chunkLayer.textures.size
+        +" chunks • "
+        +(chunkLayer.gpuBytes()/1048576)
+          .toFixed(1)
+        +" MiB";
+
+      return;
+    }
+
+    gpuInfo.textContent=
+      "Overview • "
+      +layer.textures.size
+      +"/"
+      +Math.min(
+        GPU_DEPTH_OVERVIEW,
+        frames.length
+      )
+      +" textures • "
+      +(overviewBytes/1048576)
+        .toFixed(1)
+      +" MiB";
+  }
+
+  function updateUi(){
+    const frame=
+      frames[currentIndex];
+
+    if(!frame){
+      return;
+    }
+
+    const ms=
+      frameMs(frame);
+
+    const d=
+      new Date(ms);
+
+    frameSlider.value=
+      String(currentIndex);
+
+    frameTime.textContent=
+      d.toLocaleTimeString(
+        [],
+        {
+          hour:"numeric",
+          minute:"2-digit"
+        }
+      );
+
+    const age=
+      Math.max(
+        0,
+        Math.round(
+          (Date.now()-ms)
+          /60000
+        )
+      );
+
+    frameAge.textContent=
+      age
+        ? age+" min ago"
+        : "Now";
+
+    validInfo.textContent=
+      d.toLocaleString();
+
+    dbzInfo.textContent=
+      (frame.minDbz??"--")
+      +" to "
+      +(frame.maxDbz??"--")
+      +" dBZ";
+
+    if(
+      activeTier==="native"
+    ){
+      if(chunkLastRawBytes){
+        transferInfo.textContent=
+          "Viewport "
+          +visibleChunkIds.length
+          +" chunks • last "
+          +(chunkLastTransferBytes/1048576)
+            .toFixed(2)
+          +" MiB gzip → "
+          +(chunkLastRawBytes/1048576)
+            .toFixed(2)
+          +" MiB GPU • "
+          +Math.round(
+            chunkLastFetchMs
+          )
+          +" ms";
+      }else{
+        transferInfo.textContent=
+          "Preparing viewport native chunks…";
+      }
+    }else{
+      const raw=
+        Number(
+          frame.overviewRawBytes
+          ||expectedBytes(
+            BASE_TIER
+          )
+        );
+
+      const packed=
+        Number(
+          frame.overviewCompressedBytes
+          ||0
+        );
+
+      const stats=
+        frame._fetchStats?.overview;
+
+      transferInfo.textContent=
+        packed
+          ? (packed/1048576)
+              .toFixed(2)
+            +" MiB gzip → "
+            +(raw/1048576)
+              .toFixed(2)
+            +" MiB overview texture"
+            +(stats?.ms
+              ? " • "
+                +Math.round(
+                  stats.ms
+                )
+                +" ms"
+              : "")
+          : (raw/1048576)
+              .toFixed(2)
+            +" MiB raw";
+    }
+
+    updateGridInfo();
+    updateGpuInfo();
+  }
+
+  async function showFrame(
+    index,
+    {
+      buffer=true,
+      tier=BASE_TIER
+    }={}
+  ){
+    if(!frames.length){
+      return false;
+    }
+
+    const normalized=
+      (
+        Number(index)
+        +frames.length
+      )%frames.length;
+
+    const key=
+      textureKey(
+        normalized,
+        BASE_TIER
+      );
+
+    if(
+      !layer.hasTexture(key)
+    ){
+      await loadTexture(
+        normalized,
+        BASE_TIER
+      );
+    }
+
+    if(
+      !layer.activate(key)
+    ){
+      return false;
+    }
+
+    currentIndex=
+      normalized;
+
+    updateUi();
+
+    if(buffer){
+      maintainBuffer();
+    }
+
+    if(
+      activeTier==="native"
+    ){
+      refreshNativeViewport(
+        false
+      ).catch(
+        error=>
+          console.warn(
+            "Native viewport refresh failed",
+            error
+          )
+      );
+    }
+
+    return true;
+  }
+
+  async function switchTierForZoom(){
+    if(
+      !manifest
+      ||!layer
+      ||!chunkLayer
+      ||!frames.length
+    ){
+      return;
+    }
+
+    const desired=
+      tierForZoom(
+        map.getZoom()
+      );
+
+    if(
+      desired===activeTier
+    ){
+      updateGridInfo();
+
+      if(
+        desired==="native"
+      ){
+        refreshNativeViewport(
+          false
+        ).catch(
+          error=>
+            console.warn(
+              "Native viewport refresh failed",
+              error
+            )
+        );
+      }
+
+      return;
+    }
+
+    const generation=
+      ++tierSwitchGeneration;
+
+    tierSwitching=true;
+
+    try{
+      if(desired==="native"){
+        activeTier="native";
+
+        chunkLayer.setEnabled(
+          true
+        );
+
+        setStatus(
+          "Preparing native viewport chunks…"
+        );
+
+        await refreshNativeViewport(
+          true
+        );
+
+        if(
+          generation
+          !==tierSwitchGeneration
+        ){
+          return;
+        }
+
+        setStatus(
+          "Native viewport MRALA active • "
+          +visibleChunkIds.length
+          +" chunks • z"
+          +map.getZoom().toFixed(2),
+          "live"
+        );
+      }else{
+        activeTier="overview";
+
+        chunkViewportGeneration++;
+
+        chunkLayer.setEnabled(
+          false
+        );
+
+        chunkLayer.setVisible(
+          []
+        );
+
+        visibleChunkIds=[];
+
+        chunkLayer.evictExcept(
+          new Set()
+        );
+
+        const overviewKey=
+          textureKey(
+            currentIndex,
+            BASE_TIER
+          );
+
+        if(
+          !layer.hasTexture(
+            overviewKey
+          )
+        ){
+          await loadTexture(
+            currentIndex,
+            BASE_TIER
+          );
+        }
+
+        layer.activate(
+          overviewKey
+        );
+
+        setStatus(
+          "Overview MRALA active • z"
+          +map.getZoom().toFixed(2),
+          "live"
+        );
+      }
+
+      updateUi();
+      maintainBuffer();
+    }catch(error){
+      console.error(error);
+
+      setStatus(
+        "LOD switch failed: "
+        +error.message,
+        "error"
+      );
+    }finally{
+      if(
+        generation
+        ===tierSwitchGeneration
+      ){
+        tierSwitching=false;
+      }
+    }
+  }
+
+  function intervalMs(){
+    return Math.max(
+      100,
+      Number(speedSelect.value)||500
+    );
+  }
+
+  function stopPlayback(){
+    playing=false;
+    playGeneration++;
+
+    if(playbackRaf){
+      cancelAnimationFrame(playbackRaf);
+      playbackRaf=0;
+    }
+
+    targetTick=0;
+
+    playPause.textContent="▶ Play";
+  }
+
+  function playbackTick(
+    now,
+    generation
+  ){
+    if(
+      !playing
+      ||generation!==playGeneration
+      ||frames.length<2
+    ){
+      return;
+    }
+
+    const interval=
+      intervalMs();
+
+    if(!targetTick){
+      targetTick=now;
+    }
+
+    const currentKey=
+      textureKey(
+        currentIndex,
+        BASE_TIER
+      );
+
+    const nextIndex=
+      (currentIndex+1)
+      %frames.length;
+
+    const nextKey=
+      textureKey(
+        nextIndex,
+        BASE_TIER
+      );
+
+    if(
+      !layer.hasTexture(
+        nextKey
+      )
+    ){
+      if(
+        layer.nextKey
+        ||layer.mixAmount
+      ){
+        layer.activate(
+          currentKey
+        );
+      }
+
+      maintainBuffer();
+
+      if(
+        activeTier==="native"
+      ){
+        maintainNativeChunkBuffer();
+      }
+
+      targetTick=now;
+
+      playbackRaf=
+        requestAnimationFrame(
+          timestamp=>
+            playbackTick(
+              timestamp,
+              generation
+            )
+        );
+
+      return;
+    }
+
+    const progress=
+      Math.max(
+        0,
+        Math.min(
+          1,
+          (now-targetTick)
+          /interval
+        )
+      );
+
+    const paintInterval=
+      1000
+      /INTERPOLATION_FPS;
+
+    if(
+      progress>=1
+      ||now-lastBlendPaint
+        >=paintInterval
+    ){
+      layer.setBlend(
+        currentKey,
+        nextKey,
+        progress
+      );
+
+      if(
+        activeTier==="native"
+      ){
+        syncNativeBlend(
+          currentIndex,
+          nextIndex,
+          progress
+        );
+      }
+
+      lastBlendPaint=now;
+    }
+
+    if(progress>=1){
+      currentIndex=
+        nextIndex;
+
+      layer.activate(
+        nextKey
+      );
+
+      if(
+        activeTier==="native"
+      ){
+        syncNativeCurrent();
+        maintainNativeChunkBuffer();
+      }
+
+      lastBlendPaint=now;
+
+      updateUi();
+
+      maintainBuffer();
+
+      targetTick+=
+        interval;
+
+      if(
+        now-targetTick
+        >interval
+      ){
+        targetTick=now;
+      }
+    }
+
+    playbackRaf=
+      requestAnimationFrame(
+        timestamp=>
+          playbackTick(
+            timestamp,
+            generation
+          )
+      );
+  }
+
+  async function startPlayback(){
+    if(
+      playing
+      ||frames.length<2
+    ){
+      return;
+    }
+
+    const start=
+      currentIndex
+      ===frames.length-1
+        ? 0
+        : currentIndex;
+
+    const depth=
+      Math.min(
+        GPU_DEPTH_OVERVIEW,
+        frames.length
+      );
+
+    playPause.disabled=true;
+
+    setStatus(
+      "Building "
+      +depth
+      +"-frame overview GPU buffer…"
+    );
+
+    try{
+      await showFrame(
+        start,
+        {
+          buffer:false,
+          tier:BASE_TIER
+        }
+      );
+
+      await fillBuffer(
+        start,
+        depth,
+        BASE_TIER
+      );
+
+      currentIndex=start;
+
+      layer.activate(
+        textureKey(
+          start,
+          BASE_TIER
+        )
+      );
+
+      if(
+        activeTier==="native"
+      ){
+        chunkLayer.setEnabled(
+          true
+        );
+
+        refreshNativeViewport(
+          false
+        ).catch(
+          error=>
+            console.warn(
+              "Native startup prefetch failed",
+              error
+            )
+        );
+      }
+
+      updateUi();
+
+      playing=true;
+
+      playPause.textContent=
+        "❚❚ Pause";
+
+      setStatus(
+        (
+          activeTier==="native"
+            ? "Overview clock + native viewport ready • "
+            : "Overview video-style MRALA ready • "
+        )
+        +countReadyAhead(
+          start,
+          BASE_TIER
+        )
+        +" frames ahead",
+        "live"
+      );
+
+      const generation=
+        ++playGeneration;
+
+      targetTick=
+        performance.now();
+
+      lastBlendPaint=0;
+
+      playbackRaf=
+        requestAnimationFrame(
+          timestamp=>
+            playbackTick(
+              timestamp,
+              generation
+            )
+        );
+    }catch(error){
+      console.error(error);
+
+      setStatus(
+        "Buffer failed: "
+        +error.message,
+        "error"
+      );
+    }finally{
+      playPause.disabled=false;
+    }
+  }
+
+  async function loadArchive(map){
+    try{
+      const response=
+        await fetch(
+          MANIFEST_URL
+          +"?t="
+          +Date.now(),
+          {
+            cache:"no-store"
+          }
+        );
+
+      if(!response.ok){
+        throw new Error(
+          "Manifest HTTP "
+          +response.status
+        );
+      }
+
+      manifest=
+        await response.json();
+
+      const encoding=
+        manifest.numericEncoding;
+
+      if(!encoding){
+        throw new Error(
+          "Publisher has not produced numericEncoding yet"
+        );
+      }
+
+      if(
+        !manifest?.lod?.overview
+        ||!manifest?.nativeChunking
+        ||!Array.isArray(
+          manifest.nativeChunking.layout
+        )
+        ||!manifest.nativeChunking.layout.length
+      ){
+        throw new Error(
+          "Viewport chunk metadata is missing"
+        );
+      }
+
+      frames=
+        recentNumericFrames(
+          manifest.frames||[]
+        );
+
+      if(!frames.length){
+        throw new Error(
+          "No MRALA numeric frames available"
+        );
+      }
+
+      const missingOverview=
+        frames.filter(
+          frame=>
+            !frame.overview
+        );
+
+      if(missingOverview.length){
+        throw new Error(
+          missingOverview.length
+          +" archive frames still lack overview LOD"
+        );
+      }
+
+      const chunkReady=
+        frames.filter(
+          frame=>
+            frame.nativeChunksReady
+        ).length;
+
+      encodingInfo.textContent=
+        encoding.format
+        +" • "
+        +encoding.stepDbz
+        +" dBZ/code • gzip • viewport chunks";
+
+      archiveInfo.textContent=
+        frames.length
+        +" numeric frames in last 3 hr • "
+        +chunkReady
+        +"/"
+        +frames.length
+        +" chunk-ready";
+
+      frameSlider.max=
+        String(
+          frames.length-1
+        );
+
+      currentIndex=
+        frames.length-1;
+
+      activeTier=
+        initialTierForZoom(
+          map.getZoom()
+        );
+
+      layer=
+        createNumericLayer(
+          manifest.bounds,
+          Number(
+            manifest.imageWidth
+          ),
+          Number(
+            manifest.imageHeight
+          )
+        );
+
+      chunkLayer=
+        createNativeChunkLayer(
+          manifest.nativeChunking.layout
+        );
+
+      const before=
+        firstSymbolLayerId(map);
+
+      if(before){
+        map.addLayer(
+          layer,
+          before
+        );
+
+        map.addLayer(
+          chunkLayer,
+          before
+        );
+      }else{
+        map.addLayer(layer);
+        map.addLayer(
+          chunkLayer
+        );
+      }
+
+      chunkLayer.setEnabled(
+        activeTier==="native"
+      );
+
+      await showFrame(
+        currentIndex,
+        {
+          buffer:false,
+          tier:BASE_TIER
+        }
+      );
+
+      maintainBuffer();
+
+      if(
+        activeTier==="native"
+      ){
+        await refreshNativeViewport(
+          true
+        );
+      }
+
+      setStatus(
+        (
+          activeTier==="native"
+            ? "Native viewport MRALA ready • "
+            : "Overview MRALA ready • "
+        )
+        +frames.length
+        +" frames",
+        "live"
+      );
+
+      const overview=
+        tierDimensions(
+          BASE_TIER
+        );
+
+      console.info(
+        "MRALA numeric viewport LOD:",
+        "overview "
+          +overview.width
+          +"x"
+          +overview.height,
+        "native chunks "
+          +manifest.nativeChunking.columns
+          +"x"
+          +manifest.nativeChunking.rows,
+        manifest.nativeChunking.chunkPixels
+          +"px",
+        INTERPOLATION_FPS
+          +"fps interpolation"
+      );
+
+      updateUi();
+    }catch(error){
+      console.error(error);
+
+      setStatus(
+        error.message,
+        "error"
+      );
+    }
+  }
+
+  mapboxgl.accessToken=window.MAPBOX_PUBLIC_TOKEN;
+  drawLegendBar();
+
+ const map=new mapboxgl.Map({
+   container:"map",
+   style:MAPBOX_STYLE,
+   center:[-96.5,38.4],
+   zoom:3.35,
+   minZoom:2,
+   maxZoom:12,
+   projection:"mercator",
+   attributionControl:true
+ });
+
+ map.addControl(
+   new mapboxgl.NavigationControl(),
+   "bottom-right"
+ );
+
+ map.on(
+   "load",
+   async()=>{
+     map.setProjection(
+       "mercator"
+     );
+
+     await loadArchive(map);
+   }
+ );
+
+ map.on(
+   "zoomend",
+   ()=>{
+     switchTierForZoom()
+       .catch(
+         error=>
+           console.warn(
+             "MRALA LOD zoom switch failed",
+             error
+           )
+       );
+   }
+ );
+
+ map.on(
+   "moveend",
+   ()=>{
+     if(
+       activeTier==="native"
+     ){
+       refreshNativeViewport(
+         false
+       ).catch(
+         error=>
+           console.warn(
+             "MRALA viewport pan refresh failed",
+             error
+           )
+       );
+     }else{
+       updateGridInfo();
+     }
+   }
+ );
+
+ playPause.addEventListener(
+   "click",
+   ()=>
+     playing
+       ? stopPlayback()
+       : startPlayback()
+ );
+
+ prevFrame.addEventListener(
+   "click",
+   async()=>{
+     stopPlayback();
+     await showFrame(
+       currentIndex-1
+     );
+   }
+ );
+
+ nextFrame.addEventListener(
+   "click",
+   async()=>{
+     stopPlayback();
+     await showFrame(
+       currentIndex+1
+     );
+   }
+ );
+
+ frameSlider.addEventListener(
+   "input",
+   async()=>{
+     stopPlayback();
+
+     await showFrame(
+       Number(
+         frameSlider.value
+       )
+     );
+   }
+ );
+
+ speedSelect.addEventListener(
+   "change",
+   ()=>{
+     if(playing){
+       targetTick=
+         performance.now();
+
+       lastBlendPaint=0;
+
+       layer.activate(
+         textureKey(
+           currentIndex,
+           BASE_TIER
+         )
+       );
+
+       if(
+         activeTier==="native"
+       ){
+         syncNativeCurrent();
+         maintainNativeChunkBuffer();
+       }
+     }
+
+     maintainBuffer();
+   }
+ );
+})();
+</script>
 </body>
 </html>
