@@ -32,7 +32,7 @@
 <body>
   <iframe
     id="radarEngine"
-    src="./mosaic-radar-canvas-test.html?v=20260902r"
+    src="./mrms-native-numeric-home.html?v=20260906a"
     title="Live national radar"
     allowfullscreen>
   </iframe>
@@ -42,7 +42,7 @@
       const engine = document.getElementById("radarEngine");
       const MANIFEST_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
       ? "./mrms-mosaic-loop-output/manifest.json"
-      : "https://dt0cd6bl1yqh2.cloudfront.net/mrms/manifest.json";
+      : "https://dt0cd6bl1yqh2.cloudfront.net/mrms-native-numeric/manifest.json";
       const HISTORY_OPTIONS = [
         [30, "30 min"],
         [60, "1 hr"],
@@ -454,8 +454,81 @@
         `;
         doc.head.appendChild(style);
 
-        installHistoryBehavior(doc);
-        const historySelect = installHistorySelect(doc);
+        const numericStyle =
+          doc.createElement("style");
+
+        numericStyle.id =
+          "homepage-numeric-radar-mode-style";
+
+        numericStyle.textContent = [
+          ".homepage-radar-mode .panel {",
+          "  display: none !important;",
+          "}",
+
+          ".homepage-radar-mode .playback {",
+          "  display: block !important;",
+          "  left: 50% !important;",
+          "  bottom: 14px !important;",
+          "  width: min(520px, calc(100vw - 28px)) !important;",
+          "  padding: 9px 10px 8px !important;",
+          "  transform: translateX(-50%) !important;",
+          "}",
+
+          ".homepage-radar-mode .playback-row {",
+          "  display: grid !important;",
+          "  grid-template-columns: 36px minmax(0,1fr) 36px 68px !important;",
+          "  gap: 5px !important;",
+          "}",
+
+          ".homepage-radar-mode .playback-row button,",
+          ".homepage-radar-mode .playback-row select {",
+          "  min-height: 31px !important;",
+          "  padding: 5px !important;",
+          "  border-radius: 8px !important;",
+          "  font-size: .68rem !important;",
+          "}",
+
+          ".homepage-radar-mode .readout {",
+          "  display: flex !important;",
+          "  justify-content: space-between !important;",
+          "  gap: 10px !important;",
+          "  margin: 7px 2px 4px !important;",
+          "  padding: 0 !important;",
+          "  color: #dbeafe !important;",
+          "  font-size: .67rem !important;",
+          "}",
+
+          ".homepage-radar-mode #frameSlider {",
+          "  display: block !important;",
+          "  width: 100% !important;",
+          "  margin: 0 !important;",
+          "}",
+
+          ".homepage-radar-mode .timeline-labels {",
+          "  display: flex !important;",
+          "  justify-content: space-between !important;",
+          "  margin-top: 2px !important;",
+          "  font-size: .52rem !important;",
+          "}",
+
+          "@media (max-width: 720px), (max-height: 440px) {",
+          "  .homepage-radar-mode .playback {",
+          "    bottom: 9px !important;",
+          "    width: calc(100vw - 18px) !important;",
+          "    padding: 7px 8px !important;",
+          "  }",
+
+          "  .homepage-radar-mode .playback-row {",
+          "    grid-template-columns: 32px minmax(0,1fr) 32px 60px !important;",
+          "  }",
+          "}"
+        ].join("\n");
+
+        doc.head.appendChild(
+          numericStyle
+        );
+
+        const historySelect = null;
 
         // Homepage defaults: full opacity, 3-hour history, and 2x timelapse.
         const opacityControl = doc.getElementById("radarOpacity");
@@ -466,7 +539,7 @@
 
         const speedControl = doc.getElementById("speedSelect");
         if (speedControl) {
-          speedControl.value = "2";
+          speedControl.value = "250";
           speedControl.dispatchEvent(new Event("change", { bubbles: true }));
         }
 
