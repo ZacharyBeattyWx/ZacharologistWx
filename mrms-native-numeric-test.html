@@ -56,7 +56,7 @@
     </div>
     <div class="readout"><span id="frameTime">--:--</span><span id="frameAge">--</span></div>
     <input id="frameSlider" type="range" min="0" max="0" step="1" value="0">
-    <div class="timeline-labels"><span>-30m</span><span>Now</span></div>
+    <div class="timeline-labels"><span>-3h</span><span>Now</span></div>
   </div>
 <script>
 (() => {
@@ -66,16 +66,16 @@
   const MANIFEST_URL="https://dt0cd6bl1yqh2.cloudfront.net/mrms-native-numeric/manifest.json";
   const ARCHIVE_BASE="https://dt0cd6bl1yqh2.cloudfront.net/mrms-native-numeric/";
   const LAYER_ID="mrms-native-numeric-dbz-layer";
-  const HISTORY_MS=30*60*1000;
+  const HISTORY_MS=3*60*60*1000;
   const MOBILE=window.matchMedia?.("(pointer: coarse)")?.matches||/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  const GPU_DEPTH=MOBILE?2:6;
-  const FETCH_CONCURRENCY=MOBILE?1:2;
+  const GPU_DEPTH=MOBILE?3:10;
+  const FETCH_CONCURRENCY=MOBILE?1:3;
 
   const statusDot=document.getElementById("statusDot"),statusText=document.getElementById("statusText");
   const frameSlider=document.getElementById("frameSlider"),playPause=document.getElementById("playPause"),prevFrame=document.getElementById("prevFrame"),nextFrame=document.getElementById("nextFrame"),speedSelect=document.getElementById("speedSelect"),frameTime=document.getElementById("frameTime"),frameAge=document.getElementById("frameAge");
   const encodingInfo=document.getElementById("encodingInfo"),gridInfo=document.getElementById("gridInfo"),archiveInfo=document.getElementById("archiveInfo"),validInfo=document.getElementById("validInfo"),dbzInfo=document.getElementById("dbzInfo"),gpuInfo=document.getElementById("gpuInfo"),transferInfo=document.getElementById("transferInfo");
 
-  let manifest=null,frames=[],currentIndex=0,layer=null,playing=false,playGeneration=0,targetTick=0;
+  let manifest=null,frames=[],currentIndex=0,layer=null,playing=false,playGeneration=0,targetTick=0,playbackRaf=0,bufferBusy=false,bufferPending=false;
   const loading=new Map();
 
   // Precompiled full RadarScope palette LUT.
@@ -336,7 +336,7 @@ paletteUv
     }
 
     const keep=new Set(
-      [...desiredIndices(currentIndex)]
+      [...desiredIndices(start)]
         .map(i=>String(frames[i].id))
     );
 
@@ -346,16 +346,195 @@ paletteUv
     return ready;
   }
   function countReadyAhead(start=currentIndex){let count=0;for(let n=0;n<Math.min(GPU_DEPTH,frames.length);n++){const i=(start+n)%frames.length;if(!layer.hasTexture(String(frames[i].id)))break;count++;}return count;}
-  function maintainBuffer(){fillBuffer(currentIndex,0).catch(error=>console.warn("Numeric rolling buffer failed",error));}
+  async function maintainBuffer(){
+    if(bufferBusy){
+      bufferPending=true;
+      return;
+    }
+
+    bufferBusy=true;
+
+    try{
+      do{
+        bufferPending=false;
+        const start=currentIndex;
+
+        try{
+          await fillBuffer(start,0);
+        }catch(error){
+          console.warn(
+            "Numeric rolling buffer failed",
+            error
+          );
+        }
+      }while(bufferPending);
+    }finally{
+      bufferBusy=false;
+    }
+  }
 
   function updateGpuInfo(){if(!layer||!frames.length){gpuInfo.textContent="--";return;}const perFrame=expectedBytes();gpuInfo.textContent=`${layer.textures.size}/${Math.min(GPU_DEPTH,frames.length)} textures • ${(layer.textures.size*perFrame/1048576).toFixed(1)} MiB single-channel`;}
   function updateUi(){const frame=frames[currentIndex];if(!frame)return;const ms=frameMs(frame),d=new Date(ms);frameSlider.value=String(currentIndex);frameTime.textContent=d.toLocaleTimeString([],{hour:"numeric",minute:"2-digit"});const age=Math.max(0,Math.round((Date.now()-ms)/60000));frameAge.textContent=age?`${age} min ago`:"Now";validInfo.textContent=d.toLocaleString();dbzInfo.textContent=`${frame.minDbz??"--"} to ${frame.maxDbz??"--"} dBZ`;const raw=Number(frame.dbzRawBytes||expectedBytes()),packed=Number(frame.dbzCompressedBytes||0);transferInfo.textContent=packed?`${(packed/1048576).toFixed(2)} MiB gzip → ${(raw/1048576).toFixed(2)} MiB GPU texture${frame._lastFetchMs?` • ${Math.round(frame._lastFetchMs)} ms`:""}`:`${(raw/1048576).toFixed(2)} MiB raw`;updateGpuInfo();}
   async function showFrame(index,{buffer=true}={}){if(!frames.length)return false;const normalized=(Number(index)+frames.length)%frames.length;if(!layer.hasTexture(String(frames[normalized].id)))await loadTexture(normalized);if(!layer.activate(String(frames[normalized].id)))return false;currentIndex=normalized;updateUi();if(buffer)maintainBuffer();return true;}
-  function intervalMs(){return Math.max(100,Number(speedSelect.value)||500);}
-  function stopPlayback(){playing=false;playGeneration++;playPause.textContent="▶ Play";}
-  function scheduleTick(generation){if(!playing||generation!==playGeneration)return;targetTick+=intervalMs();const wait=Math.max(0,targetTick-performance.now());setTimeout(()=>playbackTick(generation),wait);}
-  function playbackTick(generation){if(!playing||generation!==playGeneration||frames.length<2)return;const immediate=(currentIndex+1)%frames.length;let chosen=-1;if(layer.hasTexture(String(frames[immediate].id)))chosen=immediate;else{for(let step=2;step<=Math.min(4,frames.length);step++){const candidate=(currentIndex+step)%frames.length;if(layer.hasTexture(String(frames[candidate].id))){chosen=candidate;break;}}}if(chosen>=0){layer.activate(String(frames[chosen].id));currentIndex=chosen;updateUi();maintainBuffer();}scheduleTick(generation);}
-  async function startPlayback(){if(playing||frames.length<2)return;const start=currentIndex===frames.length-1?0:currentIndex;playPause.disabled=true;setStatus(`Building ${Math.min(GPU_DEPTH,frames.length)}-frame numeric GPU buffer…`);try{await showFrame(start,{buffer:false});await fillBuffer(start,Math.min(MOBILE?4:8,frames.length));currentIndex=start;layer.activate(String(frames[start].id));updateUi();playing=true;playPause.textContent="❚❚ Pause";setStatus(`Numeric GPU playback ready • ${countReadyAhead(start)} frames ahead`,"live");const generation=++playGeneration;targetTick=performance.now();scheduleTick(generation);}catch(error){console.error(error);setStatus(`Buffer failed: ${error.message}`,"error");}finally{playPause.disabled=false;}}
+  function intervalMs(){
+    return Math.max(
+      100,
+      Number(speedSelect.value)||500
+    );
+  }
+
+  function stopPlayback(){
+    playing=false;
+    playGeneration++;
+
+    if(playbackRaf){
+      cancelAnimationFrame(playbackRaf);
+      playbackRaf=0;
+    }
+
+    targetTick=0;
+    playPause.textContent="▶ Play";
+  }
+
+  function playbackTick(now,generation){
+    if(
+      !playing ||
+      generation!==playGeneration ||
+      frames.length<2
+    ){
+      return;
+    }
+
+    const interval=intervalMs();
+
+    if(!targetTick){
+      targetTick=now+interval;
+    }
+
+    if(now>=targetTick){
+      const nextIndex=
+        (currentIndex+1)%frames.length;
+
+      const nextKey=
+        String(frames[nextIndex].id);
+
+      if(layer.hasTexture(nextKey)){
+        layer.activate(nextKey);
+
+        currentIndex=nextIndex;
+        updateUi();
+
+        // Start replenishing the rolling ring immediately.
+        maintainBuffer();
+
+        // Advance from the ideal clock rather than from the
+        // completion time of the previous frame.
+        targetTick+=interval;
+
+        // Never burst through several observations trying to
+        // catch up after a slow browser frame.
+        if(now-targetTick>interval){
+          targetTick=now+interval;
+        }
+      }else{
+        // Preserve temporal order. Do not jump over an unloaded
+        // observation just to keep the timer moving.
+        maintainBuffer();
+
+        // Retry quickly while preserving the displayed frame.
+        targetTick=now+Math.min(
+          100,
+          interval*0.35
+        );
+      }
+    }
+
+    playbackRaf=requestAnimationFrame(
+      timestamp=>playbackTick(
+        timestamp,
+        generation
+      )
+    );
+  }
+
+  async function startPlayback(){
+    if(
+      playing ||
+      frames.length<2
+    ){
+      return;
+    }
+
+    const start=
+      currentIndex===frames.length-1
+        ? 0
+        : currentIndex;
+
+    playPause.disabled=true;
+
+    setStatus(
+      `Building ${Math.min(
+        GPU_DEPTH,
+        frames.length
+      )}-frame video-style GPU buffer…`
+    );
+
+    try{
+      await showFrame(
+        start,
+        {buffer:false}
+      );
+
+      // Before the clock begins, completely fill the available
+      // GPU ring. Playback therefore starts from ready textures,
+      // not from network requests.
+      await fillBuffer(
+        start,
+        Math.min(
+          GPU_DEPTH,
+          frames.length
+        )
+      );
+
+      currentIndex=start;
+
+      layer.activate(
+        String(frames[start].id)
+      );
+
+      updateUi();
+
+      playing=true;
+      playPause.textContent="❚❚ Pause";
+
+      setStatus(
+        `Video-style MRALA playback ready • ${countReadyAhead(start)} frames ahead`,
+        "live"
+      );
+
+      const generation=++playGeneration;
+
+      targetTick=
+        performance.now()+
+        intervalMs();
+
+      playbackRaf=requestAnimationFrame(
+        timestamp=>playbackTick(
+          timestamp,
+          generation
+        )
+      );
+    }catch(error){
+      console.error(error);
+
+      setStatus(
+        `Buffer failed: ${error.message}`,
+        "error"
+      );
+    }finally{
+      playPause.disabled=false;
+    }
+  }
 
   async function loadArchive(map){try{const response=await fetch(`${MANIFEST_URL}?t=${Date.now()}`,{cache:"no-store"});if(!response.ok)throw new Error(`Manifest HTTP ${response.status}`);manifest=await response.json();const encoding=manifest.numericEncoding;if(!encoding)throw new Error("Publisher has not produced numericEncoding yet; deploy the numeric publisher first");frames=recentNumericFrames(manifest.frames||[]);if(!frames.length)throw new Error("No native numeric MRALA frames yet. Invoke the updated publisher once, then refresh.");encodingInfo.textContent=`${encoding.format} • ${encoding.stepDbz} dBZ/code • gzip`;gridInfo.textContent=`${manifest.imageWidth} × ${manifest.imageHeight} • ${(expectedBytes()/1048576).toFixed(2)} MiB/frame on GPU`;archiveInfo.textContent=`${frames.length} numeric frame${frames.length===1?"":"s"} in last 3 hr`;frameSlider.max=String(frames.length-1);currentIndex=frames.length-1;layer=createNumericLayer(manifest.bounds,Number(manifest.imageWidth),Number(manifest.imageHeight));const before=firstSymbolLayerId(map);if(before)map.addLayer(layer,before);else map.addLayer(layer);await showFrame(currentIndex);setStatus(`Native MRALA numeric ready • ${frames.length} frame${frames.length===1?"":"s"}`,"live");console.info("MRMS native numeric texture v1:",`${manifest.imageWidth}x${manifest.imageHeight}`,`${(expectedBytes()/1048576).toFixed(2)} MiB/GPU frame`,`${GPU_DEPTH}-frame ring`);}catch(error){console.error(error);setStatus(error.message,"error");}}
 
@@ -363,7 +542,7 @@ paletteUv
   drawLegendBar();
 
  const map=new mapboxgl.Map({container:"map",style:MAPBOX_STYLE,center:[-96.5,38.4],zoom:3.35,minZoom:2,maxZoom:12,projection:"mercator",attributionControl:true});map.addControl(new mapboxgl.NavigationControl(),"bottom-right");map.on("load",()=>{map.setProjection("mercator");loadArchive(map);});
-  playPause.addEventListener("click",()=>playing?stopPlayback():startPlayback());prevFrame.addEventListener("click",async()=>{stopPlayback();await showFrame(currentIndex-1);});nextFrame.addEventListener("click",async()=>{stopPlayback();await showFrame(currentIndex+1);});frameSlider.addEventListener("input",async()=>{stopPlayback();await showFrame(Number(frameSlider.value));});speedSelect.addEventListener("change",()=>{if(playing){targetTick=performance.now();}maintainBuffer();});
+  playPause.addEventListener("click",()=>playing?stopPlayback():startPlayback());prevFrame.addEventListener("click",async()=>{stopPlayback();await showFrame(currentIndex-1);});nextFrame.addEventListener("click",async()=>{stopPlayback();await showFrame(currentIndex+1);});frameSlider.addEventListener("input",async()=>{stopPlayback();await showFrame(Number(frameSlider.value));});speedSelect.addEventListener("change",()=>{if(playing){targetTick=performance.now()+intervalMs();}maintainBuffer();});
 })();
 </script>
 </body>
