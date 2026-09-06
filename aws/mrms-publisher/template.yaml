@@ -23,6 +23,18 @@ Parameters:
   LivePriorityCount:
     Type: Number
     Default: 2
+  MralaNumericScheduleState:
+    Type: String
+    Default: DISABLED
+    AllowedValues:
+      - ENABLED
+      - DISABLED
+  MralaNumericHistoryMinutes:
+    Type: Number
+    Default: 180
+  MralaNumericMaxRenderPerRun:
+    Type: Number
+    Default: 6
 
 Resources:
   RadarBucket:
@@ -49,6 +61,10 @@ Resources:
             Status: Enabled
             Prefix: nexrad-n0b/frames/
             ExpirationInDays: 2
+          - Id: ExpireOrphanedMralaNumericFrames
+            Status: Enabled
+            Prefix: mrms-native-numeric/frames/
+            ExpirationInDays: 1
 
   PublisherRole:
     Type: AWS::IAM::Role
@@ -130,6 +146,48 @@ Resources:
       Principal: events.amazonaws.com
       SourceArn: !GetAtt PublisherSchedule.Arn
 
+  MralaNumericFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      PackageType: Image
+      Code:
+        ImageUri: !Ref ImageUri
+      ImageConfig:
+        Command:
+          - mrala_numeric_publisher.lambda_handler
+      Role: !GetAtt PublisherRole.Arn
+      Architectures:
+        - x86_64
+      MemorySize: 3008
+      Timeout: 600
+      EphemeralStorage:
+        Size: 2048
+      Environment:
+        Variables:
+          RADAR_BUCKET: !Ref RadarBucket
+          MRALA_NUMERIC_PREFIX: mrms-native-numeric
+          MRALA_NUMERIC_HISTORY_MINUTES: !Ref MralaNumericHistoryMinutes
+          MRALA_NUMERIC_MAX_RENDER_PER_RUN: !Ref MralaNumericMaxRenderPerRun
+          MRALA_NUMERIC_COMPRESSLEVEL: '4'
+
+  MralaNumericSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Publish native-resolution numeric MRALA frames for GPU playback
+      ScheduleExpression: !Ref ScheduleExpression
+      State: !Ref MralaNumericScheduleState
+      Targets:
+        - Arn: !GetAtt MralaNumericFunction.Arn
+          Id: MralaNumericPublisherLambda
+
+  MralaNumericScheduleInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref MralaNumericFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt MralaNumericSchedule.Arn
+
 Outputs:
   RadarBucketName:
     Description: Private S3 bucket containing the radar archives
@@ -151,3 +209,15 @@ Outputs:
   NexradManifestS3Uri:
     Description: S3 URI for the NEXRAD N0B base-reflectivity archive
     Value: !Sub 's3://${RadarBucket}/nexrad-n0b/manifest.json'
+
+  MralaNumericFunctionName:
+    Description: Isolated native-resolution numeric MRALA Lambda function name
+    Value: !Ref MralaNumericFunction
+
+  MralaNumericScheduleName:
+    Description: EventBridge rule for native-resolution numeric MRALA publishing
+    Value: !Ref MralaNumericSchedule
+
+  MralaNumericManifestS3Uri:
+    Description: S3 URI for the native-resolution numeric MRALA manifest
+    Value: !Sub 's3://${RadarBucket}/mrms-native-numeric/manifest.json'
