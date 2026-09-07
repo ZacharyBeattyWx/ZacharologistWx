@@ -75,7 +75,7 @@
   <div class="legend">
     <div class="legend-title">Python Level II GPU Reflectivity (dBZ)</div>
     <canvas id="legendBar" class="legend-bar" width="256" height="1"></canvas>
-    <div class="legend-labels"><span>-30</span><span>-20</span><span>-10</span><span>0</span><span>10</span><span>20</span><span>30</span><span>40</span><span>50</span><span>60+</span></div>
+    <div class="legend-labels"><span>-30</span><span>-20</span><span>-10</span><span>0</span><span>10</span><span>20</span><span>30</span><span>40</span><span>50</span><span>60</span><span>70+</span></div>
   </div>
   <div class="playback">
     <div class="playback-row">
@@ -109,7 +109,7 @@
     new URLSearchParams(
       window.location.search
     ).get("testalert")==="1";
-  const NWS_ALERTS_URL="https://api.weather.gov/alerts/active";
+  const NWS_ALERTS_URL="https://zacharologistwx.com/api/live-alerts/current";
 
   const LAYER_ID="mrms-native-numeric-dbz-layer";
   const CHUNK_LAYER_ID="mrms-native-numeric-viewport-chunks";
@@ -173,6 +173,135 @@ atob(PALETTE_LUT_B64),
 ch=>ch.charCodeAt(0)
 );
 
+/*
+  ZacharologistWx weak-return correction.
+
+  The numeric LUT previously contained the correct low-dBZ RGB
+  family but made the lowest values effectively transparent.
+
+  Restore the original Level II purple -> gray -> slate ramp
+  and give weak echoes enough opacity to actually remain visible.
+*/
+const WEAK_RETURN_PALETTE_ANCHORS=[
+  [-32, 88, 54,128, 45],
+  [-30, 96, 62,138, 50],
+  [-28,105, 72,145, 55],
+  [-26,116, 85,150, 60],
+  [-24,128, 99,153, 66],
+  [-22,139,113,153, 72],
+  [-20,148,128,150, 78],
+  [-18,155,140,145, 84],
+  [-16,160,150,138, 90],
+  [-14,163,157,130, 96],
+  [-12,160,158,123,102],
+  [-10,156,155,119,108],
+  [ -8,167,167,136,114],
+  [ -6,175,176,150,120],
+  [ -4,158,163,150,126],
+  [ -2,135,144,145,134],
+  [  0,115,128,142,142]
+];
+
+
+function dbzToPaletteCode(dbz){
+  return Math.max(
+    1,
+    Math.min(
+      255,
+      1+Math.round(
+        (Number(dbz)+32)*2
+      )
+    )
+  );
+}
+
+
+function applyWeakReturnPalette(){
+  const anchors=
+    WEAK_RETURN_PALETTE_ANCHORS;
+
+  const lastCode=
+    dbzToPaletteCode(0);
+
+  for(
+    let code=1;
+    code<=lastCode;
+    code++
+  ){
+    const dbz=
+      -32
+      +(code-1)*0.5;
+
+    let lower=
+      anchors[0];
+
+    let upper=
+      anchors[
+        anchors.length-1
+      ];
+
+    for(
+      let i=0;
+      i<anchors.length-1;
+      i++
+    ){
+      if(
+        dbz>=anchors[i][0]
+        &&dbz<=anchors[i+1][0]
+      ){
+        lower=
+          anchors[i];
+
+        upper=
+          anchors[i+1];
+
+        break;
+      }
+    }
+
+    const span=
+      upper[0]-lower[0];
+
+    const mix=
+      span
+        ?(
+            dbz-lower[0]
+          )/span
+        :0;
+
+    const p=
+      code*4;
+
+    for(
+      let channel=1;
+      channel<=4;
+      channel++
+    ){
+      PALETTE_LUT[
+        p+channel-1
+      ]=
+        Math.round(
+          lower[channel]
+          +(
+            upper[channel]
+            -lower[channel]
+          )*mix
+        );
+    }
+  }
+
+  /*
+    Code zero is still true no-data and must remain transparent.
+  */
+  PALETTE_LUT[0]=0;
+  PALETTE_LUT[1]=0;
+  PALETTE_LUT[2]=0;
+  PALETTE_LUT[3]=0;
+}
+
+
+applyWeakReturnPalette();
+
 function setStatus(text,state="loading"){
 statusText.textContent=text;
 statusDot.classList.toggle("live",state==="live");
@@ -180,21 +309,74 @@ statusDot.classList.toggle("error",state==="error");
 }
 
 function drawLegendBar(){
-const canvas=document.getElementById("legendBar");
-if(!canvas) return;
+  const canvas=
+    document.getElementById(
+      "legendBar"
+    );
 
-const ctx=canvas.getContext("2d");
-const image=ctx.createImageData(256,1);
+  if(!canvas){
+    return;
+  }
 
-for(let x=0;x<256;x++){
-const p=x*4;
-image.data[p]=PALETTE_LUT[p];
-image.data[p+1]=PALETTE_LUT[p+1];
-image.data[p+2]=PALETTE_LUT[p+2];
-image.data[p+3]=255;
-}
+  const ctx=
+    canvas.getContext(
+      "2d"
+    );
 
-ctx.putImageData(image,0,0);
+  const image=
+    ctx.createImageData(
+      256,
+      1
+    );
+
+  const minDbz=-30;
+  const maxDbz=70;
+
+  for(
+    let x=0;
+    x<256;
+    x++
+  ){
+    const dbz=
+      minDbz
+      +(
+        x/255
+      )*(
+        maxDbz-minDbz
+      );
+
+    const code=
+      dbzToPaletteCode(
+        dbz
+      );
+
+    const src=
+      code*4;
+
+    const dst=
+      x*4;
+
+    image.data[dst]=
+      PALETTE_LUT[src];
+
+    image.data[dst+1]=
+      PALETTE_LUT[src+1];
+
+    image.data[dst+2]=
+      PALETTE_LUT[src+2];
+
+    /*
+      Keep the legend opaque so the actual hue is readable.
+      Radar-map opacity is handled by the LUT alpha.
+    */
+    image.data[dst+3]=255;
+  }
+
+  ctx.putImageData(
+    image,
+    0,
+    0
+  );
 }
 
   function frameMs(frame){return Date.parse(frame?.valid_time||"");}
@@ -4418,6 +4600,43 @@ u_mix,
         "Mosaic alert refresh failed:",
         error
       );
+
+      if(
+        FORCE_TEST_ALERT
+      ){
+        const source=
+          map.getSource(
+            ALERT_SOURCE_ID
+          );
+
+        if(source){
+          source.setData({
+            type:
+              "FeatureCollection",
+
+            features:[
+              syntheticTestAlert()
+            ]
+          });
+        }
+
+        if(
+          alertTestStatus
+        ){
+          alertTestStatus.classList.remove(
+            "error"
+          );
+
+          alertTestStatus.classList.add(
+            "live"
+          );
+
+          alertTestStatus.textContent=
+            "TEST ALERT • LIVE FEED FAILED";
+        }
+
+        return;
+      }
 
       if(
         alertTestStatus
