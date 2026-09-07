@@ -90,11 +90,16 @@
 
   const INTERPOLATION_FPS=MOBILE?24:30;
 
+  // COD-style loop behavior:
+  // hold the newest observation before jumping back to the oldest.
+  const LOOP_END_PAUSE_MS=2500;
+
   const statusDot=document.getElementById("statusDot"),statusText=document.getElementById("statusText");
   const frameSlider=document.getElementById("frameSlider"),playPause=document.getElementById("playPause"),prevFrame=document.getElementById("prevFrame"),nextFrame=document.getElementById("nextFrame"),speedSelect=document.getElementById("speedSelect"),frameTime=document.getElementById("frameTime"),frameAge=document.getElementById("frameAge");
   const encodingInfo=document.getElementById("encodingInfo"),gridInfo=document.getElementById("gridInfo"),archiveInfo=document.getElementById("archiveInfo"),validInfo=document.getElementById("validInfo"),dbzInfo=document.getElementById("dbzInfo"),gpuInfo=document.getElementById("gpuInfo"),transferInfo=document.getElementById("transferInfo");
 
   let manifest=null,frames=[],currentIndex=0,layer=null,playing=false,playGeneration=0,targetTick=0,playbackRaf=0,bufferBusy=false,bufferPending=false;
+  let loopPauseUntil=0;
 
   let activeTier="overview";
   let tierSwitching=false;
@@ -3195,6 +3200,7 @@ u_mix,
     }
 
     targetTick=0;
+    loopPauseUntil=0;
 
     playPause.textContent="▶ Play";
   }
@@ -3223,6 +3229,137 @@ u_mix,
         currentIndex,
         BASE_TIER
       );
+
+    /*
+      Do NOT blend the newest observation into the oldest one.
+
+      Hold the newest frame for 2.5 seconds. During that hold,
+      the normal overview/native buffers can preload the beginning
+      of the next loop. Once frame zero is resident, jump directly
+      back to it and resume the animation clock.
+    */
+    if(
+      currentIndex
+      ===frames.length-1
+    ){
+      if(!loopPauseUntil){
+        loopPauseUntil=
+          now+LOOP_END_PAUSE_MS;
+
+        layer.activate(
+          currentKey
+        );
+
+        if(
+          activeTier==="native"
+        ){
+          syncNativeCurrent();
+          maintainNativeChunkBuffer();
+        }
+
+        maintainBuffer();
+      }
+
+      if(
+        now<loopPauseUntil
+      ){
+        playbackRaf=
+          requestAnimationFrame(
+            timestamp=>
+              playbackTick(
+                timestamp,
+                generation
+              )
+          );
+
+        return;
+      }
+
+      const restartIndex=0;
+
+      const restartKey=
+        textureKey(
+          restartIndex,
+          BASE_TIER
+        );
+
+      const restartNativeReady=
+        activeTier!=="native"
+        ||chunkLayer.hasFrame(
+          String(
+            frames[
+              restartIndex
+            ]?.id||""
+          ),
+          visibleChunkIds
+        );
+
+      /*
+        If either tier somehow missed the prefetch, extend the
+        hold slightly rather than showing mismatched timestamps.
+      */
+      if(
+        !layer.hasTexture(
+          restartKey
+        )
+        ||!restartNativeReady
+      ){
+        maintainBuffer();
+
+        if(
+          activeTier==="native"
+        ){
+          maintainNativeChunkBuffer();
+        }
+
+        loopPauseUntil=
+          now+100;
+
+        playbackRaf=
+          requestAnimationFrame(
+            timestamp=>
+              playbackTick(
+                timestamp,
+                generation
+              )
+          );
+
+        return;
+      }
+
+      loopPauseUntil=0;
+
+      currentIndex=
+        restartIndex;
+
+      layer.activate(
+        restartKey
+      );
+
+      if(
+        activeTier==="native"
+      ){
+        syncNativeCurrent();
+        maintainNativeChunkBuffer();
+      }
+
+      lastBlendPaint=now;
+      targetTick=now;
+
+      updateUi();
+      maintainBuffer();
+
+      playbackRaf=
+        requestAnimationFrame(
+          timestamp=>
+            playbackTick(
+              timestamp,
+              generation
+            )
+        );
+
+      return;
+    }
 
     const nextIndex=
       (currentIndex+1)
@@ -3447,6 +3584,7 @@ u_mix,
       targetTick=
         performance.now();
 
+      loopPauseUntil=0;
       lastBlendPaint=0;
 
       playbackRaf=
