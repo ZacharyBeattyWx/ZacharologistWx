@@ -53,10 +53,10 @@
       <button id="playPause" type="button">▶ Play</button>
       <button id="nextFrame" type="button">▶</button>
       <select id="speedSelect" aria-label="Playback speed">
-        <option value="500">0.5×</option>
-        <option value="250">1×</option>
-        <option value="167">1.5×</option>
-        <option value="100" selected>2×</option>
+        <option value="200">0.5×</option>
+        <option value="100" selected>1×</option>
+        <option value="67">1.5×</option>
+        <option value="50">2×</option>
       </select>
     </div>
     <div class="readout"><span id="frameTime">--:--</span><span id="frameAge">--</span></div>
@@ -84,7 +84,7 @@
 
   // Keep a small temporal ring of only the chunks intersecting
   // the user's current viewport.
-  const CHUNK_FRAME_DEPTH=MOBILE?4:8;
+  const CHUNK_FRAME_DEPTH=MOBILE?5:10;
   const CHUNK_FETCH_CONCURRENCY=MOBILE?3:6;
   const CHUNK_VIEWPORT_PAD=0.12;
 
@@ -3180,8 +3180,8 @@ u_mix,
 
   function intervalMs(){
     return Math.max(
-      100,
-      Number(speedSelect.value)||500
+      40,
+      Number(speedSelect.value)||100
     );
   }
 
