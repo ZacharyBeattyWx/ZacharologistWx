@@ -23,9 +23,39 @@
     .panel{
       display:none !important;
     }
+    .alert-test-status{
+      position:fixed;
+      top:14px;
+      left:14px;
+      z-index:30;
+      padding:8px 11px;
+      border:1px solid rgba(148,163,184,.28);
+      border-radius:9px;
+      background:rgba(4,10,22,.90);
+      color:#dbeafe;
+      font-size:.68rem;
+      font-weight:900;
+      letter-spacing:.04em;
+      text-transform:uppercase;
+      backdrop-filter:blur(10px);
+    }
+
+    .alert-test-status.live{
+      color:#86efac;
+    }
+
+    .alert-test-status.error{
+      color:#fda4af;
+    }
+
   </style>
 </head>
 <body>
+  <div
+    id="alertTestStatus"
+    class="alert-test-status">
+    Alerts loading…
+  </div>
   <div id="map"></div>
   <section class="panel">
     <div class="eyebrow">Numeric texture experiment / isolated</div>
@@ -74,6 +104,11 @@
   const ALERT_FILL_LAYER_ID="zwx-mosaic-alerts-fill";
   const ALERT_LINE_LAYER_ID="zwx-mosaic-alerts-line";
   const ALERT_REFRESH_MS=60*1000;
+
+  const FORCE_TEST_ALERT=
+    new URLSearchParams(
+      window.location.search
+    ).get("testalert")==="1";
   const NWS_ALERTS_URL="https://api.weather.gov/alerts/active";
 
   const LAYER_ID="mrms-native-numeric-dbz-layer";
@@ -101,6 +136,7 @@
   const LOOP_END_PAUSE_MS=1500;
 
   const statusDot=document.getElementById("statusDot"),statusText=document.getElementById("statusText");
+  const alertTestStatus=document.getElementById("alertTestStatus");
   const frameSlider=document.getElementById("frameSlider"),playPause=document.getElementById("playPause"),prevFrame=document.getElementById("prevFrame"),nextFrame=document.getElementById("nextFrame"),speedSelect=document.getElementById("speedSelect"),frameTime=document.getElementById("frameTime"),frameAge=document.getElementById("frameAge");
   const encodingInfo=document.getElementById("encodingInfo"),gridInfo=document.getElementById("gridInfo"),archiveInfo=document.getElementById("archiveInfo"),validInfo=document.getElementById("validInfo"),dbzInfo=document.getElementById("dbzInfo"),gpuInfo=document.getElementById("gpuInfo"),transferInfo=document.getElementById("transferInfo");
 
@@ -3822,6 +3858,9 @@ u_mix,
       "match",
       ["get","event"],
 
+      "TEST Severe Thunderstorm Warning",
+      "#ff7a18",
+
       "Tornado Warning",
       "#ff3030",
 
@@ -4134,6 +4173,59 @@ u_mix,
   }
 
 
+  function syntheticTestAlert(){
+    return {
+      type:"Feature",
+
+      id:
+        "zwx-synthetic-alert-test",
+
+      geometry:{
+        type:"Polygon",
+
+        coordinates:[[
+          [-99.2,39.7],
+          [-95.0,39.7],
+          [-95.0,37.0],
+          [-99.2,37.0],
+          [-99.2,39.7]
+        ]]
+      },
+
+      properties:{
+        event:
+          "TEST Severe Thunderstorm Warning",
+
+        headline:
+          "TEST ONLY — Mosaic radar alert-layer validation",
+
+        areaDesc:
+          "Synthetic test polygon over Kansas",
+
+        severity:
+          "Severe",
+
+        urgency:
+          "Immediate",
+
+        certainty:
+          "Observed",
+
+        expires:
+          new Date(
+            Date.now()+3600000
+          ).toISOString(),
+
+        status:
+          "Test",
+
+        messageType:
+          "Test"
+      }
+    };
+  }
+
+
   function normalizeAlertFeature(
     feature
   ){
@@ -4273,6 +4365,34 @@ u_mix,
             normalizeAlertFeature
           );
 
+      if(
+        FORCE_TEST_ALERT
+      ){
+        features.push(
+          syntheticTestAlert()
+        );
+      }
+
+      if(
+        alertTestStatus
+      ){
+        alertTestStatus.classList.remove(
+          "error"
+        );
+
+        alertTestStatus.classList.add(
+          "live"
+        );
+
+        alertTestStatus.textContent=
+          "Live alerts • "
+          +features.length
+          +" polygons"
+          +(FORCE_TEST_ALERT
+            ?" • TEST ON"
+            :"");
+      }
+
       const source=
         map.getSource(
           ALERT_SOURCE_ID
@@ -4298,6 +4418,20 @@ u_mix,
         "Mosaic alert refresh failed:",
         error
       );
+
+      if(
+        alertTestStatus
+      ){
+        alertTestStatus.classList.remove(
+          "live"
+        );
+
+        alertTestStatus.classList.add(
+          "error"
+        );
+
+        alertTestStatus.textContent="Alerts failed";
+      }
     }
   }
 
