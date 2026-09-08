@@ -68,7 +68,7 @@
   "use strict";
 
   const MAPBOX_STYLE="mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
-  const MANIFEST_URL="https://dt0cd6bl1yqh2.cloudfront.net/mrms-native-numeric/manifest.json";
+  const MANIFEST_URL="https://dt0cd6bl1yqh2.cloudfront.net/mrms-native-numeric/manifest-playback-test.json";
   const ARCHIVE_BASE="https://dt0cd6bl1yqh2.cloudfront.net/mrms-native-numeric/";
   const LAYER_ID="mrms-native-numeric-dbz-layer";
   const CHUNK_LAYER_ID="mrms-native-numeric-viewport-chunks";
@@ -77,7 +77,7 @@
 
   // The national/regional loop always remains the lightweight
   // numeric overview. Native detail is now a viewport-only overlay.
-  const BASE_TIER="overview";
+  const BASE_TIER="playback";
 
   const GPU_DEPTH_OVERVIEW=MOBILE?10:36;
   const FETCH_CONCURRENCY_OVERVIEW=MOBILE?2:4;
@@ -188,31 +188,58 @@ ctx.putImageData(image,0,0);
 
   function frameMs(frame){return Date.parse(frame?.valid_time||"");}
   function tierDimensions(tier=activeTier){
+    if(tier==="playback"){
+      const lod=
+        manifest?.lod?.playback||{};
+
+      return {
+        width:Number(
+          lod.width
+          ||frames[0]?.playbackWidth
+          ||1750
+        ),
+
+        height:Number(
+          lod.height
+          ||frames[0]?.playbackHeight
+          ||875
+        )
+      };
+    }
+
     if(tier==="overview"){
-      const lod=manifest?.lod?.overview||{};
+      const lod=
+        manifest?.lod?.overview||{};
 
       return {
         width:Number(
           lod.width
           ||frames[0]?.overviewWidth
           ||manifest?.imageWidth
-          ||0
         ),
+
         height:Number(
           lod.height
           ||frames[0]?.overviewHeight
           ||manifest?.imageHeight
-          ||0
         )
       };
     }
 
+    const lod=
+      manifest?.lod?.native||{};
+
     return {
       width:Number(
-        manifest?.imageWidth||0
+        lod.width
+        ||manifest?.imageWidth
+        ||manifest?.sourceGridWidth
       ),
+
       height:Number(
-        manifest?.imageHeight||0
+        lod.height
+        ||manifest?.imageHeight
+        ||manifest?.sourceGridHeight
       )
     };
   }
@@ -224,26 +251,40 @@ ctx.putImageData(image,0,0);
   }
 
   function gpuDepth(tier=activeTier){
-    return tier==="overview"
-      ? GPU_DEPTH_OVERVIEW
-      : GPU_DEPTH_NATIVE;
+    return (
+      tier==="overview"
+      ||tier==="playback"
+    )
+      ?GPU_DEPTH_OVERVIEW
+      :GPU_DEPTH_NATIVE;
   }
 
   function fetchConcurrency(tier=activeTier){
-    return tier==="overview"
-      ? FETCH_CONCURRENCY_OVERVIEW
-      : FETCH_CONCURRENCY_NATIVE;
+    return (
+      tier==="overview"
+      ||tier==="playback"
+    )
+      ?FETCH_CONCURRENCY_OVERVIEW
+      :FETCH_CONCURRENCY_NATIVE;
   }
 
   function tierPath(frame,tier=activeTier){
-    const path=
-      tier==="overview"
-        ? frame?.overview
-        : frame?.dbz;
+    let path=null;
+
+    if(tier==="playback"){
+      path=frame?.playback;
+    }else if(tier==="overview"){
+      path=frame?.overview;
+    }else{
+      path=frame?.dbz;
+    }
 
     if(!path){
       throw new Error(
-        `Missing ${tier} numeric path for ${frame?.id||"frame"}`
+        "Missing numeric path for tier "
+        +tier
+        +" frame "
+        +(frame?.id||"unknown")
       );
     }
 
