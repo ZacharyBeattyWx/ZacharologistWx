@@ -43,7 +43,7 @@
     </div>
   </section>
   <div class="legend">
-    <div class="legend-title">Python Level II GPU Reflectivity (dBZ)</div>
+    <div class="legend-title">MRMS MRALA GPU Reflectivity (dBZ)</div>
     <canvas id="legendBar" class="legend-bar" width="256" height="1"></canvas>
     <div class="legend-labels"><span>-30</span><span>-20</span><span>-10</span><span>0</span><span>10</span><span>20</span><span>30</span><span>40</span><span>50</span><span>60+</span></div>
   </div>
@@ -68,7 +68,7 @@
   "use strict";
 
   const MAPBOX_STYLE="mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
-  const MANIFEST_URL="https://dt0cd6bl1yqh2.cloudfront.net/mrms-native-numeric/manifest-playback-test.json";
+  const MANIFEST_URL="https://dt0cd6bl1yqh2.cloudfront.net/mrms-native-numeric/manifest.json";
   const ARCHIVE_BASE="https://dt0cd6bl1yqh2.cloudfront.net/mrms-native-numeric/";
   const LAYER_ID="mrms-native-numeric-dbz-layer";
   const CHUNK_LAYER_ID="mrms-native-numeric-viewport-chunks";
@@ -77,9 +77,9 @@
 
   // The national/regional loop always remains the lightweight
   // numeric overview. Native detail is now a viewport-only overlay.
-  const BASE_TIER="playback";
+  const BASE_TIER="overview";
 
-  const GPU_DEPTH_OVERVIEW=MOBILE?10:36;
+  const GPU_DEPTH_OVERVIEW=MOBILE?6:18;
   const FETCH_CONCURRENCY_OVERVIEW=MOBILE?2:4;
 
   // Keep a small temporal ring of only the chunks intersecting
@@ -88,13 +88,13 @@
   const CHUNK_FETCH_CONCURRENCY=MOBILE?3:6;
   const CHUNK_VIEWPORT_PAD=0.12;
 
-  const DISABLE_NATIVE_LOD_TEST=true;
+  const DISABLE_NATIVE_LOD_TEST=false;
 
   const INTERPOLATION_FPS=MOBILE?24:30;
 
   // COD-style loop behavior:
   // hold the newest observation before jumping back to the oldest.
-  const LOOP_END_PAUSE_MS=1500;
+  const LOOP_END_PAUSE_MS=450;
 
   const statusDot=document.getElementById("statusDot"),statusText=document.getElementById("statusText");
   const frameSlider=document.getElementById("frameSlider"),playPause=document.getElementById("playPause"),prevFrame=document.getElementById("prevFrame"),nextFrame=document.getElementById("nextFrame"),speedSelect=document.getElementById("speedSelect"),frameTime=document.getElementById("frameTime"),frameAge=document.getElementById("frameAge");
@@ -3415,10 +3415,10 @@ u_mix,
     /*
       Do NOT blend the newest observation into the oldest one.
 
-      Hold the newest frame for 2.5 seconds. During that hold,
-      the normal overview/native buffers can preload the beginning
-      of the next loop. Once frame zero is resident, jump directly
-      back to it and resume the animation clock.
+      Briefly hold the newest frame. During that hold, the circular
+      overview buffer already contains the beginning of the next loop.
+      Once frame zero is resident, jump directly back to it and keep
+      the animation clock running.
     */
     if(
       currentIndex
@@ -3465,20 +3465,14 @@ u_mix,
           BASE_TIER
         );
 
-      const restartNativeReady=
-        activeTier!=="native"
-        ||chunkLayer.hasFrame(
-          String(
-            frames[
-              restartIndex
-            ]?.id||""
-          ),
-          visibleChunkIds
-        );
+      // Playback is overview-exclusive. Never wait for native chunks
+      // at the loop boundary because native loading is intentionally
+      // paused while the animation clock is running.
+      const restartNativeReady=true;
 
       /*
-        If either tier somehow missed the prefetch, extend the
-        hold slightly rather than showing mismatched timestamps.
+        If the circular overview buffer somehow missed frame zero,
+        extend the hold slightly without stopping playback.
       */
       if(
         !layer.hasTexture(
@@ -3778,19 +3772,12 @@ u_mix,
 
       if(
         activeTier==="native"
+        &&chunkLayer
       ){
+        // Native is inspection quality only while paused. Keeping it
+        // disabled here avoids competing with the 3500x1750 loop.
         chunkLayer.setEnabled(
-          true
-        );
-
-        refreshNativeViewport(
           false
-        ).catch(
-          error=>
-            console.warn(
-              "Native startup prefetch failed",
-              error
-            )
         );
       }
 
