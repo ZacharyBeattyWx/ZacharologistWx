@@ -2,6 +2,154 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
 
 (() => {
   const path = String(window.location.pathname || "");
+  if (!/\/mosaic-radar-home\.html$/i.test(path)) return;
+
+  // The 3500px overview still contains enough source detail for the regional
+  // view. Switching to native MRALA at z4.9 caused the radar to visibly change
+  // several seconds after the user stopped zooming, even though the camera had
+  // not moved. Keep the stable overview through regional zoom, then use native
+  // chunks only once their extra source resolution is actually useful.
+  const NATIVE_ENTER_ZOOM = 6.15;
+  const OVERVIEW_REENTER_ZOOM = 5.85;
+
+  if (!window.__ZWX_MRALA_PRODUCTION_LOD_FETCH_PATCH__) {
+    window.__ZWX_MRALA_PRODUCTION_LOD_FETCH_PATCH__ = true;
+
+    const originalFetch = window.fetch.bind(window);
+
+    window.fetch = async function (input, init) {
+      const response = await originalFetch(input, init);
+      const url = String(
+        typeof input === "string"
+          ? input
+          : input?.url || ""
+      );
+
+      if (
+        !response.ok ||
+        !/\/mrms-native-numeric\/manifest\.json(?:[?#]|$)/i.test(url)
+      ) {
+        return response;
+      }
+
+      try {
+        const manifest = await response.clone().json();
+        const overview = manifest?.lod?.overview;
+        const native = manifest?.lod?.native;
+
+        if (!overview || !native) return response;
+
+        overview.recommendedMaxZoom = NATIVE_ENTER_ZOOM;
+        native.recommendedMinZoom = OVERVIEW_REENTER_ZOOM;
+
+        const headers = new Headers(response.headers);
+        headers.delete("content-length");
+        headers.delete("content-encoding");
+        headers.delete("etag");
+
+        return new Response(
+          JSON.stringify(manifest),
+          {
+            status: response.status,
+            statusText: response.statusText,
+            headers
+          }
+        );
+      } catch (error) {
+        console.warn("MRALA production LOD manifest patch failed", error);
+        return response;
+      }
+    };
+
+    console.info(
+      "MRALA production LOD: overview through z" +
+        NATIVE_ENTER_ZOOM.toFixed(2) +
+        ", native exit z" +
+        OVERVIEW_REENTER_ZOOM.toFixed(2)
+    );
+  }
+
+  // The native viewport layer used to replace its visible chunk list as soon as
+  // the camera moved. New chunks then appeared individually as their textures
+  // arrived, which made a stationary radar field seem to change in blocks.
+  // Stage the requested viewport and expose it only after the currently drawn
+  // native observation is complete for the whole new viewport.
+  if (
+    !window.__ZWX_MRALA_ATOMIC_VIEWPORT_PATCH__ &&
+    window.mapboxgl?.Map?.prototype?.addLayer
+  ) {
+    window.__ZWX_MRALA_ATOMIC_VIEWPORT_PATCH__ = true;
+
+    const mapPrototype = window.mapboxgl.Map.prototype;
+    const originalAddLayer = mapPrototype.addLayer;
+
+    mapPrototype.addLayer = function (layer, ...args) {
+      if (
+        layer?.id === "mrms-native-numeric-viewport-chunks" &&
+        !layer.__zwxAtomicViewportPatched
+      ) {
+        layer.__zwxAtomicViewportPatched = true;
+        layer.__zwxPendingVisibleIds = null;
+
+        const originalSetVisible = layer.setVisible;
+        const originalAddTexture = layer.addTexture;
+        const originalSetEnabled = layer.setEnabled;
+
+        layer.setVisible = function (ids) {
+          const nextIds = [
+            ...new Set(
+              (ids || [])
+                .map(String)
+            )
+          ];
+
+          if (
+            this.enabled &&
+            this.fromFrame &&
+            nextIds.length &&
+            !this.hasFrame(this.fromFrame, nextIds)
+          ) {
+            this.__zwxPendingVisibleIds = nextIds;
+            return;
+          }
+
+          this.__zwxPendingVisibleIds = null;
+          return originalSetVisible.call(this, nextIds);
+        };
+
+        layer.addTexture = function (...textureArgs) {
+          const result = originalAddTexture.apply(this, textureArgs);
+          const pending = this.__zwxPendingVisibleIds;
+
+          if (
+            pending?.length &&
+            this.fromFrame &&
+            this.hasFrame(this.fromFrame, pending)
+          ) {
+            this.__zwxPendingVisibleIds = null;
+            originalSetVisible.call(this, pending);
+          }
+
+          return result;
+        };
+
+        layer.setEnabled = function (enabled) {
+          if (!enabled) {
+            this.__zwxPendingVisibleIds = null;
+          }
+          return originalSetEnabled.call(this, enabled);
+        };
+
+        console.info("MRALA native viewport: atomic camera handoff enabled");
+      }
+
+      return originalAddLayer.call(this, layer, ...args);
+    };
+  }
+})();
+
+(() => {
+  const path = String(window.location.pathname || "");
   if (!/\/mosaic-radar-canvas-test\.html$/i.test(path)) return;
 
   // X2 playback is owned by the core radar scheduler and native-detail buffer.
