@@ -5,7 +5,10 @@
     window.matchMedia?.("(pointer: coarse)")?.matches ||
     /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-  const GPU_FRAME_CACHE_LIMIT = MOBILE_DEVICE ? 3 : 5;
+  // The active frame occupies one GPU slot in addition to the lookahead ring.
+  // Keep enough capacity that preloading the requested buffer never evicts the
+  // immediate next frame (which previously caused stalls, especially at wrap).
+  const GPU_FRAME_CACHE_LIMIT = MOBILE_DEVICE ? 4 : 6;
   const INSTALL_TIMEOUT_MS = 20000;
   const FACTORY_RETRY_MS = 8;
   const RUNTIME_RETRY_MS = 30;
@@ -56,10 +59,11 @@
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    // Overview is a display LOD. Smooth the coarse national pixels here while
-    // native-detail chunks retain their sharper nearest-neighbor sampling.
+    // Downscaling still gets linear filtering to avoid national-view aliasing,
+    // but magnification stays nearest-neighbor so regional zoom does not blur
+    // the reflectivity field before native-detail LOD takes over.
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
   }
 
   function sourceWidth(source) {
@@ -281,6 +285,8 @@
         if (!Array.isArray(frames) || !frames.length) return result;
         const ahead = Math.min(baseBufferCount(), Math.max(0, frames.length - 1));
         for (let offset = 1; offset <= ahead; offset += 1) {
+          // preloadBaseFrame normalizes the index, so this intentionally wraps
+          // past the newest frame and keeps the beginning of the next loop hot.
           preloadBaseFrame(index + offset).catch(() => {});
         }
         return result;
@@ -304,7 +310,7 @@
 
       runtimePatched = true;
       console.info(
-        `MRMS playback performance: GPU overview ring enabled (${GPU_FRAME_CACHE_LIMIT} frames)`
+        `MRMS playback performance: circular GPU overview ring enabled (${GPU_FRAME_CACHE_LIMIT} frames)`
       );
       return true;
     } catch (_) {
@@ -405,7 +411,7 @@
       });
 
       nativePatched = true;
-      console.info("MRMS playback performance: speed-aware native buffer enabled");
+      console.info("MRMS playback performance: speed-aware circular native buffer enabled");
       return true;
     } catch (_) {
       return false;
