@@ -2839,40 +2839,28 @@ u_mix,
   }
 
   async function maintainNativeChunkBuffer(){
-    if(DISABLE_NATIVE_LOD_TEST){
-      return;
-    }
+    /*
+      fillNativeChunkBuffer() owns the busy/pending lock.
 
-    // Native disabled for playback LOD performance test
+      Do NOT acquire chunkBufferBusy here too. The previous
+      double-lock caused an endless pending loop that could make
+      Chrome report the page as unresponsive.
+    */
     if(
-      activeTier!=="native"
+      playing
+      ||activeTier!=="native"
       ||!chunkLayer
     ){
       return;
     }
 
-    if(chunkBufferBusy){
-      chunkBufferPending=true;
-      return;
-    }
-
-    chunkBufferBusy=true;
-
     try{
-      do{
-        chunkBufferPending=false;
-
-        try{
-          await fillNativeChunkBuffer();
-        }catch(error){
-          console.warn(
-            "Native viewport rolling buffer failed",
-            error
-          );
-        }
-      }while(chunkBufferPending);
-    }finally{
-      chunkBufferBusy=false;
+      await fillNativeChunkBuffer();
+    }catch(error){
+      console.warn(
+        "Native current-frame buffer failed",
+        error
+      );
     }
   }
 
