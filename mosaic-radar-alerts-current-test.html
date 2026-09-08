@@ -84,7 +84,7 @@
 
   // Keep a small temporal ring of only the chunks intersecting
   // the user's current viewport.
-  const CHUNK_FRAME_DEPTH=1;
+  const CHUNK_FRAME_DEPTH=MOBILE?5:10;
   const CHUNK_FETCH_CONCURRENCY=MOBILE?3:6;
   const CHUNK_VIEWPORT_PAD=0.12;
 
@@ -2640,126 +2640,188 @@ u_mix,
   }
 
   async function fillNativeChunkBuffer(){
-    /*
-      CURRENT-FRAME NATIVE DETAIL ONLY
 
-      Animation uses the lightweight playback tier.
-      Native chunks exist only to sharpen the exact observation
-      being inspected while playback is paused.
+    /*
+      NATIVE BUFFER PAUSED DURING PLAYBACK
+
+      Avoid competing with the overview renderer for network,
+      decompression, main-thread time and GPU texture uploads.
+      Native resumes as soon as playback stops.
     */
+    if(playing){
+      return;
+    }
     if(
-      playing
-      ||activeTier!=="native"
+      activeTier!=="native"
       ||!chunkLayer
       ||!visibleChunkIds.length
-      ||!frames.length
     ){
       return;
     }
 
-    if(chunkBufferBusy){
-      chunkBufferPending=true;
+    const generation=
+      chunkViewportGeneration;
+
+    const byId=
+      new Map(
+        nativeChunkLayout()
+          .map(
+            chunk=>[
+              String(chunk.id),
+              chunk
+            ]
+          )
+      );
+
+    const chunks=
+      visibleChunkIds
+        .map(
+          id=>byId.get(id)
+        )
+        .filter(Boolean);
+
+    if(!chunks.length){
       return;
     }
 
-    const frame=
-      frames[currentIndex];
+    const frameIndices=[];
+
+    for(
+      let n=0;
+      n<Math.min(
+        CHUNK_FRAME_DEPTH,
+        frames.length
+      );
+      n++
+    ){
+      frameIndices.push(
+        (currentIndex+n)
+        %frames.length
+      );
+    }
+
+    const targets=[];
+
+    for(
+      const index
+      of frameIndices
+    ){
+      for(
+        const chunk
+        of chunks
+      ){
+        targets.push(
+          {
+            index,
+            chunk
+          }
+        );
+      }
+    }
+
+    let cursor=0;
+
+    const worker=
+      async()=>{
+        while(
+          cursor<targets.length
+        ){
+          const target=
+            targets[cursor++];
+
+          try{
+            await loadNativeChunk(
+              target.index,
+              target.chunk
+            );
+          }catch(error){
+            console.warn(
+              "Native chunk prefetch failed",
+              error
+            );
+          }
+        }
+      };
+
+    const workers=
+      Array.from(
+        {
+          length:Math.min(
+            CHUNK_FETCH_CONCURRENCY,
+            targets.length
+          )
+        },
+        ()=>worker()
+      );
+
+    await Promise.all(
+      workers
+    );
 
     if(
-      !frame
-      ||!frame.nativeChunksReady
+      generation
+      !==chunkViewportGeneration
+      ||activeTier!=="native"
     ){
       return;
     }
 
-    chunkBufferBusy=true;
+    const keep=
+      new Set();
 
-    try{
-      const jobs=[];
+    for(
+      const index
+      of frameIndices
+    ){
+      const frameId=
+        frames[index]?.id;
 
       for(
         const chunkId
         of visibleChunkIds
       ){
-        const chunk=
-          nativeChunkById(
+        keep.add(
+          chunkTextureKey(
+            frameId,
             chunkId
-          );
-
-        if(!chunk){
-          continue;
-        }
-
-        jobs.push(
-          {
-            frame,
-            chunk
-          }
+          )
         );
       }
+    }
 
-      let cursor=0;
+    // Preserve the sticky complete frame during a transition.
+    for(
+      const frameId
+      of [
+        chunkLayer.fromFrame,
+        chunkLayer.toFrame
+      ]
+    ){
+      if(!frameId){
+        continue;
+      }
 
-      const worker=
-        async()=>{
-          while(
-            cursor<jobs.length
-          ){
-            const job=
-              jobs[cursor++];
-
-            try{
-              await loadNativeChunk(
-                job.frame,
-                job.chunk
-              );
-            }catch(error){
-              /*
-                A rolling archive can remove a chunk referenced by
-                our static test manifest. That is harmless here.
-              */
-              console.debug(
-                "Native paused-detail chunk unavailable",
-                job.frame?.id,
-                job.chunk?.id
-              );
-            }
-          }
-        };
-
-      await Promise.all(
-        Array.from(
-          {
-            length:
-              Math.min(
-                CHUNK_FETCH_CONCURRENCY,
-                jobs.length
-              )
-          },
-          worker
-        )
-      );
-
-      syncNativeCurrent();
-
-      updateUi();
-
-    }finally{
-      chunkBufferBusy=false;
-
-      if(chunkBufferPending){
-        chunkBufferPending=false;
-
-        fillNativeChunkBuffer()
-          .catch(
-            error=>
-              console.warn(
-                "Native current-frame refresh failed",
-                error
-              )
-          );
+      for(
+        const chunkId
+        of visibleChunkIds
+      ){
+        keep.add(
+          chunkTextureKey(
+            frameId,
+            chunkId
+          )
+        );
       }
     }
+
+    chunkLayer.evictExcept(
+      keep
+    );
+
+    syncNativeCurrent();
+
+    updateGridInfo();
+    updateGpuInfo();
   }
 
   async function maintainNativeChunkBuffer(){
