@@ -13,16 +13,21 @@
   const MOBILE = window.matchMedia?.("(pointer: coarse)")?.matches ||
     /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   const DEVICE_MEMORY_GB = Math.max(2, Number(navigator.deviceMemory || 8));
+
+  // GPU memory remains bounded. The full current-viewport loop is allowed to
+  // stay in the local response cache while playback is armed, so the GPU ring
+  // can rotate from local bytes rather than returning to CloudFront mid-loop.
   const NATIVE_GPU_BUDGET_BYTES = Math.round(
     (MOBILE
       ? Math.min(256, Math.max(128, DEVICE_MEMORY_GB * 32))
       : Math.min(704, Math.max(384, DEVICE_MEMORY_GB * 88))) * 1048576
   );
-  const NATIVE_NETWORK_CACHE_BUDGET_BYTES = NATIVE_GPU_BUDGET_BYTES;
+  const IDLE_NETWORK_CACHE_BUDGET_BYTES = NATIVE_GPU_BUDGET_BYTES;
   const PREWARM_CONCURRENCY = MOBILE ? 2 : 5;
 
   let manifest = null;
   const nativeResponseCache = new Map();
+  const pinnedNativeUrls = new Set();
   const missingNativeUrls = new Set();
   let nativeResponseCacheBytes = 0;
   const previousFetch = window.fetch.bind(window);
@@ -33,6 +38,32 @@
 
   function copyArrayBuffer(buffer) {
     return buffer.slice(0);
+  }
+
+  function trimNativeResponseCache() {
+    while (
+      nativeResponseCacheBytes > IDLE_NETWORK_CACHE_BUDGET_BYTES &&
+      nativeResponseCache.size > 1
+    ) {
+      let evictUrl = null;
+
+      for (const candidate of nativeResponseCache.keys()) {
+        if (!pinnedNativeUrls.has(candidate)) {
+          evictUrl = candidate;
+          break;
+        }
+      }
+
+      // During an armed playback session every byte required by the visible
+      // loop may be pinned. In that case we intentionally exceed the idle cache
+      // budget until the viewport changes; smooth playback wins over instant
+      // startup and fixed-size cache churn.
+      if (!evictUrl) break;
+
+      const item = nativeResponseCache.get(evictUrl);
+      nativeResponseCache.delete(evictUrl);
+      nativeResponseCacheBytes -= Number(item?.byteLength || 0);
+    }
   }
 
   function cacheNativeResponse(url, bytes) {
@@ -46,23 +77,14 @@
 
     nativeResponseCache.set(url, bytes);
     nativeResponseCacheBytes += bytes.byteLength;
-
-    while (
-      nativeResponseCacheBytes > NATIVE_NETWORK_CACHE_BUDGET_BYTES &&
-      nativeResponseCache.size > 1
-    ) {
-      const oldestUrl = nativeResponseCache.keys().next().value;
-      const oldest = nativeResponseCache.get(oldestUrl);
-      nativeResponseCache.delete(oldestUrl);
-      nativeResponseCacheBytes -= Number(oldest?.byteLength || 0);
-    }
+    trimNativeResponseCache();
   }
 
   function cachedNativeResponse(url) {
     const bytes = nativeResponseCache.get(url);
     if (!bytes) return null;
 
-    // Refresh insertion order so the bounded Map behaves like a small LRU.
+    // Refresh insertion order so unpinned idle content behaves like an LRU.
     nativeResponseCache.delete(url);
     nativeResponseCache.set(url, bytes);
     return bytes;
@@ -89,8 +111,7 @@
     const expected = Number(chunk.width || 0) * Number(chunk.height || 0);
     if (!Number.isFinite(expected) || expected <= 0) return null;
 
-    // Code 0 is native no-data and therefore fully transparent in the radar
-    // shader. The already-loaded overview remains visible underneath.
+    // Code 0 is transparent no-data. The complete overview remains underneath.
     return new Uint8Array(expected).buffer;
   }
 
@@ -148,7 +169,7 @@
         manifest = await response.clone().json();
         window.__ZWX_MRALA_RUNTIME_MANIFEST__ = manifest;
       } catch (error) {
-        console.warn("MRALA loop prewarm manifest capture failed", error);
+        console.warn("MRALA loop preload manifest capture failed", error);
       }
     } else if (CHUNK_RE.test(url)) {
       if (response.ok) {
@@ -207,12 +228,13 @@
     const cached = cachedNativeResponse(url);
     if (cached) return cached;
 
-    // Go through the production fetch wrapper so a missing archived chunk gets
-    // the same transparent overview fallback as the core renderer.
+    // Use the production wrapper so missing archived objects become a stable
+    // transparent fallback instead of a retry storm.
     const response = await window.fetch(url, { cache: "force-cache" });
     if (!response.ok) {
-      throw new Error(`Native prewarm HTTP ${response.status}`);
+      throw new Error(`Native preload HTTP ${response.status}`);
     }
+
     const bytes = await response.arrayBuffer();
     cacheNativeResponse(url, bytes);
     return bytes;
@@ -222,6 +244,7 @@
     if (bytes.byteLength === expectedLength) {
       return new Uint8Array(bytes);
     }
+
     const probe = new Uint8Array(bytes);
     if (
       probe[0] === 0x1f &&
@@ -233,6 +256,7 @@
         .pipeThrough(new DecompressionStream("gzip"));
       return new Uint8Array(await new Response(stream).arrayBuffer());
     }
+
     return probe;
   }
 
@@ -278,8 +302,11 @@
       instance.__zwxWarmSignature = "";
       instance.__zwxPinnedLoopKeys.clear();
       instance.__zwxLoopWarmPromise = null;
-      // Keep the bounded network cache across pans. Overlapping chunks can be
-      // reused immediately instead of being downloaded again after every move.
+
+      // A new viewport gets its own playback gate. Release the previous loop's
+      // network pins, then trim old material back to the normal idle budget.
+      pinnedNativeUrls.clear();
+      trimNativeResponseCache();
     }
 
     layer.setVisible = function (ids) {
@@ -306,6 +333,7 @@
       if (!this.__zwxPinnedLoopKeys.size) {
         return originalEvictExcept.call(this, keep);
       }
+
       const combined = new Set(keep || []);
       for (const key of this.__zwxPinnedLoopKeys) combined.add(key);
       return originalEvictExcept.call(this, combined);
@@ -341,6 +369,10 @@
         0
       );
       const fullGpuBytes = bytesPerFrame * frames.length;
+
+      // This is adaptive, not a fixed frame count. Small/deep viewports may fit
+      // the whole loop in GPU memory; larger ones keep only what the device can
+      // safely hold. In either case ALL loop bytes are locally cached first.
       const gpuFrameLimit = Math.max(
         1,
         Math.min(
@@ -349,50 +381,62 @@
         )
       );
       const fullGpuResident = gpuFrameLimit >= frames.length;
-      const gpuFrames = new Set(frames.slice(0, gpuFrameLimit).map(frame => String(frame.id)));
+      const gpuFrames = new Set(
+        frames.slice(0, gpuFrameLimit).map(frame => String(frame.id))
+      );
 
       const targets = [];
       for (const frame of frames) {
         for (const chunk of chunks) {
-          targets.push({ frame, chunk });
+          const url = nativeChunkUrl(frame.id, chunk.id);
+          targets.push({ frame, chunk, url });
         }
       }
+
+      // Pin every object required by THIS viewport before downloading begins.
+      // The cache therefore cannot evict the beginning of the loop while it is
+      // still downloading the end of the loop.
+      pinnedNativeUrls.clear();
+      for (const target of targets) pinnedNativeUrls.add(target.url);
 
       let cursor = 0;
       let completed = 0;
       let failed = 0;
-      const pinned = new Set();
-      this.__zwxPinnedLoopKeys = pinned;
+      const pinnedGpu = new Set();
+      this.__zwxPinnedLoopKeys = pinnedGpu;
       const started = performance.now();
 
       const promise = (async () => {
         const worker = async () => {
           while (cursor < targets.length) {
             if (generation !== this.__zwxWarmGeneration) return;
+
             const target = targets[cursor++];
-            const url = nativeChunkUrl(target.frame.id, target.chunk.id);
 
             try {
-              const packed = await packedChunkBytes(url);
+              const packed = await packedChunkBytes(target.url);
 
               if (gpuFrames.has(String(target.frame.id))) {
                 const key = nativeKey(target.frame.id, target.chunk.id);
                 if (!this.textures.has(key)) {
-                  const expected = Number(target.chunk.width) * Number(target.chunk.height);
+                  const expected =
+                    Number(target.chunk.width) * Number(target.chunk.height);
                   const raw = await maybeDecompress(packed, expected);
+
                   if (raw.byteLength !== expected) {
                     throw new Error(
-                      `Native prewarm ${target.chunk.id} size ${raw.byteLength} != ${expected}`
+                      `Native preload ${target.chunk.id} size ${raw.byteLength} != ${expected}`
                     );
                   }
+
                   this.addTexture(target.frame.id, target.chunk, raw);
                 }
-                pinned.add(key);
+                pinnedGpu.add(key);
               }
             } catch (error) {
               failed += 1;
               console.warn(
-                "Native loop prewarm failed",
+                "Native loop preload failed",
                 target.frame?.id,
                 target.chunk?.id,
                 error
@@ -413,23 +457,26 @@
           )
         );
 
-        if (generation !== this.__zwxWarmGeneration || signature !== this.__zwxViewportSignature) {
+        if (
+          generation !== this.__zwxWarmGeneration ||
+          signature !== this.__zwxViewportSignature
+        ) {
           return { ready: false, reason: "viewport changed" };
         }
 
-        this.__zwxPinnedLoopKeys = pinned;
+        this.__zwxPinnedLoopKeys = pinnedGpu;
         this.__zwxWarmSignature = signature;
         this.__zwxLoopWarmReady = failed === 0;
         this.map?.triggerRepaint();
 
         console.info(
-          "MRALA native loop prewarmed:",
+          "MRALA adaptive loop ready:",
           frames.length + " frames",
           chunks.length + " chunks/frame",
-          (fullGpuBytes / 1048576).toFixed(1) + " MiB full GPU",
+          (nativeResponseCacheBytes / 1048576).toFixed(1) + " MiB local loop cache",
           fullGpuResident
-            ? "all native frames GPU-resident"
-            : gpuFrameLimit + " GPU frames + bounded network memory cache",
+            ? "full native loop GPU-resident"
+            : gpuFrameLimit + " adaptive GPU frames; remainder local-memory resident",
           Math.round(performance.now() - started) + " ms"
         );
 
@@ -439,7 +486,8 @@
           fullGpuResident,
           frames: frames.length,
           gpuFrames: gpuFrameLimit,
-          chunks: chunks.length
+          chunks: chunks.length,
+          localBytes: nativeResponseCacheBytes
         };
       })();
 
@@ -457,8 +505,9 @@
 
     window.__ZWX_MRALA_NATIVE_CHUNK_LAYER__ = layer;
     window.__ZWX_MRALA_MISSING_NATIVE_URLS__ = missingNativeUrls;
+
     console.info(
-      "MRALA native loop prewarm enabled • GPU/cache budget",
+      "MRALA adaptive playback gate enabled • GPU budget",
       (NATIVE_GPU_BUDGET_BYTES / 1048576).toFixed(0) + " MiB"
     );
 
@@ -473,8 +522,7 @@
       const layer = window.__ZWX_MRALA_NATIVE_CHUNK_LAYER__;
       if (!layer?.enabled || !layer.__zwxRequestedVisibleIds?.length) return;
 
-      // A click while playback is already running is a Pause request. Never
-      // replace that with another preload cycle, even if the user panned/zoomed.
+      // A click while playback is already running is always a Pause request.
       if (/Pause/i.test(String(playButton.textContent || ""))) return;
 
       if (layer.__zwxBypassWarmClick) {
@@ -482,10 +530,15 @@
         return;
       }
 
-      if (layer.__zwxLoopWarmReady && layer.__zwxWarmSignature === layer.__zwxViewportSignature) {
+      if (
+        layer.__zwxLoopWarmReady &&
+        layer.__zwxWarmSignature === layer.__zwxViewportSignature
+      ) {
         return;
       }
 
+      // This is the deliberate quality-over-startup-latency gate: playback is
+      // not allowed to begin while the viewport loop is still downloading.
       event.preventDefault();
       event.stopImmediatePropagation();
 
@@ -493,12 +546,14 @@
       playButton.disabled = true;
 
       try {
-        const result = await layer.__zwxWarmVisibleLoop((done, total, fullGpuResident) => {
-          const percent = total ? Math.round(done * 100 / total) : 0;
-          playButton.textContent = fullGpuResident
-            ? `Loading loop ${percent}%`
-            : `Caching loop ${percent}%`;
-        });
+        const result = await layer.__zwxWarmVisibleLoop(
+          (done, total, fullGpuResident) => {
+            const percent = total ? Math.round(done * 100 / total) : 0;
+            playButton.textContent = fullGpuResident
+              ? `Preparing loop ${percent}%`
+              : `Caching loop ${percent}%`;
+          }
+        );
 
         if (!result?.ready) {
           playButton.textContent = originalText;
@@ -510,7 +565,7 @@
         layer.__zwxBypassWarmClick = true;
         playButton.click();
       } catch (error) {
-        console.warn("MRALA play prewarm failed", error);
+        console.warn("MRALA adaptive play preload failed", error);
         playButton.textContent = originalText;
       } finally {
         playButton.disabled = false;
