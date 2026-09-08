@@ -80,7 +80,7 @@
   const BASE_TIER="overview";
 
   const GPU_DEPTH_OVERVIEW=MOBILE?10:36;
-  const FETCH_CONCURRENCY_OVERVIEW=MOBILE?3:8;
+  const FETCH_CONCURRENCY_OVERVIEW=MOBILE?2:4;
 
   // Keep a small temporal ring of only the chunks intersecting
   // the user's current viewport.
@@ -2475,6 +2475,26 @@ u_mix,
     toIndex,
     amount
   ){
+
+    /*
+      PLAYBACK OVERVIEW-EXCLUSIVE
+
+      Native detail is inspection quality.
+      While the animation clock is running, never allow native
+      chunks to cover the overview or trigger native repaints.
+    */
+    if(playing){
+      if(
+        chunkLayer
+        &&chunkLayer.enabled
+      ){
+        chunkLayer.setEnabled(
+          false
+        );
+      }
+
+      return false;
+    }
     if(
       activeTier!=="native"
       ||!chunkLayer
@@ -2579,6 +2599,17 @@ u_mix,
   }
 
   async function fillNativeChunkBuffer(){
+
+    /*
+      NATIVE BUFFER PAUSED DURING PLAYBACK
+
+      Avoid competing with the overview renderer for network,
+      decompression, main-thread time and GPU texture uploads.
+      Native resumes as soon as playback stops.
+    */
+    if(playing){
+      return;
+    }
     if(
       activeTier!=="native"
       ||!chunkLayer
@@ -3628,6 +3659,20 @@ u_mix,
   }
 
   async function startPlayback(){
+
+    /*
+      Disable native immediately before animation begins.
+      syncNativeBlend() will keep it disabled for the full loop.
+    */
+    if(
+      activeTier==="native"
+      &&chunkLayer
+    ){
+      chunkLayer.setEnabled(
+        false
+      );
+    }
+
     if(
       playing
       ||frames.length<2
