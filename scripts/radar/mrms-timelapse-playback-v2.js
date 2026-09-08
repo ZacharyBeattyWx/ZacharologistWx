@@ -36,10 +36,23 @@
     return Math.max(1, Math.min(TIMELAPSE_FRAME_STRIDE, proportionalStride, frames.length - 1));
   }
 
+  function normalizeFrameIndex(index) {
+    if (!frames.length) return 0;
+    return ((Number(index) % frames.length) + frames.length) % frames.length;
+  }
+
   function nextPlaybackIndex() {
     if (!frames.length) return 0;
     if (currentFrameIndex >= frames.length - 1) return 0;
     return Math.min(frames.length - 1, currentFrameIndex + playbackStride());
+  }
+
+  function nativeDetailOwnsTimeline() {
+    try {
+      return Boolean(radarVisible && radarLayer && radarLayer.visible === false);
+    } catch (_) {
+      return false;
+    }
   }
 
   function compileShader(gl, type, source) {
@@ -291,7 +304,7 @@
   async function blendToFrame(index, generation) {
     if (!frames.length) return false;
 
-    const normalized = (Number(index) + frames.length) % frames.length;
+    const normalized = normalizeFrameIndex(index);
     const frame = frames[normalized];
     let source;
 
@@ -366,15 +379,19 @@
       if (speedValue() < 2) return originalWarmAround(index);
       if (!frames.length) return;
 
+      const normalized = normalizeFrameIndex(index);
       const stride = playbackStride();
       const ahead = Math.min(TIMELAPSE_LOOKAHEAD, frames.length - 1);
 
+      // Treat the animation as a ring, not a finite array. This ensures that
+      // the oldest observations are already decoded before the newest frame
+      // finishes its end hold and the loop wraps back to the beginning.
       for (let offset = 1; offset <= ahead; offset += 1) {
-        const target = Math.min(frames.length - 1, index + (offset * stride));
+        const target = normalizeFrameIndex(normalized + (offset * stride));
         loadFrameSource(frames[target]).catch(() => {});
       }
 
-      const previous = Math.max(0, index - stride);
+      const previous = normalizeFrameIndex(normalized - stride);
       loadFrameSource(frames[previous]).catch(() => {});
     };
 
@@ -382,17 +399,18 @@
       if (speedValue() < 2) return originalPrimePlaybackBuffer(startIndex);
       if (!frames.length) return;
 
+      const normalizedStart = normalizeFrameIndex(startIndex);
       const stride = playbackStride();
       const count = Math.min(TIMELAPSE_LOOKAHEAD, frames.length);
       const jobs = [];
 
       for (let offset = 0; offset < count; offset += 1) {
-        const target = Math.min(frames.length - 1, startIndex + (offset * stride));
+        const target = normalizeFrameIndex(normalizedStart + (offset * stride));
         jobs.push(loadFrameSource(frames[target]));
       }
 
       await Promise.all(jobs);
-      warmAround(startIndex);
+      warmAround(normalizedStart);
     };
 
     playbackLoop = async function (generation) {
@@ -403,7 +421,13 @@
       let advanced = false;
 
       try {
-        if (speedValue() >= 2 && next !== 0) {
+        // Native detail owns the timeline whenever the base radar renderer is
+        // intentionally hidden. In that state all advances MUST go through the
+        // wrapped showFrame() so native-frame readiness remains authoritative.
+        // At overview zoom, preserve the fast 2x blend path. The loop boundary
+        // remains an instantaneous frame swap after the end hold, but its frame
+        // is now guaranteed to have been circularly prefetched.
+        if (speedValue() >= 2 && next !== 0 && !nativeDetailOwnsTimeline()) {
           advanced = await blendToFrame(next, generation);
         } else {
           advanced = await showFrame(next, { quiet: true });
@@ -438,8 +462,8 @@
     });
 
     console.info(
-      "MRMS 2x stable timelapse enabled:",
-      `${TIMELAPSE_TRANSITION_MS}ms linear alpha-correct blends, history-scaled stride up to ${TIMELAPSE_FRAME_STRIDE} scans`
+      "MRMS 2x circular timelapse enabled:",
+      `${TIMELAPSE_TRANSITION_MS}ms alpha-correct blends, circular ${TIMELAPSE_LOOKAHEAD}-frame lookahead, native-detail ownership protected`
     );
   }
 
