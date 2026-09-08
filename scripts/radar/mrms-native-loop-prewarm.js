@@ -372,6 +372,10 @@
       const layer = window.__ZWX_MRALA_NATIVE_CHUNK_LAYER__;
       if (!layer?.enabled || !layer.__zwxRequestedVisibleIds?.length) return;
 
+      // A click while playback is already running is a Pause request. Never
+      // replace that with another preload cycle, even if the user panned/zoomed.
+      if (/Pause/i.test(String(playButton.textContent || ""))) return;
+
       if (layer.__zwxBypassWarmClick) {
         layer.__zwxBypassWarmClick = false;
         return;
