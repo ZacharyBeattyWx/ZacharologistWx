@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ZacharologistWx Mosaic Radar + Alerts Test</title>
+  <title>ZacharologistWx Level II Radar Test</title>
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
   <script src="https://unpkg.com/geotiff/dist-browser/geotiff.js"></script>
@@ -589,11 +589,6 @@
         min-height: 30px;
         font-size: 0.72rem;
       }
-    }
-      /* MRALA workstation integration CSS */
-    #radarOverlayCanvas,
-    #radarCanvas {
-      display:none !important;
     }
   </style>
 <style id="alert-type-filter-shell-styles">
@@ -3029,8 +3024,6 @@ body.alert-type-filter-popup-open {
   <script src="scripts/level2-hq-playback-engine.js?v=20260729-north-up-v3"></script>
   <script>
     const MAPBOX_TOKEN = window.MAPBOX_PUBLIC_TOKEN;
-    const MOSAIC_RADAR_WORKSTATION_TEST = true;
-
     const MAPBOX_STYLE = "mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
     const CHASE_STATUS_API = "https://zacharologist-chase-api.zacharologistwx.workers.dev/api/chase/status";
     const CHASE_LOCATION_REFRESH_MS = 20000;
@@ -8560,12 +8553,6 @@ body.alert-type-filter-popup-open {
         fadeDuration: 0,
         attributionControl: true
       });
-
-      window.__ZWX_WORKSTATION_MAP__=map;
-
-      console.info(
-        "Workstation Mapbox exposed for MRALA"
-      );
       window.zachLevel2RadarMap = map;
 
       map.addControl(new mapboxgl.NavigationControl(), "top-left");
@@ -10456,7 +10443,6 @@ body.alert-type-filter-popup-open {
     }
   }
 </style>
-<script src="scripts/radar/mrala-workstation-runtime.js?v=20260907b"></script>
 </body>
 </html>
 
