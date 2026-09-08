@@ -7,6 +7,7 @@
   const ARCHIVE_BASE = "https://dt0cd6bl1yqh2.cloudfront.net/mrms-native-numeric/";
   const MANIFEST_RE = /\/mrms-native-numeric\/manifest\.json(?:[?#]|$)/i;
   const CHUNK_RE = /\/mrms-native-numeric\/native-chunks\//i;
+  const CHUNK_URL_RE = /\/native-chunks\/[^/]+\/([^/?#]+)\.dbz(?:[?#]|$)/i;
   const CHUNK_LAYER_ID = "mrms-native-numeric-viewport-chunks";
   const HISTORY_MS = 3 * 60 * 60 * 1000;
   const MOBILE = window.matchMedia?.("(pointer: coarse)")?.matches ||
@@ -17,10 +18,13 @@
       ? Math.min(256, Math.max(128, DEVICE_MEMORY_GB * 32))
       : Math.min(704, Math.max(384, DEVICE_MEMORY_GB * 88))) * 1048576
   );
+  const NATIVE_NETWORK_CACHE_BUDGET_BYTES = NATIVE_GPU_BUDGET_BYTES;
   const PREWARM_CONCURRENCY = MOBILE ? 2 : 5;
 
   let manifest = null;
   const nativeResponseCache = new Map();
+  const missingNativeUrls = new Set();
+  let nativeResponseCacheBytes = 0;
   const previousFetch = window.fetch.bind(window);
 
   function inputUrl(input) {
@@ -31,19 +35,110 @@
     return buffer.slice(0);
   }
 
+  function cacheNativeResponse(url, bytes) {
+    if (!(bytes instanceof ArrayBuffer)) return;
+
+    const existing = nativeResponseCache.get(url);
+    if (existing) {
+      nativeResponseCacheBytes -= existing.byteLength;
+      nativeResponseCache.delete(url);
+    }
+
+    nativeResponseCache.set(url, bytes);
+    nativeResponseCacheBytes += bytes.byteLength;
+
+    while (
+      nativeResponseCacheBytes > NATIVE_NETWORK_CACHE_BUDGET_BYTES &&
+      nativeResponseCache.size > 1
+    ) {
+      const oldestUrl = nativeResponseCache.keys().next().value;
+      const oldest = nativeResponseCache.get(oldestUrl);
+      nativeResponseCache.delete(oldestUrl);
+      nativeResponseCacheBytes -= Number(oldest?.byteLength || 0);
+    }
+  }
+
+  function cachedNativeResponse(url) {
+    const bytes = nativeResponseCache.get(url);
+    if (!bytes) return null;
+
+    // Refresh insertion order so the bounded Map behaves like a small LRU.
+    nativeResponseCache.delete(url);
+    nativeResponseCache.set(url, bytes);
+    return bytes;
+  }
+
+  function chunkMap() {
+    return new Map(
+      (manifest?.nativeChunking?.layout || []).map(chunk => [String(chunk.id), chunk])
+    );
+  }
+
+  function fallbackChunkBytes(url) {
+    const match = CHUNK_URL_RE.exec(String(url || ""));
+    if (!match) return null;
+
+    let chunkId = match[1];
+    try {
+      chunkId = decodeURIComponent(chunkId);
+    } catch (_) {}
+
+    const chunk = chunkMap().get(String(chunkId));
+    if (!chunk) return null;
+
+    const expected = Number(chunk.width || 0) * Number(chunk.height || 0);
+    if (!Number.isFinite(expected) || expected <= 0) return null;
+
+    // Code 0 is native no-data and therefore fully transparent in the radar
+    // shader. The already-loaded overview remains visible underneath.
+    return new Uint8Array(expected).buffer;
+  }
+
+  function responseFromNativeBytes(bytes, source) {
+    return new Response(copyArrayBuffer(bytes), {
+      status: 200,
+      headers: {
+        "content-length": String(bytes.byteLength),
+        "content-type": "application/octet-stream",
+        "x-zwx-native-cache": source
+      }
+    });
+  }
+
+  function rememberMissingNative(url, status) {
+    if (missingNativeUrls.has(url)) return;
+    missingNativeUrls.add(url);
+
+    if (missingNativeUrls.size <= 6) {
+      console.warn(
+        "Native chunk unavailable; using overview fallback",
+        status,
+        url
+      );
+    } else if (missingNativeUrls.size === 7) {
+      console.warn("Additional missing native-chunk warnings suppressed for this page load");
+    }
+  }
+
   window.fetch = async function (input, init) {
     const url = inputUrl(input);
 
-    if (CHUNK_RE.test(url) && nativeResponseCache.has(url)) {
-      const bytes = nativeResponseCache.get(url);
-      return new Response(copyArrayBuffer(bytes), {
-        status: 200,
-        headers: {
-          "content-length": String(bytes.byteLength),
-          "content-type": "application/octet-stream",
-          "x-zwx-native-cache": "memory"
+    if (CHUNK_RE.test(url)) {
+      const cached = cachedNativeResponse(url);
+      if (cached) {
+        return responseFromNativeBytes(
+          cached,
+          missingNativeUrls.has(url) ? "missing-overview-fallback" : "memory"
+        );
+      }
+
+      if (missingNativeUrls.has(url)) {
+        const fallback = fallbackChunkBytes(url);
+        if (fallback) {
+          cacheNativeResponse(url, fallback);
+          return responseFromNativeBytes(fallback, "missing-overview-fallback");
         }
-      });
+      }
     }
 
     const response = await previousFetch(input, init);
@@ -55,12 +150,21 @@
       } catch (error) {
         console.warn("MRALA loop prewarm manifest capture failed", error);
       }
-    } else if (response.ok && CHUNK_RE.test(url)) {
-      response.clone().arrayBuffer().then(bytes => {
-        if (!nativeResponseCache.has(url)) {
-          nativeResponseCache.set(url, bytes);
+    } else if (CHUNK_RE.test(url)) {
+      if (response.ok) {
+        response.clone().arrayBuffer().then(bytes => {
+          if (!nativeResponseCache.has(url)) {
+            cacheNativeResponse(url, bytes);
+          }
+        }).catch(() => {});
+      } else if (response.status === 403 || response.status === 404) {
+        const fallback = fallbackChunkBytes(url);
+        if (fallback) {
+          rememberMissingNative(url, response.status);
+          cacheNativeResponse(url, fallback);
+          return responseFromNativeBytes(fallback, "missing-overview-fallback");
         }
-      }).catch(() => {});
+      }
     }
 
     return response;
@@ -88,12 +192,6 @@
     );
   }
 
-  function chunkMap() {
-    return new Map(
-      (manifest?.nativeChunking?.layout || []).map(chunk => [String(chunk.id), chunk])
-    );
-  }
-
   function nativeChunkUrl(frameId, chunkId) {
     const template = String(
       manifest?.nativeChunking?.template ||
@@ -106,16 +204,17 @@
   }
 
   async function packedChunkBytes(url) {
-    if (nativeResponseCache.has(url)) {
-      return nativeResponseCache.get(url);
-    }
+    const cached = cachedNativeResponse(url);
+    if (cached) return cached;
 
-    const response = await previousFetch(url, { cache: "force-cache" });
+    // Go through the production fetch wrapper so a missing archived chunk gets
+    // the same transparent overview fallback as the core renderer.
+    const response = await window.fetch(url, { cache: "force-cache" });
     if (!response.ok) {
       throw new Error(`Native prewarm HTTP ${response.status}`);
     }
     const bytes = await response.arrayBuffer();
-    nativeResponseCache.set(url, bytes);
+    cacheNativeResponse(url, bytes);
     return bytes;
   }
 
@@ -179,7 +278,8 @@
       instance.__zwxWarmSignature = "";
       instance.__zwxPinnedLoopKeys.clear();
       instance.__zwxLoopWarmPromise = null;
-      nativeResponseCache.clear();
+      // Keep the bounded network cache across pans. Overlapping chunks can be
+      // reused immediately instead of being downloaded again after every move.
     }
 
     layer.setVisible = function (ids) {
@@ -329,7 +429,7 @@
           (fullGpuBytes / 1048576).toFixed(1) + " MiB full GPU",
           fullGpuResident
             ? "all native frames GPU-resident"
-            : gpuFrameLimit + " GPU frames + full network memory cache",
+            : gpuFrameLimit + " GPU frames + bounded network memory cache",
           Math.round(performance.now() - started) + " ms"
         );
 
@@ -356,8 +456,9 @@
     };
 
     window.__ZWX_MRALA_NATIVE_CHUNK_LAYER__ = layer;
+    window.__ZWX_MRALA_MISSING_NATIVE_URLS__ = missingNativeUrls;
     console.info(
-      "MRALA native loop prewarm enabled • GPU budget",
+      "MRALA native loop prewarm enabled • GPU/cache budget",
       (NATIVE_GPU_BUDGET_BYTES / 1048576).toFixed(0) + " MiB"
     );
 
