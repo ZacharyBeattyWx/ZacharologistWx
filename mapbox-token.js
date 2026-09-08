@@ -284,7 +284,7 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
 (() => {
   const path = String(window.location.pathname || "");
   if (!/\/mosaic-radar-home\.html$/i.test(path)) return;
-  const src = "scripts/radar/mrms-native-loop-prewarm.js?v=20260908a";
+  const src = "scripts/radar/mrms-native-loop-prewarm.js?v=20260908b";
   if (document.readyState === "loading") {
     document.write('<script src="' + src + '"></script>');
     return;
