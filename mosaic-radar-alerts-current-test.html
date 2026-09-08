@@ -79,8 +79,8 @@
   // numeric overview. Native detail is now a viewport-only overlay.
   const BASE_TIER="overview";
 
-  const GPU_DEPTH_OVERVIEW=MOBILE?6:18;
-  const FETCH_CONCURRENCY_OVERVIEW=MOBILE?2:4;
+  const GPU_DEPTH_OVERVIEW=MOBILE?10:36;
+  const FETCH_CONCURRENCY_OVERVIEW=MOBILE?3:8;
 
   // Keep a small temporal ring of only the chunks intersecting
   // the user's current viewport.
@@ -118,6 +118,37 @@
 
   const loading=new Map();
   const chunkLoading=new Map();
+
+  const NUMERIC_FETCH_TIMEOUT_MS=5000;
+
+  async function fetchNumericWithTimeout(
+    url
+  ){
+    const controller=
+      new AbortController();
+
+    const timer=
+      setTimeout(
+        ()=>{
+          controller.abort();
+        },
+        NUMERIC_FETCH_TIMEOUT_MS
+      );
+
+    try{
+      return await fetch(
+        url,
+        {
+          cache:"force-cache",
+          signal:controller.signal
+        }
+      );
+    }finally{
+      clearTimeout(
+        timer
+      );
+    }
+  }
 
   // Precompiled full RadarScope palette LUT.
 // Generated from assets/palettes/RadarScope1.pal.
@@ -1782,9 +1813,11 @@ u_mix,
         dims.width*dims.height;
 
       const response=
-        await fetch(
-          numericUrl(frame,tier),
-          {cache:"force-cache"}
+        await fetchNumericWithTimeout(
+          numericUrl(
+            frame,
+            tier
+          )
         );
 
       if(!response.ok){
