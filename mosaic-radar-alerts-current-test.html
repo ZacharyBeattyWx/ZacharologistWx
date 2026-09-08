@@ -3394,11 +3394,11 @@ u_mix,
       return;
     }
 
-    const nextIndex=
+    let nextIndex=
       (currentIndex+1)
       %frames.length;
 
-    const nextKey=
+    let nextKey=
       textureKey(
         nextIndex,
         BASE_TIER
@@ -3409,35 +3409,76 @@ u_mix,
         nextKey
       )
     ){
-      if(
-        layer.nextKey
-        ||layer.mixAmount
+      /*
+        Do not freeze playback behind one late observation.
+
+        Search forward through the current loop for the nearest
+        frame that is already resident on the GPU. We deliberately
+        do not wrap through frame zero here because the newest-frame
+        loop pause is handled separately above.
+      */
+      let readyIndex=-1;
+
+      for(
+        let probe=
+          nextIndex+1;
+        probe<frames.length;
+        probe++
       ){
-        layer.activate(
-          currentKey
-        );
+        const probeKey=
+          textureKey(
+            probe,
+            BASE_TIER
+          );
+
+        if(
+          layer.hasTexture(
+            probeKey
+          )
+        ){
+          readyIndex=
+            probe;
+
+          break;
+        }
       }
 
       maintainBuffer();
 
       if(
-        activeTier==="native"
+        readyIndex<0
       ){
-        maintainNativeChunkBuffer();
+        /*
+          Nothing ahead is ready yet. Keep the animation clock
+          alive, but do not reset it or stop playback.
+        */
+        playbackRaf=
+          requestAnimationFrame(
+            timestamp=>
+              playbackTick(
+                timestamp,
+                generation
+              )
+          );
+
+        return;
       }
 
-      targetTick=now;
+      console.debug(
+        "MRALA playback skipped late frame",
+        nextIndex,
+        "->",
+        readyIndex
+      );
 
-      playbackRaf=
-        requestAnimationFrame(
-          timestamp=>
-            playbackTick(
-              timestamp,
-              generation
-            )
+      nextIndex=
+        readyIndex;
+
+      nextKey=
+        textureKey(
+          nextIndex,
+          BASE_TIER
         );
-
-      return;
     }
 
     const progress=
