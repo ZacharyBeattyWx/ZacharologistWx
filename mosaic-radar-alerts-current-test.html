@@ -2839,13 +2839,6 @@ u_mix,
   }
 
   async function maintainNativeChunkBuffer(){
-    /*
-      fillNativeChunkBuffer() owns the busy/pending lock.
-
-      Do NOT acquire chunkBufferBusy here too. The previous
-      double-lock caused an endless pending loop that could make
-      Chrome report the page as unresponsive.
-    */
     if(
       playing
       ||activeTier!=="native"
@@ -2854,13 +2847,32 @@ u_mix,
       return;
     }
 
+    if(chunkBufferBusy){
+      chunkBufferPending=true;
+      return;
+    }
+
+    chunkBufferBusy=true;
+
     try{
-      await fillNativeChunkBuffer();
-    }catch(error){
-      console.warn(
-        "Native current-frame buffer failed",
-        error
+      do{
+        chunkBufferPending=false;
+
+        try{
+          await fillNativeChunkBuffer();
+        }catch(error){
+          console.warn(
+            "Native viewport rolling buffer failed",
+            error
+          );
+        }
+      }while(
+        chunkBufferPending
+        &&!playing
+        &&activeTier==="native"
       );
+    }finally{
+      chunkBufferBusy=false;
     }
   }
 
@@ -2871,6 +2883,16 @@ u_mix,
     if(DISABLE_NATIVE_LOD_TEST){
       return false;
     }
+
+    // Native chunks are inspection quality. During animation the
+    // 3500x1750 overview owns the clock and all native I/O is suppressed.
+    if(playing){
+      if(chunkLayer?.enabled){
+        chunkLayer.setEnabled(false);
+      }
+      return false;
+    }
+
     if(
       activeTier!=="native"
       ||!chunkLayer
@@ -3141,7 +3163,8 @@ u_mix,
     index,
     {
       buffer=true,
-      tier=BASE_TIER
+      tier=BASE_TIER,
+      nativeDetail=true
     }={}
   ){
     if(!frames.length){
@@ -3186,16 +3209,31 @@ u_mix,
 
     if(
       activeTier==="native"
+      &&nativeDetail
     ){
+      // Never leave a previous native timestamp covering a newly selected
+      // overview frame. Show the overview until this exact native frame is ready.
+      chunkLayer?.setEnabled(false);
+
       refreshNativeViewport(
-        false
-      ).catch(
-        error=>
-          console.warn(
-            "Native viewport refresh failed",
-            error
-          )
-      );
+        true
+      )
+        .then(()=>{
+          if(
+            !playing
+            &&activeTier==="native"
+            &&syncNativeCurrent()
+          ){
+            chunkLayer.setEnabled(true);
+          }
+        })
+        .catch(
+          error=>
+            console.warn(
+              "Native viewport refresh failed",
+              error
+            )
+        );
     }
 
     return true;
@@ -3247,9 +3285,20 @@ u_mix,
       if(desired==="native"){
         activeTier="native";
 
-        chunkLayer.setEnabled(
-          true
-        );
+        // The overview remains visible until a complete native viewport exists.
+        // During playback we do not request native chunks at all.
+        chunkLayer.setEnabled(false);
+
+        if(playing){
+          setStatus(
+            "High-resolution overview playback • native detail resumes on pause",
+            "live"
+          );
+
+          updateUi();
+          maintainBuffer();
+          return;
+        }
 
         setStatus(
           "Preparing native viewport chunks…"
@@ -3262,15 +3311,25 @@ u_mix,
         if(
           generation
           !==tierSwitchGeneration
+          ||playing
         ){
           return;
         }
 
+        const nativeReady=
+          syncNativeCurrent();
+
+        chunkLayer.setEnabled(
+          nativeReady
+        );
+
         setStatus(
-          "Native viewport MRALA active • "
-          +visibleChunkIds.length
-          +" chunks • z"
-          +map.getZoom().toFixed(2),
+          nativeReady
+            ? "Native viewport MRALA active • "
+              +visibleChunkIds.length
+              +" chunks • z"
+              +map.getZoom().toFixed(2)
+            : "Overview active • native detail unavailable for this frame",
           "live"
         );
       }else{
@@ -3363,16 +3422,20 @@ u_mix,
       activeTier==="native"
       &&chunkLayer
     ){
-      chunkLayer.setEnabled(
-        true
-      );
+      chunkLayer.setEnabled(false);
 
       refreshNativeViewport(
-        false
+        true
       )
         .then(
           ()=>{
-            syncNativeCurrent();
+            if(
+              !playing
+              &&activeTier==="native"
+              &&syncNativeCurrent()
+            ){
+              chunkLayer.setEnabled(true);
+            }
           }
         )
         .catch(
@@ -3751,7 +3814,8 @@ u_mix,
         start,
         {
           buffer:false,
-          tier:BASE_TIER
+          tier:BASE_TIER,
+          nativeDetail:false
         }
       );
 
@@ -3791,7 +3855,7 @@ u_mix,
       setStatus(
         (
           activeTier==="native"
-            ? "Overview clock + native viewport ready • "
+            ? "High-resolution overview playback • native detail on pause • "
             : "Overview video-style MRALA ready • "
         )
         +countReadyAhead(
