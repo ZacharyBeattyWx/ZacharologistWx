@@ -590,6 +590,11 @@
         font-size: 0.72rem;
       }
     }
+      /* MRALA workstation integration CSS */
+    #radarOverlayCanvas,
+    #radarCanvas {
+      display:none !important;
+    }
   </style>
 <style id="alert-type-filter-shell-styles">
 .alert-type-filter-shell {
@@ -8555,6 +8560,12 @@ body.alert-type-filter-popup-open {
         fadeDuration: 0,
         attributionControl: true
       });
+
+      window.__ZWX_WORKSTATION_MAP__=map;
+
+      console.info(
+        "Workstation Mapbox exposed for MRALA"
+      );
       window.zachLevel2RadarMap = map;
 
       map.addControl(new mapboxgl.NavigationControl(), "top-left");
@@ -10445,6 +10456,7 @@ body.alert-type-filter-popup-open {
     }
   }
 </style>
+<script src="scripts/radar/mrala-workstation-runtime.js?v=20260907b"></script>
 </body>
 </html>
 
