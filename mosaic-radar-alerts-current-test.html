@@ -88,6 +88,8 @@
   const CHUNK_FETCH_CONCURRENCY=MOBILE?3:6;
   const CHUNK_VIEWPORT_PAD=0.12;
 
+  const DISABLE_NATIVE_LOD_TEST=true;
+
   const INTERPOLATION_FPS=MOBILE?24:30;
 
   // COD-style loop behavior:
@@ -319,15 +321,27 @@ ctx.putImageData(image,0,0);
   }
 
   function initialTierForZoom(zoom){
-    const nativeEnter=Number(
-      manifest?.lod?.overview
-        ?.recommendedMaxZoom
-      ??4.9
-    );
+    /*
+      PLAYBACK LOD PERFORMANCE TEST
 
-    return zoom>=nativeEnter
-      ? "native"
-      : "overview";
+      Native viewport detail is intentionally disabled.
+      The base GPU layer itself uses BASE_TIER="playback",
+      which is the new 1750x875 archive.
+    */
+    if(DISABLE_NATIVE_LOD_TEST){
+      return "overview";
+    }
+
+    const minZoom=
+      Number(
+        manifest?.lod?.native
+          ?.recommendedMinZoom
+        ??4.6
+      );
+
+    return Number(zoom)>=minZoom
+      ?"native"
+      :"overview";
   }
 
   function tierForZoom(zoom){
@@ -2825,6 +2839,11 @@ u_mix,
   }
 
   async function maintainNativeChunkBuffer(){
+    if(DISABLE_NATIVE_LOD_TEST){
+      return;
+    }
+
+    // Native disabled for playback LOD performance test
     if(
       activeTier!=="native"
       ||!chunkLayer
@@ -2860,6 +2879,10 @@ u_mix,
   async function refreshNativeViewport(
     blockCurrent=false
   ){
+    // PLAYBACK TEST: do not initialize native viewport
+    if(DISABLE_NATIVE_LOD_TEST){
+      return false;
+    }
     if(
       activeTier!=="native"
       ||!chunkLayer
