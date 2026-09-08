@@ -2496,15 +2496,37 @@ u_mix,
       );
 
     if(
+      !fromId
+      ||!toId
+    ){
+      return false;
+    }
+
+    const fromReady=
       chunkLayer.hasFrame(
         fromId,
         visibleChunkIds
-      )
-      &&chunkLayer.hasFrame(
+      );
+
+    const toReady=
+      chunkLayer.hasFrame(
         toId,
         visibleChunkIds
-      )
+      );
+
+
+    /*
+      Exact native pair is ready:
+      native may safely cover the overview.
+    */
+    if(
+      fromReady
+      &&toReady
     ){
+      chunkLayer.setEnabled(
+        true
+      );
+
       return chunkLayer
         .setBlendFrames(
           fromId,
@@ -2513,15 +2535,34 @@ u_mix,
         );
     }
 
-    // Do not draw a partially loaded native observation.
-    // Keep the previous COMPLETE native draw while the
-    // lightweight overview continues underneath.
-    if(
-      chunkLayer.hasFrame(
-        fromId,
-        visibleChunkIds
-      )
-    ){
+
+    /*
+      IMPORTANT:
+
+      Never leave an old complete native observation sitting
+      above a newer moving overview during playback.
+
+      That stale native image was the apparent radar freeze.
+      Fall back immediately to the overview until native catches up.
+    */
+    if(playing){
+      chunkLayer.setEnabled(
+        false
+      );
+
+      return false;
+    }
+
+
+    /*
+      When paused/scrubbing, quality takes priority.
+      A complete current native frame may remain visible.
+    */
+    if(fromReady){
+      chunkLayer.setEnabled(
+        true
+      );
+
       if(
         chunkLayer.fromFrame
         !==fromId
@@ -3234,6 +3275,31 @@ u_mix,
 
     targetTick=0;
     loopPauseUntil=0;
+
+    if(
+      activeTier==="native"
+      &&chunkLayer
+    ){
+      chunkLayer.setEnabled(
+        true
+      );
+
+      refreshNativeViewport(
+        false
+      )
+        .then(
+          ()=>{
+            syncNativeCurrent();
+          }
+        )
+        .catch(
+          error=>
+            console.warn(
+              "Native pause-detail refresh failed",
+              error
+            )
+        );
+    }
 
     playPause.textContent="▶ Play";
   }
