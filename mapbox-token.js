@@ -12,6 +12,18 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
   const LEGEND_MAX_DBZ = 60;
   const NATIVE_ENTER_ZOOM = 5.50;
   const OVERVIEW_REENTER_ZOOM = 5.20;
+  const MOBILE = window.matchMedia?.("(pointer: coarse)")?.matches ||
+    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  // Playback-cadence experiment: give each real MRMS observation enough time
+  // to be presented as a smooth animation instead of racing through 1-3 screen
+  // refreshes per observation. The radar data and archive cadence are untouched.
+  const PLAYBACK_CADENCE = new Map([
+    ["0.5×", "340"],
+    ["1×", "170"],
+    ["1.5×", "115"],
+    ["2×", "85"]
+  ]);
 
   const PALETTE_STOPS = [
     [-32,88,54,128,8],[-30,96,62,138,10],[-28,105,72,145,12],
@@ -138,8 +150,128 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
     return true;
   }
 
+  function applyPlaybackCadence() {
+    const select = document.getElementById("speedSelect");
+    if (!select) return false;
+
+    const selectedLabel = String(
+      select.selectedOptions?.[0]?.textContent || "1×"
+    ).trim();
+
+    for (const option of select.options) {
+      const label = String(option.textContent || "").trim();
+      const nextValue = PLAYBACK_CADENCE.get(label);
+      if (nextValue) option.value = nextValue;
+    }
+
+    const selected = [...select.options].find(
+      option => String(option.textContent || "").trim() === selectedLabel
+    );
+    if (selected) select.value = selected.value;
+
+    console.info(
+      "MRALA playback cadence: 0.5x 340ms • 1x 170ms • 1.5x 115ms • 2x 85ms"
+    );
+    return true;
+  }
+
+  // The core renderer currently asks for blend updates at ~30 Hz. On desktop,
+  // wrap its GPU blend method in a presentation loop driven directly by rAF.
+  // Source observations still advance on the core clock; only the in-between
+  // visual states are presented at display refresh cadence (typically 60 Hz).
+  function patchDisplayRateBlend(layer, blendMethod, activateMethods = []) {
+    if (MOBILE || !layer || layer.__zwx60HzBlendPatched) return;
+    const originalBlend = layer[blendMethod];
+    if (typeof originalBlend !== "function") return;
+
+    layer.__zwx60HzBlendPatched = true;
+
+    let pair = "";
+    let generation = 0;
+    let raf = 0;
+    let startTime = 0;
+    let fromArg = null;
+    let toArg = null;
+
+    const intervalMs = () => Math.max(
+      40,
+      Number(document.getElementById("speedSelect")?.value || 170)
+    );
+
+    function cancelPresentation() {
+      generation += 1;
+      pair = "";
+      if (raf) cancelAnimationFrame(raf);
+      raf = 0;
+    }
+
+    layer[blendMethod] = function (from, to, amount) {
+      const numericAmount = Math.max(0, Math.min(1, Number(amount) || 0));
+      const nextPair = String(from) + "\u0000" + String(to);
+
+      if (nextPair !== pair) {
+        cancelPresentation();
+        pair = nextPair;
+        fromArg = from;
+        toArg = to;
+        startTime = performance.now() - numericAmount * intervalMs();
+
+        // Preserve the renderer's readiness semantics before taking ownership
+        // of the rest of the transition.
+        const ready = originalBlend.call(this, fromArg, toArg, numericAmount);
+        if (ready === false) {
+          pair = "";
+          return false;
+        }
+
+        const localGeneration = generation;
+        const instance = this;
+
+        const present = now => {
+          if (localGeneration !== generation || !pair) return;
+
+          const progress = Math.max(
+            0,
+            Math.min(1, (now - startTime) / intervalMs())
+          );
+
+          const ok = originalBlend.call(instance, fromArg, toArg, progress);
+          if (ok === false || progress >= 1) {
+            raf = 0;
+            return;
+          }
+
+          raf = requestAnimationFrame(present);
+        };
+
+        raf = requestAnimationFrame(present);
+        return true;
+      }
+
+      // The rAF presentation loop already owns this source-frame pair. Ignore
+      // the core's lower-frequency duplicate blend update.
+      return true;
+    };
+
+    for (const methodName of activateMethods) {
+      const originalActivate = layer[methodName];
+      if (typeof originalActivate !== "function") continue;
+
+      layer[methodName] = function (...args) {
+        cancelPresentation();
+        return originalActivate.apply(this, args);
+      };
+    }
+
+    console.info(
+      "MRALA desktop presentation: display-refresh GPU interpolation enabled for " +
+        layer.id
+    );
+  }
+
   window.addEventListener("DOMContentLoaded", () => {
     redrawLegendWithTrueDbzScale();
+    applyPlaybackCadence();
     window.setTimeout(redrawLegendWithTrueDbzScale, 120);
   }, { once: true });
 
@@ -206,58 +338,63 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
     const originalAddLayer = mapPrototype.addLayer;
 
     mapPrototype.addLayer = function (layer, ...args) {
-      if (
-        layer?.id === "mrms-native-numeric-viewport-chunks" &&
-        !layer.__zwxAtomicViewportPatched
-      ) {
-        layer.__zwxAtomicViewportPatched = true;
-        layer.__zwxPendingVisibleIds = null;
+      if (layer?.id === "mrms-native-numeric-dbz-layer") {
+        patchDisplayRateBlend(layer, "setBlend", ["activate"]);
+      }
 
-        const originalSetVisible = layer.setVisible;
-        const originalAddTexture = layer.addTexture;
-        const originalSetEnabled = layer.setEnabled;
+      if (layer?.id === "mrms-native-numeric-viewport-chunks") {
+        patchDisplayRateBlend(layer, "setBlendFrames", ["activateFrame"]);
 
-        layer.setVisible = function (ids) {
-          const nextIds = [...new Set((ids || []).map(String))];
+        if (!layer.__zwxAtomicViewportPatched) {
+          layer.__zwxAtomicViewportPatched = true;
+          layer.__zwxPendingVisibleIds = null;
 
-          if (
-            this.enabled &&
-            this.fromFrame &&
-            nextIds.length &&
-            !this.hasFrame(this.fromFrame, nextIds)
-          ) {
-            this.__zwxPendingVisibleIds = nextIds;
-            return;
-          }
+          const originalSetVisible = layer.setVisible;
+          const originalAddTexture = layer.addTexture;
+          const originalSetEnabled = layer.setEnabled;
 
-          this.__zwxPendingVisibleIds = null;
-          return originalSetVisible.call(this, nextIds);
-        };
+          layer.setVisible = function (ids) {
+            const nextIds = [...new Set((ids || []).map(String))];
 
-        layer.addTexture = function (...textureArgs) {
-          const result = originalAddTexture.apply(this, textureArgs);
-          const pending = this.__zwxPendingVisibleIds;
+            if (
+              this.enabled &&
+              this.fromFrame &&
+              nextIds.length &&
+              !this.hasFrame(this.fromFrame, nextIds)
+            ) {
+              this.__zwxPendingVisibleIds = nextIds;
+              return;
+            }
 
-          if (
-            pending?.length &&
-            this.fromFrame &&
-            this.hasFrame(this.fromFrame, pending)
-          ) {
             this.__zwxPendingVisibleIds = null;
-            originalSetVisible.call(this, pending);
-          }
+            return originalSetVisible.call(this, nextIds);
+          };
 
-          return result;
-        };
+          layer.addTexture = function (...textureArgs) {
+            const result = originalAddTexture.apply(this, textureArgs);
+            const pending = this.__zwxPendingVisibleIds;
 
-        layer.setEnabled = function (enabled) {
-          if (!enabled) {
-            this.__zwxPendingVisibleIds = null;
-          }
-          return originalSetEnabled.call(this, enabled);
-        };
+            if (
+              pending?.length &&
+              this.fromFrame &&
+              this.hasFrame(this.fromFrame, pending)
+            ) {
+              this.__zwxPendingVisibleIds = null;
+              originalSetVisible.call(this, pending);
+            }
 
-        console.info("MRALA native viewport: atomic camera handoff enabled");
+            return result;
+          };
+
+          layer.setEnabled = function (enabled) {
+            if (!enabled) {
+              this.__zwxPendingVisibleIds = null;
+            }
+            return originalSetEnabled.call(this, enabled);
+          };
+
+          console.info("MRALA native viewport: atomic camera handoff enabled");
+        }
       }
 
       return originalAddLayer.call(this, layer, ...args);
