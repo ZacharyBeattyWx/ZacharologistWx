@@ -1,18 +1,17 @@
 window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHFxOTBja2Iyc29nOXBtNDJkOTgifQ.A5PX2kdbDFzGYOoHmmnrKg";
 
 (() => {
+  "use strict";
+
   const path = String(window.location.pathname || "");
   if (!/\/mosaic-radar-home\.html$/i.test(path)) return;
 
-  // Keep the numeric MRMS values untouched. The uint8 archive already stores
-  // 1 = -32 dBZ through 255 = +95 dBZ in 0.5 dBZ increments. The old browser
-  // LUT reused tile-display cleanup and made much of the negative range fully
-  // transparent. Build the GPU palette directly from the shared production
-  // reflectivity table instead so negative clear-air returns remain visible.
   const DBZ_MIN = -32;
   const DBZ_STEP = 0.5;
   const LEGEND_MIN_DBZ = -30;
   const LEGEND_MAX_DBZ = 60;
+  const NATIVE_ENTER_ZOOM = 5.50;
+  const OVERVIEW_REENTER_ZOOM = 5.20;
 
   const PALETTE_STOPS = [
     [-32,88,54,128,8],[-30,96,62,138,10],[-28,105,72,145,12],
@@ -146,12 +145,8 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
 
   console.info("MRALA palette: negative dBZ colors preserved from -32 dBZ");
 
-  const NATIVE_ENTER_ZOOM = 6.15;
-  const OVERVIEW_REENTER_ZOOM = 5.85;
-
   if (!window.__ZWX_MRALA_PRODUCTION_LOD_FETCH_PATCH__) {
     window.__ZWX_MRALA_PRODUCTION_LOD_FETCH_PATCH__ = true;
-
     const originalFetch = window.fetch.bind(window);
 
     window.fetch = async function (input, init) {
@@ -173,7 +168,6 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
         const manifest = await response.clone().json();
         const overview = manifest?.lod?.overview;
         const native = manifest?.lod?.native;
-
         if (!overview || !native) return response;
 
         overview.recommendedMaxZoom = NATIVE_ENTER_ZOOM;
@@ -184,14 +178,11 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
         headers.delete("content-encoding");
         headers.delete("etag");
 
-        return new Response(
-          JSON.stringify(manifest),
-          {
-            status: response.status,
-            statusText: response.statusText,
-            headers
-          }
-        );
+        return new Response(JSON.stringify(manifest), {
+          status: response.status,
+          statusText: response.statusText,
+          headers
+        });
       } catch (error) {
         console.warn("MRALA production LOD manifest patch failed", error);
         return response;
@@ -199,9 +190,9 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
     };
 
     console.info(
-      "MRALA production LOD: overview through z" +
+      "MRALA production LOD: native enter z" +
         NATIVE_ENTER_ZOOM.toFixed(2) +
-        ", native exit z" +
+        ", overview reenter z" +
         OVERVIEW_REENTER_ZOOM.toFixed(2)
     );
   }
@@ -211,7 +202,6 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
     window.mapboxgl?.Map?.prototype?.addLayer
   ) {
     window.__ZWX_MRALA_ATOMIC_VIEWPORT_PATCH__ = true;
-
     const mapPrototype = window.mapboxgl.Map.prototype;
     const originalAddLayer = mapPrototype.addLayer;
 
@@ -228,11 +218,7 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
         const originalSetEnabled = layer.setEnabled;
 
         layer.setVisible = function (ids) {
-          const nextIds = [
-            ...new Set(
-              (ids || []).map(String)
-            )
-          ];
+          const nextIds = [...new Set((ids || []).map(String))];
 
           if (
             this.enabled &&
@@ -279,16 +265,17 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
   }
 })();
 
-// Load the deep-zoom loop prewarmer synchronously while this head script is
-// still being parsed. It installs before the inline radar engine builds the map.
 (() => {
   const path = String(window.location.pathname || "");
   if (!/\/mosaic-radar-home\.html$/i.test(path)) return;
-  const src = "scripts/radar/mrms-native-loop-prewarm.js?v=20260908b";
+
+  const src = "scripts/radar/mrms-native-loop-prewarm.js?v=20260908c";
+
   if (document.readyState === "loading") {
     document.write('<script src="' + src + '"></script>');
     return;
   }
+
   const script = document.createElement("script");
   script.src = src;
   script.async = false;
