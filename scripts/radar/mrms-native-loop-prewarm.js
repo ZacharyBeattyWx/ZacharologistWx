@@ -1,35 +1,49 @@
 (() => {
+  "use strict";
+
   const path = String(window.location.pathname || "");
   if (!/\/mosaic-radar-home\.html$/i.test(path)) return;
-  if (window.__ZWX_MRALA_NATIVE_LOOP_PREWARM__) return;
-  window.__ZWX_MRALA_NATIVE_LOOP_PREWARM__ = true;
+  if (window.__ZWX_MRALA_VIDEO_BUFFER_MODE__) return;
+  window.__ZWX_MRALA_VIDEO_BUFFER_MODE__ = true;
 
   const ARCHIVE_BASE = "https://dt0cd6bl1yqh2.cloudfront.net/mrms-native-numeric/";
   const MANIFEST_RE = /\/mrms-native-numeric\/manifest\.json(?:[?#]|$)/i;
   const CHUNK_RE = /\/mrms-native-numeric\/native-chunks\//i;
-  const CHUNK_URL_RE = /\/native-chunks\/[^/]+\/([^/?#]+)\.dbz(?:[?#]|$)/i;
+  const CHUNK_URL_RE = /\/native-chunks\/([^/]+)\/([^/?#]+)\.dbz(?:[?#]|$)/i;
   const CHUNK_LAYER_ID = "mrms-native-numeric-viewport-chunks";
   const HISTORY_MS = 3 * 60 * 60 * 1000;
+
+  // Switch to native MRMS earlier. The small hysteresis zone prevents rapid
+  // quality flapping when the camera sits right on the threshold.
+  const NATIVE_ENTER_ZOOM = 5.50;
+  const OVERVIEW_REENTER_ZOOM = 5.20;
+
   const MOBILE = window.matchMedia?.("(pointer: coarse)")?.matches ||
     /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   const DEVICE_MEMORY_GB = Math.max(2, Number(navigator.deviceMemory || 8));
 
-  // GPU memory remains bounded. The full current-viewport loop is allowed to
-  // stay in the local response cache while playback is armed, so the GPU ring
-  // can rotate from local bytes rather than returning to CloudFront mid-loop.
+  // Full-loop network preparation is intentionally separate from GPU memory.
+  // The whole visible native loop may stay in local RAM, while GPU textures are
+  // kept bounded and rotated like a video decoder's frame queue.
   const NATIVE_GPU_BUDGET_BYTES = Math.round(
     (MOBILE
       ? Math.min(256, Math.max(128, DEVICE_MEMORY_GB * 32))
       : Math.min(704, Math.max(384, DEVICE_MEMORY_GB * 88))) * 1048576
   );
-  const IDLE_NETWORK_CACHE_BUDGET_BYTES = NATIVE_GPU_BUDGET_BYTES;
-  const PREWARM_CONCURRENCY = MOBILE ? 2 : 5;
+  const IDLE_NATIVE_CACHE_BUDGET_BYTES = NATIVE_GPU_BUDGET_BYTES;
+  const NATIVE_PREROLL_FRAMES = MOBILE ? 6 : 12;
+  const NATIVE_PRELOAD_CONCURRENCY = MOBILE ? 2 : 5;
+  const OVERVIEW_PRELOAD_CONCURRENCY = MOBILE ? 2 : 4;
 
   let manifest = null;
+  let overviewPreparedRevision = "";
+  let nativeResponseCacheBytes = 0;
+
   const nativeResponseCache = new Map();
   const pinnedNativeUrls = new Set();
   const missingNativeUrls = new Set();
-  let nativeResponseCacheBytes = 0;
+  const nativeInflight = new Map();
+
   const previousFetch = window.fetch.bind(window);
 
   function inputUrl(input) {
@@ -40,9 +54,42 @@
     return buffer.slice(0);
   }
 
+  function frameMs(frame) {
+    return Date.parse(frame?.valid_time || frame?.validTime || "");
+  }
+
+  function recentFrames() {
+    const raw = Array.isArray(manifest?.frames) ? manifest.frames : [];
+    if (!raw.length) return [];
+
+    const newest = raw.reduce((value, frame) => {
+      const ms = frameMs(frame);
+      return Number.isFinite(ms) ? Math.max(value, ms) : value;
+    }, 0);
+
+    const cutoff = (newest || Date.now()) - HISTORY_MS;
+
+    return raw
+      .filter(frame =>
+        frame?.id &&
+        Number.isFinite(frameMs(frame)) &&
+        frameMs(frame) >= cutoff
+      )
+      .sort((a, b) => frameMs(a) - frameMs(b));
+  }
+
+  function manifestRevision() {
+    return String(
+      manifest?.revision ||
+      manifest?.generated_at ||
+      manifest?.generatedAt ||
+      "manifest"
+    );
+  }
+
   function trimNativeResponseCache() {
     while (
-      nativeResponseCacheBytes > IDLE_NETWORK_CACHE_BUDGET_BYTES &&
+      nativeResponseCacheBytes > IDLE_NATIVE_CACHE_BUDGET_BYTES &&
       nativeResponseCache.size > 1
     ) {
       let evictUrl = null;
@@ -54,10 +101,9 @@
         }
       }
 
-      // During an armed playback session every byte required by the visible
-      // loop may be pinned. In that case we intentionally exceed the idle cache
-      // budget until the viewport changes; smooth playback wins over instant
-      // startup and fixed-size cache churn.
+      // During prepared playback all URLs for the current viewport are pinned.
+      // Smooth playback wins over the normal idle cache ceiling until the user
+      // changes viewport or leaves native detail.
       if (!evictUrl) break;
 
       const item = nativeResponseCache.get(evictUrl);
@@ -84,7 +130,7 @@
     const bytes = nativeResponseCache.get(url);
     if (!bytes) return null;
 
-    // Refresh insertion order so unpinned idle content behaves like an LRU.
+    // Refresh insertion order so unpinned material behaves like a small LRU.
     nativeResponseCache.delete(url);
     nativeResponseCache.set(url, bytes);
     return bytes;
@@ -100,7 +146,7 @@
     const match = CHUNK_URL_RE.exec(String(url || ""));
     if (!match) return null;
 
-    let chunkId = match[1];
+    let chunkId = match[2];
     try {
       chunkId = decodeURIComponent(chunkId);
     } catch (_) {}
@@ -111,7 +157,8 @@
     const expected = Number(chunk.width || 0) * Number(chunk.height || 0);
     if (!Number.isFinite(expected) || expected <= 0) return null;
 
-    // Code 0 is transparent no-data. The complete overview remains underneath.
+    // Code zero is transparent no-data, so the complete overview remains below
+    // an unavailable native archive object rather than exposing a broken tile.
     return new Uint8Array(expected).buffer;
   }
 
@@ -130,15 +177,29 @@
     if (missingNativeUrls.has(url)) return;
     missingNativeUrls.add(url);
 
-    if (missingNativeUrls.size <= 6) {
+    if (missingNativeUrls.size <= 5) {
       console.warn(
         "Native chunk unavailable; using overview fallback",
         status,
         url
       );
-    } else if (missingNativeUrls.size === 7) {
-      console.warn("Additional missing native-chunk warnings suppressed for this page load");
+    } else if (missingNativeUrls.size === 6) {
+      console.warn("Additional missing native-chunk warnings suppressed");
     }
+  }
+
+  function patchManifest(manifestObject) {
+    const overview = manifestObject?.lod?.overview;
+    const native = manifestObject?.lod?.native;
+
+    if (overview && native) {
+      overview.recommendedMaxZoom = NATIVE_ENTER_ZOOM;
+      native.recommendedMinZoom = OVERVIEW_REENTER_ZOOM;
+    }
+
+    manifest = manifestObject;
+    window.__ZWX_MRALA_RUNTIME_MANIFEST__ = manifestObject;
+    return manifestObject;
   }
 
   window.fetch = async function (input, init) {
@@ -149,7 +210,9 @@
       if (cached) {
         return responseFromNativeBytes(
           cached,
-          missingNativeUrls.has(url) ? "missing-overview-fallback" : "memory"
+          missingNativeUrls.has(url)
+            ? "missing-overview-fallback"
+            : "video-buffer"
         );
       }
 
@@ -166,12 +229,24 @@
 
     if (response.ok && MANIFEST_RE.test(url)) {
       try {
-        manifest = await response.clone().json();
-        window.__ZWX_MRALA_RUNTIME_MANIFEST__ = manifest;
+        const nextManifest = patchManifest(await response.clone().json());
+        const headers = new Headers(response.headers);
+        headers.delete("content-length");
+        headers.delete("content-encoding");
+        headers.delete("etag");
+
+        return new Response(JSON.stringify(nextManifest), {
+          status: response.status,
+          statusText: response.statusText,
+          headers
+        });
       } catch (error) {
-        console.warn("MRALA loop preload manifest capture failed", error);
+        console.warn("MRALA video-buffer manifest patch failed", error);
+        return response;
       }
-    } else if (CHUNK_RE.test(url)) {
+    }
+
+    if (CHUNK_RE.test(url)) {
       if (response.ok) {
         response.clone().arrayBuffer().then(bytes => {
           if (!nativeResponseCache.has(url)) {
@@ -191,53 +266,52 @@
     return response;
   };
 
-  function frameMs(frame) {
-    return Date.parse(frame?.valid_time || frame?.validTime || "");
-  }
-
-  function recentChunkReadyFrames() {
-    const raw = Array.isArray(manifest?.frames) ? manifest.frames : [];
-    if (!raw.length) return [];
-
-    const newest = raw.reduce((value, frame) => {
-      const ms = frameMs(frame);
-      return Number.isFinite(ms) ? Math.max(value, ms) : value;
-    }, 0);
-    const cutoff = (newest || Date.now()) - HISTORY_MS;
-
-    return raw.filter(frame =>
-      frame?.id &&
-      frame?.nativeChunksReady &&
-      Number.isFinite(frameMs(frame)) &&
-      frameMs(frame) >= cutoff
-    );
-  }
-
   function nativeChunkUrl(frameId, chunkId) {
     const template = String(
       manifest?.nativeChunking?.template ||
       "native-chunks/{frameId}/{chunkId}.dbz"
     );
+
     const relative = template
       .replace("{frameId}", encodeURIComponent(String(frameId)))
       .replace("{chunkId}", encodeURIComponent(String(chunkId)));
+
     return new URL(relative, ARCHIVE_BASE).toString();
+  }
+
+  function overviewUrl(frame) {
+    const relative = String(frame?.overview || "");
+    return relative ? new URL(relative, ARCHIVE_BASE).toString() : "";
   }
 
   async function packedChunkBytes(url) {
     const cached = cachedNativeResponse(url);
     if (cached) return cached;
 
-    // Use the production wrapper so missing archived objects become a stable
-    // transparent fallback instead of a retry storm.
-    const response = await window.fetch(url, { cache: "force-cache" });
-    if (!response.ok) {
-      throw new Error(`Native preload HTTP ${response.status}`);
+    if (nativeInflight.has(url)) {
+      return nativeInflight.get(url);
     }
 
-    const bytes = await response.arrayBuffer();
-    cacheNativeResponse(url, bytes);
-    return bytes;
+    const promise = (async () => {
+      const response = await window.fetch(url, { cache: "force-cache" });
+      if (!response.ok) {
+        throw new Error(`Native preload HTTP ${response.status}`);
+      }
+
+      const bytes = await response.arrayBuffer();
+      cacheNativeResponse(url, bytes);
+      return bytes;
+    })();
+
+    nativeInflight.set(url, promise);
+
+    try {
+      return await promise;
+    } finally {
+      if (nativeInflight.get(url) === promise) {
+        nativeInflight.delete(url);
+      }
+    }
   }
 
   async function maybeDecompress(bytes, expectedLength) {
@@ -254,6 +328,7 @@
       const stream = new Blob([bytes])
         .stream()
         .pipeThrough(new DecompressionStream("gzip"));
+
       return new Uint8Array(await new Response(stream).arrayBuffer());
     }
 
@@ -268,6 +343,68 @@
     return [...new Set((ids || []).map(String))].sort().join("|");
   }
 
+  async function warmOverviewLoop(onProgress) {
+    if (!manifest) {
+      return { ready: false, reason: "manifest unavailable" };
+    }
+
+    const revision = manifestRevision();
+    if (overviewPreparedRevision === revision) {
+      return { ready: true, cached: true };
+    }
+
+    const frames = recentFrames().filter(frame => frame?.overview);
+    const targets = frames
+      .map(frame => ({ frame, url: overviewUrl(frame) }))
+      .filter(target => target.url);
+
+    if (!targets.length) {
+      return { ready: false, reason: "no overview frames" };
+    }
+
+    let cursor = 0;
+    let completed = 0;
+    let failed = 0;
+
+    const worker = async () => {
+      while (cursor < targets.length) {
+        const target = targets[cursor++];
+
+        try {
+          // Consume the response now so the browser HTTP cache owns the whole
+          // overview loop before the timeline starts moving.
+          const response = await previousFetch(target.url, { cache: "force-cache" });
+          if (!response.ok) {
+            throw new Error(`Overview preload HTTP ${response.status}`);
+          }
+          await response.arrayBuffer();
+        } catch (error) {
+          failed += 1;
+          console.warn("Overview loop preload failed", target.frame?.id, error);
+        } finally {
+          completed += 1;
+          onProgress?.(completed, targets.length);
+        }
+      }
+    };
+
+    await Promise.all(
+      Array.from(
+        { length: Math.min(OVERVIEW_PRELOAD_CONCURRENCY, targets.length) },
+        () => worker()
+      )
+    );
+
+    if (failed) {
+      return { ready: false, failed };
+    }
+
+    overviewPreparedRevision = revision;
+    console.info("MRALA overview loop buffered:", targets.length + " frames");
+
+    return { ready: true, frames: targets.length };
+  }
+
   const mapPrototype = window.mapboxgl?.Map?.prototype;
   if (!mapPrototype?.addLayer) return;
 
@@ -278,33 +415,34 @@
 
     if (
       layer?.id !== CHUNK_LAYER_ID ||
-      layer.__zwxFullLoopPrewarmPatched
+      layer.__zwxVideoBufferPatched
     ) {
       return result;
     }
 
-    layer.__zwxFullLoopPrewarmPatched = true;
+    layer.__zwxVideoBufferPatched = true;
     layer.__zwxRequestedVisibleIds = [];
     layer.__zwxViewportSignature = "";
-    layer.__zwxWarmSignature = "";
-    layer.__zwxWarmGeneration = 0;
-    layer.__zwxLoopWarmPromise = null;
-    layer.__zwxLoopWarmReady = false;
+    layer.__zwxPreparedSignature = "";
+    layer.__zwxPrepareGeneration = 0;
+    layer.__zwxPreparePromise = null;
+    layer.__zwxRequestedEnabled = Boolean(layer.enabled);
     layer.__zwxPinnedLoopKeys = new Set();
+    layer.__zwxBypassPlayGate = false;
+    layer.__zwxResumeAfterMove = false;
+    layer.__zwxResumeTimer = 0;
 
+    const map = this;
     const originalSetVisible = layer.setVisible;
     const originalSetEnabled = layer.setEnabled;
     const originalEvictExcept = layer.evictExcept;
 
-    function invalidateWarmState(instance) {
-      instance.__zwxWarmGeneration += 1;
-      instance.__zwxLoopWarmReady = false;
-      instance.__zwxWarmSignature = "";
+    function invalidateNativePreparation(instance) {
+      instance.__zwxPrepareGeneration += 1;
+      instance.__zwxPreparedSignature = "";
+      instance.__zwxPreparePromise = null;
       instance.__zwxPinnedLoopKeys.clear();
-      instance.__zwxLoopWarmPromise = null;
 
-      // A new viewport gets its own playback gate. Release the previous loop's
-      // network pins, then trim old material back to the normal idle budget.
       pinnedNativeUrls.clear();
       trimNativeResponseCache();
     }
@@ -314,19 +452,24 @@
       const nextSignature = signatureFor(nextIds);
 
       this.__zwxRequestedVisibleIds = nextIds;
+
       if (nextSignature !== this.__zwxViewportSignature) {
         this.__zwxViewportSignature = nextSignature;
-        invalidateWarmState(this);
+        invalidateNativePreparation(this);
       }
 
       return originalSetVisible.call(this, nextIds);
     };
 
     layer.setEnabled = function (enabled) {
-      if (!enabled) {
-        invalidateWarmState(this);
+      const requested = Boolean(enabled);
+      this.__zwxRequestedEnabled = requested;
+
+      if (!requested) {
+        invalidateNativePreparation(this);
       }
-      return originalSetEnabled.call(this, enabled);
+
+      return originalSetEnabled.call(this, requested);
     };
 
     layer.evictExcept = function (keep) {
@@ -335,7 +478,10 @@
       }
 
       const combined = new Set(keep || []);
-      for (const key of this.__zwxPinnedLoopKeys) combined.add(key);
+      for (const key of this.__zwxPinnedLoopKeys) {
+        combined.add(key);
+      }
+
       return originalEvictExcept.call(this, combined);
     };
 
@@ -343,36 +489,34 @@
       const ids = [...this.__zwxRequestedVisibleIds];
       const signature = signatureFor(ids);
 
-      if (!this.enabled || !ids.length || !manifest) {
-        return { ready: false, reason: "native viewport not ready" };
+      if (!this.__zwxRequestedEnabled || !ids.length || !manifest) {
+        return { ready: false, reason: "native viewport unavailable" };
       }
 
-      if (this.__zwxLoopWarmReady && this.__zwxWarmSignature === signature) {
+      if (this.__zwxPreparedSignature === signature) {
         return { ready: true, cached: true };
       }
 
-      if (this.__zwxLoopWarmPromise && this.__zwxWarmSignature === signature) {
-        return this.__zwxLoopWarmPromise;
+      if (this.__zwxPreparePromise) {
+        return this.__zwxPreparePromise;
       }
 
-      const generation = this.__zwxWarmGeneration;
+      const generation = this.__zwxPrepareGeneration;
       const byId = chunkMap();
       const chunks = ids.map(id => byId.get(id)).filter(Boolean);
-      const frames = recentChunkReadyFrames();
+      const frames = recentFrames().filter(frame => frame?.nativeChunksReady);
 
       if (!chunks.length || !frames.length) {
         return { ready: false, reason: "no native chunks or frames" };
       }
 
       const bytesPerFrame = chunks.reduce(
-        (sum, chunk) => sum + Number(chunk.width || 0) * Number(chunk.height || 0),
+        (sum, chunk) =>
+          sum + Number(chunk.width || 0) * Number(chunk.height || 0),
         0
       );
-      const fullGpuBytes = bytesPerFrame * frames.length;
 
-      // This is adaptive, not a fixed frame count. Small/deep viewports may fit
-      // the whole loop in GPU memory; larger ones keep only what the device can
-      // safely hold. In either case ALL loop bytes are locally cached first.
+      const fullGpuBytes = bytesPerFrame * frames.length;
       const gpuFrameLimit = Math.max(
         1,
         Math.min(
@@ -380,44 +524,72 @@
           Math.floor(NATIVE_GPU_BUDGET_BYTES / Math.max(1, bytesPerFrame))
         )
       );
+
       const fullGpuResident = gpuFrameLimit >= frames.length;
-      const gpuFrames = new Set(
-        frames.slice(0, gpuFrameLimit).map(frame => String(frame.id))
+
+      // If the whole loop does not safely fit in VRAM, only prepare a modest
+      // GPU preroll. The rest is already local and can rotate into the GPU ring
+      // without touching CloudFront during playback.
+      const gpuPreloadCount = fullGpuResident
+        ? frames.length
+        : Math.min(gpuFrameLimit, NATIVE_PREROLL_FRAMES);
+
+      let playbackStartIndex = frames.findIndex(
+        frame => String(frame.id) === String(this.fromFrame || "")
+      );
+
+      // The core player jumps from the newest frame back to frame zero before
+      // starting a new loop, so prepare from the oldest frame in that case.
+      if (playbackStartIndex < 0 || playbackStartIndex === frames.length - 1) {
+        playbackStartIndex = 0;
+      }
+
+      const orderedFrames = [
+        ...frames.slice(playbackStartIndex),
+        ...frames.slice(0, playbackStartIndex)
+      ];
+
+      const gpuFrameIds = new Set(
+        orderedFrames
+          .slice(0, gpuPreloadCount)
+          .map(frame => String(frame.id))
       );
 
       const targets = [];
-      for (const frame of frames) {
+      for (const frame of orderedFrames) {
         for (const chunk of chunks) {
           const url = nativeChunkUrl(frame.id, chunk.id);
           targets.push({ frame, chunk, url });
         }
       }
 
-      // Pin every object required by THIS viewport before downloading begins.
-      // The cache therefore cannot evict the beginning of the loop while it is
-      // still downloading the end of the loop.
       pinnedNativeUrls.clear();
-      for (const target of targets) pinnedNativeUrls.add(target.url);
+      for (const target of targets) {
+        pinnedNativeUrls.add(target.url);
+      }
 
       let cursor = 0;
       let completed = 0;
       let failed = 0;
-      const pinnedGpu = new Set();
-      this.__zwxPinnedLoopKeys = pinnedGpu;
+      const temporaryGpuPins = new Set();
+      const startupGpuPins = new Set();
       const started = performance.now();
+
+      this.__zwxPinnedLoopKeys = temporaryGpuPins;
 
       const promise = (async () => {
         const worker = async () => {
           while (cursor < targets.length) {
-            if (generation !== this.__zwxWarmGeneration) return;
+            if (generation !== this.__zwxPrepareGeneration) return;
 
             const target = targets[cursor++];
 
             try {
               const packed = await packedChunkBytes(target.url);
 
-              if (gpuFrames.has(String(target.frame.id))) {
+              if (gpuFrameIds.has(String(target.frame.id))) {
                 const key = nativeKey(target.frame.id, target.chunk.id);
+
                 if (!this.textures.has(key)) {
                   const expected =
                     Number(target.chunk.width) * Number(target.chunk.height);
@@ -431,7 +603,21 @@
 
                   this.addTexture(target.frame.id, target.chunk, raw);
                 }
-                pinnedGpu.add(key);
+
+                temporaryGpuPins.add(key);
+
+                const startupFrames = orderedFrames.slice(
+                  0,
+                  Math.min(2, gpuPreloadCount)
+                );
+
+                if (
+                  startupFrames.some(
+                    frame => String(frame.id) === String(target.frame.id)
+                  )
+                ) {
+                  startupGpuPins.add(key);
+                }
               }
             } catch (error) {
               failed += 1;
@@ -443,72 +629,151 @@
               );
             } finally {
               completed += 1;
-              if (typeof onProgress === "function") {
-                onProgress(completed, targets.length, fullGpuResident);
-              }
+              onProgress?.(completed, targets.length, fullGpuResident);
             }
           }
         };
 
         await Promise.all(
           Array.from(
-            { length: Math.min(PREWARM_CONCURRENCY, targets.length) },
+            { length: Math.min(NATIVE_PRELOAD_CONCURRENCY, targets.length) },
             () => worker()
           )
         );
 
         if (
-          generation !== this.__zwxWarmGeneration ||
+          generation !== this.__zwxPrepareGeneration ||
           signature !== this.__zwxViewportSignature
         ) {
           return { ready: false, reason: "viewport changed" };
         }
 
-        this.__zwxPinnedLoopKeys = pinnedGpu;
-        this.__zwxWarmSignature = signature;
-        this.__zwxLoopWarmReady = failed === 0;
+        if (failed) {
+          return { ready: false, failed };
+        }
+
+        this.__zwxPinnedLoopKeys = fullGpuResident
+          ? temporaryGpuPins
+          : startupGpuPins;
+        this.__zwxPreparedSignature = signature;
         this.map?.triggerRepaint();
 
         console.info(
-          "MRALA adaptive loop ready:",
+          "MRALA native video buffer ready:",
           frames.length + " frames",
           chunks.length + " chunks/frame",
-          (nativeResponseCacheBytes / 1048576).toFixed(1) + " MiB local loop cache",
+          (nativeResponseCacheBytes / 1048576).toFixed(1) + " MiB local",
           fullGpuResident
-            ? "full native loop GPU-resident"
-            : gpuFrameLimit + " adaptive GPU frames; remainder local-memory resident",
+            ? "full loop GPU-resident"
+            : gpuPreloadCount + "-frame GPU preroll + local full loop",
           Math.round(performance.now() - started) + " ms"
         );
 
         return {
-          ready: failed === 0,
-          failed,
-          fullGpuResident,
+          ready: true,
           frames: frames.length,
-          gpuFrames: gpuFrameLimit,
           chunks: chunks.length,
+          gpuFrames: gpuPreloadCount,
+          fullGpuResident,
+          fullGpuBytes,
           localBytes: nativeResponseCacheBytes
         };
       })();
 
-      this.__zwxWarmSignature = signature;
-      this.__zwxLoopWarmPromise = promise;
+      this.__zwxPreparePromise = promise;
 
       try {
         return await promise;
       } finally {
-        if (this.__zwxLoopWarmPromise === promise) {
-          this.__zwxLoopWarmPromise = null;
+        if (this.__zwxPreparePromise === promise) {
+          this.__zwxPreparePromise = null;
         }
       }
     };
 
+    async function preparePlayback(instance, button) {
+      const overviewResult = await warmOverviewLoop((done, total) => {
+        const percent = total ? Math.round(done * 100 / total) : 0;
+        if (button) button.textContent = `Buffering radar ${percent}%`;
+      });
+
+      if (!overviewResult?.ready) {
+        return overviewResult;
+      }
+
+      if (!instance.__zwxRequestedEnabled) {
+        return { ready: true, tier: "overview" };
+      }
+
+      return instance.__zwxWarmVisibleLoop((done, total, fullGpuResident) => {
+        const percent = total ? Math.round(done * 100 / total) : 0;
+        if (button) {
+          button.textContent = fullGpuResident
+            ? `Preparing HD ${percent}%`
+            : `Buffering HD ${percent}%`;
+        }
+      });
+    }
+
     window.__ZWX_MRALA_NATIVE_CHUNK_LAYER__ = layer;
     window.__ZWX_MRALA_MISSING_NATIVE_URLS__ = missingNativeUrls;
 
+    // If a user pans while the loop is running, pause the clock first. Once the
+    // new viewport has been fully prepared from local/network data, resume from
+    // the same normal Play pathway. Paused users do not pay for a full-loop
+    // preload just because they moved the map.
+    map.on("movestart", () => {
+      const button = document.getElementById("playPause");
+      if (!button) return;
+
+      if (/Pause/i.test(String(button.textContent || ""))) {
+        layer.__zwxResumeAfterMove = true;
+        button.click();
+      }
+    });
+
+    map.on("moveend", () => {
+      if (!layer.__zwxResumeAfterMove) return;
+
+      window.clearTimeout(layer.__zwxResumeTimer);
+      layer.__zwxResumeTimer = window.setTimeout(async () => {
+        if (!layer.__zwxResumeAfterMove) return;
+        layer.__zwxResumeAfterMove = false;
+
+        const button = document.getElementById("playPause");
+        if (!button) return;
+
+        const oldText = button.textContent;
+        button.disabled = true;
+
+        try {
+          const prepared = await preparePlayback(layer, button);
+          if (!prepared?.ready) {
+            button.textContent = oldText || "▶ Play";
+            return;
+          }
+
+          button.disabled = false;
+          button.textContent = "▶ Play";
+          layer.__zwxBypassPlayGate = true;
+          button.click();
+        } catch (error) {
+          console.warn("MRALA move-resume preparation failed", error);
+          button.textContent = oldText || "▶ Play";
+        } finally {
+          button.disabled = false;
+        }
+      }, 0);
+    });
+
     console.info(
-      "MRALA adaptive playback gate enabled • GPU budget",
-      (NATIVE_GPU_BUDGET_BYTES / 1048576).toFixed(0) + " MiB"
+      "MRALA video-buffer playback enabled • native z" +
+        NATIVE_ENTER_ZOOM.toFixed(2) +
+        " / exit z" +
+        OVERVIEW_REENTER_ZOOM.toFixed(2) +
+        " • GPU budget " +
+        (NATIVE_GPU_BUDGET_BYTES / 1048576).toFixed(0) +
+        " MiB"
     );
 
     return result;
@@ -520,53 +785,69 @@
 
     playButton.addEventListener("click", async event => {
       const layer = window.__ZWX_MRALA_NATIVE_CHUNK_LAYER__;
-      if (!layer?.enabled || !layer.__zwxRequestedVisibleIds?.length) return;
+      if (!layer) return;
 
-      // A click while playback is already running is always a Pause request.
+      // Let the normal handler own Pause immediately.
       if (/Pause/i.test(String(playButton.textContent || ""))) return;
 
-      if (layer.__zwxBypassWarmClick) {
-        layer.__zwxBypassWarmClick = false;
+      if (layer.__zwxBypassPlayGate) {
+        layer.__zwxBypassPlayGate = false;
         return;
       }
 
-      if (
-        layer.__zwxLoopWarmReady &&
-        layer.__zwxWarmSignature === layer.__zwxViewportSignature
-      ) {
+      const overviewReady = overviewPreparedRevision === manifestRevision();
+      const nativeReady =
+        !layer.__zwxRequestedEnabled ||
+        (
+          layer.__zwxPreparedSignature &&
+          layer.__zwxPreparedSignature === layer.__zwxViewportSignature
+        );
+
+      if (overviewReady && nativeReady) {
         return;
       }
 
-      // This is the deliberate quality-over-startup-latency gate: playback is
-      // not allowed to begin while the viewport loop is still downloading.
+      // Quality-over-startup-latency: do not let the playback clock advance
+      // until the loop needed by the current view is already local.
       event.preventDefault();
       event.stopImmediatePropagation();
 
-      const originalText = playButton.textContent;
+      const oldText = playButton.textContent;
       playButton.disabled = true;
 
       try {
-        const result = await layer.__zwxWarmVisibleLoop(
-          (done, total, fullGpuResident) => {
+        const prepared = await (async () => {
+          const overviewResult = await warmOverviewLoop((done, total) => {
+            const percent = total ? Math.round(done * 100 / total) : 0;
+            playButton.textContent = `Buffering radar ${percent}%`;
+          });
+
+          if (!overviewResult?.ready) return overviewResult;
+
+          if (!layer.__zwxRequestedEnabled) {
+            return { ready: true, tier: "overview" };
+          }
+
+          return layer.__zwxWarmVisibleLoop((done, total, fullGpuResident) => {
             const percent = total ? Math.round(done * 100 / total) : 0;
             playButton.textContent = fullGpuResident
-              ? `Preparing loop ${percent}%`
-              : `Caching loop ${percent}%`;
-          }
-        );
+              ? `Preparing HD ${percent}%`
+              : `Buffering HD ${percent}%`;
+          });
+        })();
 
-        if (!result?.ready) {
-          playButton.textContent = originalText;
+        if (!prepared?.ready) {
+          playButton.textContent = oldText || "▶ Play";
           return;
         }
 
         playButton.disabled = false;
         playButton.textContent = "▶ Play";
-        layer.__zwxBypassWarmClick = true;
+        layer.__zwxBypassPlayGate = true;
         playButton.click();
       } catch (error) {
-        console.warn("MRALA adaptive play preload failed", error);
-        playButton.textContent = originalText;
+        console.warn("MRALA video-buffer preparation failed", error);
+        playButton.textContent = oldText || "▶ Play";
       } finally {
         playButton.disabled = false;
       }
