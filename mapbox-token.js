@@ -177,10 +177,15 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
 
   // The core renderer currently asks for blend updates at ~30 Hz. On desktop,
   // wrap its GPU blend method in a presentation loop driven directly by rAF.
-  // Source observations still advance on the core clock; only the in-between
-  // visual states are presented at display refresh cadence (typically 60 Hz).
+  // Keep native HD on the core timing path for this test because mobile already
+  // behaves well without the extra desktop presentation wrapper.
   function patchDisplayRateBlend(layer, blendMethod, activateMethods = []) {
-    if (MOBILE || !layer || layer.__zwx60HzBlendPatched) return;
+    if (
+      MOBILE ||
+      !layer ||
+      layer.id === "mrms-native-numeric-viewport-chunks" ||
+      layer.__zwx60HzBlendPatched
+    ) return;
     const originalBlend = layer[blendMethod];
     if (typeof originalBlend !== "function") return;
 
