@@ -401,7 +401,6 @@
         }
       }
 
-      // Only an explicit HD Play request replaces the pinned playback cache.
       pinnedNativeUrls.clear();
       for (const target of targets) pinnedNativeUrls.add(target.url);
       trimIdleCache();
@@ -412,8 +411,6 @@
       let failed = 0;
       const started = performance.now();
 
-      // Protect every texture created by the HD preroll while preparation is
-      // running. The same full preroll remains pinned after Play begins.
       this.__zwxPinnedGpuKeys = preparedGpuPins;
 
       const promise = (async () => {
@@ -476,9 +473,6 @@
 
         if (failed) return { ready: false, failed };
 
-        // Keep the ENTIRE prepared preroll resident. Previously this collapsed
-        // to only the first two frames here, so the rolling HD buffer could
-        // immediately evict most of the textures we had just prepared.
         this.__zwxPinnedGpuKeys = preparedGpuPins;
         this.__zwxPreparedSignature = signature;
         this.map?.triggerRepaint();
@@ -532,8 +526,6 @@
     playButton.addEventListener("click", async event => {
       const layer = window.__ZWX_MRALA_NATIVE_CHUNK_LAYER__;
 
-      // Overview/regional playback remains immediate. The special wait exists
-      // only for the highest-quality native tier when Play is explicitly used.
       if (!layer?.enabled || !layer.__zwxRequestedVisibleIds?.length) return;
 
       if (/Pause/i.test(String(playButton.textContent || ""))) return;
@@ -580,4 +572,117 @@
       }
     }, true);
   }, { once: true });
+})();
+
+(() => {
+  "use strict";
+
+  const path = String(window.location.pathname || "");
+  if (!/\/mosaic-radar-home\.html$/i.test(path)) return;
+  if (window.__ZWX_MRALA_HD_SYNC_GUARD__) return;
+  window.__ZWX_MRALA_HD_SYNC_GUARD__ = true;
+
+  const CHUNK_LAYER_ID = "mrms-native-numeric-viewport-chunks";
+  const mapPrototype = window.mapboxgl?.Map?.prototype;
+  if (!mapPrototype?.addLayer) return;
+
+  const previousAddLayer = mapPrototype.addLayer;
+
+  mapPrototype.addLayer = function (layer, ...args) {
+    const result = previousAddLayer.call(this, layer, ...args);
+
+    if (layer?.id !== CHUNK_LAYER_ID || layer.__zwxHdSyncGuardPatched) {
+      return result;
+    }
+
+    layer.__zwxHdSyncGuardPatched = true;
+    layer.__zwxDisplaySuppressed = false;
+    layer.__zwxBackgroundWarmTimer = 0;
+
+    const originalRender = layer.render;
+    const originalHasFrame = layer.hasFrame;
+    const originalActivateFrame = layer.activateFrame;
+    const originalSetBlendFrames = layer.setBlendFrames;
+    const originalSetVisible = layer.setVisible;
+
+    const isPlaying = () => /Pause/i.test(
+      String(document.getElementById("playPause")?.textContent || "")
+    );
+
+    function setSuppressed(instance, suppressed) {
+      const next = Boolean(suppressed);
+      if (instance.__zwxDisplaySuppressed === next) return;
+      instance.__zwxDisplaySuppressed = next;
+      instance.map?.triggerRepaint();
+    }
+
+    function scheduleBackgroundWarm(instance) {
+      if (!isPlaying() || !instance.enabled) return;
+
+      window.clearTimeout(instance.__zwxBackgroundWarmTimer);
+      instance.__zwxBackgroundWarmTimer = window.setTimeout(async () => {
+        if (
+          !isPlaying() ||
+          !instance.enabled ||
+          typeof instance.__zwxPrepareHdForPlay !== "function"
+        ) {
+          return;
+        }
+
+        try {
+          const prepared = await instance.__zwxPrepareHdForPlay();
+          if (prepared?.ready) instance.map?.triggerRepaint();
+        } catch (error) {
+          console.warn("MRALA silent HD catch-up failed", error);
+        }
+      }, 0);
+    }
+
+    layer.render = function (gl, matrix) {
+      if (this.__zwxDisplaySuppressed) return;
+      return originalRender.call(this, gl, matrix);
+    };
+
+    layer.hasFrame = function (frameId, ids) {
+      const ready = originalHasFrame.call(this, frameId, ids);
+
+      if (!ready && isPlaying() && this.enabled) {
+        setSuppressed(this, true);
+        scheduleBackgroundWarm(this);
+      }
+
+      return ready;
+    };
+
+    layer.activateFrame = function (...activateArgs) {
+      const ready = originalActivateFrame.apply(this, activateArgs);
+      if (ready) setSuppressed(this, false);
+      return ready;
+    };
+
+    layer.setBlendFrames = function (...blendArgs) {
+      const ready = originalSetBlendFrames.apply(this, blendArgs);
+      if (ready) setSuppressed(this, false);
+      return ready;
+    };
+
+    layer.setVisible = function (ids) {
+      const before = String(this.__zwxViewportSignature || "");
+      const result = originalSetVisible.call(this, ids);
+      const after = String(this.__zwxViewportSignature || "");
+
+      if (isPlaying() && this.enabled && before !== after) {
+        setSuppressed(this, true);
+        scheduleBackgroundWarm(this);
+      }
+
+      return result;
+    };
+
+    console.info(
+      "MRALA HD sync guard: stale native frames suppressed; silent catch-up enabled"
+    );
+
+    return result;
+  };
 })();
