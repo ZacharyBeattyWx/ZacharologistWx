@@ -3,8 +3,8 @@
 
   const path = String(window.location.pathname || "");
   if (!/\/mosaic-radar-home\.html$/i.test(path)) return;
-  if (window.__ZWX_MRALA_PLAY_ONLY_HD_PRELOAD__) return;
-  window.__ZWX_MRALA_PLAY_ONLY_HD_PRELOAD__ = true;
+  if (window.__ZWX_MRALA_ARCHIVE_PLAYBACK__) return;
+  window.__ZWX_MRALA_ARCHIVE_PLAYBACK__ = true;
 
   const ARCHIVE_BASE = "https://dt0cd6bl1yqh2.cloudfront.net/mrms-native-numeric/";
   const MANIFEST_RE = /\/mrms-native-numeric\/manifest\.json(?:[?#]|$)/i;
@@ -23,7 +23,10 @@
   );
   const IDLE_CACHE_BUDGET_BYTES = NATIVE_GPU_BUDGET_BYTES;
   const GPU_PREROLL_FRAMES = MOBILE ? 6 : 12;
-  const PRELOAD_CONCURRENCY = MOBILE ? 2 : 5;
+  const INITIAL_PRELOAD_CONCURRENCY = MOBILE ? 2 : 5;
+  const REGION_PREFETCH_CONCURRENCY = MOBILE ? 1 : 3;
+  const REGION_GPU_RUNWAY = MOBILE ? 4 : 8;
+  const REGION_PREFETCH_DELAY_MS = 30;
 
   let manifest = null;
   let nativeCacheBytes = 0;
@@ -65,6 +68,13 @@
         frameMs(frame) >= cutoff
       )
       .sort((a, b) => frameMs(a) - frameMs(b));
+  }
+
+  function archiveFramesForLayer(layer) {
+    const all = recentNativeFrames();
+    if (!layer?.__zwxArchiveFrameIds?.length) return all;
+    const wanted = new Set(layer.__zwxArchiveFrameIds.map(String));
+    return all.filter(frame => wanted.has(String(frame.id)));
   }
 
   function chunkMap() {
@@ -179,7 +189,9 @@
       if (cached) {
         return responseFromBytes(
           cached,
-          missingNativeUrls.has(url) ? "missing-overview-fallback" : "hd-play-cache"
+          missingNativeUrls.has(url)
+            ? "missing-overview-fallback"
+            : "archive-session-cache"
         );
       }
 
@@ -199,7 +211,7 @@
         manifest = await response.clone().json();
         window.__ZWX_MRALA_RUNTIME_MANIFEST__ = manifest;
       } catch (error) {
-        console.warn("MRALA HD preload manifest capture failed", error);
+        console.warn("MRALA archive manifest capture failed", error);
       }
     } else if (CHUNK_RE.test(url)) {
       if (response.ok) {
@@ -228,7 +240,7 @@
     const promise = (async () => {
       const response = await window.fetch(url, { cache: "force-cache" });
       if (!response.ok) {
-        throw new Error(`Native HD preload HTTP ${response.status}`);
+        throw new Error(`Native archive HTTP ${response.status}`);
       }
 
       const bytes = await response.arrayBuffer();
@@ -274,6 +286,116 @@
     return [...new Set((ids || []).map(String))].sort().join("|");
   }
 
+  function orderedFramesFromCurrent(layer, frames) {
+    if (!frames.length) return [];
+
+    let startIndex = frames.findIndex(
+      frame => String(frame.id) === String(layer?.fromFrame || "")
+    );
+    if (startIndex < 0 || startIndex === frames.length - 1) startIndex = 0;
+
+    return [
+      ...frames.slice(startIndex),
+      ...frames.slice(0, startIndex)
+    ];
+  }
+
+  async function prefetchArchiveRegion(layer, ids, generation) {
+    if (
+      !layer?.__zwxArchiveSessionActive ||
+      !layer.enabled ||
+      !ids?.length ||
+      !manifest
+    ) return;
+
+    const byId = chunkMap();
+    const chunks = ids.map(id => byId.get(String(id))).filter(Boolean);
+    const frames = archiveFramesForLayer(layer);
+    if (!chunks.length || !frames.length) return;
+
+    const orderedFrames = orderedFramesFromCurrent(layer, frames);
+    const runwayIds = new Set(
+      orderedFrames.slice(0, REGION_GPU_RUNWAY).map(frame => String(frame.id))
+    );
+
+    const targets = [];
+    for (const frame of orderedFrames) {
+      for (const chunk of chunks) {
+        targets.push({ frame, chunk, url: nativeChunkUrl(frame.id, chunk.id) });
+      }
+    }
+
+    let cursor = 0;
+    const runwayPins = new Set();
+
+    const worker = async () => {
+      while (cursor < targets.length) {
+        if (generation !== layer.__zwxRegionPrefetchGeneration) return;
+
+        const target = targets[cursor++];
+        try {
+          const packed = await packedChunkBytes(target.url);
+
+          if (runwayIds.has(String(target.frame.id))) {
+            const key = nativeKey(target.frame.id, target.chunk.id);
+            if (!layer.textures.has(key)) {
+              const expected =
+                Number(target.chunk.width) * Number(target.chunk.height);
+              const raw = await maybeDecompress(packed, expected);
+              if (raw.byteLength === expected) {
+                layer.addTexture(target.frame.id, target.chunk, raw);
+              }
+            }
+            if (layer.textures.has(key)) runwayPins.add(key);
+          }
+        } catch (error) {
+          console.warn(
+            "MRALA archive region prefetch failed",
+            target.frame?.id,
+            target.chunk?.id,
+            error
+          );
+        }
+      }
+    };
+
+    await Promise.all(
+      Array.from(
+        { length: Math.min(REGION_PREFETCH_CONCURRENCY, targets.length) },
+        () => worker()
+      )
+    );
+
+    if (
+      generation !== layer.__zwxRegionPrefetchGeneration ||
+      !layer.__zwxArchiveSessionActive
+    ) return;
+
+    layer.__zwxPinnedGpuKeys = runwayPins;
+    layer.map?.triggerRepaint();
+
+    console.info(
+      "MRALA archive region ready:",
+      frames.length + " archived frames",
+      chunks.length + " chunks/frame",
+      runwayPins.size + " GPU runway textures",
+      (nativeCacheBytes / 1048576).toFixed(1) + " MiB local cache"
+    );
+  }
+
+  function scheduleArchiveRegionPrefetch(layer, ids) {
+    if (!layer?.__zwxArchiveSessionActive || !ids?.length) return;
+
+    const generation = ++layer.__zwxRegionPrefetchGeneration;
+    window.clearTimeout(layer.__zwxRegionPrefetchTimer);
+
+    layer.__zwxRegionPrefetchTimer = window.setTimeout(() => {
+      prefetchArchiveRegion(layer, [...ids], generation).catch(error => {
+        console.warn("MRALA archive region background prefetch failed", error);
+      });
+    }, REGION_PREFETCH_DELAY_MS);
+  }
+
   const mapPrototype = window.mapboxgl?.Map?.prototype;
   if (!mapPrototype?.addLayer) return;
 
@@ -282,18 +404,21 @@
   mapPrototype.addLayer = function (layer, ...args) {
     const result = previousAddLayer.call(this, layer, ...args);
 
-    if (layer?.id !== CHUNK_LAYER_ID || layer.__zwxPlayOnlyHdPatched) {
+    if (layer?.id !== CHUNK_LAYER_ID || layer.__zwxArchivePlaybackPatched) {
       return result;
     }
 
-    layer.__zwxPlayOnlyHdPatched = true;
+    layer.__zwxArchivePlaybackPatched = true;
     layer.__zwxRequestedVisibleIds = [];
     layer.__zwxViewportSignature = "";
-    layer.__zwxPreparedSignature = "";
-    layer.__zwxPrepareGeneration = 0;
+    layer.__zwxArchiveSessionActive = false;
+    layer.__zwxArchiveFrameIds = [];
+    layer.__zwxArchiveRevision = "";
     layer.__zwxPreparePromise = null;
     layer.__zwxPinnedGpuKeys = new Set();
     layer.__zwxBypassPlayGate = false;
+    layer.__zwxRegionPrefetchGeneration = 0;
+    layer.__zwxRegionPrefetchTimer = 0;
 
     const originalSetVisible = layer.setVisible;
     const originalSetEnabled = layer.setEnabled;
@@ -302,29 +427,29 @@
     layer.setVisible = function (ids) {
       const nextIds = [...new Set((ids || []).map(String))];
       const signature = signatureFor(nextIds);
+      const changed = signature !== this.__zwxViewportSignature;
 
       this.__zwxRequestedVisibleIds = nextIds;
+      this.__zwxViewportSignature = signature;
 
-      if (signature !== this.__zwxViewportSignature) {
-        this.__zwxViewportSignature = signature;
-        this.__zwxPreparedSignature = "";
-        this.__zwxPrepareGeneration += 1;
-        this.__zwxPreparePromise = null;
-
-        // Keep the previous prepared cache alive while the user moves.
-        // Camera motion must never pause playback or trigger HD loading.
+      if (changed && this.__zwxArchiveSessionActive) {
+        this.__zwxPinnedGpuKeys = new Set();
+        pinnedNativeUrls.clear();
+        trimIdleCache();
+        scheduleArchiveRegionPrefetch(this, nextIds);
       }
 
       return originalSetVisible.call(this, nextIds);
     };
 
     layer.setEnabled = function (enabled) {
-      if (!enabled) {
-        this.__zwxPreparedSignature = "";
-        this.__zwxPrepareGeneration += 1;
-        this.__zwxPreparePromise = null;
+      const result = originalSetEnabled.call(this, enabled);
+
+      if (enabled && this.__zwxArchiveSessionActive) {
+        scheduleArchiveRegionPrefetch(this, this.__zwxRequestedVisibleIds);
       }
-      return originalSetEnabled.call(this, enabled);
+
+      return result;
     };
 
     layer.evictExcept = function (keep) {
@@ -337,21 +462,23 @@
       return originalEvictExcept.call(this, combined);
     };
 
-    layer.__zwxPrepareHdForPlay = async function (onProgress) {
+    layer.__zwxPrepareArchiveForPlay = async function (onProgress) {
       const ids = [...this.__zwxRequestedVisibleIds];
-      const signature = signatureFor(ids);
 
       if (!this.enabled || !ids.length || !manifest) {
         return { ready: false, reason: "HD viewport unavailable" };
       }
 
-      if (this.__zwxPreparedSignature === signature) {
-        return { ready: true, cached: true };
+      if (this.__zwxArchiveSessionActive) {
+        return {
+          ready: true,
+          cached: true,
+          archiveFrames: this.__zwxArchiveFrameIds.length
+        };
       }
 
       if (this.__zwxPreparePromise) return this.__zwxPreparePromise;
 
-      const generation = this.__zwxPrepareGeneration;
       const byId = chunkMap();
       const chunks = ids.map(id => byId.get(id)).filter(Boolean);
       const frames = recentNativeFrames();
@@ -377,15 +504,7 @@
         ? frames.length
         : Math.min(gpuFrameLimit, GPU_PREROLL_FRAMES);
 
-      let startIndex = frames.findIndex(
-        frame => String(frame.id) === String(this.fromFrame || "")
-      );
-      if (startIndex < 0 || startIndex === frames.length - 1) startIndex = 0;
-
-      const orderedFrames = [
-        ...frames.slice(startIndex),
-        ...frames.slice(0, startIndex)
-      ];
+      const orderedFrames = orderedFramesFromCurrent(this, frames);
       const prerollIds = new Set(
         orderedFrames.slice(0, prerollCount).map(frame => String(frame.id))
       );
@@ -403,7 +522,6 @@
 
       pinnedNativeUrls.clear();
       for (const target of targets) pinnedNativeUrls.add(target.url);
-      trimIdleCache();
 
       const preparedGpuPins = new Set();
       let cursor = 0;
@@ -416,8 +534,6 @@
       const promise = (async () => {
         const worker = async () => {
           while (cursor < targets.length) {
-            if (generation !== this.__zwxPrepareGeneration) return;
-
             const target = targets[cursor++];
 
             try {
@@ -433,7 +549,7 @@
 
                   if (raw.byteLength !== expected) {
                     throw new Error(
-                      `HD preload ${target.chunk.id} size ${raw.byteLength} != ${expected}`
+                      `Archive preload ${target.chunk.id} size ${raw.byteLength} != ${expected}`
                     );
                   }
 
@@ -445,7 +561,7 @@
             } catch (error) {
               failed += 1;
               console.warn(
-                "HD play preload failed",
+                "MRALA archive initial preload failed",
                 target.frame?.id,
                 target.chunk?.id,
                 error
@@ -459,32 +575,37 @@
 
         await Promise.all(
           Array.from(
-            { length: Math.min(PRELOAD_CONCURRENCY, targets.length) },
+            { length: Math.min(INITIAL_PRELOAD_CONCURRENCY, targets.length) },
             () => worker()
           )
         );
 
-        if (
-          generation !== this.__zwxPrepareGeneration ||
-          signature !== this.__zwxViewportSignature
-        ) {
-          return { ready: false, reason: "viewport changed while preparing" };
-        }
-
         if (failed) return { ready: false, failed };
 
+        this.__zwxArchiveSessionActive = true;
+        this.__zwxArchiveFrameIds = frames.map(frame => String(frame.id));
+        this.__zwxArchiveRevision = String(manifest?.revision || "");
         this.__zwxPinnedGpuKeys = preparedGpuPins;
-        this.__zwxPreparedSignature = signature;
+
+        pinnedNativeUrls.clear();
+        trimIdleCache();
+
+        window.__ZWX_MRALA_ARCHIVE_SESSION__ = {
+          revision: this.__zwxArchiveRevision,
+          frameIds: [...this.__zwxArchiveFrameIds],
+          startedAt: new Date().toISOString()
+        };
+
         this.map?.triggerRepaint();
 
         console.info(
-          "MRALA HD ready for Play:",
+          "MRALA archive playback ready:",
           frames.length + " frames",
-          chunks.length + " chunks/frame",
+          chunks.length + " initial chunks/frame",
           (nativeCacheBytes / 1048576).toFixed(1) + " MiB local",
           fullGpuResident
-            ? "full loop GPU-resident"
-            : prerollCount + "-frame GPU preroll pinned + full local loop",
+            ? "initial viewport full loop GPU-resident"
+            : prerollCount + "-frame GPU preroll + full archived viewport cache",
           Math.round(performance.now() - started) + " ms"
         );
 
@@ -509,11 +630,15 @@
       }
     };
 
+    layer.__zwxPrepareHdForPlay = layer.__zwxPrepareArchiveForPlay;
+    layer.__zwxScheduleArchiveRegionPrefetch = ids =>
+      scheduleArchiveRegionPrefetch(layer, ids || layer.__zwxRequestedVisibleIds);
+
     window.__ZWX_MRALA_NATIVE_CHUNK_LAYER__ = layer;
     window.__ZWX_MRALA_MISSING_NATIVE_URLS__ = missingNativeUrls;
 
     console.info(
-      "MRALA HD preload: explicit Play only • full GPU preroll retained"
+      "MRALA archive playback: one rolling 3h session • viewport moves do not re-prepare"
     );
 
     return result;
@@ -527,7 +652,6 @@
       const layer = window.__ZWX_MRALA_NATIVE_CHUNK_LAYER__;
 
       if (!layer?.enabled || !layer.__zwxRequestedVisibleIds?.length) return;
-
       if (/Pause/i.test(String(playButton.textContent || ""))) return;
 
       if (layer.__zwxBypassPlayGate) {
@@ -535,9 +659,7 @@
         return;
       }
 
-      if (layer.__zwxPreparedSignature === layer.__zwxViewportSignature) {
-        return;
-      }
+      if (layer.__zwxArchiveSessionActive) return;
 
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -546,12 +668,12 @@
       playButton.disabled = true;
 
       try {
-        const prepared = await layer.__zwxPrepareHdForPlay(
+        const prepared = await layer.__zwxPrepareArchiveForPlay(
           (done, total, fullGpuResident) => {
             const percent = total ? Math.round(done * 100 / total) : 0;
             playButton.textContent = fullGpuResident
-              ? `Preparing HD ${percent}%`
-              : `Loading HD ${percent}%`;
+              ? `Preparing archive ${percent}%`
+              : `Loading archive ${percent}%`;
           }
         );
 
@@ -565,7 +687,7 @@
         layer.__zwxBypassPlayGate = true;
         playButton.click();
       } catch (error) {
-        console.warn("MRALA explicit HD Play preparation failed", error);
+        console.warn("MRALA archive Play preparation failed", error);
         playButton.textContent = originalText || "▶ Play";
       } finally {
         playButton.disabled = false;
@@ -579,8 +701,8 @@
 
   const path = String(window.location.pathname || "");
   if (!/\/mosaic-radar-home\.html$/i.test(path)) return;
-  if (window.__ZWX_MRALA_HD_SYNC_GUARD__) return;
-  window.__ZWX_MRALA_HD_SYNC_GUARD__ = true;
+  if (window.__ZWX_MRALA_ARCHIVE_SYNC_GUARD__) return;
+  window.__ZWX_MRALA_ARCHIVE_SYNC_GUARD__ = true;
 
   const CHUNK_LAYER_ID = "mrms-native-numeric-viewport-chunks";
   const mapPrototype = window.mapboxgl?.Map?.prototype;
@@ -591,13 +713,12 @@
   mapPrototype.addLayer = function (layer, ...args) {
     const result = previousAddLayer.call(this, layer, ...args);
 
-    if (layer?.id !== CHUNK_LAYER_ID || layer.__zwxHdSyncGuardPatched) {
+    if (layer?.id !== CHUNK_LAYER_ID || layer.__zwxArchiveSyncGuardPatched) {
       return result;
     }
 
-    layer.__zwxHdSyncGuardPatched = true;
+    layer.__zwxArchiveSyncGuardPatched = true;
     layer.__zwxDisplaySuppressed = false;
-    layer.__zwxBackgroundWarmTimer = 0;
 
     const originalRender = layer.render;
     const originalHasFrame = layer.hasFrame;
@@ -616,26 +737,16 @@
       instance.map?.triggerRepaint();
     }
 
-    function scheduleBackgroundWarm(instance) {
-      if (!isPlaying() || !instance.enabled) return;
+    function scheduleRegion(instance) {
+      if (
+        !instance?.__zwxArchiveSessionActive ||
+        !instance.enabled ||
+        typeof instance.__zwxScheduleArchiveRegionPrefetch !== "function"
+      ) return;
 
-      window.clearTimeout(instance.__zwxBackgroundWarmTimer);
-      instance.__zwxBackgroundWarmTimer = window.setTimeout(async () => {
-        if (
-          !isPlaying() ||
-          !instance.enabled ||
-          typeof instance.__zwxPrepareHdForPlay !== "function"
-        ) {
-          return;
-        }
-
-        try {
-          const prepared = await instance.__zwxPrepareHdForPlay();
-          if (prepared?.ready) instance.map?.triggerRepaint();
-        } catch (error) {
-          console.warn("MRALA silent HD catch-up failed", error);
-        }
-      }, 0);
+      instance.__zwxScheduleArchiveRegionPrefetch(
+        instance.__zwxRequestedVisibleIds
+      );
     }
 
     layer.render = function (gl, matrix) {
@@ -648,7 +759,7 @@
 
       if (!ready && isPlaying() && this.enabled) {
         setSuppressed(this, true);
-        scheduleBackgroundWarm(this);
+        scheduleRegion(this);
       }
 
       return ready;
@@ -673,14 +784,14 @@
 
       if (isPlaying() && this.enabled && before !== after) {
         setSuppressed(this, true);
-        scheduleBackgroundWarm(this);
+        scheduleRegion(this);
       }
 
       return result;
     };
 
     console.info(
-      "MRALA HD sync guard: stale native frames suppressed; silent catch-up enabled"
+      "MRALA archive sync: stale HD suppressed • new regions warm silently without playback reset"
     );
 
     return result;
