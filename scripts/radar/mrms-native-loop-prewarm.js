@@ -311,8 +311,8 @@
         this.__zwxPrepareGeneration += 1;
         this.__zwxPreparePromise = null;
 
-        // Deliberately keep the previous prepared cache alive while the user
-        // moves. Camera motion must never pause playback or trigger HD loading.
+        // Keep the previous prepared cache alive while the user moves.
+        // Camera motion must never pause playback or trigger HD loading.
       }
 
       return originalSetVisible.call(this, nextIds);
@@ -406,14 +406,15 @@
       for (const target of targets) pinnedNativeUrls.add(target.url);
       trimIdleCache();
 
-      const temporaryGpuPins = new Set();
-      const startupGpuPins = new Set();
+      const preparedGpuPins = new Set();
       let cursor = 0;
       let completed = 0;
       let failed = 0;
       const started = performance.now();
 
-      this.__zwxPinnedGpuKeys = temporaryGpuPins;
+      // Protect every texture created by the HD preroll while preparation is
+      // running. The same full preroll remains pinned after Play begins.
+      this.__zwxPinnedGpuKeys = preparedGpuPins;
 
       const promise = (async () => {
         const worker = async () => {
@@ -442,15 +443,7 @@
                   this.addTexture(target.frame.id, target.chunk, raw);
                 }
 
-                temporaryGpuPins.add(key);
-
-                if (
-                  orderedFrames.slice(0, Math.min(2, prerollCount)).some(
-                    frame => String(frame.id) === String(target.frame.id)
-                  )
-                ) {
-                  startupGpuPins.add(key);
-                }
+                preparedGpuPins.add(key);
               }
             } catch (error) {
               failed += 1;
@@ -483,9 +476,10 @@
 
         if (failed) return { ready: false, failed };
 
-        this.__zwxPinnedGpuKeys = fullGpuResident
-          ? temporaryGpuPins
-          : startupGpuPins;
+        // Keep the ENTIRE prepared preroll resident. Previously this collapsed
+        // to only the first two frames here, so the rolling HD buffer could
+        // immediately evict most of the textures we had just prepared.
+        this.__zwxPinnedGpuKeys = preparedGpuPins;
         this.__zwxPreparedSignature = signature;
         this.map?.triggerRepaint();
 
@@ -496,7 +490,7 @@
           (nativeCacheBytes / 1048576).toFixed(1) + " MiB local",
           fullGpuResident
             ? "full loop GPU-resident"
-            : prerollCount + "-frame GPU preroll + full local loop",
+            : prerollCount + "-frame GPU preroll pinned + full local loop",
           Math.round(performance.now() - started) + " ms"
         );
 
@@ -525,7 +519,7 @@
     window.__ZWX_MRALA_MISSING_NATIVE_URLS__ = missingNativeUrls;
 
     console.info(
-      "MRALA HD preload: explicit Play only • no movement pause/rebuffer"
+      "MRALA HD preload: explicit Play only • full GPU preroll retained"
     );
 
     return result;
@@ -542,7 +536,6 @@
       // only for the highest-quality native tier when Play is explicitly used.
       if (!layer?.enabled || !layer.__zwxRequestedVisibleIds?.length) return;
 
-      // Never interfere with Pause, including while the user is moving the map.
       if (/Pause/i.test(String(playButton.textContent || ""))) return;
 
       if (layer.__zwxBypassPlayGate) {
