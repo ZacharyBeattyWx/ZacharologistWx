@@ -423,3 +423,132 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
   script.async = false;
   document.head.appendChild(script);
 })();
+
+(() => {
+  "use strict";
+
+  const path = String(window.location.pathname || "");
+  if (!/\/mosaic-radar-home\.html$/i.test(path)) return;
+  if (window.__ZWX_MRALA_SPEED_AWARE_LOOP_HOLD__) return;
+  window.__ZWX_MRALA_SPEED_AWARE_LOOP_HOLD__ = true;
+
+  // The inline production loop still uses a fixed 1500 ms newest-frame hold.
+  // Keep its native/overview readiness guard intact, but advance only the
+  // playback clock after a shorter speed-aware visual hold. Other rAF users
+  // (Mapbox, GPU presentation, etc.) continue receiving the real timestamp.
+  const CORE_LOOP_HOLD_MS = 1500;
+  const HOLD_BY_LABEL = new Map([
+    ["0.5×", 1000],
+    ["1×", 700],
+    ["1.5×", 475],
+    ["2×", 300]
+  ]);
+
+  const originalRequestAnimationFrame = window.requestAnimationFrame.bind(window);
+  let playbackClockOffsetMs = 0;
+  let newestHoldStartedAt = 0;
+  let newestSkipApplied = false;
+
+  function isPlaying() {
+    return /Pause/i.test(
+      String(document.getElementById("playPause")?.textContent || "")
+    );
+  }
+
+  function atNewestFrame() {
+    const slider = document.getElementById("frameSlider");
+    if (!slider) return false;
+
+    const value = Number(slider.value);
+    const max = Number(slider.max);
+    return Number.isFinite(value) && Number.isFinite(max) && max > 0 && value >= max;
+  }
+
+  function desiredHoldMs() {
+    const select = document.getElementById("speedSelect");
+    const label = String(
+      select?.selectedOptions?.[0]?.textContent || "1×"
+    ).trim();
+    return HOLD_BY_LABEL.get(label) || 700;
+  }
+
+  function isCorePlaybackCallback(callback) {
+    if (typeof callback !== "function") return false;
+    try {
+      return /\bplaybackTick\b/.test(Function.prototype.toString.call(callback));
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function resetBoundaryState() {
+    newestHoldStartedAt = 0;
+    newestSkipApplied = false;
+  }
+
+  function resetPlaybackClock() {
+    playbackClockOffsetMs = 0;
+    resetBoundaryState();
+  }
+
+  window.requestAnimationFrame = function (callback) {
+    if (!isCorePlaybackCallback(callback)) {
+      return originalRequestAnimationFrame(callback);
+    }
+
+    return originalRequestAnimationFrame(realNow => {
+      if (!isPlaying()) {
+        resetPlaybackClock();
+        return callback(realNow);
+      }
+
+      if (!atNewestFrame()) {
+        resetBoundaryState();
+        return callback(realNow + playbackClockOffsetMs);
+      }
+
+      if (!newestHoldStartedAt) {
+        newestHoldStartedAt = realNow;
+        newestSkipApplied = false;
+      }
+
+      if (!newestSkipApplied) {
+        const elapsed = Math.max(0, realNow - newestHoldStartedAt);
+        const desired = desiredHoldMs();
+
+        if (elapsed >= desired) {
+          // Jump the playback-only clock to the end of the core's fixed hold.
+          // The core then performs its existing restartTexture/native checks;
+          // if either tier is not ready it will continue waiting in 100 ms steps.
+          playbackClockOffsetMs += Math.max(
+            0,
+            CORE_LOOP_HOLD_MS - elapsed + 24
+          );
+          newestSkipApplied = true;
+        }
+      }
+
+      return callback(realNow + playbackClockOffsetMs);
+    });
+  };
+
+  window.addEventListener("DOMContentLoaded", () => {
+    const playButton = document.getElementById("playPause");
+    if (!playButton) return;
+
+    const observer = new MutationObserver(() => {
+      if (!isPlaying()) resetPlaybackClock();
+    });
+
+    observer.observe(playButton, {
+      childList: true,
+      characterData: true,
+      subtree: true
+    });
+  }, { once: true });
+
+  console.info(
+    "MRALA loop boundary: speed-aware Now hold enabled • " +
+      "0.5x 1000ms • 1x 700ms • 1.5x 475ms • 2x 300ms"
+  );
+})();
