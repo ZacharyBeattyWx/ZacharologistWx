@@ -15,9 +15,6 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
   const MOBILE = window.matchMedia?.("(pointer: coarse)")?.matches ||
     /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-  // Playback-cadence experiment: give each real MRMS observation enough time
-  // to be presented as a smooth animation instead of racing through 1-3 screen
-  // refreshes per observation. The radar data and archive cadence are untouched.
   const PLAYBACK_CADENCE = new Map([
     ["0.5×", "340"],
     ["1×", "170"],
@@ -175,10 +172,6 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
     return true;
   }
 
-  // The core renderer currently asks for blend updates at ~30 Hz. On desktop,
-  // wrap its GPU blend method in a presentation loop driven directly by rAF.
-  // Keep native HD on the core timing path for this test because mobile already
-  // behaves well without the extra desktop presentation wrapper.
   function patchDisplayRateBlend(layer, blendMethod, activateMethods = []) {
     if (
       MOBILE ||
@@ -221,8 +214,6 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
         toArg = to;
         startTime = performance.now() - numericAmount * intervalMs();
 
-        // Preserve the renderer's readiness semantics before taking ownership
-        // of the rest of the transition.
         const ready = originalBlend.call(this, fromArg, toArg, numericAmount);
         if (ready === false) {
           pair = "";
@@ -253,8 +244,6 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
         return true;
       }
 
-      // The rAF presentation loop already owns this source-frame pair. Ignore
-      // the core's lower-frequency duplicate blend update.
       return true;
     };
 
@@ -411,7 +400,7 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
   const path = String(window.location.pathname || "");
   if (!/\/mosaic-radar-home\.html$/i.test(path)) return;
 
-  const src = "scripts/radar/mrms-native-loop-prewarm.js?v=20260912f";
+  const src = "scripts/radar/mrms-native-loop-prewarm.js?v=20260912g";
 
   if (document.readyState === "loading") {
     document.write('<script src="' + src + '"></script>');
@@ -432,10 +421,6 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
   if (window.__ZWX_MRALA_SPEED_AWARE_LOOP_HOLD__) return;
   window.__ZWX_MRALA_SPEED_AWARE_LOOP_HOLD__ = true;
 
-  // The inline production loop still uses a fixed 1500 ms newest-frame hold.
-  // Keep its native/overview readiness guard intact, but advance only the
-  // playback clock after a shorter speed-aware visual hold. Other rAF users
-  // (Mapbox, GPU presentation, etc.) continue receiving the real timestamp.
   const CORE_LOOP_HOLD_MS = 1500;
   const HOLD_BY_LABEL = new Map([
     ["0.5×", 1000],
@@ -517,9 +502,6 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
         const desired = desiredHoldMs();
 
         if (elapsed >= desired) {
-          // Jump the playback-only clock to the end of the core's fixed hold.
-          // The core then performs its existing restartTexture/native checks;
-          // if either tier is not ready it will continue waiting in 100 ms steps.
           playbackClockOffsetMs += Math.max(
             0,
             CORE_LOOP_HOLD_MS - elapsed + 24
