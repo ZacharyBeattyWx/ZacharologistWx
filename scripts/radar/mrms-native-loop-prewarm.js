@@ -13,9 +13,10 @@ const OVERVIEW_URL_RE = /\/overview\/([^/?#]+)\.dbz(?:[?#]|$)/i;
 const LAYER_ID = "mrms-native-numeric-viewport-chunks";
 const HISTORY_MS = 3 * 60 * 60 * 1000;
 const CACHE_NAME = "zwx-mrala-rolling-archive-v3";
-const NATIVE_TARGET_ZOOM = 5.65;
+const NATIVE_TARGET_ZOOM = 5.45;
+const CORE_VIEWPORT_PAD = 0.12;
+const PREDICTIVE_PADDING = 1 + CORE_VIEWPORT_PAD * 2;
 const PREDICTIVE_START_ZOOM = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ? 4.4 : 3.25;
-const PREDICTIVE_PADDING = 1.18;
 const MOBILE = matchMedia?.("(pointer: coarse)")?.matches ||
 /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 const MEM_GB = Math.max(2, Number(navigator.deviceMemory || 8));
@@ -43,7 +44,8 @@ const previousFetch = fetch.bind(window);
 const urlOf = input => String(typeof input === "string" ? input : input?.url || "");
 const frameMs = frame => Date.parse(frame?.valid_time || frame?.validTime || "");
 const textureKey = (frameId, chunkId) => `${frameId}:${chunkId}`;
-const signature = ids => [...new Set((ids || []).map(String))].sort().join("|");
+const normalizeIds = ids => [...new Set((ids || []).map(String))].sort();
+const signature = ids => normalizeIds(ids).join("|");
 function recentFrames(source = manifest) {
 const frames = Array.isArray(source?.frames) ? source.frames : [];
 if (!frames.length) return [];
@@ -288,16 +290,32 @@ layer.addTexture(target.frame.id, target.chunk, unpacked);
 return layer.textures.has(key);
 }
 function readyCovers(layer, ids) {
-if (!ids?.length || !layer?.__zwxReadyChunkIds?.size || layer.__zwxRegionWarming) return false;
-for (const id of ids) if (!layer.__zwxReadyChunkIds.has(String(id))) return false;
+const wanted = normalizeIds(ids);
+if (!wanted.length || !layer?.__zwxReadyChunkIds?.size) return false;
+for (const id of wanted) if (!layer.__zwxReadyChunkIds.has(id)) return false;
 const frames = recentFrames();
 const byId = chunkMap();
-const chunksForView = ids.map(id => byId.get(String(id))).filter(Boolean);
-if (!frames.length || chunksForView.length !== ids.length) return false;
+const chunksForView = wanted.map(id => byId.get(id)).filter(Boolean);
+if (!frames.length || chunksForView.length !== wanted.length) return false;
 const needed = gpuPlan(frames, chunksForView);
 if (needed.full && !layer.__zwxFullGpuResident) return false;
 if (!needed.full && Number(layer.__zwxGpuResidentFrames || 0) < needed.count) return false;
 return true;
+}
+function chooseWarmIds(layer, requestedIds) {
+const requested = normalizeIds(requestedIds);
+if (!requested.length) return [];
+const existing = normalizeIds([
+...(layer?.__zwxReadyChunkIds || []),
+...(layer?.__zwxRegionWarmIds || [])
+]);
+if (!existing.length) return requested;
+const union = normalizeIds([...existing, ...requested]);
+const frames = recentFrames();
+const byId = chunkMap();
+const unionChunks = union.map(id => byId.get(id)).filter(Boolean);
+if (!frames.length || unionChunks.length !== union.length) return requested;
+return gpuPlan(frames, unionChunks).full ? union : requested;
 }
 async function repairGpuSet(layer, gpuTargets, gpuPins, generation) {
 for (let pass = 0; pass < 3; pass += 1) {
@@ -319,17 +337,20 @@ return gpuTargets.every(target => layer.textures.has(textureKey(target.frame.id,
 }
 async function warmRegion(layer, ids, generation, reason = "native", progress) {
 if (!layer || !ids?.length || !manifest) return { ready: false };
-const normalizedIds = [...new Set(ids.map(String))].sort();
+const normalizedIds = normalizeIds(ids);
 const byId = chunkMap();
 const chunksForView = normalizedIds.map(id => byId.get(id)).filter(Boolean);
 const frames = recentFrames();
 if (!chunksForView.length || chunksForView.length !== normalizedIds.length || !frames.length) {
 return { ready: false };
 }
+const hadVisibleCoverage = readyCovers(layer, layer.__zwxRequestedVisibleIds);
+const previousPins = new Set(layer.__zwxPinnedGpuKeys || []);
 layer.__zwxArchiveSessionActive = true;
 layer.__zwxArchiveFrameIds = frames.map(frame => String(frame.id));
 layer.__zwxRegionWarming = true;
-if (layer.enabled && !readyCovers(layer, layer.__zwxRequestedVisibleIds)) {
+layer.__zwxRegionWarmIds = [...normalizedIds];
+if (layer.enabled && !hadVisibleCoverage) {
 layer.__zwxSetArchiveSuppressed?.(true);
 }
 const ordered = orderedFrames(layer, frames);
@@ -346,8 +367,9 @@ if (gpuFrameIds.has(String(frame.id))) gpuTargets.push(target);
 }
 pinnedUrls.clear();
 for (const target of targets) pinnedUrls.add(target.url);
-const gpuPins = new Set(gpuTargets.map(target => textureKey(target.frame.id, target.chunk.id)));
-layer.__zwxPinnedGpuKeys = gpuPins;
+const warmPins = new Set(previousPins);
+for (const target of gpuTargets) warmPins.add(textureKey(target.frame.id, target.chunk.id));
+layer.__zwxPinnedGpuKeys = warmPins;
 let cursor = 0;
 let completed = 0;
 let failed = 0;
@@ -357,7 +379,7 @@ while (cursor < targets.length) {
 if (generation !== layer.__zwxRegionWarmGeneration) return;
 const target = targets[cursor++];
 try {
-if (gpuFrameIds.has(String(target.frame.id))) await gpuTarget(layer, target, gpuPins);
+if (gpuFrameIds.has(String(target.frame.id))) await gpuTarget(layer, target, warmPins);
 else await bytes(target.url);
 } catch (error) {
 failed += 1;
@@ -370,21 +392,26 @@ progress?.(completed, targets.length, plan.full);
 }
 await Promise.all(Array.from({ length: Math.min(LOAD_CONCURRENCY, targets.length) }, () => worker()));
 if (generation !== layer.__zwxRegionWarmGeneration) return { ready: false, superseded: true };
-const gpuComplete = await repairGpuSet(layer, gpuTargets, gpuPins, generation);
+const gpuComplete = await repairGpuSet(layer, gpuTargets, warmPins, generation);
 if (generation !== layer.__zwxRegionWarmGeneration) return { ready: false, superseded: true };
 if (failed || !gpuComplete) {
 layer.__zwxRegionWarming = false;
+layer.__zwxRegionWarmIds = [];
+layer.__zwxPinnedGpuKeys = previousPins;
 if (layer.enabled && !readyCovers(layer, layer.__zwxRequestedVisibleIds)) {
 layer.__zwxSetArchiveSuppressed?.(true);
 }
 console.warn("MRALA native region withheld: archive/GPU set incomplete", { failed, gpuComplete });
 return { ready: false, failed, gpuComplete };
 }
+const finalPins = new Set(gpuTargets.map(target => textureKey(target.frame.id, target.chunk.id)));
 layer.__zwxReadyChunkIds = new Set(normalizedIds);
 layer.__zwxRegionReadySignature = signature(normalizedIds);
 layer.__zwxFullGpuResident = plan.full;
 layer.__zwxGpuResidentFrames = plan.count;
+layer.__zwxPinnedGpuKeys = finalPins;
 layer.__zwxRegionWarming = false;
+layer.__zwxRegionWarmIds = [];
 pinnedUrls.clear();
 trimMemory();
 prune(true).catch(() => {});
@@ -415,24 +442,29 @@ return { ready: true, fullGpuResident: plan.full, gpuFrames: plan.count };
 }
 function scheduleRegion(layer, ids, delay = 20, reason = "native", progress) {
 if (!layer || !ids?.length || !manifest) return Promise.resolve({ ready: false });
-const normalizedIds = [...new Set(ids.map(String))].sort();
-if (readyCovers(layer, normalizedIds)) {
+const requestedIds = normalizeIds(ids);
+if (readyCovers(layer, requestedIds)) {
 return Promise.resolve({ ready: true, cached: true, fullGpuResident: layer.__zwxFullGpuResident });
 }
-const wanted = signature(normalizedIds);
+const targetIds = chooseWarmIds(layer, requestedIds);
+const wanted = signature(targetIds);
 if (layer.__zwxRegionWarming && layer.__zwxRegionWarmSignature === wanted && layer.__zwxRegionWarmPromise) {
 return layer.__zwxRegionWarmPromise;
 }
 const generation = ++layer.__zwxRegionWarmGeneration;
 clearTimeout(layer.__zwxRegionWarmTimer);
 layer.__zwxRegionWarmSignature = wanted;
+layer.__zwxRegionWarmIds = [...targetIds];
 layer.__zwxRegionWarming = true;
 const promise = new Promise(resolve => {
 layer.__zwxRegionWarmTimer = setTimeout(() => {
-warmRegion(layer, normalizedIds, generation, reason, progress)
+warmRegion(layer, targetIds, generation, reason, progress)
 .then(resolve)
 .catch(error => {
-if (generation === layer.__zwxRegionWarmGeneration) layer.__zwxRegionWarming = false;
+if (generation === layer.__zwxRegionWarmGeneration) {
+layer.__zwxRegionWarming = false;
+layer.__zwxRegionWarmIds = [];
+}
 console.warn("MRALA native archive region warm failed", error);
 resolve({ ready: false, error });
 });
@@ -444,12 +476,6 @@ if (layer.__zwxRegionWarmPromise === promise) layer.__zwxRegionWarmPromise = nul
 });
 return promise;
 }
-function visibleChunkIds(map) {
-if (!map || !manifest?.nativeChunking?.layout?.length) return [];
-const bounds = map.getBounds?.();
-if (!bounds) return [];
-return idsForBounds(bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth());
-}
 function idsForBounds(west, south, east, north) {
 if (!manifest?.nativeChunking?.layout?.length) return [];
 return manifest.nativeChunking.layout
@@ -460,6 +486,22 @@ const [cw, cs, ce, cn] = bounds.map(Number);
 return ce >= west && cw <= east && cn >= south && cs <= north;
 })
 .map(chunk => String(chunk.id));
+}
+function visibleChunkIds(map) {
+if (!map || !manifest?.nativeChunking?.layout?.length) return [];
+const bounds = map.getBounds?.();
+if (!bounds) return [];
+let west = Number(bounds.getWest());
+let east = Number(bounds.getEast());
+let south = Number(bounds.getSouth());
+let north = Number(bounds.getNorth());
+const lonPad = Math.max(0.02, Math.abs(east - west) * CORE_VIEWPORT_PAD);
+const latPad = Math.max(0.02, Math.abs(north - south) * CORE_VIEWPORT_PAD);
+west -= lonPad;
+east += lonPad;
+south -= latPad;
+north += latPad;
+return idsForBounds(west, south, east, north);
 }
 function lonToWorldX(lon, worldSize) {
 return (Number(lon) + 180) / 360 * worldSize;
@@ -513,7 +555,7 @@ console.info(
 "MRALA predictive HD warm:",
 predictedIds.length + " future native chunk(s)",
 "for z" + NATIVE_TARGET_ZOOM.toFixed(2),
-"while overview remains active"
+"using production 12% viewport pad"
 );
 }, delay);
 }
@@ -587,6 +629,7 @@ __zwxRequestedVisibleIds: [],
 __zwxViewportSignature: "",
 __zwxRegionReadySignature: "",
 __zwxRegionWarmSignature: "",
+__zwxRegionWarmIds: [],
 __zwxArchiveSessionActive: false,
 __zwxArchiveFrameIds: [],
 __zwxReadyChunkIds: new Set(),
@@ -622,7 +665,9 @@ layer.hasFrame = function (frameId, ids) {
 const ready = originalHasFrame.call(this, frameId, ids);
 if (!ready && this.enabled) {
 suppress(true);
-if (!this.__zwxRegionWarming) scheduleRegion(this, ids?.length ? ids : this.__zwxRequestedVisibleIds, 0, "native");
+if (!this.__zwxRegionWarming) {
+scheduleRegion(this, ids?.length ? ids : this.__zwxRequestedVisibleIds, 0, "native");
+}
 }
 return ready;
 };
@@ -637,7 +682,7 @@ suppress(!(ready && readyCovers(this, this.__zwxRequestedVisibleIds)));
 return ready;
 };
 layer.setVisible = function (ids) {
-const nextIds = [...new Set((ids || []).map(String))];
+const nextIds = normalizeIds(ids);
 this.__zwxRequestedVisibleIds = nextIds;
 this.__zwxViewportSignature = signature(nextIds);
 const output = originalSetVisible.call(this, nextIds);
@@ -664,7 +709,7 @@ this.__zwxViewportSignature = signature(actualIds);
 }
 if (actualIds.length && readyCovers(this, actualIds)) {
 suppress(false);
-console.info("MRALA native handoff: predicted archive already GPU-ready; switching immediately");
+console.info("MRALA native handoff: padded predicted archive already GPU-ready; switching immediately");
 } else if (actualIds.length) {
 suppress(true);
 scheduleRegion(this, actualIds, 0, "native");
@@ -697,7 +742,7 @@ layer.map?.on?.("moveend", cameraSettled);
 layer.map?.on?.("zoomend", cameraSettled);
 setTimeout(() => schedulePredictive(layer, 0), 0);
 console.info(
-"MRALA archive player v5: predictive native loop warms before zoom • immutable history reused • one-way GPU-ready handoff"
+"MRALA archive player v6: core-matched 12% predictive footprint • resident chunk sets merge while full loop fits • background warm no longer blanks ready HD"
 );
 return result;
 };
