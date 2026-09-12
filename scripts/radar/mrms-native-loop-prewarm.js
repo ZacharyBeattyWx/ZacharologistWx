@@ -13,7 +13,8 @@ const OVERVIEW_URL_RE = /\/overview\/([^/?#]+)\.dbz(?:[?#]|$)/i;
 const LAYER_ID = "mrms-native-numeric-viewport-chunks";
 const HISTORY_MS = 3 * 60 * 60 * 1000;
 const CACHE_NAME = "zwx-mrala-rolling-archive-v3";
-const NATIVE_TARGET_ZOOM = 5.45;
+const NATIVE_TARGET_ZOOM = 5.65;
+const PREDICTIVE_MAX_ZOOM = 6.05;
 const CORE_VIEWPORT_PAD = 0.12;
 const PREDICTIVE_PADDING = 1 + CORE_VIEWPORT_PAD * 2;
 const PREDICTIVE_START_ZOOM = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ? 4.4 : 3.25;
@@ -36,6 +37,7 @@ let persistentWritesAllowed = true;
 let lastPrune = 0;
 let pollTimer = 0;
 let predictiveTimer = 0;
+let lastPredictiveZoom = NATIVE_TARGET_ZOOM;
 const memory = new Map();
 const pinnedUrls = new Set();
 const missingUrls = new Set();
@@ -526,14 +528,28 @@ const container = map.getContainer?.();
 if (!center || !container) return [];
 const width = Math.max(320, Number(container.clientWidth || 0)) * PREDICTIVE_PADDING;
 const height = Math.max(240, Number(container.clientHeight || 0)) * PREDICTIVE_PADDING;
-const worldSize = 512 * Math.pow(2, NATIVE_TARGET_ZOOM);
+const frames = recentFrames();
+const byId = chunkMap();
+let fallback = [];
+for (let targetZoom = NATIVE_TARGET_ZOOM; targetZoom <= PREDICTIVE_MAX_ZOOM + 0.001; targetZoom += 0.10) {
+const worldSize = 512 * Math.pow(2, targetZoom);
 const cx = lonToWorldX(center.lng, worldSize);
 const cy = latToWorldY(center.lat, worldSize);
 const west = worldXToLon(cx - width / 2, worldSize);
 const east = worldXToLon(cx + width / 2, worldSize);
 const north = worldYToLat(cy - height / 2, worldSize);
 const south = worldYToLat(cy + height / 2, worldSize);
-return idsForBounds(west, south, east, north);
+const ids = normalizeIds(idsForBounds(west, south, east, north));
+if (!ids.length) continue;
+fallback = ids;
+const chunksForView = ids.map(id => byId.get(id)).filter(Boolean);
+if (frames.length && chunksForView.length === ids.length && gpuPlan(frames, chunksForView).full) {
+lastPredictiveZoom = targetZoom;
+return ids;
+}
+}
+lastPredictiveZoom = PREDICTIVE_MAX_ZOOM;
+return fallback;
 }
 function schedulePredictive(layer, delay = 200) {
 clearTimeout(predictiveTimer);
@@ -554,8 +570,8 @@ scheduleRegion(layer, predictedIds, 0, "predictive");
 console.info(
 "MRALA predictive HD warm:",
 predictedIds.length + " future native chunk(s)",
-"for z" + NATIVE_TARGET_ZOOM.toFixed(2),
-"using production 12% viewport pad"
+"for z" + lastPredictiveZoom.toFixed(2),
+"full-loop GPU-budgeted with production 12% viewport pad"
 );
 }, delay);
 }
@@ -709,7 +725,7 @@ this.__zwxViewportSignature = signature(actualIds);
 }
 if (actualIds.length && readyCovers(this, actualIds)) {
 suppress(false);
-console.info("MRALA native handoff: padded predicted archive already GPU-ready; switching immediately");
+console.info("MRALA native handoff: GPU-budgeted predicted archive already ready; switching immediately");
 } else if (actualIds.length) {
 suppress(true);
 scheduleRegion(this, actualIds, 0, "native");
@@ -742,7 +758,7 @@ layer.map?.on?.("moveend", cameraSettled);
 layer.map?.on?.("zoomend", cameraSettled);
 setTimeout(() => schedulePredictive(layer, 0), 0);
 console.info(
-"MRALA archive player v6: core-matched 12% predictive footprint • resident chunk sets merge while full loop fits • background warm no longer blanks ready HD"
+"MRALA archive player v7: predictive footprint is full-loop GPU-budgeted • production 12% pad retained • oversized preloads auto-tighten before native handoff"
 );
 return result;
 };
