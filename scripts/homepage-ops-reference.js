@@ -36,6 +36,20 @@
     document.head.appendChild(style);
   }
 
+  const renameHomepageRadarLabels = () => {
+    document.querySelectorAll("h3, .radar-mode-btn").forEach((element) => {
+      if (element.textContent.trim() === "Regional Radar") {
+        element.textContent = "National Radar";
+      }
+    });
+  };
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", renameHomepageRadarLabels, { once: true });
+  } else {
+    renameHomepageRadarLabels();
+  }
+
   if (window.__ZACH_HOMEPAGE_OPS_CORE_LOADING__) return;
   window.__ZACH_HOMEPAGE_OPS_CORE_LOADING__ = true;
 
