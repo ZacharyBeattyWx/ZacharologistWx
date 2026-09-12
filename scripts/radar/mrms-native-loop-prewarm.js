@@ -1,52 +1,762 @@
-(()=>{
-"use strict";
-const path=String(location.pathname||"");
-if(!/\/mosaic-radar-home\.html$/i.test(path)||window.__ZWX_MRALA_ARCHIVE_PLAYBACK__)return;
-window.__ZWX_MRALA_ARCHIVE_PLAYBACK__=true;
-const BASE="https://dt0cd6bl1yqh2.cloudfront.net/mrms-native-numeric/",MANIFEST_URL=BASE+"manifest.json",MANIFEST_RE=/\/mrms-native-numeric\/manifest\.json(?:[?#]|$)/i,CHUNK_RE=/\/mrms-native-numeric\/native-chunks\//i,ASSET_RE=/\/mrms-native-numeric\/(?:native-chunks|overview)\//i,CHUNK_URL_RE=/\/native-chunks\/([^/]+)\/([^/?#]+)\.dbz(?:[?#]|$)/i,OVERVIEW_URL_RE=/\/overview\/([^/?#]+)\.dbz(?:[?#]|$)/i,LAYER_ID="mrms-native-numeric-viewport-chunks",HISTORY_MS=10800000,CACHE_NAME="zwx-mrala-rolling-archive-v1";
-const MOBILE=matchMedia?.("(pointer: coarse)")?.matches||/Android|iPhone|iPad|iPod/i.test(navigator.userAgent),MEM_GB=Math.max(2,Number(navigator.deviceMemory||8)),GPU_BUDGET=Math.round((MOBILE?Math.min(256,Math.max(128,MEM_GB*32)):Math.min(704,Math.max(384,MEM_GB*88)))*1048576),MEM_BUDGET=GPU_BUDGET,PREROLL=MOBILE?6:12,INITIAL_CONC=MOBILE?2:5,REGION_CONC=MOBILE?1:4,REGION_RUNWAY=MOBILE?4:10,LIVE_CONC=MOBILE?1:3;
-let manifest=null,memBytes=0,cachePromise=null,writesAllowed=true,lastPrune=0,pollTimer=0;
-const mem=new Map(),pins=new Set(),missing=new Set(),inflight=new Map(),previousFetch=fetch.bind(window);
-const urlOf=i=>String(typeof i==="string"?i:i?.url||"");
-const frameMs=f=>Date.parse(f?.valid_time||f?.validTime||"");
-function recent(m=manifest){const a=Array.isArray(m?.frames)?m.frames:[];if(!a.length)return[];const newest=a.reduce((v,f)=>Number.isFinite(frameMs(f))?Math.max(v,frameMs(f)):v,0),cut=(newest||Date.now())-HISTORY_MS;return a.filter(f=>f?.id&&f?.nativeChunksReady&&Number.isFinite(frameMs(f))&&frameMs(f)>=cut).sort((a,b)=>frameMs(a)-frameMs(b));}
-function frameSet(layer){const all=recent();if(!layer?.__zwxArchiveFrameIds?.length)return all;const w=new Set(layer.__zwxArchiveFrameIds.map(String));return all.filter(f=>w.has(String(f.id)));}
-const chunks=()=>new Map((manifest?.nativeChunking?.layout||[]).map(c=>[String(c.id),c]));
-function chunkUrl(fid,cid){const t=String(manifest?.nativeChunking?.template||"native-chunks/{frameId}/{chunkId}.dbz").replace("{frameId}",encodeURIComponent(String(fid))).replace("{chunkId}",encodeURIComponent(String(cid)));return new URL(t,BASE).toString();}
-function assetFrameId(url){const s=String(url||""),m=CHUNK_URL_RE.exec(s)||OVERVIEW_URL_RE.exec(s);if(!m)return"";try{return decodeURIComponent(m[1]);}catch{return String(m[1]);}}
-function trim(){while(memBytes>MEM_BUDGET&&mem.size>1){let u=null;for(const k of mem.keys())if(!pins.has(k)){u=k;break;}if(!u)break;const b=mem.get(u);mem.delete(u);memBytes-=Number(b?.byteLength||0);}}
-function putMem(u,b){if(!(b instanceof ArrayBuffer))return;const old=mem.get(u);if(old){memBytes-=old.byteLength;mem.delete(u);}mem.set(u,b);memBytes+=b.byteLength;trim();}
-function getMem(u){const b=mem.get(u);if(!b)return null;mem.delete(u);mem.set(u,b);return b;}
-function fallback(u){const m=CHUNK_URL_RE.exec(String(u||""));if(!m)return null;let id=m[2];try{id=decodeURIComponent(id);}catch{}const c=chunks().get(String(id)),n=Number(c?.width||0)*Number(c?.height||0);return n>0?new Uint8Array(n).buffer:null;}
-function responseFrom(b,src){return new Response(b.slice(0),{status:200,headers:{"content-length":String(b.byteLength),"content-type":"application/octet-stream","x-zwx-native-cache":src}});}
-function markMissing(u,s){if(missing.has(u))return;missing.add(u);if(missing.size<=5)console.warn("Native chunk unavailable; overview fallback",s,u);else if(missing.size===6)console.warn("Additional missing native-chunk warnings suppressed");}
-async function disk(){if(!("caches"in window))return null;if(!cachePromise)cachePromise=caches.open(CACHE_NAME).catch(()=>null);return cachePromise;}
-async function diskResponse(u){try{return(await disk())?.match(u)||null;}catch{return null;}}
-async function canWrite(){if(!writesAllowed)return false;if(!navigator.storage?.estimate)return true;try{const e=await navigator.storage.estimate(),q=Number(e.quota||0),use=Number(e.usage||0);if(q&&use/q>=.72){writesAllowed=false;console.warn("MRALA persistent cache paused at",Math.round(use/q*100)+"% browser storage use");return false;}}catch{}return true;}
-async function persist(u,r){if(!ASSET_RE.test(u)||!(await canWrite()))return;try{await(await disk())?.put(u,r.clone());}catch{}}
-async function prune(force=false){if(!manifest)return;const now=Date.now();if(!force&&now-lastPrune<600000)return;lastPrune=now;const valid=new Set(recent().map(f=>String(f.id))),c=await disk();if(!c||!valid.size)return;try{for(const req of await c.keys()){const u=String(req.url||"");if(!ASSET_RE.test(u))continue;const id=assetFrameId(u);if(id&&!valid.has(id)){await c.delete(req);const b=mem.get(u);if(b){mem.delete(u);memBytes-=b.byteLength;}}}}catch{}}
-async function capture(m,source="fetch"){const old=new Set(recent().map(f=>String(f.id)));manifest=m;window.__ZWX_MRALA_RUNTIME_MANIFEST__=m;prune().catch(()=>{});const added=recent().filter(f=>!old.has(String(f.id))),layer=window.__ZWX_MRALA_NATIVE_CHUNK_LAYER__;if(added.length&&layer?.__zwxArchiveSessionActive&&layer.__zwxRequestedVisibleIds?.length)stageNew(layer,added).catch(()=>{});if(added.length&&source==="poll")console.info("MRALA live edge:",added.length,"new scan(s) staged; history was not rebuilt");}
-window.fetch=async function(input,init){const u=urlOf(input);if(ASSET_RE.test(u)){if(CHUNK_RE.test(u)){const b=getMem(u);if(b)return responseFrom(b,missing.has(u)?"missing-overview-fallback":"archive-memory");if(missing.has(u)){const f=fallback(u);if(f){putMem(u,f);return responseFrom(f,"missing-overview-fallback");}}}const d=await diskResponse(u);if(d){if(CHUNK_RE.test(u))d.clone().arrayBuffer().then(b=>putMem(u,b)).catch(()=>{});return d;}}
-const r=await previousFetch(input,init);if(r.ok&&MANIFEST_RE.test(u)){try{await capture(await r.clone().json());}catch{}}else if(r.ok&&ASSET_RE.test(u)){persist(u,r).catch(()=>{});if(CHUNK_RE.test(u))r.clone().arrayBuffer().then(b=>putMem(u,b)).catch(()=>{});}else if(CHUNK_RE.test(u)&&(r.status===403||r.status===404)){const f=fallback(u);if(f){markMissing(u,r.status);putMem(u,f);return responseFrom(f,"missing-overview-fallback");}}return r;};
-async function bytes(u){const m=getMem(u);if(m)return m;const d=await diskResponse(u);if(d){const b=await d.arrayBuffer();putMem(u,b);return b;}if(inflight.has(u))return inflight.get(u);const p=(async()=>{const r=await window.fetch(u,{cache:"force-cache"});if(!r.ok)throw new Error(`Native archive HTTP ${r.status}`);const b=await r.arrayBuffer();putMem(u,b);return b;})();inflight.set(u,p);try{return await p;}finally{if(inflight.get(u)===p)inflight.delete(u);}}
-async function raw(b,n){if(b.byteLength===n)return new Uint8Array(b);const p=new Uint8Array(b);if(p[0]===0x1f&&p[1]===0x8b&&typeof DecompressionStream!=="undefined"){const s=new Blob([b]).stream().pipeThrough(new DecompressionStream("gzip"));return new Uint8Array(await new Response(s).arrayBuffer());}return p;}
-const key=(f,c)=>String(f)+":"+String(c),sig=ids=>[...new Set((ids||[]).map(String))].sort().join("|");
-function ordered(layer,frames){if(!frames.length)return[];let i=frames.findIndex(f=>String(f.id)===String(layer?.fromFrame||""));if(i<0||i===frames.length-1)i=0;const a=[...frames.slice(i),...frames.slice(0,i)],priority=new Set([layer?.fromFrame,layer?.toFrame].filter(Boolean).map(String));return [...a.filter(f=>priority.has(String(f.id))),...a.filter(f=>!priority.has(String(f.id)))];}
-async function gpuTarget(layer,t,p){const b=await bytes(t.url),k=key(t.frame.id,t.chunk.id);if(!layer.textures.has(k)){const n=Number(t.chunk.width)*Number(t.chunk.height),r=await raw(b,n);if(r.byteLength!==n)throw new Error(`Archive ${t.chunk.id} size ${r.byteLength} != ${n}`);layer.addTexture(t.frame.id,t.chunk,r);}if(layer.textures.has(k))p?.add(k);}
-async function region(layer,ids,generation){if(!layer?.__zwxArchiveSessionActive||!layer.enabled||!ids?.length||!manifest)return;const map=chunks(),cs=ids.map(id=>map.get(String(id))).filter(Boolean),fs=frameSet(layer);if(!cs.length||!fs.length)return;const os=ordered(layer,fs),runway=new Set(os.slice(0,REGION_RUNWAY).map(f=>String(f.id))),targets=[];for(const f of os)for(const c of cs)targets.push({frame:f,chunk:c,url:chunkUrl(f.id,c.id)});let cursor=0;const gp=new Set(),start=performance.now();async function worker(){while(cursor<targets.length){if(generation!==layer.__zwxRegionPrefetchGeneration)return;const t=targets[cursor++];try{if(runway.has(String(t.frame.id)))await gpuTarget(layer,t,gp);else await bytes(t.url);}catch(e){console.warn("MRALA archive region prefetch failed",t.frame?.id,t.chunk?.id,e);}}}await Promise.all(Array.from({length:Math.min(REGION_CONC,targets.length)},worker));if(generation!==layer.__zwxRegionPrefetchGeneration||!layer.__zwxArchiveSessionActive)return;layer.__zwxPinnedGpuKeys=gp;layer.map?.triggerRepaint();console.info("MRALA archive region ready:",fs.length+" frames",cs.length+" chunks/frame",gp.size+" GPU runway textures",Math.round(performance.now()-start)+" ms");}
-function schedule(layer,ids){if(!layer?.__zwxArchiveSessionActive||!ids?.length)return;const g=++layer.__zwxRegionPrefetchGeneration;clearTimeout(layer.__zwxRegionPrefetchTimer);layer.__zwxRegionPrefetchTimer=setTimeout(()=>region(layer,[...ids],g).catch(e=>console.warn("MRALA archive region warm failed",e)),20);}
-async function stageNew(layer,fs){const ids=[...(layer.__zwxRequestedVisibleIds||[])],map=chunks(),cs=ids.map(id=>map.get(String(id))).filter(Boolean),targets=[];for(const f of fs)for(const c of cs)targets.push(chunkUrl(f.id,c.id));let cursor=0;async function w(){while(cursor<targets.length)try{await bytes(targets[cursor++]);}catch{}}await Promise.all(Array.from({length:Math.min(LIVE_CONC,targets.length)},w));}
-async function poll(){try{const r=await previousFetch(`${MANIFEST_URL}?archivePoll=${Date.now()}`,{cache:"no-store"});if(r.ok)await capture(await r.json(),"poll");}catch(e){console.warn("MRALA live-edge poll failed",e);}}
-const mp=window.mapboxgl?.Map?.prototype;if(!mp?.addLayer)return;const prevAdd=mp.addLayer;
-mp.addLayer=function(layer,...args){const out=prevAdd.call(this,layer,...args);if(layer?.id!==LAYER_ID||layer.__zwxArchivePlaybackPatched)return out;layer.__zwxArchivePlaybackPatched=true;Object.assign(layer,{__zwxRequestedVisibleIds:[],__zwxViewportSignature:"",__zwxArchiveSessionActive:false,__zwxArchiveFrameIds:[],__zwxPreparePromise:null,__zwxPinnedGpuKeys:new Set(),__zwxBypassPlayGate:false,__zwxRegionPrefetchGeneration:0,__zwxRegionPrefetchTimer:0});const setVisible=layer.setVisible,setEnabled=layer.setEnabled,evict=layer.evictExcept;
-layer.setVisible=function(ids){const n=[...new Set((ids||[]).map(String))],s=sig(n),changed=s!==this.__zwxViewportSignature;this.__zwxRequestedVisibleIds=n;this.__zwxViewportSignature=s;if(changed&&this.__zwxArchiveSessionActive){this.__zwxPinnedGpuKeys=new Set();pins.clear();trim();schedule(this,n);}return setVisible.call(this,n);};
-layer.setEnabled=function(v){const r=setEnabled.call(this,v);if(v&&this.__zwxArchiveSessionActive)schedule(this,this.__zwxRequestedVisibleIds);return r;};
-layer.evictExcept=function(keep){if(!this.__zwxPinnedGpuKeys.size)return evict.call(this,keep);const all=new Set(keep||[]);for(const k of this.__zwxPinnedGpuKeys)all.add(k);return evict.call(this,all);};
-layer.__zwxPrepareArchiveForPlay=async function(progress){const ids=[...this.__zwxRequestedVisibleIds];if(!this.enabled||!ids.length||!manifest)return{ready:false};if(this.__zwxArchiveSessionActive)return{ready:true,cached:true};if(this.__zwxPreparePromise)return this.__zwxPreparePromise;const map=chunks(),cs=ids.map(id=>map.get(String(id))).filter(Boolean),fs=recent();if(!cs.length||!fs.length)return{ready:false};const bpf=cs.reduce((s,c)=>s+Number(c.width||0)*Number(c.height||0),0),limit=Math.max(1,Math.min(fs.length,Math.floor(GPU_BUDGET/Math.max(1,bpf)))),full=limit>=fs.length,count=full?fs.length:Math.min(limit,PREROLL),os=ordered(this,fs),pre=new Set(os.slice(0,count).map(f=>String(f.id))),targets=[];for(const f of os)for(const c of cs)targets.push({frame:f,chunk:c,url:chunkUrl(f.id,c.id)});pins.clear();for(const t of targets)pins.add(t.url);const gp=new Set();let cursor=0,done=0,fail=0,start=performance.now();this.__zwxPinnedGpuKeys=gp;const p=(async()=>{async function w(){while(cursor<targets.length){const t=targets[cursor++];try{if(pre.has(String(t.frame.id)))await gpuTarget(layer,t,gp);else await bytes(t.url);}catch(e){fail++;console.warn("MRALA archive initial preload failed",t.frame?.id,t.chunk?.id,e);}finally{done++;progress?.(done,targets.length,full);}}}await Promise.all(Array.from({length:Math.min(INITIAL_CONC,targets.length)},w));if(fail)return{ready:false,failed:fail};layer.__zwxArchiveSessionActive=true;layer.__zwxArchiveFrameIds=fs.map(f=>String(f.id));layer.__zwxPinnedGpuKeys=gp;pins.clear();trim();prune(true).catch(()=>{});window.__ZWX_MRALA_ARCHIVE_SESSION__={revision:String(manifest?.revision||""),frameIds:[...layer.__zwxArchiveFrameIds],startedAt:new Date().toISOString(),persistentCache:CACHE_NAME};layer.map?.triggerRepaint();if(!pollTimer)pollTimer=setInterval(poll,60000);console.info("MRALA archive playback ready:",fs.length+" frames",cs.length+" chunks/frame",full?"full loop GPU-resident":count+"-frame GPU runway + full viewport persisted",Math.round(performance.now()-start)+" ms");return{ready:true};})();this.__zwxPreparePromise=p;try{return await p;}finally{if(this.__zwxPreparePromise===p)this.__zwxPreparePromise=null;}};
-layer.__zwxPrepareHdForPlay=layer.__zwxPrepareArchiveForPlay;layer.__zwxScheduleArchiveRegionPrefetch=ids=>schedule(layer,ids||layer.__zwxRequestedVisibleIds);window.__ZWX_MRALA_NATIVE_CHUNK_LAYER__=layer;window.__ZWX_MRALA_MISSING_NATIVE_URLS__=missing;console.info("MRALA archive player v2: immutable 3h history • persistent visited-region cache • newest scans staged only");return out;};
-addEventListener("DOMContentLoaded",()=>{const b=document.getElementById("playPause");if(!b)return;b.addEventListener("click",async e=>{const l=window.__ZWX_MRALA_NATIVE_CHUNK_LAYER__;if(!l?.enabled||!l.__zwxRequestedVisibleIds?.length||/Pause/i.test(String(b.textContent||"")))return;if(l.__zwxBypassPlayGate){l.__zwxBypassPlayGate=false;return;}if(l.__zwxArchiveSessionActive)return;e.preventDefault();e.stopImmediatePropagation();const old=b.textContent;b.disabled=true;try{const r=await l.__zwxPrepareArchiveForPlay((d,t,full)=>{const p=t?Math.round(d*100/t):0;b.textContent=full?`Preparing archive ${p}%`:`Caching archive ${p}%`;});if(!r?.ready){b.textContent=old||"▶ Play";return;}b.disabled=false;b.textContent="▶ Play";l.__zwxBypassPlayGate=true;b.click();}catch(err){console.warn("MRALA archive Play preparation failed",err);b.textContent=old||"▶ Play";}finally{b.disabled=false;}},true);},{once:true});
+(() => {
+  "use strict";
+
+  const path = String(location.pathname || "");
+  if (!/\/mosaic-radar-home\.html$/i.test(path) || window.__ZWX_MRALA_ARCHIVE_PLAYBACK__) return;
+  window.__ZWX_MRALA_ARCHIVE_PLAYBACK__ = true;
+
+  const BASE = "https://dt0cd6bl1yqh2.cloudfront.net/mrms-native-numeric/";
+  const MANIFEST_URL = BASE + "manifest.json";
+  const MANIFEST_RE = /\/mrms-native-numeric\/manifest\.json(?:[?#]|$)/i;
+  const CHUNK_RE = /\/mrms-native-numeric\/native-chunks\//i;
+  const ASSET_RE = /\/mrms-native-numeric\/(?:native-chunks|overview)\//i;
+  const CHUNK_URL_RE = /\/native-chunks\/([^/]+)\/([^/?#]+)\.dbz(?:[?#]|$)/i;
+  const OVERVIEW_URL_RE = /\/overview\/([^/?#]+)\.dbz(?:[?#]|$)/i;
+  const LAYER_ID = "mrms-native-numeric-viewport-chunks";
+  const HISTORY_MS = 3 * 60 * 60 * 1000;
+  const CACHE_NAME = "zwx-mrala-rolling-archive-v2";
+  const NATIVE_PREWARM_ZOOM = 5.15;
+
+  const MOBILE = matchMedia?.("(pointer: coarse)")?.matches ||
+    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const MEM_GB = Math.max(2, Number(navigator.deviceMemory || 8));
+  const GPU_BUDGET = Math.round(
+    (MOBILE
+      ? Math.min(256, Math.max(128, MEM_GB * 32))
+      : Math.min(704, Math.max(384, MEM_GB * 88))) * 1048576
+  );
+  const MEM_BUDGET = GPU_BUDGET;
+  const MIN_GPU_RUNWAY = MOBILE ? 6 : 12;
+  const INITIAL_CONC = MOBILE ? 2 : 5;
+  const REGION_CONC = MOBILE ? 2 : 5;
+  const LIVE_CONC = MOBILE ? 1 : 3;
+
+  let manifest = null;
+  let memBytes = 0;
+  let cachePromise = null;
+  let writesAllowed = true;
+  let lastPrune = 0;
+  let pollTimer = 0;
+
+  const mem = new Map();
+  const pinnedUrls = new Set();
+  const missing = new Set();
+  const inflight = new Map();
+  const previousFetch = fetch.bind(window);
+
+  const urlOf = input => String(typeof input === "string" ? input : input?.url || "");
+  const frameMs = frame => Date.parse(frame?.valid_time || frame?.validTime || "");
+  const key = (frameId, chunkId) => String(frameId) + ":" + String(chunkId);
+  const signature = ids => [...new Set((ids || []).map(String))].sort().join("|");
+
+  function recent(source = manifest) {
+    const all = Array.isArray(source?.frames) ? source.frames : [];
+    if (!all.length) return [];
+    const newest = all.reduce((value, frame) => {
+      const ms = frameMs(frame);
+      return Number.isFinite(ms) ? Math.max(value, ms) : value;
+    }, 0);
+    const cutoff = (newest || Date.now()) - HISTORY_MS;
+    return all
+      .filter(frame => frame?.id && frame?.nativeChunksReady && Number.isFinite(frameMs(frame)) && frameMs(frame) >= cutoff)
+      .sort((a, b) => frameMs(a) - frameMs(b));
+  }
+
+  function chunkMap() {
+    return new Map((manifest?.nativeChunking?.layout || []).map(chunk => [String(chunk.id), chunk]));
+  }
+
+  function chunkUrl(frameId, chunkId) {
+    const template = String(
+      manifest?.nativeChunking?.template || "native-chunks/{frameId}/{chunkId}.dbz"
+    )
+      .replace("{frameId}", encodeURIComponent(String(frameId)))
+      .replace("{chunkId}", encodeURIComponent(String(chunkId)));
+    return new URL(template, BASE).toString();
+  }
+
+  function assetFrameId(url) {
+    const match = CHUNK_URL_RE.exec(String(url || "")) || OVERVIEW_URL_RE.exec(String(url || ""));
+    if (!match) return "";
+    try { return decodeURIComponent(match[1]); } catch { return String(match[1]); }
+  }
+
+  function trimMemory() {
+    while (memBytes > MEM_BUDGET && mem.size > 1) {
+      let evictUrl = null;
+      for (const candidate of mem.keys()) {
+        if (!pinnedUrls.has(candidate)) {
+          evictUrl = candidate;
+          break;
+        }
+      }
+      if (!evictUrl) break;
+      const bytes = mem.get(evictUrl);
+      mem.delete(evictUrl);
+      memBytes -= Number(bytes?.byteLength || 0);
+    }
+  }
+
+  function putMem(url, bytes) {
+    if (!(bytes instanceof ArrayBuffer)) return;
+    const old = mem.get(url);
+    if (old) {
+      memBytes -= old.byteLength;
+      mem.delete(url);
+    }
+    mem.set(url, bytes);
+    memBytes += bytes.byteLength;
+    trimMemory();
+  }
+
+  function getMem(url) {
+    const bytes = mem.get(url);
+    if (!bytes) return null;
+    mem.delete(url);
+    mem.set(url, bytes);
+    return bytes;
+  }
+
+  function fallback(url) {
+    const match = CHUNK_URL_RE.exec(String(url || ""));
+    if (!match) return null;
+    let chunkId = match[2];
+    try { chunkId = decodeURIComponent(chunkId); } catch {}
+    const chunk = chunkMap().get(String(chunkId));
+    const expected = Number(chunk?.width || 0) * Number(chunk?.height || 0);
+    return expected > 0 ? new Uint8Array(expected).buffer : null;
+  }
+
+  function responseFrom(bytes, source) {
+    return new Response(bytes.slice(0), {
+      status: 200,
+      headers: {
+        "content-length": String(bytes.byteLength),
+        "content-type": "application/octet-stream",
+        "x-zwx-native-cache": source
+      }
+    });
+  }
+
+  function markMissing(url, status) {
+    if (missing.has(url)) return;
+    missing.add(url);
+    if (missing.size <= 5) console.warn("Native chunk unavailable; overview fallback", status, url);
+    else if (missing.size === 6) console.warn("Additional missing native-chunk warnings suppressed");
+  }
+
+  async function disk() {
+    if (!("caches" in window)) return null;
+    if (!cachePromise) cachePromise = caches.open(CACHE_NAME).catch(() => null);
+    return cachePromise;
+  }
+
+  async function diskResponse(url) {
+    try { return (await disk())?.match(url) || null; } catch { return null; }
+  }
+
+  async function canWrite() {
+    if (!writesAllowed) return false;
+    if (!navigator.storage?.estimate) return true;
+    try {
+      const estimate = await navigator.storage.estimate();
+      const quota = Number(estimate.quota || 0);
+      const usage = Number(estimate.usage || 0);
+      if (quota && usage / quota >= 0.72) {
+        writesAllowed = false;
+        console.warn("MRALA persistent cache paused at", Math.round(usage / quota * 100) + "% browser storage use");
+        return false;
+      }
+    } catch {}
+    return true;
+  }
+
+  async function persist(url, response) {
+    if (!ASSET_RE.test(url) || !(await canWrite())) return;
+    try { await (await disk())?.put(url, response.clone()); } catch {}
+  }
+
+  async function prune(force = false) {
+    if (!manifest) return;
+    const now = Date.now();
+    if (!force && now - lastPrune < 10 * 60 * 1000) return;
+    lastPrune = now;
+    const valid = new Set(recent().map(frame => String(frame.id)));
+    const cache = await disk();
+    if (!cache || !valid.size) return;
+    try {
+      for (const request of await cache.keys()) {
+        const url = String(request.url || "");
+        if (!ASSET_RE.test(url)) continue;
+        const frameId = assetFrameId(url);
+        if (frameId && !valid.has(frameId)) {
+          await cache.delete(request);
+          const bytes = mem.get(url);
+          if (bytes) {
+            mem.delete(url);
+            memBytes -= bytes.byteLength;
+          }
+        }
+      }
+    } catch {}
+  }
+
+  async function capture(nextManifest, source = "fetch") {
+    const oldIds = new Set(recent().map(frame => String(frame.id)));
+    manifest = nextManifest;
+    window.__ZWX_MRALA_RUNTIME_MANIFEST__ = manifest;
+    prune().catch(() => {});
+
+    const layer = window.__ZWX_MRALA_NATIVE_CHUNK_LAYER__;
+    const nowFrames = recent();
+    const added = nowFrames.filter(frame => !oldIds.has(String(frame.id)));
+
+    if (layer) {
+      layer.__zwxArchiveFrameIds = nowFrames.map(frame => String(frame.id));
+      if (added.length && layer.__zwxRequestedVisibleIds?.length) {
+        stageNew(layer, added).catch(() => {});
+      }
+      if (layer.enabled && layer.__zwxRequestedVisibleIds?.length) {
+        scheduleRegion(layer, layer.__zwxRequestedVisibleIds, 0);
+      }
+    }
+
+    if (added.length && source === "poll") {
+      console.info("MRALA live edge:", added.length, "new scan(s) appended; previous history reused");
+    }
+  }
+
+  window.fetch = async function (input, init) {
+    const url = urlOf(input);
+
+    if (ASSET_RE.test(url)) {
+      if (CHUNK_RE.test(url)) {
+        const memory = getMem(url);
+        if (memory) return responseFrom(memory, missing.has(url) ? "missing-overview-fallback" : "archive-memory");
+        if (missing.has(url)) {
+          const noData = fallback(url);
+          if (noData) {
+            putMem(url, noData);
+            return responseFrom(noData, "missing-overview-fallback");
+          }
+        }
+      }
+
+      const cached = await diskResponse(url);
+      if (cached) {
+        if (CHUNK_RE.test(url)) cached.clone().arrayBuffer().then(bytes => putMem(url, bytes)).catch(() => {});
+        return cached;
+      }
+    }
+
+    const response = await previousFetch(input, init);
+
+    if (response.ok && MANIFEST_RE.test(url)) {
+      try { await capture(await response.clone().json()); } catch {}
+    } else if (response.ok && ASSET_RE.test(url)) {
+      persist(url, response).catch(() => {});
+      if (CHUNK_RE.test(url)) response.clone().arrayBuffer().then(bytes => putMem(url, bytes)).catch(() => {});
+    } else if (CHUNK_RE.test(url) && (response.status === 403 || response.status === 404)) {
+      const noData = fallback(url);
+      if (noData) {
+        markMissing(url, response.status);
+        putMem(url, noData);
+        return responseFrom(noData, "missing-overview-fallback");
+      }
+    }
+
+    return response;
+  };
+
+  async function bytes(url) {
+    const memory = getMem(url);
+    if (memory) return memory;
+
+    const cached = await diskResponse(url);
+    if (cached) {
+      const data = await cached.arrayBuffer();
+      putMem(url, data);
+      return data;
+    }
+
+    if (inflight.has(url)) return inflight.get(url);
+
+    const promise = (async () => {
+      const response = await window.fetch(url, { cache: "force-cache" });
+      if (!response.ok) throw new Error(`Native archive HTTP ${response.status}`);
+      const data = await response.arrayBuffer();
+      putMem(url, data);
+      return data;
+    })();
+
+    inflight.set(url, promise);
+    try { return await promise; }
+    finally { if (inflight.get(url) === promise) inflight.delete(url); }
+  }
+
+  async function raw(bytesValue, expected) {
+    if (bytesValue.byteLength === expected) return new Uint8Array(bytesValue);
+    const probe = new Uint8Array(bytesValue);
+    if (probe[0] === 0x1f && probe[1] === 0x8b && typeof DecompressionStream !== "undefined") {
+      const stream = new Blob([bytesValue]).stream().pipeThrough(new DecompressionStream("gzip"));
+      return new Uint8Array(await new Response(stream).arrayBuffer());
+    }
+    return probe;
+  }
+
+  function orderedFrames(layer, frames) {
+    if (!frames.length) return [];
+    let index = frames.findIndex(frame => String(frame.id) === String(layer?.fromFrame || ""));
+    if (index < 0 || index === frames.length - 1) index = 0;
+    const rotated = [...frames.slice(index), ...frames.slice(0, index)];
+    const priority = new Set([layer?.fromFrame, layer?.toFrame].filter(Boolean).map(String));
+    return [
+      ...rotated.filter(frame => priority.has(String(frame.id))),
+      ...rotated.filter(frame => !priority.has(String(frame.id)))
+    ];
+  }
+
+  async function gpuTarget(layer, target, gpuPins) {
+    const packed = await bytes(target.url);
+    const textureKey = key(target.frame.id, target.chunk.id);
+    if (!layer.textures.has(textureKey)) {
+      const expected = Number(target.chunk.width) * Number(target.chunk.height);
+      const unpacked = await raw(packed, expected);
+      if (unpacked.byteLength !== expected) {
+        throw new Error(`Archive ${target.chunk.id} size ${unpacked.byteLength} != ${expected}`);
+      }
+      layer.addTexture(target.frame.id, target.chunk, unpacked);
+    }
+    if (layer.textures.has(textureKey)) gpuPins?.add(textureKey);
+  }
+
+  function gpuPlan(frames, chunksForView) {
+    const bytesPerFrame = chunksForView.reduce(
+      (sum, chunk) => sum + Number(chunk.width || 0) * Number(chunk.height || 0),
+      0
+    );
+    const frameLimit = Math.max(
+      1,
+      Math.min(frames.length, Math.floor(GPU_BUDGET / Math.max(1, bytesPerFrame)))
+    );
+    const full = frameLimit >= frames.length;
+    const count = full
+      ? frames.length
+      : Math.max(1, Math.min(frameLimit, Math.max(MIN_GPU_RUNWAY, Math.floor(frameLimit * 0.85))));
+    return { bytesPerFrame, frameLimit, full, count };
+  }
+
+  async function warmRegion(layer, ids, generation, progress) {
+    if (!layer || !ids?.length || !manifest) return { ready: false };
+
+    const byId = chunkMap();
+    const chunksForView = ids.map(id => byId.get(String(id))).filter(Boolean);
+    const frames = recent();
+    if (!chunksForView.length || !frames.length) return { ready: false };
+
+    layer.__zwxArchiveSessionActive = true;
+    layer.__zwxArchiveFrameIds = frames.map(frame => String(frame.id));
+
+    const ordered = orderedFrames(layer, frames);
+    const plan = gpuPlan(frames, chunksForView);
+    const gpuFrameIds = new Set(ordered.slice(0, plan.count).map(frame => String(frame.id)));
+    const targets = [];
+    for (const frame of ordered) {
+      for (const chunk of chunksForView) {
+        targets.push({ frame, chunk, url: chunkUrl(frame.id, chunk.id) });
+      }
+    }
+
+    pinnedUrls.clear();
+    for (const target of targets) pinnedUrls.add(target.url);
+
+    const gpuPins = new Set();
+    let cursor = 0;
+    let completed = 0;
+    let failed = 0;
+    const started = performance.now();
+
+    async function worker() {
+      while (cursor < targets.length) {
+        if (generation !== layer.__zwxRegionWarmGeneration) return;
+        const target = targets[cursor++];
+        try {
+          if (gpuFrameIds.has(String(target.frame.id))) {
+            await gpuTarget(layer, target, gpuPins);
+          } else {
+            await bytes(target.url);
+          }
+        } catch (error) {
+          failed += 1;
+          console.warn("MRALA native archive warm failed", target.frame?.id, target.chunk?.id, error);
+        } finally {
+          completed += 1;
+          progress?.(completed, targets.length, plan.full);
+        }
+      }
+    }
+
+    await Promise.all(
+      Array.from({ length: Math.min(REGION_CONC, targets.length) }, () => worker())
+    );
+
+    if (generation !== layer.__zwxRegionWarmGeneration) return { ready: false, superseded: true };
+    if (failed) return { ready: false, failed };
+
+    layer.__zwxPinnedGpuKeys = gpuPins;
+    layer.__zwxRegionReadySignature = signature(ids);
+    layer.__zwxFullGpuResident = plan.full;
+    layer.__zwxGpuResidentFrames = plan.count;
+    layer.map?.triggerRepaint();
+    layer.__zwxSetArchiveSuppressed?.(false);
+
+    pinnedUrls.clear();
+    trimMemory();
+    prune(true).catch(() => {});
+
+    window.__ZWX_MRALA_ARCHIVE_SESSION__ = {
+      revision: String(manifest?.revision || ""),
+      frameIds: [...layer.__zwxArchiveFrameIds],
+      regionSignature: layer.__zwxRegionReadySignature,
+      fullGpuResident: plan.full,
+      gpuFrames: plan.count,
+      persistentCache: CACHE_NAME,
+      startedAt: new Date().toISOString()
+    };
+
+    if (!pollTimer) pollTimer = setInterval(poll, 60 * 1000);
+
+    console.info(
+      "MRALA native region ready before playback:",
+      frames.length + " frames",
+      chunksForView.length + " chunks/frame",
+      plan.full ? "FULL LOOP GPU-resident" : plan.count + " GPU frames + full local archive",
+      Math.round(performance.now() - started) + " ms"
+    );
+
+    return { ready: true, fullGpuResident: plan.full, gpuFrames: plan.count };
+  }
+
+  function scheduleRegion(layer, ids, delay = 20, progress) {
+    if (!layer || !ids?.length || !manifest) return Promise.resolve({ ready: false });
+    const nextSignature = signature(ids);
+    if (layer.__zwxRegionReadySignature === nextSignature) {
+      return Promise.resolve({ ready: true, cached: true, fullGpuResident: layer.__zwxFullGpuResident });
+    }
+
+    const generation = ++layer.__zwxRegionWarmGeneration;
+    clearTimeout(layer.__zwxRegionWarmTimer);
+
+    const promise = new Promise(resolve => {
+      layer.__zwxRegionWarmTimer = setTimeout(() => {
+        warmRegion(layer, [...ids], generation, progress)
+          .then(resolve)
+          .catch(error => {
+            console.warn("MRALA native archive region warm failed", error);
+            resolve({ ready: false, error });
+          });
+      }, delay);
+    });
+
+    layer.__zwxRegionWarmPromise = promise;
+    return promise;
+  }
+
+  function visibleChunkIds(map) {
+    if (!map || !manifest?.nativeChunking?.layout?.length) return [];
+    const bounds = map.getBounds?.();
+    if (!bounds) return [];
+    const west = bounds.getWest();
+    const east = bounds.getEast();
+    const south = bounds.getSouth();
+    const north = bounds.getNorth();
+    return manifest.nativeChunking.layout
+      .filter(chunk => {
+        const b = chunk?.bounds;
+        if (!Array.isArray(b) || b.length < 4) return false;
+        const [cw, cs, ce, cn] = b.map(Number);
+        return ce >= west && cw <= east && cn >= south && cs <= north;
+      })
+      .map(chunk => String(chunk.id));
+  }
+
+  function prewarmForCamera(layer) {
+    if (!layer?.map || !manifest) return;
+    if (Number(layer.map.getZoom?.() || 0) < NATIVE_PREWARM_ZOOM) return;
+    const ids = visibleChunkIds(layer.map);
+    if (!ids.length) return;
+    scheduleRegion(layer, ids, 35);
+  }
+
+  async function stageNew(layer, newFrames) {
+    const ids = [...(layer.__zwxRequestedVisibleIds || [])];
+    if (!ids.length) return;
+    const byId = chunkMap();
+    const chunksForView = ids.map(id => byId.get(String(id))).filter(Boolean);
+    if (!chunksForView.length) return;
+
+    const validFrames = new Set(recent().map(frame => String(frame.id)));
+    layer.__zwxArchiveFrameIds = [...validFrames];
+    layer.__zwxPinnedGpuKeys = new Set(
+      [...(layer.__zwxPinnedGpuKeys || [])].filter(textureKey => validFrames.has(String(textureKey).split(":")[0]))
+    );
+
+    const targets = [];
+    for (const frame of newFrames) {
+      for (const chunk of chunksForView) {
+        targets.push({ frame, chunk, url: chunkUrl(frame.id, chunk.id) });
+      }
+    }
+
+    let cursor = 0;
+    async function worker() {
+      while (cursor < targets.length) {
+        const target = targets[cursor++];
+        try {
+          if (layer.__zwxFullGpuResident) await gpuTarget(layer, target, layer.__zwxPinnedGpuKeys);
+          else await bytes(target.url);
+        } catch {}
+      }
+    }
+
+    await Promise.all(Array.from({ length: Math.min(LIVE_CONC, targets.length) }, () => worker()));
+    layer.map?.triggerRepaint();
+  }
+
+  async function poll() {
+    try {
+      const response = await previousFetch(`${MANIFEST_URL}?archivePoll=${Date.now()}`, { cache: "no-store" });
+      if (response.ok) await capture(await response.json(), "poll");
+    } catch (error) {
+      console.warn("MRALA live-edge poll failed", error);
+    }
+  }
+
+  const mapPrototype = window.mapboxgl?.Map?.prototype;
+  if (!mapPrototype?.addLayer) return;
+  const previousAddLayer = mapPrototype.addLayer;
+
+  mapPrototype.addLayer = function (layer, ...args) {
+    const result = previousAddLayer.call(this, layer, ...args);
+    if (layer?.id !== LAYER_ID || layer.__zwxArchivePlaybackPatched) return result;
+
+    layer.__zwxArchivePlaybackPatched = true;
+    Object.assign(layer, {
+      __zwxRequestedVisibleIds: [],
+      __zwxViewportSignature: "",
+      __zwxRegionReadySignature: "",
+      __zwxArchiveSessionActive: false,
+      __zwxArchiveFrameIds: [],
+      __zwxPinnedGpuKeys: new Set(),
+      __zwxFullGpuResident: false,
+      __zwxGpuResidentFrames: 0,
+      __zwxRegionWarmGeneration: 0,
+      __zwxRegionWarmTimer: 0,
+      __zwxRegionWarmPromise: null,
+      __zwxBypassPlayGate: false
+    });
+
+    const originalSetVisible = layer.setVisible;
+    const originalSetEnabled = layer.setEnabled;
+    const originalEvictExcept = layer.evictExcept;
+
+    layer.setVisible = function (ids) {
+      const nextIds = [...new Set((ids || []).map(String))];
+      const nextSignature = signature(nextIds);
+      const changed = nextSignature !== this.__zwxViewportSignature;
+      this.__zwxRequestedVisibleIds = nextIds;
+      this.__zwxViewportSignature = nextSignature;
+
+      const output = originalSetVisible.call(this, nextIds);
+
+      if (changed && nextIds.length) {
+        this.__zwxRegionReadySignature = "";
+        this.__zwxPinnedGpuKeys = new Set();
+        this.__zwxSetArchiveSuppressed?.(true);
+        scheduleRegion(this, nextIds, 20);
+      }
+      return output;
+    };
+
+    layer.setEnabled = function (enabled) {
+      const output = originalSetEnabled.call(this, enabled);
+      if (enabled) {
+        const ids = this.__zwxRequestedVisibleIds?.length
+          ? this.__zwxRequestedVisibleIds
+          : visibleChunkIds(this.map);
+        if (ids.length) scheduleRegion(this, ids, 0);
+      }
+      return output;
+    };
+
+    layer.evictExcept = function (keep) {
+      if (!this.__zwxPinnedGpuKeys.size) return originalEvictExcept.call(this, keep);
+      const combined = new Set(keep || []);
+      for (const textureKey of this.__zwxPinnedGpuKeys) combined.add(textureKey);
+      return originalEvictExcept.call(this, combined);
+    };
+
+    layer.__zwxPrepareArchiveForPlay = async function (progress) {
+      const ids = this.__zwxRequestedVisibleIds?.length
+        ? [...this.__zwxRequestedVisibleIds]
+        : visibleChunkIds(this.map);
+      if (!ids.length || !manifest) return { ready: false };
+
+      const wanted = signature(ids);
+      if (this.__zwxRegionReadySignature === wanted) {
+        return { ready: true, cached: true, fullGpuResident: this.__zwxFullGpuResident };
+      }
+
+      return scheduleRegion(this, ids, 0, progress);
+    };
+
+    layer.__zwxPrepareHdForPlay = layer.__zwxPrepareArchiveForPlay;
+    layer.__zwxScheduleArchiveRegionPrefetch = ids => scheduleRegion(layer, ids || layer.__zwxRequestedVisibleIds, 0);
+    layer.__zwxPrewarmForCamera = () => prewarmForCamera(layer);
+
+    window.__ZWX_MRALA_NATIVE_CHUNK_LAYER__ = layer;
+    window.__ZWX_MRALA_MISSING_NATIVE_URLS__ = missing;
+
+    const cameraWarm = () => prewarmForCamera(layer);
+    layer.map?.on?.("zoom", cameraWarm);
+    layer.map?.on?.("moveend", cameraWarm);
+    setTimeout(cameraWarm, 0);
+
+    console.info(
+      "MRALA archive player v3: native quality warms on zoom, independent of playback • full loop GPU-resident when budget allows"
+    );
+    return result;
+  };
+
+  addEventListener("DOMContentLoaded", () => {
+    const button = document.getElementById("playPause");
+    if (!button) return;
+
+    button.addEventListener("click", async event => {
+      const layer = window.__ZWX_MRALA_NATIVE_CHUNK_LAYER__;
+      if (!layer?.enabled || !layer.__zwxRequestedVisibleIds?.length || /Pause/i.test(String(button.textContent || ""))) return;
+      if (layer.__zwxBypassPlayGate) {
+        layer.__zwxBypassPlayGate = false;
+        return;
+      }
+
+      const wanted = signature(layer.__zwxRequestedVisibleIds);
+      if (layer.__zwxRegionReadySignature === wanted) return;
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const oldText = button.textContent;
+      button.disabled = true;
+
+      try {
+        const prepared = await layer.__zwxPrepareArchiveForPlay((done, total, full) => {
+          const percent = total ? Math.round(done * 100 / total) : 0;
+          button.textContent = full ? `Finishing native ${percent}%` : `Caching native ${percent}%`;
+        });
+        if (!prepared?.ready) {
+          button.textContent = oldText || "▶ Play";
+          return;
+        }
+        button.disabled = false;
+        button.textContent = "▶ Play";
+        layer.__zwxBypassPlayGate = true;
+        button.click();
+      } catch (error) {
+        console.warn("MRALA native archive Play gate failed", error);
+        button.textContent = oldText || "▶ Play";
+      } finally {
+        button.disabled = false;
+      }
+    }, true);
+  }, { once: true });
 })();
 
-(()=>{
-"use strict";const path=String(location.pathname||"");if(!/\/mosaic-radar-home\.html$/i.test(path)||window.__ZWX_MRALA_ARCHIVE_SYNC_GUARD__)return;window.__ZWX_MRALA_ARCHIVE_SYNC_GUARD__=true;const ID="mrms-native-numeric-viewport-chunks",mp=window.mapboxgl?.Map?.prototype;if(!mp?.addLayer)return;const prev=mp.addLayer;mp.addLayer=function(layer,...args){const out=prev.call(this,layer,...args);if(layer?.id!==ID||layer.__zwxArchiveSyncGuardPatched)return out;layer.__zwxArchiveSyncGuardPatched=true;layer.__zwxDisplaySuppressed=false;const render=layer.render,has=layer.hasFrame,activate=layer.activateFrame,blend=layer.setBlendFrames,visible=layer.setVisible;function suppress(x,v){v=!!v;if(x.__zwxDisplaySuppressed===v)return;x.__zwxDisplaySuppressed=v;x.map?.triggerRepaint();}function warm(x){if(x?.__zwxArchiveSessionActive&&x.enabled&&typeof x.__zwxScheduleArchiveRegionPrefetch==="function")x.__zwxScheduleArchiveRegionPrefetch(x.__zwxRequestedVisibleIds);}layer.render=function(gl,m){if(this.__zwxDisplaySuppressed)return;return render.call(this,gl,m);};layer.hasFrame=function(fid,ids){const ok=has.call(this,fid,ids);if(!ok&&this.__zwxArchiveSessionActive&&this.enabled){suppress(this,true);warm(this);}return ok;};layer.activateFrame=function(...a){const ok=activate.apply(this,a);if(ok)suppress(this,false);return ok;};layer.setBlendFrames=function(...a){const ok=blend.apply(this,a);if(ok)suppress(this,false);return ok;};layer.setVisible=function(ids){const before=String(this.__zwxViewportSignature||""),r=visible.call(this,ids),after=String(this.__zwxViewportSignature||"");if(this.__zwxArchiveSessionActive&&this.enabled&&before!==after)suppress(this,true);return r;};console.info("MRALA archive sync v2: stale HD hidden • current region restored first • no viewport re-prepare");return out;};
+(() => {
+  "use strict";
+
+  const path = String(location.pathname || "");
+  if (!/\/mosaic-radar-home\.html$/i.test(path) || window.__ZWX_MRALA_ARCHIVE_SYNC_GUARD__) return;
+  window.__ZWX_MRALA_ARCHIVE_SYNC_GUARD__ = true;
+
+  const ID = "mrms-native-numeric-viewport-chunks";
+  const mapPrototype = window.mapboxgl?.Map?.prototype;
+  if (!mapPrototype?.addLayer) return;
+  const previousAddLayer = mapPrototype.addLayer;
+
+  mapPrototype.addLayer = function (layer, ...args) {
+    const result = previousAddLayer.call(this, layer, ...args);
+    if (layer?.id !== ID || layer.__zwxArchiveSyncGuardPatched) return result;
+
+    layer.__zwxArchiveSyncGuardPatched = true;
+    layer.__zwxDisplaySuppressed = false;
+
+    const originalRender = layer.render;
+    const originalHasFrame = layer.hasFrame;
+    const originalActivateFrame = layer.activateFrame;
+    const originalSetBlendFrames = layer.setBlendFrames;
+    const originalSetVisible = layer.setVisible;
+
+    function suppress(instance, value) {
+      const next = Boolean(value);
+      if (instance.__zwxDisplaySuppressed === next) return;
+      instance.__zwxDisplaySuppressed = next;
+      instance.map?.triggerRepaint();
+    }
+
+    function regionReady(instance) {
+      return Boolean(
+        instance.__zwxViewportSignature &&
+        instance.__zwxRegionReadySignature === instance.__zwxViewportSignature
+      );
+    }
+
+    function warm(instance) {
+      if (instance?.enabled && typeof instance.__zwxScheduleArchiveRegionPrefetch === "function") {
+        instance.__zwxScheduleArchiveRegionPrefetch(instance.__zwxRequestedVisibleIds);
+      }
+    }
+
+    layer.__zwxSetArchiveSuppressed = value => suppress(layer, value);
+
+    layer.render = function (gl, matrix) {
+      if (this.__zwxDisplaySuppressed) return;
+      return originalRender.call(this, gl, matrix);
+    };
+
+    layer.hasFrame = function (frameId, ids) {
+      const ready = originalHasFrame.call(this, frameId, ids);
+      if (!ready && this.enabled) {
+        suppress(this, true);
+        warm(this);
+      }
+      return ready;
+    };
+
+    layer.activateFrame = function (...args) {
+      const ready = originalActivateFrame.apply(this, args);
+      if (ready && regionReady(this)) suppress(this, false);
+      else if (!regionReady(this)) suppress(this, true);
+      return ready;
+    };
+
+    layer.setBlendFrames = function (...args) {
+      const ready = originalSetBlendFrames.apply(this, args);
+      if (ready && regionReady(this)) suppress(this, false);
+      else if (!regionReady(this)) suppress(this, true);
+      return ready;
+    };
+
+    layer.setVisible = function (ids) {
+      const before = String(this.__zwxViewportSignature || "");
+      const output = originalSetVisible.call(this, ids);
+      const after = String(this.__zwxViewportSignature || "");
+      if (this.enabled && before !== after) suppress(this, true);
+      return output;
+    };
+
+    console.info(
+      "MRALA archive sync v3: HD remains hidden until the zoomed region archive is ready; no first-pass quality toggling"
+    );
+    return result;
+  };
 })();
