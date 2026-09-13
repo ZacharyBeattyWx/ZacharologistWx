@@ -26,6 +26,7 @@ const CACHE_CONCURRENCY = MOBILE ? 2 : 5;
 const LIVE_CONCURRENCY = MOBILE ? 1 : 3;
 const MEMORY_BUDGET = (MOBILE ? 72 : 192) * 1048576;
 const GPU_RUNWAY_BUDGET = (MOBILE ? 160 : 320) * 1048576;
+const MOTION_PREFETCH_DELAY = MOBILE ? 180 : 120;
 
 let manifest = null;
 let memoryBytes = 0;
@@ -372,6 +373,7 @@ async function warmStartup(layer, ids, reason = "native") {
   if (!wanted.length || !manifest) return { ready: false };
   const generation = ++layer.__zwxWarmGeneration;
   const started = performance.now();
+  const motionOnly = reason === "motion";
   layer.__zwxStartupWarming = true;
   if (layer.enabled && !layer.__zwxHdLocked) suppress(layer, true);
   const ready = await loadGpuFrames(layer, wanted, STARTUP_FRAMES, generation, "startup");
@@ -383,14 +385,20 @@ async function warmStartup(layer, ids, reason = "native") {
     layer.__zwxHdLocked = true;
     suppress(layer, false);
   }
-  scheduleRunway(layer, wanted, 0);
-  scheduleArchiveCache(layer, wanted, 80, reason);
+  if (!motionOnly) {
+    scheduleRunway(layer, wanted, 0);
+    scheduleArchiveCache(layer, wanted, 80, reason);
+  }
   console.info(
-    reason === "predictive" ? "MRALA predictive native startup READY:" : "MRALA native startup READY:",
+    reason === "predictive"
+      ? "MRALA predictive native startup READY:"
+      : motionOnly
+        ? "MRALA camera-motion startup READY:"
+        : "MRALA native startup READY:",
     STARTUP_FRAMES + " frames",
     wanted.length + " chunks/frame",
     Math.round(performance.now() - started) + " ms",
-    "• full archive continues to local cache"
+    motionOnly ? "• prepared before camera settles" : "• full archive continues to local cache"
   );
   return { ready: true };
 }
@@ -550,11 +558,28 @@ function prepareRegion(layer, ids, reason = "native") {
       layer.__zwxHdLocked = true;
       suppress(layer, false);
     }
-    scheduleRunway(layer, wanted, 0);
-    scheduleArchiveCache(layer, wanted, 50, reason);
+    if (reason !== "motion") {
+      scheduleRunway(layer, wanted, 0);
+      scheduleArchiveCache(layer, wanted, 50, reason);
+    }
     return;
   }
-  if (!layer.__zwxStartupWarming) warmStartup(layer, wanted, reason).catch(error => console.warn("MRALA native startup warm failed", error));
+  if (layer.__zwxStartupWarming) {
+    layer.__zwxPendingWarmIds = wanted;
+    layer.__zwxPendingWarmReason = reason;
+    return;
+  }
+  warmStartup(layer, wanted, reason)
+    .catch(error => console.warn("MRALA native startup warm failed", error))
+    .finally(() => {
+      const pending = normalizeIds(layer.__zwxPendingWarmIds || []);
+      const pendingReason = layer.__zwxPendingWarmReason || "motion";
+      layer.__zwxPendingWarmIds = [];
+      layer.__zwxPendingWarmReason = "";
+      if (pending.length && !gpuHasFrames(layer, pending, STARTUP_FRAMES)) {
+        prepareRegion(layer, pending, pendingReason);
+      }
+    });
 }
 
 function schedulePredictive(layer, delay = 180) {
@@ -567,6 +592,24 @@ function schedulePredictive(layer, delay = 180) {
     if (!ids.length) return;
     prepareRegion(layer, ids, "predictive");
     console.info("MRALA predictive archive warm:", ids.length + " chunk(s)", "target z" + PREDICTIVE_ZOOM.toFixed(2), "• startup GPU first, full 3h bytes to local cache behind it");
+  }, delay);
+}
+
+function scheduleMotionPrefetch(layer, delay = MOTION_PREFETCH_DELAY) {
+  if (!layer?.map || !manifest || !layer.enabled) return;
+  const ids = visibleChunkIds(layer.map);
+  if (!ids.length) return;
+  layer.__zwxMotionPendingIds = ids;
+  if (layer.__zwxMotionTimer) return;
+  layer.__zwxMotionTimer = setTimeout(() => {
+    layer.__zwxMotionTimer = 0;
+    if (!layer.enabled) return;
+    const wanted = normalizeIds(layer.__zwxMotionPendingIds || []);
+    if (!wanted.length) return;
+    const nextSignature = signature(wanted);
+    if (nextSignature === layer.__zwxMotionSignature && gpuHasFrames(layer, wanted, STARTUP_FRAMES)) return;
+    layer.__zwxMotionSignature = nextSignature;
+    prepareRegion(layer, wanted, "motion");
   }, delay);
 }
 
@@ -633,7 +676,12 @@ mapPrototype.addLayer = function (layer, ...args) {
     __zwxRunwayFrames: 0,
     __zwxRunwayLogged: false,
     __zwxCacheGeneration: 0,
-    __zwxCacheTimer: 0
+    __zwxCacheTimer: 0,
+    __zwxPendingWarmIds: [],
+    __zwxPendingWarmReason: "",
+    __zwxMotionPendingIds: [],
+    __zwxMotionSignature: "",
+    __zwxMotionTimer: 0
   });
 
   const originalSetVisible = layer.setVisible;
@@ -748,21 +796,34 @@ mapPrototype.addLayer = function (layer, ...args) {
   window.__ZWX_MRALA_NATIVE_CHUNK_LAYER__ = layer;
   window.__ZWX_MRALA_MISSING_NATIVE_URLS__ = missingUrls;
 
+  const cameraMoving = () => {
+    if (layer.enabled) scheduleMotionPrefetch(layer);
+  };
+
   const cameraSettled = () => {
+    if (layer.__zwxMotionTimer) {
+      clearTimeout(layer.__zwxMotionTimer);
+      layer.__zwxMotionTimer = 0;
+    }
     if (layer.enabled) {
       const ids = visibleChunkIds(layer.map);
-      if (ids.length) prepareRegion(layer, ids, "native");
+      if (ids.length) {
+        layer.__zwxMotionPendingIds = ids;
+        prepareRegion(layer, ids, "native");
+      }
     } else schedulePredictive(layer, 100);
   };
+
+  layer.map?.on?.("move", cameraMoving);
   layer.map?.on?.("moveend", cameraSettled);
   layer.map?.on?.("zoomend", cameraSettled);
   setTimeout(() => schedulePredictive(layer, 0), 0);
   if (!pollTimer) pollTimer = setInterval(poll, 60 * 1000);
 
   console.info(
-    "MRALA archive player v8: full 3h history persists in browser cache • " +
+    "MRALA archive player v9: camera-motion startup prefetch • full 3h history persists in browser cache • " +
     STARTUP_FRAMES + "-frame native startup • " + RUNWAY_TARGET +
-    "-frame rolling GPU runway • same-viewport HD never drops back to overview"
+    "-frame rolling GPU runway • settled viewport reuses motion-warmed textures"
   );
   return result;
 };
