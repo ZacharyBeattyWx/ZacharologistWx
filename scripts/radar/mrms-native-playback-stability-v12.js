@@ -12,6 +12,7 @@
 
   let nativeLayer = null;
   let lastHoldLog = 0;
+  let lastUnavailableLog = 0;
 
   const normalizeIds = ids => [...new Set((ids || []).map(String))].sort();
   const textureKey = (frameId, chunkId) => `${frameId}:${chunkId}`;
@@ -36,20 +37,46 @@
     const frames = timelineFrames();
     if (!frames.length) return null;
     const slider = document.getElementById("frameSlider");
-    const current = Math.max(0, Math.min(frames.length - 1, Math.round(Number(slider?.value || 0))));
+    const current = Math.max(
+      0,
+      Math.min(frames.length - 1, Math.round(Number(slider?.value || 0)))
+    );
     return frames[(current + 1) % frames.length] || null;
   }
 
-  function nextNativeFrameReady(layer = nativeLayer) {
-    if (!layer?.enabled || !layer.__zwxHdLocked) return true;
-    if (layer.map?.isMoving?.() || layer.map?.isZooming?.() || layer.map?.isRotating?.()) return true;
+  function nextNativeFrameState(layer = nativeLayer) {
+    if (!layer?.enabled || !layer.__zwxHdLocked) {
+      return { ready: true, reason: "inactive", missing: [] };
+    }
+    if (layer.map?.isMoving?.() || layer.map?.isZooming?.() || layer.map?.isRotating?.()) {
+      return { ready: true, reason: "camera-moving", missing: [] };
+    }
 
     const ids = visibleIds(layer);
-    if (!ids.length) return true;
-    const next = nextTimelineFrame();
-    if (!next?.id || !next?.nativeChunksReady) return false;
+    if (!ids.length) return { ready: true, reason: "no-visible-chunks", missing: [] };
 
-    return ids.every(id => layer.textures?.has(textureKey(next.id, id)));
+    const next = nextTimelineFrame();
+    if (!next?.id) return { ready: true, reason: "no-next-frame", missing: [] };
+
+    // Do not stall the whole loop on an observation that simply has no native
+    // chunks yet. Native-only presentation will carry the last complete sharp
+    // frame across this short interval while playback advances to the next scan.
+    if (!next.nativeChunksReady) {
+      return {
+        ready: true,
+        reason: "native-unavailable",
+        frame: next,
+        missing: ids.slice()
+      };
+    }
+
+    const missing = ids.filter(id => !layer.textures?.has(textureKey(next.id, id)));
+    return {
+      ready: missing.length === 0,
+      reason: missing.length ? "texture-miss" : "ready",
+      frame: next,
+      missing
+    };
   }
 
   const previousAddLayer = mapPrototype.addLayer;
@@ -71,20 +98,17 @@
       layer.__zwxPlaybackStabilityV12Patched = true;
       nativeLayer = layer;
 
-      // v13 is now the only forward-runway owner. Clear any stale v12 pin set
-      // left by an older cached session/build so it cannot compete for VRAM.
+      // v13.x is the only proactive forward-runway owner.
       layer.__zwxV12RunwayKeys = new Set();
 
       console.info(
-        "MRALA archive player v12.1: native-only after HD lock • emergency next-frame guard retained • duplicate v12 runway disabled in favor of v13 timeline runway"
+        "MRALA archive player v12.2: native-only after HD lock • emergency guard only blocks real GPU texture misses • native-unavailable scans no longer stall the loop"
       );
     }
 
     return result;
   };
 
-  // Install after mapbox-token.js finishes its playback-clock wrapper so this
-  // remains the outermost safety gate. v13 owns all proactive runway loading.
   setTimeout(() => {
     if (window.__ZWX_MRALA_V12_RAF_GUARD__) return;
     window.__ZWX_MRALA_V12_RAF_GUARD__ = true;
@@ -100,15 +124,31 @@
       if (!isPlaybackTick(callback)) return previousRaf(callback);
 
       const layer = nativeLayer || window.__ZWX_MRALA_NATIVE_CHUNK_LAYER__;
-      if (!layer?.enabled || !layer.__zwxHdLocked || nextNativeFrameReady(layer)) {
+      const state = nextNativeFrameState(layer);
+
+      if (state.ready) {
+        if (state.reason === "native-unavailable") {
+          const now = performance.now();
+          if (now - lastUnavailableLog > 2500) {
+            lastUnavailableLog = now;
+            console.info(
+              "MRALA v12.2 guard PASS:",
+              String(state.frame?.id || "unknown"),
+              "has no native chunks yet; carrying the last sharp native frame across this interval"
+            );
+          }
+        }
         return previousRaf(callback);
       }
 
       const now = performance.now();
-      if (now - lastHoldLog > 1200) {
+      if (now - lastHoldLog > 900) {
         lastHoldLog = now;
         console.info(
-          "MRALA v12.1 playback guard HOLD: next native frame not GPU-ready; timeline held while v13 runway catches up"
+          "MRALA v12.2 playback guard HOLD:",
+          String(state.frame?.id || "unknown"),
+          state.missing.length + "/" + visibleIds(layer).length + " visible native texture(s) missing",
+          "• timeline held briefly while v13.1 hot runway catches up"
         );
       }
 
