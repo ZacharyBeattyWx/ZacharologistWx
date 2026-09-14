@@ -271,24 +271,66 @@ function currentFrameId(layer) {
   return String(frames[index]?.id || "");
 }
 
+function fiveMinuteX2Enabled() {
+  return String(
+    document.getElementById("speedSelect")?.selectedOptions?.[0]?.textContent || ""
+  ).trim() === "2×";
+}
+
+function nextDisplayIndex(frames, current) {
+  if (!frames.length) return -1;
+  const index = Math.max(0, Math.min(frames.length - 1, Number(current) || 0));
+  const sequential = (index + 1) % frames.length;
+  if (!fiveMinuteX2Enabled() || index === frames.length - 1) return sequential;
+
+  const bucketMs = 5 * 60 * 1000;
+  const currentMs = frameMs(frames[index]);
+  if (!Number.isFinite(currentMs)) return sequential;
+  const nextBucket = (Math.floor(currentMs / bucketMs) + 1) * bucketMs;
+  for (let candidate = index + 1; candidate < frames.length; candidate += 1) {
+    const candidateMs = frameMs(frames[candidate]);
+    if (Number.isFinite(candidateMs) && candidateMs >= nextBucket) return candidate;
+  }
+  return frames.length - 1;
+}
+
 function orderedNativeFrames(layer) {
-  const frames = nativeFrames();
-  if (!frames.length) return [];
+  const timeline = timelineFrames();
+  if (!timeline.length) return [];
+
   const currentId = currentFrameId(layer);
-  let index = frames.findIndex(frame => String(frame.id) === currentId);
+  let index = timeline.findIndex(frame => String(frame.id) === currentId);
   if (index < 0) {
-    const currentMs = frameMs(timelineFrames().find(frame => String(frame.id) === currentId));
-    if (Number.isFinite(currentMs)) {
+    index = Math.max(0, Math.min(timeline.length - 1, Number(document.getElementById("frameSlider")?.value || 0)));
+  }
+
+  if (!fiveMinuteX2Enabled()) {
+    const frames = nativeFrames();
+    let nativeIndex = frames.findIndex(frame => String(frame.id) === String(timeline[index]?.id || ""));
+    if (nativeIndex < 0) {
+      const currentMs = frameMs(timeline[index]);
       let best = 0;
       let distance = Infinity;
       for (let i = 0; i < frames.length; i += 1) {
         const nextDistance = Math.abs(frameMs(frames[i]) - currentMs);
         if (nextDistance < distance) { distance = nextDistance; best = i; }
       }
-      index = best;
-    } else index = 0;
+      nativeIndex = best;
+    }
+    return [...frames.slice(nativeIndex), ...frames.slice(0, nativeIndex)];
   }
-  return [...frames.slice(index), ...frames.slice(0, index)];
+
+  const ordered = [];
+  const seen = new Set();
+  let cursor = index;
+  while (!seen.has(cursor)) {
+    seen.add(cursor);
+    const frame = timeline[cursor];
+    if (frame?.nativeChunksReady) ordered.push(frame);
+    cursor = nextDisplayIndex(timeline, cursor);
+    if (cursor < 0) break;
+  }
+  return ordered;
 }
 
 function runwayCount(ids) {
@@ -821,7 +863,7 @@ mapPrototype.addLayer = function (layer, ...args) {
   if (!pollTimer) pollTimer = setInterval(poll, 60 * 1000);
 
   console.info(
-    "MRALA archive player v9: camera-motion startup prefetch • full 3h history persists in browser cache • " +
+    "MRALA archive player v9.1: camera-motion startup prefetch • full 3h history persists in browser cache • " +
     STARTUP_FRAMES + "-frame native startup • " + RUNWAY_TARGET +
     "-frame rolling GPU runway • settled viewport reuses motion-warmed textures"
   );

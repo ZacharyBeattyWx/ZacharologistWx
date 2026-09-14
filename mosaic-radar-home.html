@@ -6,7 +6,7 @@
   <title>ZacharologistWx Native Numeric MRALA Test</title>
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
-  <script src="mapbox-token.js?v=20260904c"></script>
+  <script src="mapbox-token.js?v=20260914c"></script>
   <style>
     :root{color-scheme:dark;--panel:rgba(4,10,22,.93);--border:rgba(148,163,184,.28);--accent:#38bdf8;--muted:#94a3b8}
     *{box-sizing:border-box}html,body,#map{width:100%;height:100%;margin:0}body{overflow:hidden;background:#07111f;color:#f8fafc;font-family:Arial,Helvetica,sans-serif}#map{position:fixed;inset:0;background:#07111f}
@@ -56,7 +56,7 @@
         <option value="200">0.5×</option>
         <option value="100" selected>1×</option>
         <option value="67">1.5×</option>
-        <option value="50">2×</option>
+        <option value="210">2×</option>
       </select>
     </div>
     <div class="readout"><span id="frameTime">--:--</span><span id="frameAge">--</span></div>
@@ -2184,14 +2184,13 @@ u_mix,
       );
 
     for(
-      let n=0;
-      n<limit;
-      n++
+      const index
+      of playbackIndicesFrom(
+        start,
+        limit
+      )
     ){
-      set.add(
-        (start+n)
-        %frames.length
-      );
+      set.add(index);
     }
 
     return set;
@@ -2210,14 +2209,12 @@ u_mix,
       );
 
     for(
-      let n=0;
-      n<limit;
-      n++
+      const index
+      of playbackIndicesFrom(
+        start,
+        limit
+      )
     ){
-      const index=
-        (start+n)
-        %frames.length;
-
       if(
         !layer.hasTexture(
           textureKey(
@@ -2538,21 +2535,14 @@ u_mix,
       return;
     }
 
-    const frameIndices=[];
-
-    for(
-      let n=0;
-      n<Math.min(
-        CHUNK_FRAME_DEPTH,
-        frames.length
+    const frameIndices=
+      playbackIndicesFrom(
+        currentIndex,
+        Math.min(
+          CHUNK_FRAME_DEPTH,
+          frames.length
+        )
       );
-      n++
-    ){
-      frameIndices.push(
-        (currentIndex+n)
-        %frames.length
-      );
-    }
 
     const targets=[];
 
@@ -3190,6 +3180,113 @@ u_mix,
     );
   }
 
+  const X2_BUCKET_MS=
+    5*60*1000;
+
+  function fiveMinuteX2Enabled(){
+    return String(
+      speedSelect.selectedOptions?.[0]?.textContent
+      ||""
+    ).trim()==="2×";
+  }
+
+  function nextPlaybackIndex(
+    index=currentIndex
+  ){
+    if(!frames.length){
+      return 0;
+    }
+
+    const normalized=
+      (
+        Number(index)
+        +frames.length
+      )%frames.length;
+
+    const sequential=
+      (normalized+1)
+      %frames.length;
+
+    if(
+      !fiveMinuteX2Enabled()
+      ||normalized===frames.length-1
+    ){
+      return sequential;
+    }
+
+    const currentMs=
+      frameMs(
+        frames[normalized]
+      );
+
+    if(!Number.isFinite(currentMs)){
+      return sequential;
+    }
+
+    const nextBucket=
+      (
+        Math.floor(
+          currentMs/X2_BUCKET_MS
+        )+1
+      )*X2_BUCKET_MS;
+
+    for(
+      let candidate=normalized+1;
+      candidate<frames.length;
+      candidate++
+    ){
+      const candidateMs=
+        frameMs(
+          frames[candidate]
+        );
+
+      if(
+        Number.isFinite(candidateMs)
+        &&candidateMs>=nextBucket
+      ){
+        return candidate;
+      }
+    }
+
+    // Always show the newest observation before the normal loop-end hold.
+    return frames.length-1;
+  }
+
+  function playbackIndicesFrom(
+    start=currentIndex,
+    count=1
+  ){
+    const indices=[];
+
+    if(!frames.length){
+      return indices;
+    }
+
+    let index=
+      (
+        Number(start)
+        +frames.length
+      )%frames.length;
+
+    const seen=
+      new Set();
+
+    while(
+      indices.length<Math.min(count,frames.length)
+      &&!seen.has(index)
+    ){
+      seen.add(index);
+      indices.push(index);
+      index=nextPlaybackIndex(index);
+    }
+
+    return indices;
+  }
+
+  console.info(
+    "MRALA 2x playback: one displayed scan per 5-minute time bucket • 210ms presentation cadence"
+  );
+
   function stopPlayback(){
     playing=false;
     playGeneration++;
@@ -3362,8 +3459,9 @@ u_mix,
     }
 
     const nextIndex=
-      (currentIndex+1)
-      %frames.length;
+      nextPlaybackIndex(
+        currentIndex
+      );
 
     const nextKey=
       textureKey(

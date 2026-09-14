@@ -33,15 +33,37 @@
     return normalizeIds(layer?.__zwxRequestedVisibleIds || []);
   }
 
+  const X2_BUCKET_MS = 5 * 60 * 1000;
+
+  function fiveMinuteX2Enabled() {
+    return String(
+      document.getElementById("speedSelect")?.selectedOptions?.[0]?.textContent || ""
+    ).trim() === "2×";
+  }
+
+  function nextDisplayIndex(frames, current) {
+    if (!frames.length) return -1;
+    const index = Math.max(0, Math.min(frames.length - 1, Number(current) || 0));
+    const sequential = (index + 1) % frames.length;
+    if (!fiveMinuteX2Enabled() || index === frames.length - 1) return sequential;
+
+    const currentMs = frameMs(frames[index]);
+    if (!Number.isFinite(currentMs)) return sequential;
+    const nextBucket = (Math.floor(currentMs / X2_BUCKET_MS) + 1) * X2_BUCKET_MS;
+
+    for (let candidate = index + 1; candidate < frames.length; candidate += 1) {
+      const candidateMs = frameMs(frames[candidate]);
+      if (Number.isFinite(candidateMs) && candidateMs >= nextBucket) return candidate;
+    }
+    return frames.length - 1;
+  }
+
   function nextTimelineFrame() {
     const frames = timelineFrames();
     if (!frames.length) return null;
     const slider = document.getElementById("frameSlider");
-    const current = Math.max(
-      0,
-      Math.min(frames.length - 1, Math.round(Number(slider?.value || 0)))
-    );
-    return frames[(current + 1) % frames.length] || null;
+    const current = Math.max(0, Math.min(frames.length - 1, Math.round(Number(slider?.value || 0))));
+    return frames[nextDisplayIndex(frames, current)] || null;
   }
 
   function nextNativeFrameState(layer = nativeLayer) {
@@ -102,7 +124,7 @@
       layer.__zwxV12RunwayKeys = new Set();
 
       console.info(
-        "MRALA archive player v12.2: native-only after HD lock • emergency guard only blocks real GPU texture misses • native-unavailable scans no longer stall the loop"
+        "MRALA archive player v12.3: native-only after HD lock • 2x guard follows 5-minute display targets • native-unavailable scans do not stall the loop"
       );
     }
 
@@ -132,7 +154,7 @@
           if (now - lastUnavailableLog > 2500) {
             lastUnavailableLog = now;
             console.info(
-              "MRALA v12.2 guard PASS:",
+              "MRALA v12.3 guard PASS:",
               String(state.frame?.id || "unknown"),
               "has no native chunks yet; carrying the last sharp native frame across this interval"
             );
@@ -145,10 +167,10 @@
       if (now - lastHoldLog > 900) {
         lastHoldLog = now;
         console.info(
-          "MRALA v12.2 playback guard HOLD:",
+          "MRALA v12.3 playback guard HOLD:",
           String(state.frame?.id || "unknown"),
           state.missing.length + "/" + visibleIds(layer).length + " visible native texture(s) missing",
-          "• timeline held briefly while v13.1 hot runway catches up"
+          "• timeline held briefly while v13.2 hot runway catches up"
         );
       }
 

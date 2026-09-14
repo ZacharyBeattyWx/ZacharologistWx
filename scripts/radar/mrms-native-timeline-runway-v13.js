@@ -79,15 +79,44 @@
     return Math.max(0, Math.min(frames.length - 1, index));
   }
 
+  const X2_BUCKET_MS = 5 * 60 * 1000;
+
+  function fiveMinuteX2Enabled() {
+    return String(
+      document.getElementById("speedSelect")?.selectedOptions?.[0]?.textContent || ""
+    ).trim() === "2×";
+  }
+
+  function nextDisplayIndex(frames, current) {
+    if (!frames.length) return -1;
+    const index = Math.max(0, Math.min(frames.length - 1, Number(current) || 0));
+    const sequential = (index + 1) % frames.length;
+    if (!fiveMinuteX2Enabled() || index === frames.length - 1) return sequential;
+
+    const currentMs = frameMs(frames[index]);
+    if (!Number.isFinite(currentMs)) return sequential;
+    const nextBucket = (Math.floor(currentMs / X2_BUCKET_MS) + 1) * X2_BUCKET_MS;
+
+    for (let candidate = index + 1; candidate < frames.length; candidate += 1) {
+      const candidateMs = frameMs(frames[candidate]);
+      if (Number.isFinite(candidateMs) && candidateMs >= nextBucket) return candidate;
+    }
+    return frames.length - 1;
+  }
+
   function targetFramesFromTimeline(count) {
     const frames = timelineFrames();
     if (!frames.length) return [];
-    const current = playbackIndex(frames);
+    let current = playbackIndex(frames);
     if (current < 0) return [];
 
     const targets = [];
-    for (let step = 1; step <= frames.length && targets.length < count; step += 1) {
-      const frame = frames[(current + step) % frames.length];
+    const seen = new Set([current]);
+    while (targets.length < count) {
+      current = nextDisplayIndex(frames, current);
+      if (current < 0 || seen.has(current)) break;
+      seen.add(current);
+      const frame = frames[current];
       if (frame?.nativeChunksReady) targets.push(frame);
     }
     return targets;
@@ -207,7 +236,7 @@
     if (hotLoaded || backgroundLoaded || signature !== lastSignature) {
       lastSignature = signature;
       console.info(
-        "MRALA v13.1 staged runway:",
+        "MRALA v13.2 staged runway:",
         Math.min(HOT_RUNWAY, frames.length) + " hot / " + count + " target frames ahead",
         ids.length + " chunks/frame",
         "• " + completeCount + " currently complete",
@@ -292,7 +321,7 @@
     layer.map?.on?.("zoomend", () => schedule(0));
 
     console.info(
-      "MRALA archive player v13.1: 8-frame desktop hot lane + staged 18-frame target runway • small cache→GPU batches replace monolithic 30-frame uploads"
+      "MRALA archive player v13.2: staged hot runway follows actual display sequence • 2x preloads only 5-minute targets"
     );
 
     return result;
