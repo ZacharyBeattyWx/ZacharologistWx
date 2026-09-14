@@ -17,13 +17,18 @@ jobs:
           fetch-depth: 0
 
       - name: Apply production radar patch
-        run: python3 .github/scripts/patch_radar_2x_five_minute.py
+        shell: bash
+        run: |
+          sed -i 's/mrms-native-playback-stability-v12.js?v=20260914a/mrms-native-playback-stability-v12.js?v=20260914c/g' .github/scripts/patch_radar_2x_five_minute.py
+          sed -i 's/mrms-native-timeline-runway-v13.js?v=20260913d/mrms-native-timeline-runway-v13.js?v=20260914c/g' .github/scripts/patch_radar_2x_five_minute.py
+          python3 .github/scripts/patch_radar_2x_five_minute.py
+          git checkout -- .github/scripts/patch_radar_2x_five_minute.py
 
       - name: Commit production patch
         shell: bash
         run: |
-          if git diff --quiet; then
-            echo "No changes to commit"
+          if git diff --quiet -- mosaic-radar-home.html mapbox-token.js scripts/radar/mrms-native-loop-prewarm.js scripts/radar/mrms-native-loop-prewarm-v9-core.js scripts/radar/mrms-native-playback-stability-v12.js scripts/radar/mrms-native-timeline-runway-v13.js; then
+            echo "No production changes to commit"
             exit 0
           fi
           git config user.name "github-actions[bot]"
