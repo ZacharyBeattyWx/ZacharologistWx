@@ -747,7 +747,9 @@ mapPrototype.addLayer = function (layer, ...args) {
       if (!this.__zwxHdLocked) suppress(this, true);
       const wanted = normalizeIds(ids?.length ? ids : this.__zwxRequestedVisibleIds);
       if (wanted.length) {
-        scheduleRunway(this, wanted, 0);
+        if (!window.__ZWX_MRALA_V14_READY_QUEUE__) {
+          scheduleRunway(this, wanted, 0);
+        }
         scheduleArchiveCache(this, wanted, 120, "native");
       }
     }
@@ -775,7 +777,9 @@ mapPrototype.addLayer = function (layer, ...args) {
         this.__zwxHdLocked = true;
         suppress(this, false);
       }
-      scheduleRunway(this, this.__zwxRequestedVisibleIds, 30);
+      if (!window.__ZWX_MRALA_V14_READY_QUEUE__) {
+        scheduleRunway(this, this.__zwxRequestedVisibleIds, 30);
+      }
     } else if (!this.__zwxHdLocked) {
       suppress(this, true);
     }

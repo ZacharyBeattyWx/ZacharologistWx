@@ -354,16 +354,6 @@
       };
     }
 
-    const originalHasFrame = layer.hasFrame;
-    if (typeof originalHasFrame === "function") {
-      layer.hasFrame = function (...args) {
-        const output = originalHasFrame.apply(this, args);
-        cancelLegacyRunway(this);
-        if (this.enabled && this.__zwxHdLocked) schedule(0);
-        return output;
-      };
-    }
-
     const originalSetVisible = layer.setVisible;
     if (typeof originalSetVisible === "function") {
       layer.setVisible = function (...args) {
@@ -394,21 +384,11 @@
       };
     }
 
-    const originalSetBlendFrames = layer.setBlendFrames;
-    if (typeof originalSetBlendFrames === "function") {
-      layer.setBlendFrames = function (...args) {
-        const output = originalSetBlendFrames.apply(this, args);
-        cancelLegacyRunway(this);
-        schedule(0);
-        return output;
-      };
-    }
-
     layer.map?.on?.("moveend", () => schedule(0, true));
     layer.map?.on?.("zoomend", () => schedule(0, true));
 
     console.info(
-      "MRALA archive player v14: COD-style sequential ready queue • one steady-state GPU owner • no emergency playback guard • up to " +
+      "MRALA archive player v14.1: frame-commit ready queue • one steady-state GPU owner • no emergency playback guard • up to " +
       TARGET_QUEUE + " native frames prepared ahead"
     );
 
