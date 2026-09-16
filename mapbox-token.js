@@ -17,8 +17,8 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
 
   const PLAYBACK_CADENCE = new Map([
     ["0.5×", "340"],
-    ["1×", "170"],
-    ["1.5×", "115"],
+    ["1×", "240"],
+    ["1.5×", "160"],
     ["2×", "210"]
   ]);
 
@@ -167,7 +167,7 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
     if (selected) select.value = selected.value;
 
     console.info(
-      "MRALA playback cadence: 0.5x 340ms • 1x 170ms • 1.5x 115ms • 2x 210ms with 5-minute scan steps"
+      "MRALA playback cadence: 0.5x 340ms • 1x 240ms • 1.5x 160ms • 2x 210ms with 5-minute scan steps"
     );
     return true;
   }
