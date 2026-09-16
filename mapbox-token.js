@@ -19,7 +19,7 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
     ["0.5×", "340"],
     ["1×", "240"],
     ["1.5×", "160"],
-    ["2×", "210"]
+    ["2×", "95"]
   ]);
 
   const PALETTE_STOPS = [
@@ -167,7 +167,7 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
     if (selected) select.value = selected.value;
 
     console.info(
-      "MRALA playback cadence: 0.5x 340ms • 1x 240ms • 1.5x 160ms • 2x 210ms with 5-minute scan steps"
+      "MRALA playback cadence: 0.5x 340ms • 1x 240ms • 1.5x 160ms • 2x 95ms sequential observations"
     );
     return true;
   }
@@ -400,7 +400,7 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
   const path = String(window.location.pathname || "");
   if (!/\/mosaic-radar-home\.html$/i.test(path)) return;
 
-  const src = "scripts/radar/mrms-native-loop-prewarm.js?v=20260914c";
+  const src = "scripts/radar/mrms-native-loop-prewarm.js?v=20260915d";
 
   if (document.readyState === "loading") {
     document.write('<script src="' + src + '"></script>');

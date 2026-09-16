@@ -56,7 +56,7 @@
         <option value="200">0.5×</option>
         <option value="240" selected>1×</option>
         <option value="160">1.5×</option>
-        <option value="210">2×</option>
+        <option value="95">2×</option>
       </select>
     </div>
     <div class="readout"><span id="frameTime">--:--</span><span id="frameAge">--</span></div>
@@ -88,7 +88,7 @@
   const CHUNK_FETCH_CONCURRENCY=MOBILE?3:6;
   const CHUNK_VIEWPORT_PAD=0.12;
 
-  const INTERPOLATION_FPS=MOBILE?24:30;
+  const INTERPOLATION_FPS=MOBILE?30:60;
 
   // COD-style loop behavior:
   // hold the newest observation before jumping back to the oldest.
@@ -3180,16 +3180,6 @@ u_mix,
     );
   }
 
-  const X2_BUCKET_MS=
-    5*60*1000;
-
-  function fiveMinuteX2Enabled(){
-    return String(
-      speedSelect.selectedOptions?.[0]?.textContent
-      ||""
-    ).trim()==="2×";
-  }
-
   function nextPlaybackIndex(
     index=currentIndex
   ){
@@ -3203,53 +3193,7 @@ u_mix,
         +frames.length
       )%frames.length;
 
-    const sequential=
-      (normalized+1)
-      %frames.length;
-
-    if(
-      !fiveMinuteX2Enabled()
-      ||normalized===frames.length-1
-    ){
-      return sequential;
-    }
-
-    const currentMs=
-      frameMs(
-        frames[normalized]
-      );
-
-    if(!Number.isFinite(currentMs)){
-      return sequential;
-    }
-
-    const nextBucket=
-      (
-        Math.floor(
-          currentMs/X2_BUCKET_MS
-        )+1
-      )*X2_BUCKET_MS;
-
-    for(
-      let candidate=normalized+1;
-      candidate<frames.length;
-      candidate++
-    ){
-      const candidateMs=
-        frameMs(
-          frames[candidate]
-        );
-
-      if(
-        Number.isFinite(candidateMs)
-        &&candidateMs>=nextBucket
-      ){
-        return candidate;
-      }
-    }
-
-    // Always show the newest observation before the normal loop-end hold.
-    return frames.length-1;
+    return (normalized+1)%frames.length;
   }
 
   function playbackIndicesFrom(
@@ -3284,7 +3228,7 @@ u_mix,
   }
 
   console.info(
-    "MRALA 2x playback: one displayed scan per 5-minute time bucket • 210ms presentation cadence"
+    "MRALA 2x playback: dense sequential observations • 95ms presentation cadence • core interpolation up to 60fps desktop"
   );
 
   function stopPlayback(){

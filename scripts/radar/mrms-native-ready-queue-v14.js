@@ -3,6 +3,8 @@
 
   const path = String(window.location.pathname || "");
   if (!/\/mosaic-radar-home\.html$/i.test(path)) return;
+  if (window.__ZWX_MRALA_V14_READY_QUEUE__) return;
+  window.__ZWX_MRALA_V14_READY_QUEUE__ = true;
 
   const OVERVIEW_ID = "mrms-native-numeric-dbz-layer";
   const NATIVE_ID = "mrms-native-numeric-viewport-chunks";
@@ -295,6 +297,9 @@
       }
     }, Math.max(0, delay));
   }
+
+  window.__ZWX_MRALA_REQUEST_V14_QUEUE__ = (delay = 0, aggressive = false) =>
+    schedule(delay, aggressive);
 
   async function primeForPlay() {
     const layer = nativeLayer;

@@ -272,9 +272,7 @@ function currentFrameId(layer) {
 }
 
 function fiveMinuteX2Enabled() {
-  return String(
-    document.getElementById("speedSelect")?.selectedOptions?.[0]?.textContent || ""
-  ).trim() === "2×";
+  return false;
 }
 
 function nextDisplayIndex(frames, current) {
@@ -481,6 +479,10 @@ async function fillRunway(layer, ids, generation) {
 }
 
 function scheduleRunway(layer, ids, delay = 35) {
+  if (window.__ZWX_MRALA_V14_READY_QUEUE__) {
+    window.__ZWX_MRALA_REQUEST_V14_QUEUE__?.(delay, false);
+    return;
+  }
   if (!layer || !ids?.length || !manifest) return;
   clearTimeout(layer.__zwxRunwayTimer);
   const wanted = normalizeIds(ids);
