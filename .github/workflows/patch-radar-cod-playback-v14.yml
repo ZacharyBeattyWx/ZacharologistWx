@@ -1,0 +1,147 @@
+name: Patch radar COD-style playback v14
+
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-radar-cod-playback-v14.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply v14 playback migration
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text(encoding='utf-8')
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'Expected exactly one match in {path}, found {count}: {old!r}')
+              p.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          def regex_once(path, pattern, replacement):
+              p = Path(path)
+              text = p.read_text(encoding='utf-8')
+              text, count = re.subn(pattern, replacement, text, count=1, flags=re.S)
+              if count != 1:
+                  raise SystemExit(f'Expected exactly one regex match in {path}, found {count}: {pattern!r}')
+              p.write_text(text, encoding='utf-8')
+
+          # Production cadence: keep the same total 3-hour traversal speed, but
+          # show every observation at 2x instead of throwing away scans.
+          replace_once(
+              'mapbox-token.js',
+              '["2×", "210"]',
+              '["2×", "95"]'
+          )
+          replace_once(
+              'mapbox-token.js',
+              'MRALA playback cadence: 0.5x 340ms • 1x 240ms • 1.5x 160ms • 2x 210ms with 5-minute scan steps',
+              'MRALA playback cadence: 0.5x 340ms • 1x 240ms • 1.5x 160ms • 2x 95ms sequential observations'
+          )
+          replace_once(
+              'mapbox-token.js',
+              'scripts/radar/mrms-native-loop-prewarm.js?v=20260914c',
+              'scripts/radar/mrms-native-loop-prewarm.js?v=20260915d'
+          )
+
+          replace_once(
+              'mosaic-radar-home.html',
+              '<option value="210">2×</option>',
+              '<option value="95">2×</option>'
+          )
+          replace_once(
+              'mosaic-radar-home.html',
+              'const INTERPOLATION_FPS=MOBILE?24:30;',
+              'const INTERPOLATION_FPS=MOBILE?30:60;'
+          )
+
+          regex_once(
+              'mosaic-radar-home.html',
+              r'''  const X2_BUCKET_MS=\n    5\*60\*1000;\n\n  function fiveMinuteX2Enabled\(\)\{.*?  console\.info\(\n    "MRALA 2x playback: one displayed scan per 5-minute time bucket • 210ms presentation cadence"\n  \);\n\n  function stopPlayback\(\)\{''',
+              '''  function nextPlaybackIndex(\n    index=currentIndex\n  ){\n    if(!frames.length){\n      return 0;\n    }\n\n    const normalized=\n      (\n        Number(index)\n        +frames.length\n      )%frames.length;\n\n    return (normalized+1)%frames.length;\n  }\n\n  function playbackIndicesFrom(\n    start=currentIndex,\n    count=1\n  ){\n    const indices=[];\n\n    if(!frames.length){\n      return indices;\n    }\n\n    let index=\n      (\n        Number(start)\n        +frames.length\n      )%frames.length;\n\n    const seen=\n      new Set();\n\n    while(\n      indices.length<Math.min(count,frames.length)\n      &&!seen.has(index)\n    ){\n      seen.add(index);\n      indices.push(index);\n      index=nextPlaybackIndex(index);\n    }\n\n    return indices;\n  }\n\n  console.info(\n    "MRALA 2x playback: dense sequential observations • 95ms presentation cadence • core interpolation up to 60fps desktop"\n  );\n\n  function stopPlayback(){'''
+          )
+
+          # v9 remains the archive/cache/startup owner, but its old 5-minute
+          # ordering and steady-state runway are disabled when v14 is present.
+          regex_once(
+              'scripts/radar/mrms-native-loop-prewarm-v9-core.js',
+              r'''function fiveMinuteX2Enabled\(\) \{.*?\n\}''',
+              '''function fiveMinuteX2Enabled() {\n  return false;\n}'''
+          )
+          replace_once(
+              'scripts/radar/mrms-native-loop-prewarm-v9-core.js',
+              '''function scheduleRunway(layer, ids, delay = 35) {\n  if (!layer || !ids?.length || !manifest) return;''',
+              '''function scheduleRunway(layer, ids, delay = 35) {\n  if (window.__ZWX_MRALA_V14_READY_QUEUE__) {\n    window.__ZWX_MRALA_REQUEST_V14_QUEUE__?.(delay, false);\n    return;\n  }\n  if (!layer || !ids?.length || !manifest) return;'''
+          )
+
+          # Load v14 instead of the competing v12 guard + v13 runway pair.
+          replace_once(
+              'scripts/radar/mrms-native-loop-prewarm.js',
+              '''  load("scripts/radar/mrms-native-playback-stability-v12.js?v=20260915a");\n  load("scripts/radar/mrms-native-timeline-runway-v13.js?v=20260915a");''',
+              '''  load("scripts/radar/mrms-native-ready-queue-v14.js?v=20260915d");'''
+          )
+
+          # Publish the v14 ownership flag/API before any native layer is added.
+          replace_once(
+              'scripts/radar/mrms-native-ready-queue-v14.js',
+              '''  const path = String(window.location.pathname || "");\n  if (!/\\/mosaic-radar-home\\.html$/i.test(path)) return;''',
+              '''  const path = String(window.location.pathname || "");\n  if (!/\\/mosaic-radar-home\\.html$/i.test(path)) return;\n  if (window.__ZWX_MRALA_V14_READY_QUEUE__) return;\n  window.__ZWX_MRALA_V14_READY_QUEUE__ = true;'''
+          )
+          replace_once(
+              'scripts/radar/mrms-native-ready-queue-v14.js',
+              '''  async function primeForPlay() {''',
+              '''  window.__ZWX_MRALA_REQUEST_V14_QUEUE__ = (delay = 0, aggressive = false) =>\n    schedule(delay, aggressive);\n\n  async function primeForPlay() {'''
+          )
+          PY
+
+      - name: Verify v14 playback migration
+        shell: bash
+        run: |
+          grep -F '["2×", "95"]' mapbox-token.js
+          grep -F '2x 95ms sequential observations' mapbox-token.js
+          grep -F 'const INTERPOLATION_FPS=MOBILE?30:60;' mosaic-radar-home.html
+          grep -F '<option value="95">2×</option>' mosaic-radar-home.html
+          grep -F 'dense sequential observations • 95ms presentation cadence' mosaic-radar-home.html
+          grep -F 'window.__ZWX_MRALA_V14_READY_QUEUE__' scripts/radar/mrms-native-ready-queue-v14.js
+          grep -F 'window.__ZWX_MRALA_REQUEST_V14_QUEUE__' scripts/radar/mrms-native-ready-queue-v14.js
+          grep -F 'mrms-native-ready-queue-v14.js?v=20260915d' scripts/radar/mrms-native-loop-prewarm.js
+          grep -F 'window.__ZWX_MRALA_V14_READY_QUEUE__' scripts/radar/mrms-native-loop-prewarm-v9-core.js
+          if grep -Fq 'mrms-native-playback-stability-v12.js' scripts/radar/mrms-native-loop-prewarm.js; then
+            echo 'v12 still loaded by production wrapper'
+            exit 1
+          fi
+          if grep -Fq 'mrms-native-timeline-runway-v13.js' scripts/radar/mrms-native-loop-prewarm.js; then
+            echo 'v13 still loaded by production wrapper'
+            exit 1
+          fi
+          if grep -Fq 'one displayed scan per 5-minute time bucket' mosaic-radar-home.html; then
+            echo 'old 2x bucket playback still present'
+            exit 1
+          fi
+          git diff --check
+
+      - name: Commit production migration
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo 'No production changes to commit'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add mapbox-token.js mosaic-radar-home.html scripts/radar/mrms-native-loop-prewarm-v9-core.js scripts/radar/mrms-native-loop-prewarm.js scripts/radar/mrms-native-ready-queue-v14.js
+          git commit -m 'Replace native playback guards with v14 ready queue'
+          git push
