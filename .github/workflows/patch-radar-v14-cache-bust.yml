@@ -1,0 +1,59 @@
+name: Patch radar v14 cache bust
+
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-radar-v14-cache-bust.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply v14 cache bust
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text(encoding='utf-8')
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'Expected exactly one match in {path}, found {count}: {old!r}')
+              p.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          replace_once(
+              'mosaic-radar-home.html',
+              'mapbox-token.js?v=20260915b',
+              'mapbox-token.js?v=20260915d'
+          )
+          replace_once(
+              'scripts/radar/mrms-native-loop-prewarm.js',
+              'mrms-native-loop-prewarm-v9-core.js?v=20260914c',
+              'mrms-native-loop-prewarm-v9-core.js?v=20260915d'
+          )
+          PY
+
+      - name: Verify v14 cache bust
+        shell: bash
+        run: |
+          grep -F 'mapbox-token.js?v=20260915d' mosaic-radar-home.html
+          grep -F 'mrms-native-loop-prewarm-v9-core.js?v=20260915d' scripts/radar/mrms-native-loop-prewarm.js
+          git diff --check
+
+      - name: Commit cache bust
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add mosaic-radar-home.html scripts/radar/mrms-native-loop-prewarm.js
+          git commit -m 'Bust caches for v14 radar playback'
+          git push
