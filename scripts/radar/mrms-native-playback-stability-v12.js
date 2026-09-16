@@ -6,6 +6,7 @@
 
   const OVERVIEW_ID = "mrms-native-numeric-dbz-layer";
   const NATIVE_ID = "mrms-native-numeric-viewport-chunks";
+  const MOBILE = matchMedia?.("(pointer: coarse)")?.matches || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   const mapPrototype = window.mapboxgl?.Map?.prototype;
   if (!mapPrototype?.addLayer || mapPrototype.__zwxPlaybackStabilityV12Installed) return;
   mapPrototype.__zwxPlaybackStabilityV12Installed = true;
@@ -13,6 +14,8 @@
   let nativeLayer = null;
   let lastHoldLog = 0;
   let lastUnavailableLog = 0;
+  let missStartedAt = 0;
+  let missFrameId = "";
 
   const normalizeIds = ids => [...new Set((ids || []).map(String))].sort();
   const textureKey = (frameId, chunkId) => `${frameId}:${chunkId}`;
@@ -81,7 +84,7 @@
     if (!next?.id) return { ready: true, reason: "no-next-frame", missing: [] };
 
     // Do not stall the whole loop on an observation that simply has no native
-    // chunks yet. Native-only presentation will carry the last complete sharp
+    // chunks yet. Native-only presentation carries the last complete sharp
     // frame across this short interval while playback advances to the next scan.
     if (!next.nativeChunksReady) {
       return {
@@ -99,6 +102,23 @@
       frame: next,
       missing
     };
+  }
+
+  function resetMissGrace() {
+    missStartedAt = 0;
+    missFrameId = "";
+  }
+
+  function missGraceMs() {
+    const interval = Math.max(
+      40,
+      Number(document.getElementById("speedSelect")?.value || 170)
+    );
+    // End the grace period before the current observation can finish its
+    // transition. Short cache->GPU delays resolve without a visible pause,
+    // while a real miss still cannot advance the timeline past that frame.
+    const cap = MOBILE ? 140 : 110;
+    return Math.max(45, Math.min(cap, interval * 0.65));
   }
 
   const previousAddLayer = mapPrototype.addLayer;
@@ -120,11 +140,11 @@
       layer.__zwxPlaybackStabilityV12Patched = true;
       nativeLayer = layer;
 
-      // v13.x is the only proactive forward-runway owner.
+      // v13.x is the only proactive steady-state forward-runway owner.
       layer.__zwxV12RunwayKeys = new Set();
 
       console.info(
-        "MRALA archive player v12.3: native-only after HD lock • 2x guard follows 5-minute display targets • native-unavailable scans do not stall the loop"
+        "MRALA archive player v12.4: native-only after HD lock • short texture-miss grace before emergency HOLD • 2x guard follows 5-minute display targets"
       );
     }
 
@@ -149,12 +169,13 @@
       const state = nextNativeFrameState(layer);
 
       if (state.ready) {
+        resetMissGrace();
         if (state.reason === "native-unavailable") {
           const now = performance.now();
           if (now - lastUnavailableLog > 2500) {
             lastUnavailableLog = now;
             console.info(
-              "MRALA v12.3 guard PASS:",
+              "MRALA v12.4 guard PASS:",
               String(state.frame?.id || "unknown"),
               "has no native chunks yet; carrying the last sharp native frame across this interval"
             );
@@ -163,14 +184,31 @@
         return previousRaf(callback);
       }
 
+      // Re-anchor v13.3 on the actual slider immediately. Most misses are just
+      // a texture or two already in the browser archive, so give that hot-lane
+      // request a fraction of the current transition before freezing the clock.
+      window.__ZWX_MRALA_REQUEST_TIMELINE_RUNWAY__?.();
+
       const now = performance.now();
+      const frameId = String(state.frame?.id || "unknown");
+      if (!missStartedAt || missFrameId !== frameId) {
+        missStartedAt = now;
+        missFrameId = frameId;
+      }
+
+      const elapsed = now - missStartedAt;
+      const grace = missGraceMs();
+      if (elapsed < grace) {
+        return previousRaf(callback);
+      }
+
       if (now - lastHoldLog > 900) {
         lastHoldLog = now;
         console.info(
-          "MRALA v12.3 playback guard HOLD:",
-          String(state.frame?.id || "unknown"),
-          state.missing.length + "/" + visibleIds(layer).length + " visible native texture(s) missing",
-          "• timeline held briefly while v13.2 hot runway catches up"
+          "MRALA v12.4 emergency HOLD:",
+          frameId,
+          state.missing.length + "/" + visibleIds(layer).length + " visible native texture(s) still missing after " + Math.round(elapsed) + "ms",
+          "• timeline held only after grace while v13.3 immediate runway catches up"
         );
       }
 
