@@ -8,16 +8,17 @@
   const BASE = "https://dt0cd6bl1yqh2.cloudfront.net/mrms-native-numeric/";
   const MOBILE = matchMedia?.("(pointer: coarse)")?.matches || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-  // Keep a small immediately-playable hot lane, then grow a modest cushion in
-  // tiny batches. This avoids the old 100+ texture upload burst that could
-  // monopolize the main/GPU thread and feel like playback stutter.
-  const HOT_RUNWAY = MOBILE ? 4 : 8;
-  const TARGET_RUNWAY = MOBILE ? 8 : 18;
+  // Keep the immediately-next observations hot, then build the rest of the
+  // runway one frame at a time. Any fill anchored to an old slider position
+  // is abandoned as soon as playback advances so cache->GPU work never chases
+  // stale observations.
+  const HOT_RUNWAY = MOBILE ? 2 : 3;
+  const TARGET_RUNWAY = MOBILE ? 6 : 12;
   const GPU_BUDGET_BYTES = (MOBILE ? 176 : 320) * 1048576;
   const LOAD_CONCURRENCY = MOBILE ? 2 : 6;
-  const BACKGROUND_BATCH_FRAMES = MOBILE ? 1 : 2;
-  const PERIODIC_MS = MOBILE ? 180 : 100;
-  const BACKGROUND_GAP_MS = MOBILE ? 28 : 16;
+  const BACKGROUND_BATCH_FRAMES = 1;
+  const PERIODIC_MS = MOBILE ? 140 : 70;
+  const BACKGROUND_GAP_MS = MOBILE ? 24 : 10;
 
   const mapPrototype = window.mapboxgl?.Map?.prototype;
   if (!mapPrototype?.addLayer || mapPrototype.__zwxTimelineRunwayV13Installed) return;
@@ -71,12 +72,16 @@
     return Math.max(HOT_RUNWAY, Math.min(TARGET_RUNWAY, budgetCount));
   }
 
-  function playbackIndex(frames) {
+  function sliderIndex(frames) {
     if (!frames.length) return -1;
     const slider = document.getElementById("frameSlider");
     const index = Math.round(Number(slider?.value));
     if (!Number.isFinite(index)) return frames.length - 1;
     return Math.max(0, Math.min(frames.length - 1, index));
+  }
+
+  function sliderValue() {
+    return String(document.getElementById("frameSlider")?.value ?? "");
   }
 
   const X2_BUCKET_MS = 5 * 60 * 1000;
@@ -104,10 +109,11 @@
     return frames.length - 1;
   }
 
-  function targetFramesFromTimeline(count) {
+  function targetFramesFromTimeline(count, anchorIndex) {
     const frames = timelineFrames();
     if (!frames.length) return [];
-    let current = playbackIndex(frames);
+    let current = Number.isFinite(anchorIndex) ? anchorIndex : sliderIndex(frames);
+    current = Math.max(0, Math.min(frames.length - 1, current));
     if (current < 0) return [];
 
     const targets = [];
@@ -151,7 +157,7 @@
     return chunks.every(chunk => layer.textures?.has(textureKey(frame.id, chunk.id)));
   }
 
-  async function loadFrames(layer, frames, chunks, pins) {
+  async function loadFrames(layer, frames, chunks, pins, anchorValue) {
     const targets = [];
     for (const frame of frames) {
       for (const chunk of chunks) {
@@ -163,8 +169,14 @@
 
     let cursor = 0;
     let loaded = 0;
+    let stale = false;
+
     async function worker() {
       while (cursor < targets.length) {
+        if (anchorValue !== sliderValue()) {
+          stale = true;
+          return;
+        }
         const target = targets[cursor++];
         try {
           if (await ensureTexture(layer, target.frame, target.chunk, pins)) loaded += 1;
@@ -175,12 +187,25 @@
     await Promise.all(
       Array.from({ length: Math.min(LOAD_CONCURRENCY, Math.max(1, targets.length)) }, () => worker())
     );
-    return loaded;
+    return { loaded, stale: stale || anchorValue !== sliderValue() };
+  }
+
+  function cancelLegacyRunway(layer) {
+    if (!layer) return;
+    if (layer.__zwxRunwayTimer) {
+      clearTimeout(layer.__zwxRunwayTimer);
+      layer.__zwxRunwayTimer = 0;
+    }
+    layer.__zwxRunwayGeneration = Number(layer.__zwxRunwayGeneration || 0) + 1;
+    layer.__zwxPinnedGpuKeys = new Set();
+    layer.__zwxRunwayFrames = 0;
   }
 
   async function fillTimelineRunway() {
     const layer = nativeLayer;
     if (!layer?.enabled || !layer.__zwxHdLocked) return { needsMore: false };
+
+    cancelLegacyRunway(layer);
 
     const ids = visibleIds(layer);
     if (!ids.length) return { needsMore: false };
@@ -189,8 +214,13 @@
     const chunks = ids.map(id => byId.get(id)).filter(Boolean);
     if (!chunks.length) return { needsMore: false };
 
+    const timeline = timelineFrames();
+    const anchorIndex = sliderIndex(timeline);
+    const anchorValue = sliderValue();
+    if (anchorIndex < 0) return { needsMore: false };
+
     const count = runwayCount(ids);
-    const frames = targetFramesFromTimeline(count);
+    const frames = targetFramesFromTimeline(count, anchorIndex);
     if (!frames.length) return { needsMore: false };
 
     const previousPins = new Set(layer.__zwxV13TimelineRunwayKeys || []);
@@ -199,16 +229,23 @@
       for (const chunk of chunks) targetPins.add(textureKey(frame.id, chunk.id));
     }
 
-    // Retain the previous runway while the replacement is being staged so a
-    // refill can never evict the frame currently being rendered.
+    // Retain the previous runway while the replacement is staged.
     const loadingPins = new Set([...previousPins, ...targetPins]);
     layer.__zwxV13TimelineRunwayKeys = loadingPins;
 
+    // First priority: only the immediately-next few displayed observations.
+    // If playback advances while these are loading, abandon the stale batch
+    // immediately and re-anchor on the new slider position.
     const hotFrames = frames.slice(0, Math.min(HOT_RUNWAY, frames.length));
-    const hotLoaded = await loadFrames(layer, hotFrames, chunks, loadingPins);
+    const hotResult = await loadFrames(layer, hotFrames, chunks, loadingPins, anchorValue);
 
-    // Only add a couple of farther-ahead frames per pass. The scheduler will
-    // come back quickly and grow the cushion without one huge GPU upload burst.
+    if (hotResult.stale) {
+      layer.__zwxV13TimelineRunwayKeys = previousPins;
+      return { needsMore: true, stale: true };
+    }
+
+    // Add just one farther-ahead frame per pass. This keeps cache->GPU uploads
+    // small enough that presentation isn't starved by background work.
     const backgroundCandidates = frames.slice(hotFrames.length);
     const backgroundFrames = [];
     for (const frame of backgroundCandidates) {
@@ -218,7 +255,18 @@
 
     let backgroundLoaded = 0;
     if (backgroundFrames.length) {
-      backgroundLoaded = await loadFrames(layer, backgroundFrames, chunks, loadingPins);
+      const backgroundResult = await loadFrames(
+        layer,
+        backgroundFrames,
+        chunks,
+        loadingPins,
+        anchorValue
+      );
+      backgroundLoaded = backgroundResult.loaded;
+      if (backgroundResult.stale) {
+        layer.__zwxV13TimelineRunwayKeys = previousPins;
+        return { needsMore: true, stale: true };
+      }
     }
 
     layer.__zwxV13TimelineRunwayKeys = targetPins;
@@ -231,17 +279,16 @@
     const hotComplete = hotFrames.every(frame => frameComplete(layer, frame, chunks));
     const needsMore = completeCount < frames.length;
 
-    const slider = document.getElementById("frameSlider");
-    const signature = `${slider?.value || "?"}:${frames[0]?.id || ""}:${count}:${completeCount}:${ids.join("|")}`;
-    if (hotLoaded || backgroundLoaded || signature !== lastSignature) {
+    const signature = `${anchorValue}:${frames[0]?.id || ""}:${count}:${completeCount}:${ids.join("|")}`;
+    if (hotResult.loaded || backgroundLoaded || signature !== lastSignature) {
       lastSignature = signature;
       console.info(
-        "MRALA v13.2 staged runway:",
-        Math.min(HOT_RUNWAY, frames.length) + " hot / " + count + " target frames ahead",
+        "MRALA v13.3 live runway:",
+        Math.min(HOT_RUNWAY, frames.length) + " immediate / " + count + " target frames ahead",
         ids.length + " chunks/frame",
         "• " + completeCount + " currently complete",
-        "• uploaded " + hotLoaded + " hot + " + backgroundLoaded + " background texture(s)",
-        hotComplete ? "• hot lane ready" : "• hot lane still filling"
+        "• uploaded " + hotResult.loaded + " immediate + " + backgroundLoaded + " background texture(s)",
+        hotComplete ? "• immediate lane ready" : "• immediate lane still filling"
       );
     }
 
@@ -256,7 +303,7 @@
     pending = false;
     fillTimelineRunway()
       .then(result => {
-        if (result?.needsMore) pending = true;
+        if (result?.needsMore || result?.stale) pending = true;
       })
       .catch(() => {})
       .finally(() => {
@@ -267,10 +314,13 @@
 
   function schedule(delay = 0) {
     if (!nativeLayer?.enabled || !nativeLayer.__zwxHdLocked) return;
+    cancelLegacyRunway(nativeLayer);
     pending = true;
     if (busy || timer) return;
     timer = setTimeout(runScheduled, Math.max(0, delay));
   }
+
+  window.__ZWX_MRALA_REQUEST_TIMELINE_RUNWAY__ = () => schedule(0);
 
   const previousAddLayer = mapPrototype.addLayer;
   mapPrototype.addLayer = function (layer, ...args) {
@@ -280,6 +330,7 @@
     layer.__zwxTimelineRunwayV13Patched = true;
     nativeLayer = layer;
     layer.__zwxV13TimelineRunwayKeys = new Set();
+    cancelLegacyRunway(layer);
 
     const originalEvictExcept = layer.evictExcept;
     if (typeof originalEvictExcept === "function") {
@@ -321,7 +372,7 @@
     layer.map?.on?.("zoomend", () => schedule(0));
 
     console.info(
-      "MRALA archive player v13.2: staged hot runway follows actual display sequence • 2x preloads only 5-minute targets"
+      "MRALA archive player v13.3: immediate next-frame priority • stale runway fills abort on timeline advance • one-frame background staging • v13 owns steady-state GPU runway"
     );
 
     return result;
