@@ -176,11 +176,20 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
     if (
       MOBILE ||
       !layer ||
-      layer.id === "mrms-native-numeric-viewport-chunks" ||
       layer.__zwx60HzBlendPatched
     ) return;
     const originalBlend = layer[blendMethod];
     if (typeof originalBlend !== "function") return;
+
+    const nativeViewport =
+      layer.id === "mrms-native-numeric-viewport-chunks";
+
+    const shouldAnimate = () =>
+      !nativeViewport ||
+      String(
+        document.getElementById("speedSelect")
+          ?.selectedOptions?.[0]?.textContent || ""
+      ).trim() === "2×";
 
     layer.__zwx60HzBlendPatched = true;
 
@@ -205,6 +214,12 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
 
     layer[blendMethod] = function (from, to, amount) {
       const numericAmount = Math.max(0, Math.min(1, Number(amount) || 0));
+
+      if (!shouldAnimate()) {
+        cancelPresentation();
+        return originalBlend.call(this, from, to, numericAmount);
+      }
+
       const nextPair = String(from) + "\u0000" + String(to);
 
       if (nextPair !== pair) {
@@ -259,7 +274,8 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
 
     console.info(
       "MRALA desktop presentation: display-refresh GPU interpolation enabled for " +
-        layer.id
+        layer.id +
+        (nativeViewport ? " • 2x only" : "")
     );
   }
 
