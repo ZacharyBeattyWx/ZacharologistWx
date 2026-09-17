@@ -41,7 +41,31 @@
   let lastSignature = "";
 
   const inflight = new Map();
+  const unavailableFrameIds =
+    window.__ZWX_MRALA_UNAVAILABLE_FRAME_IDS__ =
+      window.__ZWX_MRALA_UNAVAILABLE_FRAME_IDS__ || new Set();
   const originalFetch = window.fetch.bind(window);
+
+  function retireFrameId(frameId, status, source) {
+    const id = String(frameId || "");
+    if (!id) return false;
+    const first = !unavailableFrameIds.has(id);
+    unavailableFrameIds.add(id);
+    if (first) {
+      console.warn(
+        "MRALA v15 retired unavailable frame",
+        id,
+        "• HTTP " + status,
+        "• " + source
+      );
+    }
+    return first;
+  }
+
+  function frameIdFromChunkUrl(url) {
+    const match = String(url || "").match(/\/native-chunks\/([^/]+)\//);
+    return match ? decodeURIComponent(match[1]) : "";
+  }
 
   function frameMs(frame) {
     return Date.parse(frame?.valid_time || frame?.validTime || "");
@@ -53,7 +77,12 @@
       : [];
 
     const valid = frames
-      .filter(frame => frame?.id && Number.isFinite(frameMs(frame)))
+      .filter(
+        frame =>
+          frame?.id &&
+          !unavailableFrameIds.has(String(frame.id)) &&
+          Number.isFinite(frameMs(frame))
+      )
       .sort((a, b) => frameMs(a) - frameMs(b));
 
     if (!valid.length) return [];
@@ -196,6 +225,13 @@
     const promise = (async () => {
       const response = await originalFetch(url, { cache: "force-cache" });
       if (!response.ok) {
+        if (response.status === 403 || response.status === 404) {
+          retireFrameId(
+            frameIdFromChunkUrl(url),
+            response.status,
+            "native chunk"
+          );
+        }
         throw new Error(`Native chunk HTTP ${response.status}`);
       }
       return response.arrayBuffer();
@@ -498,15 +534,6 @@
       };
     }
 
-    const originalSetBlendFrames = layer.setBlendFrames;
-    if (typeof originalSetBlendFrames === "function") {
-      layer.setBlendFrames = function(...blendArgs) {
-        const output = originalSetBlendFrames.apply(this, blendArgs);
-        if (this.enabled) schedule(0);
-        return output;
-      };
-    }
-
     layer.map?.on?.("moveend", () => {
       generation += 1;
       if (layer.enabled) schedule(MOBILE ? 140 : 90);
@@ -518,7 +545,7 @@
     });
 
     console.info(
-      "MRALA bandwidth controller v15: one native prefetch owner • no predictive warm • no full 3h cache • speed-aware rolling queue"
+      "MRALA bandwidth controller v15.1: one native prefetch owner • expired-frame skip • blend path read-only • speed-aware rolling queue"
     );
 
     return result;
