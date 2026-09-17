@@ -30,6 +30,29 @@
   let generation = 0;
   let lastSignature = "";
   const inflight = new Map();
+  const unavailableFrameIds =
+    window.__ZWX_MRALA_UNAVAILABLE_FRAME_IDS__ =
+      window.__ZWX_MRALA_UNAVAILABLE_FRAME_IDS__ || new Set();
+
+  function retireFrameId(frameId, status) {
+    const id = String(frameId || "");
+    if (!id) return false;
+    const first = !unavailableFrameIds.has(id);
+    unavailableFrameIds.add(id);
+    if (first) {
+      console.warn(
+        "MRALA v15 wrap reserve retired frame",
+        id,
+        "• HTTP " + status
+      );
+    }
+    return first;
+  }
+
+  function frameIdFromChunkUrl(url) {
+    const match = String(url || "").match(/\/native-chunks\/([^/]+)\//);
+    return match ? decodeURIComponent(match[1]) : "";
+  }
 
   function isPlaying() {
     return /Pause/i.test(
@@ -51,6 +74,7 @@
       .filter(
         frame =>
           frame?.id &&
+          !unavailableFrameIds.has(String(frame.id)) &&
           frame?.nativeChunksReady &&
           Number.isFinite(frameMs(frame))
       )
@@ -124,7 +148,15 @@
 
     const promise = (async () => {
       const response = await window.fetch(url, { cache: "force-cache" });
-      if (!response.ok) throw new Error(`Wrap reserve HTTP ${response.status}`);
+      if (!response.ok) {
+        if (response.status === 403 || response.status === 404) {
+          retireFrameId(
+            frameIdFromChunkUrl(url),
+            response.status
+          );
+        }
+        throw new Error(`Wrap reserve HTTP ${response.status}`);
+      }
       return response.arrayBuffer();
     })();
 
@@ -291,7 +323,7 @@
     }
 
     console.info(
-      `MRALA v15 wrap reserve: ${RESERVE_DEPTH} loop-start native frames pinned only during playback`
+      `MRALA v15.1 wrap reserve: ${RESERVE_DEPTH} loop-start native frames pinned only during playback`
     );
 
     return result;
