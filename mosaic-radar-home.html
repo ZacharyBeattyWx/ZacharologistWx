@@ -93,6 +93,7 @@
   // COD-style loop behavior:
   // hold the newest observation before jumping back to the oldest.
   const LOOP_END_PAUSE_MS=1500;
+  const MANIFEST_REFRESH_MS=60*1000;
 
   const statusDot=document.getElementById("statusDot"),statusText=document.getElementById("statusText");
   const frameSlider=document.getElementById("frameSlider"),playPause=document.getElementById("playPause"),prevFrame=document.getElementById("prevFrame"),nextFrame=document.getElementById("nextFrame"),speedSelect=document.getElementById("speedSelect"),frameTime=document.getElementById("frameTime"),frameAge=document.getElementById("frameAge");
@@ -100,6 +101,8 @@
 
   let manifest=null,frames=[],currentIndex=0,layer=null,playing=false,playGeneration=0,targetTick=0,playbackRaf=0,bufferBusy=false,bufferPending=false;
   let loopPauseUntil=0;
+  let manifestRefreshBusy=false;
+  let manifestRefreshTimer=0;
 
   let activeTier="overview";
   let tierSwitching=false;
@@ -3746,6 +3749,221 @@ u_mix,
     }
   }
 
+  async function refreshArchiveManifest(){
+    if(
+      manifestRefreshBusy
+      ||!manifest
+      ||!frames.length
+      ||!layer
+    ){
+      return false;
+    }
+
+    manifestRefreshBusy=true;
+
+    try{
+      const response=
+        await fetch(
+          MANIFEST_URL,
+          {
+            cache:"no-cache"
+          }
+        );
+
+      if(!response.ok){
+        throw new Error(
+          "Manifest refresh HTTP "
+          +response.status
+        );
+      }
+
+      const nextManifest=
+        await response.json();
+
+      const nextFrames=
+        recentNumericFrames(
+          nextManifest.frames||[]
+        ).filter(
+          frame=>
+            !frameUnavailable(frame)
+        );
+
+      if(!nextFrames.length){
+        return false;
+      }
+
+      const oldFrames=frames;
+      const oldCurrent=
+        oldFrames[currentIndex];
+
+      const oldCurrentId=
+        String(
+          oldCurrent?.id
+          ||""
+        );
+
+      const oldCurrentTime=
+        frameMs(oldCurrent);
+
+      const oldNewestId=
+        String(
+          oldFrames[
+            oldFrames.length-1
+          ]?.id
+          ||""
+        );
+
+      const nextIds=
+        new Set(
+          nextFrames.map(
+            frame=>
+              String(frame.id)
+          )
+        );
+
+      for(
+        const frame
+        of oldFrames
+      ){
+        const id=
+          String(
+            frame?.id
+            ||""
+          );
+
+        if(
+          id
+          &&!nextIds.has(id)
+        ){
+          unavailableFrameIds.add(id);
+        }
+      }
+
+      manifest=
+        nextManifest;
+
+      frames=
+        nextFrames;
+
+      let mappedIndex=
+        frames.findIndex(
+          frame=>
+            String(frame.id)
+            ===oldCurrentId
+        );
+
+      if(mappedIndex<0){
+        mappedIndex=
+          Number.isFinite(
+            oldCurrentTime
+          )
+            ?frames.findIndex(
+                frame=>
+                  frameMs(frame)
+                  >=oldCurrentTime
+              )
+            :-1;
+      }
+
+      if(mappedIndex<0){
+        mappedIndex=
+          Math.max(
+            0,
+            frames.length-1
+          );
+      }
+
+      currentIndex=
+        mappedIndex;
+
+      frameSlider.max=
+        String(
+          frames.length-1
+        );
+
+      const chunkReady=
+        frames.filter(
+          frame=>
+            frame.nativeChunksReady
+        ).length;
+
+      archiveInfo.textContent=
+        frames.length
+        +" numeric frames in last 3 hr • "
+        +chunkReady
+        +"/"
+        +frames.length
+        +" chunk-ready";
+
+      const newNewestId=
+        String(
+          frames[
+            frames.length-1
+          ]?.id
+          ||""
+        );
+
+      if(
+        !playing
+        &&oldCurrentId
+        &&oldCurrentId
+          !==String(
+            frames[currentIndex]?.id
+            ||""
+          )
+      ){
+        await showFrame(
+          currentIndex,
+          {
+            buffer:false,
+            tier:BASE_TIER
+          }
+        );
+      }
+
+      maintainBuffer();
+
+      if(
+        activeTier==="native"
+      ){
+        refreshNativeViewport(
+          false
+        ).catch(
+          error=>
+            console.warn(
+              "MRALA viewport manifest refresh failed",
+              error
+            )
+        );
+      }
+
+      updateUi();
+
+      if(
+        newNewestId
+        &&newNewestId!==oldNewestId
+      ){
+        console.info(
+          "MRALA live manifest sync:",
+          frames.length
+            +" current 3h frames",
+          "• newest "
+            +newNewestId
+        );
+      }
+
+      return true;
+    }catch(error){
+      console.warn(
+        "MRALA live manifest refresh failed",
+        error
+      );
+      return false;
+    }finally{
+      manifestRefreshBusy=false;
+    }
+  }
+
   async function loadArchive(map){
     try{
       const response=
@@ -3938,6 +4156,20 @@ u_mix,
       );
 
       updateUi();
+
+      if(!manifestRefreshTimer){
+        manifestRefreshTimer=
+          window.setInterval(
+            ()=>{
+              refreshArchiveManifest();
+            },
+            MANIFEST_REFRESH_MS
+          );
+
+        console.info(
+          "MRALA live manifest sync: 60s metadata refresh enabled"
+        );
+      }
     }catch(error){
       console.error(error);
 
@@ -3975,6 +4207,15 @@ u_mix,
      );
 
      await loadArchive(map);
+   }
+ );
+
+ document.addEventListener(
+   "visibilitychange",
+   ()=>{
+     if(!document.hidden){
+       refreshArchiveManifest();
+     }
    }
  );
 
