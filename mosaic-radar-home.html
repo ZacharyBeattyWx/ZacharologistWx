@@ -6,7 +6,7 @@
   <title>ZacharologistWx Native Numeric MRALA Test</title>
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
-  <script src="mapbox-token.js?v=20260915f"></script>
+  <script src="mapbox-token.js?v=20260917a"></script>
   <style>
     :root{color-scheme:dark;--panel:rgba(4,10,22,.93);--border:rgba(148,163,184,.28);--accent:#38bdf8;--muted:#94a3b8}
     *{box-sizing:border-box}html,body,#map{width:100%;height:100%;margin:0}body{overflow:hidden;background:#07111f;color:#f8fafc;font-family:Arial,Helvetica,sans-serif}#map{position:fixed;inset:0;background:#07111f}
@@ -118,6 +118,49 @@
 
   const loading=new Map();
   const chunkLoading=new Map();
+
+  const unavailableFrameIds=
+    window.__ZWX_MRALA_UNAVAILABLE_FRAME_IDS__=
+      window.__ZWX_MRALA_UNAVAILABLE_FRAME_IDS__
+      ||new Set();
+
+  function retireUnavailableFrame(
+    frame,
+    status,
+    source
+  ){
+    const id=
+      String(
+        frame?.id
+        ||""
+      );
+
+    if(!id){
+      return false;
+    }
+
+    const first=
+      !unavailableFrameIds.has(id);
+
+    unavailableFrameIds.add(id);
+
+    if(first){
+      console.warn(
+        "MRALA retired unavailable frame",
+        id,
+        "• HTTP "+status,
+        "• "+source
+      );
+    }
+
+    return first;
+  }
+
+  function frameUnavailable(frame){
+    return unavailableFrameIds.has(
+      String(frame?.id||"")
+    );
+  }
 
   // Precompiled full RadarScope palette LUT.
 // Generated from assets/palettes/RadarScope1.pal.
@@ -1788,6 +1831,18 @@ u_mix,
         );
 
       if(!response.ok){
+        if(
+          response.status===403
+          ||response.status===404
+        ){
+          retireUnavailableFrame(
+            frame,
+            response.status,
+            tierLabel(tier)
+          );
+          return false;
+        }
+
         throw new Error(
           `${tierLabel(tier)} frame HTTP ${response.status}`
         );
@@ -2049,6 +2104,18 @@ u_mix,
           );
 
         if(!response.ok){
+          if(
+            response.status===403
+            ||response.status===404
+          ){
+            retireUnavailableFrame(
+              frame,
+              response.status,
+              "native chunk "+chunk.id
+            );
+            return false;
+          }
+
           throw new Error(
             "Native chunk "
             +chunk.id
@@ -3197,7 +3264,29 @@ u_mix,
         +frames.length
       )%frames.length;
 
-    return (normalized+1)%frames.length;
+    let next=
+      (normalized+1)
+      %frames.length;
+
+    for(
+      let attempts=0;
+      attempts<frames.length;
+      attempts++
+    ){
+      if(
+        !frameUnavailable(
+          frames[next]
+        )
+      ){
+        return next;
+      }
+
+      next=
+        (next+1)
+        %frames.length;
+    }
+
+    return normalized;
   }
 
   function playbackIndicesFrom(
@@ -3320,7 +3409,10 @@ u_mix,
         return;
       }
 
-      const restartIndex=0;
+      const restartIndex=
+        nextPlaybackIndex(
+          frames.length-1
+        );
 
       const restartKey=
         textureKey(
