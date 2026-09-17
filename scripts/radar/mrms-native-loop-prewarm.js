@@ -20,4 +20,9 @@
   // predictive native warmups, and competing playback queues cannot multiply
   // CloudFront transfer behind the active viewport.
   load("scripts/radar/mrms-native-bandwidth-v15.js?v=20260916a");
+
+  // Small loop-start reserve only: keeps the first few native observations
+  // resident during playback so the newest-frame hold never turns into a
+  // multi-second network wait at wrap. This does not restore full-history warm.
+  load("scripts/radar/mrms-native-wrap-reserve-v15.js?v=20260916b");
 })();
