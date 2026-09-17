@@ -15,8 +15,9 @@
     document.head.appendChild(script);
   }
 
-  load("scripts/radar/mrms-native-loop-prewarm-v9-core.js?v=20260915e");
-  load("scripts/radar/mrms-native-motion-gate-v10.js?v=20260913a");
-  load("scripts/radar/mrms-native-motion-lead-v11.js?v=20260913b");
-  load("scripts/radar/mrms-native-ready-queue-v14.js?v=20260915f");
+  // v15 is the single native temporal-buffer owner. The older v9/v10/v11/v14
+  // stack intentionally stays unloaded so full-history archive caching,
+  // predictive native warmups, and competing playback queues cannot multiply
+  // CloudFront transfer behind the active viewport.
+  load("scripts/radar/mrms-native-bandwidth-v15.js?v=20260916a");
 })();
