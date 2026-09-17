@@ -17,7 +17,7 @@
   const PLAY_GATE = MOBILE ? 4 : 10;
   const LOAD_CONCURRENCY = MOBILE ? 3 : 8;
   const GPU_BUDGET_BYTES = (MOBILE ? 176 : 320) * 1048576;
-  const ACTIVE_BACKGROUND_FRAMES = MOBILE ? 1 : 3;
+  const ACTIVE_UPLOAD_TEXTURES = MOBILE ? 6 : 12;
   const IDLE_RETRY_MS = MOBILE ? 55 : 25;
   const ACTIVE_RETRY_MS = MOBILE ? 35 : 12;
 
@@ -223,7 +223,8 @@
     if (!ids.length || !chunks.length) return { ready: 0, target: 0 };
 
     const count = queueCount(ids);
-    const frames = sequentialFrames(count);
+    const startAnchor = sliderIndex();
+    const frames = sequentialFrames(count, startAnchor);
     if (!frames.length) return { ready: 0, target: 0 };
 
     const nextPins = queuePins(frames, chunks);
@@ -234,26 +235,36 @@
     const immediateLoaded = await loadFrameSet(layer, gateFrames, chunks);
 
     const remaining = frames.slice(gateFrames.length);
+    const activeFrameLimit = Math.max(
+      1,
+      Math.floor(ACTIVE_UPLOAD_TEXTURES / Math.max(1, chunks.length))
+    );
     const backgroundFrames = aggressive || !isPlaying()
       ? remaining
-      : remaining.filter(frame => !frameComplete(layer, frame, chunks)).slice(0, ACTIVE_BACKGROUND_FRAMES);
+      : remaining.filter(frame => !frameComplete(layer, frame, chunks)).slice(0, activeFrameLimit);
 
     const backgroundLoaded = backgroundFrames.length
       ? await loadFrameSet(layer, backgroundFrames, chunks)
       : 0;
 
-    layer.__zwxV14QueueKeys = nextPins;
+    // Playback may advance while the async load above is running. Never trim
+    // against the stale window captured at fill start; recompute from the live
+    // playhead so a completed fill cannot evict newly-ahead observations.
+    const liveFrames = sequentialFrames(count);
+    const livePins = queuePins(liveFrames, chunks);
+    layer.__zwxV14QueueKeys = livePins;
 
-    const keep = new Set([...nextPins, ...currentPins(layer, chunks)]);
+    const keep = new Set([...livePins, ...currentPins(layer, chunks)]);
     layer.evictExcept?.(keep);
     layer.map?.triggerRepaint?.();
 
     let complete = 0;
-    for (const frame of frames) {
+    for (const frame of liveFrames) {
       if (!frameComplete(layer, frame, chunks)) break;
       complete += 1;
     }
 
+    const liveAnchor = sliderIndex();
     const signature = `${document.getElementById("frameSlider")?.value || ""}:${ids.join("|")}:${complete}:${count}`;
     if (signature !== lastLogSignature || immediateLoaded || backgroundLoaded) {
       lastLogSignature = signature;
@@ -266,7 +277,7 @@
       );
     }
 
-    return { ready: complete, target: count };
+    return { ready: complete, target: count, anchorMoved: liveAnchor !== startAnchor };
   }
 
   function schedule(delay = 0, aggressive = false) {
@@ -286,7 +297,7 @@
           const useAggressive = aggressivePending;
           aggressivePending = false;
           const result = await fillQueue(useAggressive);
-          if (result.ready < result.target) {
+          if (result.ready < result.target || result.anchorMoved) {
             pending = true;
             if (isPlaying()) break;
           }
@@ -306,7 +317,7 @@
     if (!layer?.enabled || !layer.__zwxHdLocked) return true;
 
     const ids = visibleIds(layer);
-    const needed = Math.min(PLAY_GATE, queueCount(ids));
+    const needed = queueCount(ids);
     if (readyAhead(layer) >= needed) return true;
 
     const deadline = performance.now() + 5000;
@@ -319,7 +330,7 @@
       if (readyAhead(layer) >= needed) return true;
       await sleep(25);
     }
-    return readyAhead(layer) >= Math.min(3, needed);
+    return readyAhead(layer) >= needed;
   }
 
   const previousAddLayer = mapPrototype.addLayer;
@@ -388,7 +399,7 @@
     layer.map?.on?.("zoomend", () => schedule(0, true));
 
     console.info(
-      "MRALA archive player v14.1: frame-commit ready queue • one steady-state GPU owner • no emergency playback guard • up to " +
+      "MRALA archive player v14.2: live-window ready queue • one steady-state GPU owner • no emergency playback guard • up to " +
       TARGET_QUEUE + " native frames prepared ahead"
     );
 
@@ -413,9 +424,13 @@
 
     primeForPlay()
       .catch(() => false)
-      .finally(() => {
+      .then(ready => {
         button.disabled = false;
         button.textContent = originalText;
+        if (!ready) {
+          schedule(0, true);
+          return;
+        }
         bypassPlayGate = true;
         button.click();
         bypassPlayGate = false;
