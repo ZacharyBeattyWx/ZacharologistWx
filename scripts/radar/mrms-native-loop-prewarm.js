@@ -25,4 +25,9 @@
   // resident during playback so the newest-frame hold never turns into a
   // multi-second network wait at wrap. This does not restore full-history warm.
   load("scripts/radar/mrms-native-wrap-reserve-v15.js?v=20260917a");
+
+  // Overview v16 replaces the core page's fixed 18-frame desktop prefetch with
+  // a small speed-aware rolling runway while leaving the existing playback
+  // clock untouched. It also caps simultaneous overview body transfers.
+  load("scripts/radar/mrms-overview-bandwidth-v16.js?v=20260918a");
 })();
