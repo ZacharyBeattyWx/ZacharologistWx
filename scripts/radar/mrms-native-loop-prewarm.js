@@ -19,4 +19,5 @@
   load("scripts/radar/mrms-native-wrap-reserve-v15.js?v=20260917a");
   load("scripts/radar/mrms-overview-bandwidth-v16.js?v=20260918a");
   load("scripts/radar/mrms-native-ready-v17.js?v=20260918a");
+  load("scripts/radar/mrms-native-rebuffer-v18.js?v=20260918a");
 })();
