@@ -168,22 +168,25 @@
   }
 
   function acquireFetchSlot() {
-    if (activeFetches < FETCH_CONCURRENCY) {
-      activeFetches += 1;
-      return Promise.resolve();
-    }
-
     return new Promise(resolve => {
+      if (activeFetches < FETCH_CONCURRENCY) {
+        activeFetches += 1;
+        resolve();
+        return;
+      }
       fetchWaiters.push(resolve);
-    }).then(() => {
-      activeFetches += 1;
     });
   }
 
   function releaseFetchSlot() {
-    activeFetches = Math.max(0, activeFetches - 1);
     const next = fetchWaiters.shift();
-    if (next) next();
+    if (next) {
+      // Hand this exact occupied slot to the next waiter. Do not decrement and
+      // re-increment around the handoff or a new fetch can slip through.
+      next();
+      return;
+    }
+    activeFetches = Math.max(0, activeFetches - 1);
   }
 
   // Hold the slot until the response body has actually arrived. Limiting only
@@ -289,21 +292,11 @@
     const speed = document.getElementById("speedSelect");
     speed?.addEventListener("change", () => {
       if (!overviewLayer) return;
-      const keep = realOverviewKeys();
-      if (overviewLayer.activeKey) keep.add(String(overviewLayer.activeKey));
-      if (overviewLayer.nextKey) keep.add(String(overviewLayer.nextKey));
-      originalSafeEvict(overviewLayer, keep);
+      overviewLayer.evictExcept?.(realOverviewKeys());
       console.info(
         "MRALA overview bandwidth v16:",
         desiredDepth() + "-frame runway for " + speedLabel()
       );
     });
   }, { once: true });
-
-  function originalSafeEvict(layer, keep) {
-    // layer.evictExcept is already wrapped above; calling it is intentional and
-    // re-evaluates the live window. The argument is retained for readability.
-    if (!layer?.evictExcept) return;
-    layer.evictExcept(keep);
-  }
 })();
