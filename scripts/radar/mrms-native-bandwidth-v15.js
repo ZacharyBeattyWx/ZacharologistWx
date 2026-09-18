@@ -22,7 +22,8 @@
   // Idle native view keeps just a couple of observations warm.
   const IDLE_DEPTH = MOBILE ? 1 : 2;
   const PLAY_GATE = MOBILE ? 2 : 3;
-  const LOAD_CONCURRENCY = MOBILE ? 2 : 3;
+  const LOAD_CONCURRENCY = MOBILE ? 3 : 10;
+  const FRAME_WAVE = MOBILE ? 2 : 5;
   const GPU_BUDGET_BYTES = (MOBILE ? 72 : 144) * 1048576;
   const ACTIVE_RETRY_MS = MOBILE ? 70 : 40;
   const IDLE_RETRY_MS = MOBILE ? 160 : 110;
@@ -146,14 +147,28 @@
 
   function speedDepth() {
     const label = speedLabel();
-    if (label === "2×") return MOBILE ? 4 : 6;
-    if (label === "1.5×") return MOBILE ? 3 : 5;
-    if (label === "1×") return MOBILE ? 3 : 4;
-    return MOBILE ? 2 : 3;
+    if (label === "2×") return MOBILE ? 6 : 14;
+    if (label === "1.5×") return MOBILE ? 5 : 12;
+    if (label === "1×") return MOBILE ? 4 : 10;
+    return MOBILE ? 3 : 8;
   }
 
   function sliderIndex(frames = timelineFrames()) {
     if (!frames.length) return -1;
+
+    const activeFrameId = String(
+      nativeLayer?.toFrame ||
+      nativeLayer?.fromFrame ||
+      ""
+    );
+
+    if (activeFrameId) {
+      const activeIndex = frames.findIndex(
+        frame => String(frame?.id || "") === activeFrameId
+      );
+      if (activeIndex >= 0) return activeIndex;
+    }
+
     const value = Math.round(
       Number(document.getElementById("frameSlider")?.value)
     );
@@ -271,24 +286,38 @@
     );
   }
 
-  async function loadFrame(layer, frame, chunks) {
-    const targets = chunks.filter(
-      chunk => !layer.textures?.has(chunkKey(frame.id, chunk.id))
-    );
+  async function loadFrameSet(layer, frames, chunks) {
+    const targets = [];
+
+    for (const frame of frames) {
+      for (const chunk of chunks) {
+        if (!layer.textures?.has(chunkKey(frame.id, chunk.id))) {
+          targets.push({ frame, chunk });
+        }
+      }
+    }
 
     let cursor = 0;
     let loaded = 0;
 
     async function worker() {
       while (cursor < targets.length) {
-        const chunk = targets[cursor++];
+        const target = targets[cursor++];
         try {
-          if (await ensureTexture(layer, frame, chunk)) loaded += 1;
+          if (
+            await ensureTexture(
+              layer,
+              target.frame,
+              target.chunk
+            )
+          ) {
+            loaded += 1;
+          }
         } catch (error) {
           console.warn(
-            "MRALA v15 native chunk failed",
-            frame?.id,
-            chunk?.id,
+            "MRALA v15.2 native chunk failed",
+            target.frame?.id,
+            target.chunk?.id,
             error
           );
         }
@@ -354,25 +383,40 @@
       return { ready: 0, target: 0 };
     }
 
-    const desired = gateOnly
-      ? PLAY_GATE
-      : queueDepth(ids, isPlaying());
-    const frames = upcomingFrames(desired);
-    if (!frames.length) {
+    const desired = queueDepth(
+      ids,
+      gateOnly ? true : isPlaying()
+    );
+    const firstFrames = upcomingFrames(desired);
+    if (!firstFrames.length) {
       return { ready: 0, target: 0 };
     }
 
     const localGeneration = generation;
     let uploaded = 0;
+    const maxWaves =
+      Math.ceil(desired / FRAME_WAVE) + 1;
 
-    // Prioritize complete observations in timeline order. A later frame never
-    // consumes network slots before an earlier frame has had its chance.
-    for (const frame of frames) {
+    // Load several consecutive observations in parallel. Re-evaluate the live
+    // playhead after every wave so fast playback never spends the next network
+    // round trip filling frames that have already fallen behind.
+    for (let pass = 0; pass < maxWaves; pass += 1) {
       if (localGeneration !== generation || !layer.enabled) break;
-      if (!frameComplete(layer, frame, chunks)) {
-        uploaded += await loadFrame(layer, frame, chunks);
-      }
-      if (gateOnly && readyAhead(layer, PLAY_GATE) >= PLAY_GATE) break;
+
+      const liveFrames = upcomingFrames(desired);
+      const missing = liveFrames.filter(
+        frame => !frameComplete(layer, frame, chunks)
+      );
+
+      if (!missing.length) break;
+
+      uploaded += await loadFrameSet(
+        layer,
+        missing.slice(0, FRAME_WAVE),
+        chunks
+      );
+
+      if (gateOnly && readyAhead(layer, desired) >= desired) break;
     }
 
     if (localGeneration !== generation || !layer.enabled) {
@@ -443,14 +487,15 @@
     const chunks = chunksFor(ids);
     if (!ids.length || !chunks.length) return true;
 
+    const target = queueDepth(ids, true);
     const required = Math.min(
-      PLAY_GATE,
-      upcomingFrames(PLAY_GATE).length
+      target,
+      upcomingFrames(target).length
     );
     if (!required || readyAhead(layer, required) >= required) return true;
 
     generation += 1;
-    const deadline = performance.now() + (MOBILE ? 4200 : 3200);
+    const deadline = performance.now() + (MOBILE ? 5200 : 7000);
 
     while (performance.now() < deadline) {
       if (!busy) {
@@ -545,7 +590,7 @@
     });
 
     console.info(
-      "MRALA bandwidth controller v15.1: one native prefetch owner • expired-frame skip • blend path read-only • speed-aware rolling queue"
+      "MRALA bandwidth controller v15.2: parallel frame waves • full runway prime • active-frame anchor • expired-frame skip"
     );
 
     return result;
@@ -559,9 +604,10 @@
       if (!nativeLayer?.enabled) return;
 
       const ids = visibleIds(nativeLayer);
+      const target = queueDepth(ids, true);
       const required = Math.min(
-        PLAY_GATE,
-        upcomingFrames(PLAY_GATE).length
+        target,
+        upcomingFrames(target).length
       );
       if (!ids.length || !required || readyAhead(nativeLayer, required) >= required) {
         return;
