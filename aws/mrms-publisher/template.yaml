@@ -31,7 +31,10 @@ Parameters:
       - DISABLED
   MralaNumericHistoryMinutes:
     Type: Number
-    Default: 180
+    # Keep objects/manifest 15 minutes beyond the browser's 3-hour playback
+    # window so clients holding a slightly older manifest never request chunks
+    # that the next publisher run has already deleted.
+    Default: 195
   MralaNumericMaxRenderPerRun:
     Type: Number
     Default: 6
@@ -186,7 +189,7 @@ Resources:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
-      FunctionName: !Ref MralaNumericFunction
+      FunctionName: !GetAtt MralaNumericFunction.Arn
       Principal: events.amazonaws.com
       SourceArn: !GetAtt MralaNumericSchedule.Arn
 
