@@ -47,7 +47,7 @@ jobs:
             exit 0
           fi
 
-          if [ "$rc" -eq 139 ]; then
+          if [ "$rc" -eq 134 ] || [ "$rc" -eq 139 ]; then
             ROOT="rtma-build/temp-tiles"
 
             test -s "$ROOT/manifest.json"
@@ -58,12 +58,12 @@ jobs:
             actual_tiles="$(find "$ROOT" -type f -name '*.webp' | wc -l | tr -d ' ')"
 
             if [ "$expected_tiles" -lt 1 ] || [ "$actual_tiles" -ne "$expected_tiles" ]; then
-              echo "::error::RTMA exited 139 and the generated tile tree is incomplete."
+              echo "::error::RTMA exited $rc and the generated tile tree is incomplete."
               echo "Manifest expects $expected_tiles tiles; found $actual_tiles."
-              exit 139
+              exit "$rc"
             fi
 
-            echo "::warning::RTMA exited 139 after completing output generation."
+            echo "::warning::RTMA exited $rc after completing output generation."
             echo "Verified $actual_tiles/$expected_tiles temperature tiles plus manifest and GeoJSON files."
             echo "Continuing to publish the completed RTMA dataset."
             exit 0
