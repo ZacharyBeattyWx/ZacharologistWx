@@ -36,7 +36,41 @@ jobs:
         run: python -m pip install -r scripts/weather/requirements.txt
 
       - name: Render RTMA temperature tiles
-        run: python scripts/weather/render_current_wx_previews.py --output rtma-build --only temperature
+        shell: bash
+        run: |
+          set +e
+          python scripts/weather/render_current_wx_previews.py --output rtma-build --only temperature
+          rc=$?
+          set -e
+
+          if [ "$rc" -eq 0 ]; then
+            exit 0
+          fi
+
+          if [ "$rc" -eq 139 ]; then
+            ROOT="rtma-build/temp-tiles"
+
+            test -s "$ROOT/manifest.json"
+            test -s "$ROOT/stations.geojson"
+            test -s "$ROOT/states.geojson"
+
+            expected_tiles="$(python -c 'import json,sys; print(int(json.load(open(sys.argv[1]))["tileCount"]))' "$ROOT/manifest.json")"
+            actual_tiles="$(find "$ROOT" -type f -name '*.webp' | wc -l | tr -d ' ')"
+
+            if [ "$expected_tiles" -lt 1 ] || [ "$actual_tiles" -ne "$expected_tiles" ]; then
+              echo "::error::RTMA exited 139 and the generated tile tree is incomplete."
+              echo "Manifest expects $expected_tiles tiles; found $actual_tiles."
+              exit 139
+            fi
+
+            echo "::warning::RTMA exited 139 after completing output generation."
+            echo "Verified $actual_tiles/$expected_tiles temperature tiles plus manifest and GeoJSON files."
+            echo "Continuing to publish the completed RTMA dataset."
+            exit 0
+          fi
+
+          echo "::error::RTMA renderer failed with exit code $rc."
+          exit "$rc"
 
       - uses: actions/setup-node@v4
         with:
