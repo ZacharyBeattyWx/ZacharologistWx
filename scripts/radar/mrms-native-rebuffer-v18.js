@@ -13,16 +13,16 @@
     /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
   const LOW_READY_BY_SPEED = new Map([
-    ["0.5×", MOBILE ? 1 : 2],
-    ["1×", MOBILE ? 2 : 3],
-    ["1.5×", MOBILE ? 2 : 4],
-    ["2×", MOBILE ? 3 : 5]
+    ["0.5×", 1],
+    ["1×", MOBILE ? 1 : 2],
+    ["1.5×", MOBILE ? 1 : 2],
+    ["2×", MOBILE ? 1 : 2]
   ]);
 
-  const CHECK_MS = MOBILE ? 180 : 120;
-  const LOW_SAMPLE_COUNT = 2;
+  const CHECK_MS = MOBILE ? 180 : 140;
+  const LOW_SAMPLE_COUNT = 4;
   const PRIME_TIMEOUT_MS = MOBILE ? 7000 : 9000;
-  const COOLDOWN_MS = 900;
+  const COOLDOWN_MS = 2200;
 
   const mapPrototype = window.mapboxgl?.Map?.prototype;
   if (!mapPrototype?.addLayer || mapPrototype.__zwxNativeRebufferV18Installed) return;
@@ -216,7 +216,7 @@
     const state = pacingState();
     if (!state || !Number.isFinite(Number(state.readyAhead))) return;
 
-    const floor = LOW_READY_BY_SPEED.get(speedLabel()) || 3;
+    const floor = LOW_READY_BY_SPEED.get(speedLabel()) || 2;
     const ready = Number(state.readyAhead);
 
     if (ready < floor) {
