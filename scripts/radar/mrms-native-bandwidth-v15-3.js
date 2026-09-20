@@ -146,10 +146,10 @@
 
   function speedDepth() {
     const label = speedLabel();
-    if (label === "2×") return MOBILE ? 6 : 14;
-    if (label === "1.5×") return MOBILE ? 5 : 12;
-    if (label === "1×") return MOBILE ? 4 : 10;
-    return MOBILE ? 3 : 8;
+    if (label === "2×") return MOBILE ? 4 : 5;
+    if (label === "1.5×") return MOBILE ? 4 : 5;
+    if (label === "1×") return MOBILE ? 3 : 4;
+    return MOBILE ? 2 : 3;
   }
 
   function sliderIndex(frames = timelineFrames()) {
@@ -437,7 +437,6 @@
 
     layer.evictExcept?.(keep);
     layer.map?.triggerRepaint?.();
-
     const ready = readyAhead(layer, desired);
     maybeLog(ids, ready, desired, uploaded);
     return { ready, target: desired };
@@ -581,7 +580,7 @@
     console.info(
       "MRALA bandwidth controller v15.3: paced GPU uploads • " +
       FETCH_CONCURRENCY + " fetch/decode workers • " +
-      UPLOAD_BATCH + " texture(s) per paint • full speed-aware runway preserved"
+      UPLOAD_BATCH + " texture(s) per paint • compact speed-aware runway"
     );
 
     return result;
