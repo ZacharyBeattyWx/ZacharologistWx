@@ -18,10 +18,10 @@
   // starts from a genuinely ready native buffer instead of building it after
   // playback has already begun.
   const DEPTH_BY_SPEED = new Map([
-    ["0.5×", MOBILE ? 3 : 8],
-    ["1×", MOBILE ? 4 : 10],
-    ["1.5×", MOBILE ? 5 : 12],
-    ["2×", MOBILE ? 6 : 14]
+    ["0.5×", MOBILE ? 2 : 3],
+    ["1×", MOBILE ? 3 : 4],
+    ["1.5×", MOBILE ? 4 : 5],
+    ["2×", MOBILE ? 4 : 5]
   ]);
 
   const FETCH_CONCURRENCY = MOBILE ? 2 : 4;
@@ -59,7 +59,7 @@
   }
 
   function targetDepth() {
-    return DEPTH_BY_SPEED.get(speedLabel()) || (MOBILE ? 4 : 10);
+    return DEPTH_BY_SPEED.get(speedLabel()) || (MOBILE ? 3 : 4);
   }
 
   function manifest() {
