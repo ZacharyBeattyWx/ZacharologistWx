@@ -15,8 +15,9 @@
     document.head.appendChild(script);
   }
 
-  // v25 uses one MRMS timeline and one GPU renderer. It chooses f4/f2/f1 from
-  // the same-source server-side pyramid, preloads the selected viewport loop,
-  // then performs an atomic resolution switch inside the same renderer.
-  load("scripts/radar/mrms-single-renderer-pyramid-v25.js?v=20260921a");
+  // v26 patches the existing native chunk renderer before v25 captures its
+  // methods, allowing f4/f2 pyramid chunks to register their own geometry and
+  // become visible in the same renderer. v25 then owns selection/preloading.
+  load("scripts/radar/mrms-pyramid-dynamic-geometry-v26.js?v=20260921a");
+  load("scripts/radar/mrms-single-renderer-pyramid-v25.js?v=20260921b");
 })();
