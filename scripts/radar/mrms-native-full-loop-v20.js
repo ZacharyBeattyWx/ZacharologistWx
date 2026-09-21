@@ -371,7 +371,7 @@
   }
 
   function scheduleBackgroundPreload(delay = 250) {
-    if (MOBILE || !nativeLayer?.enabled) return;
+    if (MOBILE || !nativeLayer?.enabled || !isPlaying()) return;
     if (backgroundTimer) window.clearTimeout(backgroundTimer);
     backgroundTimer = window.setTimeout(() => {
       backgroundTimer = 0;
@@ -419,7 +419,7 @@
     if (response.ok && MANIFEST_RE.test(url)) {
       try {
         manifest = await response.clone().json();
-        if (nativeLayer?.enabled) scheduleBackgroundPreload(50);
+        if (nativeLayer?.enabled && isPlaying()) scheduleBackgroundPreload(50);
       } catch (error) {
         console.warn("MRALA v20 manifest capture failed", error);
       }
@@ -468,8 +468,8 @@
         if (before && after && before !== after) {
           generation += 1;
           clearReserve();
-          scheduleBackgroundPreload(isPlaying() ? 80 : 220);
-        } else if (after && this.enabled && !fullReadySignature) {
+          if (isPlaying()) scheduleBackgroundPreload(80);
+        } else if (after && this.enabled && isPlaying() && !fullReadySignature) {
           scheduleBackgroundPreload(220);
         }
 
@@ -483,9 +483,9 @@
         const output = originalSetEnabled.call(this, enabled);
         generation += 1;
 
-        if (enabled) {
+        if (enabled && isPlaying()) {
           scheduleBackgroundPreload(120);
-        } else {
+        } else if (!enabled) {
           clearReserve();
           if (backgroundTimer) window.clearTimeout(backgroundTimer);
           backgroundTimer = 0;
@@ -525,7 +525,7 @@
     console.info(
       MOBILE
         ? "MRALA v20: mobile keeps rolling native queue with overview fallback"
-        : "MRALA v20: desktop preloads the full visible native 3-hour loop before playback • overview remains hot as seamless fallback"
+        : "MRALA v20: desktop loads the full visible native 3-hour loop when Play is pressed • overview remains hot as seamless fallback"
     );
 
     return result;
