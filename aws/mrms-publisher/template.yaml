@@ -68,6 +68,10 @@ Resources:
             Status: Enabled
             Prefix: mrms-native-numeric/frames/
             ExpirationInDays: 1
+          - Id: ExpireOrphanedMralaPyramidChunks
+            Status: Enabled
+            Prefix: mrms-native-numeric/pyramid/
+            ExpirationInDays: 1
 
   PublisherRole:
     Type: AWS::IAM::Role
@@ -145,7 +149,7 @@ Resources:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
-      FunctionName: !Ref PublisherFunction
+      FunctionName: !GetAtt PublisherFunction.Arn
       Principal: events.amazonaws.com
       SourceArn: !GetAtt PublisherSchedule.Arn
 
@@ -157,12 +161,12 @@ Resources:
         ImageUri: !Ref ImageUri
       ImageConfig:
         Command:
-          - mrala_numeric_publisher.lambda_handler
+          - mrala_pyramid_publisher.lambda_handler
       Role: !GetAtt PublisherRole.Arn
       Architectures:
         - x86_64
       MemorySize: 3008
-      Timeout: 600
+      Timeout: 900
       EphemeralStorage:
         Size: 2048
       Environment:
@@ -174,6 +178,9 @@ Resources:
           MRALA_NUMERIC_COMPRESSLEVEL: '4'
           MRALA_NUMERIC_OVERVIEW_MAX_WIDTH: '3500'
           MRALA_NUMERIC_CHUNK_PIXELS: '1024'
+          MRALA_NUMERIC_PYRAMID_FACTORS: '4,2'
+          MRALA_NUMERIC_PYRAMID_CHUNK_PIXELS: '1024'
+          MRALA_NUMERIC_PYRAMID_MAX_FRAMES_PER_RUN: '8'
 
   MralaNumericSchedule:
     Type: AWS::Events::Rule
