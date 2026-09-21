@@ -7,6 +7,7 @@ COPY aws/mrms-publisher/requirements.txt \
      aws/mrms-publisher/handler_v2.py \
      aws/mrms-publisher/nexrad_publisher.py \
      aws/mrms-publisher/mrala_numeric_publisher.py \
+     aws/mrms-publisher/mrala_pyramid_publisher.py \
      aws/mrms-publisher/handler_v3.py \
      ${LAMBDA_TASK_ROOT}/
 
