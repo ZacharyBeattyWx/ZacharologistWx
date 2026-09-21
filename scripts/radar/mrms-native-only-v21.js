@@ -19,13 +19,73 @@
   let overviewLayer = null;
   let nativeLayer = null;
   let purgeOverviewTextures = () => {};
+  let handoffReady = false;
+  let zooming = false;
+  let handoffTimer = 0;
 
   function nativeOnlyActive() {
-    return !MOBILE && Boolean(nativeLayer?.enabled);
+    return !MOBILE && Boolean(nativeLayer?.enabled) && handoffReady;
   }
 
   function isOverviewKey(key) {
     return String(key || "").startsWith("overview:");
+  }
+
+  function visibleIds() {
+    return [...new Set((nativeLayer?.visibleIds || []).map(String))];
+  }
+
+  function currentNativeReady() {
+    if (!nativeLayer?.enabled) return false;
+    const ids = visibleIds();
+    const frameId = String(nativeLayer.fromFrame || nativeLayer.toFrame || "");
+    return Boolean(
+      ids.length &&
+      frameId &&
+      nativeLayer.hasFrame?.(frameId, ids)
+    );
+  }
+
+  function clearHandoffTimer() {
+    if (handoffTimer) window.clearTimeout(handoffTimer);
+    handoffTimer = 0;
+  }
+
+  function scheduleHandoff(delay = 80) {
+    if (MOBILE || !nativeLayer?.enabled || handoffReady) return;
+    clearHandoffTimer();
+
+    handoffTimer = window.setTimeout(() => {
+      handoffTimer = 0;
+      if (!nativeLayer?.enabled || handoffReady) return;
+
+      // Do not change radar quality while the user is actively zooming.
+      if (zooming || !currentNativeReady()) {
+        scheduleHandoff(60);
+        return;
+      }
+
+      // Give the ready native frame one paint opportunity before removing the
+      // overview. The visible handoff therefore happens after zoom settles and
+      // only when a complete native frame is already resident.
+      window.requestAnimationFrame?.(() => {
+        window.requestAnimationFrame?.(() => {
+          if (!nativeLayer?.enabled || zooming || !currentNativeReady()) {
+            scheduleHandoff(60);
+            return;
+          }
+
+          handoffReady = true;
+          purgeOverviewTextures();
+          overviewLayer?.map?.triggerRepaint?.();
+          nativeLayer?.map?.triggerRepaint?.();
+
+          console.info(
+            "MRALA v21 native-only handoff: native frame ready after zoom settle • overview released"
+          );
+        });
+      });
+    }, Math.max(0, delay));
   }
 
   const previousAddLayer = mapPrototype.addLayer;
@@ -37,7 +97,8 @@
       overviewLayer = layer;
 
       // Capture the real eviction function before the later overview-bandwidth
-      // shim wraps it. At native zoom we can genuinely drop low-res GPU data.
+      // shim wraps it. Once the native handoff is complete we can genuinely
+      // drop the low-resolution GPU data.
       const baseEvictExcept = layer.evictExcept;
       purgeOverviewTextures = () => {
         if (!overviewLayer || typeof baseEvictExcept !== "function") return;
@@ -48,9 +109,8 @@
       const originalHasTexture = layer.hasTexture;
       if (typeof originalHasTexture === "function") {
         layer.hasTexture = function(key) {
-          // The core player still uses overview keys as its timeline clock.
-          // In desktop native mode those keys become virtual clock entries so
-          // no overview frame download is required.
+          // After handoff the core player still uses overview keys as its
+          // timeline clock, but they no longer require low-res downloads.
           if (nativeOnlyActive() && isOverviewKey(key)) return true;
           return originalHasTexture.call(this, key);
         };
@@ -91,8 +151,8 @@
       const originalRender = layer.render;
       if (typeof originalRender === "function") {
         layer.render = function(...renderArgs) {
-          // At deep/native zoom there is now exactly one visible radar quality.
-          // The overview object remains only as a zero-data playback clock.
+          // Keep overview visible while the zoom gesture is occurring and while
+          // native prepares. Suppress it only after an atomic ready handoff.
           if (nativeOnlyActive()) return;
           return originalRender.apply(this, renderArgs);
         };
@@ -103,20 +163,52 @@
       layer.__zwxNativeOnlyV21NativePatched = true;
       nativeLayer = layer;
 
+      // Until handoffReady, prevent native from suddenly appearing on top of
+      // the overview mid-gesture. The quality change occurs once, after zoomend,
+      // with a complete frame already resident.
+      const originalRender = layer.render;
+      if (typeof originalRender === "function") {
+        layer.render = function(...renderArgs) {
+          if (!MOBILE && this.enabled && !handoffReady) return;
+          return originalRender.apply(this, renderArgs);
+        };
+      }
+
       const originalSetEnabled = layer.setEnabled;
       if (typeof originalSetEnabled === "function") {
         layer.setEnabled = function(enabled) {
           const output = originalSetEnabled.call(this, enabled);
 
           if (enabled && !MOBILE) {
-            // Reclaim any overview textures left from the low-zoom view. The
-            // v20 Play gate will preload the complete native viewport loop.
-            purgeOverviewTextures();
+            handoffReady = false;
+            scheduleHandoff(40);
+          } else if (!enabled) {
+            handoffReady = false;
+            clearHandoffTimer();
+            overviewLayer?.map?.triggerRepaint?.();
           }
 
           return output;
         };
       }
+
+      const originalActivateFrame = layer.activateFrame;
+      if (typeof originalActivateFrame === "function") {
+        layer.activateFrame = function(...activateArgs) {
+          const output = originalActivateFrame.apply(this, activateArgs);
+          if (output && this.enabled && !handoffReady) scheduleHandoff(20);
+          return output;
+        };
+      }
+
+      layer.map?.on?.("zoomstart", () => {
+        zooming = true;
+      });
+
+      layer.map?.on?.("zoomend", () => {
+        zooming = false;
+        if (layer.enabled && !handoffReady) scheduleHandoff(40);
+      });
     }
 
     return result;
@@ -126,14 +218,18 @@
     mobile: MOBILE,
     active: nativeOnlyActive(),
     nativeEnabled: Boolean(nativeLayer?.enabled),
+    handoffReady,
+    zooming,
+    currentNativeReady: currentNativeReady(),
     overviewTextures: Number(overviewLayer?.textures?.size || 0),
     nativeTextures: Number(nativeLayer?.textures?.size || 0),
-    fullNative: window.__ZWX_MRALA_FULL_NATIVE_STATE__?.() || null
+    fullNative: window.__ZWX_MRALA_FULL_NATIVE_STATE__?.() || null,
+    lodHandoff: window.__ZWX_MRALA_LOD_HANDOFF_STATE__?.() || null
   });
 
   console.info(
     MOBILE
       ? "MRALA v21: mobile unchanged"
-      : "MRALA v21: desktop deep zoom is native-only • overview downloads/rendering disabled while native is active"
+      : "MRALA v21: native-only handoff waits for zoom settle + a complete native frame before releasing overview"
   );
 })();
