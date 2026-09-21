@@ -15,9 +15,8 @@
     document.head.appendChild(script);
   }
 
-  // v24 is the desktop experiment: one native/high-resolution radar dataset,
-  // one native renderer, and a virtual overview object used only as the core
-  // timeline clock. The older LOD/handoff/bandwidth shims are intentionally
-  // not loaded so they cannot fight the single-source playback path.
-  load("scripts/radar/mrms-native-single-source-v24.js?v=20260920a");
+  // v25 uses one MRMS timeline and one GPU renderer. It chooses f4/f2/f1 from
+  // the same-source server-side pyramid, preloads the selected viewport loop,
+  // then performs an atomic resolution switch inside the same renderer.
+  load("scripts/radar/mrms-single-renderer-pyramid-v25.js?v=20260921a");
 })();
