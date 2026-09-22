@@ -20,8 +20,10 @@
   // become visible in the same renderer. v25 then owns selection/preloading.
   // v27 repairs the preload-complete Play relay: a disabled HTML button ignores
   // programmatic click(), so the synthetic click must be allowed through once
-  // the pyramid loop is resident.
+  // the pyramid loop is resident. v28 freezes that resident loop while playing
+  // so manifest/camera refreshes cannot trigger mid-loop preload/eviction work.
   load("scripts/radar/mrms-pyramid-dynamic-geometry-v26.js?v=20260921a");
   load("scripts/radar/mrms-single-renderer-pyramid-v25.js?v=20260921b");
   load("scripts/radar/mrms-pyramid-play-gate-v27.js?v=20260921a");
+  load("scripts/radar/mrms-playback-snapshot-lock-v28.js?v=20260921a");
 })();
