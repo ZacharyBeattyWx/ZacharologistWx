@@ -5,14 +5,11 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>Weather Viewer | ZacharologistWx</title>
   <meta name="description" content="Unified radar, satellite, and lightning viewer.">
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
+  <script src="mapbox-token.js?v=20260922a"></script>
   <style>
-    :root{
-      color-scheme:dark;
-      --bg:#050911;--panel:rgba(7,13,24,.95);--panel2:#0d1626;
-      --line:rgba(148,163,184,.24);--line2:rgba(148,163,184,.42);
-      --text:#f8fafc;--muted:#94a3b8;--accent:#38bdf8;--accentSoft:rgba(56,189,248,.14);--green:#4ade80;
-      --top:58px;--sub:48px;
-    }
+    :root{color-scheme:dark;--bg:#050911;--panel:rgba(7,13,24,.95);--line:rgba(148,163,184,.24);--line2:rgba(148,163,184,.42);--text:#f8fafc;--muted:#94a3b8;--accent:#38bdf8;--accentSoft:rgba(56,189,248,.14);--green:#4ade80;--top:58px;--sub:48px}
     *{box-sizing:border-box}
     html,body{width:100%;height:100%;margin:0;overflow:hidden;background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-serif}
     button{font:inherit;cursor:pointer}
@@ -20,46 +17,18 @@
     .shell{position:fixed;inset:0;display:grid;grid-template-rows:var(--top) var(--sub) minmax(0,1fr)}
     .top,.sub{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--panel);backdrop-filter:blur(16px);z-index:20}
     .top{justify-content:space-between}
-    .brand{display:flex;align-items:center;gap:10px;min-width:0}
-    .brand a{display:flex;align-items:center;justify-content:center;flex:0 0 auto}
-    .logo{width:40px;height:40px;display:block;object-fit:contain}
-    .brand-copy{min-width:0}
-    .title{font-size:.95rem;font-weight:900;letter-spacing:.01em;white-space:nowrap}
-    .meta{margin-top:2px;color:var(--muted);font-size:.62rem;font-weight:750;white-space:nowrap}
-    .tabs,.controls{display:flex;align-items:center;gap:6px;min-width:0;overflow-x:auto;scrollbar-width:none}
-    .tabs::-webkit-scrollbar,.controls::-webkit-scrollbar{display:none}
-    .tab,.control{flex:0 0 auto;border:1px solid var(--line);border-radius:8px;background:#0c1523;color:#b8c5d8;font-weight:850;transition:.12s ease}
-    .tab{min-height:36px;padding:0 15px;font-size:.76rem}
-    .control{min-height:32px;padding:0 11px;font-size:.68rem}
-    .tab:hover,.control:hover{border-color:var(--line2);color:#fff;background:#111d2f}
-    .tab.active,.control.active{border-color:rgba(56,189,248,.65);background:var(--accentSoft);color:#dff6ff}
-    .status{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:.66rem;font-weight:800;white-space:nowrap}
-    .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 9px rgba(74,222,128,.7)}
-    .sub{justify-content:space-between;padding-block:7px;min-width:0}
-    .sub-left,.sub-right{display:flex;align-items:center;gap:8px;min-width:0}
-    .label{color:#64748b;font-size:.61rem;font-weight:900;letter-spacing:.09em;text-transform:uppercase;white-space:nowrap}
-    .note{color:var(--muted);font-size:.64rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .brand{display:flex;align-items:center;gap:10px;min-width:0}.brand a{display:flex;align-items:center;justify-content:center;flex:0 0 auto}.logo{width:40px;height:40px;display:block;object-fit:contain}.brand-copy{min-width:0}.title{font-size:.95rem;font-weight:900;white-space:nowrap}.meta{margin-top:2px;color:var(--muted);font-size:.62rem;font-weight:750;white-space:nowrap}
+    .tabs,.controls{display:flex;align-items:center;gap:6px;min-width:0;overflow-x:auto;scrollbar-width:none}.tabs::-webkit-scrollbar,.controls::-webkit-scrollbar{display:none}
+    .tab,.control{flex:0 0 auto;border:1px solid var(--line);border-radius:8px;background:#0c1523;color:#b8c5d8;font-weight:850;transition:.12s ease}.tab{min-height:36px;padding:0 15px;font-size:.76rem}.control{min-height:32px;padding:0 11px;font-size:.68rem}.tab:hover,.control:hover{border-color:var(--line2);color:#fff;background:#111d2f}.tab.active,.control.active{border-color:rgba(56,189,248,.65);background:var(--accentSoft);color:#dff6ff}
+    .status{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:.66rem;font-weight:800;white-space:nowrap}.dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 9px rgba(74,222,128,.7)}
+    .sub{justify-content:space-between;padding-block:7px;min-width:0}.sub-left,.sub-right{display:flex;align-items:center;gap:8px;min-width:0}.label{color:#64748b;font-size:.61rem;font-weight:900;letter-spacing:.09em;text-transform:uppercase;white-space:nowrap}.note{color:var(--muted);font-size:.64rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .stage{position:relative;min-width:0;min-height:0;background:#02060c;overflow:hidden}
-    #contentFrame{position:absolute;inset:0;width:100%;height:100%;border:0;background:#07111f}
-    #imageStage{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:12px 16px 48px;background:radial-gradient(circle at center,#101827 0,#03060b 72%)}
-    #satelliteImage{display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;box-shadow:0 16px 60px rgba(0,0,0,.48)}
-    .caption{position:absolute;left:16px;bottom:12px;display:flex;align-items:center;gap:8px;max-width:calc(100% - 32px);padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:rgba(4,9,17,.88);backdrop-filter:blur(10px);color:#cbd5e1;font-size:.62rem;font-weight:750}
-    .source{padding:3px 7px;border:1px solid rgba(56,189,248,.34);border-radius:999px;background:rgba(56,189,248,.08);color:#bae6fd;font-size:.57rem;font-weight:900;letter-spacing:.05em;text-transform:uppercase}
-    .loading{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:#030712;color:#cbd5e1;font-size:.76rem;font-weight:800;z-index:3}
-    .loading.show{display:flex}
-    @media(max-width:880px){
-      :root{--top:96px;--sub:52px}
-      .top{align-items:flex-start;flex-wrap:wrap;padding:7px 9px}
-      .brand{width:100%}
-      .logo{width:36px;height:36px}
-      .meta{display:none}
-      .tabs{width:100%}
-      .tab{flex:1 0 auto;text-align:center}
-      .status{position:absolute;right:10px;top:11px}
-      .sub{padding-inline:9px}
-      .note{display:none}
-      #imageStage{padding:8px 8px 50px}
-    }
+    #radarFrame,#weatherMap{position:absolute;inset:0;width:100%;height:100%;border:0;background:#07111f}
+    #weatherMap{display:none}
+    .map-product-card{position:absolute;left:12px;bottom:12px;z-index:10;max-width:min(420px,calc(100% - 80px));padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:rgba(4,9,17,.88);backdrop-filter:blur(12px);box-shadow:0 10px 30px rgba(0,0,0,.28);pointer-events:none}
+    .map-product-card strong{display:block;font-size:.72rem}.map-product-card span{display:block;margin-top:2px;color:var(--muted);font-size:.59rem;font-weight:700;line-height:1.35}
+    .map-error{position:absolute;top:12px;left:50%;z-index:15;display:none;transform:translateX(-50%);padding:8px 12px;border:1px solid rgba(251,191,36,.45);border-radius:8px;background:rgba(20,14,3,.92);color:#fde68a;font-size:.68rem;font-weight:800}.map-error.show{display:block}
+    @media(max-width:880px){:root{--top:96px;--sub:52px}.top{align-items:flex-start;flex-wrap:wrap;padding:7px 9px}.brand{width:100%}.logo{width:36px;height:36px}.meta{display:none}.tabs{width:100%}.tab{flex:1 0 auto;text-align:center}.status{position:absolute;right:10px;top:11px}.sub{padding-inline:9px}.note{display:none}.map-product-card{left:8px;bottom:8px}}
   </style>
 </head>
 <body>
@@ -67,18 +36,13 @@
     <header class="top">
       <div class="brand">
         <a href="index.html" aria-label="Home"><img class="logo" src="assets/zacharologist-wx-radar-mark.png" alt=""></a>
-        <div class="brand-copy">
-          <div class="title">Weather Viewer</div>
-          <div class="meta">Radar • Satellite • Lightning</div>
-        </div>
+        <div class="brand-copy"><div class="title">Weather Viewer</div><div class="meta">Radar • Satellite • Lightning</div></div>
       </div>
-
       <nav class="tabs" aria-label="Weather product">
         <button class="tab active" type="button" data-product="radar">Radar</button>
         <button class="tab" type="button" data-product="satellite">Satellite</button>
         <button class="tab" type="button" data-product="lightning">Lightning</button>
       </nav>
-
       <div class="status"><span class="dot"></span><span id="viewerStatus">MRMS live</span></div>
     </header>
 
@@ -91,26 +55,28 @@
           <button class="control" type="button" data-radar="hires">Hi-Res</button>
         </div>
         <div class="controls" id="satelliteControls" hidden>
-          <button class="control active" type="button" data-satellite="GEOCOLOR">GeoColor</button>
-          <button class="control" type="button" data-satellite="13">Clean IR</button>
-          <button class="control" type="button" data-satellite="09">Water Vapor</button>
+          <button class="control active" type="button" data-sat-platform="East">GOES-East</button>
+          <button class="control" type="button" data-sat-platform="West">GOES-West</button>
+          <button class="control active" type="button" data-sat-product="GeoColor">GeoColor</button>
+          <button class="control" type="button" data-sat-product="Band13_Clean_Infrared">Clean IR</button>
+          <button class="control" type="button" data-sat-product="Air_Mass">Air Mass</button>
+          <button class="control" type="button" data-map-view="national">National</button>
+          <button class="control" type="button" data-map-view="regional">Regional</button>
         </div>
         <div class="controls" id="lightningControls" hidden>
-          <button class="control active" type="button" data-lightning="blitz">Interactive</button>
-          <button class="control" type="button" data-lightning="glm">GOES GLM</button>
+          <button class="control active" type="button" data-lightning="density">Lightning Density</button>
+          <button class="control" type="button" data-map-view="national">National</button>
+          <button class="control" type="button" data-map-view="regional">Regional</button>
         </div>
       </div>
       <div class="sub-right"><span class="note" id="viewerNote">MRMS national mosaic • broad CONUS situational awareness</span></div>
     </div>
 
     <section class="stage">
-      <iframe id="contentFrame" src="mosaic-radar-home.html?viewer=national" title="Weather viewer"></iframe>
-
-      <div id="imageStage" hidden>
-        <div class="loading" id="imageLoading">Loading satellite loop…</div>
-        <img id="satelliteImage" alt="Satellite loop">
-        <div class="caption"><span class="source">NOAA / NESDIS / STAR</span><strong id="imageTitle">GOES-19 GeoColor</strong><span>CONUS animated loop</span></div>
-      </div>
+      <iframe id="radarFrame" src="mosaic-radar-home.html?viewer=national&v=20260922b" title="Radar viewer"></iframe>
+      <div id="weatherMap"></div>
+      <div class="map-product-card" id="mapProductCard" hidden><strong id="mapProductTitle">Satellite</strong><span id="mapProductMeta"></span></div>
+      <div class="map-error" id="mapError">Weather layer could not be loaded.</div>
     </section>
   </main>
 
@@ -118,84 +84,190 @@
     (() => {
       "use strict";
 
+      const MAPBOX_STYLE = "mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
+      const DATA_SOURCE_ID = "weather-viewer-data-source";
+      const DATA_LAYER_ID = "weather-viewer-data-layer";
+      const CONUS_BOUNDS = [[-126.5,22.5],[-65.0,51.5]];
+      const REGIONAL_ZOOM = 5.15;
+      const LIGHTNING_SERVICE = "https://nowcoast.noaa.gov/arcgis/rest/services/nowcoast/sat_meteo_emulated_imagery_lightningstrikedensity_goes_time/MapServer/export";
+
       const tabs = [...document.querySelectorAll("[data-product]")];
       const radarButtons = [...document.querySelectorAll("[data-radar]")];
-      const satelliteButtons = [...document.querySelectorAll("[data-satellite]")];
-      const lightningButtons = [...document.querySelectorAll("[data-lightning]")];
+      const platformButtons = [...document.querySelectorAll("[data-sat-platform]")];
+      const satProductButtons = [...document.querySelectorAll("[data-sat-product]")];
+      const mapViewButtons = [...document.querySelectorAll("[data-map-view]")];
       const radarControls = document.getElementById("radarControls");
       const satelliteControls = document.getElementById("satelliteControls");
       const lightningControls = document.getElementById("lightningControls");
       const controlLabel = document.getElementById("controlLabel");
       const viewerStatus = document.getElementById("viewerStatus");
       const viewerNote = document.getElementById("viewerNote");
-      const contentFrame = document.getElementById("contentFrame");
-      const imageStage = document.getElementById("imageStage");
-      const satelliteImage = document.getElementById("satelliteImage");
-      const imageLoading = document.getElementById("imageLoading");
-      const imageTitle = document.getElementById("imageTitle");
+      const radarFrame = document.getElementById("radarFrame");
+      const weatherMapEl = document.getElementById("weatherMap");
+      const mapProductCard = document.getElementById("mapProductCard");
+      const mapProductTitle = document.getElementById("mapProductTitle");
+      const mapProductMeta = document.getElementById("mapProductMeta");
+      const mapError = document.getElementById("mapError");
 
-      const SAT_BASE = "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/CONUS";
-      const SATELLITE = {
-        GEOCOLOR:{title:"GOES-19 GeoColor",url:`${SAT_BASE}/GEOCOLOR/GOES19-CONUS-GEOCOLOR-625x375.gif`},
-        "13":{title:"GOES-19 Clean IR (10.3 µm)",url:`${SAT_BASE}/13/GOES19-CONUS-13-625x375.gif`},
-        "09":{title:"GOES-19 Mid-Level Water Vapor",url:`${SAT_BASE}/09/GOES19-CONUS-09-625x375.gif`}
-      };
-      const GLM_URL = "https://cdn.star.nesdis.noaa.gov/GOES19/GLM/CONUS/EXTENT3/GOES19-CONUS-EXTENT3-625x375.gif";
-      const BLITZ_URL = "https://map.blitzortung.org/index.php?interactive=1&NavigationControl=1&FullScreenControl=1&Cookies=0&InfoDiv=0&MenuButtonDiv=1&ScaleControl=1&LinksCheckboxChecked=0&MapStyle=3&MapStyleRangeValue=4&Advertisment=0#4/38/-96";
-
-      let product = "radar";
+      let activeProduct = "radar";
       let radarMode = "national";
-      let satelliteMode = "GEOCOLOR";
-      let lightningMode = "blitz";
+      let satPlatform = "East";
+      let satProduct = "GeoColor";
+      let weatherMap = null;
+      let mapReady = false;
+      let refreshTimer = 0;
 
-      function activate(list, active) {
-        for (const button of list) button.classList.toggle("active", button === active);
+      function activate(list, predicate) {
+        for (const button of list) button.classList.toggle("active", predicate(button));
       }
 
-      function showFrame(src, title) {
-        imageStage.hidden = true;
-        contentFrame.hidden = false;
-        contentFrame.title = title || "Weather viewer";
-        if (contentFrame.src !== new URL(src, location.href).href) contentFrame.src = src;
+      function showRadar() {
+        radarFrame.hidden = false;
+        weatherMapEl.style.display = "none";
+        mapProductCard.hidden = true;
       }
 
-      function showImage(url, title, loadingText) {
-        contentFrame.hidden = true;
-        imageStage.hidden = false;
-        imageTitle.textContent = title;
-        imageLoading.textContent = loadingText || "Loading…";
-        imageLoading.classList.add("show");
-        satelliteImage.onload = () => imageLoading.classList.remove("show");
-        satelliteImage.onerror = () => {
-          imageLoading.textContent = "Source temporarily unavailable";
-          imageLoading.classList.add("show");
-        };
-        satelliteImage.src = url + (url.includes("?") ? "&" : "?") + "v=" + Date.now();
+      function showMap() {
+        radarFrame.hidden = true;
+        weatherMapEl.style.display = "block";
+        mapProductCard.hidden = false;
+        ensureMap().then(() => {
+          weatherMap.resize();
+          applyMapWeatherLayer();
+        });
+      }
+
+      function ensureMap() {
+        if (weatherMap && mapReady) return Promise.resolve(weatherMap);
+        if (weatherMap) {
+          return new Promise(resolve => weatherMap.once("load", () => resolve(weatherMap)));
+        }
+        if (!window.mapboxgl || !window.MAPBOX_PUBLIC_TOKEN) {
+          mapError.textContent = "Mapbox failed to initialize.";
+          mapError.classList.add("show");
+          return Promise.reject(new Error("Mapbox unavailable"));
+        }
+
+        mapboxgl.accessToken = window.MAPBOX_PUBLIC_TOKEN;
+        weatherMap = new mapboxgl.Map({
+          container: "weatherMap",
+          style: MAPBOX_STYLE,
+          center: [-96.5,38.4],
+          zoom: 3.35,
+          minZoom: 2,
+          maxZoom: 12,
+          projection: "mercator",
+          attributionControl: true
+        });
+        weatherMap.addControl(new mapboxgl.NavigationControl(), "bottom-right");
+        weatherMap.on("load", () => {
+          mapReady = true;
+          mapError.classList.remove("show");
+        });
+        weatherMap.on("error", event => {
+          const sourceId = String(event?.sourceId || "");
+          if (sourceId && sourceId !== DATA_SOURCE_ID) return;
+          console.warn("Weather Viewer map layer error", event?.error || event);
+          if (activeProduct !== "radar") {
+            mapError.textContent = "Weather data layer temporarily unavailable.";
+            mapError.classList.add("show");
+          }
+        });
+        return new Promise(resolve => weatherMap.once("load", () => resolve(weatherMap)));
+      }
+
+      function firstSymbolLayerId() {
+        return weatherMap?.getStyle()?.layers?.find(layer => layer.type === "symbol")?.id;
+      }
+
+      function removeDataLayer() {
+        if (!weatherMap || !mapReady) return;
+        if (weatherMap.getLayer(DATA_LAYER_ID)) weatherMap.removeLayer(DATA_LAYER_ID);
+        if (weatherMap.getSource(DATA_SOURCE_ID)) weatherMap.removeSource(DATA_SOURCE_ID);
+      }
+
+      function satelliteLayerName() {
+        return `GOES-${satPlatform}_ABI_${satProduct}`;
+      }
+
+      function satelliteTileUrl() {
+        const layer = encodeURIComponent(satelliteLayerName());
+        const cache = Math.floor(Date.now() / 120000);
+        return `https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi?SERVICE=WMS&REQUEST=GetMap&VERSION=1.1.1&LAYERS=${layer}&STYLES=&FORMAT=image%2Fpng&TRANSPARENT=true&SRS=EPSG%3A3857&WIDTH=256&HEIGHT=256&BBOX={bbox-epsg-3857}&_=${cache}`;
+      }
+
+      function lightningTileUrl() {
+        const cache = Math.floor(Date.now() / 120000);
+        return `${LIGHTNING_SERVICE}?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256%2C256&format=png32&transparent=true&f=image&_=${cache}`;
+      }
+
+      function addRaster(url, opacity) {
+        removeDataLayer();
+        weatherMap.addSource(DATA_SOURCE_ID, {type:"raster",tiles:[url],tileSize:256});
+        const layer = {id:DATA_LAYER_ID,type:"raster",source:DATA_SOURCE_ID,paint:{"raster-opacity":opacity,"raster-fade-duration":0}};
+        const before = firstSymbolLayerId();
+        if (before) weatherMap.addLayer(layer, before); else weatherMap.addLayer(layer);
+      }
+
+      function satProductLabel() {
+        if (satProduct === "Band13_Clean_Infrared") return "Clean IR";
+        if (satProduct === "Air_Mass") return "Air Mass";
+        return "GeoColor";
+      }
+
+      function applyMapWeatherLayer() {
+        if (!mapReady || activeProduct === "radar") return;
+        mapError.classList.remove("show");
+
+        if (activeProduct === "satellite") {
+          addRaster(satelliteTileUrl(), .96);
+          const label = `GOES-${satPlatform} ${satProductLabel()}`;
+          viewerStatus.textContent = `GOES-${satPlatform} live`;
+          viewerNote.textContent = `${label} • interactive map layer • NASA GIBS`;
+          mapProductTitle.textContent = label;
+          mapProductMeta.textContent = "NASA GIBS • latest available imagery • ZacharologistWx map styling";
+        } else {
+          addRaster(lightningTileUrl(), .92);
+          viewerStatus.textContent = "Lightning live";
+          viewerNote.textContent = "NOAA nowCOAST lightning density • interactive ZacharologistWx map";
+          mapProductTitle.textContent = "Lightning Density";
+          mapProductMeta.textContent = "NOAA nowCOAST • 15-minute strike-density product • not individual strike locations";
+        }
+      }
+
+      function nationalView() {
+        ensureMap().then(() => weatherMap.fitBounds(CONUS_BOUNDS, {padding:18,duration:500}));
+      }
+
+      function regionalView() {
+        ensureMap().then(() => {
+          const zoom = Math.max(REGIONAL_ZOOM, weatherMap.getZoom());
+          weatherMap.easeTo({zoom,duration:450});
+        });
       }
 
       function loadRadar(mode) {
         radarMode = mode;
-        const active = radarButtons.find(b => b.dataset.radar === mode);
-        activate(radarButtons, active);
+        activate(radarButtons, button => button.dataset.radar === mode);
+        showRadar();
         viewerStatus.textContent = mode === "hires" ? "Hi-Res site radar" : "MRMS live";
 
         if (mode === "hires") {
           viewerNote.textContent = "Single-site high-resolution radar • choose a radar site in the panel";
-          showFrame("radar-preview.html", "High-resolution radar");
+          radarFrame.src = "radar-preview.html";
           return;
         }
 
-        const src = `mosaic-radar-home.html?viewer=${mode}&v=20260922a`;
+        radarFrame.src = `mosaic-radar-home.html?viewer=${mode}&v=20260922b`;
         viewerNote.textContent = mode === "regional"
           ? "Regional MRMS view • closer storm-scale context"
           : "MRMS national mosaic • broad CONUS situational awareness";
-        showFrame(src, mode === "regional" ? "Regional radar" : "National radar");
 
         if (mode === "regional") {
-          contentFrame.addEventListener("load", () => {
+          radarFrame.addEventListener("load", () => {
             window.setTimeout(() => {
               try {
-                const doc = contentFrame.contentDocument;
+                const doc = radarFrame.contentDocument;
                 const zoom = doc?.querySelector(".mapboxgl-ctrl-zoom-in");
                 zoom?.click();
                 window.setTimeout(() => zoom?.click(), 160);
@@ -205,34 +277,9 @@
         }
       }
 
-      function loadSatellite(mode) {
-        satelliteMode = mode;
-        activate(satelliteButtons, satelliteButtons.find(b => b.dataset.satellite === mode));
-        const spec = SATELLITE[mode] || SATELLITE.GEOCOLOR;
-        viewerStatus.textContent = "GOES-19 live";
-        viewerNote.textContent = `${spec.title} • NOAA/NESDIS/STAR CONUS loop`;
-        showImage(spec.url, spec.title, "Loading NOAA satellite loop…");
-      }
-
-      function loadLightning(mode) {
-        lightningMode = mode;
-        activate(lightningButtons, lightningButtons.find(b => b.dataset.lightning === mode));
-
-        if (mode === "glm") {
-          viewerStatus.textContent = "GOES GLM live";
-          viewerNote.textContent = "GOES-19 Geostationary Lightning Mapper • CONUS flash extent density";
-          showImage(GLM_URL, "GOES-19 GLM Flash Extent", "Loading NOAA GLM loop…");
-          return;
-        }
-
-        viewerStatus.textContent = "Lightning live";
-        viewerNote.textContent = "Interactive real-time lightning map • Blitzortung.org contributors • entertainment use";
-        showFrame(BLITZ_URL, "Interactive Blitzortung lightning map");
-      }
-
       function selectProduct(next) {
-        product = next;
-        activate(tabs, tabs.find(b => b.dataset.product === next));
+        activeProduct = next;
+        activate(tabs, button => button.dataset.product === next);
         radarControls.hidden = next !== "radar";
         satelliteControls.hidden = next !== "satellite";
         lightningControls.hidden = next !== "lightning";
@@ -240,19 +287,40 @@
         if (next === "radar") {
           controlLabel.textContent = "Radar view";
           loadRadar(radarMode);
-        } else if (next === "satellite") {
-          controlLabel.textContent = "Satellite product";
-          loadSatellite(satelliteMode);
+          return;
+        }
+
+        showMap();
+        if (next === "satellite") {
+          controlLabel.textContent = "Satellite";
+          activate(platformButtons, button => button.dataset.satPlatform === satPlatform);
+          activate(satProductButtons, button => button.dataset.satProduct === satProduct);
         } else {
-          controlLabel.textContent = "Lightning source";
-          loadLightning(lightningMode);
+          controlLabel.textContent = "Lightning";
         }
       }
 
       tabs.forEach(button => button.addEventListener("click", () => selectProduct(button.dataset.product)));
       radarButtons.forEach(button => button.addEventListener("click", () => loadRadar(button.dataset.radar)));
-      satelliteButtons.forEach(button => button.addEventListener("click", () => loadSatellite(button.dataset.satellite)));
-      lightningButtons.forEach(button => button.addEventListener("click", () => loadLightning(button.dataset.lightning)));
+      platformButtons.forEach(button => button.addEventListener("click", () => {
+        satPlatform = button.dataset.satPlatform;
+        activate(platformButtons, item => item === button);
+        if (activeProduct === "satellite") applyMapWeatherLayer();
+      }));
+      satProductButtons.forEach(button => button.addEventListener("click", () => {
+        satProduct = button.dataset.satProduct;
+        activate(satProductButtons, item => item === button);
+        if (activeProduct === "satellite") applyMapWeatherLayer();
+      }));
+      mapViewButtons.forEach(button => button.addEventListener("click", () => {
+        if (button.dataset.mapView === "national") nationalView(); else regionalView();
+      }));
+
+      window.addEventListener("resize", () => weatherMap?.resize());
+      refreshTimer = window.setInterval(() => {
+        if (activeProduct !== "radar" && mapReady) applyMapWeatherLayer();
+      }, 120000);
+      window.addEventListener("beforeunload", () => window.clearInterval(refreshTimer), {once:true});
 
       selectProduct("radar");
     })();
