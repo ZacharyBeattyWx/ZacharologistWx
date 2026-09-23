@@ -44,7 +44,7 @@
         <div class="controls" id="radarControls"><button class="control active" type="button" data-radar="national">National</button><button class="control" type="button" data-radar="regional">Regional</button><button class="control" type="button" data-radar="hires">Hi-Res</button></div>
         <div class="controls" id="satelliteControls" hidden>
           <button class="control active" type="button" data-sat-platform="East">GOES-East</button><button class="control" type="button" data-sat-platform="West">GOES-West</button>
-          <button class="control active" type="button" data-sat-product="GeoColor">GeoColor</button><button class="control" type="button" data-sat-product="Band13_Clean_Infrared">Clean IR</button><button class="control" type="button" data-sat-product="Air_Mass">Air Mass</button>
+          <button class="control active" type="button" data-sat-product="GeoColor">TrueColor</button><button class="control" type="button" data-sat-product="Band13_Clean_Infrared">Clean IR</button><button class="control" type="button" data-sat-product="Air_Mass">Air Mass</button>
           <select class="control" id="satSectorSelect" aria-label="Satellite sector"></select>
         </div>
         <div class="controls" id="lightningControls" hidden><button class="control active" type="button" data-lightning="density">Lightning Density</button><button class="control" type="button" data-map-view="national">National</button><button class="control" type="button" data-map-view="regional">Regional</button></div>
@@ -54,7 +54,7 @@
 
     <section class="stage">
       <iframe id="radarFrame" src="mosaic-radar-home.html?viewer=national&v=20260923a" title="Radar viewer"></iframe>
-      <div id="satelliteStage" hidden><div class="satellite-loading" id="satelliteLoading">Loading north-up satellite image…</div><img id="satelliteImage" alt="Satellite imagery"><div class="product-card"><strong id="satelliteTitle">GOES-East GeoColor — CONUS</strong><span id="satelliteMeta">NASA GIBS / NOAA GOES • north-up reprojected sector • latest available frame</span></div></div>
+      <div id="satelliteStage" hidden><div class="satellite-loading" id="satelliteLoading">Loading north-up satellite image…</div><img id="satelliteImage" alt="Satellite imagery"><div class="product-card"><strong id="satelliteTitle">GOES-East TrueColor — CONUS</strong><span id="satelliteMeta">NASA GIBS / NOAA GOES • north-up reprojected sector • latest available frame</span></div></div>
       <div id="weatherMap"></div>
       <div class="product-card" id="mapProductCard" hidden><strong id="mapProductTitle">Lightning</strong><span id="mapProductMeta"></span></div>
       <div class="map-error" id="mapError">Weather layer could not be loaded.</div>
@@ -70,7 +70,7 @@
     const LIGHTNING_SERVICE="https://nowcoast.noaa.gov/arcgis/rest/services/nowcoast/sat_meteo_emulated_imagery_lightningstrikedensity_goes_time/MapServer/export";
     const GIBS_WMS="https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi";
 
-    const SAT_PRODUCTS={GeoColor:{label:"GeoColor",layer:"GeoColor"},Band13_Clean_Infrared:{label:"Clean IR",layer:"Band13_Clean_Infrared"},Air_Mass:{label:"Air Mass",layer:"Air_Mass"}};
+    const SAT_PRODUCTS={GeoColor:{label:"TrueColor",layer:"GeoColor"},Band13_Clean_Infrared:{label:"Clean IR",layer:"Band13_Clean_Infrared"},Air_Mass:{label:"Air Mass",layer:"Air_Mass"}};
     const SAT_SECTORS={
       East:[
         {id:"CONUS",label:"CONUS",bbox:[-125.5,23.5,-66,50.5]},
@@ -141,7 +141,7 @@
 
     function nationalView(){ensureMap().then(()=>weatherMap.fitBounds(CONUS_BOUNDS,{padding:18,duration:500}));}
     function regionalView(){ensureMap().then(()=>weatherMap.easeTo({zoom:Math.max(REGIONAL_ZOOM,weatherMap.getZoom()),duration:450}));}
-    function loadRadar(mode){radarMode=mode;activate(radarButtons,button=>button.dataset.radar===mode);showRadar();viewerStatus.textContent=mode==="hires"?"Hi-Res site radar":"MRMS live";if(mode==="hires"){viewerNote.textContent="Single-site high-resolution radar • choose a radar site in the panel";radarFrame.src="radar-preview.html";return;}radarFrame.src=`mosaic-radar-home.html?viewer=${mode}&v=20260923a`;viewerNote.textContent=mode==="regional"?"Regional MRMS • f2 ~4K quality band • zoom capped before full-native mode":"MRMS national mosaic • broad CONUS situational awareness";}
+    function loadRadar(mode){radarMode=mode;activate(radarButtons,button=>button.dataset.radar===mode);showRadar();viewerStatus.textContent=mode==="hires"?"Hi-Res Level II radar":"MRMS live";if(mode==="hires"){viewerNote.textContent="Mapbox Level II radar • choose a radar site in the panel";radarFrame.src="mapbox-radar-level2-test.html?v=20260923a";return;}radarFrame.src=`mosaic-radar-home.html?viewer=${mode}&v=20260923a`;viewerNote.textContent=mode==="regional"?"Regional MRMS • f2 ~4K quality band • zoom capped before full-native mode":"MRMS national mosaic • broad CONUS situational awareness";}
     function selectProduct(next){activeProduct=next;activate(tabs,button=>button.dataset.product===next);radarControls.hidden=next!=="radar";satelliteControls.hidden=next!=="satellite";lightningControls.hidden=next!=="lightning";if(next==="radar"){controlLabel.textContent="Radar view";loadRadar(radarMode);return;}if(next==="satellite"){controlLabel.textContent="Satellite";activate(platformButtons,button=>button.dataset.satPlatform===satPlatform);activate(satProductButtons,button=>button.dataset.satProduct===satProduct);populateSatelliteSectors();showSatellite();renderSatellite();return;}controlLabel.textContent="Lightning";showMap();}
 
     tabs.forEach(button=>button.addEventListener("click",()=>selectProduct(button.dataset.product)));
