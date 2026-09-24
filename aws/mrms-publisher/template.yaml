@@ -200,6 +200,53 @@ Resources:
       Principal: events.amazonaws.com
       SourceArn: !GetAtt MralaNumericSchedule.Arn
 
+
+  GlmPublisherFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      PackageType: Image
+      Code:
+        ImageUri: !Ref ImageUri
+      ImageConfig:
+        Command:
+          - glm_publisher.lambda_handler
+      Role: !GetAtt PublisherRole.Arn
+      Architectures:
+        - x86_64
+      MemorySize: 2048
+      Timeout: 300
+      EphemeralStorage:
+        Size: 1024
+      Environment:
+        Variables:
+          RADAR_BUCKET: !Ref RadarBucket
+          GLM_SOURCE_BUCKET: noaa-goes19
+          GLM_PREFIX: glm-goes19
+          GLM_HISTORY_MINUTES: '65'
+          GLM_MAX_FILES_PER_RUN: '36'
+          GLM_WEST: '-135'
+          GLM_EAST: '-55'
+          GLM_SOUTH: '10'
+          GLM_NORTH: '60'
+
+  GlmPublisherSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Publish GOES-19 GLM Level-2 flashes for the interactive lightning viewer
+      ScheduleExpression: rate(1 minute)
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt GlmPublisherFunction.Arn
+          Id: GlmPublisherLambda
+
+  GlmPublisherScheduleInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref GlmPublisherFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt GlmPublisherSchedule.Arn
+
 Outputs:
   RadarBucketName:
     Description: Private S3 bucket containing the radar archives
@@ -233,3 +280,15 @@ Outputs:
   MralaNumericManifestS3Uri:
     Description: S3 URI for the native-resolution numeric MRALA manifest
     Value: !Sub 's3://${RadarBucket}/mrms-native-numeric/manifest.json'
+
+  GlmPublisherFunctionName:
+    Description: GOES-19 GLM lightning publisher Lambda
+    Value: !Ref GlmPublisherFunction
+
+  GlmPublisherScheduleName:
+    Description: EventBridge rule for GOES-19 GLM publishing
+    Value: !Ref GlmPublisherSchedule
+
+  GlmLatestS3Uri:
+    Description: Compact rolling GOES-19 GLM flash feed
+    Value: !Sub 's3://${RadarBucket}/glm-goes19/latest.json'

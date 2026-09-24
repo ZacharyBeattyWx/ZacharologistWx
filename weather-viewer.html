@@ -50,7 +50,7 @@
           <button class="control active" type="button" data-sat-product="GeoColor">TrueColor</button><button class="control" type="button" data-sat-product="Band13_Clean_Infrared">Clean IR</button><button class="control" type="button" data-sat-product="Air_Mass">Air Mass</button>
           <select class="control" id="satSectorSelect" aria-label="Satellite sector"></select>
         </div>
-        <div class="controls" id="lightningControls" hidden><button class="control active" type="button" data-lightning="density">Lightning Density</button><button class="control" type="button" data-map-view="national">National</button><button class="control" type="button" data-map-view="regional">Regional</button></div>
+        <div class="controls" id="lightningControls" hidden><button class="control active" type="button" data-map-view="national">National</button><button class="control" type="button" data-map-view="regional">Regional</button></div>
       </div>
       <div class="sub-right"><span class="note" id="viewerNote">MRMS national mosaic • broad CONUS situational awareness</span></div>
     </div>
@@ -65,10 +65,10 @@
           <button id="satPrev" type="button" title="Previous frame">◀</button>
           <button class="play" id="satPlay" type="button">▶ Play</button>
           <button id="satNext" type="button" title="Next frame">▶</button>
-          <input id="satTimeline" type="range" min="0" max="12" step="1" value="12" aria-label="Satellite frame">
+          <input id="satTimeline" type="range" min="0" max="24" step="1" value="24" aria-label="Satellite frame">
           <span class="sat-readout" id="satFrameReadout">Latest</span>
           <select id="satSpeed" aria-label="Satellite playback speed"><option value="650">1×</option><option value="425">1.5×</option><option value="300">2×</option></select>
-          <span class="sat-cache" id="satCacheReadout">0/13 cached</span>
+          <span class="sat-cache" id="satCacheReadout">0/25 cached</span>
         </div>
       </div>
       <div id="weatherMap"></div>
@@ -83,9 +83,9 @@
     const MAPBOX_STYLE="mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
     const DATA_SOURCE_ID="weather-viewer-data-source",DATA_LAYER_ID="weather-viewer-data-layer";
     const CONUS_BOUNDS=[[-126.5,22.5],[-65,51.5]],REGIONAL_ZOOM=5.15;
-    const LIGHTNING_SERVICE="https://nowcoast.noaa.gov/arcgis/rest/services/nowcoast/sat_meteo_emulated_imagery_lightningstrikedensity_goes_time/MapServer/export";
+    const LIGHTNING_FEED="https://dt0cd6bl1yqh2.cloudfront.net/glm-goes19/latest.json";
     const GIBS_WMS="https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi";
-    const SAT_FRAME_COUNT=13,SAT_STEP_MINUTES=10;
+    const SAT_FRAME_COUNT=25,SAT_STEP_MINUTES=5,SAT_LAG_MINUTES=10;
 
     const SAT_PRODUCTS={GeoColor:{label:"TrueColor",layer:"GeoColor"},Band13_Clean_Infrared:{label:"Clean IR",layer:"Band13_Clean_Infrared"},Air_Mass:{label:"Air Mass",layer:"Air_Mass"}};
     const SAT_SECTORS={
@@ -115,6 +115,7 @@
 
     let activeProduct="radar",radarMode="national",satPlatform="East",satProduct="GeoColor",satSector="CONUS",weatherMap=null,mapReady=false,refreshTimer=0;
     let satFrames=[],satFrameIndex=0,satTimer=0,satWarmGeneration=0;
+    let lightningFlashes=[],lightningLatestMs=0,lightningFetchPromise=null;
     const satFrameImages=new Map();
     const activate=(list,predicate)=>{for(const button of list)button.classList.toggle("active",predicate(button));};
     function showRadar(){radarFrame.hidden=false;satelliteStage.hidden=true;weatherMapEl.style.display="none";mapProductCard.hidden=true;stopSatellitePlayback();}
@@ -134,16 +135,157 @@
     }
     function firstSymbolLayerId(){return weatherMap?.getStyle()?.layers?.find(layer=>layer.type==="symbol")?.id;}
     function removeDataLayer(){if(!weatherMap||!mapReady)return;if(weatherMap.getLayer(DATA_LAYER_ID))weatherMap.removeLayer(DATA_LAYER_ID);if(weatherMap.getSource(DATA_SOURCE_ID))weatherMap.removeSource(DATA_SOURCE_ID);}
-    function lightningTileUrl(){const cache=Math.floor(Date.now()/120000);return `${LIGHTNING_SERVICE}?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256%2C256&format=png32&transparent=true&f=image&_=${cache}`;}
-    function addRaster(url,opacity){removeDataLayer();weatherMap.addSource(DATA_SOURCE_ID,{type:"raster",tiles:[url],tileSize:256});const layer={id:DATA_LAYER_ID,type:"raster",source:DATA_SOURCE_ID,paint:{"raster-opacity":opacity,"raster-fade-duration":0}};const before=firstSymbolLayerId();if(before)weatherMap.addLayer(layer,before);else weatherMap.addLayer(layer);}
-    function applyLightningLayer(){if(!mapReady||activeProduct!=="lightning")return;mapError.classList.remove("show");addRaster(lightningTileUrl(),.92);viewerStatus.textContent="Lightning live";viewerNote.textContent="NOAA nowCOAST lightning density • interactive ZacharologistWx map";mapProductTitle.textContent="Lightning Density";mapProductMeta.textContent="NOAA nowCOAST • 15-minute strike-density product • not individual strike locations";}
+    function emptyLightningGeoJSON(){
+      return {type:"FeatureCollection",features:[]};
+    }
+
+    function ensureLightningLayer(){
+      if(!weatherMap||!mapReady)return;
+
+      if(!weatherMap.getSource(DATA_SOURCE_ID)){
+        weatherMap.addSource(DATA_SOURCE_ID,{
+          type:"geojson",
+          data:emptyLightningGeoJSON(),
+          attribution:"NOAA GOES-19 GLM Level-2"
+        });
+      }
+
+      if(!weatherMap.getLayer(DATA_LAYER_ID)){
+        const layer={
+          id:DATA_LAYER_ID,
+          type:"circle",
+          source:DATA_SOURCE_ID,
+          paint:{
+            "circle-radius":[
+              "interpolate",["linear"],["zoom"],
+              2,1.15,
+              4,1.6,
+              6,2.25,
+              8,3,
+              11,4.1
+            ],
+            "circle-color":[
+              "step",
+              ["get","age"],
+              "#ffffff",
+              5,"#fff3a3",
+              15,"#facc15",
+              30,"#fb923c",
+              45,"#c2410c"
+            ],
+            "circle-opacity":.92,
+            "circle-stroke-width":[
+              "interpolate",["linear"],["zoom"],
+              2,.2,
+              7,.5,
+              11,.75
+            ],
+            "circle-stroke-color":"rgba(15,23,42,.55)"
+          }
+        };
+
+        const before=firstSymbolLayerId();
+        if(before)weatherMap.addLayer(layer,before);
+        else weatherMap.addLayer(layer);
+      }
+    }
+
+    async function applyLightningLayer(){
+      if(!mapReady||activeProduct!=="lightning")return;
+      if(lightningFetchPromise)return lightningFetchPromise;
+
+      lightningFetchPromise=(async()=>{
+        try{
+          mapError.classList.remove("show");
+
+          const response=await fetch(
+            `${LIGHTNING_FEED}?_=${Date.now()}`,
+            {cache:"no-store"}
+          );
+
+          if(!response.ok){
+            throw new Error(`GLM HTTP ${response.status}`);
+          }
+
+          const data=await response.json();
+          const parsedLatest=Date.parse(data.latestTime||"");
+
+          const raw=Array.isArray(data.flashes)?data.flashes:[];
+
+          if(!raw.length){
+            throw new Error("GLM feed contains no flashes");
+          }
+
+          lightningLatestMs=Number.isFinite(parsedLatest)
+            ? parsedLatest
+            : Number(raw[raw.length-1][2]);
+
+          const oldest=lightningLatestMs-60*60*1000;
+
+          lightningFlashes=raw
+            .filter(item=>
+              Array.isArray(item)&&
+              item.length>=3&&
+              Number.isFinite(Number(item[0]))&&
+              Number.isFinite(Number(item[1]))&&
+              Number.isFinite(Number(item[2]))&&
+              Number(item[2])>=oldest&&
+              Number(item[2])<=lightningLatestMs
+            )
+            .map(item=>[
+              Number(item[0]),
+              Number(item[1]),
+              Number(item[2])
+            ]);
+
+          ensureLightningLayer();
+
+          const geojson={
+            type:"FeatureCollection",
+            features:lightningFlashes.map(([lon,lat,t])=>({
+              type:"Feature",
+              properties:{
+                t,
+                age:Math.max(0,(lightningLatestMs-t)/60000)
+              },
+              geometry:{
+                type:"Point",
+                coordinates:[lon,lat]
+              }
+            }))
+          };
+
+          weatherMap.getSource(DATA_SOURCE_ID)?.setData(geojson);
+
+          const count=lightningFlashes.length;
+
+          viewerStatus.textContent="GLM live";
+          viewerNote.textContent=
+            "GOES-19 GLM total lightning • interactive 60-minute flash history";
+
+          mapProductTitle.textContent="GOES-19 GLM Lightning";
+          mapProductMeta.textContent=
+            `${count.toLocaleString()} flashes • last 60 minutes • NOAA Open Data on AWS`;
+
+        }catch(error){
+          console.error("GLM lightning load failed",error);
+          mapError.textContent="GOES-19 lightning data temporarily unavailable.";
+          mapError.classList.add("show");
+          viewerStatus.textContent="Lightning unavailable";
+        }finally{
+          lightningFetchPromise=null;
+        }
+      })();
+
+      return lightningFetchPromise;
+    }
 
     const satProductSpec=()=>SAT_PRODUCTS[satProduct]||SAT_PRODUCTS.GeoColor;
     function currentSectorSpec(){return (SAT_SECTORS[satPlatform]||SAT_SECTORS.East).find(item=>item.id===satSector)||(SAT_SECTORS[satPlatform]||SAT_SECTORS.East)[0];}
     function populateSatelliteSectors(){const sectors=SAT_SECTORS[satPlatform]||SAT_SECTORS.East;if(!sectors.some(item=>item.id===satSector))satSector=sectors[0].id;satSectorSelect.innerHTML=sectors.map(item=>`<option value="${item.id}"${item.id===satSector?" selected":""}>${item.label}</option>`).join("");}
     function mercator(lon,lat){const R=6378137,rad=Math.PI/180,clamped=Math.max(-85.05112878,Math.min(85.05112878,lat));return [R*lon*rad,R*Math.log(Math.tan(Math.PI/4+clamped*rad/2))];}
     function buildSatelliteFrames(){
-      const latest=new Date(Date.now()-10*60*1000);latest.setUTCSeconds(0,0);latest.setUTCMinutes(Math.floor(latest.getUTCMinutes()/SAT_STEP_MINUTES)*SAT_STEP_MINUTES);
+      const latest=new Date(Date.now()-SAT_LAG_MINUTES*60*1000);latest.setUTCSeconds(0,0);latest.setUTCMinutes(Math.floor(latest.getUTCMinutes()/SAT_STEP_MINUTES)*SAT_STEP_MINUTES);
       satFrames=Array.from({length:SAT_FRAME_COUNT},(_,i)=>new Date(latest.getTime()-(SAT_FRAME_COUNT-1-i)*SAT_STEP_MINUTES*60000));
       satFrameIndex=satFrames.length-1;satTimeline.max=String(satFrames.length-1);satTimeline.value=String(satFrameIndex);satFrameImages.clear();satCacheReadout.textContent=`0/${satFrames.length} cached`;
     }
@@ -154,7 +296,7 @@
       const width=2400,height=Math.max(900,Math.min(2000,Math.round(width/ratio)));
       const imageryLayer=`GOES-${satPlatform}_ABI_${product.layer}`;
       const cache=Math.floor(Date.now()/120000);
-      const qs=new URLSearchParams({SERVICE:"WMS",VERSION:"1.1.1",REQUEST:"GetMap",LAYERS:`${imageryLayer},Reference_Features_15m`,STYLES:",",SRS:"EPSG:3857",BBOX:[minX,minY,maxX,maxY].join(","),WIDTH:String(width),HEIGHT:String(height),FORMAT:"image/png",TRANSPARENT:"false",TIME:frameTime.toISOString(),_:String(cache)});
+      const qs=new URLSearchParams({SERVICE:"WMS",VERSION:"1.1.1",REQUEST:"GetMap",LAYERS:`${imageryLayer},Reference_Features_15m`,STYLES:",",SRS:"EPSG:3857",BBOX:[minX,minY,maxX,maxY].join(","),WIDTH:String(width),HEIGHT:String(height),FORMAT:"image/png",TRANSPARENT:"false",TIME:frameTime.toISOString().replace(".000Z","Z"),_:String(cache)});
       return `${GIBS_WMS}?${qs.toString()}`;
     }
     function formatSatelliteTime(date){return date.toLocaleTimeString([], {hour:"numeric",minute:"2-digit"});}
@@ -170,8 +312,41 @@
       satelliteImage.src=satelliteImageUrl(frameTime);
     }
     async function warmSatelliteFrames(){
-      const generation=++satWarmGeneration;let cursor=0,done=0;const order=satFrames.map((_,i)=>i).sort((a,b)=>Math.abs(b-satFrameIndex)-Math.abs(a-satFrameIndex)).reverse();
-      async function worker(){while(generation===satWarmGeneration&&cursor<order.length){const index=order[cursor++],url=satelliteImageUrl(satFrames[index]);if(satFrameImages.has(url)){done++;continue;}await new Promise(resolve=>{const img=new Image();img.decoding="async";img.onload=()=>{satFrameImages.set(url,img);resolve();};img.onerror=resolve;img.src=url;});done++;if(generation===satWarmGeneration)satCacheReadout.textContent=`${done}/${satFrames.length} cached`;}}
+      const generation=++satWarmGeneration;
+      let cursor=0,loaded=0;
+      const order=satFrames.map((_,i)=>i)
+        .sort((a,b)=>Math.abs(a-satFrameIndex)-Math.abs(b-satFrameIndex));
+
+      async function worker(){
+        while(generation===satWarmGeneration&&cursor<order.length){
+          const index=order[cursor++];
+          const url=satelliteImageUrl(satFrames[index]);
+
+          if(satFrameImages.has(url)){
+            loaded++;
+            satCacheReadout.textContent=`${loaded}/${satFrames.length} cached`;
+            continue;
+          }
+
+          const ok=await new Promise(resolve=>{
+            const img=new Image();
+            img.decoding="async";
+            img.onload=()=>{
+              satFrameImages.set(url,img);
+              resolve(true);
+            };
+            img.onerror=()=>resolve(false);
+            img.src=url;
+          });
+
+          if(ok) loaded++;
+
+          if(generation===satWarmGeneration){
+            satCacheReadout.textContent=`${loaded}/${satFrames.length} cached`;
+          }
+        }
+      }
+
       await Promise.all([worker(),worker(),worker()]);
     }
     function stopSatellitePlayback(){if(satTimer){clearInterval(satTimer);satTimer=0;}satPlay.textContent="▶ Play";}
@@ -200,7 +375,7 @@
     satSpeed.addEventListener("change",()=>{if(satTimer){stopSatellitePlayback();startSatellitePlayback();}});
     mapViewButtons.forEach(button=>button.addEventListener("click",()=>button.dataset.mapView==="national"?nationalView():regionalView()));
     window.addEventListener("resize",()=>weatherMap?.resize());
-    refreshTimer=window.setInterval(()=>{if(activeProduct==="satellite"&&!satTimer)resetSatelliteViewer();else if(activeProduct==="lightning"&&mapReady)applyLightningLayer();},120000);
+    refreshTimer=window.setInterval(()=>{if(activeProduct==="satellite"&&!satTimer)resetSatelliteViewer();else if(activeProduct==="lightning"&&mapReady)applyLightningLayer();},60000);
     window.addEventListener("beforeunload",()=>{window.clearInterval(refreshTimer);stopSatellitePlayback();},{once:true});
     populateSatelliteSectors();selectProduct("radar");
   })();

@@ -11,7 +11,10 @@ COPY aws/mrms-publisher/requirements.txt \
      aws/mrms-publisher/handler_v3.py \
      ${LAMBDA_TASK_ROOT}/
 
+COPY aws/mrms-publisher/glm_publisher.py ${LAMBDA_TASK_ROOT}/glm_publisher.py
+
 RUN pip install --no-cache-dir -r ${LAMBDA_TASK_ROOT}/requirements.txt
+RUN python -c "import netCDF4; print('netCDF4 OK:', netCDF4.__version__)"
 
 # The radar source tree is small, so copy it in one layer. Then preserve the
 # shared decoder/palette implementation as render_mrms_mosaic_base.py and expose
