@@ -119,7 +119,7 @@
 
     let activeProduct="radar",radarMode="national",satPlatform="East",satProduct="GeoColor",satSector="CONUS",weatherMap=null,mapReady=false,refreshTimer=0;
     let satFrames=[],satFrameIndex=0,satTimer=0,satWarmGeneration=0;
-    let lightningFlashes=[],lightningLatestMs=0,lightningFetchPromise=null,lightningInitialFitDone=false;
+    let lightningFlashes=[],lightningDisplayedFlashes=[],lightningDisplayedKeys=new Set(),lightningLatestMs=0,lightningFetchPromise=null,lightningInitialFitDone=false;
     let lightningSeenLatestMs=0,lightningPulseFrame=0,lightningPulseToken=0,lightningPollTimer=0;
     let lightningPulseQueue=[],lightningPulseActive=[],lightningPulseNextReleaseAt=0,lightningPulseWakeTimer=0;
     const satFrameImages=new Map();
@@ -199,6 +199,80 @@
       }
     }
 
+
+    function lightningFlashKey(item){
+      return `${item[0].toFixed(5)}|${item[1].toFixed(5)}|${item[2]}`;
+    }
+
+    function renderDisplayedLightning(){
+      if(!weatherMap||!mapReady)return;
+
+      const source=weatherMap.getSource(DATA_SOURCE_ID);
+      if(!source)return;
+
+      const oldest=
+        lightningLatestMs-(60*60*1000);
+
+      lightningDisplayedFlashes=
+        lightningDisplayedFlashes.filter(
+          item=>
+            item[2]>=oldest &&
+            item[2]<=lightningLatestMs
+        );
+
+      lightningDisplayedKeys=
+        new Set(
+          lightningDisplayedFlashes.map(
+            lightningFlashKey
+          )
+        );
+
+      source.setData({
+        type:"FeatureCollection",
+        features:lightningDisplayedFlashes.map(
+          ([lon,lat,t])=>({
+            type:"Feature",
+            properties:{
+              t,
+              age:Math.max(
+                0,
+                (lightningLatestMs-t)/60000
+              )
+            },
+            geometry:{
+              type:"Point",
+              coordinates:[lon,lat]
+            }
+          })
+        )
+      });
+    }
+
+    function addDisplayedLightning(flashes){
+      let changed=false;
+
+      for(const flash of flashes){
+        const key=lightningFlashKey(flash);
+
+        if(lightningDisplayedKeys.has(key)){
+          continue;
+        }
+
+        lightningDisplayedKeys.add(key);
+        lightningDisplayedFlashes.push(flash);
+        changed=true;
+      }
+
+      if(changed){
+        renderDisplayedLightning();
+      }
+    }
+
+    function stampLightningFlash(item){
+      addDisplayedLightning([
+        [item.lon,item.lat,item.t]
+      ]);
+    }
 
     function ensureLightningPulseLayers(){
       if(!weatherMap||!mapReady)return;
@@ -415,9 +489,14 @@
       ){
         const next=lightningPulseQueue.shift();
 
+        // The locator pop is the exact moment the
+        // permanent lightning marker gets stamped.
+        stampLightningFlash(next);
+
         lightningPulseActive.push({
           lon:next.lon,
           lat:next.lat,
+          t:next.t,
           born:now,
           duration:LOCATOR_DURATION_MS
         });
@@ -472,6 +551,7 @@
       );
 
       if(!candidates.length){
+        addDisplayedLightning(flashes);
         return;
       }
 
@@ -494,6 +574,28 @@
           ]
         );
       }
+
+      // Flashes selected for locator animation stay hidden
+      // until their actual pop. Everything else from this
+      // incoming batch can appear immediately.
+      const queuedKeys=
+        new Set(
+          candidates.map(
+            lightningFlashKey
+          )
+        );
+
+      const immediateFlashes=
+        flashes.filter(
+          item=>
+            !queuedKeys.has(
+              lightningFlashKey(item)
+            )
+        );
+
+      addDisplayedLightning(
+        immediateFlashes
+      );
 
       const now=performance.now();
 
@@ -667,44 +769,48 @@
 
           ensureLightningLayer();
 
-          const geojson={
-            type:"FeatureCollection",
-            features:lightningFlashes.map(([lon,lat,t])=>({
-              type:"Feature",
-              properties:{
-                t,
-                age:Math.max(0,(lightningLatestMs-t)/60000)
-              },
-              geometry:{
-                type:"Point",
-                coordinates:[lon,lat]
-              }
-            }))
-          };
-
-          weatherMap.getSource(DATA_SOURCE_ID)?.setData(geojson);
-
-          if(previousLatestMs>0 && lightningLatestMs>previousLatestMs){
-            const newFlashes=lightningFlashes.filter(
-              item=>item[2]>previousLatestMs
-            );
-
-            animateNewLightningFlashes(newFlashes);
-
-          }else if(previousLatestMs===0){
-            // Don't leave a freshly-opened Lightning viewer
-            // dormant until the next backend publication.
-            // Replay only the newest part of the current feed.
+          if(previousLatestMs===0){
+            // On first load, show older history immediately,
+            // but hold the newest 30 seconds for pop-and-stamp.
             const startupCutoff=
               lightningLatestMs-(30*1000);
+
+            const historicalFlashes=
+              lightningFlashes.filter(
+                item=>item[2]<startupCutoff
+              );
 
             const startupFlashes=
               lightningFlashes.filter(
                 item=>item[2]>=startupCutoff
               );
 
+            lightningDisplayedFlashes=
+              historicalFlashes.slice();
+
+            lightningDisplayedKeys=
+              new Set(
+                historicalFlashes.map(
+                  lightningFlashKey
+                )
+              );
+
+            renderDisplayedLightning();
+
             animateNewLightningFlashes(
               startupFlashes
+            );
+
+          }else if(
+            lightningLatestMs>previousLatestMs
+          ){
+            const newFlashes=
+              lightningFlashes.filter(
+                item=>item[2]>previousLatestMs
+              );
+
+            animateNewLightningFlashes(
+              newFlashes
             );
           }
 
