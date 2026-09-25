@@ -464,9 +464,6 @@
         .slice()
         .sort((a,b)=>a[2]-b[2]);
 
-      // Only animate flashes currently visible on the map.
-      // Every GLM flash still appears immediately in the
-      // normal permanent layer.
       const bounds=weatherMap.getBounds();
 
       let candidates=ordered.filter(
@@ -478,9 +475,9 @@
         return;
       }
 
-      // Enough locator samples to stay active, but still
-      // prevent extreme GLM batches from overwhelming the map.
-      const MAX_LOCATOR_FLASHES=160;
+      // Permanent GLM layer keeps every flash.
+      // Locator animation uses a representative sample.
+      const MAX_LOCATOR_FLASHES=140;
 
       if(candidates.length>MAX_LOCATOR_FLASHES){
         const step=
@@ -500,26 +497,42 @@
 
       const now=performance.now();
 
-      // Spread a newly-published GLM batch across almost
-      // the entire minute. This creates a Blitzortung-like
-      // continuous stream while using only real flashes.
+      // Visually spread each GLM publication across most
+      // of the minute, but in small strike clusters rather
+      // than a perfectly uniform metronome.
       const TARGET_SPREAD_MS=52000;
-      const MIN_GAP_MS=180;
-      const MAX_GAP_MS=3500;
+      const INTRA_CLUSTER_MS=145;
 
-      const firstFlashTime=
-        candidates[0][2];
+      // Gives the locator a repeating:
+      // pop ... pop-pop ... pop ... pop-pop-pop feel.
+      const CLUSTER_PATTERN=[
+        1,2,1,2,3,1,2,1,3,2,1,2
+      ];
 
-      const lastFlashTime=
-        candidates[candidates.length-1][2];
+      const groups=[];
+      let index=0;
+      let patternIndex=0;
 
-      const sourceSpan=Math.max(
-        1,
-        lastFlashTime-firstFlashTime
-      );
+      while(index<candidates.length){
+        const size=Math.min(
+          CLUSTER_PATTERN[
+            patternIndex%
+            CLUSTER_PATTERN.length
+          ],
+          candidates.length-index
+        );
 
-      // If a previous batch still has a few queued flashes,
-      // append this batch behind it instead of colliding.
+        groups.push(
+          candidates.slice(
+            index,
+            index+size
+          )
+        );
+
+        index+=size;
+        patternIndex++;
+      }
+
       const existingTail=
         lightningPulseQueue.length
           ? lightningPulseQueue[
@@ -528,46 +541,37 @@
           : 0;
 
       const startAt=Math.max(
-        now+100,
-        existingTail+120
+        now+120,
+        existingTail+180
       );
 
-      let previousDue=startAt-MIN_GAP_MS;
+      // Active storms get frequent clusters.
+      // Quiet storms naturally get larger pauses.
+      const clusterGap=
+        groups.length>1
+          ? TARGET_SPREAD_MS/
+            (groups.length-1)
+          : 0;
 
-      for(const [lon,lat,t] of candidates){
-        const sourceFraction=
-          (t-firstFlashTime)/sourceSpan;
-
-        const idealDue=
+      groups.forEach((group,groupIndex)=>{
+        const groupStart=
           startAt+
-          sourceFraction*TARGET_SPREAD_MS;
+          groupIndex*clusterGap;
 
-        const averageGap=
-          TARGET_SPREAD_MS/
-          Math.max(1,candidates.length);
-
-        const allowedGap=Math.max(
-          MIN_GAP_MS,
-          Math.min(
-            MAX_GAP_MS,
-            averageGap
-          )
+        group.forEach(
+          ([lon,lat,t],withinIndex)=>{
+            lightningPulseQueue.push({
+              lon,
+              lat,
+              t,
+              due:
+                groupStart+
+                withinIndex*
+                INTRA_CLUSTER_MS
+            });
+          }
         );
-
-        const due=Math.max(
-          idealDue,
-          previousDue+allowedGap
-        );
-
-        lightningPulseQueue.push({
-          lon,
-          lat,
-          t,
-          due
-        });
-
-        previousDue=due;
-      }
+      });
 
       lightningPulseQueue.sort(
         (a,b)=>a.due-b.due
@@ -576,8 +580,6 @@
       lightningPulseNextReleaseAt=
         lightningPulseQueue[0]?.due || 0;
 
-      // A newly-arrived batch might now be due sooner than
-      // an existing sleep timer, so wake the runner again.
       if(lightningPulseWakeTimer){
         clearTimeout(lightningPulseWakeTimer);
         lightningPulseWakeTimer=0;
@@ -688,6 +690,22 @@
             );
 
             animateNewLightningFlashes(newFlashes);
+
+          }else if(previousLatestMs===0){
+            // Don't leave a freshly-opened Lightning viewer
+            // dormant until the next backend publication.
+            // Replay only the newest part of the current feed.
+            const startupCutoff=
+              lightningLatestMs-(30*1000);
+
+            const startupFlashes=
+              lightningFlashes.filter(
+                item=>item[2]>=startupCutoff
+              );
+
+            animateNewLightningFlashes(
+              startupFlashes
+            );
           }
 
           lightningSeenLatestMs=Math.max(
