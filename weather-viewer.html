@@ -200,17 +200,6 @@
     }
 
 
-    function lightningPulseScale(){
-      return [
-        "interpolate",["linear"],["zoom"],
-        2,.50,
-        4,.72,
-        6,1,
-        8,1.14,
-        11,1.32
-      ];
-    }
-
     function ensureLightningPulseLayers(){
       if(!weatherMap||!mapReady)return;
 
@@ -222,7 +211,6 @@
       }
 
       const before=firstSymbolLayerId();
-      const scale=lightningPulseScale();
 
       if(!weatherMap.getLayer(LIGHTNING_PULSE_HALO_ID)){
         const layer={
@@ -231,26 +219,23 @@
           source:LIGHTNING_PULSE_SOURCE_ID,
           paint:{
             "circle-radius":[
-              "*",
-              scale,
-              [
-                "interpolate",["linear"],["get","p"],
-                0,5,
-                .12,10,
-                .32,12,
-                1,14
-              ]
+              "interpolate",["linear"],["get","p"],
+              0,5,
+              .08,11,
+              .30,15,
+              .65,17,
+              1,19
             ],
-            "circle-color":"#ff2638",
+            "circle-color":"#ff2038",
             "circle-opacity":[
               "interpolate",["linear"],["get","p"],
               0,0,
-              .06,.20,
-              .28,.18,
-              .60,.08,
+              .05,.28,
+              .25,.23,
+              .60,.10,
               1,0
             ],
-            "circle-blur":.16,
+            "circle-blur":.12,
             "circle-emissive-strength":1
           }
         };
@@ -266,30 +251,28 @@
           source:LIGHTNING_PULSE_SOURCE_ID,
           paint:{
             "circle-radius":[
-              "*",
-              scale,
-              [
-                "interpolate",["linear"],["get","p"],
-                0,5,
-                .12,10,
-                .32,12,
-                1,14
-              ]
+              "interpolate",["linear"],["get","p"],
+              0,5,
+              .08,11,
+              .30,15,
+              .65,17,
+              1,19
             ],
             "circle-color":"rgba(255,0,0,0)",
+            "circle-opacity":1,
             "circle-stroke-width":[
               "interpolate",["linear"],["get","p"],
-              0,1.2,
-              .10,2,
-              .35,1.7,
-              1,.8
+              0,1,
+              .08,2.6,
+              .35,2,
+              1,.5
             ],
-            "circle-stroke-color":"#ffcf21",
+            "circle-stroke-color":"#ffe02b",
             "circle-stroke-opacity":[
               "interpolate",["linear"],["get","p"],
               0,0,
-              .05,.95,
-              .30,.90,
+              .04,1,
+              .30,.95,
               .70,.35,
               1,0
             ],
@@ -308,23 +291,19 @@
           source:LIGHTNING_PULSE_SOURCE_ID,
           paint:{
             "circle-radius":[
-              "*",
-              scale,
-              [
-                "interpolate",["linear"],["get","p"],
-                0,1.5,
-                .05,3.2,
-                .25,2.5,
-                1,1.6
-              ]
+              "interpolate",["linear"],["get","p"],
+              0,1.5,
+              .04,4,
+              .25,3,
+              1,1.4
             ],
             "circle-color":"#ffffff",
             "circle-opacity":[
               "interpolate",["linear"],["get","p"],
               0,0,
-              .035,1,
-              .42,1,
-              .75,.45,
+              .025,1,
+              .45,1,
+              .80,.35,
               1,0
             ],
             "circle-emissive-strength":1
@@ -505,6 +484,25 @@
           );
       }
     }
+
+    window.__testLightningPulse=()=>{
+      if(!weatherMap||!mapReady){
+        console.warn("Lightning map not ready");
+        return;
+      }
+
+      const c=weatherMap.getCenter();
+
+      console.log(
+        "Testing lightning locator at",
+        c.lng,
+        c.lat
+      );
+
+      animateNewLightningFlashes([
+        [c.lng,c.lat,Date.now()]
+      ]);
+    };
 
     async function applyLightningLayer(){
       if(!mapReady||activeProduct!=="lightning")return;
