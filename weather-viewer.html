@@ -82,6 +82,10 @@
     "use strict";
     const MAPBOX_STYLE="mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
     const DATA_SOURCE_ID="weather-viewer-data-source",DATA_LAYER_ID="weather-viewer-data-layer";
+    const LIGHTNING_PULSE_SOURCE_ID="weather-viewer-lightning-pulse-source";
+    const LIGHTNING_PULSE_HALO_ID="weather-viewer-lightning-pulse-halo";
+    const LIGHTNING_PULSE_RING_ID="weather-viewer-lightning-pulse-ring";
+    const LIGHTNING_PULSE_CORE_ID="weather-viewer-lightning-pulse-core";
     const CONUS_BOUNDS=[[-126.5,22.5],[-65,51.5]],REGIONAL_ZOOM=5.15;
     const LIGHTNING_FEED="https://dt0cd6bl1yqh2.cloudfront.net/glm-goes19/latest.json";
     const GIBS_WMS="https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi";
@@ -116,6 +120,7 @@
     let activeProduct="radar",radarMode="national",satPlatform="East",satProduct="GeoColor",satSector="CONUS",weatherMap=null,mapReady=false,refreshTimer=0;
     let satFrames=[],satFrameIndex=0,satTimer=0,satWarmGeneration=0;
     let lightningFlashes=[],lightningLatestMs=0,lightningFetchPromise=null,lightningInitialFitDone=false;
+    let lightningSeenLatestMs=0,lightningPulseFrame=0,lightningPulseToken=0,lightningPollTimer=0;
     const satFrameImages=new Map();
     const activate=(list,predicate)=>{for(const button of list)button.classList.toggle("active",predicate(button));};
     function showRadar(){radarFrame.hidden=false;satelliteStage.hidden=true;weatherMapEl.style.display="none";mapProductCard.hidden=true;stopSatellitePlayback();}
@@ -193,6 +198,197 @@
       }
     }
 
+
+    function ensureLightningPulseLayers(){
+      if(!weatherMap||!mapReady)return;
+
+      if(!weatherMap.getSource(LIGHTNING_PULSE_SOURCE_ID)){
+        weatherMap.addSource(LIGHTNING_PULSE_SOURCE_ID,{
+          type:"geojson",
+          data:{type:"FeatureCollection",features:[]}
+        });
+      }
+
+      const before=firstSymbolLayerId();
+
+      if(!weatherMap.getLayer(LIGHTNING_PULSE_HALO_ID)){
+        const layer={
+          id:LIGHTNING_PULSE_HALO_ID,
+          type:"circle",
+          source:LIGHTNING_PULSE_SOURCE_ID,
+          paint:{
+            "circle-radius":8,
+            "circle-color":"#ffd21f",
+            "circle-opacity":0,
+            "circle-blur":.65,
+            "circle-emissive-strength":1
+          }
+        };
+        if(before)weatherMap.addLayer(layer,before);
+        else weatherMap.addLayer(layer);
+      }
+
+      if(!weatherMap.getLayer(LIGHTNING_PULSE_RING_ID)){
+        const layer={
+          id:LIGHTNING_PULSE_RING_ID,
+          type:"circle",
+          source:LIGHTNING_PULSE_SOURCE_ID,
+          paint:{
+            "circle-radius":6,
+            "circle-color":"rgba(255,255,255,0)",
+            "circle-opacity":1,
+            "circle-stroke-width":1.8,
+            "circle-stroke-color":"#fff6b0",
+            "circle-stroke-opacity":0,
+            "circle-emissive-strength":1
+          }
+        };
+        if(before)weatherMap.addLayer(layer,before);
+        else weatherMap.addLayer(layer);
+      }
+
+      if(!weatherMap.getLayer(LIGHTNING_PULSE_CORE_ID)){
+        const layer={
+          id:LIGHTNING_PULSE_CORE_ID,
+          type:"circle",
+          source:LIGHTNING_PULSE_SOURCE_ID,
+          paint:{
+            "circle-radius":3,
+            "circle-color":"#ffffff",
+            "circle-opacity":0,
+            "circle-blur":.08,
+            "circle-emissive-strength":1
+          }
+        };
+        if(before)weatherMap.addLayer(layer,before);
+        else weatherMap.addLayer(layer);
+      }
+    }
+
+    function animateNewLightningFlashes(flashes){
+      if(
+        activeProduct!=="lightning" ||
+        !mapReady ||
+        !flashes.length
+      ) return;
+
+      ensureLightningPulseLayers();
+
+      // Avoid an extreme animation burst during a very active minute.
+      // The normal GLM layer still receives every flash.
+      const pulseFlashes=flashes.slice(-800);
+
+      const source=weatherMap.getSource(LIGHTNING_PULSE_SOURCE_ID);
+
+      if(!source)return;
+
+      source.setData({
+        type:"FeatureCollection",
+        features:pulseFlashes.map(([lon,lat,t])=>({
+          type:"Feature",
+          properties:{t},
+          geometry:{
+            type:"Point",
+            coordinates:[lon,lat]
+          }
+        }))
+      });
+
+      const token=++lightningPulseToken;
+
+      if(lightningPulseFrame){
+        cancelAnimationFrame(lightningPulseFrame);
+      }
+
+      const started=performance.now();
+      const duration=1350;
+
+      function frame(now){
+        if(
+          token!==lightningPulseToken ||
+          activeProduct!=="lightning"
+        ) return;
+
+        const p=Math.min(1,(now-started)/duration);
+        const fade=1-p;
+
+        // Quick double "hot core" flicker.
+        const flicker=
+          .72 +
+          .28*Math.abs(Math.sin(p*Math.PI*3));
+
+        const haloRadius=5 + p*22;
+        const ringRadius=3 + p*19;
+
+        weatherMap.setPaintProperty(
+          LIGHTNING_PULSE_HALO_ID,
+          "circle-radius",
+          [
+            "interpolate",["linear"],["zoom"],
+            2,haloRadius*.55,
+            5,haloRadius,
+            8,haloRadius*1.35,
+            11,haloRadius*1.7
+          ]
+        );
+
+        weatherMap.setPaintProperty(
+          LIGHTNING_PULSE_HALO_ID,
+          "circle-opacity",
+          .72*Math.pow(fade,1.7)
+        );
+
+        weatherMap.setPaintProperty(
+          LIGHTNING_PULSE_RING_ID,
+          "circle-radius",
+          [
+            "interpolate",["linear"],["zoom"],
+            2,ringRadius*.55,
+            5,ringRadius,
+            8,ringRadius*1.3,
+            11,ringRadius*1.6
+          ]
+        );
+
+        weatherMap.setPaintProperty(
+          LIGHTNING_PULSE_RING_ID,
+          "circle-stroke-opacity",
+          .95*Math.pow(fade,1.25)
+        );
+
+        weatherMap.setPaintProperty(
+          LIGHTNING_PULSE_CORE_ID,
+          "circle-radius",
+          [
+            "interpolate",["linear"],["zoom"],
+            2,1.8+flicker*.8,
+            5,2.5+flicker*1.3,
+            8,3.3+flicker*1.8,
+            11,4.5+flicker*2.2
+          ]
+        );
+
+        weatherMap.setPaintProperty(
+          LIGHTNING_PULSE_CORE_ID,
+          "circle-opacity",
+          p<.72 ? 1 : Math.max(0,(1-p)/.28)
+        );
+
+        if(p<1){
+          lightningPulseFrame=requestAnimationFrame(frame);
+        }else{
+          lightningPulseFrame=0;
+
+          source.setData({
+            type:"FeatureCollection",
+            features:[]
+          });
+        }
+      }
+
+      lightningPulseFrame=requestAnimationFrame(frame);
+    }
+
     async function applyLightningLayer(){
       if(!mapReady||activeProduct!=="lightning")return;
       if(lightningFetchPromise)return lightningFetchPromise;
@@ -218,6 +414,8 @@
           if(!raw.length){
             throw new Error("GLM feed contains no flashes");
           }
+
+          const previousLatestMs=lightningSeenLatestMs;
 
           lightningLatestMs=Number.isFinite(parsedLatest)
             ? parsedLatest
@@ -259,6 +457,19 @@
           };
 
           weatherMap.getSource(DATA_SOURCE_ID)?.setData(geojson);
+
+          if(previousLatestMs>0 && lightningLatestMs>previousLatestMs){
+            const newFlashes=lightningFlashes.filter(
+              item=>item[2]>previousLatestMs
+            );
+
+            animateNewLightningFlashes(newFlashes);
+          }
+
+          lightningSeenLatestMs=Math.max(
+            lightningSeenLatestMs,
+            lightningLatestMs
+          );
 
           const count=lightningFlashes.length;
 
@@ -378,8 +589,26 @@
     satSpeed.addEventListener("change",()=>{if(satTimer){stopSatellitePlayback();startSatellitePlayback();}});
     mapViewButtons.forEach(button=>button.addEventListener("click",()=>button.dataset.mapView==="national"?nationalView():regionalView()));
     window.addEventListener("resize",()=>weatherMap?.resize());
-    refreshTimer=window.setInterval(()=>{if(activeProduct==="satellite"&&!satTimer)resetSatelliteViewer();else if(activeProduct==="lightning"&&mapReady)applyLightningLayer();},60000);
-    window.addEventListener("beforeunload",()=>{window.clearInterval(refreshTimer);stopSatellitePlayback();},{once:true});
+    refreshTimer=window.setInterval(()=>{
+      if(activeProduct==="satellite"&&!satTimer){
+        resetSatelliteViewer();
+      }
+    },60000);
+
+    lightningPollTimer=window.setInterval(()=>{
+      if(activeProduct==="lightning"&&mapReady){
+        applyLightningLayer();
+      }
+    },15000);
+
+    window.addEventListener("beforeunload",()=>{
+      window.clearInterval(refreshTimer);
+      window.clearInterval(lightningPollTimer);
+      if(lightningPulseFrame){
+        cancelAnimationFrame(lightningPulseFrame);
+      }
+      stopSatellitePlayback();
+    },{once:true});
     populateSatelliteSectors();selectProduct("radar");
   })();
   </script>
