@@ -23,7 +23,7 @@
     .stage{position:relative;min-width:0;min-height:0;background:#02060c;overflow:hidden}
     #radarFrame,#weatherMap,#satelliteStage{position:absolute;inset:0;width:100%;height:100%;border:0;background:#07111f}#weatherMap{display:none}
     #satelliteStage{display:flex;align-items:center;justify-content:center;padding:10px 16px 72px;background:#000;overflow:hidden}
-    #satelliteImage{display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;image-rendering:auto;filter:brightness(.94) contrast(.92) saturate(.94);box-shadow:0 16px 52px rgba(0,0,0,.42)}
+    #satelliteImage{display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;image-rendering:auto;filter:none;box-shadow:0 16px 52px rgba(0,0,0,.42)}
     .satellite-loading{position:absolute;inset:0;display:none;align-items:center;justify-content:center;z-index:4;background:#02060c;color:#cbd5e1;font-size:.76rem;font-weight:850}.satellite-loading.show{display:flex}
     .sat-playback{position:absolute;left:50%;bottom:12px;z-index:12;transform:translateX(-50%);width:min(780px,calc(100% - 28px));display:grid;grid-template-columns:auto auto auto minmax(160px,1fr) auto auto;align-items:center;gap:8px;padding:8px 10px;border:1px solid rgba(148,163,184,.28);border-radius:12px;background:rgba(5,10,20,.92);box-shadow:0 14px 34px rgba(0,0,0,.38);backdrop-filter:blur(12px)}
     .sat-playback button,.sat-playback select{height:30px;border:1px solid var(--line2);border-radius:7px;background:#0d1828;color:#e5eef8;font-weight:800}.sat-playback button{min-width:42px;padding:0 10px}.sat-playback .play{min-width:78px}.sat-playback input[type="range"]{width:100%;accent-color:#38bdf8}.sat-readout{min-width:86px;color:#d8e4f1;font-size:.65rem;font-weight:800;text-align:right;white-space:nowrap}.sat-cache{min-width:72px;color:#7dd3fc;font-size:.62rem;font-weight:800;white-space:nowrap}
@@ -47,7 +47,7 @@
         <div class="controls" id="radarControls"><button class="control active" type="button" data-radar="national">National</button><button class="control" type="button" data-radar="regional">Regional</button><button class="control" type="button" data-radar="hires">Hi-Res</button></div>
         <div class="controls" id="satelliteControls" hidden>
           <button class="control active" type="button" data-sat-platform="East">GOES-East</button><button class="control" type="button" data-sat-platform="West">GOES-West</button>
-          <button class="control active" type="button" data-sat-product="GeoColor">TrueColor</button><button class="control" type="button" data-sat-product="Band13_Clean_Infrared">Clean IR</button><button class="control" type="button" data-sat-product="Air_Mass">Air Mass</button>
+          <button class="control active" type="button" data-sat-product="GeoColor">GeoColor</button><button class="control" type="button" data-sat-product="Band13_Clean_Infrared">Clean IR</button><button class="control" type="button" data-sat-product="Air_Mass">Air Mass</button>
           <select class="control" id="satSectorSelect" aria-label="Satellite sector"></select>
         </div>
         <div class="controls" id="lightningControls" hidden><button class="control active" type="button" data-map-view="national">National</button><button class="control" type="button" data-map-view="regional">Regional</button></div>
@@ -60,7 +60,7 @@
       <div id="satelliteStage" hidden>
         <div class="satellite-loading" id="satelliteLoading">Loading north-up satellite image…</div>
         <img id="satelliteImage" alt="Satellite imagery">
-        <div class="product-card"><strong id="satelliteTitle">GOES-East TrueColor — CONUS</strong><span id="satelliteMeta">NASA GIBS / NOAA GOES • north-up sector • latest available frame</span></div>
+        <div class="product-card"><strong id="satelliteTitle">GOES-East GeoColor — CONUS</strong><span id="satelliteMeta">NASA GIBS / NOAA GOES • north-up sector • latest available frame</span></div>
         <div class="sat-playback" aria-label="Satellite playback controls">
           <button id="satPrev" type="button" title="Previous frame">◀</button>
           <button class="play" id="satPlay" type="button">▶ Play</button>
@@ -68,7 +68,7 @@
           <input id="satTimeline" type="range" min="0" max="24" step="1" value="24" aria-label="Satellite frame">
           <span class="sat-readout" id="satFrameReadout">Latest</span>
           <select id="satSpeed" aria-label="Satellite playback speed"><option value="650">1×</option><option value="425">1.5×</option><option value="300">2×</option></select>
-          <span class="sat-cache" id="satCacheReadout">0/25 cached</span>
+          <span class="sat-cache" id="satCacheReadout">0/25 ready</span>
         </div>
       </div>
       <div id="weatherMap"></div>
@@ -89,9 +89,9 @@
     const CONUS_BOUNDS=[[-126.5,22.5],[-65,51.5]],REGIONAL_ZOOM=5.15;
     const LIGHTNING_FEED="https://dt0cd6bl1yqh2.cloudfront.net/glm-goes19/latest.json";
     const GIBS_WMS="https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi";
-    const SAT_FRAME_COUNT=25,SAT_STEP_MINUTES=5,SAT_LAG_MINUTES=10;
+    const SAT_FRAME_COUNT=25,SAT_STEP_MINUTES=10,SAT_LAG_MINUTES=10,SAT_PROBE_EXTRA_FRAMES=10,SAT_PROBE_WORKERS=4;
 
-    const SAT_PRODUCTS={GeoColor:{label:"TrueColor",layer:"GeoColor"},Band13_Clean_Infrared:{label:"Clean IR",layer:"Band13_Clean_Infrared"},Air_Mass:{label:"Air Mass",layer:"Air_Mass"}};
+    const SAT_PRODUCTS={GeoColor:{label:"GeoColor",layer:"GeoColor"},Band13_Clean_Infrared:{label:"Clean IR",layer:"Band13_Clean_Infrared"},Air_Mass:{label:"Air Mass",layer:"Air_Mass"}};
     const SAT_SECTORS={
       East:[
         {id:"CONUS",label:"CONUS",bbox:[-125.5,23.5,-66,50.5]},
@@ -118,11 +118,11 @@
     const satPrev=document.getElementById("satPrev"),satPlay=document.getElementById("satPlay"),satNext=document.getElementById("satNext"),satTimeline=document.getElementById("satTimeline"),satFrameReadout=document.getElementById("satFrameReadout"),satSpeed=document.getElementById("satSpeed"),satCacheReadout=document.getElementById("satCacheReadout");
 
     let activeProduct="radar",radarMode="national",satPlatform="East",satProduct="GeoColor",satSector="CONUS",weatherMap=null,mapReady=false,refreshTimer=0;
-    let satFrames=[],satFrameIndex=0,satTimer=0,satWarmGeneration=0;
+    let satFrames=[],satFrameIndex=0,satTimer=0,satWarmGeneration=0,satLastWindowKey="",satRenderToken=0,satPixelProbeSupported=true,satContext=null;
     let lightningFlashes=[],lightningDisplayedFlashes=[],lightningDisplayedKeys=new Set(),lightningLatestMs=0,lightningFetchPromise=null,lightningInitialFitDone=false;
     let lightningSeenLatestMs=0,lightningPulseFrame=0,lightningPulseToken=0,lightningPollTimer=0;
     let lightningPulseQueue=[],lightningPulseActive=[],lightningPulseNextReleaseAt=0,lightningPulseWakeTimer=0;
-    const satFrameImages=new Map();
+    const satFrameImages=new Map(),satFramePromises=new Map(),satProbeResults=new Map();
     const activate=(list,predicate)=>{for(const button of list)button.classList.toggle("active",predicate(button));};
     function showRadar(){radarFrame.hidden=false;satelliteStage.hidden=true;weatherMapEl.style.display="none";mapProductCard.hidden=true;stopSatellitePlayback();}
     function showSatellite(){radarFrame.hidden=true;satelliteStage.hidden=false;weatherMapEl.style.display="none";mapProductCard.hidden=true;mapError.classList.remove("show");}
@@ -846,74 +846,164 @@
     function currentSectorSpec(){return (SAT_SECTORS[satPlatform]||SAT_SECTORS.East).find(item=>item.id===satSector)||(SAT_SECTORS[satPlatform]||SAT_SECTORS.East)[0];}
     function populateSatelliteSectors(){const sectors=SAT_SECTORS[satPlatform]||SAT_SECTORS.East;if(!sectors.some(item=>item.id===satSector))satSector=sectors[0].id;satSectorSelect.innerHTML=sectors.map(item=>`<option value="${item.id}"${item.id===satSector?" selected":""}>${item.label}</option>`).join("");}
     function mercator(lon,lat){const R=6378137,rad=Math.PI/180,clamped=Math.max(-85.05112878,Math.min(85.05112878,lat));return [R*lon*rad,R*Math.log(Math.tan(Math.PI/4+clamped*rad/2))];}
-    function buildSatelliteFrames(){
-      const latest=new Date(Date.now()-SAT_LAG_MINUTES*60*1000);latest.setUTCSeconds(0,0);latest.setUTCMinutes(Math.floor(latest.getUTCMinutes()/SAT_STEP_MINUTES)*SAT_STEP_MINUTES);
-      satFrames=Array.from({length:SAT_FRAME_COUNT},(_,i)=>new Date(latest.getTime()-(SAT_FRAME_COUNT-1-i)*SAT_STEP_MINUTES*60000));
-      satFrameIndex=satFrames.length-1;satTimeline.max=String(satFrames.length-1);satTimeline.value=String(satFrameIndex);satFrameImages.clear();satCacheReadout.textContent=`0/${satFrames.length} cached`;
+    function satelliteLatestCandidate(){
+      const latest=new Date(Date.now()-SAT_LAG_MINUTES*60*1000);
+      latest.setUTCSeconds(0,0);
+      latest.setUTCMinutes(Math.floor(latest.getUTCMinutes()/SAT_STEP_MINUTES)*SAT_STEP_MINUTES);
+      return latest;
     }
-    function satelliteImageUrl(frameTime){
+    function createSatelliteContext(){
       const product=satProductSpec(),sector=currentSectorSpec(),[west,south,east,north]=sector.bbox;
       const [minX,minY]=mercator(west,south),[maxX,maxY]=mercator(east,north);
-      const ratio=Math.max(.55,Math.min(2.8,(maxX-minX)/(maxY-minY)));
-      const width=2400,height=Math.max(900,Math.min(2000,Math.round(width/ratio)));
-      const imageryLayer=`GOES-${satPlatform}_ABI_${product.layer}`;
-      const cache=Math.floor(Date.now()/120000);
-      const qs=new URLSearchParams({SERVICE:"WMS",VERSION:"1.1.1",REQUEST:"GetMap",LAYERS:`${imageryLayer},Reference_Features_15m`,STYLES:",",SRS:"EPSG:3857",BBOX:[minX,minY,maxX,maxY].join(","),WIDTH:String(width),HEIGHT:String(height),FORMAT:"image/png",TRANSPARENT:"false",TIME:frameTime.toISOString().replace(".000Z","Z"),_:String(cache)});
+      const ratio=Math.max(.45,Math.min(3.2,(maxX-minX)/(maxY-minY)));
+      const dpr=Math.min(1.75,Math.max(1,window.devicePixelRatio||1));
+      const stageWidth=Math.max(720,(satelliteStage.clientWidth||1400)-32);
+      const stageHeight=Math.max(480,(satelliteStage.clientHeight||820)-92);
+      let width=Math.min(2200,Math.max(960,Math.round(stageWidth*dpr)));
+      let height=Math.round(width/ratio);
+      const maxHeight=Math.min(1800,Math.max(720,Math.round(stageHeight*dpr)));
+      if(height>maxHeight){height=maxHeight;width=Math.round(height*ratio);}
+      return {platform:satPlatform,product,sector,bbox:[minX,minY,maxX,maxY],ratio,width:Math.max(640,Math.round(width)),height:Math.max(420,Math.round(height)),imageryLayer:`GOES-${satPlatform}_ABI_${product.layer}`};
+    }
+    function satelliteRequestUrl(frameTime,context,{reference=true,probe=false}={}){
+      const width=probe?320:context.width;
+      const height=probe?Math.max(180,Math.round(width/context.ratio)):context.height;
+      const layers=reference?`${context.imageryLayer},Reference_Features_15m`:context.imageryLayer;
+      const qs=new URLSearchParams({SERVICE:"WMS",VERSION:"1.1.1",REQUEST:"GetMap",LAYERS:layers,STYLES:reference?",":"",SRS:"EPSG:3857",BBOX:context.bbox.join(","),WIDTH:String(width),HEIGHT:String(height),FORMAT:"image/png",TRANSPARENT:"false",TIME:frameTime.toISOString().replace(".000Z","Z")});
       return `${GIBS_WMS}?${qs.toString()}`;
+    }
+    function satelliteImageUrl(frameTime,context=satContext||createSatelliteContext()){return satelliteRequestUrl(frameTime,context,{reference:true,probe:false});}
+    function satelliteProbeLooksValid(img){
+      if(!satPixelProbeSupported)return true;
+      try{
+        const width=96,height=Math.max(54,Math.round(width*(img.naturalHeight/img.naturalWidth)));
+        const canvas=document.createElement("canvas");canvas.width=width;canvas.height=height;
+        const ctx=canvas.getContext("2d",{willReadFrequently:true});
+        if(!ctx)return true;
+        ctx.drawImage(img,0,0,width,height);
+        const data=ctx.getImageData(0,0,width,height).data;
+        let count=0,nonBlack=0,minLum=255,maxLum=0,sumLum=0;
+        for(let i=0;i<data.length;i+=4){
+          if(data[i+3]<16)continue;
+          const lum=(data[i]+data[i+1]+data[i+2])/3;
+          count++;sumLum+=lum;if(lum>3)nonBlack++;if(lum<minLum)minLum=lum;if(lum>maxLum)maxLum=lum;
+        }
+        if(!count)return false;
+        const average=sumLum/count;
+        return nonBlack/count>.01&&(maxLum-minLum>6||average>8);
+      }catch(error){
+        satPixelProbeSupported=false;
+        console.warn("Satellite pixel validation unavailable; using exact GIBS cadence.",error);
+        return true;
+      }
+    }
+    function probeSatelliteFrame(frameTime,context){
+      const iso=frameTime.toISOString(),key=`${context.imageryLayer}|${context.sector.id}|${iso}`;
+      if(satProbeResults.has(key))return Promise.resolve(satProbeResults.get(key));
+      const url=satelliteRequestUrl(frameTime,context,{reference:false,probe:true});
+      return new Promise(resolve=>{
+        const finish=valid=>{satProbeResults.set(key,valid);if(satProbeResults.size>160)satProbeResults.delete(satProbeResults.keys().next().value);resolve(valid);};
+        const img=new Image();img.decoding="async";img.crossOrigin="anonymous";
+        img.onload=()=>finish(satelliteProbeLooksValid(img));
+        img.onerror=()=>{
+          const fallback=new Image();fallback.decoding="async";
+          fallback.onload=()=>{satPixelProbeSupported=false;finish(true);};
+          fallback.onerror=()=>finish(false);
+          fallback.src=url;
+        };
+        img.src=url;
+      });
+    }
+    async function discoverSatelliteFrames(generation,context){
+      const latest=satelliteLatestCandidate();
+      const candidates=Array.from({length:SAT_FRAME_COUNT+SAT_PROBE_EXTRA_FRAMES},(_,i)=>new Date(latest.getTime()-i*SAT_STEP_MINUTES*60000));
+      let cursor=0;const valid=[];
+      async function worker(){
+        while(generation===satWarmGeneration&&cursor<candidates.length){
+          const frame=candidates[cursor++];
+          if(await probeSatelliteFrame(frame,context))valid.push(frame);
+        }
+      }
+      await Promise.all(Array.from({length:SAT_PROBE_WORKERS},()=>worker()));
+      if(generation!==satWarmGeneration)return [];
+      return valid.sort((a,b)=>a-b).slice(-SAT_FRAME_COUNT);
+    }
+    async function buildSatelliteFrames(generation,context){
+      const frames=await discoverSatelliteFrames(generation,context);
+      if(generation!==satWarmGeneration)return false;
+      satFrames=frames;
+      if(!satFrames.length)return false;
+      satFrameIndex=satFrames.length-1;
+      satTimeline.max=String(satFrames.length-1);satTimeline.value=String(satFrameIndex);
+      satCacheReadout.textContent=`0/${satFrames.length} ready`;
+      return true;
+    }
+    function preloadSatelliteFrame(frameTime,context){
+      const url=satelliteImageUrl(frameTime,context);
+      if(satFrameImages.has(url))return Promise.resolve({url,img:satFrameImages.get(url)});
+      if(satFramePromises.has(url))return satFramePromises.get(url);
+      const promise=new Promise((resolve,reject)=>{
+        const img=new Image();img.decoding="async";
+        img.onload=()=>{
+          const finish=()=>{satFrameImages.set(url,img);resolve({url,img});};
+          if(typeof img.decode==="function")img.decode().catch(()=>{}).then(finish);else finish();
+        };
+        img.onerror=()=>reject(new Error("Satellite frame image failed to load"));
+        img.src=url;
+      }).finally(()=>satFramePromises.delete(url));
+      satFramePromises.set(url,promise);
+      return promise;
     }
     function formatSatelliteTime(date){return date.toLocaleTimeString([], {hour:"numeric",minute:"2-digit"});}
     function renderSatellite(index=satFrameIndex,showLoading=true){
-      if(!satFrames.length)buildSatelliteFrames();
+      if(!satFrames.length||!satContext)return;
       satFrameIndex=Math.max(0,Math.min(satFrames.length-1,index));satTimeline.value=String(satFrameIndex);
-      const frameTime=satFrames[satFrameIndex],product=satProductSpec(),sector=currentSectorSpec(),label=`GOES-${satPlatform} ${product.label} — ${sector.label}`;
-      viewerStatus.textContent=`GOES-${satPlatform} live`;viewerNote.textContent=`${label} • north-up sector playback`;satelliteTitle.textContent=label;
+      const frameTime=satFrames[satFrameIndex],product=satContext.product,sector=satContext.sector,label=`GOES-${satContext.platform} ${product.label} — ${sector.label}`,token=++satRenderToken;
+      viewerStatus.textContent=`GOES-${satContext.platform} live`;viewerNote.textContent=`${label} • verified 10-minute north-up playback`;satelliteTitle.textContent=label;
       satelliteMeta.textContent=`NASA GIBS / NOAA GOES • state outlines • ${frameTime.toISOString().replace(".000Z","Z")}`;satFrameReadout.textContent=formatSatelliteTime(frameTime);
-      if(showLoading){satelliteLoading.textContent="Loading satellite frame…";satelliteLoading.classList.add("show");}
-      satelliteImage.onload=()=>satelliteLoading.classList.remove("show");
-      satelliteImage.onerror=()=>{satelliteLoading.textContent="Satellite frame temporarily unavailable";satelliteLoading.classList.add("show");};
-      satelliteImage.src=satelliteImageUrl(frameTime);
+      const url=satelliteImageUrl(frameTime,satContext),cached=satFrameImages.get(url);
+      if(cached){satelliteImage.src=cached.src;satelliteLoading.classList.remove("show");return;}
+      if(showLoading||!satelliteImage.src){satelliteLoading.textContent="Loading verified satellite frame…";satelliteLoading.classList.add("show");}
+      preloadSatelliteFrame(frameTime,satContext).then(result=>{
+        if(token!==satRenderToken||activeProduct!=="satellite")return;
+        satelliteImage.src=result.url;satelliteLoading.classList.remove("show");
+      }).catch(error=>{
+        console.warn("Satellite frame load failed",error);
+        if(token!==satRenderToken)return;
+        satelliteLoading.textContent="Satellite frame temporarily unavailable";
+        if(!satelliteImage.src)satelliteLoading.classList.add("show");
+      });
     }
-    async function warmSatelliteFrames(){
-      const generation=++satWarmGeneration;
+    async function warmSatelliteFrames(generation,context){
       let cursor=0,loaded=0;
-      const order=satFrames.map((_,i)=>i)
-        .sort((a,b)=>Math.abs(a-satFrameIndex)-Math.abs(b-satFrameIndex));
-
+      const order=satFrames.map((_,i)=>i).sort((a,b)=>Math.abs(a-satFrameIndex)-Math.abs(b-satFrameIndex));
       async function worker(){
         while(generation===satWarmGeneration&&cursor<order.length){
           const index=order[cursor++];
-          const url=satelliteImageUrl(satFrames[index]);
-
-          if(satFrameImages.has(url)){
-            loaded++;
-            satCacheReadout.textContent=`${loaded}/${satFrames.length} cached`;
-            continue;
-          }
-
-          const ok=await new Promise(resolve=>{
-            const img=new Image();
-            img.decoding="async";
-            img.onload=()=>{
-              satFrameImages.set(url,img);
-              resolve(true);
-            };
-            img.onerror=()=>resolve(false);
-            img.src=url;
-          });
-
-          if(ok) loaded++;
-
-          if(generation===satWarmGeneration){
-            satCacheReadout.textContent=`${loaded}/${satFrames.length} cached`;
-          }
+          try{await preloadSatelliteFrame(satFrames[index],context);loaded++;}catch(error){console.warn("Satellite warm frame skipped",satFrames[index]?.toISOString(),error);}
+          if(generation===satWarmGeneration)satCacheReadout.textContent=`${loaded}/${satFrames.length} ready`;
         }
       }
-
       await Promise.all([worker(),worker(),worker()]);
     }
     function stopSatellitePlayback(){if(satTimer){clearInterval(satTimer);satTimer=0;}satPlay.textContent="▶ Play";}
-    function startSatellitePlayback(){if(satTimer){stopSatellitePlayback();return;}satPlay.textContent="❚❚ Pause";const tick=()=>{satFrameIndex=(satFrameIndex+1)%satFrames.length;renderSatellite(satFrameIndex,false);};satTimer=setInterval(tick,Number(satSpeed.value)||650);}
-    function resetSatelliteViewer(){stopSatellitePlayback();buildSatelliteFrames();renderSatellite(satFrameIndex,true);warmSatelliteFrames();}
+    function startSatellitePlayback(){if(satTimer){stopSatellitePlayback();return;}if(satFrames.length<2)return;satPlay.textContent="❚❚ Pause";const tick=()=>{satFrameIndex=(satFrameIndex+1)%satFrames.length;renderSatellite(satFrameIndex,false);};satTimer=setInterval(tick,Number(satSpeed.value)||650);}
+    async function resetSatelliteViewer(force=true){
+      stopSatellitePlayback();
+      const latest=satelliteLatestCandidate(),windowKey=`${satPlatform}|${satProduct}|${satSector}|${latest.toISOString()}`;
+      if(!force&&windowKey===satLastWindowKey&&satFrames.length)return;
+      const generation=++satWarmGeneration;
+      satRenderToken++;satContext=createSatelliteContext();satFrames=[];satFrameIndex=0;satFrameImages.clear();satFramePromises.clear();
+      satTimeline.max="0";satTimeline.value="0";satCacheReadout.textContent=`0/${SAT_FRAME_COUNT} checking`;
+      satelliteLoading.textContent="Finding latest available NASA GIBS frames…";satelliteLoading.classList.add("show");
+      viewerStatus.textContent=`GOES-${satPlatform} checking`;viewerNote.textContent=`${satContext.product.label} • verifying NASA GIBS 10-minute imagery`;
+      const ready=await buildSatelliteFrames(generation,satContext);
+      if(generation!==satWarmGeneration||activeProduct!=="satellite")return;
+      if(!ready){satLastWindowKey="";viewerStatus.textContent="Satellite unavailable";satelliteLoading.textContent="No valid satellite imagery found in the current window";return;}
+      satLastWindowKey=windowKey;
+      renderSatellite(satFrameIndex,true);
+      warmSatelliteFrames(generation,satContext);
+    }
 
     function nationalView(){ensureMap().then(()=>weatherMap.fitBounds(CONUS_BOUNDS,{padding:18,duration:500}));}
     function regionalView(){ensureMap().then(()=>weatherMap.easeTo({zoom:Math.max(REGIONAL_ZOOM,weatherMap.getZoom()),duration:450}));}
@@ -939,7 +1029,7 @@
     window.addEventListener("resize",()=>weatherMap?.resize());
     refreshTimer=window.setInterval(()=>{
       if(activeProduct==="satellite"&&!satTimer){
-        resetSatelliteViewer();
+        resetSatelliteViewer(false);
       }
     },60000);
 
