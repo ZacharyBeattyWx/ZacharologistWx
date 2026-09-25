@@ -121,7 +121,7 @@
     let satFrames=[],satFrameIndex=0,satTimer=0,satWarmGeneration=0;
     let lightningFlashes=[],lightningLatestMs=0,lightningFetchPromise=null,lightningInitialFitDone=false;
     let lightningSeenLatestMs=0,lightningPulseFrame=0,lightningPulseToken=0,lightningPollTimer=0;
-    let lightningPulseQueue=[],lightningPulseActive=[];
+    let lightningPulseQueue=[],lightningPulseActive=[],lightningPulseNextReleaseAt=0;
     const satFrameImages=new Map();
     const activate=(list,predicate)=>{for(const button of list)button.classList.toggle("active",predicate(button));};
     function showRadar(){radarFrame.hidden=false;satelliteStage.hidden=true;weatherMapEl.style.display="none";mapProductCard.hidden=true;stopSatellitePlayback();}
@@ -245,9 +245,9 @@
             "circle-opacity":[
               "interpolate",["linear"],["get","p"],
               0,0,
-              .06,.30,
-              .28,.27,
-              .60,.13,
+              .06,.20,
+              .28,.18,
+              .60,.08,
               1,0
             ],
             "circle-blur":.16,
@@ -373,12 +373,11 @@
       ){
         lightningPulseQueue=[];
         lightningPulseActive=[];
+        lightningPulseNextReleaseAt=0;
 
-        const source=weatherMap?.getSource(
+        weatherMap?.getSource(
           LIGHTNING_PULSE_SOURCE_ID
-        );
-
-        source?.setData({
+        )?.setData({
           type:"FeatureCollection",
           features:[]
         });
@@ -386,14 +385,26 @@
         return;
       }
 
-      // Introduce only a limited number at once.
-      let released=0;
-      const maxReleasePerFrame=10;
+      const LOCATOR_INTERVAL_MS=125;
+      const LOCATOR_DURATION_MS=430;
+      const MAX_ACTIVE_LOCATORS=3;
 
-      while(
+      lightningPulseActive=
+        lightningPulseActive.filter(
+          item=>now-item.born<item.duration
+        );
+
+      if(!lightningPulseNextReleaseAt){
+        lightningPulseNextReleaseAt=now;
+      }
+
+      // Hard Blitzortung-style throttle:
+      // release only ONE locator at a time and never
+      // allow more than a few circles to coexist.
+      if(
         lightningPulseQueue.length &&
-        lightningPulseQueue[0].due<=now &&
-        released<maxReleasePerFrame
+        now>=lightningPulseNextReleaseAt &&
+        lightningPulseActive.length<MAX_ACTIVE_LOCATORS
       ){
         const next=lightningPulseQueue.shift();
 
@@ -401,16 +412,12 @@
           lon:next.lon,
           lat:next.lat,
           born:now,
-          duration:580
+          duration:LOCATOR_DURATION_MS
         });
 
-        released++;
+        lightningPulseNextReleaseAt=
+          now+LOCATOR_INTERVAL_MS;
       }
-
-      lightningPulseActive=
-        lightningPulseActive.filter(
-          item=>now-item.born<item.duration
-        );
 
       updateLightningPulseSource(now);
 
@@ -419,7 +426,11 @@
         lightningPulseActive.length
       ){
         lightningPulseFrame=
-          requestAnimationFrame(runLightningPulseQueue);
+          requestAnimationFrame(
+            runLightningPulseQueue
+          );
+      }else{
+        lightningPulseNextReleaseAt=0;
       }
     }
 
@@ -433,68 +444,65 @@
       ensureLightningPulseLayers();
 
       const ordered=flashes
-        .slice(-1200)
+        .slice()
         .sort((a,b)=>a[2]-b[2]);
 
-      if(!ordered.length)return;
+      // Prefer flashes actually visible in the current map.
+      const bounds=weatherMap.getBounds();
 
-      const firstTime=ordered[0][2];
-      const lastTime=ordered[ordered.length-1][2];
-      const sourceSpan=Math.max(1,lastTime-firstTime);
-
-      // Compress the GLM batch into a short "live" sequence.
-      // A full minute of data plays over roughly 7 seconds.
-      const sequenceDuration=Math.max(
-        3800,
-        Math.min(
-          7800,
-          sourceSpan*.12
-        )
+      let candidates=ordered.filter(
+        ([lon,lat])=>
+          bounds.contains([lon,lat])
       );
 
-      const started=performance.now()+80;
-      const slotMs=85;
-      const maxPerSlot=10;
-      const slotCounts=new Map();
+      if(!candidates.length){
+        return;
+      }
 
-      for(const [lon,lat,t] of ordered){
-        const fraction=
-          sourceSpan>1
-            ? (t-firstTime)/sourceSpan
-            : 0;
+      // The permanent GLM layer still displays EVERY flash.
+      // Only the locator animation is thinned so an active
+      // storm never turns into a screen full of circles.
+      const MAX_LOCATOR_FLASHES=120;
 
-        let slot=Math.floor(
-          (fraction*sequenceDuration)/slotMs
+      if(candidates.length>MAX_LOCATOR_FLASHES){
+        const step=
+          candidates.length/
+          MAX_LOCATOR_FLASHES;
+
+        candidates=Array.from(
+          {length:MAX_LOCATOR_FLASHES},
+          (_,i)=>candidates[
+            Math.min(
+              candidates.length-1,
+              Math.floor(i*step)
+            )
+          ]
         );
+      }
 
-        // Do not let dozens of flashes hit on the exact
-        // same screen frame.
-        while(
-          (slotCounts.get(slot)||0)>=maxPerSlot
-        ){
-          slot++;
-        }
+      const now=performance.now();
 
-        slotCounts.set(
-          slot,
-          (slotCounts.get(slot)||0)+1
-        );
-
+      for(const [lon,lat,t] of candidates){
         lightningPulseQueue.push({
           lon,
           lat,
-          t,
-          due:started+slot*slotMs
+          t
         });
       }
 
       lightningPulseQueue.sort(
-        (a,b)=>a.due-b.due
+        (a,b)=>a.t-b.t
       );
+
+      if(!lightningPulseNextReleaseAt){
+        lightningPulseNextReleaseAt=now+60;
+      }
 
       if(!lightningPulseFrame){
         lightningPulseFrame=
-          requestAnimationFrame(runLightningPulseQueue);
+          requestAnimationFrame(
+            runLightningPulseQueue
+          );
       }
     }
 
