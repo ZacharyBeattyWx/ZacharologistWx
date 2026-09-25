@@ -115,12 +115,12 @@
 
     let activeProduct="radar",radarMode="national",satPlatform="East",satProduct="GeoColor",satSector="CONUS",weatherMap=null,mapReady=false,refreshTimer=0;
     let satFrames=[],satFrameIndex=0,satTimer=0,satWarmGeneration=0;
-    let lightningFlashes=[],lightningLatestMs=0,lightningFetchPromise=null;
+    let lightningFlashes=[],lightningLatestMs=0,lightningFetchPromise=null,lightningInitialFitDone=false;
     const satFrameImages=new Map();
     const activate=(list,predicate)=>{for(const button of list)button.classList.toggle("active",predicate(button));};
     function showRadar(){radarFrame.hidden=false;satelliteStage.hidden=true;weatherMapEl.style.display="none";mapProductCard.hidden=true;stopSatellitePlayback();}
     function showSatellite(){radarFrame.hidden=true;satelliteStage.hidden=false;weatherMapEl.style.display="none";mapProductCard.hidden=true;mapError.classList.remove("show");}
-    function showMap(){radarFrame.hidden=true;satelliteStage.hidden=true;weatherMapEl.style.display="block";mapProductCard.hidden=false;stopSatellitePlayback();ensureMap().then(()=>{weatherMap.resize();applyLightningLayer();});}
+    function showMap(){radarFrame.hidden=true;satelliteStage.hidden=true;weatherMapEl.style.display="block";mapProductCard.hidden=false;stopSatellitePlayback();ensureMap().then(()=>{weatherMap.resize();if(!lightningInitialFitDone){lightningInitialFitDone=true;nationalView();}applyLightningLayer();});}
 
     function ensureMap(){
       if(weatherMap&&mapReady)return Promise.resolve(weatherMap);
@@ -168,19 +168,22 @@
               "step",
               ["get","age"],
               "#ffffff",
-              5,"#fff3a3",
-              15,"#facc15",
-              30,"#fb923c",
-              45,"#c2410c"
+              5,"#fff6b0",
+              15,"#ffd21f",
+              30,"#ffad0d",
+              45,"#c98200"
             ],
-            "circle-opacity":.92,
+            "circle-opacity":.97,
+            "circle-emissive-strength":1,
+            "circle-blur":.02,
             "circle-stroke-width":[
               "interpolate",["linear"],["zoom"],
-              2,.2,
-              7,.5,
-              11,.75
+              2,0,
+              6,.15,
+              9,.35,
+              11,.55
             ],
-            "circle-stroke-color":"rgba(15,23,42,.55)"
+            "circle-stroke-color":"rgba(0,0,0,.42)"
           }
         };
 
