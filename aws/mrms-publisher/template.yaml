@@ -72,14 +72,6 @@ Resources:
             Status: Enabled
             Prefix: mrms-native-numeric/pyramid/
             ExpirationInDays: 1
-          - Id: ExpireOldSatelliteTrueColorEastFrames
-            Status: Enabled
-            Prefix: satellite-truecolor/east/frames/
-            ExpirationInDays: 2
-          - Id: ExpireOldSatelliteTrueColorWestFrames
-            Status: Enabled
-            Prefix: satellite-truecolor/west/frames/
-            ExpirationInDays: 2
 
   PublisherRole:
     Type: AWS::IAM::Role
@@ -208,6 +200,7 @@ Resources:
       Principal: events.amazonaws.com
       SourceArn: !GetAtt MralaNumericSchedule.Arn
 
+
   GlmPublisherFunction:
     Type: AWS::Lambda::Function
     Properties:
@@ -254,53 +247,6 @@ Resources:
       Principal: events.amazonaws.com
       SourceArn: !GetAtt GlmPublisherSchedule.Arn
 
-  SatelliteTrueColorFunction:
-    Type: AWS::Lambda::Function
-    Properties:
-      PackageType: Image
-      Code:
-        ImageUri: !Ref ImageUri
-      ImageConfig:
-        Command:
-          - satellite_truecolor_publisher.lambda_handler
-      Role: !GetAtt PublisherRole.Arn
-      Architectures:
-        - x86_64
-      MemorySize: 4096
-      Timeout: 900
-      EphemeralStorage:
-        Size: 3072
-      Environment:
-        Variables:
-          RADAR_BUCKET: !Ref RadarBucket
-          SATELLITE_TRUECOLOR_PREFIX: satellite-truecolor
-          SATELLITE_TRUECOLOR_FRAME_COUNT: '25'
-          SATELLITE_TRUECOLOR_MAX_RENDER_PER_PLATFORM: '2'
-          SATELLITE_TRUECOLOR_WIDTH: '2200'
-          SATELLITE_TRUECOLOR_WEBP_QUALITY: '88'
-          SATELLITE_TRUECOLOR_MIN_DAYLIGHT_FRACTION: '0.06'
-          SATELLITE_TRUECOLOR_SCAN_HOURS: '16'
-          SATELLITE_EAST_BUCKET: noaa-goes19
-          SATELLITE_WEST_BUCKET: noaa-goes18
-
-  SatelliteTrueColorSchedule:
-    Type: AWS::Events::Rule
-    Properties:
-      Description: Publish 5-minute GOES-East/West ABI Natural True Color frames
-      ScheduleExpression: rate(5 minutes)
-      State: ENABLED
-      Targets:
-        - Arn: !GetAtt SatelliteTrueColorFunction.Arn
-          Id: SatelliteTrueColorPublisherLambda
-
-  SatelliteTrueColorScheduleInvokePermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      Action: lambda:InvokeFunction
-      FunctionName: !Ref SatelliteTrueColorFunction
-      Principal: events.amazonaws.com
-      SourceArn: !GetAtt SatelliteTrueColorSchedule.Arn
-
 Outputs:
   RadarBucketName:
     Description: Private S3 bucket containing the radar archives
@@ -346,19 +292,3 @@ Outputs:
   GlmLatestS3Uri:
     Description: Compact rolling GOES-19 GLM flash feed
     Value: !Sub 's3://${RadarBucket}/glm-goes19/latest.json'
-
-  SatelliteTrueColorFunctionName:
-    Description: GOES-East/West ABI Natural True Color publisher Lambda
-    Value: !Ref SatelliteTrueColorFunction
-
-  SatelliteTrueColorScheduleName:
-    Description: EventBridge rule for 5-minute Natural True Color publishing
-    Value: !Ref SatelliteTrueColorSchedule
-
-  SatelliteTrueColorEastManifestS3Uri:
-    Description: GOES-East Natural True Color manifest
-    Value: !Sub 's3://${RadarBucket}/satellite-truecolor/east/manifest.json'
-
-  SatelliteTrueColorWestManifestS3Uri:
-    Description: GOES-West Natural True Color manifest
-    Value: !Sub 's3://${RadarBucket}/satellite-truecolor/west/manifest.json'

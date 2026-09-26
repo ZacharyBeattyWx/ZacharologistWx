@@ -1,0 +1,115 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: ZacharologistWx GOES ABI Natural True Color publisher
+
+Parameters:
+  ImageUri:
+    Type: String
+    Description: ECR image URI for the satellite Lambda worker
+  TargetBucketName:
+    Type: String
+    Description: Existing private S3 bucket already served by the ZacharologistWx CloudFront distribution
+  ScheduleState:
+    Type: String
+    Default: ENABLED
+    AllowedValues:
+      - ENABLED
+      - DISABLED
+  ScheduleExpression:
+    Type: String
+    Default: rate(5 minutes)
+
+Resources:
+  SatellitePublisherRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: SatelliteTargetBucketAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: !Sub 'arn:${AWS::Partition}:s3:::${TargetBucketName}'
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource: !Sub 'arn:${AWS::Partition}:s3:::${TargetBucketName}/*'
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: '*'
+
+  SatelliteTrueColorFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      PackageType: Image
+      Code:
+        ImageUri: !Ref ImageUri
+      Role: !GetAtt SatellitePublisherRole.Arn
+      Architectures:
+        - x86_64
+      MemorySize: 3008
+      Timeout: 900
+      EphemeralStorage:
+        Size: 2048
+      Environment:
+        Variables:
+          RADAR_BUCKET: !Ref TargetBucketName
+          SATELLITE_TRUECOLOR_PREFIX: satellite-truecolor
+          SATELLITE_TRUECOLOR_FRAME_COUNT: '25'
+          SATELLITE_TRUECOLOR_MAX_RENDER_PER_PLATFORM: '2'
+          SATELLITE_TRUECOLOR_WIDTH: '2200'
+          SATELLITE_TRUECOLOR_WEBP_QUALITY: '88'
+          SATELLITE_TRUECOLOR_MIN_DAYLIGHT_FRACTION: '0.06'
+          SATELLITE_TRUECOLOR_SCAN_HOURS: '16'
+          SATELLITE_EAST_BUCKET: noaa-goes19
+          SATELLITE_WEST_BUCKET: noaa-goes18
+
+  SatelliteTrueColorSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Publish five-minute GOES-East/West ABI Natural True Color frames
+      ScheduleExpression: !Ref ScheduleExpression
+      State: !Ref ScheduleState
+      Targets:
+        - Arn: !GetAtt SatelliteTrueColorFunction.Arn
+          Id: SatelliteTrueColorPublisherLambda
+
+  SatelliteTrueColorScheduleInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref SatelliteTrueColorFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt SatelliteTrueColorSchedule.Arn
+
+Outputs:
+  SatelliteTrueColorFunctionName:
+    Description: GOES-East/West ABI Natural True Color publisher Lambda
+    Value: !Ref SatelliteTrueColorFunction
+
+  SatelliteTrueColorScheduleName:
+    Description: EventBridge rule for five-minute Natural True Color publishing
+    Value: !Ref SatelliteTrueColorSchedule
+
+  SatelliteTrueColorEastManifestS3Uri:
+    Description: GOES-East Natural True Color manifest
+    Value: !Sub 's3://${TargetBucketName}/satellite-truecolor/east/manifest.json'
+
+  SatelliteTrueColorWestManifestS3Uri:
+    Description: GOES-West Natural True Color manifest
+    Value: !Sub 's3://${TargetBucketName}/satellite-truecolor/west/manifest.json'
