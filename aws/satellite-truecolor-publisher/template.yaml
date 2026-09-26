@@ -70,8 +70,37 @@ Resources:
         Variables:
           RADAR_BUCKET: !Ref TargetBucketName
           SATELLITE_TRUECOLOR_PREFIX: satellite-truecolor
+          SATELLITE_TRUECOLOR_MODE: regional
           SATELLITE_TRUECOLOR_FRAME_COUNT: '25'
           SATELLITE_TRUECOLOR_MAX_RENDER_PER_PLATFORM: '2'
+          SATELLITE_TRUECOLOR_WIDTH: '2200'
+          SATELLITE_TRUECOLOR_WEBP_QUALITY: '88'
+          SATELLITE_TRUECOLOR_MIN_DAYLIGHT_FRACTION: '0.06'
+          SATELLITE_TRUECOLOR_SCAN_HOURS: '16'
+          SATELLITE_EAST_BUCKET: noaa-goes19
+          SATELLITE_WEST_BUCKET: noaa-goes18
+
+  SatelliteTrueColorFullDiskFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      PackageType: Image
+      Code:
+        ImageUri: !Ref ImageUri
+      Role: !GetAtt SatellitePublisherRole.Arn
+      Architectures:
+        - x86_64
+      MemorySize: 3008
+      Timeout: 900
+      EphemeralStorage:
+        Size: 2048
+      Environment:
+        Variables:
+          RADAR_BUCKET: !Ref TargetBucketName
+          SATELLITE_TRUECOLOR_PREFIX: satellite-truecolor
+          SATELLITE_TRUECOLOR_MODE: global
+          SATELLITE_TRUECOLOR_FRAME_COUNT: '25'
+          SATELLITE_TRUECOLOR_MAX_RENDER_PER_PLATFORM: '2'
+          SATELLITE_TRUECOLOR_MAX_RENDER_FULLDISK_PER_PLATFORM: '1'
           SATELLITE_TRUECOLOR_WIDTH: '2200'
           SATELLITE_TRUECOLOR_WEBP_QUALITY: '88'
           SATELLITE_TRUECOLOR_MIN_DAYLIGHT_FRACTION: '0.06'
@@ -97,6 +126,24 @@ Resources:
       Principal: events.amazonaws.com
       SourceArn: !GetAtt SatelliteTrueColorSchedule.Arn
 
+  SatelliteTrueColorFullDiskSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Publish ten-minute GOES-East/West ABI Full Disk Natural True Color frames
+      ScheduleExpression: rate(10 minutes)
+      State: !Ref ScheduleState
+      Targets:
+        - Arn: !GetAtt SatelliteTrueColorFullDiskFunction.Arn
+          Id: SatelliteTrueColorFullDiskPublisherLambda
+
+  SatelliteTrueColorFullDiskScheduleInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref SatelliteTrueColorFullDiskFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt SatelliteTrueColorFullDiskSchedule.Arn
+
 Outputs:
   SatelliteTrueColorFunctionName:
     Description: GOES-East/West ABI Natural True Color publisher Lambda
@@ -106,6 +153,14 @@ Outputs:
     Description: EventBridge rule for five-minute Natural True Color publishing
     Value: !Ref SatelliteTrueColorSchedule
 
+  SatelliteTrueColorFullDiskFunctionName:
+    Description: GOES-East/West ABI Full Disk Natural True Color publisher Lambda
+    Value: !Ref SatelliteTrueColorFullDiskFunction
+
+  SatelliteTrueColorFullDiskScheduleName:
+    Description: EventBridge rule for ten-minute Full Disk Natural True Color publishing
+    Value: !Ref SatelliteTrueColorFullDiskSchedule
+
   SatelliteTrueColorEastManifestS3Uri:
     Description: GOES-East Natural True Color manifest
     Value: !Sub 's3://${TargetBucketName}/satellite-truecolor/east/manifest.json'
@@ -113,3 +168,11 @@ Outputs:
   SatelliteTrueColorWestManifestS3Uri:
     Description: GOES-West Natural True Color manifest
     Value: !Sub 's3://${TargetBucketName}/satellite-truecolor/west/manifest.json'
+
+  SatelliteTrueColorEastGlobalManifestS3Uri:
+    Description: GOES-East Full Disk Natural True Color manifest
+    Value: !Sub 's3://${TargetBucketName}/satellite-truecolor/east-global/manifest.json'
+
+  SatelliteTrueColorWestGlobalManifestS3Uri:
+    Description: GOES-West Full Disk Natural True Color manifest
+    Value: !Sub 's3://${TargetBucketName}/satellite-truecolor/west-global/manifest.json'

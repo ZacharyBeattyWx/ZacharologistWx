@@ -75,7 +75,13 @@ FUNCTION_NAME="$(aws cloudformation describe-stacks \
   --query 'Stacks[0].Outputs[?OutputKey==`SatelliteTrueColorFunctionName`].OutputValue' \
   --output text)"
 
-printf '\nInvoking one seed run: %s\n' "$FUNCTION_NAME"
+FULLDISK_FUNCTION_NAME="$(aws cloudformation describe-stacks \
+  --region "$REGION" \
+  --stack-name "$STACK_NAME" \
+  --query 'Stacks[0].Outputs[?OutputKey==`SatelliteTrueColorFullDiskFunctionName`].OutputValue' \
+  --output text)"
+
+printf '\nInvoking one regional seed run: %s\n' "$FUNCTION_NAME"
 aws lambda invoke \
   --region "$REGION" \
   --function-name "$FUNCTION_NAME" \
@@ -83,7 +89,15 @@ aws lambda invoke \
 cat /tmp/zwx-satellite-truecolor-seed.json
 printf '\n\n'
 
-for PLATFORM in east west; do
+printf 'Invoking one Full Disk seed run: %s\n' "$FULLDISK_FUNCTION_NAME"
+aws lambda invoke \
+  --region "$REGION" \
+  --function-name "$FULLDISK_FUNCTION_NAME" \
+  /tmp/zwx-satellite-truecolor-full-disk-seed.json >/dev/null
+cat /tmp/zwx-satellite-truecolor-full-disk-seed.json
+printf '\n\n'
+
+for PLATFORM in east west east-global west-global; do
   MANIFEST="s3://${TARGET_BUCKET}/satellite-truecolor/${PLATFORM}/manifest.json"
   printf '%s manifest:\n' "$PLATFORM"
   if aws s3 cp --region "$REGION" "$MANIFEST" - >/tmp/zwx-satellite-manifest.json 2>/dev/null; then

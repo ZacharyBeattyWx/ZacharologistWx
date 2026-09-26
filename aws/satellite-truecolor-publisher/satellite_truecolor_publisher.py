@@ -32,6 +32,18 @@ MIN_DAYLIGHT_FRACTION = float(
 )
 HISTORY_HOURS = int(os.getenv("SATELLITE_TRUECOLOR_SCAN_HOURS", "16"))
 
+PUBLISH_MODE = os.getenv(
+    "SATELLITE_TRUECOLOR_MODE",
+    "regional",
+).strip().lower()
+
+MAX_RENDER_FULLDISK_PER_PLATFORM = int(
+    os.getenv(
+        "SATELLITE_TRUECOLOR_MAX_RENDER_FULLDISK_PER_PLATFORM",
+        "1",
+    )
+)
+
 RENDER_VERSION = int(
     os.getenv("SATELLITE_TRUECOLOR_RENDER_VERSION", "3")
 )
@@ -52,24 +64,70 @@ TRUECOLOR_CONTRAST = float(
     os.getenv("SATELLITE_TRUECOLOR_CONTRAST", "1.03")
 )
 
-PLATFORMS = {
+REGIONAL_PLATFORMS = {
     "East": {
+        "platform": "East",
         "satellite": "GOES-19",
         "source_bucket": os.getenv("SATELLITE_EAST_BUCKET", "noaa-goes19"),
+        "source_product": "ABI-L1b-RadC",
         "prefix": "east",
         "sector": "CONUS",
-        # Broader continental presentation while retaining the
-        # native five-minute ABI CONUS/RadC source cadence.
+        "cadence_minutes": 5,
+        "max_render": MAX_RENDER_PER_PLATFORM,
+
+        # Keep the currently deployed regional footprint unchanged for now.
+        # The viewer will be switched back to a clean RadC sector after the
+        # Full Disk feed has been visually verified.
         "bbox": (-126.0, 22.0, -58.0, 53.0),
     },
     "West": {
+        "platform": "West",
         "satellite": "GOES-18",
         "source_bucket": os.getenv("SATELLITE_WEST_BUCKET", "noaa-goes18"),
+        "source_product": "ABI-L1b-RadC",
         "prefix": "west",
         "sector": "PACUS",
+        "cadence_minutes": 5,
+        "max_render": MAX_RENDER_PER_PLATFORM,
         "bbox": (-134.0, 20.0, -101.0, 53.0),
     },
 }
+
+GLOBAL_PLATFORMS = {
+    "East": {
+        "platform": "East",
+        "satellite": "GOES-19",
+        "source_bucket": os.getenv("SATELLITE_EAST_BUCKET", "noaa-goes19"),
+        "source_product": "ABI-L1b-RadF",
+        "prefix": "east-global",
+        "sector": "GLOBAL",
+        "cadence_minutes": 10,
+        "max_render": MAX_RENDER_FULLDISK_PER_PLATFORM,
+
+        # Broad North America / western Atlantic presentation sourced from
+        # the actual ABI Full Disk scan.
+        "bbox": (-145.0, 5.0, -40.0, 65.0),
+    },
+    "West": {
+        "platform": "West",
+        "satellite": "GOES-18",
+        "source_bucket": os.getenv("SATELLITE_WEST_BUCKET", "noaa-goes18"),
+        "source_product": "ABI-L1b-RadF",
+        "prefix": "west-global",
+        "sector": "GLOBAL",
+        "cadence_minutes": 10,
+        "max_render": MAX_RENDER_FULLDISK_PER_PLATFORM,
+
+        # Pacific-centered broad North America presentation.
+        "bbox": (-175.0, 5.0, -70.0, 65.0),
+    },
+}
+
+if PUBLISH_MODE == "global":
+    PLATFORMS = GLOBAL_PLATFORMS
+else:
+    PLATFORMS = REGIONAL_PLATFORMS
+
 
 SOURCE_S3 = boto3.client(
     "s3",
@@ -101,8 +159,11 @@ def parse_scan(scan):
     return datetime.strptime(scan, "%Y%j%H%M").replace(tzinfo=timezone.utc)
 
 
-def source_hour_prefix(dt):
-    return f"ABI-L1b-RadC/{dt:%Y}/{dt:%j}/{dt:%H}/"
+def source_hour_prefix(spec, dt):
+    return (
+        f"{spec['source_product']}/"
+        f"{dt:%Y}/{dt:%j}/{dt:%H}/"
+    )
 
 
 def manifest_key(spec):
@@ -139,7 +200,7 @@ def list_complete_scans(spec, now):
     # deployment and to bridge UTC day boundaries.
     for hour_offset in range(HISTORY_HOURS + 1):
         hour = now - timedelta(hours=hour_offset)
-        prefix = source_hour_prefix(hour)
+        prefix = source_hour_prefix(spec, hour)
         paginator = SOURCE_S3.get_paginator("list_objects_v2")
 
         for page in paginator.paginate(
@@ -270,44 +331,124 @@ def projection_from_dataset(dataset):
     ), float(projection.perspective_point_height)
 
 
-def read_reflectance(path, stride=1):
+def source_crs_from_path(path):
+    with Dataset(path, "r") as dataset:
+        crs, _height = projection_from_dataset(dataset)
+    return crs
+
+
+def read_reflectance(path, gx, gy, stride=1):
     with Dataset(path, "r") as dataset:
         rad = dataset.variables["Rad"]
 
-        data = np.asarray(
-            np.ma.filled(
-                rad[::stride, ::stride],
-                np.nan,
-            ),
-            dtype=np.float32,
-        )
-
-        kappa = float(np.asarray(dataset.variables["kappa0"][:]).squeeze())
-        data *= kappa
-
         x = np.asarray(
-            dataset.variables["x"][::stride],
+            dataset.variables["x"][:],
             dtype=np.float64,
         )
         y = np.asarray(
-            dataset.variables["y"][::stride],
+            dataset.variables["y"][:],
             dtype=np.float64,
         )
 
         crs, height = projection_from_dataset(dataset)
 
-    # GOES fixed-grid x/y values are scan angles in radians. PROJ geostationary
-    # coordinates use projected metres, which are scan angle * perspective
-    # point height.
+        x_m = x * height
+        y_m = y * height
+
+        finite_geo = np.isfinite(gx) & np.isfinite(gy)
+
+        if not np.any(finite_geo):
+            raise RuntimeError(
+                "No visible projected points in target satellite sector"
+            )
+
+        gx_valid = gx[finite_geo]
+        gy_valid = gy[finite_geo]
+
+        min_gx = float(np.min(gx_valid))
+        max_gx = float(np.max(gx_valid))
+        min_gy = float(np.min(gy_valid))
+        max_gy = float(np.max(gy_valid))
+
+        x_hits = np.flatnonzero(
+            (x_m >= min_gx) &
+            (x_m <= max_gx)
+        )
+        y_hits = np.flatnonzero(
+            (y_m >= min_gy) &
+            (y_m <= max_gy)
+        )
+
+        if not x_hits.size or not y_hits.size:
+            raise RuntimeError(
+                "Target sector does not intersect ABI fixed grid"
+            )
+
+        # A few source pixels of padding prevent edge rounding from
+        # cutting off nearest-neighbor samples.
+        margin = max(4, stride * 3)
+
+        x_start = max(
+            0,
+            int(x_hits[0]) - margin,
+        )
+        x_stop = min(
+            len(x),
+            int(x_hits[-1]) + 1 + margin,
+        )
+
+        y_start = max(
+            0,
+            int(y_hits[0]) - margin,
+        )
+        y_stop = min(
+            len(y),
+            int(y_hits[-1]) + 1 + margin,
+        )
+
+        data = np.asarray(
+            np.ma.filled(
+                rad[
+                    y_start:y_stop:stride,
+                    x_start:x_stop:stride,
+                ],
+                np.nan,
+            ),
+            dtype=np.float32,
+        )
+
+        kappa = float(
+            np.asarray(
+                dataset.variables["kappa0"][:]
+            ).squeeze()
+        )
+
+        data *= kappa
+
+        x_crop = x[
+            x_start:x_stop:stride
+        ]
+        y_crop = y[
+            y_start:y_stop:stride
+        ]
+
+        if len(x_crop) < 2 or len(y_crop) < 2:
+            raise RuntimeError(
+                "ABI cropped source window is too small"
+            )
+
     return {
         "data": data,
-        "x0": float(x[0] * height),
-        "dx": float((x[1] - x[0]) * height),
-        "y0": float(y[0] * height),
-        "dy": float((y[1] - y[0]) * height),
+        "x0": float(x_crop[0] * height),
+        "dx": float(
+            (x_crop[1] - x_crop[0]) * height
+        ),
+        "y0": float(y_crop[0] * height),
+        "dy": float(
+            (y_crop[1] - y_crop[0]) * height
+        ),
         "crs": crs,
     }
-
 
 def mercator_bounds(bbox):
     west, south, east, north = bbox
@@ -475,11 +616,31 @@ def render_scan(spec, group):
             )
             paths.append(path)
 
-        blue = read_reflectance(paths[0], stride=1)
-        red = read_reflectance(paths[1], stride=2)
-        veggie = read_reflectance(paths[2], stride=1)
+        source_crs = source_crs_from_path(paths[0])
 
-        gx, gy, _width, _height = output_grid(spec, blue["crs"])
+        gx, gy, _width, _height = output_grid(
+            spec,
+            source_crs,
+        )
+
+        blue = read_reflectance(
+            paths[0],
+            gx,
+            gy,
+            stride=1,
+        )
+        red = read_reflectance(
+            paths[1],
+            gx,
+            gy,
+            stride=2,
+        )
+        veggie = read_reflectance(
+            paths[2],
+            gx,
+            gy,
+            stride=1,
+        )
 
         blue_out = sample_grid(blue, gx, gy)
         red_out = sample_grid(red, gx, gy)
@@ -533,6 +694,13 @@ def render_scan(spec, group):
 
 
 def publish_manifest(spec, existing, frames, checked_scans, now):
+    cadence_minutes = int(
+        spec.get("cadence_minutes", 5)
+    )
+    frame_count = int(
+        spec.get("frame_count", FRAME_COUNT)
+    )
+
     frames_by_scan = {
         frame["scan"]: frame
         for frame in frames
@@ -543,7 +711,7 @@ def publish_manifest(spec, existing, frames, checked_scans, now):
         key=lambda frame: frame["time"],
     )
 
-    # Publish only the newest contiguous five-minute daylight run.
+    # Publish only the newest contiguous daylight run.
     # Never bridge sunset/night/sunrise with old daylight imagery.
     contiguous = []
     if all_ordered:
@@ -558,29 +726,33 @@ def publish_manifest(spec, existing, frames, checked_scans, now):
             )
             gap = newer_time - frame_time
 
-            # ABI CONUS/PACUS nominal cadence is five minutes.
-            # Seven minutes allows minor timestamp irregularity without
-            # accepting a genuine missing/nighttime gap.
-            if gap > timedelta(minutes=7):
+            # Allow a small timestamp tolerance beyond the nominal
+            # cadence without accepting a genuine missing/nighttime gap.
+            if gap > timedelta(
+                minutes=cadence_minutes + 2
+            ):
                 break
 
             contiguous.append(frame)
             newer_time = frame_time
 
-    ordered = list(reversed(contiguous))[-FRAME_COUNT:]
+    ordered = list(reversed(contiguous))[-frame_count:]
 
     output = {
         "version": 1,
         "renderVersion": RENDER_VERSION,
         "generated": iso_z(now),
-        "platform": "East" if spec["prefix"] == "east" else "West",
+        "platform": spec["platform"],
         "satellite": spec["satellite"],
         "sector": spec["sector"],
         "product": "CIMSS Natural True Color",
-        "sourceProduct": "ABI-L1b-RadC C01+C02+C03",
-        "cadenceMinutes": 5,
+        "sourceProduct": (
+            f"{spec['source_product']} "
+            "C01+C02+C03"
+        ),
+        "cadenceMinutes": cadence_minutes,
         "frameCount": len(ordered),
-        "targetFrameCount": FRAME_COUNT,
+        "targetFrameCount": frame_count,
         "daytimeOnly": True,
         "bbox": list(spec["bbox"]),
         "recipe": {
@@ -649,8 +821,17 @@ def process_platform(platform, spec, now):
             )
             for frame in frames
         )
+        cadence_minutes = int(
+            spec.get("cadence_minutes", 5)
+        )
+        frame_count = int(
+            spec.get("frame_count", FRAME_COUNT)
+        )
+
         candidate_floor = newest_existing - timedelta(
-            minutes=(FRAME_COUNT * 5) + 10
+            minutes=(
+                frame_count * cadence_minutes
+            ) + (cadence_minutes * 2)
         )
 
     rendered = 0
@@ -680,7 +861,12 @@ def process_platform(platform, spec, now):
             skipped += 1
             continue
 
-        if attempted >= MAX_RENDER_PER_PLATFORM:
+        if attempted >= int(
+            spec.get(
+                "max_render",
+                MAX_RENDER_PER_PLATFORM,
+            )
+        ):
             break
 
         attempted += 1
