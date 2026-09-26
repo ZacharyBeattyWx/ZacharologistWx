@@ -475,10 +475,36 @@ def publish_manifest(spec, existing, frames, checked_scans, now):
         for frame in frames
         if isinstance(frame, dict) and frame.get("scan")
     }
-    ordered = sorted(
+    all_ordered = sorted(
         frames_by_scan.values(),
         key=lambda frame: frame["time"],
-    )[-FRAME_COUNT:]
+    )
+
+    # Publish only the newest contiguous five-minute daylight run.
+    # Never bridge sunset/night/sunrise with old daylight imagery.
+    contiguous = []
+    if all_ordered:
+        contiguous.append(all_ordered[-1])
+        newer_time = datetime.fromisoformat(
+            all_ordered[-1]["time"].replace("Z", "+00:00")
+        )
+
+        for frame in reversed(all_ordered[:-1]):
+            frame_time = datetime.fromisoformat(
+                frame["time"].replace("Z", "+00:00")
+            )
+            gap = newer_time - frame_time
+
+            # ABI CONUS/PACUS nominal cadence is five minutes.
+            # Seven minutes allows minor timestamp irregularity without
+            # accepting a genuine missing/nighttime gap.
+            if gap > timedelta(minutes=7):
+                break
+
+            contiguous.append(frame)
+            newer_time = frame_time
+
+    ordered = list(reversed(contiguous))[-FRAME_COUNT:]
 
     output = {
         "version": 1,
@@ -534,6 +560,21 @@ def process_platform(platform, spec, now):
 
     candidates = list_complete_scans(spec, now)
 
+    # Once a platform already has imagery, backfill only within roughly one
+    # complete 25-frame loop. This prevents routine runs from crossing an
+    # overnight gap and wasting compute rendering the previous daylight period.
+    candidate_floor = None
+    if frames:
+        newest_existing = max(
+            datetime.fromisoformat(
+                frame["time"].replace("Z", "+00:00")
+            )
+            for frame in frames
+        )
+        candidate_floor = newest_existing - timedelta(
+            minutes=(FRAME_COUNT * 5) + 10
+        )
+
     rendered = 0
     skipped = 0
     attempted = 0
@@ -543,6 +584,12 @@ def process_platform(platform, spec, now):
     # ABI files apiece, so a fresh deployment can immediately backfill the
     # most recent daylight loop even when deployed after sunset.
     for group in candidates:
+        if (
+            candidate_floor is not None
+            and group["time"] < candidate_floor
+        ):
+            break
+
         if group["scan"] in checked_set:
             continue
 
