@@ -32,6 +32,26 @@ MIN_DAYLIGHT_FRACTION = float(
 )
 HISTORY_HOURS = int(os.getenv("SATELLITE_TRUECOLOR_SCAN_HOURS", "16"))
 
+RENDER_VERSION = int(
+    os.getenv("SATELLITE_TRUECOLOR_RENDER_VERSION", "2")
+)
+
+TRUECOLOR_BLACK_POINT = float(
+    os.getenv("SATELLITE_TRUECOLOR_BLACK_POINT", "0.002")
+)
+TRUECOLOR_WHITE_POINT = float(
+    os.getenv("SATELLITE_TRUECOLOR_WHITE_POINT", "0.80")
+)
+TRUECOLOR_GAMMA = float(
+    os.getenv("SATELLITE_TRUECOLOR_GAMMA", "2.2")
+)
+TRUECOLOR_SATURATION = float(
+    os.getenv("SATELLITE_TRUECOLOR_SATURATION", "1.06")
+)
+TRUECOLOR_CONTRAST = float(
+    os.getenv("SATELLITE_TRUECOLOR_CONTRAST", "1.03")
+)
+
 PLATFORMS = {
     "East": {
         "satellite": "GOES-19",
@@ -89,7 +109,10 @@ def manifest_key(spec):
 
 def frame_key(spec, scan_dt):
     stamp = scan_dt.strftime("%Y%m%dT%H%M00Z")
-    return f"{TARGET_PREFIX}/{spec['prefix']}/frames/{stamp}.webp"
+    return (
+        f"{TARGET_PREFIX}/{spec['prefix']}/frames/"
+        f"v{RENDER_VERSION}/{stamp}.webp"
+    )
 
 
 def read_manifest(spec):
@@ -359,13 +382,41 @@ def truecolor_rgb(blue, red, veggie):
 
     rgb = np.stack([red, green, blue], axis=-1)
 
-    # Display gamma recommended by common GOES true-color workflows. Keep the
-    # recipe conservative; visual tuning can happen independently in a later
-    # enhancement pass without altering the source data pipeline.
-    rgb = np.power(np.clip(rgb, 0.0, 1.0), 1.0 / 2.2)
+    span = max(
+        0.05,
+        TRUECOLOR_WHITE_POINT - TRUECOLOR_BLACK_POINT,
+    )
 
-    # A tiny black-point lift improves contrast while preserving cloud detail.
-    rgb = np.clip((rgb - 0.015) / 0.985, 0.0, 1.0)
+    rgb = np.clip(
+        (rgb - TRUECOLOR_BLACK_POINT) / span,
+        0.0,
+        1.0,
+    )
+
+    rgb = np.power(
+        rgb,
+        1.0 / TRUECOLOR_GAMMA,
+    )
+
+    luma = (
+        0.2126 * rgb[..., 0]
+        + 0.7152 * rgb[..., 1]
+        + 0.0722 * rgb[..., 2]
+    )
+
+    rgb = (
+        luma[..., None]
+        + TRUECOLOR_SATURATION
+        * (rgb - luma[..., None])
+    )
+
+    rgb = np.clip(
+        (rgb - 0.5) * TRUECOLOR_CONTRAST + 0.5,
+        0.0,
+        1.0,
+    )
+
+    rgb[~finite] = 0.0
 
     return rgb, finite
 
@@ -381,10 +432,20 @@ def daylight_fraction(rgb, finite):
     return float(np.count_nonzero(lit) / np.count_nonzero(finite))
 
 
-def encode_webp(rgb):
+def encode_webp(rgb, finite):
+    color = np.rint(
+        np.clip(rgb, 0.0, 1.0) * 255.0
+    ).astype(np.uint8)
+
+    alpha = np.where(
+        finite,
+        255,
+        0,
+    ).astype(np.uint8)
+
     image = Image.fromarray(
-        np.rint(rgb * 255.0).astype(np.uint8),
-        mode="RGB",
+        np.dstack([color, alpha]),
+        mode="RGBA",
     )
 
     output = io.BytesIO()
@@ -436,7 +497,7 @@ def render_scan(spec, group):
             )
             return None
 
-        payload, width, height = encode_webp(rgb)
+        payload, width, height = encode_webp(rgb, finite)
         key = frame_key(spec, group["time"])
 
         TARGET_S3.put_object(
@@ -508,6 +569,7 @@ def publish_manifest(spec, existing, frames, checked_scans, now):
 
     output = {
         "version": 1,
+        "renderVersion": RENDER_VERSION,
         "generated": iso_z(now),
         "platform": "East" if spec["prefix"] == "east" else "West",
         "satellite": spec["satellite"],
@@ -523,7 +585,12 @@ def publish_manifest(spec, existing, frames, checked_scans, now):
             "red": "C02 0.64um",
             "green": "0.45*C02 + 0.10*C03 + 0.45*C01",
             "blue": "C01 0.47um",
-            "gamma": 2.2,
+            "gamma": TRUECOLOR_GAMMA,
+            "blackPoint": TRUECOLOR_BLACK_POINT,
+            "whitePoint": TRUECOLOR_WHITE_POINT,
+            "saturation": TRUECOLOR_SATURATION,
+            "contrast": TRUECOLOR_CONTRAST,
+            "transparentNoData": True,
             "resolutionKm": 1.0,
         },
         "checkedScans": checked_scans[-160:],
@@ -546,6 +613,15 @@ def publish_manifest(spec, existing, frames, checked_scans, now):
 
 def process_platform(platform, spec, now):
     existing = read_manifest(spec)
+
+    if existing.get("renderVersion") != RENDER_VERSION:
+        if existing:
+            print(
+                f"{spec['satellite']} resetting manifest for "
+                f"renderVersion={RENDER_VERSION}"
+            )
+        existing = {}
+
     frames = [
         frame
         for frame in existing.get("frames", [])
