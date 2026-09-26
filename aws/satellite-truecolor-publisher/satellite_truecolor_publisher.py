@@ -74,6 +74,7 @@ REGIONAL_PLATFORMS = {
         "sector": "CONUS",
         "cadence_minutes": 5,
         "max_render": MAX_RENDER_PER_PLATFORM,
+        "render_version": RENDER_VERSION,
 
         # Keep the currently deployed regional footprint unchanged for now.
         # The viewer will be switched back to a clean RadC sector after the
@@ -89,6 +90,7 @@ REGIONAL_PLATFORMS = {
         "sector": "PACUS",
         "cadence_minutes": 5,
         "max_render": MAX_RENDER_PER_PLATFORM,
+        "render_version": RENDER_VERSION,
         "bbox": (-134.0, 20.0, -101.0, 53.0),
     },
 }
@@ -103,10 +105,11 @@ GLOBAL_PLATFORMS = {
         "sector": "GLOBAL",
         "cadence_minutes": 10,
         "max_render": MAX_RENDER_FULLDISK_PER_PLATFORM,
+        "render_version": 4,
 
-        # Broad North America / western Atlantic presentation sourced from
-        # the actual ABI Full Disk scan.
-        "bbox": (-145.0, 5.0, -40.0, 65.0),
+        # Wider landscape North America / western Atlantic presentation
+        # sourced from the actual ABI Full Disk scan.
+        "bbox": (-148.0, 10.0, -37.0, 60.0),
     },
     "West": {
         "platform": "West",
@@ -117,6 +120,7 @@ GLOBAL_PLATFORMS = {
         "sector": "GLOBAL",
         "cadence_minutes": 10,
         "max_render": MAX_RENDER_FULLDISK_PER_PLATFORM,
+        "render_version": RENDER_VERSION,
 
         # Pacific-centered broad North America presentation.
         "bbox": (-175.0, 5.0, -70.0, 65.0),
@@ -172,9 +176,12 @@ def manifest_key(spec):
 
 def frame_key(spec, scan_dt):
     stamp = scan_dt.strftime("%Y%m%dT%H%M00Z")
+    render_version = int(
+        spec.get("render_version", RENDER_VERSION)
+    )
     return (
         f"{TARGET_PREFIX}/{spec['prefix']}/frames/"
-        f"v{RENDER_VERSION}/{stamp}.webp"
+        f"v{render_version}/{stamp}.webp"
     )
 
 
@@ -740,7 +747,9 @@ def publish_manifest(spec, existing, frames, checked_scans, now):
 
     output = {
         "version": 1,
-        "renderVersion": RENDER_VERSION,
+        "renderVersion": int(
+            spec.get("render_version", RENDER_VERSION)
+        ),
         "generated": iso_z(now),
         "platform": spec["platform"],
         "satellite": spec["satellite"],
@@ -788,11 +797,15 @@ def publish_manifest(spec, existing, frames, checked_scans, now):
 def process_platform(platform, spec, now):
     existing = read_manifest(spec)
 
-    if existing.get("renderVersion") != RENDER_VERSION:
+    render_version = int(
+        spec.get("render_version", RENDER_VERSION)
+    )
+
+    if existing.get("renderVersion") != render_version:
         if existing:
             print(
                 f"{spec['satellite']} resetting manifest for "
-                f"renderVersion={RENDER_VERSION}"
+                f"renderVersion={render_version}"
             )
         existing = {}
 
