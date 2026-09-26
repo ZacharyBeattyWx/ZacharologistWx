@@ -1367,10 +1367,21 @@
         true
       );
 
-      warmSatelliteFrames(
-        generation,
-        satContext
-      );
+      const mobileSatellite =
+        window.matchMedia("(max-width: 880px)").matches;
+
+      if(!mobileSatellite){
+        warmSatelliteFrames(
+          generation,
+          satContext
+        );
+      }else{
+        // Mobile startup is latest-frame-first.
+        // Do not compete with the newest image by decoding the
+        // entire 25-frame loop in the background.
+        satCacheReadout.textContent=
+          `${satFrameImages.has(satFrames[satFrameIndex].url)?1:0}/${satFrames.length} ready`;
+      }
     }
 
     function nationalView(){ensureMap().then(()=>weatherMap.fitBounds(CONUS_BOUNDS,{padding:18,duration:500}));}
