@@ -33,7 +33,7 @@ MIN_DAYLIGHT_FRACTION = float(
 HISTORY_HOURS = int(os.getenv("SATELLITE_TRUECOLOR_SCAN_HOURS", "16"))
 
 RENDER_VERSION = int(
-    os.getenv("SATELLITE_TRUECOLOR_RENDER_VERSION", "2")
+    os.getenv("SATELLITE_TRUECOLOR_RENDER_VERSION", "3")
 )
 
 TRUECOLOR_BLACK_POINT = float(
@@ -58,7 +58,9 @@ PLATFORMS = {
         "source_bucket": os.getenv("SATELLITE_EAST_BUCKET", "noaa-goes19"),
         "prefix": "east",
         "sector": "CONUS",
-        "bbox": (-125.5, 23.5, -66.0, 50.5),
+        # Broader continental presentation while retaining the
+        # native five-minute ABI CONUS/RadC source cadence.
+        "bbox": (-126.0, 22.0, -58.0, 53.0),
     },
     "West": {
         "satellite": "GOES-18",

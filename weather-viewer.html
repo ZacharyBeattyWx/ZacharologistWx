@@ -22,7 +22,7 @@
     .sub{justify-content:space-between;padding-block:7px;min-width:0}.sub-left,.sub-right{display:flex;align-items:center;gap:8px;min-width:0}.label{color:#64748b;font-size:.61rem;font-weight:900;letter-spacing:.09em;text-transform:uppercase;white-space:nowrap}.note{color:var(--muted);font-size:.64rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .stage{position:relative;min-width:0;min-height:0;background:#02060c;overflow:hidden}
     #radarFrame,#weatherMap,#satelliteStage{position:absolute;inset:0;width:100%;height:100%;border:0;background:#07111f}#weatherMap{display:none}
-    #satelliteStage{display:flex;align-items:center;justify-content:center;padding:10px 16px 72px;background:#000;overflow:hidden}
+    #satelliteStage{display:flex;align-items:center;justify-content:center;padding:10px 16px 72px;background:#02060c;overflow:hidden}
     #satelliteImage{display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;image-rendering:auto;filter:none;box-shadow:0 16px 52px rgba(0,0,0,.42)}
     #satelliteCanvas{display:block;max-width:100%;max-height:100%;width:auto;height:auto;image-rendering:auto;filter:none;box-shadow:0 16px 52px rgba(0,0,0,.42)}
     .satellite-loading{position:absolute;inset:0;display:none;align-items:center;justify-content:center;z-index:4;background:#02060c;color:#cbd5e1;font-size:.76rem;font-weight:850}.satellite-loading.show{display:flex}
@@ -31,7 +31,7 @@
     .product-card{position:absolute;left:12px;bottom:12px;z-index:10;max-width:min(520px,calc(100% - 80px));padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:rgba(4,9,17,.88);backdrop-filter:blur(12px);box-shadow:0 10px 30px rgba(0,0,0,.28);pointer-events:none}.product-card strong{display:block;font-size:.72rem}.product-card span{display:block;margin-top:2px;color:var(--muted);font-size:.59rem;font-weight:700;line-height:1.35}
     #satelliteStage .product-card{bottom:58px}
     .map-error{position:absolute;top:12px;left:50%;z-index:15;display:none;transform:translateX(-50%);padding:8px 12px;border:1px solid rgba(251,191,36,.45);border-radius:8px;background:rgba(20,14,3,.92);color:#fde68a;font-size:.68rem;font-weight:800}.map-error.show{display:block}
-    @media(max-width:880px){:root{--top:96px;--sub:52px}.top{align-items:flex-start;flex-wrap:wrap;padding:7px 9px}.brand{width:100%}.logo{width:36px;height:36px}.meta{display:none}.tabs{width:100%}.tab{flex:1 0 auto;text-align:center}.status{position:absolute;right:10px;top:11px}.sub{padding-inline:9px}.note{display:none}.product-card{left:8px}#satelliteStage{padding:6px 6px 84px}.sat-playback{grid-template-columns:auto auto auto minmax(120px,1fr);gap:6px}.sat-readout,.sat-cache{display:none}}
+    @media(max-width:880px){:root{--top:96px;--sub:52px}.top{align-items:flex-start;flex-wrap:wrap;padding:7px 9px}.brand{width:100%}.logo{width:36px;height:36px}.meta{display:none}.tabs{width:100%}.tab{flex:1 0 auto;text-align:center}.status{position:absolute;right:10px;top:11px}.sub{padding-inline:9px}.note{display:none}.product-card{left:8px}#satelliteStage{flex-direction:column;align-items:center;justify-content:flex-start;padding:10px 6px 12px}#satelliteStage #satelliteImage,#satelliteStage #satelliteCanvas{max-height:calc(100% - 150px);flex:0 1 auto}#satelliteStage .product-card{display:none}.sat-playback{position:relative;left:auto;bottom:auto;transform:none;width:calc(100% - 12px);margin-top:10px;grid-template-columns:auto auto auto minmax(120px,1fr);gap:6px;flex:0 0 auto}.sat-readout,.sat-cache{display:none}}
   </style>
 </head>
 <body>
@@ -62,7 +62,7 @@
         <div class="satellite-loading" id="satelliteLoading">Loading north-up satellite image…</div>
         <img id="satelliteImage" alt="Satellite imagery">
         <canvas id="satelliteCanvas" hidden aria-label="True Color satellite imagery"></canvas>
-        <div class="product-card"><strong id="satelliteTitle">GOES-East True Color — CONUS</strong><span id="satelliteMeta">NOAA GOES ABI True Color • 5-minute daylight imagery</span></div>
+        <div class="product-card"><strong id="satelliteTitle">GOES-East True Color — Continental</strong><span id="satelliteMeta">NOAA GOES ABI True Color • 5-minute daylight imagery</span></div>
         <div class="sat-playback" aria-label="Satellite playback controls">
           <button id="satPrev" type="button" title="Previous frame">◀</button>
           <button class="play" id="satPlay" type="button">▶ Play</button>
@@ -103,7 +103,7 @@
     };
     const SAT_SECTORS={
       East:[
-        {id:"CONUS",label:"CONUS",bbox:[-125.5,23.5,-66,50.5]},
+        {id:"continental",label:"Continental",bbox:[-126,22,-58,53]},
         {id:"nr",label:"Northern Rockies",bbox:[-117.5,38,-99.5,50.5]},
         {id:"umv",label:"Upper Mississippi Valley",bbox:[-102,35.5,-83.5,49.5]},
         {id:"cgl",label:"Great Lakes",bbox:[-95,37,-74,50]},
@@ -126,7 +126,7 @@
     const radarControls=document.getElementById("radarControls"),satelliteControls=document.getElementById("satelliteControls"),lightningControls=document.getElementById("lightningControls"),controlLabel=document.getElementById("controlLabel"),viewerStatus=document.getElementById("viewerStatus"),viewerNote=document.getElementById("viewerNote"),radarFrame=document.getElementById("radarFrame"),satelliteStage=document.getElementById("satelliteStage"),satelliteImage=document.getElementById("satelliteImage"),satelliteCanvas=document.getElementById("satelliteCanvas"),satelliteLoading=document.getElementById("satelliteLoading"),satelliteTitle=document.getElementById("satelliteTitle"),satelliteMeta=document.getElementById("satelliteMeta"),satSectorSelect=document.getElementById("satSectorSelect"),weatherMapEl=document.getElementById("weatherMap"),mapProductCard=document.getElementById("mapProductCard"),mapProductTitle=document.getElementById("mapProductTitle"),mapProductMeta=document.getElementById("mapProductMeta"),mapError=document.getElementById("mapError");
     const satPrev=document.getElementById("satPrev"),satPlay=document.getElementById("satPlay"),satNext=document.getElementById("satNext"),satTimeline=document.getElementById("satTimeline"),satFrameReadout=document.getElementById("satFrameReadout"),satSpeed=document.getElementById("satSpeed"),satCacheReadout=document.getElementById("satCacheReadout");
 
-    let activeProduct="radar",radarMode="national",satPlatform="East",satProduct="TrueColor",satSector="CONUS",weatherMap=null,mapReady=false,refreshTimer=0;
+    let activeProduct="radar",radarMode="national",satPlatform="East",satProduct="TrueColor",satSector="continental",weatherMap=null,mapReady=false,refreshTimer=0;
     let satFrames=[],satFrameIndex=0,satTimer=0,satWarmGeneration=0,satLastWindowKey="",satRenderToken=0,satPixelProbeSupported=true,satContext=null;
     let lightningFlashes=[],lightningDisplayedFlashes=[],lightningDisplayedKeys=new Set(),lightningLatestMs=0,lightningFetchPromise=null,lightningInitialFitDone=false;
     let lightningSeenLatestMs=0,lightningPulseFrame=0,lightningPulseToken=0,lightningPollTimer=0;
@@ -1396,7 +1396,7 @@
     radarFrame.addEventListener("load",tuneEmbeddedLevel2);
     tabs.forEach(button=>button.addEventListener("click",()=>selectProduct(button.dataset.product)));
     radarButtons.forEach(button=>button.addEventListener("click",()=>loadRadar(button.dataset.radar)));
-    platformButtons.forEach(button=>button.addEventListener("click",()=>{satPlatform=button.dataset.satPlatform;satSector=satPlatform==="West"?"PACUS":"CONUS";activate(platformButtons,item=>item===button);populateSatelliteSectors();if(activeProduct==="satellite")resetSatelliteViewer();}));
+    platformButtons.forEach(button=>button.addEventListener("click",()=>{satPlatform=button.dataset.satPlatform;satSector=satPlatform==="West"?"PACUS":"continental";activate(platformButtons,item=>item===button);populateSatelliteSectors();if(activeProduct==="satellite")resetSatelliteViewer();}));
     satProductButtons.forEach(button=>button.addEventListener("click",()=>{satProduct=button.dataset.satProduct;activate(satProductButtons,item=>item===button);if(activeProduct==="satellite")resetSatelliteViewer();}));
     satSectorSelect.addEventListener("change",()=>{satSector=satSectorSelect.value;if(activeProduct==="satellite")resetSatelliteViewer();});
     satPrev.addEventListener("click",()=>{stopSatellitePlayback();renderSatellite((satFrameIndex-1+satFrames.length)%satFrames.length,false);});
