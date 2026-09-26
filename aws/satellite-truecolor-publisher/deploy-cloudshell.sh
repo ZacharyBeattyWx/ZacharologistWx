@@ -40,10 +40,10 @@ fi
 aws ecr get-login-password --region "$REGION" \
   | docker login --username AWS --password-stdin "$ECR_HOST"
 
-# CloudShell has a small Docker filesystem. Clean Docker build data only; this
-# script never runs git clean/reset and does not alter unrelated working files.
+# CloudShell has a small Docker filesystem. Release BuildKit cache only; this
+# script never runs git clean/reset and does not prune Docker volumes or alter
+# unrelated working files.
 docker builder prune --all --force >/dev/null 2>&1 || true
-docker system prune --all --force --volumes >/dev/null 2>&1 || true
 
 printf 'Disk available before build:\n'
 df -h "$HOME" | tail -1
@@ -56,8 +56,8 @@ docker buildx build \
   -t "$IMAGE_URI" \
   .
 
+# Release build cache again after the pushed image is safely in ECR.
 docker builder prune --all --force >/dev/null 2>&1 || true
-docker system prune --all --force --volumes >/dev/null 2>&1 || true
 
 aws cloudformation deploy \
   --region "$REGION" \
