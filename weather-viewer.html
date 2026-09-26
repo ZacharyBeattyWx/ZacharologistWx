@@ -32,6 +32,157 @@
     .product-card{position:absolute;left:12px;bottom:12px;z-index:10;max-width:min(520px,calc(100% - 80px));padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:rgba(4,9,17,.88);backdrop-filter:blur(12px);box-shadow:0 10px 30px rgba(0,0,0,.28);pointer-events:none}.product-card strong{display:block;font-size:.72rem}.product-card span{display:block;margin-top:2px;color:var(--muted);font-size:.59rem;font-weight:700;line-height:1.35}
     #satelliteStage .product-card{bottom:58px}
     .map-error{position:absolute;top:12px;left:50%;z-index:15;display:none;transform:translateX(-50%);padding:8px 12px;border:1px solid rgba(251,191,36,.45);border-radius:8px;background:rgba(20,14,3,.92);color:#fde68a;font-size:.68rem;font-weight:800}.map-error.show{display:block}
+    @media(min-width:881px){
+      .shell{
+        grid-template-columns:198px minmax(0,1fr);
+        grid-template-rows:auto minmax(0,1fr);
+      }
+
+      .top{
+        grid-column:1;
+        grid-row:1;
+        position:relative;
+        z-index:30;
+        flex-direction:column;
+        align-items:stretch;
+        justify-content:flex-start;
+        gap:10px;
+        padding:10px;
+        border-right:1px solid var(--line);
+        border-bottom:1px solid var(--line);
+        background:rgba(5,10,20,.97);
+      }
+
+      .brand{
+        width:100%;
+        gap:8px;
+      }
+
+      .logo{
+        width:36px;
+        height:36px;
+      }
+
+      .title{
+        font-size:.86rem;
+      }
+
+      .meta{
+        font-size:.56rem;
+      }
+
+      .tabs{
+        width:100%;
+        flex-direction:column;
+        align-items:stretch;
+        gap:6px;
+        overflow:visible;
+      }
+
+      .tab{
+        width:100%;
+        min-height:34px;
+        padding:0 10px;
+        text-align:left;
+        border-radius:7px;
+      }
+
+      .status{
+        position:static;
+        width:100%;
+        padding:4px 2px 0;
+        font-size:.61rem;
+      }
+
+      .sub{
+        grid-column:1;
+        grid-row:2;
+        min-height:0;
+        flex-direction:column;
+        align-items:stretch;
+        justify-content:flex-start;
+        gap:8px;
+        padding:10px;
+        overflow-y:auto;
+        overflow-x:hidden;
+        border-right:1px solid var(--line);
+        border-bottom:0;
+        background:rgba(5,10,20,.97);
+      }
+
+      .sub-left{
+        width:100%;
+        flex-direction:column;
+        align-items:stretch;
+        gap:8px;
+      }
+
+      .sub-right{
+        display:none;
+      }
+
+      .label{
+        display:block;
+        padding:2px 2px 0;
+        font-size:.57rem;
+        letter-spacing:.11em;
+      }
+
+      .controls{
+        width:100%;
+        flex-direction:column;
+        align-items:stretch;
+        gap:6px;
+        overflow:visible;
+      }
+
+      .control{
+        width:100%;
+        max-width:none;
+        min-height:32px;
+        padding:0 10px;
+        text-align:left;
+        border-radius:7px;
+      }
+
+      select.control{
+        width:100%;
+        max-width:none;
+      }
+
+      .stage{
+        grid-column:2;
+        grid-row:1 / 3;
+        min-width:0;
+        min-height:0;
+      }
+
+      #satelliteStage{
+        padding:4px;
+      }
+
+      #satelliteStage #satelliteImage,
+      #satelliteStage #satelliteCanvas{
+        max-width:100%;
+        max-height:100%;
+      }
+
+      #satelliteStage .product-card{
+        top:12px;
+        left:12px;
+        bottom:auto;
+        max-width:310px;
+        padding:6px 8px;
+        background:rgba(4,9,17,.74);
+      }
+
+      .sat-playback{
+        bottom:12px;
+        width:min(760px,calc(100% - 28px));
+        background:rgba(5,10,20,.84);
+      }
+    }
+
     @media(max-width:880px){:root{--top:96px;--sub:52px}.top{align-items:flex-start;flex-wrap:wrap;padding:7px 9px}.brand{width:100%}.logo{width:36px;height:36px}.meta{display:none}.tabs{width:100%}.tab{flex:1 0 auto;text-align:center}.status{position:absolute;right:10px;top:11px}.sub{padding-inline:9px}.note{display:none}.product-card{left:8px}#satelliteStage{flex-direction:column;align-items:center;justify-content:flex-start;padding:10px 6px 12px}#satelliteStage #satelliteImage,#satelliteStage #satelliteCanvas{max-height:calc(100% - 150px);flex:0 1 auto}#satelliteStage .product-card{display:none}.sat-playback{position:relative;left:auto;bottom:auto;transform:none;width:calc(100% - 12px);margin-top:10px;grid-template-columns:auto auto auto minmax(120px,1fr);gap:6px;flex:0 0 auto}.sat-readout,.sat-cache{display:none}}
   </style>
 </head>
