@@ -105,11 +105,21 @@ GLOBAL_PLATFORMS = {
         "sector": "GLOBAL",
         "cadence_minutes": 10,
         "max_render": MAX_RENDER_FULLDISK_PER_PLATFORM,
-        "render_version": 4,
+        "render_version": 5,
 
         # Wider landscape North America / western Atlantic presentation
         # sourced from the actual ABI Full Disk scan.
         "bbox": (-148.0, 10.0, -37.0, 60.0),
+
+        # True Color should represent a broadly daylight North America view,
+        # not a frame where only the western edge of the sector remains lit.
+        # Require representative western and eastern CONUS points to both
+        # remain above the horizon.
+        "daylight_anchors": (
+            (37.0, -120.0),
+            (37.0, -80.0),
+        ),
+        "daylight_min_elevation": 0.0,
     },
     "West": {
         "platform": "West",
@@ -288,8 +298,25 @@ def solar_elevation_deg(dt, lat, lon):
     )
 
 
-def sector_may_have_daylight(dt, bbox):
-    west, south, east, north = bbox
+def sector_may_have_daylight(dt, spec):
+    anchors = spec.get("daylight_anchors")
+
+    if anchors:
+        threshold = float(
+            spec.get("daylight_min_elevation", 0.0)
+        )
+
+        elevations = [
+            solar_elevation_deg(dt, lat, lon)
+            for lat, lon in anchors
+        ]
+
+        return all(
+            elevation > threshold
+            for elevation in elevations
+        )
+
+    west, south, east, north = spec["bbox"]
     lons = (west, (west + east) / 2.0, east)
     lats = (south, (south + north) / 2.0, north)
 
@@ -867,7 +894,7 @@ def process_platform(platform, spec, now):
 
         if not sector_may_have_daylight(
             group["time"],
-            spec["bbox"],
+            spec,
         ):
             checked.append(group["scan"])
             checked_set.add(group["scan"])
