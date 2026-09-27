@@ -246,7 +246,8 @@
     const TRUECOLOR_BASE="https://dt0cd6bl1yqh2.cloudfront.net/satellite-truecolor";
     const TRUECOLOR_REGIONAL_CADENCE_MINUTES=5;
     const TRUECOLOR_GLOBAL_CADENCE_MINUTES=10;
-    const TRUECOLOR_FRESH_MINUTES=45;
+    const TRUECOLOR_REGIONAL_FRESH_MINUTES=45;
+    const TRUECOLOR_GLOBAL_FRESH_MINUTES=25;
     const SAT_FRAME_COUNT=25,SAT_STEP_MINUTES=10,SAT_LAG_MINUTES=10,SAT_PROBE_EXTRA_FRAMES=10,SAT_PROBE_WORKERS=4;
 
     const SAT_PRODUCTS={
@@ -1107,6 +1108,12 @@
         :TRUECOLOR_REGIONAL_CADENCE_MINUTES;
     }
 
+    function trueColorFreshMinutesForSector(sector){
+      return sector?.id==="global"
+        ?TRUECOLOR_GLOBAL_FRESH_MINUTES
+        :TRUECOLOR_REGIONAL_FRESH_MINUTES;
+    }
+
     function bboxContains(outer,inner){
       if(!Array.isArray(outer)||outer.length!==4||!Array.isArray(inner)||inner.length!==4)return false;
       const [ow,os,oe,on]=outer.map(Number);
@@ -1147,8 +1154,12 @@
           }
 
           const ageMinutes=(Date.now()-newest.getTime())/60000;
+          const freshMinutes=
+            trueColorFreshMinutesForSector(
+              context.sector
+            );
 
-          if(ageMinutes>TRUECOLOR_FRESH_MINUTES){
+          if(ageMinutes>freshMinutes){
             throw new Error(
               `stale True Color daylight feed (${Math.round(ageMinutes)} min)`
             );
