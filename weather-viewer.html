@@ -1129,61 +1129,97 @@
     }
 
     async function buildSatelliteFrames(generation,context){
+      function finishSatelliteFrameSet(){
+        if(!satFrames.length)return false;
+
+        satFrameIndex=satFrames.length-1;
+        satTimeline.max=String(satFrames.length-1);
+        satTimeline.value=String(satFrameIndex);
+
+        pruneSatelliteFrameCache();
+
+        const ready=satFrames.reduce(
+          (count,frame)=>
+            count+(satFrameImages.has(frame.url)?1:0),
+          0
+        );
+
+        satCacheReadout.textContent=
+          `${ready}/${satFrames.length} ready`;
+
+        return true;
+      }
+
+      let preparedFrames=[];
+
       if(context.product.prepared){
         try{
           const response=await fetch(
-            `${trueColorManifestUrl(context.platform,context.sector)}?_=${Date.now()}`,
+            `${trueColorManifestUrl(
+              context.platform,
+              context.sector
+            )}?_=${Date.now()}`,
             {cache:"no-store"}
           );
 
           if(!response.ok){
-            throw new Error(`True Color manifest HTTP ${response.status}`);
+            throw new Error(
+              `True Color manifest HTTP ${response.status}`
+            );
           }
 
           const manifest=await response.json();
-          const rawFrames=Array.isArray(manifest.frames)?manifest.frames:[];
+          const rawFrames=
+            Array.isArray(manifest.frames)
+              ?manifest.frames
+              :[];
 
           if(!rawFrames.length){
-            throw new Error("True Color manifest contains no frames");
+            throw new Error(
+              "True Color manifest contains no frames"
+            );
           }
 
-          const newest=new Date(rawFrames[rawFrames.length-1].time);
+          const newest=
+            new Date(
+              rawFrames[rawFrames.length-1].time
+            );
 
           if(!Number.isFinite(newest.getTime())){
-            throw new Error("True Color manifest time is invalid");
-          }
-
-          const ageMinutes=(Date.now()-newest.getTime())/60000;
-          const freshMinutes=
-            trueColorFreshMinutesForSector(
-              context.sector
-            );
-
-          if(ageMinutes>freshMinutes){
             throw new Error(
-              `stale True Color daylight feed (${Math.round(ageMinutes)} min)`
+              "True Color manifest time is invalid"
             );
           }
 
-          if(!bboxContains(manifest.bbox,context.sector.bbox)){
+          if(
+            !bboxContains(
+              manifest.bbox,
+              context.sector.bbox
+            )
+          ){
             throw new Error(
               "selected sector exceeds prepared True Color coverage"
             );
           }
 
-          if(generation!==satWarmGeneration)return false;
+          context.sourceBbox=
+            manifest.bbox.map(Number);
 
-          context.mode="prepared";
-          context.displayLabel="True Color";
-          context.sourceBbox=manifest.bbox.map(Number);
-          context.renderVersion=manifest.renderVersion||null;
+          context.renderVersion=
+            manifest.renderVersion||null;
+
           context.cadenceMinutes=
             Number(manifest.cadenceMinutes)||
-            trueColorCadenceForSector(context.sector);
-          context.sourceProduct=
-            String(manifest.sourceProduct||"");
+            trueColorCadenceForSector(
+              context.sector
+            );
 
-          satFrames=rawFrames
+          context.sourceProduct=
+            String(
+              manifest.sourceProduct||""
+            );
+
+          preparedFrames=rawFrames
             .slice(-SAT_FRAME_COUNT)
             .map(item=>({
               time:new Date(item.time),
@@ -1191,66 +1227,163 @@
               source:"prepared"
             }))
             .filter(frame=>
-              Number.isFinite(frame.time.getTime())&&frame.url
+              Number.isFinite(
+                frame.time.getTime()
+              )&&frame.url
             );
 
-          if(!satFrames.length)return false;
+          if(!preparedFrames.length){
+            throw new Error(
+              "True Color manifest contains no usable frames"
+            );
+          }
 
-          satFrameIndex=satFrames.length-1;
-          satTimeline.max=String(satFrames.length-1);
-          satTimeline.value=String(satFrameIndex);
+          const ageMinutes=
+            (
+              Date.now()-
+              newest.getTime()
+            )/60000;
 
-          pruneSatelliteFrameCache();
+          const freshMinutes=
+            trueColorFreshMinutesForSector(
+              context.sector
+            );
 
-          const ready=satFrames.reduce(
-            (count,frame)=>count+(satFrameImages.has(frame.url)?1:0),
-            0
+          if(ageMinutes<=freshMinutes){
+            if(generation!==satWarmGeneration){
+              return false;
+            }
+
+            context.mode="prepared";
+            context.displayLabel="True Color";
+
+            satFrames=preparedFrames;
+
+            return finishSatelliteFrameSet();
+          }
+
+          /*
+           * Nighttime hybrid:
+           *
+           * Keep every prepared daylight frame that is still
+           * inside the visible 25-frame timeline, then allow
+           * GeoColor to occupy the newer nighttime timestamps.
+           *
+           * Prepared frames override matching GIBS timestamps.
+           */
+          console.info(
+            `True Color daylight ended ${Math.round(ageMinutes)} min ago; building hybrid day/night loop.`
           );
 
-          satCacheReadout.textContent=`${ready}/${satFrames.length} ready`;
-          return true;
+          context.mode="hybrid";
+          context.displayLabel=
+            "Nighttime GeoColor";
+
+          context.fallbackReason=
+            `stale True Color daylight feed (${Math.round(ageMinutes)} min)`;
+
+          context.imageryLayer=
+            `GOES-${context.platform}_ABI_GeoColor`;
 
         }catch(error){
-          console.warn("Prepared True Color unavailable; using GeoColor fallback.",error);
+          console.warn(
+            "Prepared True Color unavailable; using GeoColor fallback.",
+            error
+          );
+
+          preparedFrames=[];
 
           context.mode="gibs-fallback";
           context.displayLabel=
-            /stale True Color daylight feed/i.test(String(error?.message||""))
-              ?"Nighttime GeoColor"
-              :"GeoColor fallback";
+            "GeoColor fallback";
 
-          context.fallbackReason=String(error?.message||error);
-          context.imageryLayer=`GOES-${context.platform}_ABI_GeoColor`;
+          context.fallbackReason=
+            String(
+              error?.message||error
+            );
+
+          context.imageryLayer=
+            `GOES-${context.platform}_ABI_GeoColor`;
         }
+
       }else{
         context.mode="gibs";
-        context.displayLabel=context.product.label;
+        context.displayLabel=
+          context.product.label;
       }
 
-      const frames=await discoverSatelliteFrames(generation,context);
-      if(generation!==satWarmGeneration)return false;
+      const frames=
+        await discoverSatelliteFrames(
+          generation,
+          context
+        );
 
-      satFrames=frames.map(time=>({
-        time,
-        url:satelliteImageUrl(time,context),
-        source:"gibs"
-      }));
+      if(generation!==satWarmGeneration){
+        return false;
+      }
 
-      if(!satFrames.length)return false;
+      const gibsFrames=
+        frames.map(time=>({
+          time,
+          url:satelliteImageUrl(
+            time,
+            context
+          ),
+          source:"gibs"
+        }));
 
-      satFrameIndex=satFrames.length-1;
-      satTimeline.max=String(satFrames.length-1);
-      satTimeline.value=String(satFrameIndex);
+      if(
+        context.mode==="hybrid"&&
+        preparedFrames.length
+      ){
+        /*
+         * Use minute-resolution keys because prepared RadF
+         * and GIBS are both on the nominal 10-minute cadence.
+         *
+         * Add GIBS first, then prepared imagery so our real
+         * True Color frame replaces GeoColor at matching
+         * daylight timestamps.
+         */
+        const merged=
+          new Map();
 
-      pruneSatelliteFrameCache();
+        for(const frame of gibsFrames){
+          const key=
+            Math.round(
+              frame.time.getTime()/60000
+            );
 
-      const ready=satFrames.reduce(
-        (count,frame)=>count+(satFrameImages.has(frame.url)?1:0),
-        0
-      );
+          merged.set(
+            key,
+            frame
+          );
+        }
 
-      satCacheReadout.textContent=`${ready}/${satFrames.length} ready`;
-      return true;
+        for(const frame of preparedFrames){
+          const key=
+            Math.round(
+              frame.time.getTime()/60000
+            );
+
+          merged.set(
+            key,
+            frame
+          );
+        }
+
+        satFrames=
+          [...merged.values()]
+            .sort(
+              (a,b)=>
+                a.time-b.time
+            )
+            .slice(-SAT_FRAME_COUNT);
+
+      }else{
+        satFrames=gibsFrames;
+      }
+
+      return finishSatelliteFrameSet();
     }
 
     function preloadSatelliteFrame(frame,context){
@@ -1324,14 +1457,20 @@
       return true;
     }
 
-    function displaySatelliteFrame(result,context){
+    function displaySatelliteFrame(result,context,frame){
       satelliteStage.style.setProperty(
         "--satellite-backdrop",
         `url("${result.url}")`
       );
 
-      if(context.mode==="prepared"){
-        if(drawPreparedSatellite(result.img,context))return;
+      if(
+        frame?.source==="prepared"&&
+        drawPreparedSatellite(
+          result.img,
+          context
+        )
+      ){
+        return;
       }
 
       satelliteCanvas.hidden=true;
@@ -1344,23 +1483,45 @@
 
       satFrameIndex=Math.max(
         0,
-        Math.min(satFrames.length-1,index)
+        Math.min(
+          satFrames.length-1,
+          index
+        )
       );
 
-      satTimeline.value=String(satFrameIndex);
+      satTimeline.value=
+        String(satFrameIndex);
 
-      const frame=satFrames[satFrameIndex];
-      const frameTime=frame.time;
-      const product=satContext.product;
-      const sector=satContext.sector;
+      const frame=
+        satFrames[satFrameIndex];
+
+      const frameTime=
+        frame.time;
+
+      const product=
+        satContext.product;
+
+      const sector=
+        satContext.sector;
+
+      const prepared=
+        frame.source==="prepared";
+
+      const hybrid=
+        satContext.mode==="hybrid";
+
       const displayProduct=
-        satContext.displayLabel||product.label;
+        prepared
+          ?"True Color"
+          :hybrid
+            ?"Nighttime GeoColor"
+            :(satContext.displayLabel||product.label);
 
       const label=
         `GOES-${satContext.platform} ${displayProduct} — ${sector.label}`;
 
-      const token=++satRenderToken;
-      const prepared=satContext.mode==="prepared";
+      const token=
+        ++satRenderToken;
 
       viewerStatus.textContent=
         prepared
@@ -1369,59 +1530,112 @@
 
       const preparedCadence=
         satContext.cadenceMinutes||
-        trueColorCadenceForSector(sector);
+        trueColorCadenceForSector(
+          sector
+        );
 
       const preparedSource=
-        /RadF/i.test(satContext.sourceProduct||"")
+        /RadF/i.test(
+          satContext.sourceProduct||""
+        )
           ?"Full Disk"
           :"CONUS/PACUS";
 
       viewerNote.textContent=
         prepared
           ?`${label} • ${preparedCadence}-minute prepared natural RGB playback`
-          :`${label} • NASA GIBS 10-minute north-up playback`;
+          :hybrid
+            ?`${label} • nighttime continuation of daylight True Color loop`
+            :`${label} • NASA GIBS 10-minute north-up playback`;
 
-      satelliteTitle.textContent=label;
+      satelliteTitle.textContent=
+        label;
 
       satelliteMeta.textContent=
         prepared
           ?`NOAA GOES ABI ${preparedSource} C01/C02/C03 • ${frameTime.toISOString().replace(".000Z","Z")}`
           :`NASA GIBS / NOAA GOES • state outlines • ${frameTime.toISOString().replace(".000Z","Z")}`;
 
-      satFrameReadout.textContent=formatSatelliteTime(frameTime);
+      satFrameReadout.textContent=
+        formatSatelliteTime(
+          frameTime
+        );
 
-      const cached=satFrameImages.get(frame.url);
+      const cached=
+        satFrameImages.get(
+          frame.url
+        );
 
       if(cached){
         displaySatelliteFrame(
-          {url:frame.url,img:cached},
-          satContext
+          {
+            url:frame.url,
+            img:cached
+          },
+          satContext,
+          frame
         );
-        satelliteLoading.classList.remove("show");
+
+        satelliteLoading.classList.remove(
+          "show"
+        );
+
         return;
       }
 
-      if(showLoading||(!satelliteImage.src&&satelliteCanvas.hidden)){
-        satelliteLoading.textContent="Loading satellite frame…";
-        satelliteLoading.classList.add("show");
+      if(
+        showLoading||
+        (
+          !satelliteImage.src&&
+          satelliteCanvas.hidden
+        )
+      ){
+        satelliteLoading.textContent=
+          "Loading satellite frame…";
+
+        satelliteLoading.classList.add(
+          "show"
+        );
       }
 
-      preloadSatelliteFrame(frame,satContext)
+      preloadSatelliteFrame(
+        frame,
+        satContext
+      )
         .then(result=>{
           if(
             token!==satRenderToken||
             activeProduct!=="satellite"
-          ) return;
+          ){
+            return;
+          }
 
-          displaySatelliteFrame(result,satContext);
-          satelliteLoading.classList.remove("show");
+          displaySatelliteFrame(
+            result,
+            satContext,
+            frame
+          );
+
+          satelliteLoading.classList.remove(
+            "show"
+          );
         })
         .catch(error=>{
-          console.warn("Satellite frame load failed",error);
-          if(token!==satRenderToken)return;
+          console.warn(
+            "Satellite frame load failed",
+            error
+          );
+
+          if(token!==satRenderToken){
+            return;
+          }
+
           satelliteLoading.textContent=
             "Satellite frame temporarily unavailable";
-          satelliteLoading.classList.add("show");
+
+          satelliteLoading.classList.add(
+            "show"
+          );
         });
     }
 
