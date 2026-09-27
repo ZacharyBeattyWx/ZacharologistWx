@@ -105,7 +105,8 @@ GLOBAL_PLATFORMS = {
         "sector": "GLOBAL",
         "cadence_minutes": 10,
         "max_render": MAX_RENDER_FULLDISK_PER_PLATFORM,
-        "render_version": 7,
+        "render_version": 8,
+        "night_channel": "13",
 
         # Wider landscape North America / western Atlantic presentation
         # sourced from the actual ABI Full Disk scan.
@@ -125,7 +126,8 @@ GLOBAL_PLATFORMS = {
         "sector": "GLOBAL",
         "cadence_minutes": 10,
         "max_render": MAX_RENDER_FULLDISK_PER_PLATFORM,
-        "render_version": RENDER_VERSION,
+        "render_version": 8,
+        "night_channel": "13",
 
         # Pacific-centered broad North America presentation.
         "bbox": (-175.0, 5.0, -70.0, 65.0),
@@ -152,7 +154,7 @@ TARGET_S3 = boto3.client("s3")
 # minute so the three reflective channels from the same five-minute scan
 # are rendered together.
 SOURCE_RE = re.compile(
-    r"-M\dC(?P<channel>01|02|03)_G\d+_s(?P<scan>\d{11})"
+    r"-M\dC(?P<channel>01|02|03|13)_G\d+_s(?P<scan>\d{11})"
 )
 
 
@@ -245,12 +247,18 @@ def list_complete_scans(spec, now):
                 if previous is None or key > previous:
                     group["channels"][channel] = key
 
+    required_channels = ["01", "02", "03"]
+
+    night_channel = spec.get("night_channel")
+    if night_channel:
+        required_channels.append(str(night_channel))
+
     complete = [
         group
         for group in grouped.values()
         if all(
             channel in group["channels"]
-            for channel in ("01", "02", "03")
+            for channel in required_channels
         )
     ]
     complete.sort(key=lambda group: group["time"], reverse=True)
@@ -294,6 +302,11 @@ def solar_elevation_deg(dt, lat, lon):
 
 
 def sector_may_have_daylight(dt, spec):
+    # Global v8 carries C13 Clean IR on the nighttime side,
+    # so every complete Full Disk scan is renderable 24 hours/day.
+    if spec.get("night_channel"):
+        return True
+
     anchors = spec.get("daylight_anchors")
 
     if anchors:
@@ -479,6 +492,154 @@ def read_reflectance(path, gx, gy, stride=1):
         "crs": crs,
     }
 
+
+def read_brightness_temperature(path, gx, gy, stride=1):
+    with Dataset(path, "r") as dataset:
+        rad = dataset.variables["Rad"]
+
+        x = np.asarray(
+            dataset.variables["x"][:],
+            dtype=np.float64,
+        )
+        y = np.asarray(
+            dataset.variables["y"][:],
+            dtype=np.float64,
+        )
+
+        crs, height = projection_from_dataset(dataset)
+
+        x_m = x * height
+        y_m = y * height
+
+        finite_geo = np.isfinite(gx) & np.isfinite(gy)
+
+        if not np.any(finite_geo):
+            raise RuntimeError(
+                "No visible projected points in target satellite sector"
+            )
+
+        gx_valid = gx[finite_geo]
+        gy_valid = gy[finite_geo]
+
+        min_gx = float(np.min(gx_valid))
+        max_gx = float(np.max(gx_valid))
+        min_gy = float(np.min(gy_valid))
+        max_gy = float(np.max(gy_valid))
+
+        x_hits = np.flatnonzero(
+            (x_m >= min_gx) &
+            (x_m <= max_gx)
+        )
+        y_hits = np.flatnonzero(
+            (y_m >= min_gy) &
+            (y_m <= max_gy)
+        )
+
+        if not x_hits.size or not y_hits.size:
+            raise RuntimeError(
+                "Target sector does not intersect ABI fixed grid"
+            )
+
+        margin = max(4, stride * 3)
+
+        x_start = max(
+            0,
+            int(x_hits[0]) - margin,
+        )
+        x_stop = min(
+            len(x),
+            int(x_hits[-1]) + 1 + margin,
+        )
+
+        y_start = max(
+            0,
+            int(y_hits[0]) - margin,
+        )
+        y_stop = min(
+            len(y),
+            int(y_hits[-1]) + 1 + margin,
+        )
+
+        radiance = np.asarray(
+            np.ma.filled(
+                rad[
+                    y_start:y_stop:stride,
+                    x_start:x_stop:stride,
+                ],
+                np.nan,
+            ),
+            dtype=np.float32,
+        )
+
+        fk1 = float(
+            np.asarray(
+                dataset.variables["planck_fk1"][:]
+            ).squeeze()
+        )
+        fk2 = float(
+            np.asarray(
+                dataset.variables["planck_fk2"][:]
+            ).squeeze()
+        )
+        bc1 = float(
+            np.asarray(
+                dataset.variables["planck_bc1"][:]
+            ).squeeze()
+        )
+        bc2 = float(
+            np.asarray(
+                dataset.variables["planck_bc2"][:]
+            ).squeeze()
+        )
+
+        data = np.full(
+            radiance.shape,
+            np.nan,
+            dtype=np.float32,
+        )
+
+        valid = (
+            np.isfinite(radiance) &
+            (radiance > 0.0)
+        )
+
+        data[valid] = (
+            (
+                fk2 /
+                np.log(
+                    fk1 / radiance[valid] + 1.0
+                )
+            ) -
+            bc1
+        ) / bc2
+
+        x_crop = x[
+            x_start:x_stop:stride
+        ]
+        y_crop = y[
+            y_start:y_stop:stride
+        ]
+
+        if len(x_crop) < 2 or len(y_crop) < 2:
+            raise RuntimeError(
+                "ABI cropped source window is too small"
+            )
+
+    return {
+        "data": data,
+        "x0": float(x_crop[0] * height),
+        "dx": float(
+            (x_crop[1] - x_crop[0]) * height
+        ),
+        "y0": float(y_crop[0] * height),
+        "dy": float(
+            (y_crop[1] - y_crop[0]) * height
+        ),
+        "crs": crs,
+    }
+
+
+
 def mercator_bounds(bbox):
     west, south, east, north = bbox
     transformer = Transformer.from_crs(
@@ -604,6 +765,171 @@ def daylight_fraction(rgb, finite):
     return float(np.count_nonzero(lit) / np.count_nonzero(finite))
 
 
+
+def night_ir_rgb(bt, finite):
+    valid = finite & np.isfinite(bt)
+
+    bt_safe = np.where(
+        valid,
+        bt,
+        300.0,
+    )
+
+    # Warm surfaces stay very dark while progressively colder
+    # cloud tops brighten. A slight blue bias separates the
+    # nighttime IR presentation from daylight natural RGB.
+    intensity = np.clip(
+        (300.0 - bt_safe) / 105.0,
+        0.0,
+        1.0,
+    )
+
+    intensity = np.power(
+        intensity,
+        0.85,
+    )
+
+    red = np.clip(
+        intensity * 0.78,
+        0.0,
+        1.0,
+    )
+    green = np.clip(
+        intensity * 0.90,
+        0.0,
+        1.0,
+    )
+    blue = np.clip(
+        intensity * 1.08,
+        0.0,
+        1.0,
+    )
+
+    rgb = np.stack(
+        [red, green, blue],
+        axis=-1,
+    )
+
+    rgb[~valid] = 0.0
+
+    return rgb, valid
+
+
+def solar_daylight_alpha(
+    dt,
+    bbox,
+    width,
+    height,
+    feather_degrees=0.08,
+):
+    west, south, east, north = bbox
+
+    min_x, min_y, max_x, max_y = mercator_bounds(
+        bbox
+    )
+
+    lons = np.linspace(
+        west,
+        east,
+        width,
+        dtype=np.float64,
+    )
+
+    mercator_y = np.linspace(
+        max_y,
+        min_y,
+        height,
+        dtype=np.float64,
+    )
+
+    earth_radius = 6378137.0
+
+    lats = np.degrees(
+        2.0 *
+        np.arctan(
+            np.exp(
+                mercator_y /
+                earth_radius
+            )
+        ) -
+        np.pi / 2.0
+    )
+
+    day = dt.timetuple().tm_yday
+
+    hour = (
+        dt.hour +
+        dt.minute / 60.0 +
+        dt.second / 3600.0
+    )
+
+    declination = np.radians(
+        23.44 *
+        np.sin(
+            2.0 *
+            np.pi *
+            (284.0 + day) /
+            365.0
+        )
+    )
+
+    hour_angle = np.radians(
+        15.0 *
+        (
+            hour +
+            lons / 15.0 -
+            12.0
+        )
+    )
+
+    lat_rad = np.radians(lats)
+
+    sin_elevation = (
+        np.sin(lat_rad)[:, None] *
+        np.sin(declination)
+        +
+        np.cos(lat_rad)[:, None] *
+        np.cos(declination) *
+        np.cos(hour_angle)[None, :]
+    )
+
+    feather = math.sin(
+        math.radians(
+            feather_degrees
+        )
+    )
+
+    alpha = np.clip(
+        (
+            sin_elevation +
+            feather
+        ) /
+        (
+            2.0 *
+            feather
+        ),
+        0.0,
+        1.0,
+    )
+
+    # Smoothstep only inside the tiny anti-aliasing band.
+    alpha = (
+        alpha *
+        alpha *
+        (
+            3.0 -
+            2.0 *
+            alpha
+        )
+    )
+
+    return alpha.astype(
+        np.float32,
+        copy=False,
+    )
+
+
+
 def encode_webp(rgb, finite):
     color = np.rint(
         np.clip(rgb, 0.0, 1.0) * 255.0
@@ -631,91 +957,192 @@ def encode_webp(rgb, finite):
 
 
 def render_scan(spec, group):
-    paths = []
+    paths = {}
 
     try:
-        # C02 is native 0.5 km while C01/C03 are 1 km. Read every second C02
-        # pixel so all three source arrays operate at the intended 1-km output
-        # scale without loading a 60-million-pixel red array into memory.
-        for channel in ("01", "02", "03"):
+        channels = ["01", "02", "03"]
+
+        night_channel = spec.get("night_channel")
+        if night_channel:
+            channels.append(str(night_channel))
+
+        for channel in channels:
             path = download_source(
                 spec["source_bucket"],
                 group["channels"][channel],
                 f"-C{channel}.nc",
             )
-            paths.append(path)
+            paths[channel] = path
 
-        source_crs = source_crs_from_path(paths[0])
+        source_crs = source_crs_from_path(
+            paths["01"]
+        )
 
-        gx, gy, _width, _height = output_grid(
+        gx, gy, width, height = output_grid(
             spec,
             source_crs,
         )
 
         blue = read_reflectance(
-            paths[0],
+            paths["01"],
             gx,
             gy,
             stride=1,
         )
+
         red = read_reflectance(
-            paths[1],
+            paths["02"],
             gx,
             gy,
             stride=2,
         )
+
         veggie = read_reflectance(
-            paths[2],
+            paths["03"],
             gx,
             gy,
             stride=1,
         )
 
-        blue_out = sample_grid(blue, gx, gy)
-        red_out = sample_grid(red, gx, gy)
-        veggie_out = sample_grid(veggie, gx, gy)
+        blue_out = sample_grid(
+            blue,
+            gx,
+            gy,
+        )
+        red_out = sample_grid(
+            red,
+            gx,
+            gy,
+        )
+        veggie_out = sample_grid(
+            veggie,
+            gx,
+            gy,
+        )
 
-        rgb, finite = truecolor_rgb(
+        day_rgb, day_finite = truecolor_rgb(
             blue_out,
             red_out,
             veggie_out,
         )
-        fraction = daylight_fraction(rgb, finite)
 
-        if fraction < MIN_DAYLIGHT_FRACTION:
-            print(
-                f"{spec['satellite']} {group['scan']} skipped: "
-                f"daylightFraction={fraction:.3f}"
+        fraction = daylight_fraction(
+            day_rgb,
+            day_finite,
+        )
+
+        if night_channel:
+            night = read_brightness_temperature(
+                paths[str(night_channel)],
+                gx,
+                gy,
+                stride=1,
             )
-            return None
 
-        payload, width, height = encode_webp(rgb, finite)
-        key = frame_key(spec, group["time"])
+            bt_out = sample_grid(
+                night,
+                gx,
+                gy,
+            )
+
+            night_rgb, night_finite = night_ir_rgb(
+                bt_out,
+                np.isfinite(bt_out),
+            )
+
+            alpha = solar_daylight_alpha(
+                group["time"],
+                spec["bbox"],
+                width,
+                height,
+            )
+
+            # Never expose invalid reflected-light pixels over
+            # valid infrared data.
+            day_weight = (
+                alpha *
+                day_finite.astype(
+                    np.float32
+                )
+            )
+
+            rgb = (
+                day_rgb *
+                day_weight[..., None]
+                +
+                night_rgb *
+                (
+                    1.0 -
+                    day_weight[..., None]
+                )
+            )
+
+            finite = (
+                day_finite |
+                night_finite
+            )
+
+            rgb[~finite] = 0.0
+
+        else:
+            if fraction < MIN_DAYLIGHT_FRACTION:
+                print(
+                    f"{spec['satellite']} {group['scan']} skipped: "
+                    f"daylightFraction={fraction:.3f}"
+                )
+                return None
+
+            rgb = day_rgb
+            finite = day_finite
+
+        payload, width, height = encode_webp(
+            rgb,
+            finite,
+        )
+
+        key = frame_key(
+            spec,
+            group["time"],
+        )
 
         TARGET_S3.put_object(
             Bucket=TARGET_BUCKET,
             Key=key,
             Body=payload,
             ContentType="image/webp",
-            CacheControl="public,max-age=31536000,immutable",
+            CacheControl=(
+                "public,max-age=31536000,immutable"
+            ),
         )
 
         print(
             f"{spec['satellite']} published {group['scan']} "
             f"{width}x{height} daylightFraction={fraction:.3f} "
+            f"dayNight={bool(night_channel)} "
             f"bytes={len(payload)}"
         )
 
         return {
-            "time": iso_z(group["time"]),
-            "path": key[len(TARGET_PREFIX) + 1 :],
+            "time": iso_z(
+                group["time"]
+            ),
+            "path": key[
+                len(TARGET_PREFIX) + 1 :
+            ],
             "width": width,
             "height": height,
-            "daylightFraction": round(fraction, 4),
+            "daylightFraction": round(
+                fraction,
+                4,
+            ),
+            "dayNightComposite": bool(
+                night_channel
+            ),
             "scan": group["scan"],
         }
+
     finally:
-        for path in paths:
+        for path in paths.values():
             try:
                 os.unlink(path)
             except OSError:
@@ -776,15 +1203,33 @@ def publish_manifest(spec, existing, frames, checked_scans, now):
         "platform": spec["platform"],
         "satellite": spec["satellite"],
         "sector": spec["sector"],
-        "product": "CIMSS Natural True Color",
+        "product": (
+            "Natural True Color / C13 Night IR"
+            if spec.get("night_channel")
+            else "CIMSS Natural True Color"
+        ),
         "sourceProduct": (
             f"{spec['source_product']} "
-            "C01+C02+C03"
+            + (
+                "C01+C02+C03+C13"
+                if spec.get("night_channel")
+                else "C01+C02+C03"
+            )
         ),
         "cadenceMinutes": cadence_minutes,
         "frameCount": len(ordered),
         "targetFrameCount": frame_count,
-        "daytimeOnly": True,
+        "daytimeOnly": not bool(
+            spec.get("night_channel")
+        ),
+        "dayNightComposite": bool(
+            spec.get("night_channel")
+        ),
+        "nightChannel": (
+            f"C{spec['night_channel']}"
+            if spec.get("night_channel")
+            else None
+        ),
         "bbox": list(spec["bbox"]),
         "recipe": {
             "red": "C02 0.64um",
@@ -797,6 +1242,16 @@ def publish_manifest(spec, existing, frames, checked_scans, now):
             "contrast": TRUECOLOR_CONTRAST,
             "transparentNoData": True,
             "resolutionKm": 1.0,
+            "night": (
+                "C13 Clean Longwave IR"
+                if spec.get("night_channel")
+                else None
+            ),
+            "terminatorFeatherDegrees": (
+                0.08
+                if spec.get("night_channel")
+                else None
+            ),
         },
         "checkedScans": checked_scans[-160:],
         "frames": ordered,
