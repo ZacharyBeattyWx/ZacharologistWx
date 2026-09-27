@@ -105,19 +105,19 @@ GLOBAL_PLATFORMS = {
         "sector": "GLOBAL",
         "cadence_minutes": 10,
         "max_render": MAX_RENDER_FULLDISK_PER_PLATFORM,
-        "render_version": 6,
+        "render_version": 7,
 
         # Wider landscape North America / western Atlantic presentation
         # sourced from the actual ABI Full Disk scan.
         "bbox": (-148.0, 10.0, -37.0, 60.0),
 
-        # Keep Global True Color far enough from sunrise/sunset that the
-        # continental U.S. is still broadly useful as reflected-light RGB.
+        # Keep Global True Color comfortably inside full daylight so the
+        # eastern U.S. is not already entering strong twilight.
         "daylight_anchors": (
             (37.0, -120.0),
             (37.0, -80.0),
         ),
-        "daylight_min_elevation": 5.0,
+        "daylight_min_elevation": 10.0,
     },
     "West": {
         "platform": "West",
