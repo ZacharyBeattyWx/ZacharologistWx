@@ -111,13 +111,10 @@ GLOBAL_PLATFORMS = {
         # sourced from the actual ABI Full Disk scan.
         "bbox": (-148.0, 10.0, -37.0, 60.0),
 
-        # Keep Global True Color comfortably inside full daylight so the
-        # eastern U.S. is not already entering strong twilight.
-        "daylight_anchors": (
-            (37.0, -120.0),
-            (37.0, -80.0),
-        ),
-        "daylight_min_elevation": 10.0,
+        # Terminator-composite mode:
+        # publish whenever a meaningful portion of the broad sector still
+        # contains reflected-light signal. The viewer will mask nighttime
+        # pixels with GeoColor using the calculated solar terminator.
     },
     "West": {
         "platform": "West",
