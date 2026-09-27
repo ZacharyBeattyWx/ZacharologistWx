@@ -1348,6 +1348,11 @@
               ""
             );
 
+          context.dayNightComposite=
+            Boolean(
+              manifest.dayNightComposite
+            );
+
           preparedFrames=
             rawFrames
               .slice(
@@ -1375,6 +1380,36 @@
             throw new Error(
               "True Color manifest contains no usable frames"
             );
+          }
+
+          /*
+           * NATIVE GLOBAL DAY/NIGHT
+           *
+           * v8+ Full Disk frames already contain the sharp
+           * True Color / C13 solar terminator in one WebP.
+           * No GIBS fetch, probing, or client compositing.
+           */
+          if(
+            context.sector.id==="global"&&
+            context.dayNightComposite
+          ){
+            if(
+              generation!==
+              satWarmGeneration
+            ){
+              return false;
+            }
+
+            context.mode=
+              "native-day-night";
+
+            context.displayLabel=
+              "True Color / C13 Night IR";
+
+            satFrames=
+              preparedFrames;
+
+            return finishSatelliteFrameSet();
           }
 
           /*
@@ -2465,6 +2500,10 @@
         frame.source===
         "prepared";
 
+      const nativeDayNight=
+        satContext.mode===
+        "native-day-night";
+
       const composite=
         frame.source===
         "composite";
@@ -2478,18 +2517,20 @@
         "terminator";
 
       const displayProduct=
-        composite
-          ?"True Color / GeoColor"
-          :prepared
-            ?"True Color"
-            :terminator
-              ?"GeoColor"
-              :hybrid
-                ?"Nighttime GeoColor"
-                :(
-                  satContext.displayLabel||
-                  product.label
-                );
+        nativeDayNight
+          ?"True Color / C13 Night IR"
+          :composite
+            ?"True Color / GeoColor"
+            :prepared
+              ?"True Color"
+              :terminator
+                ?"GeoColor"
+                :hybrid
+                  ?"Nighttime GeoColor"
+                  :(
+                    satContext.displayLabel||
+                    product.label
+                  );
 
       const label=
         `GOES-${satContext.platform} ${displayProduct} — ${sector.label}`;
@@ -2498,11 +2539,13 @@
         ++satRenderToken;
 
       viewerStatus.textContent=
-        composite
+        nativeDayNight
           ?`GOES-${satContext.platform} day/night live`
-          :prepared
-            ?`GOES-${satContext.platform} True Color live`
-            :`GOES-${satContext.platform} live`;
+          :composite
+            ?`GOES-${satContext.platform} day/night live`
+            :prepared
+              ?`GOES-${satContext.platform} True Color live`
+              :`GOES-${satContext.platform} live`;
 
       const preparedCadence=
         satContext.cadenceMinutes||
@@ -2519,25 +2562,29 @@
           :"CONUS/PACUS";
 
       viewerNote.textContent=
-        composite
-          ?`${label} • ${preparedCadence}-minute sharp solar-terminator composite`
-          :prepared
-            ?`${label} • ${preparedCadence}-minute prepared natural RGB playback`
-            :terminator
-              ?`${label} • NASA GIBS GeoColor outside available daylight True Color`
-              :hybrid
-                ?`${label} • nighttime continuation of daylight True Color loop`
-                :`${label} • NASA GIBS 10-minute north-up playback`;
+        nativeDayNight
+          ?`${label} • ${preparedCadence}-minute native ABI 24-hour playback`
+          :composite
+            ?`${label} • ${preparedCadence}-minute sharp solar-terminator composite`
+            :prepared
+              ?`${label} • ${preparedCadence}-minute prepared natural RGB playback`
+              :terminator
+                ?`${label} • NASA GIBS GeoColor outside available daylight True Color`
+                :hybrid
+                  ?`${label} • nighttime continuation of daylight True Color loop`
+                  :`${label} • NASA GIBS 10-minute north-up playback`;
 
       satelliteTitle.textContent=
         label;
 
       satelliteMeta.textContent=
-        composite
-          ?`NOAA GOES ABI ${preparedSource} True Color daylight + NASA GIBS GeoColor night • ${frameTime.toISOString().replace(".000Z","Z")}`
-          :prepared
-            ?`NOAA GOES ABI ${preparedSource} C01/C02/C03 • ${frameTime.toISOString().replace(".000Z","Z")}`
-            :`NASA GIBS / NOAA GOES • ${frameTime.toISOString().replace(".000Z","Z")}`;
+        nativeDayNight
+          ?`NOAA GOES ABI ${preparedSource} C01/C02/C03 True Color + C13 Night IR • ${frameTime.toISOString().replace(".000Z","Z")}`
+          :composite
+            ?`NOAA GOES ABI ${preparedSource} True Color daylight + NASA GIBS GeoColor night • ${frameTime.toISOString().replace(".000Z","Z")}`
+            :prepared
+              ?`NOAA GOES ABI ${preparedSource} C01/C02/C03 • ${frameTime.toISOString().replace(".000Z","Z")}`
+              :`NASA GIBS / NOAA GOES • ${frameTime.toISOString().replace(".000Z","Z")}`;
 
       satFrameReadout.textContent=
         formatSatelliteTime(

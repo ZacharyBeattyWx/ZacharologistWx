@@ -105,7 +105,7 @@ GLOBAL_PLATFORMS = {
         "sector": "GLOBAL",
         "cadence_minutes": 10,
         "max_render": MAX_RENDER_FULLDISK_PER_PLATFORM,
-        "render_version": 8,
+        "render_version": 9,
         "night_channel": "13",
 
         # Wider landscape North America / western Atlantic presentation
@@ -126,7 +126,7 @@ GLOBAL_PLATFORMS = {
         "sector": "GLOBAL",
         "cadence_minutes": 10,
         "max_render": MAX_RENDER_FULLDISK_PER_PLATFORM,
-        "render_version": 8,
+        "render_version": 9,
         "night_channel": "13",
 
         # Pacific-centered broad North America presentation.
@@ -772,35 +772,38 @@ def night_ir_rgb(bt, finite):
     bt_safe = np.where(
         valid,
         bt,
-        300.0,
+        298.0,
     )
 
-    # Warm surfaces stay very dark while progressively colder
-    # cloud tops brighten. A slight blue bias separates the
-    # nighttime IR presentation from daylight natural RGB.
-    intensity = np.clip(
-        (300.0 - bt_safe) / 105.0,
+    # Neutral COD-style nighttime IR:
+    # warm land/ocean remains dark charcoal while colder
+    # cloud tops brighten strongly toward neutral white.
+    cloud = np.clip(
+        (298.0 - bt_safe) / 103.0,
         0.0,
         1.0,
     )
 
-    intensity = np.power(
-        intensity,
-        0.85,
+    # Lift mid-level clouds without washing out warm surfaces.
+    cloud = np.power(
+        cloud,
+        0.72,
     )
 
     red = np.clip(
-        intensity * 0.78,
+        0.040 + cloud * 0.900,
         0.0,
         1.0,
     )
+
     green = np.clip(
-        intensity * 0.90,
+        0.045 + cloud * 0.930,
         0.0,
         1.0,
     )
+
     blue = np.clip(
-        intensity * 1.08,
+        0.055 + cloud * 0.950,
         0.0,
         1.0,
     )
