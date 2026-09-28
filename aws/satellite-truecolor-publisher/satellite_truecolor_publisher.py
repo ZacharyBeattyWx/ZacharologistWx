@@ -75,6 +75,7 @@ REGIONAL_PLATFORMS = {
         "cadence_minutes": 5,
         "max_render": MAX_RENDER_PER_PLATFORM,
         "render_version": RENDER_VERSION,
+        "c02_stride": 1,
 
         # Keep the currently deployed regional footprint unchanged for now.
         # The viewer will be switched back to a clean RadC sector after the
@@ -91,6 +92,7 @@ REGIONAL_PLATFORMS = {
         "cadence_minutes": 5,
         "max_render": MAX_RENDER_PER_PLATFORM,
         "render_version": RENDER_VERSION,
+        "c02_stride": 1,
         "bbox": (-134.0, 20.0, -101.0, 53.0),
     },
 }
@@ -997,7 +999,7 @@ def render_scan(spec, group):
             paths["02"],
             gx,
             gy,
-            stride=2,
+            stride=int(spec.get("c02_stride", 2)),
         )
 
         veggie = read_reflectance(
