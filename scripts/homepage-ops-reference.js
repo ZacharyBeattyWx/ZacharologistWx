@@ -44,10 +44,21 @@
     });
   };
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", renameHomepageRadarLabels, { once: true });
-  } else {
+  const routeHomepageRadarLinks = () => {
+    document.querySelectorAll("a.active-alert-radar-link").forEach((link) => {
+      link.setAttribute("href", "weather-viewer.html");
+    });
+  };
+
+  const prepareHomepageRadarUi = () => {
     renameHomepageRadarLabels();
+    routeHomepageRadarLinks();
+  };
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", prepareHomepageRadarUi, { once: true });
+  } else {
+    prepareHomepageRadarUi();
   }
 
   if (window.__ZACH_HOMEPAGE_OPS_CORE_LOADING__) return;
