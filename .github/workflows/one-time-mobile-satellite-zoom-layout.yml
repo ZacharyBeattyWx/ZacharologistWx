@@ -16,81 +16,23 @@ jobs:
 
       - name: Apply mobile satellite layout
         shell: bash
+        env:
+          OLD_BLOCK_B64: "ICAgIEBtZWRpYShtYXgtd2lkdGg6ODgwcHgpezpyb290ey0tdG9wOjk2cHg7LS1zdWI6NTJweH0udG9we2FsaWduLWl0ZW1zOmZsZXgtc3RhcnQ7ZmxleC13cmFwOndyYXA7cGFkZGluZzo3cHggOXB4fS5icmFuZHt3aWR0aDoxMDAlfS5sb2dve3dpZHRoOjM2cHg7aGVpZ2h0OjM2cHh9Lm1ldGF7ZGlzcGxheTpub25lfS50YWJze3dpZHRoOjEwMCV9LnRhYntmbGV4OjEgMCBhdXRvO3RleHQtYWxpZ246Y2VudGVyfS5zdGF0dXN7cG9zaXRpb246YWJzb2x1dGU7cmlnaHQ6MTBweDt0b3A6MTFweH0uc3Vie3BhZGRpbmctaW5saW5lOjlweH0ubm90ZXtkaXNwbGF5Om5vbmV9LnByb2R1Y3QtY2FyZHtsZWZ0OjhweH0jc2F0ZWxsaXRlU3RhZ2V7ZmxleC1kaXJlY3Rpb246Y29sdW1uO2FsaWduLWl0ZW1zOmNlbnRlcjtqdXN0aWZ5LWNvbnRlbnQ6ZmxleC1zdGFydDtwYWRkaW5nOjEwcHggNnB4IDEycHh9I3NhdGVsbGl0ZVN0YWdlICNzYXRlbGxpdGVJbWFnZSwjc2F0ZWxsaXRlU3RhZ2UgI3NhdGVsbGl0ZUNhbnZhc3ttYXgtaGVpZ2h0OmNhbGMoMTAwJSAtIDE1MHB4KTtmbGV4OjAgMSBhdXRvfSNzYXRlbGxpdGVTdGFnZSAucHJvZHVjdC1jYXJke2Rpc3BsYXk6bm9uZX0uc2F0LXBsYXliYWNre3Bvc2l0aW9uOnJlbGF0aXZlO2xlZnQ6YXV0bztib3R0b206YXV0bzt0cmFuc2Zvcm06bm9uZTt3aWR0aDpjYWxjKDEwMCUgLSAxMnB4KTttYXJnaW4tdG9wOjEwcHg7Z3JpZC10ZW1wbGF0ZS1jb2x1bW5zOmF1dG8gYXV0byBhdXRvIG1pbm1heCgxMjBweCwxZnIpO2dhcDo2cHg7ZmxleDowIDAgYXV0b30uc2F0LXJlYWRvdXQsLnNhdC1jYWNoZXtkaXNwbGF5Om5vbmV9fQ=="
+          NEW_BLOCK_B64: "ICAgIEBtZWRpYShtYXgtd2lkdGg6ODgwcHgpewogICAgICA6cm9vdHstLXRvcDo4NHB4Oy0tc3ViOjQ2cHh9CiAgICAgIC50b3B7YWxpZ24taXRlbXM6ZmxleC1zdGFydDtmbGV4LXdyYXA6d3JhcDtnYXA6NXB4O3BhZGRpbmc6NXB4IDhweH0KICAgICAgLmJyYW5ke3dpZHRoOjEwMCU7Z2FwOjhweH0KICAgICAgLmxvZ297d2lkdGg6MzBweDtoZWlnaHQ6MzBweH0KICAgICAgLnRpdGxle2ZvbnQtc2l6ZTouOXJlbX0KICAgICAgLm1ldGF7ZGlzcGxheTpub25lfQogICAgICAudGFic3t3aWR0aDoxMDAlO2dhcDo1cHh9CiAgICAgIC50YWJ7ZmxleDoxIDEgMDttaW4td2lkdGg6MDttaW4taGVpZ2h0OjMycHg7cGFkZGluZzowIDhweDt0ZXh0LWFsaWduOmNlbnRlcn0KICAgICAgLnN0YXR1c3twb3NpdGlvbjphYnNvbHV0ZTtyaWdodDo5cHg7dG9wOjlweDtmb250LXNpemU6LjYxcmVtfQogICAgICAuc3Vie3BhZGRpbmc6NnB4IDhweH0KICAgICAgLnN1Yi1sZWZ0e3dpZHRoOjEwMCV9CiAgICAgIC5sYWJlbHtkaXNwbGF5Om5vbmV9CiAgICAgIC5jb250cm9sc3t3aWR0aDoxMDAlfQogICAgICAubm90ZXtkaXNwbGF5Om5vbmV9CiAgICAgIC5wcm9kdWN0LWNhcmR7bGVmdDo4cHh9CiAgICAgICNzYXRlbGxpdGVTdGFnZXtkaXNwbGF5OmJsb2NrO3BhZGRpbmc6MDtiYWNrZ3JvdW5kOiMwMjA2MGN9CiAgICAgICNzYXRlbGxpdGVTdGFnZTo6YmVmb3Jle2Rpc3BsYXk6bm9uZX0KICAgICAgI3NhdGVsbGl0ZVN0YWdlICNzYXRlbGxpdGVJbWFnZSwKICAgICAgI3NhdGVsbGl0ZVN0YWdlICNzYXRlbGxpdGVDYW52YXN7CiAgICAgICAgcG9zaXRpb246YWJzb2x1dGU7CiAgICAgICAgaW5zZXQ6MDsKICAgICAgICB6LWluZGV4OjE7CiAgICAgICAgd2lkdGg6MTAwJTsKICAgICAgICBoZWlnaHQ6MTAwJTsKICAgICAgICBtYXgtd2lkdGg6bm9uZTsKICAgICAgICBtYXgtaGVpZ2h0Om5vbmU7CiAgICAgICAgb2JqZWN0LWZpdDpjb3ZlcjsKICAgICAgICBvYmplY3QtcG9zaXRpb246Y2VudGVyIGNlbnRlcjsKICAgICAgICBib3gtc2hhZG93Om5vbmU7CiAgICAgIH0KICAgICAgI3NhdGVsbGl0ZVN0YWdlIC5wcm9kdWN0LWNhcmR7ZGlzcGxheTpub25lfQogICAgICAuc2F0ZWxsaXRlLWxvYWRpbmd7YmFja2dyb3VuZDpyZ2JhKDIsNiwxMiwuNzYpO2JhY2tkcm9wLWZpbHRlcjpibHVyKDhweCl9CiAgICAgIC5zYXQtcGxheWJhY2t7CiAgICAgICAgcG9zaXRpb246YWJzb2x1dGU7CiAgICAgICAgbGVmdDoxMnB4OwogICAgICAgIHJpZ2h0OjEycHg7CiAgICAgICAgYm90dG9tOm1heCgxMnB4LGVudihzYWZlLWFyZWEtaW5zZXQtYm90dG9tKSk7CiAgICAgICB6LWluZGV4OjEyOwogICAgICAgIHRyYW5zZm9ybTpub25lOwogICAgICAgIHdpZHRoOmF1dG87CiAgICAgICAgbWFyZ2luOjA7CiAgICAgICAgZGlzcGxheTpncmlkOwogICAgICAgIGdyaWQtdGVtcGxhdGUtY29sdW1uczphdXRvIG1pbm1heCgwLDFmcikgYXV0byBhdXRvOwogICAgICAgIGdyaWQtdGVtcGxhdGUtcm93czphdXRvIGF1dG87CiAgICAgICAgZ2FwOjdweCA4cHg7CiAgICAgICAgcGFkZGluZzoxMHB4OwogICAgICAgIGJvcmRlci1yYWRpdXM6MThweDsKICAgICAgICBiYWNrZ3JvdW5kOnJnYmEoNSwxMCwyMCwuODApOwogICAgICAgIGJvcmRlcjoxcHggc29saWQgcmdiYSgxNDgsMTYzLDE4NCwuMzQpOwogICAgICAgIGJveC1zaGFkb3c6MCAxNHB4IDM0cHggcmdiYSgwLDAsMCwuNDYpOwogICAgICAgIGJhY2tkcm9wLWZpbHRlcjpibHVyKDE2cHgpOwogICAgICB9CiAgICAgICNzYXRQcmV2e2dyaWQtY29sdW1uOjE7Z3JpZC1yb3c6MX0KICAgICAgI3NhdFBsYXl7Z3JpZC1jb2x1bW46MjtncmlkLXJvdzoxO21pbi13aWR0aDowfQogICAgICAjc2F0TmV4dHtHcmlkLWNvbHVtbjozO2dyaWQtcm93OjF9CiAgICAgICNzYXRTcGVlZHtncmlkLWNvbHVtbjo0O2dyaWQtcm93OjE7bWluLXdpZHRoOjc2cHh9CiAgICAgICNzYXRUaW1lbGluZXtncmlkLWNvbHVtbjoxLy0xO2dyaWQtcm93OjI7d2lkdGg6MTAwJTtoZWlnaHQ6MjRweH0KICAgICAgLnNhdC1yZWFkb3V0LC5zYXQtY2FjaGV7ZGlzcGxheTpub25lfQogICAgfQ=="
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import base64, os
 
           path = Path('weather-viewer.html')
           text = path.read_text(encoding='utf-8')
-
-          old = '''    @media(max-width:880px){:root{--top:96px;--sub:52px}.top{align-items:flex-start;flex-wrap:wrap;padding:7px 9px}.brand{width:100%}.logo{width:36px;height:36px}.meta{display:none}.tabs{width:100%}.tab{flex:1 0 auto;text-align:center}.status{position:absolute;right:10px;top:11px}.sub{padding-inline:9px}.note{display:none}.product-card{left:8px}#satelliteStage{flex-direction:column;align-items:center;justify-content:flex-start;padding:10px 6px 12px}#satelliteStage #satelliteImage,#satelliteStage #satelliteCanvas{max-height:calc(100% - 150px);flex:0 1 auto}#satelliteStage .product-card{display:none}.sat-playback{position:relative;left:auto;bottom:auto;transform:none;width:calc(100% - 12px);margin-top:10px;grid-template-columns:auto auto auto minmax(120px,1fr);gap:6px;flex:0 0 auto}.sat-readout,.sat-cache{display:none}}'''
-
-          new = '''    @media(max-width:880px){
-      :root{--top:84px;--sub:46px}
-      .top{align-items:flex-start;flex-wrap:wrap;gap:5px;padding:5px 8px}
-      .brand{width:100%;gap:8px}
-      .logo{width:30px;height:30px}
-      .title{font-size:.9rem}
-      .meta{display:none}
-      .tabs{width:100%;gap:5px}
-      .tab{flex:1 1 0;min-width:0;min-height:32px;padding:0 8px;text-align:center}
-      .status{position:absolute;right:9px;top:9px;font-size:.61rem}
-      .sub{padding:6px 8px}
-      .sub-left{width:100%}
-      .label{display:none}
-      .controls{width:100%}
-      .note{display:none}
-      .product-card{left:8px}
-      #satelliteStage{display:block;padding:0;background:#02060c}
-      #satelliteStage::before{display:none}
-      #satelliteStage #satelliteImage,
-      #satelliteStage #satelliteCanvas{
-        position:absolute;
-        inset:0;
-        z-index:1;
-        width:100%;
-        height:100%;
-        max-width:none;
-        max-height:none;
-        object-fit:cover;
-        object-position:center center;
-        box-shadow:none;
-      }
-      #satelliteStage .product-card{display:none}
-      .satellite-loading{background:rgba(2,6,12,.76);backdrop-filter:blur(8px)}
-      .sat-playback{
-        position:absolute;
-        left:12px;
-        right:12px;
-        bottom:max(12px,env(safe-area-inset-bottom));
-        z-index:12;
-        transform:none;
-        width:auto;
-        margin:0;
-        display:grid;
-        grid-template-columns:auto minmax(0,1fr) auto auto;
-        grid-template-rows:auto auto;
-        gap:7px 8px;
-        padding:10px;
-        border-radius:18px;
-        background:rgba(5,10,20,.80);
-        border:1px solid rgba(148,163,184,.34);
-        box-shadow:0 14px 34px rgba(0,0,0,.46);
-        backdrop-filter:blur(16px);
-      }
-      #satPrev{grid-column:1;grid-row:1}
-      #satPlay{grid-column:2;grid-row:1;min-width:0}
-      #satNext{grid-column:3;grid-row:1}
-      #satSpeed{grid-column:4;grid-row:1;min-width:76px}
-      #satTimeline{grid-column:1/-1;grid-row:2;width:100%;height:24px}
-      .sat-readout,.sat-cache{display:none}
-    }'''
+          old = base64.b64decode(os.environ['OLD_BLOCK_B64']).decode('utf-8')
+          new = base64.b64decode(os.environ['NEW_BLOCK_B64']).decode('utf-8')
 
           if text.count(old) != 1:
               raise SystemExit(f'Expected exactly one old mobile media block, found {text.count(old)}')
 
-          text = text.replace(old, new, 1)
-          path.write_text(text, encoding='utf-8')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
           PY
 
       - name: Verify patch
