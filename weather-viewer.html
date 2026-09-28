@@ -284,7 +284,7 @@
     const satPrev=document.getElementById("satPrev"),satPlay=document.getElementById("satPlay"),satNext=document.getElementById("satNext"),satTimeline=document.getElementById("satTimeline"),satFrameReadout=document.getElementById("satFrameReadout"),satSpeed=document.getElementById("satSpeed"),satCacheReadout=document.getElementById("satCacheReadout");
 
     let activeProduct="radar",radarMode="national",satPlatform="East",satProduct="TrueColor",satSector="global",weatherMap=null,mapReady=false,refreshTimer=0;
-    let satFrames=[],satFrameIndex=0,satTimer=0,satWarmGeneration=0,satLastWindowKey="",satRenderToken=0,satPixelProbeSupported=true,satContext=null;
+    let satFrames=[],satFrameIndex=0,satTimer=0,satWarmGeneration=0,satLastWindowKey="",satRenderToken=0,satPixelProbeSupported=true,satContext=null,satPlayGateToken=0,satPlayPreparing=false;
     let lightningFlashes=[],lightningDisplayedFlashes=[],lightningDisplayedKeys=new Set(),lightningLatestMs=0,lightningFetchPromise=null,lightningInitialFitDone=false;
     let lightningSeenLatestMs=0,lightningPulseFrame=0,lightningPulseToken=0,lightningPollTimer=0;
     let lightningPulseQueue=[],lightningPulseActive=[],lightningPulseNextReleaseAt=0,lightningPulseWakeTimer=0;
@@ -2757,6 +2757,11 @@
           ){
             satCacheReadout.textContent=
               `${loaded}/${satFrames.length} ready`;
+
+            if(satPlayPreparing){
+              satPlay.textContent=
+                `Loading ${loaded}/${satFrames.length}`;
+            }
           }
         }
       }
@@ -2768,8 +2773,92 @@
       ]);
     }
 
-    function stopSatellitePlayback(){if(satTimer){clearInterval(satTimer);satTimer=0;}satPlay.textContent="▶ Play";}
-    function startSatellitePlayback(){if(satTimer){stopSatellitePlayback();return;}if(satFrames.length<2)return;satPlay.textContent="❚❚ Pause";const tick=()=>{satFrameIndex=(satFrameIndex+1)%satFrames.length;renderSatellite(satFrameIndex,false);};satTimer=setInterval(tick,Number(satSpeed.value)||650);}
+    function countReadySatelliteFrames(){
+      return satFrames.reduce(
+        (count,frame)=>count+(satelliteFrameReady(frame)?1:0),
+        0
+      );
+    }
+
+    function stopSatellitePlayback(){
+      satPlayGateToken++;
+      satPlayPreparing=false;
+      satPlay.removeAttribute("aria-busy");
+      satTimeline.disabled=false;
+      if(satTimer){
+        clearInterval(satTimer);
+        satTimer=0;
+      }
+      satPlay.textContent="▶ Play";
+    }
+
+    async function startSatellitePlayback(){
+      if(satTimer){
+        stopSatellitePlayback();
+        return;
+      }
+
+      if(satPlayPreparing){
+        stopSatellitePlayback();
+        return;
+      }
+
+      if(satFrames.length<2||!satContext)return;
+
+      const requestToken=++satPlayGateToken;
+      const generation=satWarmGeneration;
+      const context=satContext;
+      const startIndex=satFrameIndex;
+
+      satPlayPreparing=true;
+      satPlay.setAttribute("aria-busy","true");
+      satTimeline.disabled=true;
+
+      let ready=countReadySatelliteFrames();
+      satCacheReadout.textContent=`${ready}/${satFrames.length} ready`;
+      satPlay.textContent=`Loading ${ready}/${satFrames.length}`;
+
+      if(ready<satFrames.length){
+        await warmSatelliteFrames(generation,context);
+      }
+
+      if(
+        requestToken!==satPlayGateToken||
+        generation!==satWarmGeneration||
+        context!==satContext||
+        activeProduct!=="satellite"
+      ){
+        return;
+      }
+
+      ready=countReadySatelliteFrames();
+      satCacheReadout.textContent=`${ready}/${satFrames.length} ready`;
+      satPlayPreparing=false;
+      satPlay.removeAttribute("aria-busy");
+      satTimeline.disabled=false;
+
+      if(ready<satFrames.length){
+        satPlay.textContent="▶ Retry";
+        viewerStatus.textContent=`GOES-${satPlatform} buffer incomplete`;
+        return;
+      }
+
+      // Keep the timeline parked while loading. Playback may advance only
+      // after every frame in the current satellite loop is decoded and ready.
+      satFrameIndex=Math.max(0,Math.min(satFrames.length-1,startIndex));
+      satTimeline.value=String(satFrameIndex);
+      satPlay.textContent="❚❚ Pause";
+
+      const tick=()=>{
+        satFrameIndex=(satFrameIndex+1)%satFrames.length;
+        renderSatellite(satFrameIndex,false);
+      };
+
+      satTimer=setInterval(
+        tick,
+        Number(satSpeed.value)||650
+      );
+    }
     async function resetSatelliteViewer(force=true){
       stopSatellitePlayback();
 
