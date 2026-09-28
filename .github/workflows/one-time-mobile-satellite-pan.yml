@@ -1,0 +1,162 @@
+name: Mobile satellite bounded pan
+
+on:
+  push:
+    paths:
+      - .github/workflows/one-time-mobile-satellite-pan.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Add bounded mobile satellite panning
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('weather-viewer.html')
+          text = path.read_text(encoding='utf-8')
+
+          old_css = '#satelliteStage{display:block;padding:0;background:#02060c}'
+          new_css = '#satelliteStage{display:block;padding:0;background:#02060c;touch-action:none;overscroll-behavior:none;cursor:grab}#satelliteStage.sat-panning{cursor:grabbing}'
+          if text.count(old_css) != 1:
+              raise SystemExit(f'Expected one mobile satellite stage CSS anchor, found {text.count(old_css)}')
+          text = text.replace(old_css, new_css, 1)
+
+          state_anchor = '    let lightningFlashes=[],lightningDisplayedFlashes=[],lightningDisplayedKeys=new Set(),lightningLatestMs=0,lightningFetchPromise=null,lightningInitialFitDone=false;'
+          pan_code = r'''
+
+    let satPanX=50,satPanY=50,satPanPointerId=null,satPanLastX=0,satPanLastY=0;
+
+    function mobileSatellitePanEnabled(){
+      return activeProduct==="satellite"&&window.matchMedia("(max-width: 880px)").matches;
+    }
+
+    function activeSatelliteMedia(){
+      return satelliteCanvas&&!satelliteCanvas.hidden?satelliteCanvas:satelliteImage;
+    }
+
+    function satelliteMediaIntrinsicSize(media){
+      if(media===satelliteCanvas){
+        return {width:Number(satelliteCanvas.width)||0,height:Number(satelliteCanvas.height)||0};
+      }
+      return {width:Number(satelliteImage.naturalWidth)||0,height:Number(satelliteImage.naturalHeight)||0};
+    }
+
+    function satellitePanBounds(){
+      const media=activeSatelliteMedia();
+      const size=satelliteMediaIntrinsicSize(media);
+      const rect=satelliteStage.getBoundingClientRect();
+      if(!size.width||!size.height||!rect.width||!rect.height){
+        return {overflowX:0,overflowY:0};
+      }
+      const scale=Math.max(rect.width/size.width,rect.height/size.height);
+      return {
+        overflowX:Math.max(0,size.width*scale-rect.width),
+        overflowY:Math.max(0,size.height*scale-rect.height)
+      };
+    }
+
+    function applySatellitePan(){
+      const position=`${satPanX}% ${satPanY}%`;
+      satelliteImage.style.objectPosition=position;
+      satelliteCanvas.style.objectPosition=position;
+    }
+
+    function resetSatellitePan(){
+      satPanX=50;
+      satPanY=50;
+      applySatellitePan();
+    }
+
+    function beginSatellitePan(event){
+      if(!mobileSatellitePanEnabled()||event.button>0||event.target.closest(".sat-playback"))return;
+      satPanPointerId=event.pointerId;
+      satPanLastX=event.clientX;
+      satPanLastY=event.clientY;
+      satelliteStage.classList.add("sat-panning");
+      satelliteStage.setPointerCapture?.(event.pointerId);
+      event.preventDefault();
+    }
+
+    function moveSatellitePan(event){
+      if(event.pointerId!==satPanPointerId)return;
+      const dx=event.clientX-satPanLastX;
+      const dy=event.clientY-satPanLastY;
+      satPanLastX=event.clientX;
+      satPanLastY=event.clientY;
+      const {overflowX,overflowY}=satellitePanBounds();
+      if(overflowX>0){
+        satPanX=Math.max(0,Math.min(100,satPanX-(dx/overflowX)*100));
+      }else{
+        satPanX=50;
+      }
+      if(overflowY>0){
+        satPanY=Math.max(0,Math.min(100,satPanY-(dy/overflowY)*100));
+      }else{
+        satPanY=50;
+      }
+      applySatellitePan();
+      event.preventDefault();
+    }
+
+    function endSatellitePan(event){
+      if(event.pointerId!==satPanPointerId)return;
+      satPanPointerId=null;
+      satelliteStage.classList.remove("sat-panning");
+      try{satelliteStage.releasePointerCapture?.(event.pointerId);}catch{}
+    }
+'''
+          if text.count(state_anchor) != 1:
+              raise SystemExit(f'Expected one satellite state anchor, found {text.count(state_anchor)}')
+          text = text.replace(state_anchor, state_anchor + pan_code, 1)
+
+          listener_anchor = '    satProductButtons.forEach(button=>button.addEventListener("click",()=>{satProduct=button.dataset.satProduct;activate(satProductButtons,item=>item===button);if(activeProduct==="satellite")resetSatelliteViewer();}));'
+          listener_code = r'''    satelliteStage.addEventListener("pointerdown",beginSatellitePan);
+    satelliteStage.addEventListener("pointermove",moveSatellitePan);
+    satelliteStage.addEventListener("pointerup",endSatellitePan);
+    satelliteStage.addEventListener("pointercancel",endSatellitePan);
+    satelliteStage.addEventListener("lostpointercapture",()=>{satPanPointerId=null;satelliteStage.classList.remove("sat-panning");});
+
+'''
+          if text.count(listener_anchor) != 1:
+              raise SystemExit(f'Expected one satellite listener anchor, found {text.count(listener_anchor)}')
+          text = text.replace(listener_anchor, listener_code + listener_anchor, 1)
+
+          platform_old = 'platformButtons.forEach(button=>button.addEventListener("click",()=>{satPlatform=button.dataset.satPlatform;activate(platformButtons,item=>item===button);populateSectorOptions();if(activeProduct==="satellite")resetSatelliteViewer();}));'
+          platform_new = 'platformButtons.forEach(button=>button.addEventListener("click",()=>{satPlatform=button.dataset.satPlatform;activate(platformButtons,item=>item===button);populateSectorOptions();resetSatellitePan();if(activeProduct==="satellite")resetSatelliteViewer();}));'
+          product_old = 'satProductButtons.forEach(button=>button.addEventListener("click",()=>{satProduct=button.dataset.satProduct;activate(satProductButtons,item=>item===button);if(activeProduct==="satellite")resetSatelliteViewer();}));'
+          product_new = 'satProductButtons.forEach(button=>button.addEventListener("click",()=>{satProduct=button.dataset.satProduct;activate(satProductButtons,item=>item===button);resetSatellitePan();if(activeProduct==="satellite")resetSatelliteViewer();}));'
+          sector_old = 'satSectorSelect.addEventListener("change",()=>{satSector=satSectorSelect.value;if(activeProduct==="satellite")resetSatelliteViewer();});'
+          sector_new = 'satSectorSelect.addEventListener("change",()=>{satSector=satSectorSelect.value;resetSatellitePan();if(activeProduct==="satellite")resetSatelliteViewer();});'
+          for old,new,label in [(platform_old,platform_new,'platform'),(product_old,product_new,'product'),(sector_old,sector_new,'sector')]:
+              if text.count(old) != 1:
+                  raise SystemExit(f'Expected one {label} listener, found {text.count(old)}')
+              text = text.replace(old,new,1)
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Verify patch
+        shell: bash
+        run: |
+          grep -F 'function satellitePanBounds()' weather-viewer.html
+          grep -F 'satelliteStage.addEventListener("pointerdown",beginSatellitePan);' weather-viewer.html
+          grep -F 'touch-action:none' weather-viewer.html
+          grep -F 'resetSatellitePan();if(activeProduct==="satellite")resetSatelliteViewer();' weather-viewer.html
+
+      - name: Commit change and remove one-time workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add weather-viewer.html
+          git rm .github/workflows/one-time-mobile-satellite-pan.yml
+          git commit -m "Add bounded pan to mobile satellite viewer"
+          git push
