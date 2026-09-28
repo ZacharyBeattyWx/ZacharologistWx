@@ -199,7 +199,7 @@
       .controls{width:100%}
       .note{display:none}
       .product-card{left:8px}
-      #satelliteStage{display:block;padding:0;background:#02060c}
+      #satelliteStage{display:block;padding:0;background:#02060c;touch-action:none;overscroll-behavior:none;cursor:grab}#satelliteStage.sat-panning{cursor:grabbing}
       #satelliteStage::before{display:none}
       #satelliteStage #satelliteImage,
       #satelliteStage #satelliteCanvas{
@@ -345,6 +345,88 @@
     let activeProduct="radar",radarMode="national",satPlatform="East",satProduct="TrueColor",satSector="global",weatherMap=null,mapReady=false,refreshTimer=0;
     let satFrames=[],satFrameIndex=0,satTimer=0,satWarmGeneration=0,satLastWindowKey="",satRenderToken=0,satPixelProbeSupported=true,satContext=null,satPlayGateToken=0,satPlayPreparing=false;
     let lightningFlashes=[],lightningDisplayedFlashes=[],lightningDisplayedKeys=new Set(),lightningLatestMs=0,lightningFetchPromise=null,lightningInitialFitDone=false;
+
+    let satPanX=50,satPanY=50,satPanPointerId=null,satPanLastX=0,satPanLastY=0;
+
+    function mobileSatellitePanEnabled(){
+      return activeProduct==="satellite"&&window.matchMedia("(max-width: 880px)").matches;
+    }
+
+    function activeSatelliteMedia(){
+      return satelliteCanvas&&!satelliteCanvas.hidden?satelliteCanvas:satelliteImage;
+    }
+
+    function satelliteMediaIntrinsicSize(media){
+      if(media===satelliteCanvas){
+        return {width:Number(satelliteCanvas.width)||0,height:Number(satelliteCanvas.height)||0};
+      }
+      return {width:Number(satelliteImage.naturalWidth)||0,height:Number(satelliteImage.naturalHeight)||0};
+    }
+
+    function satellitePanBounds(){
+      const media=activeSatelliteMedia();
+      const size=satelliteMediaIntrinsicSize(media);
+      const rect=satelliteStage.getBoundingClientRect();
+      if(!size.width||!size.height||!rect.width||!rect.height){
+        return {overflowX:0,overflowY:0};
+      }
+      const scale=Math.max(rect.width/size.width,rect.height/size.height);
+      return {
+        overflowX:Math.max(0,size.width*scale-rect.width),
+        overflowY:Math.max(0,size.height*scale-rect.height)
+      };
+    }
+
+    function applySatellitePan(){
+      const position=`${satPanX}% ${satPanY}%`;
+      satelliteImage.style.objectPosition=position;
+      satelliteCanvas.style.objectPosition=position;
+    }
+
+    function resetSatellitePan(){
+      satPanX=50;
+      satPanY=50;
+      applySatellitePan();
+    }
+
+    function beginSatellitePan(event){
+      if(!mobileSatellitePanEnabled()||event.button>0||event.target.closest(".sat-playback"))return;
+      satPanPointerId=event.pointerId;
+      satPanLastX=event.clientX;
+      satPanLastY=event.clientY;
+      satelliteStage.classList.add("sat-panning");
+      satelliteStage.setPointerCapture?.(event.pointerId);
+      event.preventDefault();
+    }
+
+    function moveSatellitePan(event){
+      if(event.pointerId!==satPanPointerId)return;
+      const dx=event.clientX-satPanLastX;
+      const dy=event.clientY-satPanLastY;
+      satPanLastX=event.clientX;
+      satPanLastY=event.clientY;
+      const {overflowX,overflowY}=satellitePanBounds();
+      if(overflowX>0){
+        satPanX=Math.max(0,Math.min(100,satPanX-(dx/overflowX)*100));
+      }else{
+        satPanX=50;
+      }
+      if(overflowY>0){
+        satPanY=Math.max(0,Math.min(100,satPanY-(dy/overflowY)*100));
+      }else{
+        satPanY=50;
+      }
+      applySatellitePan();
+      event.preventDefault();
+    }
+
+    function endSatellitePan(event){
+      if(event.pointerId!==satPanPointerId)return;
+      satPanPointerId=null;
+      satelliteStage.classList.remove("sat-panning");
+      try{satelliteStage.releasePointerCapture?.(event.pointerId);}catch{}
+    }
+
     let lightningSeenLatestMs=0,lightningPulseFrame=0,lightningPulseToken=0,lightningPollTimer=0;
     let lightningPulseQueue=[],lightningPulseActive=[],lightningPulseNextReleaseAt=0,lightningPulseWakeTimer=0;
     const satFrameImages=new Map(),satFramePromises=new Map(),satProbeResults=new Map();
@@ -3031,6 +3113,12 @@
     tabs.forEach(button=>button.addEventListener("click",()=>selectProduct(button.dataset.product)));
     radarButtons.forEach(button=>button.addEventListener("click",()=>loadRadar(button.dataset.radar)));
     platformButtons.forEach(button=>button.addEventListener("click",()=>{satPlatform=button.dataset.satPlatform;satSector="global";activate(platformButtons,item=>item===button);populateSatelliteSectors();if(activeProduct==="satellite")resetSatelliteViewer();}));
+    satelliteStage.addEventListener("pointerdown",beginSatellitePan);
+    satelliteStage.addEventListener("pointermove",moveSatellitePan);
+    satelliteStage.addEventListener("pointerup",endSatellitePan);
+    satelliteStage.addEventListener("pointercancel",endSatellitePan);
+    satelliteStage.addEventListener("lostpointercapture",()=>{satPanPointerId=null;satelliteStage.classList.remove("sat-panning");});
+
     satProductButtons.forEach(button=>button.addEventListener("click",()=>{satProduct=button.dataset.satProduct;activate(satProductButtons,item=>item===button);if(activeProduct==="satellite")resetSatelliteViewer();}));
     satSectorSelect.addEventListener("change",()=>{satSector=satSectorSelect.value;if(activeProduct==="satellite")resetSatelliteViewer();});
     satPrev.addEventListener("click",()=>{stopSatellitePlayback();renderSatellite((satFrameIndex-1+satFrames.length)%satFrames.length,false);});
