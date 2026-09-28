@@ -1,0 +1,111 @@
+name: Mobile satellite Zoom-style layout
+
+on:
+  push:
+    paths:
+      - .github/workflows/one-time-mobile-satellite-zoom-layout.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply mobile satellite layout
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('weather-viewer.html')
+          text = path.read_text(encoding='utf-8')
+
+          old = '''    @media(max-width:880px){:root{--top:96px;--sub:52px}.top{align-items:flex-start;flex-wrap:wrap;padding:7px 9px}.brand{width:100%}.logo{width:36px;height:36px}.meta{display:none}.tabs{width:100%}.tab{flex:1 0 auto;text-align:center}.status{position:absolute;right:10px;top:11px}.sub{padding-inline:9px}.note{display:none}.product-card{left:8px}#satelliteStage{flex-direction:column;align-items:center;justify-content:flex-start;padding:10px 6px 12px}#satelliteStage #satelliteImage,#satelliteStage #satelliteCanvas{max-height:calc(100% - 150px);flex:0 1 auto}#satelliteStage .product-card{display:none}.sat-playback{position:relative;left:auto;bottom:auto;transform:none;width:calc(100% - 12px);margin-top:10px;grid-template-columns:auto auto auto minmax(120px,1fr);gap:6px;flex:0 0 auto}.sat-readout,.sat-cache{display:none}}'''
+
+          new = '''    @media(max-width:880px){
+      :root{--top:84px;--sub:46px}
+      .top{align-items:flex-start;flex-wrap:wrap;gap:5px;padding:5px 8px}
+      .brand{width:100%;gap:8px}
+      .logo{width:30px;height:30px}
+      .title{font-size:.9rem}
+      .meta{display:none}
+      .tabs{width:100%;gap:5px}
+      .tab{flex:1 1 0;min-width:0;min-height:32px;padding:0 8px;text-align:center}
+      .status{position:absolute;right:9px;top:9px;font-size:.61rem}
+      .sub{padding:6px 8px}
+      .sub-left{width:100%}
+      .label{display:none}
+      .controls{width:100%}
+      .note{display:none}
+      .product-card{left:8px}
+      #satelliteStage{display:block;padding:0;background:#02060c}
+      #satelliteStage::before{display:none}
+      #satelliteStage #satelliteImage,
+      #satelliteStage #satelliteCanvas{
+        position:absolute;
+        inset:0;
+        z-index:1;
+        width:100%;
+        height:100%;
+        max-width:none;
+        max-height:none;
+        object-fit:cover;
+        object-position:center center;
+        box-shadow:none;
+      }
+      #satelliteStage .product-card{display:none}
+      .satellite-loading{background:rgba(2,6,12,.76);backdrop-filter:blur(8px)}
+      .sat-playback{
+        position:absolute;
+        left:12px;
+        right:12px;
+        bottom:max(12px,env(safe-area-inset-bottom));
+        z-index:12;
+        transform:none;
+        width:auto;
+        margin:0;
+        display:grid;
+        grid-template-columns:auto minmax(0,1fr) auto auto;
+        grid-template-rows:auto auto;
+        gap:7px 8px;
+        padding:10px;
+        border-radius:18px;
+        background:rgba(5,10,20,.80);
+        border:1px solid rgba(148,163,184,.34);
+        box-shadow:0 14px 34px rgba(0,0,0,.46);
+        backdrop-filter:blur(16px);
+      }
+      #satPrev{grid-column:1;grid-row:1}
+      #satPlay{grid-column:2;grid-row:1;min-width:0}
+      #satNext{grid-column:3;grid-row:1}
+      #satSpeed{grid-column:4;grid-row:1;min-width:76px}
+      #satTimeline{grid-column:1/-1;grid-row:2;width:100%;height:24px}
+      .sat-readout,.sat-cache{display:none}
+    }'''
+
+          if text.count(old) != 1:
+              raise SystemExit(f'Expected exactly one old mobile media block, found {text.count(old)}')
+
+          text = text.replace(old, new, 1)
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Verify patch
+        shell: bash
+        run: |
+          grep -F 'object-fit:cover;' weather-viewer.html
+          grep -F 'grid-template-rows:auto auto;' weather-viewer.html
+          grep -F '#satTimeline{grid-column:1/-1;grid-row:2;width:100%;height:24px}' weather-viewer.html
+
+      - name: Commit change and remove one-time workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add weather-viewer.html
+          git rm .github/workflows/one-time-mobile-satellite-zoom-layout.yml
+          git commit -m "Make mobile satellite viewer full screen"
+          git push
