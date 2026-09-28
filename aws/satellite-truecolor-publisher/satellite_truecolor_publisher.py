@@ -105,8 +105,9 @@ GLOBAL_PLATFORMS = {
         "sector": "GLOBAL",
         "cadence_minutes": 10,
         "max_render": MAX_RENDER_FULLDISK_PER_PLATFORM,
-        "render_version": 10,
+        "render_version": 11,
         "night_channel": "13",
+        "low_cloud_channel": "07",
 
         # Wider landscape North America / western Atlantic presentation
         # sourced from the actual ABI Full Disk scan.
@@ -126,8 +127,9 @@ GLOBAL_PLATFORMS = {
         "sector": "GLOBAL",
         "cadence_minutes": 10,
         "max_render": MAX_RENDER_FULLDISK_PER_PLATFORM,
-        "render_version": 10,
+        "render_version": 11,
         "night_channel": "13",
+        "low_cloud_channel": "07",
 
         # Pacific-centered broad North America presentation.
         "bbox": (-175.0, 5.0, -70.0, 65.0),
@@ -154,7 +156,7 @@ TARGET_S3 = boto3.client("s3")
 # minute so the three reflective channels from the same five-minute scan
 # are rendered together.
 SOURCE_RE = re.compile(
-    r"-M\dC(?P<channel>01|02|03|13)_G\d+_s(?P<scan>\d{11})"
+    r"-M\dC(?P<channel>01|02|03|07|13)_G\d+_s(?P<scan>\d{11})"
 )
 
 
@@ -252,6 +254,10 @@ def list_complete_scans(spec, now):
     night_channel = spec.get("night_channel")
     if night_channel:
         required_channels.append(str(night_channel))
+
+    low_cloud_channel = spec.get("low_cloud_channel")
+    if low_cloud_channel:
+        required_channels.append(str(low_cloud_channel))
 
     complete = [
         group
@@ -766,77 +772,55 @@ def daylight_fraction(rgb, finite):
 
 
 
-def night_ir_rgb(bt, finite):
-    valid = finite & np.isfinite(bt)
+def night_ir_rgb(
+    bt,
+    finite,
+    low_cloud_btd=None,
+):
+    valid = (
+        finite &
+        np.isfinite(bt)
+    )
 
     bt_safe = np.where(
         valid,
         bt,
-        300.0,
+        305.0,
     )
 
-    # Cloud brightness from C13 temperature.
+    # --------------------------------------------------------
+    # C13 thermal base.
     #
-    # Warm clear land/ocean remains very dark.
-    # Lower/warm clouds receive a muted blue treatment.
-    # Progressively colder/higher clouds become neutral white.
-    cloud = np.clip(
-        (292.0 - bt_safe) / 97.0,
+    # Keep clear land/ocean visible instead of crushing all
+    # warm pixels to black. Colder clouds progressively
+    # brighten toward white.
+    # --------------------------------------------------------
+
+    thermal = np.clip(
+        (305.0 - bt_safe) / 115.0,
         0.0,
         1.0,
     )
 
-    cloud = np.power(
-        cloud,
-        0.68,
-    )
-
-    base = (
-        0.025 +
-        cloud * 0.930
-    )
-
-    # Approximate the cool-blue appearance of lower clouds
-    # in nighttime GeoColor. C13 alone cannot perfectly
-    # separate every warm cloud from the surface, so the
-    # tint is intentionally restrained.
-    low_cloud = (
-        np.clip(
-            (bt_safe - 250.0) / 18.0,
-            0.0,
-            1.0,
-        )
-        *
-        np.clip(
-            (288.0 - bt_safe) / 13.0,
-            0.0,
-            1.0,
-        )
-        *
-        np.clip(
-            cloud * 2.4,
-            0.0,
-            1.0,
-        )
+    thermal = np.power(
+        thermal,
+        0.72,
     )
 
     red = np.clip(
-        base -
-        low_cloud * 0.120,
+        0.025 + thermal * 0.900,
         0.0,
         1.0,
     )
 
     green = np.clip(
-        base +
-        low_cloud * 0.035,
+        0.030 + thermal * 0.925,
         0.0,
         1.0,
     )
 
     blue = np.clip(
-        base +
-        low_cloud * 0.200,
+        0.040 + thermal * 0.945,
         0.0,
         1.0,
     )
@@ -846,22 +830,122 @@ def night_ir_rgb(bt, finite):
         axis=-1,
     )
 
-    # Very cold/high cloud tops transition back toward
-    # neutral white rather than becoming increasingly blue.
+    # --------------------------------------------------------
+    # C13-C07 nighttime low liquid-cloud discriminator.
+    #
+    # Positive brightness-temperature difference is used only
+    # as a tint mask. The underlying C13 thermal image remains
+    # intact, preserving land/ocean and IR cloud detail.
+    # --------------------------------------------------------
+
+    if low_cloud_btd is not None:
+
+        btd = np.where(
+            valid &
+            np.isfinite(low_cloud_btd),
+            low_cloud_btd,
+            0.0,
+        )
+
+        # Smoothly activate blue tint roughly from
+        # +1.5 K through +6 K.
+        low_cloud = np.clip(
+            (btd - 1.5) /
+            (6.0 - 1.5),
+            0.0,
+            1.0,
+        )
+
+        low_cloud = (
+            low_cloud *
+            low_cloud *
+            (
+                3.0 -
+                2.0 *
+                low_cloud
+            )
+        )
+
+        # Suppress enhancement on cold/high cloud tops.
+        warm_gate = np.clip(
+            (bt_safe - 242.0) /
+            16.0,
+            0.0,
+            1.0,
+        )
+
+        # Reduce false blue enhancement over extremely warm
+        # clear surfaces while still allowing warm low clouds.
+        hot_surface_gate = np.clip(
+            (297.0 - bt_safe) /
+            8.0,
+            0.0,
+            1.0,
+        )
+
+        low_cloud *= (
+            warm_gate *
+            hot_surface_gate
+        )
+
+        # Blue-tinted version of the SAME C13 luminance.
+        # This preserves cloud texture rather than replacing
+        # low clouds with a flat color.
+        blue_rgb = np.stack(
+            [
+                np.clip(
+                    red * 0.58,
+                    0.0,
+                    1.0,
+                ),
+                np.clip(
+                    green * 0.91 + 0.025,
+                    0.0,
+                    1.0,
+                ),
+                np.clip(
+                    blue * 1.28 + 0.070,
+                    0.0,
+                    1.0,
+                ),
+            ],
+            axis=-1,
+        )
+
+        mix = np.clip(
+            low_cloud * 0.88,
+            0.0,
+            0.88,
+        )[..., None]
+
+        rgb = (
+            rgb *
+            (
+                1.0 -
+                mix
+            )
+            +
+            blue_rgb *
+            mix
+        )
+
+    # Very cold high cloud tops should become neutral white,
+    # not blue.
     cold_white = np.clip(
-        (235.0 - bt_safe) / 35.0,
+        (235.0 - bt_safe) /
+        30.0,
         0.0,
         1.0,
-    )
+    )[..., None]
 
     rgb = (
         rgb *
         (
             1.0 -
-            cold_white[..., None]
+            cold_white
         )
         +
-        cold_white[..., None]
+        cold_white
     )
 
     rgb = np.clip(
@@ -1037,8 +1121,21 @@ def render_scan(spec, group):
         channels = ["01", "02", "03"]
 
         night_channel = spec.get("night_channel")
-        if night_channel:
-            channels.append(str(night_channel))
+        low_cloud_channel = spec.get(
+            "low_cloud_channel"
+        )
+
+        for channel in (
+            night_channel,
+            low_cloud_channel,
+        ):
+            if (
+                channel and
+                str(channel) not in channels
+            ):
+                channels.append(
+                    str(channel)
+                )
 
         for channel in channels:
             path = download_source(
@@ -1119,9 +1216,38 @@ def render_scan(spec, group):
                 gy,
             )
 
+            low_cloud_btd = None
+
+            if low_cloud_channel:
+                low_cloud_ir = (
+                    read_brightness_temperature(
+                        paths[
+                            str(
+                                low_cloud_channel
+                            )
+                        ],
+                        gx,
+                        gy,
+                        stride=1,
+                    )
+                )
+
+                low_cloud_bt = sample_grid(
+                    low_cloud_ir,
+                    gx,
+                    gy,
+                )
+
+                low_cloud_btd = (
+                    bt_out -
+                    low_cloud_bt
+                )
+
             night_rgb, night_finite = night_ir_rgb(
                 bt_out,
                 np.isfinite(bt_out),
+                low_cloud_btd=
+                    low_cloud_btd,
             )
 
             alpha = solar_daylight_alpha(
@@ -1285,7 +1411,9 @@ def publish_manifest(spec, existing, frames, checked_scans, now):
         "sourceProduct": (
             f"{spec['source_product']} "
             + (
-                "C01+C02+C03+C13"
+                "C01+C02+C03+C07+C13"
+                if spec.get("low_cloud_channel")
+                else "C01+C02+C03+C13"
                 if spec.get("night_channel")
                 else "C01+C02+C03"
             )
@@ -1302,6 +1430,11 @@ def publish_manifest(spec, existing, frames, checked_scans, now):
         "nightChannel": (
             f"C{spec['night_channel']}"
             if spec.get("night_channel")
+            else None
+        ),
+        "lowCloudChannel": (
+            f"C{spec['low_cloud_channel']}"
+            if spec.get("low_cloud_channel")
             else None
         ),
         "bbox": list(spec["bbox"]),
@@ -1330,8 +1463,15 @@ def publish_manifest(spec, existing, frames, checked_scans, now):
                 else None
             ),
             "nightPalette": (
-                "GeoColor-style cool C13"
+                "C13 thermal base with C13-C07 blue low-cloud enhancement"
+                if spec.get("low_cloud_channel")
+                else "C13 thermal base"
                 if spec.get("night_channel")
+                else None
+            ),
+            "lowCloudDetection": (
+                "C13-C07 brightness-temperature difference"
+                if spec.get("low_cloud_channel")
                 else None
             ),
         },
