@@ -25,14 +25,27 @@
         }
 
         .forecast-dashboard .homepage-radar-live-link {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          min-height: 32px;
-          padding: 0 10px;
-          border: 1px solid rgba(56, 189, 248, 0.34);
-          border-radius: 999px;
-          background: rgba(56, 189, 248, 0.08);
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          min-height: 34px !important;
+          padding: 0 12px !important;
+          border: 1px solid rgba(56, 189, 248, 0.72) !important;
+          border-radius: 999px !important;
+          background: rgba(18, 112, 165, 0.24) !important;
+          color: #dff6ff !important;
+          box-shadow: 0 0 18px rgba(56, 189, 248, 0.18) !important;
+          font-size: 0.67rem !important;
+          font-weight: 950 !important;
+          letter-spacing: 0.11em !important;
+          line-height: 1 !important;
+          text-transform: uppercase !important;
+          opacity: 1 !important;
+        }
+
+        .forecast-dashboard .homepage-radar-live-link:active {
+          background: rgba(56, 189, 248, 0.34) !important;
+          transform: translateY(1px);
         }
       }
 
@@ -69,18 +82,20 @@
 
   const routeHomepageRadarLiveView = () => {
     document.querySelectorAll(".forecast-dashboard .radar-card .card-time").forEach((badge) => {
-      if (badge.textContent.trim().toLowerCase() !== "live view") return;
+      const label = badge.textContent.trim().toLowerCase();
+      if (label !== "live view" && label !== "open viewer") return;
 
       if (badge.tagName === "A") {
         badge.setAttribute("href", "weather-viewer.html");
         badge.classList.add("homepage-radar-live-link");
+        badge.textContent = "Open Viewer";
         badge.setAttribute("aria-label", "Open radar, satellite, and lightning viewer");
         return;
       }
 
       const link = document.createElement("a");
       link.className = `${badge.className} homepage-radar-live-link`;
-      link.textContent = badge.textContent;
+      link.textContent = "Open Viewer";
       link.href = "weather-viewer.html";
       link.setAttribute("aria-label", "Open radar, satellite, and lightning viewer");
       badge.replaceWith(link);
