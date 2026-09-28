@@ -23,6 +23,17 @@
           max-height: 560px !important;
           margin: 10px 0 0 !important;
         }
+
+        .forecast-dashboard .homepage-radar-live-link {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 32px;
+          padding: 0 10px;
+          border: 1px solid rgba(56, 189, 248, 0.34);
+          border-radius: 999px;
+          background: rgba(56, 189, 248, 0.08);
+        }
       }
 
       @media (max-width: 768px) and (orientation: landscape) {
@@ -31,6 +42,12 @@
           min-height: 300px !important;
           max-height: 440px !important;
         }
+      }
+
+      .forecast-dashboard .homepage-radar-live-link {
+        color: inherit;
+        text-decoration: none;
+        cursor: pointer;
       }
     `;
     document.head.appendChild(style);
@@ -50,9 +67,30 @@
     });
   };
 
+  const routeHomepageRadarLiveView = () => {
+    document.querySelectorAll(".forecast-dashboard .radar-card .card-time").forEach((badge) => {
+      if (badge.textContent.trim().toLowerCase() !== "live view") return;
+
+      if (badge.tagName === "A") {
+        badge.setAttribute("href", "weather-viewer.html");
+        badge.classList.add("homepage-radar-live-link");
+        badge.setAttribute("aria-label", "Open radar, satellite, and lightning viewer");
+        return;
+      }
+
+      const link = document.createElement("a");
+      link.className = `${badge.className} homepage-radar-live-link`;
+      link.textContent = badge.textContent;
+      link.href = "weather-viewer.html";
+      link.setAttribute("aria-label", "Open radar, satellite, and lightning viewer");
+      badge.replaceWith(link);
+    });
+  };
+
   const prepareHomepageRadarUi = () => {
     renameHomepageRadarLabels();
     routeHomepageRadarLinks();
+    routeHomepageRadarLiveView();
   };
 
   if (document.readyState === "loading") {
