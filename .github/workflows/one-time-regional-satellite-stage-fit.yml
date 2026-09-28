@@ -1,0 +1,282 @@
+name: Regional satellite stage fit
+
+on:
+  push:
+    paths:
+      - .github/workflows/one-time-regional-satellite-stage-fit.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fit regional satellite sectors to desktop stage
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('weather-viewer.html')
+          text = path.read_text(encoding='utf-8')
+
+          mercator_line = '    function mercator(lon,lat){const R=6378137,rad=Math.PI/180,clamped=Math.max(-85.05112878,Math.min(85.05112878,lat));return [R*lon*rad,R*Math.log(Math.tan(Math.PI/4+clamped*rad/2))];}\n'
+          helper = r'''    function fitSatelliteBboxToStage(projectedBbox,sector){
+      if(
+        sector?.id==="global"||
+        !window.matchMedia("(min-width: 881px)").matches
+      ){
+        return projectedBbox.slice();
+      }
+
+      let [minX,minY,maxX,maxY]=
+        projectedBbox.map(Number);
+
+      const spanX=maxX-minX;
+      const spanY=maxY-minY;
+
+      if(!(spanX>0&&spanY>0)){
+        return projectedBbox.slice();
+      }
+
+      const stageWidth=Math.max(
+        1,
+        (satelliteStage.clientWidth||1400)-8
+      );
+      const stageHeight=Math.max(
+        1,
+        (satelliteStage.clientHeight||820)-8
+      );
+      const targetRatio=stageWidth/stageHeight;
+      const centerX=(minX+maxX)/2;
+      const centerY=(minY+maxY)/2;
+      const currentRatio=spanX/spanY;
+
+      if(currentRatio<targetRatio){
+        const halfWidth=
+          (spanY*targetRatio)/2;
+        minX=centerX-halfWidth;
+        maxX=centerX+halfWidth;
+      }else if(currentRatio>targetRatio){
+        const halfHeight=
+          (spanX/targetRatio)/2;
+        minY=centerY-halfHeight;
+        maxY=centerY+halfHeight;
+      }
+
+      const worldLimit=20037508.342789244;
+
+      if(minX<-worldLimit){
+        maxX+=(-worldLimit-minX);
+        minX=-worldLimit;
+      }
+      if(maxX>worldLimit){
+        minX-=(maxX-worldLimit);
+        maxX=worldLimit;
+      }
+      if(minY<-worldLimit){
+        maxY+=(-worldLimit-minY);
+        minY=-worldLimit;
+      }
+      if(maxY>worldLimit){
+        minY-=(maxY-worldLimit);
+        maxY=worldLimit;
+      }
+
+      return [minX,minY,maxX,maxY];
+    }
+'''
+
+          if text.count(mercator_line) != 1:
+            raise SystemExit(f'Expected one mercator helper, found {text.count(mercator_line)}')
+          text = text.replace(mercator_line, mercator_line + helper, 1)
+
+          old_context = '''      const product=satProductSpec(),sector=currentSectorSpec(),[west,south,east,north]=sector.bbox;
+      const [minX,minY]=mercator(west,south),[maxX,maxY]=mercator(east,north);
+      const ratio=Math.max(.45,Math.min(3.2,(maxX-minX)/(maxY-minY)));
+'''
+          new_context = '''      const product=satProductSpec(),sector=currentSectorSpec(),[west,south,east,north]=sector.bbox;
+      const [rawMinX,rawMinY]=mercator(west,south),[rawMaxX,rawMaxY]=mercator(east,north);
+      const [minX,minY,maxX,maxY]=fitSatelliteBboxToStage(
+        [rawMinX,rawMinY,rawMaxX,rawMaxY],
+        sector
+      );
+      const ratio=Math.max(.45,Math.min(3.2,(maxX-minX)/(maxY-minY)));
+'''
+          if text.count(old_context) != 1:
+            raise SystemExit(f'Expected one satellite context geometry block, found {text.count(old_context)}')
+          text = text.replace(old_context, new_context, 1)
+
+          old_draw = '''    function drawPreparedSatellite(img,context){
+      const source=context.sourceBbox;
+      const target=context.sector.bbox;
+
+      if(!source||!target)return false;
+
+      const [sw,ss,se,sn]=source;
+      const [tw,ts,te,tn]=target;
+
+      const [sourceMinX,sourceMinY]=mercator(sw,ss);
+      const [sourceMaxX,sourceMaxY]=mercator(se,sn);
+      const [targetMinX,targetMinY]=mercator(tw,ts);
+      const [targetMaxX,targetMaxY]=mercator(te,tn);
+
+      const spanX=sourceMaxX-sourceMinX;
+      const spanY=sourceMaxY-sourceMinY;
+
+      if(!(spanX>0&&spanY>0))return false;
+'''
+          new_draw = '''    function drawPreparedSatellite(img,context){
+      const source=context.sourceBbox;
+      const target=context.bbox;
+
+      if(!source||!target)return false;
+
+      const [sw,ss,se,sn]=source;
+      const [sourceMinX,sourceMinY]=mercator(sw,ss);
+      const [sourceMaxX,sourceMaxY]=mercator(se,sn);
+
+      let [
+        targetMinX,
+        targetMinY,
+        targetMaxX,
+        targetMaxY
+      ]=target.map(Number);
+
+      const spanX=sourceMaxX-sourceMinX;
+      const spanY=sourceMaxY-sourceMinY;
+
+      if(!(spanX>0&&spanY>0))return false;
+
+      const desiredRatio=Math.max(
+        .45,
+        Math.min(
+          3.2,
+          Number(context.ratio)||
+          (
+            (targetMaxX-targetMinX)/
+            (targetMaxY-targetMinY)
+          )
+        )
+      );
+
+      let targetWidth=targetMaxX-targetMinX;
+      let targetHeight=targetMaxY-targetMinY;
+
+      if(!(targetWidth>0&&targetHeight>0))return false;
+
+      if(targetWidth>spanX){
+        targetMinX=sourceMinX;
+        targetMaxX=sourceMaxX;
+      }else{
+        if(targetMinX<sourceMinX){
+          const shift=sourceMinX-targetMinX;
+          targetMinX+=shift;
+          targetMaxX+=shift;
+        }
+        if(targetMaxX>sourceMaxX){
+          const shift=targetMaxX-sourceMaxX;
+          targetMinX-=shift;
+          targetMaxX-=shift;
+        }
+      }
+
+      if(targetHeight>spanY){
+        targetMinY=sourceMinY;
+        targetMaxY=sourceMaxY;
+      }else{
+        if(targetMinY<sourceMinY){
+          const shift=sourceMinY-targetMinY;
+          targetMinY+=shift;
+          targetMaxY+=shift;
+        }
+        if(targetMaxY>sourceMaxY){
+          const shift=targetMaxY-sourceMaxY;
+          targetMinY-=shift;
+          targetMaxY-=shift;
+        }
+      }
+
+      targetWidth=targetMaxX-targetMinX;
+      targetHeight=targetMaxY-targetMinY;
+
+      const constrainedRatio=
+        targetWidth/targetHeight;
+
+      if(constrainedRatio<desiredRatio){
+        const newHeight=
+          targetWidth/desiredRatio;
+        const centerY=
+          (targetMinY+targetMaxY)/2;
+        targetMinY=centerY-newHeight/2;
+        targetMaxY=centerY+newHeight/2;
+
+        if(targetMinY<sourceMinY){
+          const shift=sourceMinY-targetMinY;
+          targetMinY+=shift;
+          targetMaxY+=shift;
+        }
+        if(targetMaxY>sourceMaxY){
+          const shift=targetMaxY-sourceMaxY;
+          targetMinY-=shift;
+          targetMaxY-=shift;
+        }
+      }else if(constrainedRatio>desiredRatio){
+        const newWidth=
+          targetHeight*desiredRatio;
+        const centerX=
+          (targetMinX+targetMaxX)/2;
+        targetMinX=centerX-newWidth/2;
+        targetMaxX=centerX+newWidth/2;
+
+        if(targetMinX<sourceMinX){
+          const shift=sourceMinX-targetMinX;
+          targetMinX+=shift;
+          targetMaxX+=shift;
+        }
+        if(targetMaxX>sourceMaxX){
+          const shift=targetMaxX-sourceMaxX;
+          targetMinX-=shift;
+          targetMaxX-=shift;
+        }
+      }
+'''
+          if text.count(old_draw) != 1:
+            raise SystemExit(f'Expected one prepared satellite crop block, found {text.count(old_draw)}')
+          text = text.replace(old_draw, new_draw, 1)
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Validate viewer
+        shell: bash
+        run: |
+          git diff --check
+          python3 - <<'PY'
+          from pathlib import Path
+          s = Path('weather-viewer.html').read_text(encoding='utf-8')
+          start = s.rfind('<script>')
+          end = s.rfind('</script>')
+          if start < 0 or end < 0 or end <= start:
+            raise SystemExit('Could not locate final inline script')
+          Path('/tmp/weather-viewer-inline.js').write_text(
+              s[start + len('<script>'):end],
+              encoding='utf-8'
+          )
+          PY
+          node --check /tmp/weather-viewer-inline.js
+          grep -n -F 'function fitSatelliteBboxToStage' weather-viewer.html
+          grep -n -F 'const target=context.bbox;' weather-viewer.html
+
+      - name: Commit regional stage fit and remove one-time workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add weather-viewer.html
+          git rm .github/workflows/one-time-regional-satellite-stage-fit.yml
+          git commit -m "Fit regional satellite sectors to desktop stage"
+          git push origin HEAD:main
