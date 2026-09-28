@@ -23,7 +23,6 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import base64, os
-
           path = Path('weather-viewer.html')
           text = path.read_text(encoding='utf-8')
           pan_code = base64.b64decode(os.environ['PAN_CODE_B64']).decode('utf-8')
@@ -45,16 +44,6 @@ jobs:
               raise SystemExit(f'Expected one satellite listener anchor, found {text.count(listener_anchor)}')
           text = text.replace(listener_anchor, listener_code + listener_anchor, 1)
 
-          replacements = [
-              ('platformButtons.forEach(button=>button.addEventListener("click",()=>{satPlatform=button.dataset.satPlatform;activate(platformButtons,item=>item===button);populateSectorOptions();if(activeProduct==="satellite")resetSatelliteViewer();}));', 'platformButtons.forEach(button=>button.addEventListener("click",()=>{satPlatform=button.dataset.satPlatform;activate(platformButtons,item=>item===button);populateSectorOptions();resetSatellitePan();if(activeProduct==="satellite")resetSatelliteViewer();}));', 'platform'),
-              ('satProductButtons.forEach(button=>button.addEventListener("click",()=>{satProduct=button.dataset.satProduct;activate(satProductButtons,item=>item===button);if(activeProduct==="satellite")resetSatelliteViewer();}));', 'satProductButtons.forEach(button=>button.addEventListener("click",()=>{satProduct=button.dataset.satProduct;activate(satProductButtons,item=>item===button);resetSatellitePan();if(activeProduct==="satellite")resetSatelliteViewer();}));', 'product'),
-              ('satSectorSelect.addEventListener("change",()=>{satSector=satSectorSelect.value;if(activeProduct==="satellite")resetSatelliteViewer();});', 'satSectorSelect.addEventListener("change",()=>{satSector=satSectorSelect.value;resetSatellitePan();if(activeProduct==="satellite")resetSatelliteViewer();});', 'sector')
-          ]
-          for old,new,label in replacements:
-              if text.count(old) != 1:
-                  raise SystemExit(f'Expected one {label} listener, found {text.count(old)}')
-              text = text.replace(old,new,1)
-
           path.write_text(text, encoding='utf-8')
           PY
 
@@ -64,7 +53,6 @@ jobs:
           grep -F 'function satellitePanBounds()' weather-viewer.html
           grep -F 'satelliteStage.addEventListener("pointerdown",beginSatellitePan);' weather-viewer.html
           grep -F 'touch-action:none' weather-viewer.html
-          grep -F 'resetSatellitePan();if(activeProduct==="satellite")resetSatelliteViewer();' weather-viewer.html
 
       - name: Commit change and remove one-time workflow
         shell: bash
