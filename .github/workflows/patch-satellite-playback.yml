@@ -1,0 +1,176 @@
+name: Patch satellite playback preload gate
+
+on:
+  push:
+    paths:
+      - .github/workflows/patch-satellite-playback.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Gate satellite playback behind full preload
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("weather-viewer.html")
+          text = path.read_text(encoding="utf-8")
+
+          old_state = '    let satFrames=[],satFrameIndex=0,satTimer=0,satWarmGeneration=0,satLastWindowKey="",satRenderToken=0,satPixelProbeSupported=true,satContext=null;'
+          new_state = '    let satFrames=[],satFrameIndex=0,satTimer=0,satWarmGeneration=0,satLastWindowKey="",satRenderToken=0,satPixelProbeSupported=true,satContext=null,satPlayGateToken=0,satPlayPreparing=false;'
+
+          old_functions = '''    function stopSatellitePlayback(){if(satTimer){clearInterval(satTimer);satTimer=0;}satPlay.textContent="▶ Play";}
+    function startSatellitePlayback(){if(satTimer){stopSatellitePlayback();return;}if(satFrames.length<2)return;satPlay.textContent="❚❚ Pause";const tick=()=>{satFrameIndex=(satFrameIndex+1)%satFrames.length;renderSatellite(satFrameIndex,false);};satTimer=setInterval(tick,Number(satSpeed.value)||650);}'''
+
+          new_functions = '''    function countReadySatelliteFrames(){
+      return satFrames.reduce(
+        (count,frame)=>count+(satelliteFrameReady(frame)?1:0),
+        0
+      );
+    }
+
+    function stopSatellitePlayback(){
+      satPlayGateToken++;
+      satPlayPreparing=false;
+      satPlay.removeAttribute("aria-busy");
+      satTimeline.disabled=false;
+      if(satTimer){
+        clearInterval(satTimer);
+        satTimer=0;
+      }
+      satPlay.textContent="▶ Play";
+    }
+
+    async function startSatellitePlayback(){
+      if(satTimer){
+        stopSatellitePlayback();
+        return;
+      }
+
+      if(satPlayPreparing){
+        stopSatellitePlayback();
+        return;
+      }
+
+      if(satFrames.length<2||!satContext)return;
+
+      const requestToken=++satPlayGateToken;
+      const generation=satWarmGeneration;
+      const context=satContext;
+      const startIndex=satFrameIndex;
+
+      satPlayPreparing=true;
+      satPlay.setAttribute("aria-busy","true");
+      satTimeline.disabled=true;
+
+      let ready=countReadySatelliteFrames();
+      satCacheReadout.textContent=`${ready}/${satFrames.length} ready`;
+      satPlay.textContent=`Loading ${ready}/${satFrames.length}`;
+
+      if(ready<satFrames.length){
+        await warmSatelliteFrames(generation,context);
+      }
+
+      if(
+        requestToken!==satPlayGateToken||
+        generation!==satWarmGeneration||
+        context!==satContext||
+        activeProduct!=="satellite"
+      ){
+        return;
+      }
+
+      ready=countReadySatelliteFrames();
+      satCacheReadout.textContent=`${ready}/${satFrames.length} ready`;
+      satPlayPreparing=false;
+      satPlay.removeAttribute("aria-busy");
+      satTimeline.disabled=false;
+
+      if(ready<satFrames.length){
+        satPlay.textContent="▶ Retry";
+        viewerStatus.textContent=`GOES-${satPlatform} buffer incomplete`;
+        return;
+      }
+
+      // Keep the timeline parked while loading. Playback may advance only
+      // after every frame in the current satellite loop is decoded and ready.
+      satFrameIndex=Math.max(0,Math.min(satFrames.length-1,startIndex));
+      satTimeline.value=String(satFrameIndex);
+      satPlay.textContent="❚❚ Pause";
+
+      const tick=()=>{
+        satFrameIndex=(satFrameIndex+1)%satFrames.length;
+        renderSatellite(satFrameIndex,false);
+      };
+
+      satTimer=setInterval(
+        tick,
+        Number(satSpeed.value)||650
+      );
+    }'''
+
+          old_progress = '''          if(
+            generation===
+            satWarmGeneration
+          ){
+            satCacheReadout.textContent=
+              `${loaded}/${satFrames.length} ready`;
+          }'''
+
+          new_progress = '''          if(
+            generation===
+            satWarmGeneration
+          ){
+            satCacheReadout.textContent=
+              `${loaded}/${satFrames.length} ready`;
+
+            if(satPlayPreparing){
+              satPlay.textContent=
+                `Loading ${loaded}/${satFrames.length}`;
+            }
+          }'''
+
+          replacements = [
+              (old_state, new_state, "satellite state"),
+              (old_functions, new_functions, "playback functions"),
+              (old_progress, new_progress, "preload progress"),
+          ]
+
+          for old, new, label in replacements:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"Expected exactly one {label} match, found {count}")
+              text = text.replace(old, new, 1)
+
+          path.write_text(text, encoding="utf-8")
+          PY
+
+      - name: Validate embedded viewer JavaScript
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          text = Path("weather-viewer.html").read_text(encoding="utf-8")
+          js = text.rsplit("<script>", 1)[1].split("</script>", 1)[0]
+          Path("/tmp/weather-viewer.js").write_text(js, encoding="utf-8")
+          PY
+          node --check /tmp/weather-viewer.js
+          grep -F 'Loading ${ready}/${satFrames.length}' weather-viewer.html
+          grep -F 'await warmSatelliteFrames(generation,context);' weather-viewer.html
+
+      - name: Commit patched viewer and remove one-time workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add weather-viewer.html
+          git rm .github/workflows/patch-satellite-playback.yml
+          git commit -m "Preload satellite loop before playback"
+          git push
