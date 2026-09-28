@@ -105,7 +105,7 @@ GLOBAL_PLATFORMS = {
         "sector": "GLOBAL",
         "cadence_minutes": 10,
         "max_render": MAX_RENDER_FULLDISK_PER_PLATFORM,
-        "render_version": 9,
+        "render_version": 10,
         "night_channel": "13",
 
         # Wider landscape North America / western Atlantic presentation
@@ -126,7 +126,7 @@ GLOBAL_PLATFORMS = {
         "sector": "GLOBAL",
         "cadence_minutes": 10,
         "max_render": MAX_RENDER_FULLDISK_PER_PLATFORM,
-        "render_version": 9,
+        "render_version": 10,
         "night_channel": "13",
 
         # Pacific-centered broad North America presentation.
@@ -772,38 +772,71 @@ def night_ir_rgb(bt, finite):
     bt_safe = np.where(
         valid,
         bt,
-        298.0,
+        300.0,
     )
 
-    # Neutral COD-style nighttime IR:
-    # warm land/ocean remains dark charcoal while colder
-    # cloud tops brighten strongly toward neutral white.
+    # Cloud brightness from C13 temperature.
+    #
+    # Warm clear land/ocean remains very dark.
+    # Lower/warm clouds receive a muted blue treatment.
+    # Progressively colder/higher clouds become neutral white.
     cloud = np.clip(
-        (298.0 - bt_safe) / 103.0,
+        (292.0 - bt_safe) / 97.0,
         0.0,
         1.0,
     )
 
-    # Lift mid-level clouds without washing out warm surfaces.
     cloud = np.power(
         cloud,
-        0.72,
+        0.68,
+    )
+
+    base = (
+        0.025 +
+        cloud * 0.930
+    )
+
+    # Approximate the cool-blue appearance of lower clouds
+    # in nighttime GeoColor. C13 alone cannot perfectly
+    # separate every warm cloud from the surface, so the
+    # tint is intentionally restrained.
+    low_cloud = (
+        np.clip(
+            (bt_safe - 250.0) / 18.0,
+            0.0,
+            1.0,
+        )
+        *
+        np.clip(
+            (288.0 - bt_safe) / 13.0,
+            0.0,
+            1.0,
+        )
+        *
+        np.clip(
+            cloud * 2.4,
+            0.0,
+            1.0,
+        )
     )
 
     red = np.clip(
-        0.040 + cloud * 0.900,
+        base -
+        low_cloud * 0.120,
         0.0,
         1.0,
     )
 
     green = np.clip(
-        0.045 + cloud * 0.930,
+        base +
+        low_cloud * 0.035,
         0.0,
         1.0,
     )
 
     blue = np.clip(
-        0.055 + cloud * 0.950,
+        base +
+        low_cloud * 0.200,
         0.0,
         1.0,
     )
@@ -811,6 +844,30 @@ def night_ir_rgb(bt, finite):
     rgb = np.stack(
         [red, green, blue],
         axis=-1,
+    )
+
+    # Very cold/high cloud tops transition back toward
+    # neutral white rather than becoming increasingly blue.
+    cold_white = np.clip(
+        (235.0 - bt_safe) / 35.0,
+        0.0,
+        1.0,
+    )
+
+    rgb = (
+        rgb *
+        (
+            1.0 -
+            cold_white[..., None]
+        )
+        +
+        cold_white[..., None]
+    )
+
+    rgb = np.clip(
+        rgb,
+        0.0,
+        1.0,
     )
 
     rgb[~valid] = 0.0
@@ -823,7 +880,8 @@ def solar_daylight_alpha(
     bbox,
     width,
     height,
-    feather_degrees=0.08,
+    night_full_degrees=-1.0,
+    day_full_degrees=3.0,
 ):
     west, south, east, north = bbox
 
@@ -885,7 +943,9 @@ def solar_daylight_alpha(
         )
     )
 
-    lat_rad = np.radians(lats)
+    lat_rad = np.radians(
+        lats
+    )
 
     sin_elevation = (
         np.sin(lat_rad)[:, None] *
@@ -896,26 +956,38 @@ def solar_daylight_alpha(
         np.cos(hour_angle)[None, :]
     )
 
-    feather = math.sin(
+    night_full = math.sin(
         math.radians(
-            feather_degrees
+            night_full_degrees
         )
     )
 
+    day_full = math.sin(
+        math.radians(
+            day_full_degrees
+        )
+    )
+
+    if day_full <= night_full:
+        raise ValueError(
+            "day_full_degrees must exceed night_full_degrees"
+        )
+
     alpha = np.clip(
         (
-            sin_elevation +
-            feather
+            sin_elevation -
+            night_full
         ) /
         (
-            2.0 *
-            feather
+            day_full -
+            night_full
         ),
         0.0,
         1.0,
     )
 
-    # Smoothstep only inside the tiny anti-aliasing band.
+    # Smooth twilight crossover without blurring
+    # either source image.
     alpha = (
         alpha *
         alpha *
@@ -930,7 +1002,6 @@ def solar_daylight_alpha(
         np.float32,
         copy=False,
     )
-
 
 
 def encode_webp(rgb, finite):
@@ -1250,8 +1321,16 @@ def publish_manifest(spec, existing, frames, checked_scans, now):
                 if spec.get("night_channel")
                 else None
             ),
-            "terminatorFeatherDegrees": (
-                0.08
+            "terminatorBlendDegrees": (
+                {
+                    "nightFull": -1.0,
+                    "dayFull": 3.0,
+                }
+                if spec.get("night_channel")
+                else None
+            ),
+            "nightPalette": (
+                "GeoColor-style cool C13"
                 if spec.get("night_channel")
                 else None
             ),
