@@ -70,6 +70,7 @@ Resources:
         Variables:
           RADAR_BUCKET: !Ref TargetBucketName
           SATELLITE_TRUECOLOR_PREFIX: satellite-truecolor
+          SATELLITE_NATIVE_PREFIX: satellite-native
           SATELLITE_TRUECOLOR_MODE: regional
           SATELLITE_TRUECOLOR_FRAME_COUNT: '25'
           SATELLITE_TRUECOLOR_MAX_RENDER_PER_PLATFORM: '2'
@@ -97,6 +98,7 @@ Resources:
         Variables:
           RADAR_BUCKET: !Ref TargetBucketName
           SATELLITE_TRUECOLOR_PREFIX: satellite-truecolor
+          SATELLITE_NATIVE_PREFIX: satellite-native
           SATELLITE_TRUECOLOR_MODE: global
           SATELLITE_TRUECOLOR_FRAME_COUNT: '25'
           SATELLITE_TRUECOLOR_MAX_RENDER_PER_PLATFORM: '2'

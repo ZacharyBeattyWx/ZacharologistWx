@@ -120,4 +120,28 @@ PY
   fi
 done
 
+for PLATFORM in east west east-global west-global; do
+  for PRODUCT in clean-ir air-mass; do
+    MANIFEST="s3://${TARGET_BUCKET}/satellite-native/${PLATFORM}/${PRODUCT}/manifest.json"
+    printf '%s %s native manifest:\n' "$PLATFORM" "$PRODUCT"
+    if aws s3 cp --region "$REGION" "$MANIFEST" - >/tmp/zwx-satellite-native-manifest.json 2>/dev/null; then
+      python3 - <<'PY'
+import json
+with open('/tmp/zwx-satellite-native-manifest.json') as f:
+    m=json.load(f)
+print('  product:', m.get('product'))
+print('  sourceProduct:', m.get('sourceProduct'))
+print('  cadenceMinutes:', m.get('cadenceMinutes'))
+print('  frameCount:', m.get('frameCount'))
+frames=m.get('frames') or []
+if frames:
+    print('  newest:', frames[-1].get('time'))
+    print('  newestPath:', frames[-1].get('path'))
+PY
+    else
+      echo '  manifest not published yet'
+    fi
+  done
+done
+
 printf '\nSatellite stack deployment complete. Existing MRMS/GLM stack was not modified.\n'

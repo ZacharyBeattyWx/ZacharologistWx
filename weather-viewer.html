@@ -306,6 +306,7 @@
     const LIGHTNING_FEED="https://dt0cd6bl1yqh2.cloudfront.net/glm-goes19/latest.json";
     const GIBS_WMS="https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi";
     const TRUECOLOR_BASE="https://dt0cd6bl1yqh2.cloudfront.net/satellite-truecolor";
+    const NATIVE_SAT_BASE="https://dt0cd6bl1yqh2.cloudfront.net/satellite-native";
     const TRUECOLOR_REGIONAL_CADENCE_MINUTES=5;
     const TRUECOLOR_GLOBAL_CADENCE_MINUTES=10;
     const TRUECOLOR_REGIONAL_FRESH_MINUTES=45;
@@ -315,8 +316,8 @@
     const SAT_PRODUCTS={
       TrueColor:{label:"True Color",layer:"GeoColor",prepared:true},
       GeoColor:{label:"GeoColor",layer:"GeoColor"},
-      Band13_Clean_Infrared:{label:"Clean IR",layer:"Band13_Clean_Infrared"},
-      Air_Mass:{label:"Air Mass",layer:"Air_Mass"}
+      Band13_Clean_Infrared:{label:"Clean IR",layer:"Band13_Clean_Infrared",nativeProduct:"clean-ir"},
+      Air_Mass:{label:"Air Mass",layer:"Air_Mass",nativeProduct:"air-mass"}
     };
     const SAT_SECTORS={
       East:[
@@ -1334,6 +1335,13 @@
       return `${TRUECOLOR_BASE}/${prefix}/manifest.json`;
     }
 
+    function nativeSatelliteManifestUrl(platform,sector,product){
+      const global=sector?.id==="global";
+      const prefix=
+        `${platform.toLowerCase()}${global?"-global":""}`;
+      return `${NATIVE_SAT_BASE}/${prefix}/${product}/manifest.json`;
+    }
+
     function trueColorCadenceForSector(sector){
       return sector?.id==="global"
         ?TRUECOLOR_GLOBAL_CADENCE_MINUTES
@@ -1513,6 +1521,65 @@
       }
 
       let preparedFrames=[];
+
+      if(context.product.nativeProduct){
+        try{
+          const response=await fetch(
+            `${nativeSatelliteManifestUrl(
+              context.platform,
+              context.sector,
+              context.product.nativeProduct
+            )}?_=${Date.now()}`,
+            {cache:"no-store"}
+          );
+
+          if(!response.ok){
+            throw new Error(`Native satellite manifest HTTP ${response.status}`);
+          }
+
+          const manifest=await response.json();
+          const rawFrames=Array.isArray(manifest.frames)?manifest.frames:[];
+
+          if(!rawFrames.length){
+            throw new Error("Native satellite manifest contains no frames");
+          }
+
+          if(!bboxContains(manifest.bbox,context.sector.bbox)){
+            throw new Error("selected sector exceeds native satellite coverage");
+          }
+
+          context.sourceBbox=manifest.bbox.map(Number);
+          context.renderVersion=manifest.renderVersion||null;
+          context.cadenceMinutes=Number(manifest.cadenceMinutes)||10;
+          context.sourceProduct=String(manifest.sourceProduct||"");
+          context.mode="native-product";
+          context.displayLabel=context.product.label;
+
+          const nativeFrames=rawFrames
+            .slice(-SAT_FRAME_COUNT)
+            .map(item=>({
+              time:new Date(item.time),
+              url:`${NATIVE_SAT_BASE}/${item.path}`,
+              source:"prepared"
+            }))
+            .filter(frame=>Number.isFinite(frame.time.getTime())&&frame.url);
+
+          if(!nativeFrames.length){
+            throw new Error("Native satellite manifest contains no usable frames");
+          }
+
+          if(generation!==satWarmGeneration)return false;
+          satFrames=nativeFrames;
+          return finishSatelliteFrameSet();
+
+        }catch(error){
+          console.warn(
+            "Native satellite product unavailable; using GIBS fallback.",
+            error
+          );
+          context.fallbackReason=String(error?.message||error);
+        }
+      }
 
       if(context.product.prepared){
         try{
@@ -2828,6 +2895,10 @@
         frame.source===
         "prepared";
 
+      const nativeProduct=
+        satContext.mode===
+        "native-product";
+
       const nativeDayNight=
         satContext.mode===
         "native-day-night";
@@ -2845,7 +2916,9 @@
         "terminator";
 
       const displayProduct=
-        nativeDayNight
+        nativeProduct
+          ?product.label
+          :nativeDayNight
           ?"True Color / C13 Night IR"
           :composite
             ?"True Color / GeoColor"
@@ -2867,7 +2940,9 @@
         ++satRenderToken;
 
       viewerStatus.textContent=
-        nativeDayNight
+        nativeProduct
+          ?`GOES-${satContext.platform} ${product.label} live`
+          :nativeDayNight
           ?`GOES-${satContext.platform} day/night live`
           :composite
             ?`GOES-${satContext.platform} day/night live`
@@ -2890,7 +2965,9 @@
           :"CONUS/PACUS";
 
       viewerNote.textContent=
-        nativeDayNight
+        nativeProduct
+          ?`${label} • ${preparedCadence}-minute native ABI playback`
+          :nativeDayNight
           ?`${label} • ${preparedCadence}-minute native ABI 24-hour playback`
           :composite
             ?`${label} • ${preparedCadence}-minute sharp solar-terminator composite`
@@ -2906,7 +2983,9 @@
         label;
 
       satelliteMeta.textContent=
-        nativeDayNight
+        nativeProduct
+          ?`NOAA GOES ABI ${preparedSource} ${satContext.sourceProduct.replace(/^ABI-L1b-Rad[CF]\s*/i,"")} • ${frameTime.toISOString().replace(".000Z","Z")}`
+          :nativeDayNight
           ?`NOAA GOES ABI ${preparedSource} C01/C02/C03 True Color + C13 Night IR • ${frameTime.toISOString().replace(".000Z","Z")}`
           :composite
             ?`NOAA GOES ABI ${preparedSource} True Color daylight + NASA GIBS GeoColor night • ${frameTime.toISOString().replace(".000Z","Z")}`
