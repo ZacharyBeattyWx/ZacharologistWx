@@ -1250,7 +1250,7 @@
       const qs=new URLSearchParams({SERVICE:"WMS",VERSION:"1.1.1",REQUEST:"GetMap",LAYERS:layers,STYLES:reference?",":"",SRS:"EPSG:3857",BBOX:context.bbox.join(","),WIDTH:String(width),HEIGHT:String(height),FORMAT:"image/png",TRANSPARENT:"true",BGCOLOR:"0x07111f",TIME:frameTime.toISOString().replace(".000Z","Z")});
       return `${GIBS_WMS}?${qs.toString()}`;
     }
-    function satelliteImageUrl(frameTime,context=satContext||createSatelliteContext()){return satelliteRequestUrl(frameTime,context,{reference:true,probe:false});}
+    function satelliteImageUrl(frameTime,context=satContext||createSatelliteContext()){return satelliteRequestUrl(frameTime,context,{reference:false,probe:false});}
     function satelliteProbeLooksValid(img){
       if(!satPixelProbeSupported)return null;
       try{
