@@ -1,0 +1,64 @@
+name: Remove GIBS reference overlay
+
+on:
+  push:
+    paths:
+      - .github/workflows/one-time-remove-gibs-reference-overlay.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Remove GIBS reference feature overlay
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('weather-viewer.html')
+          text = path.read_text(encoding='utf-8')
+
+          old = 'function satelliteImageUrl(frameTime,context=satContext||createSatelliteContext()){return satelliteRequestUrl(frameTime,context,{reference:true,probe:false});}'
+          new = 'function satelliteImageUrl(frameTime,context=satContext||createSatelliteContext()){return satelliteRequestUrl(frameTime,context,{reference:false,probe:false});}'
+
+          if text.count(old) != 1:
+              raise SystemExit(f'Expected one satelliteImageUrl reference-overlay target, found {text.count(old)}')
+
+          text = text.replace(old, new, 1)
+          path.write_text(text, encoding='utf-8')
+          print('Removed Reference_Features_15m from displayed GIBS satellite imagery.')
+          PY
+
+      - name: Validate viewer
+        shell: bash
+        run: |
+          git diff --check
+          python3 - <<'PY'
+          from pathlib import Path
+          s = Path('weather-viewer.html').read_text(encoding='utf-8')
+          start = s.rfind('<script>')
+          end = s.rfind('</script>')
+          if start < 0 or end < 0 or end <= start:
+              raise SystemExit('Could not locate final inline script')
+          Path('/tmp/weather-viewer-inline.js').write_text(
+              s[start + len('<script>'):end],
+              encoding='utf-8'
+          )
+          PY
+          node --check /tmp/weather-viewer-inline.js
+          grep -n -F 'function satelliteImageUrl' weather-viewer.html | grep -F 'reference:false'
+
+      - name: Commit fix and remove one-time workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add weather-viewer.html
+          git rm .github/workflows/one-time-remove-gibs-reference-overlay.yml
+          git commit -m "Remove black GIBS reference overlay artifacts"
+          git push origin HEAD:main
