@@ -1244,35 +1244,47 @@
       return {platform:satPlatform,product,sector,bbox:[minX,minY,maxX,maxY],ratio,width:Math.max(640,Math.round(width)),height:Math.max(420,Math.round(height)),imageryLayer:`GOES-${satPlatform}_ABI_${product.layer}`};
     }
     function satelliteRequestUrl(frameTime,context,{reference=true,probe=false}={}){
-      const width=probe?320:context.width;
+      const width=probe?480:context.width;
       const height=probe?Math.max(180,Math.round(width/context.ratio)):context.height;
       const layers=reference?`${context.imageryLayer},Reference_Features_15m`:context.imageryLayer;
-      const qs=new URLSearchParams({SERVICE:"WMS",VERSION:"1.1.1",REQUEST:"GetMap",LAYERS:layers,STYLES:reference?",":"",SRS:"EPSG:3857",BBOX:context.bbox.join(","),WIDTH:String(width),HEIGHT:String(height),FORMAT:"image/png",TRANSPARENT:"false",TIME:frameTime.toISOString().replace(".000Z","Z")});
+      const qs=new URLSearchParams({SERVICE:"WMS",VERSION:"1.1.1",REQUEST:"GetMap",LAYERS:layers,STYLES:reference?",":"",SRS:"EPSG:3857",BBOX:context.bbox.join(","),WIDTH:String(width),HEIGHT:String(height),FORMAT:"image/png",TRANSPARENT:"true",BGCOLOR:"0x07111f",TIME:frameTime.toISOString().replace(".000Z","Z")});
       return `${GIBS_WMS}?${qs.toString()}`;
     }
     function satelliteImageUrl(frameTime,context=satContext||createSatelliteContext()){return satelliteRequestUrl(frameTime,context,{reference:true,probe:false});}
     function satelliteProbeLooksValid(img){
-      if(!satPixelProbeSupported)return true;
+      if(!satPixelProbeSupported)return null;
       try{
-        const width=96,height=Math.max(54,Math.round(width*(img.naturalHeight/img.naturalWidth)));
+        const width=128,height=Math.max(72,Math.round(width*(img.naturalHeight/img.naturalWidth)));
         const canvas=document.createElement("canvas");canvas.width=width;canvas.height=height;
         const ctx=canvas.getContext("2d",{willReadFrequently:true});
-        if(!ctx)return true;
+        if(!ctx)return null;
         ctx.drawImage(img,0,0,width,height);
         const data=ctx.getImageData(0,0,width,height).data;
+        const totalPixels=data.length/4;
         let count=0,nonBlack=0,minLum=255,maxLum=0,sumLum=0;
         for(let i=0;i<data.length;i+=4){
           if(data[i+3]<16)continue;
           const lum=(data[i]+data[i+1]+data[i+2])/3;
-          count++;sumLum+=lum;if(lum>3)nonBlack++;if(lum<minLum)minLum=lum;if(lum>maxLum)maxLum=lum;
+          count++;
+          sumLum+=lum;
+          if(lum>5)nonBlack++;
+          if(lum<minLum)minLum=lum;
+          if(lum>maxLum)maxLum=lum;
         }
         if(!count)return false;
         const average=sumLum/count;
-        return nonBlack/count>.01&&(maxLum-minLum>6||average>8);
+        const opaqueCoverage=count/totalPixels;
+        const nonBlackFraction=nonBlack/count;
+        const contrast=maxLum-minLum;
+        return (
+          opaqueCoverage>.08&&
+          nonBlackFraction>.08&&
+          (contrast>8||average>12)
+        );
       }catch(error){
         satPixelProbeSupported=false;
-        console.warn("Satellite pixel validation unavailable; using exact GIBS cadence.",error);
-        return true;
+        console.warn("Satellite pixel validation unavailable; applying conservative GIBS age gate.",error);
+        return null;
       }
     }
     function probeSatelliteFrame(frameTime,context){
@@ -1281,11 +1293,19 @@
       const url=satelliteRequestUrl(frameTime,context,{reference:false,probe:true});
       return new Promise(resolve=>{
         const finish=valid=>{satProbeResults.set(key,valid);if(satProbeResults.size>160)satProbeResults.delete(satProbeResults.keys().next().value);resolve(valid);};
+        const ageGateValid=()=>
+          (Date.now()-frameTime.getTime())/60000>=45;
         const img=new Image();img.decoding="async";img.crossOrigin="anonymous";
-        img.onload=()=>finish(satelliteProbeLooksValid(img));
+        img.onload=()=>{
+          const pixelValidity=satelliteProbeLooksValid(img);
+          finish(pixelValidity===null?ageGateValid():pixelValidity);
+        };
         img.onerror=()=>{
           const fallback=new Image();fallback.decoding="async";
-          fallback.onload=()=>{satPixelProbeSupported=false;finish(true);};
+          fallback.onload=()=>{
+            satPixelProbeSupported=false;
+            finish(ageGateValid());
+          };
           fallback.onerror=()=>finish(false);
           fallback.src=url;
         };
