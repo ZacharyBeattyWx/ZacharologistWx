@@ -348,7 +348,7 @@
     const satPrev=document.getElementById("satPrev"),satPlay=document.getElementById("satPlay"),satNext=document.getElementById("satNext"),satTimeline=document.getElementById("satTimeline"),satFrameReadout=document.getElementById("satFrameReadout"),satSpeed=document.getElementById("satSpeed"),satCacheReadout=document.getElementById("satCacheReadout");
 
     let activeProduct="radar",radarMode="national",satPlatform="East",satProduct="TrueColor",satSector="global",weatherMap=null,mapReady=false,refreshTimer=0;
-    let satFrames=[],satFrameIndex=0,satTimer=0,satWarmGeneration=0,satLastWindowKey="",satRenderToken=0,satPixelProbeSupported=true,satContext=null,satPlayGateToken=0,satPlayPreparing=false,satPlaybackDeadline=0;
+    let satFrames=[],satFrameIndex=0,satTimer=0,satWarmGeneration=0,satLastWindowKey="",satRenderToken=0,satPixelProbeSupported=true,satContext=null,satPlayGateToken=0,satPlayPreparing=false,satPlaybackState=null;
     let lightningFlashes=[],lightningDisplayedFlashes=[],lightningDisplayedKeys=new Set(),lightningLatestMs=0,lightningFetchPromise=null,lightningInitialFitDone=false;
 
     let satPanX=50,satPanY=50,satPanPointerId=null,satPanLastX=0,satPanLastY=0;
@@ -434,7 +434,8 @@
 
     let lightningSeenLatestMs=0,lightningPulseFrame=0,lightningPulseToken=0,lightningPollTimer=0;
     let lightningPulseQueue=[],lightningPulseActive=[],lightningPulseNextReleaseAt=0,lightningPulseWakeTimer=0;
-    const satFrameImages=new Map(),satFramePromises=new Map(),satProbeResults=new Map();
+    const SAT_CROSSFADE_FRACTION=.82,SAT_END_PAUSE_MS=550;
+    const satFrameImages=new Map(),satFramePromises=new Map(),satProbeResults=new Map(),satFrameVisuals=new WeakMap();
     const activate=(list,predicate)=>{for(const button of list)button.classList.toggle("active",predicate(button));};
     function showRadar(){radarFrame.hidden=false;satelliteStage.hidden=true;weatherMapEl.style.display="none";mapProductCard.hidden=true;stopSatellitePlayback();}
     function showSatellite(){radarFrame.hidden=true;satelliteStage.hidden=false;weatherMapEl.style.display="none";mapProductCard.hidden=true;mapError.classList.remove("show");}
@@ -2211,7 +2212,7 @@
       return date.toLocaleTimeString([], {hour:"numeric",minute:"2-digit"});
     }
 
-    function drawPreparedSatellite(img,context){
+    function drawPreparedSatellite(img,context,targetCanvas=satelliteCanvas,show=true){
       const source=context.sourceBbox;
       const target=context.bbox;
 
@@ -2371,10 +2372,10 @@
         Math.round(sourceHeight*renderScale)
       );
 
-      if(satelliteCanvas.width!==width)satelliteCanvas.width=width;
-      if(satelliteCanvas.height!==height)satelliteCanvas.height=height;
+      if(targetCanvas.width!==width)targetCanvas.width=width;
+      if(targetCanvas.height!==height)targetCanvas.height=height;
 
-      const ctx=satelliteCanvas.getContext("2d");
+      const ctx=targetCanvas.getContext("2d");
 
       if(!ctx)return false;
 
@@ -2388,8 +2389,10 @@
         0,0,width,height
       );
 
-      satelliteImage.hidden=true;
-      satelliteCanvas.hidden=false;
+      if(show){
+        satelliteImage.hidden=true;
+        satelliteCanvas.hidden=false;
+      }
       return true;
     }
 
@@ -2589,7 +2592,9 @@
       preparedImg,
       geoImg,
       context,
-      frameTime
+      frameTime,
+      targetCanvas=satelliteCanvas,
+      show=true
     ){
       const source=
         context.sourceBbox;
@@ -2721,23 +2726,23 @@
         );
 
       if(
-        satelliteCanvas.width!==
+        targetCanvas.width!==
         width
       ){
-        satelliteCanvas.width=
+        targetCanvas.width=
           width;
       }
 
       if(
-        satelliteCanvas.height!==
+        targetCanvas.height!==
         height
       ){
-        satelliteCanvas.height=
+        targetCanvas.height=
           height;
       }
 
       const ctx=
-        satelliteCanvas.getContext(
+        targetCanvas.getContext(
           "2d"
         );
 
@@ -2838,12 +2843,170 @@
         0
       );
 
-      satelliteImage.hidden=
-        true;
+      if(show){
+        satelliteImage.hidden=
+          true;
 
-      satelliteCanvas.hidden=
-        false;
+        satelliteCanvas.hidden=
+          false;
+      }
 
+      return true;
+    }
+
+    function satelliteFrameVisual(frame,context){
+      if(!frame)return null;
+
+      if(satFrameVisuals.has(frame)){
+        return satFrameVisuals.get(frame);
+      }
+
+      const result=
+        satelliteFrameReady(frame)
+          ?cachedSatelliteFrameResult(frame)
+          :null;
+
+      if(!result){
+        return null;
+      }
+
+      const backdrop=
+        frame.geoUrl||
+        result.url;
+
+      if(frame.source==="composite"){
+        const canvas=document.createElement("canvas");
+
+        if(
+          !drawTerminatorComposite(
+            result.preparedImg,
+            result.geoImg,
+            context,
+            frame.time,
+            canvas,
+            false
+          )
+        ){
+          return null;
+        }
+
+        const visual={
+          source:canvas,
+          width:canvas.width,
+          height:canvas.height,
+          backdrop
+        };
+
+        satFrameVisuals.set(frame,visual);
+        return visual;
+      }
+
+      if(frame.source==="prepared"){
+        const canvas=document.createElement("canvas");
+
+        if(
+          !drawPreparedSatellite(
+            result.img,
+            context,
+            canvas,
+            false
+          )
+        ){
+          return null;
+        }
+
+        const visual={
+          source:canvas,
+          width:canvas.width,
+          height:canvas.height,
+          backdrop
+        };
+
+        satFrameVisuals.set(frame,visual);
+        return visual;
+      }
+
+      const img=result.img;
+
+      if(!img){
+        return null;
+      }
+
+      const visual={
+        source:img,
+        width:img.naturalWidth||img.width,
+        height:img.naturalHeight||img.height,
+        backdrop
+      };
+
+      satFrameVisuals.set(frame,visual);
+      return visual;
+    }
+
+    function drawSatelliteTransition(fromFrame,toFrame,alpha,context){
+      const fromVisual=satelliteFrameVisual(fromFrame,context);
+      const toVisual=satelliteFrameVisual(toFrame,context)||fromVisual;
+
+      if(!fromVisual||!toVisual){
+        return false;
+      }
+
+      const width=
+        Math.max(
+          1,
+          toVisual.width||
+          fromVisual.width
+        );
+
+      const height=
+        Math.max(
+          1,
+          toVisual.height||
+          fromVisual.height
+        );
+
+      if(satelliteCanvas.width!==width){
+        satelliteCanvas.width=width;
+      }
+
+      if(satelliteCanvas.height!==height){
+        satelliteCanvas.height=height;
+      }
+
+      const ctx=satelliteCanvas.getContext("2d");
+
+      if(!ctx){
+        return false;
+      }
+
+      const t=
+        Math.max(
+          0,
+          Math.min(
+            1,
+            Number(alpha)||0
+          )
+        );
+
+      ctx.clearRect(0,0,width,height);
+      ctx.imageSmoothingEnabled=true;
+      ctx.imageSmoothingQuality="high";
+      ctx.globalAlpha=1;
+      ctx.drawImage(fromVisual.source,0,0,width,height);
+
+      if(t>0){
+        ctx.globalAlpha=t;
+        ctx.drawImage(toVisual.source,0,0,width,height);
+        ctx.globalAlpha=1;
+      }
+
+      satelliteStage.style.setProperty(
+        "--satellite-backdrop",
+        `url("${t>=.5?toVisual.backdrop:fromVisual.backdrop}")`
+      );
+
+      satelliteImage.hidden=true;
+      satelliteCanvas.hidden=false;
       return true;
     }
 
@@ -3286,10 +3449,185 @@
       );
     }
 
+    function updateSatellitePlaybackFrame(index){
+      if(!satFrames.length)return;
+
+      satFrameIndex=
+        Math.max(
+          0,
+          Math.min(
+            satFrames.length-1,
+            index
+          )
+        );
+
+      const frame=
+        satFrames[
+          satFrameIndex
+        ];
+
+      satTimeline.value=
+        String(
+          satFrameIndex
+        );
+
+      satFrameReadout.textContent=
+        formatSatelliteTime(
+          frame.time
+        );
+
+      const stamp=
+        frame.time
+          .toISOString()
+          .replace(
+            ".000Z",
+            "Z"
+          );
+
+      satelliteMeta.textContent=
+        satelliteMeta.textContent.replace(
+          / • \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/,
+          ` • ${stamp}`
+        );
+    }
+
+    function prepareSatellitePlaybackVisuals(context){
+      return satFrames.every(
+        frame=>
+          !!satelliteFrameVisual(
+            frame,
+            context
+          )
+      );
+    }
+
+    function queueSatellitePlaybackFrame(state){
+      satTimer=
+        requestAnimationFrame(
+          now=>
+            runSatellitePlaybackFrame(
+              state,
+              now
+            )
+        );
+    }
+
+    function runSatellitePlaybackFrame(state,now){
+      if(
+        state!==satPlaybackState||
+        state.token!==satPlayGateToken||
+        state.generation!==satWarmGeneration||
+        state.context!==satContext||
+        activeProduct!=="satellite"||
+        !satFrames.length
+      ){
+        return;
+      }
+
+      const lastIndex=
+        satFrames.length-1;
+
+      if(state.fromIndex>=lastIndex){
+        drawSatelliteTransition(
+          satFrames[lastIndex],
+          satFrames[lastIndex],
+          0,
+          state.context
+        );
+
+        if(now>=state.nextDeadline){
+          updateSatellitePlaybackFrame(0);
+          drawSatelliteTransition(
+            satFrames[0],
+            satFrames[0],
+            0,
+            state.context
+          );
+          state.fromIndex=0;
+          state.toIndex=
+            Math.min(
+              1,
+              lastIndex
+            );
+          state.startedAt=now;
+          state.nextDeadline=
+            now+
+            state.stepMs;
+        }
+
+        queueSatellitePlaybackFrame(
+          state
+        );
+        return;
+      }
+
+      const fadeMs=
+        Math.max(
+          1,
+          state.stepMs*
+            SAT_CROSSFADE_FRACTION
+        );
+
+      const alpha=
+        Math.min(
+          1,
+          Math.max(
+            0,
+            (
+              now-
+              state.startedAt
+            )/
+            fadeMs
+          )
+        );
+
+      drawSatelliteTransition(
+        satFrames[state.fromIndex],
+        satFrames[state.toIndex],
+        alpha,
+        state.context
+      );
+
+      if(now>=state.nextDeadline){
+        updateSatellitePlaybackFrame(
+          state.toIndex
+        );
+
+        state.fromIndex=
+          state.toIndex;
+
+        state.toIndex=
+          (
+            state.fromIndex+
+            1
+          )%
+          satFrames.length;
+
+        state.startedAt=now;
+        state.nextDeadline=
+          now+
+          (
+            state.fromIndex>=lastIndex
+              ?SAT_END_PAUSE_MS
+              :state.stepMs
+          );
+      }
+
+      queueSatellitePlaybackFrame(
+        state
+      );
+    }
+
     function stopSatellitePlayback(){
+      const snapToSourceFrame=
+        !!satPlaybackState&&
+        activeProduct==="satellite"&&
+        !!satFrames.length&&
+        !!satContext;
+
       satPlayGateToken++;
       satPlayPreparing=false;
-      satPlaybackDeadline=0;
+      satPlaybackState=null;
       satPlay.removeAttribute("aria-busy");
       satTimeline.disabled=false;
       if(satTimer){
@@ -3297,6 +3635,13 @@
         satTimer=0;
       }
       satPlay.textContent="▶ Play";
+
+      if(snapToSourceFrame){
+        renderSatellite(
+          satFrameIndex,
+          false
+        );
+      }
     }
 
     async function startSatellitePlayback(){
@@ -3350,78 +3695,50 @@
         return;
       }
 
-      satFrameIndex=Math.max(
-        0,
-        Math.min(
-          satFrames.length-1,
-          startIndex
-        )
-      );
+      satPlay.textContent="Preparing";
+
+      if(!prepareSatellitePlaybackVisuals(context)){
+        satPlay.textContent="▶ Retry";
+        viewerStatus.textContent=`GOES-${satPlatform} buffer incomplete`;
+        return;
+      }
+
+      // Keep the timeline parked while loading. Playback may advance only
+      // after every frame in the current satellite loop is decoded and ready.
+      satFrameIndex=Math.max(0,Math.min(satFrames.length-1,startIndex));
       satTimeline.value=String(satFrameIndex);
       satPlay.textContent="❚❚ Pause";
 
-      const firstDelay=Number(satSpeed.value)||650;
-      satPlaybackDeadline=
-        performance.now()+
-        firstDelay;
+      const now=performance.now();
+      const stepMs=Number(satSpeed.value)||650;
 
-      const playbackLoop=now=>{
-        if(!satTimer){
-          return;
-        }
-
-        if(now>=satPlaybackDeadline){
-          const delay=
-            Number(satSpeed.value)||
-            650;
-
-          const nextIndex=
-            (satFrameIndex+1)%
-            satFrames.length;
-
-          const wrapped=
-            nextIndex===0;
-
-          if(
-            !renderSatellitePlaybackFrame(
-              nextIndex
-            )
-          ){
-            stopSatellitePlayback();
-            viewerStatus.textContent=
-              `GOES-${satPlatform} buffer changed`;
-            return;
-          }
-
-          satPlaybackDeadline+=
-            delay+
-            (
-              wrapped
-                ?SAT_LOOP_END_PAUSE_MS
-                :0
-            );
-
-          if(
-            now-
-            satPlaybackDeadline>
-            delay
-          ){
-            satPlaybackDeadline=
-              now+
-              delay;
-          }
-        }
-
-        satTimer=
-          requestAnimationFrame(
-            playbackLoop
-          );
+      satPlaybackState={
+        token:requestToken,
+        generation,
+        context,
+        stepMs,
+        fromIndex:satFrameIndex,
+        toIndex:(satFrameIndex+1)%satFrames.length,
+        startedAt:now,
+        nextDeadline:
+          now+
+          (
+            satFrameIndex>=satFrames.length-1
+              ?SAT_END_PAUSE_MS
+              :stepMs
+          )
       };
 
-      satTimer=
-        requestAnimationFrame(
-          playbackLoop
-        );
+      drawSatelliteTransition(
+        satFrames[satFrameIndex],
+        satFrames[satFrameIndex],
+        0,
+        context
+      );
+
+      queueSatellitePlaybackFrame(
+        satPlaybackState
+      );
     }
 
     async function resetSatelliteViewer(force=true){
