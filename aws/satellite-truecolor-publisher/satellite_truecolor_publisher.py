@@ -26,7 +26,7 @@ NATIVE_PREFIX = os.getenv(
 ).strip("/")
 
 NATIVE_RENDER_VERSIONS = {
-    "clean-ir": 2,
+    "clean-ir": 3,
     "air-mass": 1,
 }
 
@@ -940,10 +940,10 @@ def clean_ir_rgb(bt):
             195.0,
             205.0,
             215.0,
-            225.0,
-            235.0,
-            245.0,
-            252.0,
+            222.0,
+            232.0,
+            242.0,
+            250.0,
             260.0,
             270.0,
             285.0,
