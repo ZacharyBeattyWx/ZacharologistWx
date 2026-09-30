@@ -312,6 +312,7 @@
     const TRUECOLOR_REGIONAL_FRESH_MINUTES=45;
     const TRUECOLOR_GLOBAL_FRESH_MINUTES=25;
     const SAT_FRAME_COUNT=25,SAT_STEP_MINUTES=10,SAT_LAG_MINUTES=10,SAT_PROBE_EXTRA_FRAMES=10,SAT_PROBE_WORKERS=4;
+    const SAT_PLAYBACK_DPR_CAP=1.25,SAT_LOOP_END_PAUSE_MS=550;
 
     const SAT_PRODUCTS={
       TrueColor:{label:"True Color",layer:"GeoColor",prepared:true},
@@ -347,7 +348,7 @@
     const satPrev=document.getElementById("satPrev"),satPlay=document.getElementById("satPlay"),satNext=document.getElementById("satNext"),satTimeline=document.getElementById("satTimeline"),satFrameReadout=document.getElementById("satFrameReadout"),satSpeed=document.getElementById("satSpeed"),satCacheReadout=document.getElementById("satCacheReadout");
 
     let activeProduct="radar",radarMode="national",satPlatform="East",satProduct="TrueColor",satSector="global",weatherMap=null,mapReady=false,refreshTimer=0;
-    let satFrames=[],satFrameIndex=0,satTimer=0,satWarmGeneration=0,satLastWindowKey="",satRenderToken=0,satPixelProbeSupported=true,satContext=null,satPlayGateToken=0,satPlayPreparing=false;
+    let satFrames=[],satFrameIndex=0,satTimer=0,satWarmGeneration=0,satLastWindowKey="",satRenderToken=0,satPixelProbeSupported=true,satContext=null,satPlayGateToken=0,satPlayPreparing=false,satPlaybackDeadline=0;
     let lightningFlashes=[],lightningDisplayedFlashes=[],lightningDisplayedKeys=new Set(),lightningLatestMs=0,lightningFetchPromise=null,lightningInitialFitDone=false;
 
     let satPanX=50,satPanY=50,satPanPointerId=null,satPanLastX=0,satPanLastY=0;
@@ -2332,8 +2333,43 @@
 
       if(!(cropW>1&&cropH>1))return false;
 
-      const width=Math.max(1,Math.round(cropW));
-      const height=Math.max(1,Math.round(cropH));
+      const sourceWidth=Math.max(1,Math.round(cropW));
+      const sourceHeight=Math.max(1,Math.round(cropH));
+      const stageRect=satelliteStage.getBoundingClientRect();
+      const dpr=Math.min(
+        SAT_PLAYBACK_DPR_CAP,
+        Math.max(1,window.devicePixelRatio||1)
+      );
+      const targetPixelWidth=Math.max(
+        1,
+        Math.round(stageRect.width*dpr)
+      );
+      const targetPixelHeight=Math.max(
+        1,
+        Math.round(stageRect.height*dpr)
+      );
+      const mobileCover=window.matchMedia("(max-width: 880px)").matches;
+      const fitScale=mobileCover
+        ?Math.max(
+            targetPixelWidth/sourceWidth,
+            targetPixelHeight/sourceHeight
+          )
+        :Math.min(
+            targetPixelWidth/sourceWidth,
+            targetPixelHeight/sourceHeight
+          );
+      const renderScale=Math.min(
+        1,
+        Math.max(.15,fitScale)
+      );
+      const width=Math.max(
+        1,
+        Math.round(sourceWidth*renderScale)
+      );
+      const height=Math.max(
+        1,
+        Math.round(sourceHeight*renderScale)
+      );
 
       if(satelliteCanvas.width!==width)satelliteCanvas.width=width;
       if(satelliteCanvas.height!==height)satelliteCanvas.height=height;
@@ -2811,15 +2847,22 @@
       return true;
     }
 
-    function displaySatelliteFrame(result,context,frame){
+    function displaySatelliteFrame(
+      result,
+      context,
+      frame,
+      updateBackdrop=true
+    ){
       const backdrop=
         frame?.geoUrl||
         result.url;
 
-      satelliteStage.style.setProperty(
-        "--satellite-backdrop",
-        `url("${backdrop}")`
-      );
+      if(updateBackdrop){
+        satelliteStage.style.setProperty(
+          "--satellite-backdrop",
+          `url("${backdrop}")`
+        );
+      }
 
       if(
         frame?.source===
@@ -2853,6 +2896,62 @@
 
       satelliteImage.src=
         result.url;
+    }
+
+    function renderSatellitePlaybackFrame(index){
+      if(
+        !satFrames.length||
+        !satContext
+      ){
+        return false;
+      }
+
+      satFrameIndex=
+        Math.max(
+          0,
+          Math.min(
+            satFrames.length-1,
+            index
+          )
+        );
+
+      satTimeline.value=
+        String(
+          satFrameIndex
+        );
+
+      const frame=
+        satFrames[
+          satFrameIndex
+        ];
+
+      if(
+        !satelliteFrameReady(
+          frame
+        )
+      ){
+        return false;
+      }
+
+      satFrameReadout.textContent=
+        formatSatelliteTime(
+          frame.time
+        );
+
+      displaySatelliteFrame(
+        cachedSatelliteFrameResult(
+          frame
+        ),
+        satContext,
+        frame,
+        false
+      );
+
+      satelliteLoading.classList.remove(
+        "show"
+      );
+
+      return true;
     }
 
     function renderSatellite(index=satFrameIndex,showLoading=true){
@@ -3190,10 +3289,11 @@
     function stopSatellitePlayback(){
       satPlayGateToken++;
       satPlayPreparing=false;
+      satPlaybackDeadline=0;
       satPlay.removeAttribute("aria-busy");
       satTimeline.disabled=false;
       if(satTimer){
-        clearInterval(satTimer);
+        cancelAnimationFrame(satTimer);
         satTimer=0;
       }
       satPlay.textContent="▶ Play";
@@ -3250,22 +3350,80 @@
         return;
       }
 
-      // Keep the timeline parked while loading. Playback may advance only
-      // after every frame in the current satellite loop is decoded and ready.
-      satFrameIndex=Math.max(0,Math.min(satFrames.length-1,startIndex));
+      satFrameIndex=Math.max(
+        0,
+        Math.min(
+          satFrames.length-1,
+          startIndex
+        )
+      );
       satTimeline.value=String(satFrameIndex);
       satPlay.textContent="❚❚ Pause";
 
-      const tick=()=>{
-        satFrameIndex=(satFrameIndex+1)%satFrames.length;
-        renderSatellite(satFrameIndex,false);
+      const firstDelay=Number(satSpeed.value)||650;
+      satPlaybackDeadline=
+        performance.now()+
+        firstDelay;
+
+      const playbackLoop=now=>{
+        if(!satTimer){
+          return;
+        }
+
+        if(now>=satPlaybackDeadline){
+          const delay=
+            Number(satSpeed.value)||
+            650;
+
+          const nextIndex=
+            (satFrameIndex+1)%
+            satFrames.length;
+
+          const wrapped=
+            nextIndex===0;
+
+          if(
+            !renderSatellitePlaybackFrame(
+              nextIndex
+            )
+          ){
+            stopSatellitePlayback();
+            viewerStatus.textContent=
+              `GOES-${satPlatform} buffer changed`;
+            return;
+          }
+
+          satPlaybackDeadline+=
+            delay+
+            (
+              wrapped
+                ?SAT_LOOP_END_PAUSE_MS
+                :0
+            );
+
+          if(
+            now-
+            satPlaybackDeadline>
+            delay
+          ){
+            satPlaybackDeadline=
+              now+
+              delay;
+          }
+        }
+
+        satTimer=
+          requestAnimationFrame(
+            playbackLoop
+          );
       };
 
-      satTimer=setInterval(
-        tick,
-        Number(satSpeed.value)||650
-      );
+      satTimer=
+        requestAnimationFrame(
+          playbackLoop
+        );
     }
+
     async function resetSatelliteViewer(force=true){
       stopSatellitePlayback();
 

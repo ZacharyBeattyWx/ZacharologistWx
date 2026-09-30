@@ -61,7 +61,7 @@ TRUECOLOR_BLACK_POINT = float(
     os.getenv("SATELLITE_TRUECOLOR_BLACK_POINT", "0.002")
 )
 TRUECOLOR_WHITE_POINT = float(
-    os.getenv("SATELLITE_TRUECOLOR_WHITE_POINT", "0.80")
+    os.getenv("SATELLITE_TRUECOLOR_WHITE_POINT", "0.76")
 )
 TRUECOLOR_GAMMA = float(
     os.getenv("SATELLITE_TRUECOLOR_GAMMA", "2.2")
@@ -83,7 +83,7 @@ REGIONAL_PLATFORMS = {
         "sector": "CONUS",
         "cadence_minutes": 5,
         "max_render": MAX_RENDER_PER_PLATFORM,
-        "render_version": 4,
+        "render_version": 5,
         "night_channel": "13",
         "native_products": True,
         "c02_stride": 1,
@@ -102,7 +102,7 @@ REGIONAL_PLATFORMS = {
         "sector": "PACUS",
         "cadence_minutes": 5,
         "max_render": MAX_RENDER_PER_PLATFORM,
-        "render_version": 4,
+        "render_version": 5,
         "night_channel": "13",
         "native_products": True,
         "c02_stride": 1,
@@ -120,7 +120,7 @@ GLOBAL_PLATFORMS = {
         "sector": "GLOBAL",
         "cadence_minutes": 10,
         "max_render": MAX_RENDER_FULLDISK_PER_PLATFORM,
-        "render_version": 9,
+        "render_version": 10,
         "night_channel": "13",
         "native_products": True,
 
@@ -142,7 +142,7 @@ GLOBAL_PLATFORMS = {
         "sector": "GLOBAL",
         "cadence_minutes": 10,
         "max_render": MAX_RENDER_FULLDISK_PER_PLATFORM,
-        "render_version": 9,
+        "render_version": 10,
         "night_channel": "13",
         "native_products": True,
 
@@ -1137,6 +1137,106 @@ def solar_daylight_alpha(
     )
 
 
+def solar_daylight_lift(
+    dt,
+    bbox,
+    width,
+    height,
+):
+    """Brightness lift for low-sun reflected-light imagery.
+
+    ABI visible reflectance naturally darkens toward the terminator.
+    Preserve midday contrast, then smoothly lift only low solar angles
+    so late-day True Color remains readable without flattening the scene.
+    """
+    west, south, east, north = bbox
+    min_x, min_y, max_x, max_y = mercator_bounds(bbox)
+
+    lons = np.linspace(
+        west,
+        east,
+        width,
+        dtype=np.float64,
+    )
+    mercator_y = np.linspace(
+        max_y,
+        min_y,
+        height,
+        dtype=np.float64,
+    )
+
+    earth_radius = 6378137.0
+    lats = np.degrees(
+        2.0 *
+        np.arctan(
+            np.exp(
+                mercator_y /
+                earth_radius
+            )
+        ) -
+        np.pi / 2.0
+    )
+
+    day = dt.timetuple().tm_yday
+    hour = (
+        dt.hour +
+        dt.minute / 60.0 +
+        dt.second / 3600.0
+    )
+
+    declination = np.radians(
+        23.44 *
+        np.sin(
+            2.0 *
+            np.pi *
+            (284.0 + day) /
+            365.0
+        )
+    )
+    hour_angle = np.radians(
+        15.0 *
+        (
+            hour +
+            lons / 15.0 -
+            12.0
+        )
+    )
+    lat_rad = np.radians(lats)
+
+    sin_elevation = (
+        np.sin(lat_rad)[:, None] *
+        np.sin(declination)
+        +
+        np.cos(lat_rad)[:, None] *
+        np.cos(declination) *
+        np.cos(hour_angle)[None, :]
+    )
+
+    low_sun = np.clip(
+        (0.55 - sin_elevation) / 0.55,
+        0.0,
+        1.0,
+    )
+    low_sun = (
+        low_sun *
+        low_sun *
+        (
+            3.0 -
+            2.0 *
+            low_sun
+        )
+    )
+
+    return (
+        1.0 +
+        0.58 *
+        low_sun
+    ).astype(
+        np.float32,
+        copy=False,
+    )
+
+
 
 def encode_webp(rgb, finite):
     color = np.rint(
@@ -1232,6 +1332,22 @@ def render_scan(spec, group):
             blue_out,
             red_out,
             veggie_out,
+        )
+
+        daylight_lift = solar_daylight_lift(
+            group["time"],
+            spec["bbox"],
+            width,
+            height,
+        )
+        day_rgb = np.clip(
+            1.0 -
+            np.power(
+                1.0 - day_rgb,
+                daylight_lift[..., None],
+            ),
+            0.0,
+            1.0,
         )
 
         fraction = daylight_fraction(
