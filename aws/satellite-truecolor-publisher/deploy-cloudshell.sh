@@ -83,6 +83,7 @@ FULLDISK_FUNCTION_NAME="$(aws cloudformation describe-stacks \
 
 printf '\nInvoking one regional seed run: %s\n' "$FUNCTION_NAME"
 aws lambda invoke \
+  --cli-read-timeout 0 \
   --region "$REGION" \
   --function-name "$FUNCTION_NAME" \
   /tmp/zwx-satellite-truecolor-seed.json >/dev/null
@@ -91,6 +92,7 @@ printf '\n\n'
 
 printf 'Invoking one Full Disk seed run: %s\n' "$FULLDISK_FUNCTION_NAME"
 aws lambda invoke \
+  --cli-read-timeout 0 \
   --region "$REGION" \
   --function-name "$FULLDISK_FUNCTION_NAME" \
   /tmp/zwx-satellite-truecolor-full-disk-seed.json >/dev/null

@@ -25,6 +25,11 @@ NATIVE_PREFIX = os.getenv(
     "satellite-native",
 ).strip("/")
 
+NATIVE_RENDER_VERSIONS = {
+    "clean-ir": 2,
+    "air-mass": 1,
+}
+
 FRAME_COUNT = int(os.getenv("SATELLITE_TRUECOLOR_FRAME_COUNT", "25"))
 MAX_RENDER_PER_PLATFORM = int(
     os.getenv("SATELLITE_TRUECOLOR_MAX_RENDER_PER_PLATFORM", "2")
@@ -231,9 +236,12 @@ def native_manifest_key(spec, product):
 
 def native_frame_key(spec, product, scan_dt):
     stamp = scan_dt.strftime("%Y%m%dT%H%M00Z")
+    render_version = int(
+        NATIVE_RENDER_VERSIONS.get(product, 1)
+    )
     return (
         f"{NATIVE_PREFIX}/{spec['prefix']}/{product}/"
-        f"frames/v1/{stamp}.webp"
+        f"frames/v{render_version}/{stamp}.webp"
     )
 
 
@@ -914,17 +922,68 @@ def night_ir_rgb(bt, finite):
 
 def clean_ir_rgb(bt):
     valid = np.isfinite(bt)
-    bt_safe = np.where(valid, bt, 320.0)
+    bt_safe = np.where(valid, bt, 315.0)
 
-    # Neutral Clean Longwave IR: warm land/ocean stays dark while colder
-    # cloud tops progressively brighten toward white.
-    intensity = np.clip(
-        (315.0 - bt_safe) / 125.0,
-        0.0,
-        1.0,
+    # Enhanced C13 Clean Longwave IR.
+    #
+    # Warm surfaces remain black/dark gray, ordinary clouds transition
+    # through gray/white, and progressively colder cloud tops enter the
+    # familiar enhanced-IR sequence:
+    #
+    # white -> purple -> blue -> green -> yellow -> orange -> red.
+    #
+    # The data remain native ABI C13 brightness temperatures; this is
+    # strictly a display enhancement.
+    temperatures = np.asarray(
+        [
+            185.0,
+            195.0,
+            205.0,
+            215.0,
+            225.0,
+            235.0,
+            245.0,
+            252.0,
+            260.0,
+            270.0,
+            285.0,
+            300.0,
+            315.0,
+        ],
+        dtype=np.float32,
     )
-    intensity = np.power(intensity, 0.82)
-    rgb = np.repeat(intensity[..., None], 3, axis=-1)
+
+    colors = np.asarray(
+        [
+            [0.18, 0.00, 0.00],  # extreme cold: deep red
+            [0.95, 0.00, 0.00],  # red
+            [1.00, 0.42, 0.00],  # orange
+            [1.00, 0.95, 0.00],  # yellow
+            [0.10, 0.95, 0.15],  # green
+            [0.00, 0.55, 1.00],  # blue
+            [0.55, 0.00, 0.85],  # purple
+            [1.00, 1.00, 1.00],  # white
+            [0.90, 0.90, 0.90],
+            [0.62, 0.62, 0.62],
+            [0.30, 0.30, 0.30],
+            [0.08, 0.08, 0.08],
+            [0.00, 0.00, 0.00],  # warm surface
+        ],
+        dtype=np.float32,
+    )
+
+    rgb = np.empty(
+        bt_safe.shape + (3,),
+        dtype=np.float32,
+    )
+
+    for channel in range(3):
+        rgb[..., channel] = np.interp(
+            bt_safe,
+            temperatures,
+            colors[:, channel],
+        )
+
     rgb[~valid] = 0.0
     return rgb, valid
 
@@ -1660,7 +1719,10 @@ def publish_native_manifest(spec, product, frames, checked_scans, now):
         source_channels = "C13"
         recipe = {
             "channel": "C13 10.3um Clean Longwave IR",
-            "palette": "neutral grayscale",
+            "palette": "temperature-enhanced Clean IR",
+            "coldCloudEnhancement": (
+                "white-purple-blue-green-yellow-orange-red"
+            ),
             "transparentNoData": True,
         }
     else:
@@ -1675,7 +1737,9 @@ def publish_native_manifest(spec, product, frames, checked_scans, now):
 
     output = {
         "version": 1,
-        "renderVersion": 1,
+        "renderVersion": int(
+            NATIVE_RENDER_VERSIONS.get(product, 1)
+        ),
         "generated": iso_z(now),
         "platform": spec["platform"],
         "satellite": spec["satellite"],
@@ -1708,6 +1772,21 @@ def process_native_platform(platform, spec, now):
         product: read_native_manifest(spec, product)
         for product in products
     }
+
+    for product in products:
+        expected_version = int(
+            NATIVE_RENDER_VERSIONS.get(product, 1)
+        )
+        if (
+            existing[product]
+            and existing[product].get("renderVersion")
+            != expected_version
+        ):
+            print(
+                f"{spec['satellite']} {product} resetting "
+                f"manifest for renderVersion={expected_version}"
+            )
+            existing[product] = {}
 
     frames = {
         product: [
