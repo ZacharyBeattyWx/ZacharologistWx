@@ -94,8 +94,9 @@ jobs:
           # so browsers never discover a new revision before its files exist.
           export ROOT BUCKET
 
+          set +e
           find "$ROOT" -type f ! -name manifest.json -print0 |
-            xargs -0 -n1 -P8 bash -c '
+            xargs -0 -n1 -P4 bash -c '
               set -euo pipefail
               file="$1"
               rel="${file#"$ROOT"/}"
@@ -107,13 +108,32 @@ jobs:
                 *) type="application/octet-stream" ;;
               esac
 
-              wrangler r2 object put "$BUCKET/$key" \
-                --file="$file" \
-                --content-type="$type" \
-                --cache-control="public, max-age=120, stale-while-revalidate=600" \
-                --remote \
-                --force >/dev/null
+              for attempt in 1 2 3; do
+                if wrangler r2 object put "$BUCKET/$key" \
+                  --file="$file" \
+                  --content-type="$type" \
+                  --cache-control="public, max-age=120, stale-while-revalidate=600" \
+                  --remote \
+                  --force >/dev/null; then
+                  exit 0
+                fi
+
+                echo "::warning::R2 upload failed for $key on attempt $attempt/3."
+                if [ "$attempt" -lt 3 ]; then
+                  sleep "$attempt"
+                fi
+              done
+
+              echo "::error::R2 upload failed for $key after 3 attempts."
+              exit 1
             ' _
+          upload_rc=$?
+          set -e
+
+          if [ "$upload_rc" -ne 0 ]; then
+            echo "::error::One or more RTMA R2 uploads failed after retries. xargs exited with $upload_rc."
+            exit "$upload_rc"
+          fi
 
           wrangler r2 object put "$BUCKET/temp-tiles/manifest.json" \
             --file="$ROOT/manifest.json" \
