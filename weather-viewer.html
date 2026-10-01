@@ -449,7 +449,7 @@
 
     let lightningSeenLatestMs=0,lightningPulseFrame=0,lightningPulseToken=0,lightningPollTimer=0;
     let lightningPulseQueue=[],lightningPulseActive=[],lightningPulseNextReleaseAt=0,lightningPulseWakeTimer=0;
-    const SAT_CROSSFADE_FRACTION=.82,SAT_END_PAUSE_MS=550,SAT_BOUNDARY_URL="assets/us-state-boundaries.geojson";
+    const SAT_CROSSFADE_FRACTION=.82,SAT_END_PAUSE_MS=550,SAT_BOUNDARY_URL="assets/us-state-boundaries.geojson",VIEWER_STATE_KEY="zwx-weather-viewer-state-v1";
     const satFrameImages=new Map(),satFramePromises=new Map(),satProbeResults=new Map(),satFrameVisuals=new WeakMap();
     const activate=(list,predicate)=>{for(const button of list)button.classList.toggle("active",predicate(button));};
     function showRadar(){radarFrame.hidden=false;satelliteStage.hidden=true;weatherMapEl.style.display="none";mapProductCard.hidden=true;stopSatellitePlayback();}
@@ -4029,25 +4029,61 @@
 
     function nationalView(){ensureMap().then(()=>weatherMap.fitBounds(CONUS_BOUNDS,{padding:18,duration:500}));}
     function regionalView(){ensureMap().then(()=>weatherMap.easeTo({zoom:Math.max(REGIONAL_ZOOM,weatherMap.getZoom()),duration:450}));}
+    function saveViewerState(){
+      try{
+        sessionStorage.setItem(
+          VIEWER_STATE_KEY,
+          JSON.stringify({
+            activeProduct,
+            radarMode,
+            satPlatform,
+            satProduct,
+            satSector
+          })
+        );
+      }catch{}
+    }
+    function restoreViewerState(){
+      try{
+        const saved=JSON.parse(sessionStorage.getItem(VIEWER_STATE_KEY)||"null");
+        if(!saved)return;
+        if(["radar","satellite","lightning"].includes(saved.activeProduct)){
+          activeProduct=saved.activeProduct;
+        }
+        if(["national","regional","hires"].includes(saved.radarMode)){
+          radarMode=saved.radarMode;
+        }
+        if(["East","West"].includes(saved.satPlatform)){
+          satPlatform=saved.satPlatform;
+        }
+        if(Object.hasOwn(SAT_PRODUCTS,saved.satProduct)){
+          satProduct=saved.satProduct;
+        }
+        const sectors=SAT_SECTORS[satPlatform]||SAT_SECTORS.East;
+        if(sectors.some(item=>item.id===saved.satSector)){
+          satSector=saved.satSector;
+        }
+      }catch{}
+    }
     function tuneEmbeddedLevel2(){
       if(radarMode!=="hires")return;
       try{const doc=radarFrame.contentDocument;if(!doc)return;doc.querySelector("[data-interior-site-header]")?.remove();const rail=doc.querySelector(".right-ui-rail");if(rail){rail.style.setProperty("top","16px","important");rail.style.setProperty("max-height","calc(100vh - 32px)","important");}radarFrame.contentWindow?.dispatchEvent(new Event("resize"));}catch(error){console.warn("Hi-Res embed trim skipped",error);}
     }
-    function loadRadar(mode){radarMode=mode;activate(radarButtons,button=>button.dataset.radar===mode);showRadar();viewerStatus.textContent=mode==="hires"?"Hi-Res Level II radar":"MRMS live";if(mode==="hires"){viewerNote.textContent="Mapbox Level II radar • choose a radar site in the panel";radarFrame.src="level2-mobile-radar.html?level2Data=remote&site=KFCX&embed=1&v=20260923b";return;}radarFrame.src=`mosaic-radar-home.html?viewer=${mode}&v=20260923a`;viewerNote.textContent=mode==="regional"?"Regional MRMS • f2 ~4K quality band • zoom capped before full-native mode":"MRMS national mosaic • broad CONUS situational awareness";}
-    function selectProduct(next){activeProduct=next;activate(tabs,button=>button.dataset.product===next);radarControls.hidden=next!=="radar";satelliteControls.hidden=next!=="satellite";lightningControls.hidden=next!=="lightning";if(next==="radar"){controlLabel.textContent="Radar view";loadRadar(radarMode);return;}if(next==="satellite"){controlLabel.textContent="Satellite";activate(platformButtons,button=>button.dataset.satPlatform===satPlatform);activate(satProductButtons,button=>button.dataset.satProduct===satProduct);populateSatelliteSectors();showSatellite();resetSatelliteViewer();return;}controlLabel.textContent="Lightning";showMap();}
+    function loadRadar(mode){radarMode=mode;saveViewerState();activate(radarButtons,button=>button.dataset.radar===mode);showRadar();viewerStatus.textContent=mode==="hires"?"Hi-Res Level II radar":"MRMS live";if(mode==="hires"){viewerNote.textContent="Mapbox Level II radar • choose a radar site in the panel";radarFrame.src="level2-mobile-radar.html?level2Data=remote&site=KFCX&embed=1&v=20260923b";return;}radarFrame.src=`mosaic-radar-home.html?viewer=${mode}&v=20260923a`;viewerNote.textContent=mode==="regional"?"Regional MRMS • f2 ~4K quality band • zoom capped before full-native mode":"MRMS national mosaic • broad CONUS situational awareness";}
+    function selectProduct(next){activeProduct=next;saveViewerState();activate(tabs,button=>button.dataset.product===next);radarControls.hidden=next!=="radar";satelliteControls.hidden=next!=="satellite";lightningControls.hidden=next!=="lightning";if(next==="radar"){controlLabel.textContent="Radar view";loadRadar(radarMode);return;}if(next==="satellite"){controlLabel.textContent="Satellite";activate(platformButtons,button=>button.dataset.satPlatform===satPlatform);activate(satProductButtons,button=>button.dataset.satProduct===satProduct);populateSatelliteSectors();showSatellite();resetSatelliteViewer();return;}controlLabel.textContent="Lightning";showMap();}
 
     radarFrame.addEventListener("load",tuneEmbeddedLevel2);
     tabs.forEach(button=>button.addEventListener("click",()=>selectProduct(button.dataset.product)));
     radarButtons.forEach(button=>button.addEventListener("click",()=>loadRadar(button.dataset.radar)));
-    platformButtons.forEach(button=>button.addEventListener("click",()=>{satPlatform=button.dataset.satPlatform;satSector="global";activate(platformButtons,item=>item===button);populateSatelliteSectors();if(activeProduct==="satellite")resetSatelliteViewer();}));
+    platformButtons.forEach(button=>button.addEventListener("click",()=>{satPlatform=button.dataset.satPlatform;satSector="global";saveViewerState();activate(platformButtons,item=>item===button);populateSatelliteSectors();if(activeProduct==="satellite")resetSatelliteViewer();}));
     satelliteStage.addEventListener("pointerdown",beginSatellitePan);
     satelliteStage.addEventListener("pointermove",moveSatellitePan);
     satelliteStage.addEventListener("pointerup",endSatellitePan);
     satelliteStage.addEventListener("pointercancel",endSatellitePan);
     satelliteStage.addEventListener("lostpointercapture",()=>{satPanPointerId=null;satelliteStage.classList.remove("sat-panning");});
 
-    satProductButtons.forEach(button=>button.addEventListener("click",()=>{satProduct=button.dataset.satProduct;activate(satProductButtons,item=>item===button);if(activeProduct==="satellite")resetSatelliteViewer();}));
-    satSectorSelect.addEventListener("change",()=>{satSector=satSectorSelect.value;if(activeProduct==="satellite")resetSatelliteViewer();});
+    satProductButtons.forEach(button=>button.addEventListener("click",()=>{satProduct=button.dataset.satProduct;saveViewerState();activate(satProductButtons,item=>item===button);if(activeProduct==="satellite")resetSatelliteViewer();}));
+    satSectorSelect.addEventListener("change",()=>{satSector=satSectorSelect.value;saveViewerState();if(activeProduct==="satellite")resetSatelliteViewer();});
     satPrev.addEventListener("click",()=>{stopSatellitePlayback();renderSatellite((satFrameIndex-1+satFrames.length)%satFrames.length,false);});
     satNext.addEventListener("click",()=>{stopSatellitePlayback();renderSatellite((satFrameIndex+1)%satFrames.length,false);});
     satPlay.addEventListener("click",startSatellitePlayback);
@@ -4086,7 +4122,7 @@
       }
       stopSatellitePlayback();
     },{once:true});
-    populateSatelliteSectors();selectProduct("radar");
+    restoreViewerState();populateSatelliteSectors();selectProduct(activeProduct);
   })();
   </script>
 </body>
