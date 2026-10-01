@@ -67,13 +67,13 @@ TRUECOLOR_GAMMA = float(
     os.getenv("SATELLITE_TRUECOLOR_GAMMA", "2.0")
 )
 TRUECOLOR_SATURATION = float(
-    os.getenv("SATELLITE_TRUECOLOR_SATURATION", "1.16")
+    os.getenv("SATELLITE_TRUECOLOR_SATURATION", "1.22")
 )
 TRUECOLOR_CONTRAST = float(
-    os.getenv("SATELLITE_TRUECOLOR_CONTRAST", "1.10")
+    os.getenv("SATELLITE_TRUECOLOR_CONTRAST", "1.12")
 )
 TRUECOLOR_VIBRANCE = float(
-    os.getenv("SATELLITE_TRUECOLOR_VIBRANCE", "0.10")
+    os.getenv("SATELLITE_TRUECOLOR_VIBRANCE", "0.16")
 )
 TRUECOLOR_LOW_SUN_LIFT = float(
     os.getenv("SATELLITE_TRUECOLOR_LOW_SUN_LIFT", "0.22")
@@ -89,7 +89,7 @@ REGIONAL_PLATFORMS = {
         "sector": "CONUS",
         "cadence_minutes": 5,
         "max_render": MAX_RENDER_PER_PLATFORM,
-        "render_version": 7,
+        "render_version": 8,
         "night_channel": "13",
         "native_products": True,
         "c02_stride": 1,
@@ -108,7 +108,7 @@ REGIONAL_PLATFORMS = {
         "sector": "PACUS",
         "cadence_minutes": 5,
         "max_render": MAX_RENDER_PER_PLATFORM,
-        "render_version": 7,
+        "render_version": 8,
         "night_channel": "13",
         "native_products": True,
         "c02_stride": 1,
@@ -126,7 +126,7 @@ GLOBAL_PLATFORMS = {
         "sector": "GLOBAL",
         "cadence_minutes": 10,
         "max_render": MAX_RENDER_FULLDISK_PER_PLATFORM,
-        "render_version": 12,
+        "render_version": 13,
         "night_channel": "13",
         "native_products": True,
 
@@ -148,7 +148,7 @@ GLOBAL_PLATFORMS = {
         "sector": "GLOBAL",
         "cadence_minutes": 10,
         "max_render": MAX_RENDER_FULLDISK_PER_PLATFORM,
-        "render_version": 12,
+        "render_version": 13,
         "night_channel": "13",
         "native_products": True,
 
