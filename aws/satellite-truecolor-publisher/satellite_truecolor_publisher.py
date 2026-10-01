@@ -61,19 +61,22 @@ TRUECOLOR_BLACK_POINT = float(
     os.getenv("SATELLITE_TRUECOLOR_BLACK_POINT", "0.002")
 )
 TRUECOLOR_WHITE_POINT = float(
-    os.getenv("SATELLITE_TRUECOLOR_WHITE_POINT", "0.76")
+    os.getenv("SATELLITE_TRUECOLOR_WHITE_POINT", "0.86")
 )
 TRUECOLOR_GAMMA = float(
-    os.getenv("SATELLITE_TRUECOLOR_GAMMA", "2.2")
+    os.getenv("SATELLITE_TRUECOLOR_GAMMA", "2.0")
 )
 TRUECOLOR_SATURATION = float(
-    os.getenv("SATELLITE_TRUECOLOR_SATURATION", "1.14")
+    os.getenv("SATELLITE_TRUECOLOR_SATURATION", "1.16")
 )
 TRUECOLOR_CONTRAST = float(
-    os.getenv("SATELLITE_TRUECOLOR_CONTRAST", "1.05")
+    os.getenv("SATELLITE_TRUECOLOR_CONTRAST", "1.10")
 )
 TRUECOLOR_VIBRANCE = float(
-    os.getenv("SATELLITE_TRUECOLOR_VIBRANCE", "0.14")
+    os.getenv("SATELLITE_TRUECOLOR_VIBRANCE", "0.10")
+)
+TRUECOLOR_LOW_SUN_LIFT = float(
+    os.getenv("SATELLITE_TRUECOLOR_LOW_SUN_LIFT", "0.22")
 )
 
 REGIONAL_PLATFORMS = {
@@ -86,7 +89,7 @@ REGIONAL_PLATFORMS = {
         "sector": "CONUS",
         "cadence_minutes": 5,
         "max_render": MAX_RENDER_PER_PLATFORM,
-        "render_version": 6,
+        "render_version": 7,
         "night_channel": "13",
         "native_products": True,
         "c02_stride": 1,
@@ -105,7 +108,7 @@ REGIONAL_PLATFORMS = {
         "sector": "PACUS",
         "cadence_minutes": 5,
         "max_render": MAX_RENDER_PER_PLATFORM,
-        "render_version": 6,
+        "render_version": 7,
         "night_channel": "13",
         "native_products": True,
         "c02_stride": 1,
@@ -123,7 +126,7 @@ GLOBAL_PLATFORMS = {
         "sector": "GLOBAL",
         "cadence_minutes": 10,
         "max_render": MAX_RENDER_FULLDISK_PER_PLATFORM,
-        "render_version": 11,
+        "render_version": 12,
         "night_channel": "13",
         "native_products": True,
 
@@ -145,7 +148,7 @@ GLOBAL_PLATFORMS = {
         "sector": "GLOBAL",
         "cadence_minutes": 10,
         "max_render": MAX_RENDER_FULLDISK_PER_PLATFORM,
-        "render_version": 11,
+        "render_version": 12,
         "night_channel": "13",
         "native_products": True,
 
@@ -1268,7 +1271,7 @@ def solar_daylight_lift(
 
     return (
         1.0 +
-        0.35 *
+        TRUECOLOR_LOW_SUN_LIFT *
         low_sun
     ).astype(
         np.float32,
@@ -1679,7 +1682,7 @@ def publish_manifest(spec, existing, frames, checked_scans, now):
             "saturation": TRUECOLOR_SATURATION,
             "contrast": TRUECOLOR_CONTRAST,
             "vibrance": TRUECOLOR_VIBRANCE,
-            "lowSunLift": 0.35,
+            "lowSunLift": TRUECOLOR_LOW_SUN_LIFT,
             "transparentNoData": True,
             "resolutionKm": 1.0,
             "night": (
