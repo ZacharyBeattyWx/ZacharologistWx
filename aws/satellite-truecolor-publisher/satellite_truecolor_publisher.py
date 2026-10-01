@@ -76,7 +76,7 @@ TRUECOLOR_VIBRANCE = float(
     os.getenv("SATELLITE_TRUECOLOR_VIBRANCE", "0.16")
 )
 TRUECOLOR_LOW_SUN_LIFT = float(
-    os.getenv("SATELLITE_TRUECOLOR_LOW_SUN_LIFT", "0.22")
+    os.getenv("SATELLITE_TRUECOLOR_LOW_SUN_LIFT", "0.14")
 )
 
 REGIONAL_PLATFORMS = {
@@ -89,7 +89,7 @@ REGIONAL_PLATFORMS = {
         "sector": "CONUS",
         "cadence_minutes": 5,
         "max_render": MAX_RENDER_PER_PLATFORM,
-        "render_version": 8,
+        "render_version": 9,
         "night_channel": "13",
         "native_products": True,
         "c02_stride": 1,
@@ -108,7 +108,7 @@ REGIONAL_PLATFORMS = {
         "sector": "PACUS",
         "cadence_minutes": 5,
         "max_render": MAX_RENDER_PER_PLATFORM,
-        "render_version": 8,
+        "render_version": 9,
         "night_channel": "13",
         "native_products": True,
         "c02_stride": 1,
@@ -126,7 +126,7 @@ GLOBAL_PLATFORMS = {
         "sector": "GLOBAL",
         "cadence_minutes": 10,
         "max_render": MAX_RENDER_FULLDISK_PER_PLATFORM,
-        "render_version": 13,
+        "render_version": 14,
         "night_channel": "13",
         "native_products": True,
 
@@ -148,7 +148,7 @@ GLOBAL_PLATFORMS = {
         "sector": "GLOBAL",
         "cadence_minutes": 10,
         "max_render": MAX_RENDER_FULLDISK_PER_PLATFORM,
-        "render_version": 13,
+        "render_version": 14,
         "night_channel": "13",
         "native_products": True,
 
@@ -1382,11 +1382,26 @@ def render_scan(spec, group):
             width,
             height,
         )
+        day_luma = (
+            0.2126 * day_rgb[..., 0]
+            + 0.7152 * day_rgb[..., 1]
+            + 0.0722 * day_rgb[..., 2]
+        )
+        lift_weight = np.clip(
+            (0.82 - day_luma) / 0.50,
+            0.0,
+            1.0,
+        )
+        lift_exponent = (
+            1.0
+            + (daylight_lift - 1.0)
+            * lift_weight
+        )
         day_rgb = np.clip(
             1.0 -
             np.power(
                 1.0 - day_rgb,
-                daylight_lift[..., None],
+                lift_exponent[..., None],
             ),
             0.0,
             1.0,
