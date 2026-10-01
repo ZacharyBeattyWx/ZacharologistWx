@@ -67,10 +67,13 @@ TRUECOLOR_GAMMA = float(
     os.getenv("SATELLITE_TRUECOLOR_GAMMA", "2.2")
 )
 TRUECOLOR_SATURATION = float(
-    os.getenv("SATELLITE_TRUECOLOR_SATURATION", "1.06")
+    os.getenv("SATELLITE_TRUECOLOR_SATURATION", "1.14")
 )
 TRUECOLOR_CONTRAST = float(
-    os.getenv("SATELLITE_TRUECOLOR_CONTRAST", "1.03")
+    os.getenv("SATELLITE_TRUECOLOR_CONTRAST", "1.05")
+)
+TRUECOLOR_VIBRANCE = float(
+    os.getenv("SATELLITE_TRUECOLOR_VIBRANCE", "0.14")
 )
 
 REGIONAL_PLATFORMS = {
@@ -83,7 +86,7 @@ REGIONAL_PLATFORMS = {
         "sector": "CONUS",
         "cadence_minutes": 5,
         "max_render": MAX_RENDER_PER_PLATFORM,
-        "render_version": 5,
+        "render_version": 6,
         "night_channel": "13",
         "native_products": True,
         "c02_stride": 1,
@@ -102,7 +105,7 @@ REGIONAL_PLATFORMS = {
         "sector": "PACUS",
         "cadence_minutes": 5,
         "max_render": MAX_RENDER_PER_PLATFORM,
-        "render_version": 5,
+        "render_version": 6,
         "night_channel": "13",
         "native_products": True,
         "c02_stride": 1,
@@ -120,7 +123,7 @@ GLOBAL_PLATFORMS = {
         "sector": "GLOBAL",
         "cadence_minutes": 10,
         "max_render": MAX_RENDER_FULLDISK_PER_PLATFORM,
-        "render_version": 10,
+        "render_version": 11,
         "night_channel": "13",
         "native_products": True,
 
@@ -142,7 +145,7 @@ GLOBAL_PLATFORMS = {
         "sector": "GLOBAL",
         "cadence_minutes": 10,
         "max_render": MAX_RENDER_FULLDISK_PER_PLATFORM,
-        "render_version": 10,
+        "render_version": 11,
         "night_channel": "13",
         "native_products": True,
 
@@ -856,6 +859,42 @@ def truecolor_rgb(blue, red, veggie):
     return rgb, finite
 
 
+def truecolor_vibrance(rgb, finite):
+    """Restore muted surface color after the low-sun brightness lift."""
+    luma = (
+        0.2126 * rgb[..., 0]
+        + 0.7152 * rgb[..., 1]
+        + 0.0722 * rgb[..., 2]
+    )
+    chroma = rgb - luma[..., None]
+    color_range = np.max(rgb, axis=-1) - np.min(rgb, axis=-1)
+
+    muted_weight = np.clip(
+        1.0 - color_range / 0.35,
+        0.0,
+        1.0,
+    )
+    highlight_weight = np.clip(
+        (0.92 - luma) / 0.35,
+        0.0,
+        1.0,
+    )
+    gain = (
+        1.0
+        + TRUECOLOR_VIBRANCE
+        * muted_weight
+        * highlight_weight
+    )
+
+    vibrant = np.clip(
+        luma[..., None] + gain[..., None] * chroma,
+        0.0,
+        1.0,
+    )
+    vibrant[~finite] = 0.0
+    return vibrant
+
+
 def daylight_fraction(rgb, finite):
     if not np.any(finite):
         return 0.0
@@ -1229,7 +1268,7 @@ def solar_daylight_lift(
 
     return (
         1.0 +
-        0.58 *
+        0.35 *
         low_sun
     ).astype(
         np.float32,
@@ -1348,6 +1387,10 @@ def render_scan(spec, group):
             ),
             0.0,
             1.0,
+        )
+        day_rgb = truecolor_vibrance(
+            day_rgb,
+            day_finite,
         )
 
         fraction = daylight_fraction(
@@ -1635,6 +1678,8 @@ def publish_manifest(spec, existing, frames, checked_scans, now):
             "whitePoint": TRUECOLOR_WHITE_POINT,
             "saturation": TRUECOLOR_SATURATION,
             "contrast": TRUECOLOR_CONTRAST,
+            "vibrance": TRUECOLOR_VIBRANCE,
+            "lowSunLift": 0.35,
             "transparentNoData": True,
             "resolutionKm": 1.0,
             "night": (
