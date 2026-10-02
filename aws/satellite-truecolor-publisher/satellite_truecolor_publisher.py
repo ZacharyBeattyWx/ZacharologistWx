@@ -87,8 +87,11 @@ TRUECOLOR_LOW_SUN_PLATEAU_DEGREES = float(
 TRUECOLOR_TERMINATOR_FEATHER_DEGREES = float(
     os.getenv("SATELLITE_TRUECOLOR_TERMINATOR_FEATHER_DEGREES", "0.08")
 )
+TRUECOLOR_DAYLIGHT_CUTOFF_DEGREES = float(
+    os.getenv("SATELLITE_TRUECOLOR_DAYLIGHT_CUTOFF_DEGREES", "4.0")
+)
 LOCALIZED_RENDER_VERSION = int(
-    os.getenv("SATELLITE_LOCALIZED_RENDER_VERSION", "5")
+    os.getenv("SATELLITE_LOCALIZED_RENDER_VERSION", "6")
 )
 LOCALIZED_MAX_RENDER_PER_SECTOR = int(
     os.getenv("SATELLITE_LOCALIZED_MAX_RENDER_PER_SECTOR", "2")
@@ -107,7 +110,7 @@ REGIONAL_PLATFORMS = {
         "sector": "CONUS",
         "cadence_minutes": 5,
         "max_render": MAX_RENDER_PER_PLATFORM,
-        "render_version": 13,
+        "render_version": 14,
         "night_channel": "13",
         "native_products": True,
         "c02_stride": 1,
@@ -127,7 +130,7 @@ REGIONAL_PLATFORMS = {
         "sector": "PACUS",
         "cadence_minutes": 5,
         "max_render": MAX_RENDER_PER_PLATFORM,
-        "render_version": 13,
+        "render_version": 14,
         "night_channel": "13",
         "native_products": True,
         "c02_stride": 1,
@@ -164,7 +167,7 @@ GLOBAL_PLATFORMS = {
         "sector": "GLOBAL",
         "cadence_minutes": 10,
         "max_render": MAX_RENDER_FULLDISK_PER_PLATFORM,
-        "render_version": 18,
+        "render_version": 19,
         "night_channel": "13",
         "native_products": True,
 
@@ -186,7 +189,7 @@ GLOBAL_PLATFORMS = {
         "sector": "GLOBAL",
         "cadence_minutes": 10,
         "max_render": MAX_RENDER_FULLDISK_PER_PLATFORM,
-        "render_version": 18,
+        "render_version": 19,
         "night_channel": "13",
         "native_products": True,
 
@@ -1292,10 +1295,16 @@ def solar_daylight_alpha(
             feather_degrees
         )
     )
+    cutoff = math.sin(
+        math.radians(
+            TRUECOLOR_DAYLIGHT_CUTOFF_DEGREES
+        )
+    )
 
     alpha = np.clip(
         (
-            sin_elevation +
+            sin_elevation -
+            cutoff +
             feather
         ) /
         (
@@ -1878,6 +1887,11 @@ def publish_manifest(spec, existing, frames, checked_scans, now):
             ),
             "terminatorFeatherDegrees": (
                 TRUECOLOR_TERMINATOR_FEATHER_DEGREES
+                if spec.get("night_channel")
+                else None
+            ),
+            "daylightCutoffDegrees": (
+                TRUECOLOR_DAYLIGHT_CUTOFF_DEGREES
                 if spec.get("night_channel")
                 else None
             ),
