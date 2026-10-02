@@ -75,8 +75,8 @@ TRUECOLOR_CONTRAST = float(
 TRUECOLOR_VIBRANCE = float(
     os.getenv("SATELLITE_TRUECOLOR_VIBRANCE", "0.16")
 )
-TRUECOLOR_LOW_SUN_LIFT = float(
-    os.getenv("SATELLITE_TRUECOLOR_LOW_SUN_LIFT", "0.30")
+TRUECOLOR_LOW_SUN_REFLECTANCE_GAIN = float(
+    os.getenv("SATELLITE_TRUECOLOR_LOW_SUN_REFLECTANCE_GAIN", "2.8")
 )
 TRUECOLOR_LOW_SUN_START_DEGREES = float(
     os.getenv("SATELLITE_TRUECOLOR_LOW_SUN_START_DEGREES", "25.0")
@@ -88,7 +88,7 @@ TRUECOLOR_TERMINATOR_FEATHER_DEGREES = float(
     os.getenv("SATELLITE_TRUECOLOR_TERMINATOR_FEATHER_DEGREES", "0.08")
 )
 LOCALIZED_RENDER_VERSION = int(
-    os.getenv("SATELLITE_LOCALIZED_RENDER_VERSION", "4")
+    os.getenv("SATELLITE_LOCALIZED_RENDER_VERSION", "5")
 )
 LOCALIZED_MAX_RENDER_PER_SECTOR = int(
     os.getenv("SATELLITE_LOCALIZED_MAX_RENDER_PER_SECTOR", "2")
@@ -107,7 +107,7 @@ REGIONAL_PLATFORMS = {
         "sector": "CONUS",
         "cadence_minutes": 5,
         "max_render": MAX_RENDER_PER_PLATFORM,
-        "render_version": 12,
+        "render_version": 13,
         "night_channel": "13",
         "native_products": True,
         "c02_stride": 1,
@@ -127,7 +127,7 @@ REGIONAL_PLATFORMS = {
         "sector": "PACUS",
         "cadence_minutes": 5,
         "max_render": MAX_RENDER_PER_PLATFORM,
-        "render_version": 12,
+        "render_version": 13,
         "night_channel": "13",
         "native_products": True,
         "c02_stride": 1,
@@ -164,7 +164,7 @@ GLOBAL_PLATFORMS = {
         "sector": "GLOBAL",
         "cadence_minutes": 10,
         "max_render": MAX_RENDER_FULLDISK_PER_PLATFORM,
-        "render_version": 17,
+        "render_version": 18,
         "night_channel": "13",
         "native_products": True,
 
@@ -186,7 +186,7 @@ GLOBAL_PLATFORMS = {
         "sector": "GLOBAL",
         "cadence_minutes": 10,
         "max_render": MAX_RENDER_FULLDISK_PER_PLATFORM,
-        "render_version": 17,
+        "render_version": 18,
         "night_channel": "13",
         "native_products": True,
 
@@ -1323,17 +1323,17 @@ def solar_daylight_alpha(
     )
 
 
-def solar_daylight_lift(
+def solar_reflectance_gain(
     dt,
     bbox,
     width,
     height,
 ):
-    """Brightness lift for low-sun reflected-light imagery.
+    """Illumination correction for low-sun reflected-light imagery.
 
     ABI visible reflectance naturally darkens toward the terminator.
-    Preserve midday contrast, then smoothly lift only low solar angles
-    so late-day True Color remains readable without flattening the scene.
+    Reach a capped correction before the terminator and hold it through
+    the day/IR cutoff so the boundary stays crisp without a bright halo.
     """
     west, south, east, north = bbox
     min_x, min_y, max_x, max_y = mercator_bounds(bbox)
@@ -1422,9 +1422,22 @@ def solar_daylight_lift(
 
     return (
         1.0 +
-        TRUECOLOR_LOW_SUN_LIFT *
+        (TRUECOLOR_LOW_SUN_REFLECTANCE_GAIN - 1.0) *
         low_sun
     ).astype(
+        np.float32,
+        copy=False,
+    )
+
+
+def correct_low_sun_reflectance(channel, gain):
+    """Lift dim reflectance while rolling off naturally at highlights."""
+    clipped = np.clip(channel, 0.0, 1.0)
+    corrected = (
+        clipped * gain /
+        (1.0 + clipped * (gain - 1.0))
+    )
+    return np.where(np.isfinite(channel), corrected, np.nan).astype(
         np.float32,
         copy=False,
     )
@@ -1531,41 +1544,29 @@ def render_scan(spec, group, source_cache=None):
             gy,
         )
 
-        day_rgb, day_finite = truecolor_rgb(
-            blue_out,
-            red_out,
-            veggie_out,
-        )
-
-        daylight_lift = solar_daylight_lift(
+        reflectance_gain = solar_reflectance_gain(
             group["time"],
             spec["bbox"],
             width,
             height,
         )
-        day_luma = (
-            0.2126 * day_rgb[..., 0]
-            + 0.7152 * day_rgb[..., 1]
-            + 0.0722 * day_rgb[..., 2]
+        blue_out = correct_low_sun_reflectance(
+            blue_out,
+            reflectance_gain,
         )
-        lift_weight = np.clip(
-            (0.82 - day_luma) / 0.50,
-            0.0,
-            1.0,
+        red_out = correct_low_sun_reflectance(
+            red_out,
+            reflectance_gain,
         )
-        lift_exponent = (
-            1.0
-            + (daylight_lift - 1.0)
-            * lift_weight
+        veggie_out = correct_low_sun_reflectance(
+            veggie_out,
+            reflectance_gain,
         )
-        day_rgb = np.clip(
-            1.0 -
-            np.power(
-                1.0 - day_rgb,
-                lift_exponent[..., None],
-            ),
-            0.0,
-            1.0,
+
+        day_rgb, day_finite = truecolor_rgb(
+            blue_out,
+            red_out,
+            veggie_out,
         )
         day_rgb = truecolor_limb_dehaze(
             day_rgb,
@@ -1864,7 +1865,7 @@ def publish_manifest(spec, existing, frames, checked_scans, now):
             "saturation": TRUECOLOR_SATURATION,
             "contrast": TRUECOLOR_CONTRAST,
             "vibrance": TRUECOLOR_VIBRANCE,
-            "lowSunLift": TRUECOLOR_LOW_SUN_LIFT,
+            "lowSunReflectanceGain": TRUECOLOR_LOW_SUN_REFLECTANCE_GAIN,
             "lowSunStartDegrees": TRUECOLOR_LOW_SUN_START_DEGREES,
             "lowSunPlateauDegrees": TRUECOLOR_LOW_SUN_PLATEAU_DEGREES,
             "transparentNoData": True,
