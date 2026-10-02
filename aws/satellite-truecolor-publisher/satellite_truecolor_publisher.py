@@ -76,13 +76,19 @@ TRUECOLOR_VIBRANCE = float(
     os.getenv("SATELLITE_TRUECOLOR_VIBRANCE", "0.16")
 )
 TRUECOLOR_LOW_SUN_LIFT = float(
-    os.getenv("SATELLITE_TRUECOLOR_LOW_SUN_LIFT", "0.14")
+    os.getenv("SATELLITE_TRUECOLOR_LOW_SUN_LIFT", "0.30")
+)
+TRUECOLOR_LOW_SUN_START_DEGREES = float(
+    os.getenv("SATELLITE_TRUECOLOR_LOW_SUN_START_DEGREES", "25.0")
+)
+TRUECOLOR_LOW_SUN_PLATEAU_DEGREES = float(
+    os.getenv("SATELLITE_TRUECOLOR_LOW_SUN_PLATEAU_DEGREES", "4.0")
 )
 TRUECOLOR_TERMINATOR_FEATHER_DEGREES = float(
     os.getenv("SATELLITE_TRUECOLOR_TERMINATOR_FEATHER_DEGREES", "0.08")
 )
 LOCALIZED_RENDER_VERSION = int(
-    os.getenv("SATELLITE_LOCALIZED_RENDER_VERSION", "3")
+    os.getenv("SATELLITE_LOCALIZED_RENDER_VERSION", "4")
 )
 LOCALIZED_MAX_RENDER_PER_SECTOR = int(
     os.getenv("SATELLITE_LOCALIZED_MAX_RENDER_PER_SECTOR", "2")
@@ -101,7 +107,7 @@ REGIONAL_PLATFORMS = {
         "sector": "CONUS",
         "cadence_minutes": 5,
         "max_render": MAX_RENDER_PER_PLATFORM,
-        "render_version": 11,
+        "render_version": 12,
         "night_channel": "13",
         "native_products": True,
         "c02_stride": 1,
@@ -121,7 +127,7 @@ REGIONAL_PLATFORMS = {
         "sector": "PACUS",
         "cadence_minutes": 5,
         "max_render": MAX_RENDER_PER_PLATFORM,
-        "render_version": 11,
+        "render_version": 12,
         "night_channel": "13",
         "native_products": True,
         "c02_stride": 1,
@@ -158,7 +164,7 @@ GLOBAL_PLATFORMS = {
         "sector": "GLOBAL",
         "cadence_minutes": 10,
         "max_render": MAX_RENDER_FULLDISK_PER_PLATFORM,
-        "render_version": 16,
+        "render_version": 17,
         "night_channel": "13",
         "native_products": True,
 
@@ -180,7 +186,7 @@ GLOBAL_PLATFORMS = {
         "sector": "GLOBAL",
         "cadence_minutes": 10,
         "max_render": MAX_RENDER_FULLDISK_PER_PLATFORM,
-        "render_version": 16,
+        "render_version": 17,
         "night_channel": "13",
         "native_products": True,
 
@@ -1392,8 +1398,15 @@ def solar_daylight_lift(
         np.cos(hour_angle)[None, :]
     )
 
+    lift_start = math.sin(
+        math.radians(TRUECOLOR_LOW_SUN_START_DEGREES)
+    )
+    lift_plateau = math.sin(
+        math.radians(TRUECOLOR_LOW_SUN_PLATEAU_DEGREES)
+    )
     low_sun = np.clip(
-        (0.55 - sin_elevation) / 0.55,
+        (lift_start - sin_elevation) /
+        max(lift_start - lift_plateau, 1e-6),
         0.0,
         1.0,
     )
@@ -1852,6 +1865,8 @@ def publish_manifest(spec, existing, frames, checked_scans, now):
             "contrast": TRUECOLOR_CONTRAST,
             "vibrance": TRUECOLOR_VIBRANCE,
             "lowSunLift": TRUECOLOR_LOW_SUN_LIFT,
+            "lowSunStartDegrees": TRUECOLOR_LOW_SUN_START_DEGREES,
+            "lowSunPlateauDegrees": TRUECOLOR_LOW_SUN_PLATEAU_DEGREES,
             "transparentNoData": True,
             "resolutionKm": output_resolution_km(spec),
             "limbDehaze": float(spec.get("dehaze_strength", 0.0)),
