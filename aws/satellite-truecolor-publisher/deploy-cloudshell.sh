@@ -40,10 +40,20 @@ fi
 aws ecr get-login-password --region "$REGION" \
   | docker login --username AWS --password-stdin "$ECR_HOST"
 
-# CloudShell has a small Docker filesystem. Release BuildKit cache only; this
-# script never runs git clean/reset and does not prune Docker volumes or alter
-# unrelated working files.
+# CloudShell has a small Docker filesystem. Release BuildKit cache and old
+# local copies of this publisher image before rebuilding. Every removed image
+# has already been pushed to ECR; unrelated images and volumes are untouched.
 docker builder prune --all --force >/dev/null 2>&1 || true
+while read -r OLD_IMAGE_ID; do
+  [[ -n "$OLD_IMAGE_ID" ]] || continue
+  docker image rm --force "$OLD_IMAGE_ID" >/dev/null 2>&1 || true
+done < <(
+  docker image ls \
+    --filter "reference=${ECR_HOST}/${ECR_REPOSITORY}:*" \
+    --quiet \
+    | sort -u
+)
+docker image prune --force >/dev/null 2>&1 || true
 
 printf 'Disk available before build:\n'
 df -h "$HOME" | tail -1
