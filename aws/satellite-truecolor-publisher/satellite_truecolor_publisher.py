@@ -78,6 +78,15 @@ TRUECOLOR_VIBRANCE = float(
 TRUECOLOR_LOW_SUN_LIFT = float(
     os.getenv("SATELLITE_TRUECOLOR_LOW_SUN_LIFT", "0.14")
 )
+LOCALIZED_RENDER_VERSION = int(
+    os.getenv("SATELLITE_LOCALIZED_RENDER_VERSION", "1")
+)
+LOCALIZED_MAX_RENDER_PER_SECTOR = int(
+    os.getenv("SATELLITE_LOCALIZED_MAX_RENDER_PER_SECTOR", "1")
+)
+LOCALIZED_DEHAZE_STRENGTH = float(
+    os.getenv("SATELLITE_LOCALIZED_DEHAZE_STRENGTH", "0.06")
+)
 
 REGIONAL_PLATFORMS = {
     "East": {
@@ -93,6 +102,7 @@ REGIONAL_PLATFORMS = {
         "night_channel": "13",
         "native_products": True,
         "c02_stride": 1,
+        "subsatellite_longitude": -75.2,
 
         # Keep the currently deployed regional footprint unchanged for now.
         # The viewer will be switched back to a clean RadC sector after the
@@ -112,7 +122,26 @@ REGIONAL_PLATFORMS = {
         "night_channel": "13",
         "native_products": True,
         "c02_stride": 1,
+        "subsatellite_longitude": -137.2,
         "bbox": (-134.0, 20.0, -101.0, 53.0),
+    },
+}
+
+LOCALIZED_SECTORS = {
+    "East": {
+        "nr": (-117.5, 38.0, -99.5, 50.5),
+        "umv": (-102.0, 35.5, -83.5, 49.5),
+        "cgl": (-95.0, 37.0, -74.0, 50.0),
+        "ne": (-84.0, 36.0, -65.5, 48.5),
+        "sr": (-117.5, 28.5, -98.5, 42.5),
+        "sp": (-107.0, 23.5, -87.5, 39.5),
+        "smv": (-102.0, 23.5, -82.5, 39.5),
+        "se": (-95.0, 23.5, -73.5, 39.0),
+        "eus": (-87.0, 22.5, -60.5, 49.0),
+    },
+    "West": {
+        "pnw": (-131.0, 37.5, -104.5, 55.5),
+        "psw": (-128.0, 23.0, -99.5, 43.0),
     },
 }
 
@@ -760,11 +789,67 @@ def mercator_bounds(bbox):
     return min_x, min_y, max_x, max_y
 
 
+def output_width_for_resolution(bbox, resolution_km):
+    min_x, _min_y, max_x, _max_y = mercator_bounds(bbox)
+    center_lat = (bbox[1] + bbox[3]) / 2.0
+    ground_width = (
+        (max_x - min_x)
+        * math.cos(math.radians(center_lat))
+    )
+    return max(
+        960,
+        min(
+            3200,
+            int(math.ceil(ground_width / (resolution_km * 1000.0))),
+        ),
+    )
+
+
+def output_resolution_km(spec):
+    configured = spec.get("resolution_km")
+    if configured is not None:
+        return float(configured)
+
+    bbox = spec["bbox"]
+    min_x, _min_y, max_x, _max_y = mercator_bounds(bbox)
+    center_lat = (bbox[1] + bbox[3]) / 2.0
+    ground_width = (
+        (max_x - min_x)
+        * math.cos(math.radians(center_lat))
+    )
+    width = max(960, int(spec.get("output_width", OUTPUT_WIDTH)))
+    return round(ground_width / width / 1000.0, 2)
+
+
+def localized_platform_specs(platform, base_spec):
+    specs = []
+    for sector_id, bbox in LOCALIZED_SECTORS.get(platform, {}).items():
+        spec = dict(base_spec)
+        spec.update(
+            {
+                "prefix": f"{base_spec['prefix']}/sectors/{sector_id}",
+                "sector": sector_id,
+                "bbox": bbox,
+                "output_width": output_width_for_resolution(bbox, 1.0),
+                "resolution_km": 1.0,
+                "render_version": LOCALIZED_RENDER_VERSION,
+                "max_render": LOCALIZED_MAX_RENDER_PER_SECTOR,
+                "native_products": False,
+                "dehaze_strength": LOCALIZED_DEHAZE_STRENGTH,
+            }
+        )
+        specs.append(spec)
+    return specs
+
+
 def output_grid(spec, source_crs):
     min_x, min_y, max_x, max_y = mercator_bounds(spec["bbox"])
     ratio = (max_x - min_x) / (max_y - min_y)
 
-    width = max(960, OUTPUT_WIDTH)
+    width = max(
+        960,
+        int(spec.get("output_width", OUTPUT_WIDTH)),
+    )
     height = max(540, int(round(width / ratio)))
 
     xs = np.linspace(min_x, max_x, width, dtype=np.float64)
@@ -896,6 +981,56 @@ def truecolor_vibrance(rgb, finite):
     )
     vibrant[~finite] = 0.0
     return vibrant
+
+
+def truecolor_limb_dehaze(rgb, finite, spec):
+    strength = float(spec.get("dehaze_strength", 0.0))
+    if strength <= 0.0:
+        return rgb
+
+    bbox = spec["bbox"]
+    west, south, east, north = bbox
+    height, width = rgb.shape[:2]
+    sub_lon = math.radians(
+        float(spec.get("subsatellite_longitude", -75.2))
+    )
+
+    lons = np.radians(
+        np.linspace(west, east, width, dtype=np.float64)
+    )
+    min_x, min_y, max_x, max_y = mercator_bounds(bbox)
+    mercator_y = np.linspace(
+        max_y,
+        min_y,
+        height,
+        dtype=np.float64,
+    )
+    earth_radius = 6378137.0
+    lats = (
+        2.0 * np.arctan(np.exp(mercator_y / earth_radius))
+        - np.pi / 2.0
+    )
+
+    view_cosine = (
+        np.cos(lats)[:, None]
+        * np.cos(lons - sub_lon)[None, :]
+    )
+    limb = np.clip(
+        (0.82 - view_cosine) / 0.32,
+        0.0,
+        1.0,
+    )
+    limb = limb * limb * (3.0 - 2.0 * limb)
+    veil = strength * limb
+
+    corrected = np.clip(
+        (rgb - veil[..., None])
+        / np.maximum(0.8, 1.0 - veil[..., None]),
+        0.0,
+        1.0,
+    )
+    corrected[~finite] = 0.0
+    return corrected.astype(np.float32, copy=False)
 
 
 def daylight_fraction(rgb, finite):
@@ -1306,8 +1441,11 @@ def encode_webp(rgb, finite):
     return output.getvalue(), image.width, image.height
 
 
-def render_scan(spec, group):
+def render_scan(spec, group, source_cache=None):
     paths = {}
+    owned_paths = source_cache is None
+    if source_cache is None:
+        source_cache = {}
 
     try:
         channels = ["01", "02", "03"]
@@ -1317,11 +1455,18 @@ def render_scan(spec, group):
             channels.append(str(night_channel))
 
         for channel in channels:
-            path = download_source(
+            cache_key = (
                 spec["source_bucket"],
                 group["channels"][channel],
-                f"-C{channel}.nc",
             )
+            path = source_cache.get(cache_key)
+            if not path or not os.path.exists(path):
+                path = download_source(
+                    spec["source_bucket"],
+                    group["channels"][channel],
+                    f"-C{channel}.nc",
+                )
+                source_cache[cache_key] = path
             paths[channel] = path
 
         source_crs = source_crs_from_path(
@@ -1405,6 +1550,11 @@ def render_scan(spec, group):
             ),
             0.0,
             1.0,
+        )
+        day_rgb = truecolor_limb_dehaze(
+            day_rgb,
+            day_finite,
+            spec,
         )
         day_rgb = truecolor_vibrance(
             day_rgb,
@@ -1527,11 +1677,12 @@ def render_scan(spec, group):
         }
 
     finally:
-        for path in paths.values():
-            try:
-                os.unlink(path)
-            except OSError:
-                pass
+        if owned_paths:
+            for path in paths.values():
+                try:
+                    os.unlink(path)
+                except OSError:
+                    pass
 
 
 def render_native_scan(spec, group):
@@ -1699,7 +1850,8 @@ def publish_manifest(spec, existing, frames, checked_scans, now):
             "vibrance": TRUECOLOR_VIBRANCE,
             "lowSunLift": TRUECOLOR_LOW_SUN_LIFT,
             "transparentNoData": True,
-            "resolutionKm": 1.0,
+            "resolutionKm": output_resolution_km(spec),
+            "limbDehaze": float(spec.get("dehaze_strength", 0.0)),
             "night": (
                 "C13 Clean Longwave IR"
                 if spec.get("night_channel")
@@ -1729,7 +1881,13 @@ def publish_manifest(spec, existing, frames, checked_scans, now):
     return output
 
 
-def process_platform(platform, spec, now):
+def process_platform(
+    platform,
+    spec,
+    now,
+    candidates=None,
+    source_cache=None,
+):
     existing = read_manifest(spec)
 
     render_version = int(
@@ -1756,7 +1914,8 @@ def process_platform(platform, spec, now):
     ]
     checked_set = set(checked)
 
-    candidates = list_complete_scans(spec, now)
+    if candidates is None:
+        candidates = list_complete_scans(spec, now)
 
     # Once a platform already has imagery, backfill only within roughly one
     # complete 25-frame loop. This prevents routine runs from crossing an
@@ -1820,7 +1979,11 @@ def process_platform(platform, spec, now):
         attempted += 1
 
         try:
-            frame = render_scan(spec, group)
+            frame = render_scan(
+                spec,
+                group,
+                source_cache=source_cache,
+            )
             checked.append(group["scan"])
             checked_set.add(group["scan"])
 
@@ -2061,7 +2224,42 @@ def lambda_handler(event, context):
     results = []
 
     for platform, spec in PLATFORMS.items():
-        result = process_platform(platform, spec, now)
+        candidates = list_complete_scans(spec, now)
+        source_cache = {}
+        localized_results = []
+
+        try:
+            result = process_platform(
+                platform,
+                spec,
+                now,
+                candidates=candidates,
+                source_cache=source_cache,
+            )
+
+            if PUBLISH_MODE != "global":
+                for localized_spec in localized_platform_specs(
+                    platform,
+                    spec,
+                ):
+                    localized_results.append(
+                        process_platform(
+                            platform,
+                            localized_spec,
+                            now,
+                            candidates=candidates,
+                            source_cache=source_cache,
+                        )
+                    )
+        finally:
+            for path in set(source_cache.values()):
+                try:
+                    os.unlink(path)
+                except OSError:
+                    pass
+
+        if localized_results:
+            result["localized"] = localized_results
         if spec.get("native_products"):
             result["native"] = process_native_platform(
                 platform,

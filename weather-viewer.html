@@ -1474,12 +1474,58 @@
       if(generation!==satWarmGeneration)return [];
       return valid.sort((a,b)=>a-b).slice(-SAT_FRAME_COUNT);
     }
-    function trueColorManifestUrl(platform,sector){
+    function trueColorManifestUrls(platform,sector){
       const global=sector?.id==="global";
       const prefix=
         `${platform.toLowerCase()}${global?"-global":""}`;
 
-      return `${TRUECOLOR_BASE}/${prefix}/manifest.json`;
+      if(global){
+        return [`${TRUECOLOR_BASE}/${prefix}/manifest.json`];
+      }
+
+      const broadSector=
+        sector?.id==="CONUS"||
+        sector?.id==="PACUS"||
+        sector?.id==="gwas";
+      const broadUrl=
+        `${TRUECOLOR_BASE}/${prefix}/manifest.json`;
+
+      return broadSector
+        ?[broadUrl]
+        :[
+            `${TRUECOLOR_BASE}/${prefix}/sectors/${sector.id}/manifest.json`,
+            broadUrl
+          ];
+    }
+
+    async function fetchTrueColorManifest(platform,sector){
+      let lastError=null;
+
+      for(const url of trueColorManifestUrls(platform,sector)){
+        try{
+          const response=await fetch(
+            `${url}?_=${Date.now()}`,
+            {cache:"no-store"}
+          );
+
+          if(!response.ok){
+            throw new Error(`True Color manifest HTTP ${response.status}`);
+          }
+
+          const manifest=await response.json();
+          if(!Array.isArray(manifest.frames)||!manifest.frames.length){
+            throw new Error("True Color manifest contains no frames");
+          }
+          if(!bboxContains(manifest.bbox,sector.bbox)){
+            throw new Error("selected sector exceeds prepared True Color coverage");
+          }
+          return manifest;
+        }catch(error){
+          lastError=error;
+        }
+      }
+
+      throw lastError||new Error("True Color manifest unavailable");
     }
 
     function nativeSatelliteManifestUrl(platform,sector,product){
@@ -1730,49 +1776,14 @@
 
       if(context.product.prepared){
         try{
-          const response=
-            await fetch(
-              `${trueColorManifestUrl(
-                context.platform,
-                context.sector
-              )}?_=${Date.now()}`,
-              {
-                cache:"no-store"
-              }
-            );
-
-          if(!response.ok){
-            throw new Error(
-              `True Color manifest HTTP ${response.status}`
-            );
-          }
-
           const manifest=
-            await response.json();
+            await fetchTrueColorManifest(
+              context.platform,
+              context.sector
+            );
 
           const rawFrames=
-            Array.isArray(
-              manifest.frames
-            )
-              ?manifest.frames
-              :[];
-
-          if(!rawFrames.length){
-            throw new Error(
-              "True Color manifest contains no frames"
-            );
-          }
-
-          if(
-            !bboxContains(
-              manifest.bbox,
-              context.sector.bbox
-            )
-          ){
-            throw new Error(
-              "selected sector exceeds prepared True Color coverage"
-            );
-          }
+            manifest.frames;
 
           context.sourceBbox=
             manifest.bbox.map(Number);
@@ -1793,6 +1804,12 @@
               manifest.sourceProduct||
               ""
             );
+          context.resolutionKm=
+            Number.isFinite(
+              Number(manifest.recipe?.resolutionKm)
+            )
+              ?Number(manifest.recipe.resolutionKm)
+              :null;
 
           context.dayNightComposite=
             Boolean(
@@ -3408,6 +3425,10 @@
         )
           ?"Full Disk"
           :"CONUS/PACUS";
+      const preparedResolution=
+        Number.isFinite(satContext.resolutionKm)
+          ?` • ${satContext.resolutionKm.toFixed(1)} km`
+          :"";
 
       viewerNote.textContent=
         nativeProduct
@@ -3435,7 +3456,7 @@
           :composite
             ?`NOAA GOES ABI ${preparedSource} True Color daylight + NASA GIBS GeoColor night • ${frameTime.toISOString().replace(".000Z","Z")}`
             :prepared
-              ?`NOAA GOES ABI ${preparedSource} C01/C02/C03 • ${frameTime.toISOString().replace(".000Z","Z")}`
+              ?`NOAA GOES ABI ${preparedSource} C01/C02/C03${preparedResolution} • ${frameTime.toISOString().replace(".000Z","Z")}`
               :`NASA GIBS / NOAA GOES • ${frameTime.toISOString().replace(".000Z","Z")}`;
 
       satFrameReadout.textContent=
