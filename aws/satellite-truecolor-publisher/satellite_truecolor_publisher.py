@@ -78,8 +78,14 @@ TRUECOLOR_VIBRANCE = float(
 TRUECOLOR_LOW_SUN_LIFT = float(
     os.getenv("SATELLITE_TRUECOLOR_LOW_SUN_LIFT", "0.14")
 )
+TRUECOLOR_TERMINATOR_FEATHER_DEGREES = float(
+    os.getenv("SATELLITE_TRUECOLOR_TERMINATOR_FEATHER_DEGREES", "3.0")
+)
+TRUECOLOR_TWILIGHT_LIFT = float(
+    os.getenv("SATELLITE_TRUECOLOR_TWILIGHT_LIFT", "0.08")
+)
 LOCALIZED_RENDER_VERSION = int(
-    os.getenv("SATELLITE_LOCALIZED_RENDER_VERSION", "1")
+    os.getenv("SATELLITE_LOCALIZED_RENDER_VERSION", "2")
 )
 LOCALIZED_MAX_RENDER_PER_SECTOR = int(
     os.getenv("SATELLITE_LOCALIZED_MAX_RENDER_PER_SECTOR", "2")
@@ -98,7 +104,7 @@ REGIONAL_PLATFORMS = {
         "sector": "CONUS",
         "cadence_minutes": 5,
         "max_render": MAX_RENDER_PER_PLATFORM,
-        "render_version": 9,
+        "render_version": 10,
         "night_channel": "13",
         "native_products": True,
         "c02_stride": 1,
@@ -118,7 +124,7 @@ REGIONAL_PLATFORMS = {
         "sector": "PACUS",
         "cadence_minutes": 5,
         "max_render": MAX_RENDER_PER_PLATFORM,
-        "render_version": 9,
+        "render_version": 10,
         "night_channel": "13",
         "native_products": True,
         "c02_stride": 1,
@@ -155,7 +161,7 @@ GLOBAL_PLATFORMS = {
         "sector": "GLOBAL",
         "cadence_minutes": 10,
         "max_render": MAX_RENDER_FULLDISK_PER_PLATFORM,
-        "render_version": 14,
+        "render_version": 15,
         "night_channel": "13",
         "native_products": True,
 
@@ -177,7 +183,7 @@ GLOBAL_PLATFORMS = {
         "sector": "GLOBAL",
         "cadence_minutes": 10,
         "max_render": MAX_RENDER_FULLDISK_PER_PLATFORM,
-        "render_version": 14,
+        "render_version": 15,
         "night_channel": "13",
         "native_products": True,
 
@@ -1205,7 +1211,7 @@ def solar_daylight_alpha(
     bbox,
     width,
     height,
-    feather_degrees=0.08,
+    feather_degrees=TRUECOLOR_TERMINATOR_FEATHER_DEGREES,
 ):
     west, south, east, north = bbox
 
@@ -1297,7 +1303,8 @@ def solar_daylight_alpha(
         1.0,
     )
 
-    # Smoothstep only inside the tiny anti-aliasing band.
+    # Smoothstep across twilight so the day/night handoff follows the sun
+    # without drawing a hard edge through the imagery.
     alpha = (
         alpha *
         alpha *
@@ -1612,6 +1619,35 @@ def render_scan(spec, group, source_cache=None):
                 )
             )
 
+            # ABI reflectance becomes very dark close to sunrise and sunset.
+            # Gently bridge only dark pixels in the middle of the transition;
+            # fully daytime and fully nighttime pixels remain unchanged.
+            transition = (
+                4.0 *
+                day_weight *
+                (1.0 - day_weight)
+            )
+            luminance = (
+                rgb[..., 0] * 0.2126 +
+                rgb[..., 1] * 0.7152 +
+                rgb[..., 2] * 0.0722
+            )
+            dark_weight = np.clip(
+                (0.52 - luminance) / 0.52,
+                0.0,
+                1.0,
+            )
+            twilight_lift = (
+                TRUECOLOR_TWILIGHT_LIFT *
+                transition *
+                dark_weight
+            )
+            rgb = np.clip(
+                rgb + twilight_lift[..., None],
+                0.0,
+                1.0,
+            )
+
             finite = (
                 day_finite |
                 night_finite
@@ -1858,7 +1894,12 @@ def publish_manifest(spec, existing, frames, checked_scans, now):
                 else None
             ),
             "terminatorFeatherDegrees": (
-                0.08
+                TRUECOLOR_TERMINATOR_FEATHER_DEGREES
+                if spec.get("night_channel")
+                else None
+            ),
+            "twilightLift": (
+                TRUECOLOR_TWILIGHT_LIFT
                 if spec.get("night_channel")
                 else None
             ),
