@@ -34,6 +34,7 @@
     #satelliteStage .product-card{bottom:58px}
     .map-error{position:absolute;top:12px;left:50%;z-index:15;display:none;transform:translateX(-50%);padding:8px 12px;border:1px solid rgba(251,191,36,.45);border-radius:8px;background:rgba(20,14,3,.92);color:#fde68a;font-size:.68rem;font-weight:800}.map-error.show{display:block}
     .sat-sector-sidebar{display:none}.sat-sector-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}.sat-sector-group{height:29px;min-width:0;padding:0 5px;border:1px solid transparent;border-radius:6px;background:transparent;color:#8493a8;font-size:.56rem;font-weight:850;white-space:nowrap}.sat-sector-group:hover{border-color:var(--line);color:#e5eef8;background:#0c1523}.sat-sector-group.active{border-color:rgba(56,189,248,.55);background:rgba(56,189,248,.12);color:#dff6ff}.sat-sector-list{display:flex;flex-direction:column;gap:3px;margin-top:7px}.sat-sector-option{display:grid;grid-template-columns:18px minmax(0,1fr) auto;align-items:center;gap:6px;width:100%;min-height:29px;padding:4px 6px;border:1px solid transparent;border-radius:6px;background:transparent;color:#afbdd0;text-align:left}.sat-sector-option:hover,.sat-sector-option:focus-visible{border-color:rgba(56,189,248,.36);background:rgba(56,189,248,.09);color:#f8fafc;outline:0}.sat-sector-option.active{border-color:rgba(56,189,248,.55);background:rgba(56,189,248,.14);color:#e9f8ff}.sat-sector-option.planned{color:#c8b879}.sat-sector-option.planned:hover,.sat-sector-option.planned:focus-visible{border-color:rgba(251,191,36,.42);background:rgba(251,191,36,.08);color:#fde68a}.sat-sector-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.61rem;font-weight:800}.sat-sector-state{color:#6f8198;font-size:.48rem;font-weight:850;text-transform:uppercase}.sat-sector-option.planned .sat-sector-state{color:#c89d32}.sector-target-icon{position:relative;width:14px;height:14px;border:1.5px solid currentColor;border-radius:50%;justify-self:center}.sector-target-icon::before,.sector-target-icon::after{content:"";position:absolute;background:currentColor}.sector-target-icon::before{left:5px;top:-3px;width:1.5px;height:18px}.sector-target-icon::after{left:-3px;top:5px;width:18px;height:1.5px}.sector-target-icon span{position:absolute;left:4px;top:4px;width:3px;height:3px;border-radius:50%;background:currentColor}.sat-sector-option.planned .sector-target-icon{border-style:dashed}.sat-sector-empty{padding:8px 6px;color:#718096;font-size:.56rem;font-weight:700;line-height:1.4}
+    .sat-sector-browser{position:absolute;inset:0;z-index:24;display:grid;grid-template-rows:48px minmax(0,1fr);background:#02060c}.sat-sector-browser-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 14px;border-bottom:1px solid var(--line2);background:rgba(5,10,20,.96)}.sat-sector-browser-title{min-width:0}.sat-sector-browser-title strong{display:block;font-size:.78rem}.sat-sector-browser-title span{display:block;margin-top:2px;color:var(--muted);font-size:.57rem;font-weight:750}.sat-sector-browser-close{width:32px;height:32px;padding:0;border:1px solid var(--line2);border-radius:6px;background:#0c1523;color:#e5eef8;font-size:1.1rem;line-height:1}.sat-sector-browser-close:hover{border-color:rgba(56,189,248,.6);background:var(--accentSoft)}.sat-sector-browser-view{position:relative;min-height:0;overflow:hidden;background:#02060c}.sat-sector-browser-image{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}.sat-sector-browser-canvas{position:absolute;inset:0;width:100%;height:100%;cursor:crosshair}.sat-sector-browser-message{position:absolute;left:50%;top:50%;z-index:2;max-width:420px;transform:translate(-50%,-50%);padding:10px 14px;border:1px solid var(--line);border-radius:7px;background:rgba(5,10,20,.86);color:#cbd5e1;font-size:.68rem;font-weight:800;text-align:center;line-height:1.45;pointer-events:none}
     @media(min-width:881px){
       .shell{
         grid-template-columns:198px minmax(0,1fr);
@@ -219,6 +220,7 @@
       .controls{width:100%}
       .note{display:none}
       .sat-sector-sidebar{display:none!important}
+      .sat-sector-browser{display:none!important}
       .product-card{left:8px}
       #satelliteStage{display:block;padding:0;background:#02060c;touch-action:none;overscroll-behavior:none;cursor:grab}#satelliteStage.sat-panning{cursor:grabbing}
       #satelliteStage::before{display:none}
@@ -306,6 +308,17 @@
         <canvas id="satelliteCanvas" hidden aria-label="True Color satellite imagery"></canvas>
         <canvas id="satelliteBoundaryCanvas" aria-hidden="true"></canvas>
         <canvas id="satSectorPreviewCanvas" aria-hidden="true"></canvas>
+        <section class="sat-sector-browser" id="satSectorBrowser" aria-label="Satellite sector chooser" hidden>
+          <header class="sat-sector-browser-head">
+            <div class="sat-sector-browser-title"><strong id="satSectorBrowserTitle">Satellite sectors</strong><span id="satSectorBrowserMeta">Select a highlighted footprint</span></div>
+            <button class="sat-sector-browser-close" id="satSectorBrowserClose" type="button" title="Close sector chooser" aria-label="Close sector chooser">&times;</button>
+          </header>
+          <div class="sat-sector-browser-view" id="satSectorBrowserView">
+            <img class="sat-sector-browser-image" id="satSectorBrowserImage" alt="Latest Global satellite overview">
+            <canvas class="sat-sector-browser-canvas" id="satSectorBrowserCanvas" aria-label="Satellite sector footprints"></canvas>
+            <div class="sat-sector-browser-message" id="satSectorBrowserMessage">Loading satellite overview...</div>
+          </div>
+        </section>
         <div class="product-card"><strong id="satelliteTitle">GOES-East True Color — Global</strong><span id="satelliteMeta">NOAA GOES ABI Full Disk True Color • 10-minute daylight imagery</span></div>
         <div class="sat-playback" aria-label="Satellite playback controls">
           <button id="satPrev" type="button" title="Previous frame">◀</button>
@@ -394,10 +407,10 @@
     };
 
     const tabs=[...document.querySelectorAll("[data-product]")],radarButtons=[...document.querySelectorAll("[data-radar]")],platformButtons=[...document.querySelectorAll("[data-sat-platform]")],satProductButtons=[...document.querySelectorAll("[data-sat-product]")],mapViewButtons=[...document.querySelectorAll("[data-map-view]")];
-    const radarControls=document.getElementById("radarControls"),satelliteControls=document.getElementById("satelliteControls"),lightningControls=document.getElementById("lightningControls"),controlLabel=document.getElementById("controlLabel"),viewerStatus=document.getElementById("viewerStatus"),viewerNote=document.getElementById("viewerNote"),radarFrame=document.getElementById("radarFrame"),satelliteStage=document.getElementById("satelliteStage"),satelliteImage=document.getElementById("satelliteImage"),satelliteCanvas=document.getElementById("satelliteCanvas"),satelliteBoundaryCanvas=document.getElementById("satelliteBoundaryCanvas"),satSectorPreviewCanvas=document.getElementById("satSectorPreviewCanvas"),satelliteLoading=document.getElementById("satelliteLoading"),satelliteTitle=document.getElementById("satelliteTitle"),satelliteMeta=document.getElementById("satelliteMeta"),satSectorSelect=document.getElementById("satSectorSelect"),satSectorList=document.getElementById("satSectorList"),weatherMapEl=document.getElementById("weatherMap"),mapProductCard=document.getElementById("mapProductCard"),mapProductTitle=document.getElementById("mapProductTitle"),mapProductMeta=document.getElementById("mapProductMeta"),mapError=document.getElementById("mapError");
+    const radarControls=document.getElementById("radarControls"),satelliteControls=document.getElementById("satelliteControls"),lightningControls=document.getElementById("lightningControls"),controlLabel=document.getElementById("controlLabel"),viewerStatus=document.getElementById("viewerStatus"),viewerNote=document.getElementById("viewerNote"),radarFrame=document.getElementById("radarFrame"),satelliteStage=document.getElementById("satelliteStage"),satelliteImage=document.getElementById("satelliteImage"),satelliteCanvas=document.getElementById("satelliteCanvas"),satelliteBoundaryCanvas=document.getElementById("satelliteBoundaryCanvas"),satSectorPreviewCanvas=document.getElementById("satSectorPreviewCanvas"),satSectorBrowser=document.getElementById("satSectorBrowser"),satSectorBrowserImage=document.getElementById("satSectorBrowserImage"),satSectorBrowserCanvas=document.getElementById("satSectorBrowserCanvas"),satSectorBrowserTitle=document.getElementById("satSectorBrowserTitle"),satSectorBrowserMeta=document.getElementById("satSectorBrowserMeta"),satSectorBrowserMessage=document.getElementById("satSectorBrowserMessage"),satSectorBrowserClose=document.getElementById("satSectorBrowserClose"),satelliteLoading=document.getElementById("satelliteLoading"),satelliteTitle=document.getElementById("satelliteTitle"),satelliteMeta=document.getElementById("satelliteMeta"),satSectorSelect=document.getElementById("satSectorSelect"),satSectorList=document.getElementById("satSectorList"),weatherMapEl=document.getElementById("weatherMap"),mapProductCard=document.getElementById("mapProductCard"),mapProductTitle=document.getElementById("mapProductTitle"),mapProductMeta=document.getElementById("mapProductMeta"),mapError=document.getElementById("mapError");
     const satPrev=document.getElementById("satPrev"),satPlay=document.getElementById("satPlay"),satNext=document.getElementById("satNext"),satTimeline=document.getElementById("satTimeline"),satFrameReadout=document.getElementById("satFrameReadout"),satSpeed=document.getElementById("satSpeed"),satCacheReadout=document.getElementById("satCacheReadout");
 
-    let activeProduct="radar",radarMode="national",satPlatform="East",satProduct="TrueColor",satSector="global",weatherMap=null,mapReady=false,sectorSidebarGroup="overview",hoveredSectorPreview=null,refreshTimer=0;
+    let activeProduct="radar",radarMode="national",satPlatform="East",satProduct="TrueColor",satSector="global",weatherMap=null,mapReady=false,sectorSidebarGroup="overview",hoveredSectorPreview=null,sectorBrowserToken=0,sectorBrowserBbox=null,sectorBrowserRects=[],sectorBrowserHover=-1,refreshTimer=0;
     let satFrames=[],satFrameIndex=0,satTimer=0,satWarmGeneration=0,satLastWindowKey="",satRenderToken=0,satPixelProbeSupported=true,satContext=null,satPlayGateToken=0,satPlayPreparing=false,satPlaybackState=null;
     let satBoundaryData=null,satBoundaryPromise=null,satBoundaryProjection=null,satBoundaryUnavailable=false;
     let lightningFlashes=[],lightningDisplayedFlashes=[],lightningDisplayedKeys=new Set(),lightningLatestMs=0,lightningFetchPromise=null,lightningInitialFitDone=false;
@@ -1249,6 +1262,57 @@
       ctx.fillRect(left,top,right-left,bottom-top);
       ctx.strokeRect(left+1,top+1,Math.max(0,right-left-2),Math.max(0,bottom-top-2));
     }
+    function sectorGroupLabel(group){return {overview:"Overview",subregional:"Sub-Regional",localized:"Localized",mesoscale:"Mesoscale"}[group]||"Satellite";}
+    function closeSectorBrowser(){satSectorBrowser.hidden=true;sectorBrowserHover=-1;sectorBrowserRects=[];sectorBrowserToken++;}
+    function renderSectorBrowser(){
+      if(satSectorBrowser.hidden||!sectorBrowserBbox||!satSectorBrowserImage.naturalWidth)return;
+      const rect=satSectorBrowserCanvas.getBoundingClientRect(),dpr=Math.min(window.devicePixelRatio||1,2),width=Math.max(1,Math.round(rect.width*dpr)),height=Math.max(1,Math.round(rect.height*dpr));
+      if(satSectorBrowserCanvas.width!==width)satSectorBrowserCanvas.width=width;
+      if(satSectorBrowserCanvas.height!==height)satSectorBrowserCanvas.height=height;
+      const ctx=satSectorBrowserCanvas.getContext("2d");
+      ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,width,height);ctx.setTransform(dpr,0,0,dpr,0,0);
+      const scale=Math.min(rect.width/satSectorBrowserImage.naturalWidth,rect.height/satSectorBrowserImage.naturalHeight),drawWidth=satSectorBrowserImage.naturalWidth*scale,drawHeight=satSectorBrowserImage.naturalHeight*scale,left=(rect.width-drawWidth)/2,top=(rect.height-drawHeight)/2;
+      const [viewWest,viewSouth,viewEast,viewNorth]=sectorBrowserBbox,mercatorLat=value=>Math.log(Math.tan(Math.PI/4+Math.max(-85.05112878,Math.min(85.05112878,value))*Math.PI/360)),viewTop=mercatorLat(viewNorth),viewBottom=mercatorLat(viewSouth);
+      const x=value=>left+(value-viewWest)/(viewEast-viewWest)*drawWidth,y=value=>top+(mercatorLat(value)-viewTop)/(viewBottom-viewTop)*drawHeight;
+      sectorBrowserRects=[];
+      sectorSidebarItems().forEach((item,index)=>{
+        if(!item.bbox)return;
+        const [itemWest,itemSouth,itemEast,itemNorth]=item.bbox,west=Math.max(viewWest,itemWest),south=Math.max(viewSouth,itemSouth),east=Math.min(viewEast,itemEast),north=Math.min(viewNorth,itemNorth);
+        if(west>=east||south>=north)return;
+        const box={left:x(west),top:y(north),right:x(east),bottom:y(south),item,index};
+        box.area=(box.right-box.left)*(box.bottom-box.top);sectorBrowserRects.push(box);
+        const planned=!item.available,hovered=index===sectorBrowserHover,selected=item.available&&item.id===satSector;
+        ctx.fillStyle=planned?hovered?"rgba(251,191,36,.28)":"rgba(251,191,36,.13)":hovered||selected?"rgba(56,189,248,.34)":"rgba(56,189,248,.17)";
+        ctx.strokeStyle=planned?"#fbbf24":"#38bdf8";ctx.lineWidth=hovered||selected?3:1.6;ctx.setLineDash(planned?[8,5]:[]);
+        ctx.fillRect(box.left,box.top,box.right-box.left,box.bottom-box.top);ctx.strokeRect(box.left+.75,box.top+.75,Math.max(0,box.right-box.left-1.5),Math.max(0,box.bottom-box.top-1.5));
+        const label=item.label,fontSize=hovered?13:11;ctx.font=`800 ${fontSize}px Arial`;const labelWidth=ctx.measureText(label).width+10,labelX=Math.max(left,Math.min(box.left+5,left+drawWidth-labelWidth)),labelY=Math.max(top+fontSize+4,Math.min(box.top+fontSize+5,top+drawHeight-4));
+        ctx.setLineDash([]);ctx.fillStyle="rgba(2,6,12,.78)";ctx.fillRect(labelX-4,labelY-fontSize-2,labelWidth,fontSize+6);ctx.fillStyle=planned?"#fde68a":"#f8fafc";ctx.fillText(label,labelX,labelY);
+      });
+      if(!sectorBrowserRects.length){satSectorBrowserMessage.textContent=sectorSidebarGroup==="mesoscale"?`GOES-${satPlatform} Mesoscale 1 and 2 will appear here when the one-minute publisher is connected.`:"No footprints are available for this view.";satSectorBrowserMessage.hidden=false;}else satSectorBrowserMessage.hidden=true;
+    }
+    async function loadSectorBrowserOverview(){
+      const token=++sectorBrowserToken,globalSector=(SAT_SECTORS[satPlatform]||SAT_SECTORS.East).find(item=>item.id==="global")||(SAT_SECTORS[satPlatform]||SAT_SECTORS.East)[0],product=satProductSpec();
+      satSectorBrowserMessage.textContent="Loading latest Global satellite overview...";satSectorBrowserMessage.hidden=false;sectorBrowserBbox=null;sectorBrowserRects=[];
+      try{
+        const manifestUrl=product.prepared?`${TRUECOLOR_BASE}/${satPlatform.toLowerCase()}-global/manifest.json`:nativeSatelliteManifestUrl(satPlatform,globalSector,product.nativeProduct);
+        const response=await fetch(`${manifestUrl}?_=${Date.now()}`,{cache:"no-store"});if(!response.ok)throw new Error(`Satellite overview HTTP ${response.status}`);
+        const manifest=await response.json(),frame=Array.isArray(manifest.frames)?manifest.frames.at(-1):null;if(!frame?.path)throw new Error("Satellite overview has no frames");
+        if(token!==sectorBrowserToken||satSectorBrowser.hidden)return;
+        sectorBrowserBbox=Array.isArray(manifest.bbox)&&manifest.bbox.length===4?manifest.bbox.map(Number):globalSector.bbox;
+        satSectorBrowserImage.onload=()=>{if(token===sectorBrowserToken&&!satSectorBrowser.hidden)renderSectorBrowser();};
+        satSectorBrowserImage.onerror=()=>{if(token===sectorBrowserToken){satSectorBrowserMessage.textContent="The satellite overview could not be displayed.";satSectorBrowserMessage.hidden=false;}};
+        satSectorBrowserImage.src=`${product.prepared?TRUECOLOR_BASE:NATIVE_SAT_BASE}/${frame.path}`;
+        if(satSectorBrowserImage.complete&&satSectorBrowserImage.naturalWidth)requestAnimationFrame(()=>{if(token===sectorBrowserToken&&!satSectorBrowser.hidden)renderSectorBrowser();});
+      }catch(error){if(token===sectorBrowserToken){console.warn("Sector overview unavailable",error);satSectorBrowserMessage.textContent="The latest satellite overview is temporarily unavailable.";satSectorBrowserMessage.hidden=false;}}
+    }
+    function openSectorBrowser(group){
+      if(!window.matchMedia("(min-width: 881px)").matches)return;
+      sectorSidebarGroup=group;sectorBrowserHover=-1;clearSectorPreview();renderSectorSidebar();
+      satSectorBrowserTitle.textContent=`${sectorGroupLabel(group)} sectors`;
+      satSectorBrowserMeta.textContent=`GOES-${satPlatform} ${satProductSpec().label} · select a highlighted footprint`;
+      satSectorBrowser.hidden=false;loadSectorBrowserOverview();
+    }
+    function sectorBrowserHit(event){const rect=satSectorBrowserCanvas.getBoundingClientRect(),x=event.clientX-rect.left,y=event.clientY-rect.top;return sectorBrowserRects.filter(box=>x>=box.left&&x<=box.right&&y>=box.top&&y<=box.bottom).sort((a,b)=>a.area-b.area)[0]||null;}
     function renderSectorSidebar(){
       document.querySelectorAll("[data-sector-group]").forEach(button=>{const active=button.dataset.sectorGroup===sectorSidebarGroup;button.classList.toggle("active",active);button.setAttribute("aria-selected",String(active));});
       const items=sectorSidebarItems();
@@ -1273,7 +1337,7 @@
       });
     }
     function populateSatelliteSectors(){const sectors=SAT_SECTORS[satPlatform]||SAT_SECTORS.East;if(!sectors.some(item=>item.id===satSector))satSector=sectors[0].id;satSectorSelect.innerHTML=sectors.map(item=>`<option value="${item.id}"${item.id===satSector?" selected":""}>${item.label}</option>`).join("");sectorSidebarGroup=sectorGroupForId(satSector);renderSectorSidebar();}
-    function selectSatelliteSector(id){const sectors=SAT_SECTORS[satPlatform]||SAT_SECTORS.East;if(!sectors.some(item=>item.id===id))return;clearSectorPreview();satSector=id;satSectorSelect.value=id;sectorSidebarGroup=sectorGroupForId(id);saveViewerState();renderSectorSidebar();if(activeProduct==="satellite")resetSatelliteViewer();}
+    function selectSatelliteSector(id){const sectors=SAT_SECTORS[satPlatform]||SAT_SECTORS.East;if(!sectors.some(item=>item.id===id))return;clearSectorPreview();closeSectorBrowser();satSector=id;satSectorSelect.value=id;sectorSidebarGroup=sectorGroupForId(id);saveViewerState();renderSectorSidebar();if(activeProduct==="satellite")resetSatelliteViewer();}
     function satellitePointerLonLat(event){const visual=satelliteCanvas.hidden?satelliteImage:satelliteCanvas;const rect=visual.getBoundingClientRect();const mediaWidth=visual===satelliteCanvas?satelliteCanvas.width:satelliteImage.naturalWidth;const mediaHeight=visual===satelliteCanvas?satelliteCanvas.height:satelliteImage.naturalHeight;if(!mediaWidth||!mediaHeight||!rect.width||!rect.height)return null;const scale=Math.min(rect.width/mediaWidth,rect.height/mediaHeight);const drawWidth=mediaWidth*scale,drawHeight=mediaHeight*scale;const left=rect.left+(rect.width-drawWidth)/2,top=rect.top+(rect.height-drawHeight)/2;const x=(event.clientX-left)/drawWidth,y=(event.clientY-top)/drawHeight;if(x<0||x>1||y<0||y>1)return null;const [west,south,east,north]=currentSectorSpec().bbox;const mercator=value=>Math.log(Math.tan(Math.PI/4+value*Math.PI/360));const inverse=value=>(2*Math.atan(Math.exp(value))-Math.PI/2)*180/Math.PI;return [west+x*(east-west),inverse(mercator(north)+y*(mercator(south)-mercator(north)))];}
     function selectSmallestSectorAtPointer(event){if(!window.matchMedia("(min-width: 881px)").matches)return;const point=satellitePointerLonLat(event);if(!point)return;const [lon,lat]=point;const match=(SAT_SECTORS[satPlatform]||[]).filter(item=>lon>=item.bbox[0]&&lon<=item.bbox[2]&&lat>=item.bbox[1]&&lat<=item.bbox[3]).sort((a,b)=>(a.bbox[2]-a.bbox[0])*(a.bbox[3]-a.bbox[1])-(b.bbox[2]-b.bbox[0])*(b.bbox[3]-b.bbox[1]))[0];if(!match)return;event.preventDefault();selectSatelliteSector(match.id);}
     function mercator(lon,lat){const R=6378137,rad=Math.PI/180,clamped=Math.max(-85.05112878,Math.min(85.05112878,lat));return [R*lon*rad,R*Math.log(Math.tan(Math.PI/4+clamped*rad/2))];}
@@ -4194,12 +4258,12 @@
       try{const doc=radarFrame.contentDocument;if(!doc)return;doc.querySelector("[data-interior-site-header]")?.remove();const rail=doc.querySelector(".right-ui-rail");if(rail){rail.style.setProperty("top","16px","important");rail.style.setProperty("max-height","calc(100vh - 32px)","important");}radarFrame.contentWindow?.dispatchEvent(new Event("resize"));}catch(error){console.warn("Hi-Res embed trim skipped",error);}
     }
     function loadRadar(mode){radarMode=mode;saveViewerState();activate(radarButtons,button=>button.dataset.radar===mode);showRadar();viewerStatus.textContent=mode==="hires"?"Hi-Res Level II radar":"MRMS live";if(mode==="hires"){viewerNote.textContent="Mapbox Level II radar • choose a radar site in the panel";radarFrame.src="level2-mobile-radar.html?level2Data=remote&site=KFCX&embed=1&v=20260923b";return;}radarFrame.src=`mosaic-radar-home.html?viewer=${mode}&v=20260923a`;viewerNote.textContent=mode==="regional"?"Regional MRMS • f2 ~4K quality band • zoom capped before full-native mode":"MRMS national mosaic • broad CONUS situational awareness";}
-    function selectProduct(next){activeProduct=next;saveViewerState();activate(tabs,button=>button.dataset.product===next);radarControls.hidden=next!=="radar";satelliteControls.hidden=next!=="satellite";lightningControls.hidden=next!=="lightning";if(next!=="satellite")clearSectorPreview();if(next==="radar"){controlLabel.textContent="Radar view";loadRadar(radarMode);return;}if(next==="satellite"){controlLabel.textContent="Satellite";activate(platformButtons,button=>button.dataset.satPlatform===satPlatform);activate(satProductButtons,button=>button.dataset.satProduct===satProduct);populateSatelliteSectors();showSatellite();resetSatelliteViewer();return;}controlLabel.textContent="Lightning";showMap();}
+    function selectProduct(next){activeProduct=next;saveViewerState();activate(tabs,button=>button.dataset.product===next);radarControls.hidden=next!=="radar";satelliteControls.hidden=next!=="satellite";lightningControls.hidden=next!=="lightning";if(next!=="satellite"){clearSectorPreview();closeSectorBrowser();}if(next==="radar"){controlLabel.textContent="Radar view";loadRadar(radarMode);return;}if(next==="satellite"){controlLabel.textContent="Satellite";activate(platformButtons,button=>button.dataset.satPlatform===satPlatform);activate(satProductButtons,button=>button.dataset.satProduct===satProduct);populateSatelliteSectors();showSatellite();resetSatelliteViewer();return;}controlLabel.textContent="Lightning";showMap();}
 
     radarFrame.addEventListener("load",tuneEmbeddedLevel2);
     tabs.forEach(button=>button.addEventListener("click",()=>selectProduct(button.dataset.product)));
     radarButtons.forEach(button=>button.addEventListener("click",()=>loadRadar(button.dataset.radar)));
-    platformButtons.forEach(button=>button.addEventListener("click",()=>{satPlatform=button.dataset.satPlatform;satSector="global";saveViewerState();activate(platformButtons,item=>item===button);populateSatelliteSectors();if(activeProduct==="satellite")resetSatelliteViewer();}));
+    platformButtons.forEach(button=>button.addEventListener("click",()=>{closeSectorBrowser();satPlatform=button.dataset.satPlatform;satSector="global";saveViewerState();activate(platformButtons,item=>item===button);populateSatelliteSectors();if(activeProduct==="satellite")resetSatelliteViewer();}));
     satelliteStage.addEventListener("pointerdown",beginSatellitePan);
     satelliteStage.addEventListener("pointermove",moveSatellitePan);
     satelliteStage.addEventListener("pointerup",endSatellitePan);
@@ -4207,9 +4271,14 @@
     satelliteStage.addEventListener("contextmenu",selectSmallestSectorAtPointer);
     satelliteStage.addEventListener("lostpointercapture",()=>{satPanPointerId=null;satelliteStage.classList.remove("sat-panning");});
 
-    satProductButtons.forEach(button=>button.addEventListener("click",()=>{satProduct=button.dataset.satProduct;saveViewerState();activate(satProductButtons,item=>item===button);if(activeProduct==="satellite")resetSatelliteViewer();}));
+    satProductButtons.forEach(button=>button.addEventListener("click",()=>{closeSectorBrowser();satProduct=button.dataset.satProduct;saveViewerState();activate(satProductButtons,item=>item===button);if(activeProduct==="satellite")resetSatelliteViewer();}));
     satSectorSelect.addEventListener("change",()=>selectSatelliteSector(satSectorSelect.value));
-    document.querySelectorAll("[data-sector-group]").forEach(button=>button.addEventListener("click",()=>{sectorSidebarGroup=button.dataset.sectorGroup;clearSectorPreview();renderSectorSidebar();}));
+    document.querySelectorAll("[data-sector-group]").forEach(button=>button.addEventListener("click",()=>openSectorBrowser(button.dataset.sectorGroup)));
+    satSectorBrowserClose.addEventListener("click",closeSectorBrowser);
+    satSectorBrowserCanvas.addEventListener("pointermove",event=>{const hit=sectorBrowserHit(event),next=hit?.index??-1;if(next!==sectorBrowserHover){sectorBrowserHover=next;renderSectorBrowser();}satSectorBrowserCanvas.style.cursor=hit?.item.available?"pointer":"crosshair";satSectorBrowserMeta.textContent=hit?hit.item.available?`${hit.item.label} · click to open`:`${hit.item.label} · planned sector`:`GOES-${satPlatform} ${satProductSpec().label} · select a highlighted footprint`;});
+    satSectorBrowserCanvas.addEventListener("pointerleave",()=>{sectorBrowserHover=-1;satSectorBrowserCanvas.style.cursor="crosshair";satSectorBrowserMeta.textContent=`GOES-${satPlatform} ${satProductSpec().label} · select a highlighted footprint`;renderSectorBrowser();});
+    satSectorBrowserCanvas.addEventListener("click",event=>{const hit=sectorBrowserHit(event);if(hit?.item.available)selectSatelliteSector(hit.item.id);});
+    document.addEventListener("keydown",event=>{if(event.key==="Escape"&&!satSectorBrowser.hidden)closeSectorBrowser();});
     satPrev.addEventListener("click",()=>{stopSatellitePlayback();renderSatellite((satFrameIndex-1+satFrames.length)%satFrames.length,false);});
     satNext.addEventListener("click",()=>{stopSatellitePlayback();renderSatellite((satFrameIndex+1)%satFrames.length,false);});
     satPlay.addEventListener("click",startSatellitePlayback);
@@ -4222,8 +4291,10 @@
         loadSatelliteBoundaries();
         renderSatelliteBoundaries();
         if(hoveredSectorPreview)drawSectorPreview(hoveredSectorPreview);
+        if(!satSectorBrowser.hidden)renderSectorBrowser();
       }else{
         clearSectorPreview();
+        closeSectorBrowser();
         clearSatelliteBoundaryPixels();
       }
     });
