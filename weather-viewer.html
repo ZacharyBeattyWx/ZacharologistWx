@@ -17,7 +17,7 @@
     .top,.sub{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--panel);backdrop-filter:blur(16px);z-index:20}.top{justify-content:space-between}
     .brand{display:flex;align-items:center;gap:10px;min-width:0}.brand a{display:flex;align-items:center;justify-content:center;flex:0 0 auto}.logo{width:40px;height:40px;display:block;object-fit:contain}.brand-copy{min-width:0}.title{font-size:.95rem;font-weight:900;white-space:nowrap}.meta{margin-top:2px;color:var(--muted);font-size:.62rem;font-weight:750;white-space:nowrap}
     .tabs,.controls{display:flex;align-items:center;gap:6px;min-width:0;overflow-x:auto;scrollbar-width:none}.tabs::-webkit-scrollbar,.controls::-webkit-scrollbar{display:none}
-    .tab,.control{flex:0 0 auto;border:1px solid var(--line);border-radius:8px;background:#0c1523;color:#b8c5d8;font-weight:850;transition:.12s ease}.tab{min-height:36px;padding:0 15px;font-size:.76rem}.control{min-height:32px;padding:0 11px;font-size:.68rem}.tab:hover,.control:hover{border-color:var(--line2);color:#fff;background:#111d2f}.tab.active,.control.active{border-color:rgba(56,189,248,.65);background:var(--accentSoft);color:#dff6ff}select.control{appearance:auto;cursor:pointer;max-width:220px;padding-right:7px}
+    .tab,.control{flex:0 0 auto;border:1px solid var(--line);border-radius:8px;background:#0c1523;color:#b8c5d8;font-weight:850;transition:.12s ease}.tab{min-height:36px;padding:0 15px;font-size:.76rem}.control{min-height:32px;padding:0 11px;font-size:.68rem}.tab:hover,.control:hover{border-color:var(--line2);color:#fff;background:#111d2f}.tab.active,.control.active{border-color:rgba(56,189,248,.65);background:var(--accentSoft);color:#dff6ff}.control:disabled{opacity:.42;cursor:not-allowed}select.control{appearance:auto;cursor:pointer;max-width:220px;padding-right:7px}
     .status{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:.66rem;font-weight:800;white-space:nowrap}.dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 9px rgba(74,222,128,.7)}
     .sub{justify-content:space-between;padding-block:7px;min-width:0}.sub-left,.sub-right{display:flex;align-items:center;gap:8px;min-width:0}.label{color:#64748b;font-size:.61rem;font-weight:900;letter-spacing:.09em;text-transform:uppercase;white-space:nowrap}.note{color:var(--muted);font-size:.64rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .stage{position:relative;min-width:0;min-height:0;background:#02060c;overflow:hidden}
@@ -427,7 +427,7 @@
     const radarControls=document.getElementById("radarControls"),satelliteControls=document.getElementById("satelliteControls"),lightningControls=document.getElementById("lightningControls"),controlLabel=document.getElementById("controlLabel"),viewerStatus=document.getElementById("viewerStatus"),viewerNote=document.getElementById("viewerNote"),radarFrame=document.getElementById("radarFrame"),satelliteStage=document.getElementById("satelliteStage"),satelliteImage=document.getElementById("satelliteImage"),satelliteCanvas=document.getElementById("satelliteCanvas"),satelliteBoundaryCanvas=document.getElementById("satelliteBoundaryCanvas"),satSectorPreviewCanvas=document.getElementById("satSectorPreviewCanvas"),satSectorBrowser=document.getElementById("satSectorBrowser"),satSectorBrowserImage=document.getElementById("satSectorBrowserImage"),satSectorBrowserCanvas=document.getElementById("satSectorBrowserCanvas"),satSectorBrowserTitle=document.getElementById("satSectorBrowserTitle"),satSectorBrowserMeta=document.getElementById("satSectorBrowserMeta"),satSectorBrowserMessage=document.getElementById("satSectorBrowserMessage"),satSectorBrowserClose=document.getElementById("satSectorBrowserClose"),satelliteLoading=document.getElementById("satelliteLoading"),satelliteTitle=document.getElementById("satelliteTitle"),satelliteMeta=document.getElementById("satelliteMeta"),satSectorSelect=document.getElementById("satSectorSelect"),satSectorList=document.getElementById("satSectorList"),weatherMapEl=document.getElementById("weatherMap"),mapProductCard=document.getElementById("mapProductCard"),mapProductTitle=document.getElementById("mapProductTitle"),mapProductMeta=document.getElementById("mapProductMeta"),mapError=document.getElementById("mapError");
     const satPrev=document.getElementById("satPrev"),satPlay=document.getElementById("satPlay"),satNext=document.getElementById("satNext"),satTimeline=document.getElementById("satTimeline"),satFrameReadout=document.getElementById("satFrameReadout"),satSpeed=document.getElementById("satSpeed"),satCacheReadout=document.getElementById("satCacheReadout");
 
-    let activeProduct="radar",radarMode="national",satPlatform="East",satProduct="TrueColor",satSector="global",weatherMap=null,mapReady=false,sectorSidebarGroup="overview",hoveredSectorPreview=null,sectorBrowserToken=0,sectorBrowserBbox=null,sectorBrowserRects=[],sectorBrowserHover=-1,refreshTimer=0;
+    let activeProduct="radar",radarMode="national",satPlatform="East",satProduct="TrueColor",satSector="global",weatherMap=null,mapReady=false,sectorSidebarGroup="overview",hoveredSectorPreview=null,sectorBrowserToken=0,sectorBrowserBbox=null,sectorBrowserRects=[],sectorBrowserHover=-1,sectorBrowserRestoreMeso=false,refreshTimer=0;
     let satFrames=[],satFrameIndex=0,satTimer=0,satWarmGeneration=0,satLastWindowKey="",satRenderToken=0,satPixelProbeSupported=true,satContext=null,satPlayGateToken=0,satPlayPreparing=false,satPlaybackState=null;
     let satBoundaryData=null,satBoundaryPromise=null,satBoundaryProjection=null,satBoundaryUnavailable=false;
     let lightningFlashes=[],lightningDisplayedFlashes=[],lightningDisplayedKeys=new Set(),lightningLatestMs=0,lightningFetchPromise=null,lightningInitialFitDone=false;
@@ -1449,7 +1449,21 @@
       ctx.strokeRect(left+1,top+1,Math.max(0,right-left-2),Math.max(0,bottom-top-2));
     }
     function sectorGroupLabel(group){return {overview:"Overview",subregional:"Sub-Regional",localized:"Localized",mesoscale:"Mesoscale"}[group]||"Satellite";}
-    function closeSectorBrowser(){satSectorBrowser.hidden=true;sectorBrowserHover=-1;sectorBrowserRects=[];sectorBrowserToken++;}
+    function closeSectorBrowser(restoreMesoscale=true){
+      const shouldRestore=
+        restoreMesoscale&&
+        sectorBrowserRestoreMeso&&
+        activeProduct==="satellite"&&
+        currentSectorSpec()?.mesoscale;
+      satSectorBrowser.hidden=true;
+      sectorBrowserHover=-1;
+      sectorBrowserRects=[];
+      sectorBrowserToken++;
+      sectorBrowserRestoreMeso=false;
+      if(shouldRestore){
+        showMesoscaleMap(currentSectorSpec());
+      }
+    }
     function renderSectorBrowser(){
       if(satSectorBrowser.hidden||!sectorBrowserBbox||!satSectorBrowserImage.naturalWidth)return;
 
@@ -1822,6 +1836,15 @@
     function openSectorBrowser(group){
       if(!window.matchMedia("(min-width: 881px)").matches)return;
 
+      sectorBrowserRestoreMeso=
+        activeProduct==="satellite"&&
+        !!currentSectorSpec()?.mesoscale;
+      if(sectorBrowserRestoreMeso){
+        satelliteStage.hidden=false;
+        weatherMapEl.style.display="none";
+        mapProductCard.hidden=true;
+      }
+
       sectorSidebarGroup=group;
       sectorBrowserHover=-1;
       clearSectorPreview();
@@ -1892,7 +1915,7 @@
       const sectors=allSatelliteSectors();
       if(!sectors.some(item=>item.id===id))return;
       clearSectorPreview();
-      closeSectorBrowser();
+      closeSectorBrowser(false);
       satSector=id;
       satSectorSelect.value=id;
       sectorSidebarGroup=sectorGroupForId(id);
@@ -1901,7 +1924,7 @@
       if(activeProduct==="satellite")resetSatelliteViewer();
     }
     function satellitePointerLonLat(event){const visual=satelliteCanvas.hidden?satelliteImage:satelliteCanvas;const rect=visual.getBoundingClientRect();const mediaWidth=visual===satelliteCanvas?satelliteCanvas.width:satelliteImage.naturalWidth;const mediaHeight=visual===satelliteCanvas?satelliteCanvas.height:satelliteImage.naturalHeight;if(!mediaWidth||!mediaHeight||!rect.width||!rect.height)return null;const scale=Math.min(rect.width/mediaWidth,rect.height/mediaHeight);const drawWidth=mediaWidth*scale,drawHeight=mediaHeight*scale;const left=rect.left+(rect.width-drawWidth)/2,top=rect.top+(rect.height-drawHeight)/2;const x=(event.clientX-left)/drawWidth,y=(event.clientY-top)/drawHeight;if(x<0||x>1||y<0||y>1)return null;const [west,south,east,north]=currentSectorSpec().bbox;const mercator=value=>Math.log(Math.tan(Math.PI/4+value*Math.PI/360));const inverse=value=>(2*Math.atan(Math.exp(value))-Math.PI/2)*180/Math.PI;return [west+x*(east-west),inverse(mercator(north)+y*(mercator(south)-mercator(north)))];}
-    function selectSmallestSectorAtPointer(event){if(!window.matchMedia("(min-width: 881px)").matches)return;const point=satellitePointerLonLat(event);if(!point)return;const [lon,lat]=point;const match=(SAT_SECTORS[satPlatform]||[]).filter(item=>lon>=item.bbox[0]&&lon<=item.bbox[2]&&lat>=item.bbox[1]&&lat<=item.bbox[3]).sort((a,b)=>(a.bbox[2]-a.bbox[0])*(a.bbox[3]-a.bbox[1])-(b.bbox[2]-b.bbox[0])*(b.bbox[3]-b.bbox[1]))[0];if(!match)return;event.preventDefault();selectSatelliteSector(match.id);}
+    function selectSmallestSectorAtPointer(event){if(!window.matchMedia("(min-width: 881px)").matches)return;const point=satellitePointerLonLat(event);if(!point)return;const [lon,lat]=point;const match=allSatelliteSectors().filter(item=>item.bbox&&lon>=item.bbox[0]&&lon<=item.bbox[2]&&lat>=item.bbox[1]&&lat<=item.bbox[3]).sort((a,b)=>(a.bbox[2]-a.bbox[0])*(a.bbox[3]-a.bbox[1])-(b.bbox[2]-b.bbox[0])*(b.bbox[3]-b.bbox[1]))[0];if(!match)return;event.preventDefault();selectSatelliteSector(match.id);}
     function mercator(lon,lat){const R=6378137,rad=Math.PI/180,clamped=Math.max(-85.05112878,Math.min(85.05112878,lat));return [R*lon*rad,R*Math.log(Math.tan(Math.PI/4+clamped*rad/2))];}
     function clearSatelliteBoundaryPixels(){
       const ctx=satelliteBoundaryCanvas.getContext("2d");
