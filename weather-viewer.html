@@ -34,7 +34,7 @@
     #satelliteStage .product-card{bottom:58px}
     .map-error{position:absolute;top:12px;left:50%;z-index:15;display:none;transform:translateX(-50%);padding:8px 12px;border:1px solid rgba(251,191,36,.45);border-radius:8px;background:rgba(20,14,3,.92);color:#fde68a;font-size:.68rem;font-weight:800}.map-error.show{display:block}
     .sat-sector-sidebar{display:none}.sat-sector-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}.sat-sector-group{height:29px;min-width:0;padding:0 5px;border:1px solid transparent;border-radius:6px;background:transparent;color:#8493a8;font-size:.56rem;font-weight:850;white-space:nowrap}.sat-sector-group:hover{border-color:var(--line);color:#e5eef8;background:#0c1523}.sat-sector-group.active{border-color:rgba(56,189,248,.55);background:rgba(56,189,248,.12);color:#dff6ff}.sat-sector-list{display:flex;flex-direction:column;gap:3px;margin-top:7px}.sat-sector-option{display:grid;grid-template-columns:18px minmax(0,1fr) auto;align-items:center;gap:6px;width:100%;min-height:29px;padding:4px 6px;border:1px solid transparent;border-radius:6px;background:transparent;color:#afbdd0;text-align:left}.sat-sector-option:hover,.sat-sector-option:focus-visible{border-color:rgba(56,189,248,.36);background:rgba(56,189,248,.09);color:#f8fafc;outline:0}.sat-sector-option.active{border-color:rgba(56,189,248,.55);background:rgba(56,189,248,.14);color:#e9f8ff}.sat-sector-option.planned{color:#c8b879}.sat-sector-option.planned:hover,.sat-sector-option.planned:focus-visible{border-color:rgba(251,191,36,.42);background:rgba(251,191,36,.08);color:#fde68a}.sat-sector-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.61rem;font-weight:800}.sat-sector-state{color:#6f8198;font-size:.48rem;font-weight:850;text-transform:uppercase}.sat-sector-option.planned .sat-sector-state{color:#c89d32}.sector-target-icon{position:relative;width:14px;height:14px;border:1.5px solid currentColor;border-radius:50%;justify-self:center}.sector-target-icon::before,.sector-target-icon::after{content:"";position:absolute;background:currentColor}.sector-target-icon::before{left:5px;top:-3px;width:1.5px;height:18px}.sector-target-icon::after{left:-3px;top:5px;width:18px;height:1.5px}.sector-target-icon span{position:absolute;left:4px;top:4px;width:3px;height:3px;border-radius:50%;background:currentColor}.sat-sector-option.planned .sector-target-icon{border-style:dashed}.sat-sector-empty{padding:8px 6px;color:#718096;font-size:.56rem;font-weight:700;line-height:1.4}
-    .sat-sector-browser{position:absolute;inset:0;z-index:24;display:grid;grid-template-rows:48px minmax(0,1fr);background:#02060c}.sat-sector-browser-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 14px;border-bottom:1px solid var(--line2);background:rgba(5,10,20,.96)}.sat-sector-browser-title{min-width:0}.sat-sector-browser-title strong{display:block;font-size:.78rem}.sat-sector-browser-title span{display:block;margin-top:2px;color:var(--muted);font-size:.57rem;font-weight:750}.sat-sector-browser-close{width:32px;height:32px;padding:0;border:1px solid var(--line2);border-radius:6px;background:#0c1523;color:#e5eef8;font-size:1.1rem;line-height:1}.sat-sector-browser-close:hover{border-color:rgba(56,189,248,.6);background:var(--accentSoft)}.sat-sector-browser-view{position:relative;min-height:0;overflow:hidden;background:#02060c}.sat-sector-browser-image{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}.sat-sector-browser-canvas{position:absolute;inset:0;width:100%;height:100%;cursor:crosshair}.sat-sector-browser-message{position:absolute;left:50%;top:50%;z-index:2;max-width:420px;transform:translate(-50%,-50%);padding:10px 14px;border:1px solid var(--line);border-radius:7px;background:rgba(5,10,20,.86);color:#cbd5e1;font-size:.68rem;font-weight:800;text-align:center;line-height:1.45;pointer-events:none}
+    .sat-sector-browser{position:absolute;inset:0;z-index:24;display:grid;grid-template-rows:48px minmax(0,1fr);background:#02060c}.sat-sector-browser-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 14px;border-bottom:1px solid var(--line2);background:rgba(5,10,20,.96)}.sat-sector-browser-title{min-width:0}.sat-sector-browser-title strong{display:block;font-size:.78rem}.sat-sector-browser-title span{display:block;margin-top:2px;color:var(--muted);font-size:.57rem;font-weight:750}.sat-sector-browser-close{width:32px;height:32px;padding:0;border:1px solid var(--line2);border-radius:6px;background:#0c1523;color:#e5eef8;font-size:1.1rem;line-height:1}.sat-sector-browser-close:hover{border-color:rgba(56,189,248,.6);background:var(--accentSoft)}.sat-sector-browser-view{position:relative;min-height:0;overflow:hidden;background:#02060c}.sat-sector-browser-image{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}.sat-sector-browser-canvas{position:absolute;inset:0;width:100%;height:100%;cursor:default}.sat-sector-browser-message{position:absolute;left:50%;top:50%;z-index:2;max-width:420px;transform:translate(-50%,-50%);padding:10px 14px;border:1px solid var(--line);border-radius:7px;background:rgba(5,10,20,.86);color:#cbd5e1;font-size:.68rem;font-weight:800;text-align:center;line-height:1.45;pointer-events:none}
     @media(min-width:881px){
       .shell{
         grid-template-columns:198px minmax(0,1fr);
@@ -1268,63 +1268,321 @@
     function closeSectorBrowser(){satSectorBrowser.hidden=true;sectorBrowserHover=-1;sectorBrowserRects=[];sectorBrowserToken++;}
     function renderSectorBrowser(){
       if(satSectorBrowser.hidden||!sectorBrowserBbox||!satSectorBrowserImage.naturalWidth)return;
-      const rect=satSectorBrowserCanvas.getBoundingClientRect(),dpr=Math.min(window.devicePixelRatio||1,2),width=Math.max(1,Math.round(rect.width*dpr)),height=Math.max(1,Math.round(rect.height*dpr));
+
+      const rect=satSectorBrowserCanvas.getBoundingClientRect();
+      const dpr=Math.min(window.devicePixelRatio||1,2);
+      const width=Math.max(1,Math.round(rect.width*dpr));
+      const height=Math.max(1,Math.round(rect.height*dpr));
+
       if(satSectorBrowserCanvas.width!==width)satSectorBrowserCanvas.width=width;
       if(satSectorBrowserCanvas.height!==height)satSectorBrowserCanvas.height=height;
+
       const ctx=satSectorBrowserCanvas.getContext("2d");
-      ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,width,height);ctx.setTransform(dpr,0,0,dpr,0,0);
-      const scale=Math.min(rect.width/satSectorBrowserImage.naturalWidth,rect.height/satSectorBrowserImage.naturalHeight),drawWidth=satSectorBrowserImage.naturalWidth*scale,drawHeight=satSectorBrowserImage.naturalHeight*scale,left=(rect.width-drawWidth)/2,top=(rect.height-drawHeight)/2;
-      const [viewWest,viewSouth,viewEast,viewNorth]=sectorBrowserBbox,mercatorLat=value=>Math.log(Math.tan(Math.PI/4+Math.max(-85.05112878,Math.min(85.05112878,value))*Math.PI/360)),viewTop=mercatorLat(viewNorth),viewBottom=mercatorLat(viewSouth);
-      const x=value=>left+(value-viewWest)/(viewEast-viewWest)*drawWidth,y=value=>top+(mercatorLat(value)-viewTop)/(viewBottom-viewTop)*drawHeight;
+      if(!ctx)return;
+
+      ctx.setTransform(1,0,0,1,0,0);
+      ctx.clearRect(0,0,width,height);
+      ctx.setTransform(dpr,0,0,dpr,0,0);
+
+      const scale=Math.min(
+        rect.width/satSectorBrowserImage.naturalWidth,
+        rect.height/satSectorBrowserImage.naturalHeight
+      );
+      const drawWidth=satSectorBrowserImage.naturalWidth*scale;
+      const drawHeight=satSectorBrowserImage.naturalHeight*scale;
+      const left=(rect.width-drawWidth)/2;
+      const top=(rect.height-drawHeight)/2;
+
+      const [viewWest,viewSouth,viewEast,viewNorth]=sectorBrowserBbox;
+      const mercatorLat=value=>
+        Math.log(
+          Math.tan(
+            Math.PI/4+
+            Math.max(
+              -85.05112878,
+              Math.min(85.05112878,value)
+            )*
+            Math.PI/360
+          )
+        );
+      const viewTop=mercatorLat(viewNorth);
+      const viewBottom=mercatorLat(viewSouth);
+      const x=value=>
+        left+
+        (value-viewWest)/
+        (viewEast-viewWest)*
+        drawWidth;
+      const y=value=>
+        top+
+        (mercatorLat(value)-viewTop)/
+        (viewBottom-viewTop)*
+        drawHeight;
+
       sectorBrowserRects=[];
+
       sectorSidebarItems().forEach((item,index)=>{
         if(!item.bbox)return;
-        const [itemWest,itemSouth,itemEast,itemNorth]=item.bbox,west=Math.max(viewWest,itemWest),south=Math.max(viewSouth,itemSouth),east=Math.min(viewEast,itemEast),north=Math.min(viewNorth,itemNorth);
+
+        const [itemWest,itemSouth,itemEast,itemNorth]=item.bbox;
+        const west=Math.max(viewWest,itemWest);
+        const south=Math.max(viewSouth,itemSouth);
+        const east=Math.min(viewEast,itemEast);
+        const north=Math.min(viewNorth,itemNorth);
+
         if(west>=east||south>=north)return;
-        const box={left:x(west),top:y(north),right:x(east),bottom:y(south),item,index};
-        box.area=(box.right-box.left)*(box.bottom-box.top);sectorBrowserRects.push(box);
-        const planned=!item.available,hovered=index===sectorBrowserHover,selected=item.available&&item.id===satSector;
-        ctx.fillStyle=planned?hovered?"rgba(251,191,36,.28)":"rgba(251,191,36,.13)":hovered||selected?"rgba(56,189,248,.34)":"rgba(56,189,248,.17)";
-        ctx.strokeStyle=planned?"#fbbf24":"#38bdf8";ctx.lineWidth=hovered||selected?3:1.6;ctx.setLineDash(planned?[8,5]:[]);
-        ctx.fillRect(box.left,box.top,box.right-box.left,box.bottom-box.top);ctx.strokeRect(box.left+.75,box.top+.75,Math.max(0,box.right-box.left-1.5),Math.max(0,box.bottom-box.top-1.5));
-        const label=item.label,fontSize=hovered?13:11;ctx.font=`800 ${fontSize}px Arial`;const labelWidth=ctx.measureText(label).width+10,labelX=Math.max(left,Math.min(box.left+5,left+drawWidth-labelWidth)),labelY=Math.max(top+fontSize+4,Math.min(box.top+fontSize+5,top+drawHeight-4));
-        ctx.setLineDash([]);ctx.fillStyle="rgba(2,6,12,.78)";ctx.fillRect(labelX-4,labelY-fontSize-2,labelWidth,fontSize+6);ctx.fillStyle=planned?"#fde68a":"#f8fafc";ctx.fillText(label,labelX,labelY);
-      });
-      if(!sectorBrowserRects.length){satSectorBrowserMessage.textContent=sectorSidebarGroup==="mesoscale"?`GOES-${satPlatform} Mesoscale 1 and 2 are queued for the one-minute publisher.`:"No footprints are available for this view.";satSectorBrowserMessage.hidden=false;}else satSectorBrowserMessage.hidden=true;
-    }
-    async function loadSectorBrowserOverview(){
-      const token=++sectorBrowserToken,globalSector=(SAT_SECTORS[satPlatform]||SAT_SECTORS.East).find(item=>item.id==="global")||(SAT_SECTORS[satPlatform]||SAT_SECTORS.East)[0],product=satProductSpec();
-      satSectorBrowserMessage.textContent="Loading latest Global satellite overview...";satSectorBrowserMessage.hidden=false;sectorBrowserBbox=null;sectorBrowserRects=[];
-      try{
-        if(!product.prepared&&!product.nativeProduct){
-          const [west,south,east,north]=globalSector.bbox,[minX,minY]=mercator(west,south),[maxX,maxY]=mercator(east,north),ratio=(maxX-minX)/(maxY-minY);
-          const context={imageryLayer:`GOES-${satPlatform}_ABI_${product.layer}`,bbox:[minX,minY,maxX,maxY],ratio,width:1200,height:Math.max(500,Math.round(1200/ratio))};
-          sectorBrowserBbox=globalSector.bbox;
-          satSectorBrowserImage.onload=()=>{if(token===sectorBrowserToken&&!satSectorBrowser.hidden)renderSectorBrowser();};
-          satSectorBrowserImage.onerror=()=>{if(token===sectorBrowserToken){satSectorBrowserMessage.textContent="The satellite overview could not be displayed.";satSectorBrowserMessage.hidden=false;}};
-          satSectorBrowserImage.src=satelliteRequestUrl(satelliteLatestCandidate(),context,{reference:true});
-          if(satSectorBrowserImage.complete&&satSectorBrowserImage.naturalWidth)requestAnimationFrame(()=>{if(token===sectorBrowserToken&&!satSectorBrowser.hidden)renderSectorBrowser();});
-          return;
+
+        const boxLeft=x(west);
+        const boxTop=y(north);
+        const boxRight=x(east);
+        const boxBottom=y(south);
+        const cx=(boxLeft+boxRight)/2;
+        const cy=(boxTop+boxBottom)/2;
+        const planned=!item.available;
+        const hovered=index===sectorBrowserHover;
+        const selected=item.available&&item.id===satSector;
+
+        sectorBrowserRects.push({
+          cx,
+          cy,
+          hitRadius:16,
+          item,
+          index
+        });
+
+        // COD-style browsing: keep the map clean. The actual
+        // footprint only appears for the sector under the pointer.
+        if(hovered){
+          ctx.save();
+          ctx.fillStyle=
+            planned
+              ?"rgba(251,191,36,.10)"
+              :"rgba(56,189,248,.10)";
+          ctx.strokeStyle=
+            planned
+              ?"rgba(251,191,36,.92)"
+              :"rgba(56,189,248,.95)";
+          ctx.lineWidth=1.5;
+          ctx.setLineDash(planned?[7,5]:[]);
+          ctx.fillRect(
+            boxLeft,
+            boxTop,
+            boxRight-boxLeft,
+            boxBottom-boxTop
+          );
+          ctx.strokeRect(
+            boxLeft+.75,
+            boxTop+.75,
+            Math.max(0,boxRight-boxLeft-1.5),
+            Math.max(0,boxBottom-boxTop-1.5)
+          );
+          ctx.restore();
         }
-        const manifestUrl=product.prepared?`${TRUECOLOR_BASE}/${satPlatform.toLowerCase()}-global/manifest.json`:nativeSatelliteManifestUrl(satPlatform,globalSector,product.nativeProduct);
-        const response=await fetch(`${manifestUrl}?_=${Date.now()}`,{cache:"no-store"});if(!response.ok)throw new Error(`Satellite overview HTTP ${response.status}`);
-        const manifest=await response.json(),frame=Array.isArray(manifest.frames)?manifest.frames.at(-1):null;if(!frame?.path)throw new Error("Satellite overview has no frames");
-        if(token!==sectorBrowserToken||satSectorBrowser.hidden)return;
-        sectorBrowserBbox=Array.isArray(manifest.bbox)&&manifest.bbox.length===4?manifest.bbox.map(Number):globalSector.bbox;
-        satSectorBrowserImage.onload=()=>{if(token===sectorBrowserToken&&!satSectorBrowser.hidden)renderSectorBrowser();};
-        satSectorBrowserImage.onerror=()=>{if(token===sectorBrowserToken){satSectorBrowserMessage.textContent="The satellite overview could not be displayed.";satSectorBrowserMessage.hidden=false;}};
-        satSectorBrowserImage.src=`${product.prepared?TRUECOLOR_BASE:NATIVE_SAT_BASE}/${frame.path}`;
-        if(satSectorBrowserImage.complete&&satSectorBrowserImage.naturalWidth)requestAnimationFrame(()=>{if(token===sectorBrowserToken&&!satSectorBrowser.hidden)renderSectorBrowser();});
-      }catch(error){if(token===sectorBrowserToken){console.warn("Sector overview unavailable",error);satSectorBrowserMessage.textContent="The latest satellite overview is temporarily unavailable.";satSectorBrowserMessage.hidden=false;}}
+
+        const radius=
+          hovered
+            ?8
+            :selected
+              ?7
+              :5.5;
+
+        if(selected){
+          ctx.beginPath();
+          ctx.arc(cx,cy,radius+5,0,Math.PI*2);
+          ctx.fillStyle="rgba(56,189,248,.20)";
+          ctx.fill();
+
+          ctx.beginPath();
+          ctx.arc(cx,cy,radius+3,0,Math.PI*2);
+          ctx.strokeStyle="rgba(125,211,252,.95)";
+          ctx.lineWidth=2;
+          ctx.stroke();
+        }
+
+        ctx.beginPath();
+        ctx.arc(cx,cy,radius,0,Math.PI*2);
+        ctx.fillStyle=
+          planned
+            ?"rgba(251,191,36,.96)"
+            :selected
+              ?"#38bdf8"
+              :"#f8f1df";
+        ctx.fill();
+        ctx.strokeStyle="rgba(2,6,12,.92)";
+        ctx.lineWidth=2.2;
+        ctx.stroke();
+
+        if(hovered){
+          const label=item.label;
+          const fontSize=12;
+          ctx.font=`800 ${fontSize}px Arial`;
+          const labelWidth=ctx.measureText(label).width+16;
+          const labelHeight=24;
+          let labelX=cx+13;
+          let labelY=cy-labelHeight-8;
+
+          if(labelX+labelWidth>left+drawWidth-6){
+            labelX=cx-labelWidth-13;
+          }
+          if(labelY<top+6){
+            labelY=cy+10;
+          }
+
+          labelX=Math.max(
+            left+6,
+            Math.min(
+              labelX,
+              left+drawWidth-labelWidth-6
+            )
+          );
+          labelY=Math.max(
+            top+6,
+            Math.min(
+              labelY,
+              top+drawHeight-labelHeight-6
+            )
+          );
+
+          ctx.fillStyle="rgba(2,6,12,.92)";
+          ctx.strokeStyle=
+            planned
+              ?"rgba(251,191,36,.7)"
+              :"rgba(148,163,184,.5)";
+          ctx.lineWidth=1;
+          ctx.beginPath();
+          ctx.roundRect(
+            labelX,
+            labelY,
+            labelWidth,
+            labelHeight,
+            6
+          );
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle=
+            planned
+              ?"#fde68a"
+              :"#f8fafc";
+          ctx.fillText(
+            label,
+            labelX+8,
+            labelY+16
+          );
+        }
+      });
+
+      if(!sectorBrowserRects.length){
+        satSectorBrowserMessage.textContent=
+          sectorSidebarGroup==="mesoscale"
+            ?`GOES-${satPlatform} Mesoscale 1 and 2 are queued for the one-minute publisher.`
+            :"No sector markers are available for this view.";
+        satSectorBrowserMessage.hidden=false;
+      }else{
+        satSectorBrowserMessage.hidden=true;
+      }
     }
+
+    async function loadSectorBrowserOverview(){
+      const token=++sectorBrowserToken;
+      const globalSector=
+        (SAT_SECTORS[satPlatform]||SAT_SECTORS.East)
+          .find(item=>item.id==="global")||
+        (SAT_SECTORS[satPlatform]||SAT_SECTORS.East)[0];
+
+      satSectorBrowserMessage.textContent=
+        "Loading latest GOES Geo-Color overview...";
+      satSectorBrowserMessage.hidden=false;
+      sectorBrowserBbox=globalSector.bbox;
+      sectorBrowserRects=[];
+
+      const [west,south,east,north]=globalSector.bbox;
+      const [minX,minY]=mercator(west,south);
+      const [maxX,maxY]=mercator(east,north);
+      const ratio=(maxX-minX)/(maxY-minY);
+      const context={
+        imageryLayer:`GOES-${satPlatform}_ABI_GeoColor`,
+        bbox:[minX,minY,maxX,maxY],
+        ratio,
+        width:1500,
+        height:Math.max(
+          620,
+          Math.round(1500/ratio)
+        )
+      };
+
+      satSectorBrowserImage.onload=()=>{
+        if(
+          token===sectorBrowserToken&&
+          !satSectorBrowser.hidden
+        ){
+          renderSectorBrowser();
+        }
+      };
+
+      satSectorBrowserImage.onerror=()=>{
+        if(token===sectorBrowserToken){
+          satSectorBrowserMessage.textContent=
+            "The satellite overview could not be displayed.";
+          satSectorBrowserMessage.hidden=false;
+        }
+      };
+
+      satSectorBrowserImage.src=
+        satelliteRequestUrl(
+          satelliteLatestCandidate(),
+          context,
+          {reference:true}
+        );
+
+      if(
+        satSectorBrowserImage.complete&&
+        satSectorBrowserImage.naturalWidth
+      ){
+        requestAnimationFrame(()=>{
+          if(
+            token===sectorBrowserToken&&
+            !satSectorBrowser.hidden
+          ){
+            renderSectorBrowser();
+          }
+        });
+      }
+    }
+
     function openSectorBrowser(group){
       if(!window.matchMedia("(min-width: 881px)").matches)return;
-      sectorSidebarGroup=group;sectorBrowserHover=-1;clearSectorPreview();renderSectorSidebar();
-      satSectorBrowserTitle.textContent=`${sectorGroupLabel(group)} sectors`;
-      satSectorBrowserMeta.textContent=`GOES-${satPlatform} ${satProductSpec().label} · select a highlighted footprint`;
-      satSectorBrowser.hidden=false;loadSectorBrowserOverview();
+
+      sectorSidebarGroup=group;
+      sectorBrowserHover=-1;
+      clearSectorPreview();
+      renderSectorSidebar();
+
+      satSectorBrowserTitle.textContent=
+        `${sectorGroupLabel(group)} Sectors`;
+      satSectorBrowserMeta.textContent=
+        `GOES-${satPlatform} Geo-Color overview · select a marker`;
+
+      satSectorBrowser.hidden=false;
+      loadSectorBrowserOverview();
     }
-    function sectorBrowserHit(event){const rect=satSectorBrowserCanvas.getBoundingClientRect(),x=event.clientX-rect.left,y=event.clientY-rect.top;return sectorBrowserRects.filter(box=>x>=box.left&&x<=box.right&&y>=box.top&&y<=box.bottom).sort((a,b)=>a.area-b.area)[0]||null;}
+
+    function sectorBrowserHit(event){
+      const rect=satSectorBrowserCanvas.getBoundingClientRect();
+      const px=event.clientX-rect.left;
+      const py=event.clientY-rect.top;
+
+      return sectorBrowserRects
+        .map(marker=>({
+          ...marker,
+          distance:
+            Math.hypot(
+              px-marker.cx,
+              py-marker.cy
+            )
+        }))
+        .filter(marker=>marker.distance<=marker.hitRadius)
+        .sort((a,b)=>a.distance-b.distance)[0]||null;
+    }
     function renderSectorSidebar(){
       document.querySelectorAll("[data-sector-group]").forEach(button=>{const active=button.dataset.sectorGroup===sectorSidebarGroup;button.classList.toggle("active",active);button.setAttribute("aria-selected",String(active));});
       const items=sectorSidebarItems();
@@ -4293,8 +4551,8 @@
     satSectorSelect.addEventListener("change",()=>selectSatelliteSector(satSectorSelect.value));
     document.querySelectorAll("[data-sector-group]").forEach(button=>button.addEventListener("click",()=>openSectorBrowser(button.dataset.sectorGroup)));
     satSectorBrowserClose.addEventListener("click",closeSectorBrowser);
-    satSectorBrowserCanvas.addEventListener("pointermove",event=>{const hit=sectorBrowserHit(event),next=hit?.index??-1;if(next!==sectorBrowserHover){sectorBrowserHover=next;renderSectorBrowser();}satSectorBrowserCanvas.style.cursor=hit?.item.available?"pointer":"crosshair";satSectorBrowserMeta.textContent=hit?hit.item.available?`${hit.item.label} · click to open`:`${hit.item.label} · planned sector`:`GOES-${satPlatform} ${satProductSpec().label} · select a highlighted footprint`;});
-    satSectorBrowserCanvas.addEventListener("pointerleave",()=>{sectorBrowserHover=-1;satSectorBrowserCanvas.style.cursor="crosshair";satSectorBrowserMeta.textContent=`GOES-${satPlatform} ${satProductSpec().label} · select a highlighted footprint`;renderSectorBrowser();});
+    satSectorBrowserCanvas.addEventListener("pointermove",event=>{const hit=sectorBrowserHit(event),next=hit?.index??-1;if(next!==sectorBrowserHover){sectorBrowserHover=next;renderSectorBrowser();}satSectorBrowserCanvas.style.cursor=hit?.item.available?"pointer":"default";satSectorBrowserMeta.textContent=hit?hit.item.available?`${hit.item.label} · click to open`:`${hit.item.label} · planned sector`:`GOES-${satPlatform} Geo-Color overview · select a marker`;});
+    satSectorBrowserCanvas.addEventListener("pointerleave",()=>{sectorBrowserHover=-1;satSectorBrowserCanvas.style.cursor="default";satSectorBrowserMeta.textContent=`GOES-${satPlatform} Geo-Color overview · select a marker`;renderSectorBrowser();});
     satSectorBrowserCanvas.addEventListener("click",event=>{const hit=sectorBrowserHit(event);if(hit?.item.available)selectSatelliteSector(hit.item.id);});
     document.addEventListener("keydown",event=>{if(event.key==="Escape"&&!satSectorBrowser.hidden)closeSectorBrowser();});
     satPrev.addEventListener("click",()=>{stopSatellitePlayback();renderSatellite((satFrameIndex-1+satFrames.length)%satFrames.length,false);});
