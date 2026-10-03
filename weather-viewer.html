@@ -283,7 +283,7 @@
         <div class="controls" id="radarControls"><button class="control active" type="button" data-radar="national">National</button><button class="control" type="button" data-radar="regional">Regional</button><button class="control" type="button" data-radar="hires">Hi-Res</button></div>
         <div class="controls" id="satelliteControls" hidden>
           <button class="control active" type="button" data-sat-platform="East">GOES-East</button><button class="control" type="button" data-sat-platform="West">GOES-West</button>
-          <button class="control active" type="button" data-sat-product="TrueColor">True Color</button><button class="control" type="button" data-sat-product="Band13_Clean_Infrared">Clean IR</button><button class="control" type="button" data-sat-product="Air_Mass">Air Mass</button>
+          <button class="control active" type="button" data-sat-product="TrueColor">True Color</button><button class="control" type="button" data-sat-product="GeoColor">Geo-Color</button><button class="control" type="button" data-sat-product="Band13_Clean_Infrared">Clean IR</button><button class="control" type="button" data-sat-product="Air_Mass">Air Mass</button><button class="control" type="button" data-sat-product="Simple_Water_Vapor">Simple Water Vapor</button><button class="control" type="button" data-sat-product="Day_Cloud_Phase">Day Cloud Phase</button>
           <select class="control" id="satSectorSelect" aria-label="Satellite sector"></select>
           <div class="sat-sector-sidebar" id="satSectorSidebar">
             <div class="sat-sector-groups" role="tablist" aria-label="Sector scale">
@@ -359,9 +359,11 @@
 
     const SAT_PRODUCTS={
       TrueColor:{label:"True Color",layer:"GeoColor",prepared:true},
-      GeoColor:{label:"GeoColor",layer:"GeoColor"},
+      GeoColor:{label:"Geo-Color",layer:"GeoColor"},
       Band13_Clean_Infrared:{label:"Clean IR",layer:"Band13_Clean_Infrared",nativeProduct:"clean-ir"},
-      Air_Mass:{label:"Air Mass",layer:"Air_Mass",nativeProduct:"air-mass"}
+      Air_Mass:{label:"Air Mass",layer:"Air_Mass",nativeProduct:"air-mass"},
+      Simple_Water_Vapor:{label:"Simple Water Vapor",nativeProduct:"simple-water-vapor",nativeOnly:true},
+      Day_Cloud_Phase:{label:"Day Cloud Phase",nativeProduct:"day-cloud-phase",nativeOnly:true}
     };
     const SAT_SECTORS={
       East:[
@@ -1223,8 +1225,8 @@
     function currentSectorSpec(){return (SAT_SECTORS[satPlatform]||SAT_SECTORS.East).find(item=>item.id===satSector)||(SAT_SECTORS[satPlatform]||SAT_SECTORS.East)[0];}
     function sectorGroupForId(id){return ["global","CONUS","PACUS","gwas"].includes(id)?"overview":"subregional";}
     function sectorSidebarItems(){
-      if(sectorSidebarGroup==="localized")return (PLANNED_LOCALIZED_SECTORS[satPlatform]||[]).map(item=>({...item,available:false}));
-      if(sectorSidebarGroup==="mesoscale")return [1,2].map(number=>({id:`meso-${number}`,label:`Mesoscale ${number}`,available:false}));
+      if(sectorSidebarGroup==="localized")return (PLANNED_LOCALIZED_SECTORS[satPlatform]||[]).map(item=>({...item,available:false,status:"Queued"}));
+      if(sectorSidebarGroup==="mesoscale")return [1,2].map(number=>({id:`meso-${number}`,label:`Mesoscale ${number}`,available:false,status:"Queued"}));
       return (SAT_SECTORS[satPlatform]||SAT_SECTORS.East).filter(item=>sectorGroupForId(item.id)===sectorSidebarGroup).map(item=>({...item,available:true}));
     }
     function clearSectorPreview(){
@@ -1288,12 +1290,22 @@
         const label=item.label,fontSize=hovered?13:11;ctx.font=`800 ${fontSize}px Arial`;const labelWidth=ctx.measureText(label).width+10,labelX=Math.max(left,Math.min(box.left+5,left+drawWidth-labelWidth)),labelY=Math.max(top+fontSize+4,Math.min(box.top+fontSize+5,top+drawHeight-4));
         ctx.setLineDash([]);ctx.fillStyle="rgba(2,6,12,.78)";ctx.fillRect(labelX-4,labelY-fontSize-2,labelWidth,fontSize+6);ctx.fillStyle=planned?"#fde68a":"#f8fafc";ctx.fillText(label,labelX,labelY);
       });
-      if(!sectorBrowserRects.length){satSectorBrowserMessage.textContent=sectorSidebarGroup==="mesoscale"?`GOES-${satPlatform} Mesoscale 1 and 2 will appear here when the one-minute publisher is connected.`:"No footprints are available for this view.";satSectorBrowserMessage.hidden=false;}else satSectorBrowserMessage.hidden=true;
+      if(!sectorBrowserRects.length){satSectorBrowserMessage.textContent=sectorSidebarGroup==="mesoscale"?`GOES-${satPlatform} Mesoscale 1 and 2 are queued for the one-minute publisher.`:"No footprints are available for this view.";satSectorBrowserMessage.hidden=false;}else satSectorBrowserMessage.hidden=true;
     }
     async function loadSectorBrowserOverview(){
       const token=++sectorBrowserToken,globalSector=(SAT_SECTORS[satPlatform]||SAT_SECTORS.East).find(item=>item.id==="global")||(SAT_SECTORS[satPlatform]||SAT_SECTORS.East)[0],product=satProductSpec();
       satSectorBrowserMessage.textContent="Loading latest Global satellite overview...";satSectorBrowserMessage.hidden=false;sectorBrowserBbox=null;sectorBrowserRects=[];
       try{
+        if(!product.prepared&&!product.nativeProduct){
+          const [west,south,east,north]=globalSector.bbox,[minX,minY]=mercator(west,south),[maxX,maxY]=mercator(east,north),ratio=(maxX-minX)/(maxY-minY);
+          const context={imageryLayer:`GOES-${satPlatform}_ABI_${product.layer}`,bbox:[minX,minY,maxX,maxY],ratio,width:1200,height:Math.max(500,Math.round(1200/ratio))};
+          sectorBrowserBbox=globalSector.bbox;
+          satSectorBrowserImage.onload=()=>{if(token===sectorBrowserToken&&!satSectorBrowser.hidden)renderSectorBrowser();};
+          satSectorBrowserImage.onerror=()=>{if(token===sectorBrowserToken){satSectorBrowserMessage.textContent="The satellite overview could not be displayed.";satSectorBrowserMessage.hidden=false;}};
+          satSectorBrowserImage.src=satelliteRequestUrl(satelliteLatestCandidate(),context,{reference:true});
+          if(satSectorBrowserImage.complete&&satSectorBrowserImage.naturalWidth)requestAnimationFrame(()=>{if(token===sectorBrowserToken&&!satSectorBrowser.hidden)renderSectorBrowser();});
+          return;
+        }
         const manifestUrl=product.prepared?`${TRUECOLOR_BASE}/${satPlatform.toLowerCase()}-global/manifest.json`:nativeSatelliteManifestUrl(satPlatform,globalSector,product.nativeProduct);
         const response=await fetch(`${manifestUrl}?_=${Date.now()}`,{cache:"no-store"});if(!response.ok)throw new Error(`Satellite overview HTTP ${response.status}`);
         const manifest=await response.json(),frame=Array.isArray(manifest.frames)?manifest.frames.at(-1):null;if(!frame?.path)throw new Error("Satellite overview has no frames");
@@ -1323,10 +1335,10 @@
         button.type="button";
         button.className=`sat-sector-option${item.available?"":" planned"}${item.available&&item.id===satSector?" active":""}`;
         button.setAttribute("aria-disabled",String(!item.available));
-        button.title=item.available?`Show ${item.label}`:`${item.label} preview · publisher planned`;
+        button.title=item.available?`Show ${item.label}`:`${item.label} preview · publisher ${String(item.status||"planned").toLowerCase()}`;
         const icon=document.createElement("span");icon.className="sector-target-icon";icon.setAttribute("aria-hidden","true");icon.append(document.createElement("span"));
         const label=document.createElement("span");label.className="sat-sector-name";label.textContent=item.label;
-        const state=document.createElement("span");state.className="sat-sector-state";state.textContent=item.available?item.id===satSector?"Live":"":"Planned";
+        const state=document.createElement("span");state.className="sat-sector-state";state.textContent=item.available?item.id===satSector?"Live":"":item.status||"Planned";
         button.append(icon,label,state);
         button.addEventListener("mouseenter",()=>drawSectorPreview(item));
         button.addEventListener("focus",()=>drawSectorPreview(item));
@@ -1934,10 +1946,13 @@
 
         }catch(error){
           console.warn(
-            "Native satellite product unavailable; using GIBS fallback.",
+            context.product.nativeOnly
+              ?"Native satellite product unavailable."
+              :"Native satellite product unavailable; using GIBS fallback.",
             error
           );
           context.fallbackReason=String(error?.message||error);
+          if(context.product.nativeOnly)return false;
         }
       }
 

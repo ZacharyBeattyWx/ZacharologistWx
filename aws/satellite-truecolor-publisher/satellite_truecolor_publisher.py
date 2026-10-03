@@ -28,6 +28,8 @@ NATIVE_PREFIX = os.getenv(
 NATIVE_RENDER_VERSIONS = {
     "clean-ir": 3,
     "air-mass": 1,
+    "simple-water-vapor": 1,
+    "day-cloud-phase": 1,
 }
 
 FRAME_COUNT = int(os.getenv("SATELLITE_TRUECOLOR_FRAME_COUNT", "25"))
@@ -221,7 +223,7 @@ SOURCE_RE = re.compile(
     r"-M\dC(?P<channel>01|02|03|13)_G\d+_s(?P<scan>\d{11})"
 )
 NATIVE_SOURCE_RE = re.compile(
-    r"-M\dC(?P<channel>08|10|12|13)_G\d+_s(?P<scan>\d{11})"
+    r"-M\dC(?P<channel>02|05|08|10|12|13)_G\d+_s(?P<scan>\d{11})"
 )
 
 
@@ -401,7 +403,7 @@ def list_complete_native_scans(spec, now):
                 if previous is None or key > previous:
                     group["channels"][channel] = key
 
-    required = ("08", "10", "12", "13")
+    required = ("02", "05", "08", "10", "12", "13")
     complete = [
         group
         for group in grouped.values()
@@ -1212,6 +1214,43 @@ def air_mass_rgb(bt08, bt10, bt12, bt13):
     return rgb, valid
 
 
+def simple_water_vapor_rgb(bt08, bt10, bt13):
+    valid = np.isfinite(bt08) & np.isfinite(bt10) & np.isfinite(bt13)
+    c08 = np.where(valid, bt08, 250.0)
+    c10 = np.where(valid, bt10, 250.0)
+    c13 = np.where(valid, bt13, 250.0)
+
+    red = _normalize_rgb_channel(c13, 278.96, 202.29)
+    green = _normalize_rgb_channel(c08, 242.67, 214.66)
+    blue = _normalize_rgb_channel(c10, 261.03, 245.12)
+    red = np.power(red, 1.0 / 10.0)
+    green = np.power(green, 1.0 / 5.5)
+    blue = np.power(blue, 1.0 / 5.5)
+
+    rgb = np.stack([red, green, blue], axis=-1)
+    rgb[~valid] = 0.0
+    return rgb, valid
+
+
+def day_cloud_phase_rgb(bt13, reflectance02, reflectance05):
+    valid = (
+        np.isfinite(bt13)
+        & np.isfinite(reflectance02)
+        & np.isfinite(reflectance05)
+    )
+    c13 = np.where(valid, bt13, 250.0)
+    c02 = np.where(valid, reflectance02, 0.0)
+    c05 = np.where(valid, reflectance05, 0.0)
+
+    red = _normalize_rgb_channel(c13, 280.67, 219.62)
+    green = _normalize_rgb_channel(c02, 0.0, 0.78)
+    blue = _normalize_rgb_channel(c05, 0.01, 0.59)
+
+    rgb = np.stack([red, green, blue], axis=-1)
+    rgb[~valid] = 0.0
+    return rgb, valid
+
+
 def solar_daylight_alpha(
     dt,
     bbox,
@@ -1713,7 +1752,7 @@ def render_scan(spec, group, source_cache=None):
 
 def render_native_scan(spec, group):
     paths = {}
-    channels = ("08", "10", "12", "13")
+    channels = ("02", "05", "08", "10", "12", "13")
 
     try:
         for channel in channels:
@@ -1727,12 +1766,21 @@ def render_native_scan(spec, group):
         gx, gy, width, height = output_grid(spec, source_crs)
 
         sampled = {}
-        for channel in channels:
+        for channel in ("08", "10", "12", "13"):
             source = read_brightness_temperature(
                 paths[channel],
                 gx,
                 gy,
                 stride=1,
+            )
+            sampled[channel] = sample_grid(source, gx, gy)
+
+        for channel, stride in (("02", 2), ("05", 1)):
+            source = read_reflectance(
+                paths[channel],
+                gx,
+                gy,
+                stride=stride,
             )
             sampled[channel] = sample_grid(source, gx, gy)
 
@@ -1743,11 +1791,35 @@ def render_native_scan(spec, group):
             sampled["12"],
             sampled["13"],
         )
+        water_rgb, water_valid = simple_water_vapor_rgb(
+            sampled["08"],
+            sampled["10"],
+            sampled["13"],
+        )
+        day_cloud_rgb, day_cloud_valid = day_cloud_phase_rgb(
+            sampled["13"],
+            sampled["02"],
+            sampled["05"],
+        )
+        daylight = solar_daylight_alpha(
+            group["time"],
+            spec["bbox"],
+            width,
+            height,
+        )
+        day_cloud_valid &= daylight >= 0.5
+        day_cloud_rgb[~day_cloud_valid] = 0.0
 
         products = {
             "clean-ir": (clean_rgb, clean_valid),
             "air-mass": (air_rgb, air_valid),
+            "simple-water-vapor": (water_rgb, water_valid),
         }
+        if np.any(day_cloud_valid):
+            products["day-cloud-phase"] = (
+                day_cloud_rgb,
+                day_cloud_valid,
+            )
         frames = {}
 
         for product, (rgb, finite) in products.items():
@@ -1770,7 +1842,7 @@ def render_native_scan(spec, group):
 
         print(
             f"{spec['satellite']} native {group['scan']} "
-            f"{width}x{height} CleanIR+AirMass"
+            f"{width}x{height} products={'+'.join(products)}"
         )
         return frames
 
@@ -2089,26 +2161,52 @@ def publish_native_manifest(spec, product, frames, checked_scans, now):
 
     ordered = list(reversed(contiguous))[-frame_count:]
 
-    if product == "clean-ir":
-        product_name = "Clean IR"
-        source_channels = "C13"
-        recipe = {
-            "channel": "C13 10.3um Clean Longwave IR",
-            "palette": "temperature-enhanced Clean IR",
-            "coldCloudEnhancement": (
-                "white-purple-blue-green-yellow-orange-red"
-            ),
-            "transparentNoData": True,
-        }
-    else:
-        product_name = "Air Mass RGB"
-        source_channels = "C08+C10+C12+C13"
-        recipe = {
-            "red": "C08-C10 (-26.2 to 0.6 K)",
-            "green": "C12-C13 (-42.2 to 6.7 K)",
-            "blue": "C08 BT (-64.65 to -29.25 C), inverted",
-            "transparentNoData": True,
-        }
+    product_metadata = {
+        "clean-ir": (
+            "Clean IR",
+            "C13",
+            {
+                "channel": "C13 10.3um Clean Longwave IR",
+                "palette": "temperature-enhanced Clean IR",
+                "coldCloudEnhancement": (
+                    "white-purple-blue-green-yellow-orange-red"
+                ),
+                "transparentNoData": True,
+            },
+        ),
+        "air-mass": (
+            "Air Mass RGB",
+            "C08+C10+C12+C13",
+            {
+                "red": "C08-C10 (-26.2 to 0.6 K)",
+                "green": "C12-C13 (-42.2 to 6.7 K)",
+                "blue": "C08 BT (-64.65 to -29.25 C), inverted",
+                "transparentNoData": True,
+            },
+        ),
+        "simple-water-vapor": (
+            "Simple Water Vapor RGB",
+            "C08+C10+C13",
+            {
+                "red": "C13 BT (278.96 to 202.29 K), gamma 10",
+                "green": "C08 BT (242.67 to 214.66 K), gamma 5.5",
+                "blue": "C10 BT (261.03 to 245.12 K), gamma 5.5",
+                "transparentNoData": True,
+            },
+        ),
+        "day-cloud-phase": (
+            "Day Cloud Phase RGB",
+            "C02+C05+C13",
+            {
+                "red": "C13 BT (280.67 to 219.62 K), inverted",
+                "green": "C02 reflectance (0 to 78 percent)",
+                "blue": "C05 reflectance (1 to 59 percent)",
+                "daylightOnly": True,
+                "transparentNoData": True,
+            },
+        ),
+    }
+    product_name, source_channels, recipe = product_metadata[product]
 
     output = {
         "version": 1,
@@ -2142,7 +2240,12 @@ def publish_native_manifest(spec, product, frames, checked_scans, now):
 
 
 def process_native_platform(platform, spec, now):
-    products = ("clean-ir", "air-mass")
+    products = (
+        "clean-ir",
+        "air-mass",
+        "simple-water-vapor",
+        "day-cloud-phase",
+    )
     existing = {
         product: read_native_manifest(spec, product)
         for product in products
@@ -2172,17 +2275,20 @@ def process_native_platform(platform, spec, now):
         for product in products
     }
 
-    checked_clean = [
-        str(scan)
-        for scan in existing["clean-ir"].get("checkedScans", [])
-        if scan
+    checked_lists = [
+        [
+            str(scan)
+            for scan in existing[product].get("checkedScans", [])
+            if scan
+        ]
+        for product in products
     ]
-    checked_air = set(
-        str(scan)
-        for scan in existing["air-mass"].get("checkedScans", [])
-        if scan
-    )
-    checked = [scan for scan in checked_clean if scan in checked_air]
+    checked_others = [set(scans) for scans in checked_lists[1:]]
+    checked = [
+        scan
+        for scan in checked_lists[0]
+        if all(scan in scans for scans in checked_others)
+    ]
     checked_set = set(checked)
 
     candidates = list_complete_native_scans(spec, now)
@@ -2218,7 +2324,9 @@ def process_native_platform(platform, spec, now):
         try:
             rendered_frames = render_native_scan(spec, group)
             for product in products:
-                frames[product].append(rendered_frames[product])
+                frame = rendered_frames.get(product)
+                if frame:
+                    frames[product].append(frame)
             checked.append(group["scan"])
             checked_set.add(group["scan"])
             rendered += 1
@@ -2244,6 +2352,12 @@ def process_native_platform(platform, spec, now):
         "rendered": rendered,
         "cleanIrFrames": manifests["clean-ir"]["frameCount"],
         "airMassFrames": manifests["air-mass"]["frameCount"],
+        "simpleWaterVaporFrames": manifests[
+            "simple-water-vapor"
+        ]["frameCount"],
+        "dayCloudPhaseFrames": manifests[
+            "day-cloud-phase"
+        ]["frameCount"],
         "latestTime": (
             manifests["clean-ir"]["frames"][-1]["time"]
             if manifests["clean-ir"]["frames"]

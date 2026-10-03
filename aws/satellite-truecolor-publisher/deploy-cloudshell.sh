@@ -133,7 +133,7 @@ PY
 done
 
 for PLATFORM in east west east-global west-global; do
-  for PRODUCT in clean-ir air-mass; do
+  for PRODUCT in clean-ir air-mass simple-water-vapor day-cloud-phase; do
     MANIFEST="s3://${TARGET_BUCKET}/satellite-native/${PLATFORM}/${PRODUCT}/manifest.json"
     printf '%s %s native manifest:\n' "$PLATFORM" "$PRODUCT"
     if aws s3 cp --region "$REGION" "$MANIFEST" - >/tmp/zwx-satellite-native-manifest.json 2>/dev/null; then
