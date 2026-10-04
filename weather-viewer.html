@@ -2417,7 +2417,21 @@
         `${TRUECOLOR_BASE}/${prefix}/manifest.json`;
 
       if(sector?.clientCrop){
-        return [broadUrl];
+        const coveringSectors=(SAT_SECTORS[platform]||[])
+          .filter(item=>
+            !["global","CONUS","PACUS","gwas"].includes(item.id)&&
+            bboxContains(item.bbox,sector.bbox)
+          )
+          .sort((a,b)=>
+            (a.bbox[2]-a.bbox[0])*(a.bbox[3]-a.bbox[1])-
+            (b.bbox[2]-b.bbox[0])*(b.bbox[3]-b.bbox[1])
+          );
+        return [
+          ...coveringSectors.map(item=>
+            `${TRUECOLOR_BASE}/${prefix}/sectors/${item.id}/manifest.json`
+          ),
+          broadUrl
+        ];
       }
 
       return broadSector
