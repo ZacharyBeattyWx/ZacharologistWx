@@ -267,6 +267,33 @@
       #satTimeline{grid-column:1/-1;grid-row:2;width:100%;height:24px}
       .sat-readout,.sat-cache{display:none}
     }
+
+    .sat-platform-row,.sat-product-section,.sat-product-grid{display:contents}
+    .sat-section-heading,.sat-loop-options{display:none}
+    @media(min-width:881px){
+      #satelliteControls{gap:12px}
+      .sat-platform-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
+      .sat-platform-row .control{padding:0 4px;text-align:center;font-size:.65rem}
+      .sat-section-heading{display:block;margin:0 0 6px;padding:0 2px;color:#afbdd0;font-size:.69rem;font-weight:800;letter-spacing:0}
+      .sat-sector-groups{grid-template-columns:minmax(0,1fr);gap:2px}
+      .sat-sector-group{height:28px;text-align:left;padding:0 8px;font-size:.67rem}
+      .sat-sector-list{max-height:132px;overflow-y:auto;scrollbar-width:thin;border-top:1px solid var(--line);padding-top:5px}
+      .sat-product-section{display:block;width:100%;border-top:1px solid var(--line);padding-top:10px}
+      .sat-product-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
+      .sat-product-grid .control{display:flex;align-items:center;justify-content:center;min-height:36px;padding:4px;font-size:.64rem;line-height:1.3;text-align:center;white-space:normal;overflow-wrap:anywhere;border-radius:4px}
+      .sat-abi-grid{grid-template-columns:minmax(0,1fr)}
+      .sat-loop-options{display:block;width:100%;border-top:1px solid var(--line);padding-top:10px}
+      .sat-loop-options fieldset{border:0;padding:0;margin:0 0 12px;min-width:0}
+      .sat-loop-options legend{padding:0 2px;margin-bottom:6px;color:#afbdd0;font-size:.69rem;font-weight:800}
+      .sat-option-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px}
+      .sat-interval-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+      .sat-option-grid label{position:relative;display:block;min-width:0;cursor:pointer}
+      .sat-option-grid input{position:absolute;inset:0;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
+      .sat-option-grid span{display:flex;align-items:center;justify-content:center;height:28px;border:1px solid var(--line);border-radius:4px;background:#0c1523;color:#b8c5d8;font-size:.69rem}
+      .sat-option-grid input:checked+span{border-color:rgba(56,189,248,.65);background:var(--accentSoft);color:#dff6ff}
+      .sat-option-grid input:focus-visible+span{outline:2px solid #7dd3fc;outline-offset:2px}
+      .sat-loop-options fieldset:disabled{opacity:.42}
+    }
   </style>
 </head>
 <body>
@@ -282,17 +309,45 @@
         <span class="label" id="controlLabel">Radar view</span>
         <div class="controls" id="radarControls"><button class="control active" type="button" data-radar="national">National</button><button class="control" type="button" data-radar="regional">Regional</button><button class="control" type="button" data-radar="hires">Hi-Res</button></div>
         <div class="controls" id="satelliteControls" hidden>
-          <button class="control active" type="button" data-sat-platform="East">GOES-East</button><button class="control" type="button" data-sat-platform="West">GOES-West</button>
-          <button class="control active" type="button" data-sat-product="TrueColor">True Color</button><button class="control" type="button" data-sat-product="GeoColor">Geo-Color</button><button class="control" type="button" data-sat-product="Band13_Clean_Infrared">Clean IR</button><button class="control" type="button" data-sat-product="Air_Mass">Air Mass</button><button class="control" type="button" data-sat-product="Simple_Water_Vapor">Simple Water Vapor</button><button class="control" type="button" data-sat-product="Day_Cloud_Phase">Day Cloud Phase</button>
-          <select class="control" id="satSectorSelect" aria-label="Satellite sector"></select>
+          <div class="sat-platform-row"><button class="control active" type="button" data-sat-platform="East">GOES-East</button><button class="control" type="button" data-sat-platform="West">GOES-West</button></div>
           <div class="sat-sector-sidebar" id="satSectorSidebar">
+            <h3 class="sat-section-heading">Sector Category</h3>
             <div class="sat-sector-groups" role="tablist" aria-label="Sector scale">
-              <button class="sat-sector-group active" type="button" data-sector-group="overview">Overview</button>
-              <button class="sat-sector-group" type="button" data-sector-group="subregional">Sub-Regional</button>
-              <button class="sat-sector-group" type="button" data-sector-group="localized">Localized</button>
-              <button class="sat-sector-group" type="button" data-sector-group="mesoscale">Mesoscale</button>
+              <button class="sat-sector-group active" role="tab" type="button" data-sector-group="global">Global Sectors</button>
+              <button class="sat-sector-group" role="tab" type="button" data-sector-group="continental">Continental Sectors</button>
+              <button class="sat-sector-group" role="tab" type="button" data-sector-group="subregional">Sub-Regional Sectors</button>
+              <button class="sat-sector-group" role="tab" type="button" data-sector-group="localized">Localized Sectors</button>
+              <button class="sat-sector-group" role="tab" type="button" data-sector-group="mesoscale">Mesoscale Floaters</button>
             </div>
             <div class="sat-sector-list" id="satSectorList" aria-live="polite"></div>
+          </div>
+          <select class="control" id="satSectorSelect" aria-label="Satellite sector"></select>
+          <div class="sat-product-section">
+            <h3 class="sat-section-heading">ABI Bands</h3>
+            <div class="sat-product-grid sat-abi-grid"><button class="control" type="button" data-sat-product="Band13_Clean_Infrared">13: Clean IR</button></div>
+          </div>
+          <div class="sat-product-section">
+            <h3 class="sat-section-heading">RGB Products</h3>
+            <div class="sat-product-grid">
+              <button class="control active" type="button" data-sat-product="TrueColor">True Color</button>
+              <button class="control" type="button" data-sat-product="GeoColor">Geo-Color</button>
+              <button class="control" type="button" data-sat-product="Air_Mass">Air Mass</button>
+              <button class="control" type="button" data-sat-product="Simple_Water_Vapor">Simple Water Vapor</button>
+              <button class="control" type="button" data-sat-product="Day_Cloud_Phase">Day Cloud Phase</button>
+            </div>
+          </div>
+          <div class="sat-loop-options" id="satLoopOptions">
+            <fieldset><legend>Number of Frames</legend><div class="sat-option-grid">
+              <label><input type="radio" name="sat-frame-count" value="6"><span>6</span></label>
+              <label><input type="radio" name="sat-frame-count" value="12"><span>12</span></label>
+              <label><input type="radio" name="sat-frame-count" value="24" checked><span>24</span></label>
+            </div></fieldset>
+            <fieldset><legend>Frame Interval</legend><div class="sat-option-grid sat-interval-grid">
+              <label><input type="radio" name="sat-frame-stride" value="1" checked><span>All</span></label>
+              <label><input type="radio" name="sat-frame-stride" value="2"><span>2n</span></label>
+              <label><input type="radio" name="sat-frame-stride" value="4"><span>4n</span></label>
+              <label><input type="radio" name="sat-frame-stride" value="6"><span>6n</span></label>
+            </div></fieldset>
           </div>
         </div>
         <div class="controls" id="lightningControls" hidden><button class="control active" type="button" data-map-view="national">National</button><button class="control" type="button" data-map-view="regional">Regional</button></div>
@@ -428,7 +483,8 @@
     const radarControls=document.getElementById("radarControls"),satelliteControls=document.getElementById("satelliteControls"),lightningControls=document.getElementById("lightningControls"),controlLabel=document.getElementById("controlLabel"),viewerStatus=document.getElementById("viewerStatus"),viewerNote=document.getElementById("viewerNote"),radarFrame=document.getElementById("radarFrame"),satelliteStage=document.getElementById("satelliteStage"),satelliteImage=document.getElementById("satelliteImage"),satelliteCanvas=document.getElementById("satelliteCanvas"),satelliteBoundaryCanvas=document.getElementById("satelliteBoundaryCanvas"),satSectorPreviewCanvas=document.getElementById("satSectorPreviewCanvas"),satSectorBrowser=document.getElementById("satSectorBrowser"),satSectorBrowserImage=document.getElementById("satSectorBrowserImage"),satSectorBrowserCanvas=document.getElementById("satSectorBrowserCanvas"),satSectorBrowserTitle=document.getElementById("satSectorBrowserTitle"),satSectorBrowserMeta=document.getElementById("satSectorBrowserMeta"),satSectorBrowserMessage=document.getElementById("satSectorBrowserMessage"),satSectorBrowserClose=document.getElementById("satSectorBrowserClose"),satelliteLoading=document.getElementById("satelliteLoading"),satelliteTitle=document.getElementById("satelliteTitle"),satelliteMeta=document.getElementById("satelliteMeta"),satSectorSelect=document.getElementById("satSectorSelect"),satSectorList=document.getElementById("satSectorList"),weatherMapEl=document.getElementById("weatherMap"),mapProductCard=document.getElementById("mapProductCard"),mapProductTitle=document.getElementById("mapProductTitle"),mapProductMeta=document.getElementById("mapProductMeta"),mapError=document.getElementById("mapError");
     const satPrev=document.getElementById("satPrev"),satPlay=document.getElementById("satPlay"),satNext=document.getElementById("satNext"),satTimeline=document.getElementById("satTimeline"),satFrameReadout=document.getElementById("satFrameReadout"),satSpeed=document.getElementById("satSpeed"),satCacheReadout=document.getElementById("satCacheReadout");
 
-    let activeProduct="radar",radarMode="national",satPlatform="East",satProduct="TrueColor",satSector="global",weatherMap=null,mapReady=false,sectorSidebarGroup="overview",hoveredSectorPreview=null,sectorBrowserToken=0,sectorBrowserBbox=null,sectorBrowserRects=[],sectorBrowserHover=-1,sectorBrowserRestoreMeso=false,refreshTimer=0;
+    let activeProduct="radar",radarMode="national",satPlatform="East",satProduct="TrueColor",satSector="global",weatherMap=null,mapReady=false,sectorSidebarGroup="global",hoveredSectorPreview=null,sectorBrowserToken=0,sectorBrowserBbox=null,sectorBrowserRects=[],sectorBrowserHover=-1,sectorBrowserRestoreMeso=false,refreshTimer=0;
+    let satAvailableFrames=[],satLoopFrameCount=24,satLoopFrameStride=1;
     let satFrames=[],satFrameIndex=0,satTimer=0,satWarmGeneration=0,satLastWindowKey="",satRenderToken=0,satPixelProbeSupported=true,satContext=null,satPlayGateToken=0,satPlayPreparing=false,satPlaybackState=null;
     let satBoundaryData=null,satBoundaryPromise=null,satBoundaryProjection=null,satBoundaryUnavailable=false;
     let lightningFlashes=[],lightningDisplayedFlashes=[],lightningDisplayedKeys=new Set(),lightningLatestMs=0,lightningFetchPromise=null,lightningInitialFitDone=false;
@@ -520,6 +576,7 @@
     const satFrameImages=new Map(),satFramePromises=new Map(),satProbeResults=new Map(),satFrameVisuals=new WeakMap();
     const activate=(list,predicate)=>{for(const button of list)button.classList.toggle("active",predicate(button));};
     function setSatelliteProductControlsEnabled(enabled){
+      document.querySelectorAll("#satLoopOptions fieldset").forEach(fieldset=>{fieldset.disabled=!enabled;});
       for(const button of satProductButtons){
         button.disabled=!enabled;
       }
@@ -1569,9 +1626,8 @@
     function sectorGroupForId(id){
       if(String(id).startsWith("loc-"))return "localized";
       if(String(id).startsWith("meso-"))return "mesoscale";
-      return ["global","CONUS","PACUS","gwas"].includes(id)
-        ?"overview"
-        :"subregional";
+      if(id==="global")return "global";
+      return ["CONUS","PACUS","gwas"].includes(id)?"continental":"subregional";
     }
     function sectorSidebarItems(){
       if(sectorSidebarGroup==="localized"){
@@ -1622,7 +1678,7 @@
       ctx.fillRect(left,top,right-left,bottom-top);
       ctx.strokeRect(left+1,top+1,Math.max(0,right-left-2),Math.max(0,bottom-top-2));
     }
-    function sectorGroupLabel(group){return {overview:"Overview",subregional:"Sub-Regional",localized:"Localized",mesoscale:"Mesoscale"}[group]||"Satellite";}
+    function sectorGroupLabel(group){return {global:"Global",continental:"Continental",subregional:"Sub-Regional",localized:"Localized",mesoscale:"Mesoscale"}[group]||"Satellite";}
     function closeSectorBrowser(restoreMesoscale=true){
       const shouldRestore=
         restoreMesoscale&&
@@ -2618,8 +2674,27 @@
       return "mixed";
     }
 
+
+    function selectSatelliteLoopFrames(frames,count,stride){
+      const result=[];
+      for(let i=frames.length-1;i>=0&&result.length<count;i-=stride)result.push(frames[i]);
+      return result.reverse();
+    }
+    function applySatelliteLoopOptions(){
+      stopSatellitePlayback();
+      satFrames=selectSatelliteLoopFrames(satAvailableFrames,satLoopFrameCount,satLoopFrameStride);
+      satFrameIndex=Math.max(0,satFrames.length-1);
+      satTimeline.max=String(satFrameIndex);
+      satTimeline.value=String(satFrameIndex);
+      if(satFrames.length)renderSatellite(satFrameIndex,false);
+      const ready=satFrames.filter(satelliteFrameReady).length;
+      satCacheReadout.textContent=`${ready}/${satFrames.length} ready`;
+    }
+
     async function buildSatelliteFrames(generation,context){
       function finishSatelliteFrameSet(){
+        satAvailableFrames=satFrames;
+        satFrames=selectSatelliteLoopFrames(satAvailableFrames,satLoopFrameCount,satLoopFrameStride);
         if(!satFrames.length){
           return false;
         }
@@ -4900,6 +4975,7 @@
 
       const selectedSector=currentSectorSpec();
       if(selectedSector?.mesoscale){
+        satAvailableFrames=[];
         satWarmGeneration++;
         satRenderToken++;
         satFrames=[];
@@ -4944,6 +5020,7 @@
 
       satRenderToken++;
       satContext=createSatelliteContext();
+      satAvailableFrames=[];
       satFrames=[];
       satFrameIndex=0;
 
@@ -5026,7 +5103,9 @@
             radarMode,
             satPlatform,
             satProduct,
-            satSector
+            satSector,
+            satLoopFrameCount,
+            satLoopFrameStride
           })
         );
       }catch{}
@@ -5047,6 +5126,10 @@
         if(Object.hasOwn(SAT_PRODUCTS,saved.satProduct)){
           satProduct=saved.satProduct;
         }
+        if([6,12,24].includes(saved.satLoopFrameCount))satLoopFrameCount=saved.satLoopFrameCount;
+        if([1,2,4,6].includes(saved.satLoopFrameStride))satLoopFrameStride=saved.satLoopFrameStride;
+        document.querySelector(`input[name="sat-frame-count"][value="${satLoopFrameCount}"]`).checked=true;
+        document.querySelector(`input[name="sat-frame-stride"][value="${satLoopFrameStride}"]`).checked=true;
         const sectors=allSatelliteSectors(satPlatform);
         if(sectors.some(item=>item.id===saved.satSector)){
           satSector=saved.satSector;
@@ -5083,6 +5166,12 @@
     satNext.addEventListener("click",()=>{stopSatellitePlayback();renderSatellite((satFrameIndex+1)%satFrames.length,false);});
     satPlay.addEventListener("click",startSatellitePlayback);
     satTimeline.addEventListener("input",()=>{stopSatellitePlayback();renderSatellite(Number(satTimeline.value)||0,false);});
+    document.querySelectorAll("#satLoopOptions input").forEach(input=>input.addEventListener("change",()=>{
+      satLoopFrameCount=Number(document.querySelector('input[name="sat-frame-count"]:checked').value);
+      satLoopFrameStride=Number(document.querySelector('input[name="sat-frame-stride"]:checked').value);
+      saveViewerState();
+      applySatelliteLoopOptions();
+    }));
     satSpeed.addEventListener("change",()=>{if(satTimer){stopSatellitePlayback();startSatellitePlayback();}});
     mapViewButtons.forEach(button=>button.addEventListener("click",()=>button.dataset.mapView==="national"?nationalView():regionalView()));
     window.addEventListener("resize",()=>{
