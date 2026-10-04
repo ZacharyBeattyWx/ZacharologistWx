@@ -538,12 +538,17 @@
         }
       }
     }
+    let mesoscaleBackgroundObjectUrl=null;
     function removeMesoscaleLayer(){
       if(!weatherMap||!mapReady)return;
       if(weatherMap.getLayer(MESO_LAYER_ID))weatherMap.removeLayer(MESO_LAYER_ID);
       if(weatherMap.getSource(MESO_SOURCE_ID))weatherMap.removeSource(MESO_SOURCE_ID);
       if(weatherMap.getLayer(MESO_BACKGROUND_LAYER_ID))weatherMap.removeLayer(MESO_BACKGROUND_LAYER_ID);
       if(weatherMap.getSource(MESO_BACKGROUND_SOURCE_ID))weatherMap.removeSource(MESO_BACKGROUND_SOURCE_ID);
+      if(mesoscaleBackgroundObjectUrl){
+        URL.revokeObjectURL(mesoscaleBackgroundObjectUrl);
+        mesoscaleBackgroundObjectUrl=null;
+      }
     }
     function mesoscaleDisplayChannel(){
       const referenceLongitude=
@@ -600,11 +605,27 @@
           return;
         }
 
+        // Resolve image errors here so an asynchronous Mapbox failure cannot bypass the fallback.
+        const imageResponse=await fetch(
+          `${TRUECOLOR_BASE}/${frame.path}`
+        );
+        if(!imageResponse.ok){
+          throw new Error(`Satellite background image HTTP ${imageResponse.status}`);
+        }
+        const imageBlob=await imageResponse.blob();
+        const decoded=await createImageBitmap(imageBlob);
+        decoded.close();
+        if(
+          sectorToken!==satWarmGeneration||
+          activeProduct!=="satellite"||
+          !currentSectorSpec()?.mesoscale
+        )return false;
+        mesoscaleBackgroundObjectUrl=URL.createObjectURL(imageBlob);
         const [west,south,east,north]=bbox;
 
         map.addSource(MESO_BACKGROUND_SOURCE_ID,{
           type:"image",
-          url:`${TRUECOLOR_BASE}/${frame.path}`,
+          url:mesoscaleBackgroundObjectUrl,
           coordinates:[
             [west,north],
             [east,north],
@@ -626,10 +647,21 @@
 
         if(before)map.addLayer(backgroundLayer,before);
         else map.addLayer(backgroundLayer);
-        return;
+        return "prepared";
       }catch(error){
+        if(
+          sectorToken!==satWarmGeneration||
+          activeProduct!=="satellite"||
+          !currentSectorSpec()?.mesoscale
+        )return false;
+        if(map.getLayer(MESO_BACKGROUND_LAYER_ID))map.removeLayer(MESO_BACKGROUND_LAYER_ID);
+        if(map.getSource(MESO_BACKGROUND_SOURCE_ID))map.removeSource(MESO_BACKGROUND_SOURCE_ID);
+        if(mesoscaleBackgroundObjectUrl){
+          URL.revokeObjectURL(mesoscaleBackgroundObjectUrl);
+          mesoscaleBackgroundObjectUrl=null;
+        }
         console.warn(
-          "Prepared mesoscale satellite background unavailable; using NOAA GeoColor.",
+          "Prepared mesoscale satellite background unavailable; using IEM full-disk imagery.",
           error
         );
       }
@@ -645,12 +677,12 @@
       map.addSource(MESO_BACKGROUND_SOURCE_ID,{
         type:"raster",
         tiles:[
-          "https://satellitemaps.nesdis.noaa.gov/arcgis/rest/services/MERGEDGC_current/ImageServer/tile/{z}/{y}/{x}"
+          `https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/goes_${satPlatform.toLowerCase()}_fulldisk_ch${mesoscaleDisplayChannel()}/{z}/{x}/{y}.png?v=${Math.floor(Date.now()/60000)}`
         ],
         tileSize:256,
         minzoom:0,
         maxzoom:8,
-        attribution:"NOAA / NESDIS"
+        attribution:"NOAA GOES / Iowa Environmental Mesonet"
       });
 
       const before=firstSymbolLayerId();
@@ -666,6 +698,7 @@
 
       if(before)map.addLayer(backgroundLayer,before);
       else map.addLayer(backgroundLayer);
+      return "full-disk";
     }
     async function showMesoscaleMap(sector){
       stopSatellitePlayback();
@@ -688,7 +721,7 @@
       setLightningLayerVisibility(false);
       removeMesoscaleLayer();
 
-      await addMesoscaleSatelliteBackground(
+      const backgroundMode=await addMesoscaleSatelliteBackground(
         map,
         sectorToken
       );
@@ -716,7 +749,8 @@
         type:"raster",
         source:MESO_SOURCE_ID,
         paint:{
-          "raster-opacity":.88,
+          "raster-opacity":channel==="13"?.66:.88,
+          "raster-brightness-min":channel==="13"?.12:0,
           "raster-fade-duration":0
         }
       };
@@ -748,7 +782,7 @@
       mapProductTitle.textContent=
         `GOES-${satPlatform} Mesoscale ${sector.mesoNumber}`;
       mapProductMeta.textContent=
-        `${modeLabel} • one-minute mesoscale sector • satellite background retained`;
+        `${modeLabel} • one-minute mesoscale sector • ${backgroundMode==="prepared"?"GOES composite background":"full-disk satellite background"}`;
     }
     function showRadar(){
       radarFrame.hidden=false;
