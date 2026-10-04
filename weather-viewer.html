@@ -342,6 +342,7 @@
     const MAPBOX_STYLE="mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
     const DATA_SOURCE_ID="weather-viewer-data-source",DATA_LAYER_ID="weather-viewer-data-layer";
     const MESO_SOURCE_ID="weather-viewer-mesoscale-source",MESO_LAYER_ID="weather-viewer-mesoscale-layer";
+    const MESO_BACKGROUND_SOURCE_ID="weather-viewer-mesoscale-background-source",MESO_BACKGROUND_LAYER_ID="weather-viewer-mesoscale-background-layer";
     const LIGHTNING_PULSE_SOURCE_ID="weather-viewer-lightning-pulse-source";
     const LIGHTNING_PULSE_HALO_ID="weather-viewer-lightning-pulse-halo";
     const LIGHTNING_PULSE_RING_ID="weather-viewer-lightning-pulse-ring";
@@ -414,12 +415,12 @@
 
     const MESOSCALE_SECTORS={
       East:[
-        {id:"meso-1",label:"Mesoscale 1",mesoscale:true,mesoNumber:1,available:true,status:"Live C02"},
-        {id:"meso-2",label:"Mesoscale 2",mesoscale:true,mesoNumber:2,available:true,status:"Live C02"}
+        {id:"meso-1",label:"Mesoscale 1",mesoscale:true,mesoNumber:1,available:true,status:"Live 1-min"},
+        {id:"meso-2",label:"Mesoscale 2",mesoscale:true,mesoNumber:2,available:true,status:"Live 1-min"}
       ],
       West:[
-        {id:"meso-1",label:"Mesoscale 1",mesoscale:true,mesoNumber:1,available:true,status:"Live C02"},
-        {id:"meso-2",label:"Mesoscale 2",mesoscale:true,mesoNumber:2,available:true,status:"Live C02"}
+        {id:"meso-1",label:"Mesoscale 1",mesoscale:true,mesoNumber:1,available:true,status:"Live 1-min"},
+        {id:"meso-2",label:"Mesoscale 2",mesoscale:true,mesoNumber:2,available:true,status:"Live 1-min"}
       ]
     };
 
@@ -541,11 +542,130 @@
       if(!weatherMap||!mapReady)return;
       if(weatherMap.getLayer(MESO_LAYER_ID))weatherMap.removeLayer(MESO_LAYER_ID);
       if(weatherMap.getSource(MESO_SOURCE_ID))weatherMap.removeSource(MESO_SOURCE_ID);
+      if(weatherMap.getLayer(MESO_BACKGROUND_LAYER_ID))weatherMap.removeLayer(MESO_BACKGROUND_LAYER_ID);
+      if(weatherMap.getSource(MESO_BACKGROUND_SOURCE_ID))weatherMap.removeSource(MESO_BACKGROUND_SOURCE_ID);
     }
-    function mesoscaleTileUrl(sector){
+    function mesoscaleDisplayChannel(){
+      const referenceLongitude=
+        satPlatform==="East"
+          ?-88
+          :-120;
+      const solarElevation=
+        solarElevationApprox(
+          new Date(),
+          38,
+          referenceLongitude
+        );
+      return solarElevation>-2
+        ?"02"
+        :"13";
+    }
+    function mesoscaleTileUrl(sector,channel){
       const bird=satPlatform.toLowerCase();
       const minuteBucket=Math.floor(Date.now()/60000);
-      return `https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/goes_${bird}_mesoscale-${sector.mesoNumber}_ch02/{z}/{x}/{y}.png?v=${minuteBucket}`;
+      return `https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/goes_${bird}_mesoscale-${sector.mesoNumber}_ch${channel}/{z}/{x}/{y}.png?v=${minuteBucket}`;
+    }
+    async function addMesoscaleSatelliteBackground(map,sectorToken){
+      const prefix=`${satPlatform.toLowerCase()}-global`;
+      try{
+        const response=await fetch(
+          `${TRUECOLOR_BASE}/${prefix}/manifest.json?_=${Date.now()}`,
+          {cache:"no-store"}
+        );
+        if(!response.ok){
+          throw new Error(`Satellite background HTTP ${response.status}`);
+        }
+
+        const manifest=await response.json();
+        const frames=
+          Array.isArray(manifest.frames)
+            ?manifest.frames.filter(frame=>frame?.path)
+            :[];
+        const frame=frames.at(-1);
+        const bbox=
+          Array.isArray(manifest.bbox)&&
+          manifest.bbox.length===4
+            ?manifest.bbox.map(Number)
+            :null;
+
+        if(!frame||!bbox){
+          throw new Error("Satellite background manifest is incomplete");
+        }
+
+        if(
+          sectorToken!==satWarmGeneration||
+          activeProduct!=="satellite"||
+          !currentSectorSpec()?.mesoscale
+        ){
+          return;
+        }
+
+        const [west,south,east,north]=bbox;
+
+        map.addSource(MESO_BACKGROUND_SOURCE_ID,{
+          type:"image",
+          url:`${TRUECOLOR_BASE}/${frame.path}`,
+          coordinates:[
+            [west,north],
+            [east,north],
+            [east,south],
+            [west,south]
+          ]
+        });
+
+        const before=firstSymbolLayerId();
+        const backgroundLayer={
+          id:MESO_BACKGROUND_LAYER_ID,
+          type:"raster",
+          source:MESO_BACKGROUND_SOURCE_ID,
+          paint:{
+            "raster-opacity":1,
+            "raster-fade-duration":0
+          }
+        };
+
+        if(before)map.addLayer(backgroundLayer,before);
+        else map.addLayer(backgroundLayer);
+        return;
+      }catch(error){
+        console.warn(
+          "Prepared mesoscale satellite background unavailable; using NOAA GeoColor.",
+          error
+        );
+      }
+
+      if(
+        sectorToken!==satWarmGeneration||
+        activeProduct!=="satellite"||
+        !currentSectorSpec()?.mesoscale
+      ){
+        return;
+      }
+
+      map.addSource(MESO_BACKGROUND_SOURCE_ID,{
+        type:"raster",
+        tiles:[
+          "https://satellitemaps.nesdis.noaa.gov/arcgis/rest/services/MERGEDGC_current/ImageServer/tile/{z}/{y}/{x}"
+        ],
+        tileSize:256,
+        minzoom:0,
+        maxzoom:8,
+        attribution:"NOAA / NESDIS"
+      });
+
+      const before=firstSymbolLayerId();
+      const backgroundLayer={
+        id:MESO_BACKGROUND_LAYER_ID,
+        type:"raster",
+        source:MESO_BACKGROUND_SOURCE_ID,
+        paint:{
+          "raster-opacity":1,
+          "raster-fade-duration":0
+        }
+      };
+
+      if(before)map.addLayer(backgroundLayer,before);
+      else map.addLayer(backgroundLayer);
     }
     async function showMesoscaleMap(sector){
       stopSatellitePlayback();
@@ -556,8 +676,10 @@
       mapError.classList.remove("show");
       setSatelliteProductControlsEnabled(false);
 
+      const sectorToken=satWarmGeneration;
       const map=await ensureMap();
       if(
+        sectorToken!==satWarmGeneration||
         activeProduct!=="satellite"||
         currentSectorSpec()?.id!==sector.id
       ) return;
@@ -566,9 +688,22 @@
       setLightningLayerVisibility(false);
       removeMesoscaleLayer();
 
+      await addMesoscaleSatelliteBackground(
+        map,
+        sectorToken
+      );
+
+      if(
+        sectorToken!==satWarmGeneration||
+        activeProduct!=="satellite"||
+        currentSectorSpec()?.id!==sector.id
+      ) return;
+
+      const channel=mesoscaleDisplayChannel();
+
       map.addSource(MESO_SOURCE_ID,{
         type:"raster",
-        tiles:[mesoscaleTileUrl(sector)],
+        tiles:[mesoscaleTileUrl(sector,channel)],
         tileSize:256,
         minzoom:0,
         maxzoom:8,
@@ -581,7 +716,7 @@
         type:"raster",
         source:MESO_SOURCE_ID,
         paint:{
-          "raster-opacity":.9,
+          "raster-opacity":.88,
           "raster-fade-duration":0
         }
       };
@@ -601,14 +736,19 @@
         {padding:24,duration:350}
       );
 
+      const modeLabel=
+        channel==="02"
+          ?"ABI Channel 2 visible"
+          :"ABI Channel 13 infrared";
+
       viewerStatus.textContent=
         `GOES-${satPlatform} M${sector.mesoNumber} live`;
       viewerNote.textContent=
-        `Live movable mesoscale sector • ABI Channel 2 visible • near-real-time IEM tiles`;
+        `Live movable mesoscale sector • ${modeLabel} • automatic day/night mode`;
       mapProductTitle.textContent=
         `GOES-${satPlatform} Mesoscale ${sector.mesoNumber}`;
       mapProductMeta.textContent=
-        "Live ABI Channel 2 visible • movable one-minute mesoscale sector • IEM/NOAA";
+        `${modeLabel} • one-minute mesoscale sector • satellite background retained`;
     }
     function showRadar(){
       radarFrame.hidden=false;
