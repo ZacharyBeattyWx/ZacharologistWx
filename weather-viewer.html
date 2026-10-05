@@ -267,6 +267,38 @@
       #satTimeline{grid-column:1/-1;grid-row:2;width:100%;height:24px}
       .sat-readout,.sat-cache{display:none}
     }
+
+    .sat-platform-row,.sat-product-section,.sat-product-grid{display:contents}
+    .sat-section-heading,.sat-loop-options{display:none}
+    @media(min-width:881px){
+      #satelliteControls{gap:12px}
+      .sat-platform-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
+      .sat-platform-row .control{padding:0 4px;text-align:center;font-size:.65rem}
+      .sat-section-heading{display:block;margin:0 0 6px;padding:0 2px;color:#afbdd0;font-size:.69rem;font-weight:800;letter-spacing:0}
+      .sat-sector-groups{grid-template-columns:minmax(0,1fr);gap:2px}
+      .sat-sector-group{height:28px;text-align:left;padding:0 8px;font-size:.67rem}
+      .sat-sector-list{max-height:132px;overflow-y:auto;scrollbar-width:thin;border-top:1px solid var(--line);padding-top:5px}
+      .sat-product-section{display:block;width:100%;border-top:1px solid var(--line);padding-top:10px}
+      .sat-product-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
+      .sat-product-grid .control{display:flex;align-items:center;justify-content:center;min-height:36px;padding:4px;font-size:.64rem;line-height:1.3;text-align:center;white-space:normal;overflow-wrap:anywhere;border-radius:4px}
+      .sat-abi-grid{grid-template-columns:minmax(0,1fr)}
+      .sat-loop-options{display:block;width:100%;border-top:1px solid var(--line);padding-top:10px}
+      .sat-loop-options fieldset{border:0;padding:0;margin:0 0 12px;min-width:0}
+      .sat-loop-options legend{padding:0 2px;margin-bottom:6px;color:#afbdd0;font-size:.69rem;font-weight:800}
+      .sat-option-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px}
+      .sat-interval-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+      .sat-option-grid label{position:relative;display:block;min-width:0;cursor:pointer}
+      .sat-option-grid input{position:absolute;inset:0;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
+      .sat-option-grid span{display:flex;align-items:center;justify-content:center;height:28px;border:1px solid var(--line);border-radius:4px;background:#0c1523;color:#b8c5d8;font-size:.69rem}
+      .sat-option-grid input:checked+span{border-color:rgba(56,189,248,.65);background:var(--accentSoft);color:#dff6ff}
+      .sat-option-grid input:focus-visible+span{outline:2px solid #7dd3fc;outline-offset:2px}
+      .sat-loop-options fieldset:disabled{opacity:.42}
+    }
+    #satelliteStage.sat-mesoscale #satelliteImage{object-fit:contain;object-position:center;width:100%;height:100%}
+    .sat-meso-live{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);z-index:12;display:flex;align-items:center;gap:10px;max-width:calc(100% - 24px);padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:rgba(5,10,20,.92);font-size:.7rem;white-space:nowrap}
+    .sat-meso-indicator{width:6px;height:6px;border-radius:50%;background:#94a3b8}
+    .sat-meso-live select{min-width:0;height:28px;background:#0c1523;color:#e5eef8;border:1px solid var(--line2);border-radius:4px;font-size:.7rem}
+    @media(max-width:880px){#satelliteStage.sat-mesoscale .product-card{display:block;top:8px;bottom:auto;max-width:calc(100% - 16px)}}
   </style>
 </head>
 <body>
@@ -282,17 +314,45 @@
         <span class="label" id="controlLabel">Radar view</span>
         <div class="controls" id="radarControls"><button class="control active" type="button" data-radar="national">National</button><button class="control" type="button" data-radar="regional">Regional</button><button class="control" type="button" data-radar="hires">Hi-Res</button></div>
         <div class="controls" id="satelliteControls" hidden>
-          <button class="control active" type="button" data-sat-platform="East">GOES-East</button><button class="control" type="button" data-sat-platform="West">GOES-West</button>
-          <button class="control active" type="button" data-sat-product="TrueColor">True Color</button><button class="control" type="button" data-sat-product="GeoColor">Geo-Color</button><button class="control" type="button" data-sat-product="Band13_Clean_Infrared">Clean IR</button><button class="control" type="button" data-sat-product="Air_Mass">Air Mass</button><button class="control" type="button" data-sat-product="Simple_Water_Vapor">Simple Water Vapor</button><button class="control" type="button" data-sat-product="Day_Cloud_Phase">Day Cloud Phase</button>
-          <select class="control" id="satSectorSelect" aria-label="Satellite sector"></select>
+          <div class="sat-platform-row"><button class="control active" type="button" data-sat-platform="East">GOES-East</button><button class="control" type="button" data-sat-platform="West">GOES-West</button></div>
           <div class="sat-sector-sidebar" id="satSectorSidebar">
+            <h3 class="sat-section-heading">Sector Category</h3>
             <div class="sat-sector-groups" role="tablist" aria-label="Sector scale">
-              <button class="sat-sector-group active" type="button" data-sector-group="overview">Overview</button>
-              <button class="sat-sector-group" type="button" data-sector-group="subregional">Sub-Regional</button>
-              <button class="sat-sector-group" type="button" data-sector-group="localized">Localized</button>
-              <button class="sat-sector-group" type="button" data-sector-group="mesoscale">Mesoscale</button>
+              <button class="sat-sector-group active" role="tab" type="button" data-sector-group="global">Global Sectors</button>
+              <button class="sat-sector-group" role="tab" type="button" data-sector-group="continental">Continental Sectors</button>
+              <button class="sat-sector-group" role="tab" type="button" data-sector-group="subregional">Sub-Regional Sectors</button>
+              <button class="sat-sector-group" role="tab" type="button" data-sector-group="localized">Localized Sectors</button>
+              <button class="sat-sector-group" role="tab" type="button" data-sector-group="mesoscale">Mesoscale Floaters</button>
             </div>
             <div class="sat-sector-list" id="satSectorList" aria-live="polite"></div>
+          </div>
+          <select class="control" id="satSectorSelect" aria-label="Satellite sector"></select>
+          <div class="sat-product-section">
+            <h3 class="sat-section-heading">ABI Bands</h3>
+            <div class="sat-product-grid sat-abi-grid"><button class="control" type="button" data-sat-product="Band13_Clean_Infrared">13: Clean IR</button></div>
+          </div>
+          <div class="sat-product-section">
+            <h3 class="sat-section-heading">RGB Products</h3>
+            <div class="sat-product-grid">
+              <button class="control active" type="button" data-sat-product="TrueColor">True Color</button>
+              <button class="control" type="button" data-sat-product="GeoColor">Geo-Color</button>
+              <button class="control" type="button" data-sat-product="Air_Mass">Air Mass</button>
+              <button class="control" type="button" data-sat-product="Simple_Water_Vapor">Simple Water Vapor</button>
+              <button class="control" type="button" data-sat-product="Day_Cloud_Phase">Day Cloud Phase</button>
+            </div>
+          </div>
+          <div class="sat-loop-options" id="satLoopOptions">
+            <fieldset><legend>Number of Frames</legend><div class="sat-option-grid">
+              <label><input type="radio" name="sat-frame-count" value="6"><span>6</span></label>
+              <label><input type="radio" name="sat-frame-count" value="12"><span>12</span></label>
+              <label><input type="radio" name="sat-frame-count" value="24" checked><span>24</span></label>
+            </div></fieldset>
+            <fieldset><legend>Frame Interval</legend><div class="sat-option-grid sat-interval-grid">
+              <label><input type="radio" name="sat-frame-stride" value="1" checked><span>All</span></label>
+              <label><input type="radio" name="sat-frame-stride" value="2"><span>2n</span></label>
+              <label><input type="radio" name="sat-frame-stride" value="4"><span>4n</span></label>
+              <label><input type="radio" name="sat-frame-stride" value="6"><span>6n</span></label>
+            </div></fieldset>
           </div>
         </div>
         <div class="controls" id="lightningControls" hidden><button class="control active" type="button" data-map-view="national">National</button><button class="control" type="button" data-map-view="regional">Regional</button></div>
@@ -320,6 +380,11 @@
           </div>
         </section>
         <div class="product-card"><strong id="satelliteTitle">GOES-East True Color — Global</strong><span id="satelliteMeta">NOAA GOES ABI Full Disk True Color • 10-minute daylight imagery</span></div>
+        <div class="sat-meso-live" id="satMesoLive" hidden>
+          <span class="sat-meso-indicator" aria-hidden="true"></span>
+          <span id="satMesoTime">Checking scan...</span>
+          <select id="satMesoChannel" aria-label="Mesoscale channel"><option value="13">Clean IR (C13)</option><option value="02">Visible (C02)</option></select>
+        </div>
         <div class="sat-playback" aria-label="Satellite playback controls">
           <button id="satPrev" type="button" title="Previous frame">◀</button>
           <button class="play" id="satPlay" type="button">▶ Play</button>
@@ -341,8 +406,6 @@
     "use strict";
     const MAPBOX_STYLE="mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
     const DATA_SOURCE_ID="weather-viewer-data-source",DATA_LAYER_ID="weather-viewer-data-layer";
-    const MESO_SOURCE_ID="weather-viewer-mesoscale-source",MESO_LAYER_ID="weather-viewer-mesoscale-layer";
-    const MESO_BACKGROUND_SOURCE_ID="weather-viewer-mesoscale-background-source",MESO_BACKGROUND_LAYER_ID="weather-viewer-mesoscale-background-layer";
     const LIGHTNING_PULSE_SOURCE_ID="weather-viewer-lightning-pulse-source";
     const LIGHTNING_PULSE_HALO_ID="weather-viewer-lightning-pulse-halo";
     const LIGHTNING_PULSE_RING_ID="weather-viewer-lightning-pulse-ring";
@@ -428,7 +491,8 @@
     const radarControls=document.getElementById("radarControls"),satelliteControls=document.getElementById("satelliteControls"),lightningControls=document.getElementById("lightningControls"),controlLabel=document.getElementById("controlLabel"),viewerStatus=document.getElementById("viewerStatus"),viewerNote=document.getElementById("viewerNote"),radarFrame=document.getElementById("radarFrame"),satelliteStage=document.getElementById("satelliteStage"),satelliteImage=document.getElementById("satelliteImage"),satelliteCanvas=document.getElementById("satelliteCanvas"),satelliteBoundaryCanvas=document.getElementById("satelliteBoundaryCanvas"),satSectorPreviewCanvas=document.getElementById("satSectorPreviewCanvas"),satSectorBrowser=document.getElementById("satSectorBrowser"),satSectorBrowserImage=document.getElementById("satSectorBrowserImage"),satSectorBrowserCanvas=document.getElementById("satSectorBrowserCanvas"),satSectorBrowserTitle=document.getElementById("satSectorBrowserTitle"),satSectorBrowserMeta=document.getElementById("satSectorBrowserMeta"),satSectorBrowserMessage=document.getElementById("satSectorBrowserMessage"),satSectorBrowserClose=document.getElementById("satSectorBrowserClose"),satelliteLoading=document.getElementById("satelliteLoading"),satelliteTitle=document.getElementById("satelliteTitle"),satelliteMeta=document.getElementById("satelliteMeta"),satSectorSelect=document.getElementById("satSectorSelect"),satSectorList=document.getElementById("satSectorList"),weatherMapEl=document.getElementById("weatherMap"),mapProductCard=document.getElementById("mapProductCard"),mapProductTitle=document.getElementById("mapProductTitle"),mapProductMeta=document.getElementById("mapProductMeta"),mapError=document.getElementById("mapError");
     const satPrev=document.getElementById("satPrev"),satPlay=document.getElementById("satPlay"),satNext=document.getElementById("satNext"),satTimeline=document.getElementById("satTimeline"),satFrameReadout=document.getElementById("satFrameReadout"),satSpeed=document.getElementById("satSpeed"),satCacheReadout=document.getElementById("satCacheReadout");
 
-    let activeProduct="radar",radarMode="national",satPlatform="East",satProduct="TrueColor",satSector="global",weatherMap=null,mapReady=false,sectorSidebarGroup="overview",hoveredSectorPreview=null,sectorBrowserToken=0,sectorBrowserBbox=null,sectorBrowserRects=[],sectorBrowserHover=-1,sectorBrowserRestoreMeso=false,refreshTimer=0;
+    let activeProduct="radar",radarMode="national",satPlatform="East",satProduct="TrueColor",satSector="global",weatherMap=null,mapReady=false,sectorSidebarGroup="global",hoveredSectorPreview=null,sectorBrowserToken=0,sectorBrowserBbox=null,sectorBrowserRects=[],sectorBrowserHover=-1,sectorBrowserRestoreMeso=false,refreshTimer=0;
+    let satAvailableFrames=[],satLoopFrameCount=24,satLoopFrameStride=1;
     let satFrames=[],satFrameIndex=0,satTimer=0,satWarmGeneration=0,satLastWindowKey="",satRenderToken=0,satPixelProbeSupported=true,satContext=null,satPlayGateToken=0,satPlayPreparing=false,satPlaybackState=null;
     let satBoundaryData=null,satBoundaryPromise=null,satBoundaryProjection=null,satBoundaryUnavailable=false;
     let lightningFlashes=[],lightningDisplayedFlashes=[],lightningDisplayedKeys=new Set(),lightningLatestMs=0,lightningFetchPromise=null,lightningInitialFitDone=false;
@@ -520,6 +584,7 @@
     const satFrameImages=new Map(),satFramePromises=new Map(),satProbeResults=new Map(),satFrameVisuals=new WeakMap();
     const activate=(list,predicate)=>{for(const button of list)button.classList.toggle("active",predicate(button));};
     function setSatelliteProductControlsEnabled(enabled){
+      document.querySelectorAll("#satLoopOptions fieldset").forEach(fieldset=>{fieldset.disabled=!enabled;});
       for(const button of satProductButtons){
         button.disabled=!enabled;
       }
@@ -538,217 +603,99 @@
         }
       }
     }
+    let mesoscaleLoadToken=0,mesoscaleDisplayedKey="";
     function removeMesoscaleLayer(){
-      if(!weatherMap||!mapReady)return;
-      if(weatherMap.getLayer(MESO_LAYER_ID))weatherMap.removeLayer(MESO_LAYER_ID);
-      if(weatherMap.getSource(MESO_SOURCE_ID))weatherMap.removeSource(MESO_SOURCE_ID);
-      if(weatherMap.getLayer(MESO_BACKGROUND_LAYER_ID))weatherMap.removeLayer(MESO_BACKGROUND_LAYER_ID);
-      if(weatherMap.getSource(MESO_BACKGROUND_SOURCE_ID))weatherMap.removeSource(MESO_BACKGROUND_SOURCE_ID);
+      mesoscaleLoadToken++;
+      satelliteStage.classList.remove("sat-mesoscale");
+      document.getElementById("satMesoLive").hidden=true;
+      document.querySelector(".sat-playback").hidden=false;
     }
-    function mesoscaleDisplayChannel(){
-      const referenceLongitude=
-        satPlatform==="East"
-          ?-88
-          :-120;
-      const solarElevation=
-        solarElevationApprox(
-          new Date(),
-          38,
-          referenceLongitude
-        );
-      return solarElevation>-2
-        ?"02"
-        :"13";
+    function mesoscaleImageBase(platform,sector,channel){
+      const satellite=platform==="East"?"19":"18";
+      return `https://mesonet.agron.iastate.edu/data/gis/images/GOES/mesoscale-${sector.mesoNumber}/channel${channel}/GOES-${satellite}_C${channel}`;
     }
-    function mesoscaleTileUrl(sector,channel){
-      const bird=satPlatform.toLowerCase();
-      const minuteBucket=Math.floor(Date.now()/60000);
-      return `https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/goes_${bird}_mesoscale-${sector.mesoNumber}_ch${channel}/{z}/{x}/{y}.png?v=${minuteBucket}`;
-    }
-    async function addMesoscaleSatelliteBackground(map,sectorToken){
-      const prefix=`${satPlatform.toLowerCase()}-global`;
-      try{
-        const response=await fetch(
-          `${TRUECOLOR_BASE}/${prefix}/manifest.json?_=${Date.now()}`,
-          {cache:"no-store"}
-        );
-        if(!response.ok){
-          throw new Error(`Satellite background HTTP ${response.status}`);
-        }
-
-        const manifest=await response.json();
-        const frames=
-          Array.isArray(manifest.frames)
-            ?manifest.frames.filter(frame=>frame?.path)
-            :[];
-        const frame=frames.at(-1);
-        const bbox=
-          Array.isArray(manifest.bbox)&&
-          manifest.bbox.length===4
-            ?manifest.bbox.map(Number)
-            :null;
-
-        if(!frame||!bbox){
-          throw new Error("Satellite background manifest is incomplete");
-        }
-
-        if(
-          sectorToken!==satWarmGeneration||
-          activeProduct!=="satellite"||
-          !currentSectorSpec()?.mesoscale
-        ){
-          return;
-        }
-
-        const [west,south,east,north]=bbox;
-
-        map.addSource(MESO_BACKGROUND_SOURCE_ID,{
-          type:"image",
-          url:`${TRUECOLOR_BASE}/${frame.path}`,
-          coordinates:[
-            [west,north],
-            [east,north],
-            [east,south],
-            [west,south]
-          ]
-        });
-
-        const before=firstSymbolLayerId();
-        const backgroundLayer={
-          id:MESO_BACKGROUND_LAYER_ID,
-          type:"raster",
-          source:MESO_BACKGROUND_SOURCE_ID,
-          paint:{
-            "raster-opacity":1,
-            "raster-fade-duration":0
-          }
+    function loadMesoscaleImage(url){
+      return new Promise((resolve,reject)=>{
+        const image=new Image();
+        const finish=error=>{
+          clearTimeout(timeout);
+          image.onload=null;
+          image.onerror=null;
+          if(error)reject(error);
+          else resolve(image);
         };
-
-        if(before)map.addLayer(backgroundLayer,before);
-        else map.addLayer(backgroundLayer);
-        return;
-      }catch(error){
-        console.warn(
-          "Prepared mesoscale satellite background unavailable; using NOAA GeoColor.",
-          error
-        );
-      }
-
-      if(
-        sectorToken!==satWarmGeneration||
-        activeProduct!=="satellite"||
-        !currentSectorSpec()?.mesoscale
-      ){
-        return;
-      }
-
-      map.addSource(MESO_BACKGROUND_SOURCE_ID,{
-        type:"raster",
-        tiles:[
-          "https://satellitemaps.nesdis.noaa.gov/arcgis/rest/services/MERGEDGC_current/ImageServer/tile/{z}/{y}/{x}"
-        ],
-        tileSize:256,
-        minzoom:0,
-        maxzoom:8,
-        attribution:"NOAA / NESDIS"
+        const timeout=setTimeout(()=>finish(new Error("Mesoscale image timed out")),20000);
+        image.onload=()=>finish();
+        image.onerror=()=>finish(new Error("Mesoscale image could not be loaded"));
+        image.src=url;
       });
-
-      const before=firstSymbolLayerId();
-      const backgroundLayer={
-        id:MESO_BACKGROUND_LAYER_ID,
-        type:"raster",
-        source:MESO_BACKGROUND_SOURCE_ID,
-        paint:{
-          "raster-opacity":1,
-          "raster-fade-duration":0
-        }
-      };
-
-      if(before)map.addLayer(backgroundLayer,before);
-      else map.addLayer(backgroundLayer);
     }
-    async function showMesoscaleMap(sector){
-      stopSatellitePlayback();
-      radarFrame.hidden=true;
-      satelliteStage.hidden=true;
-      weatherMapEl.style.display="block";
-      mapProductCard.hidden=false;
-      mapError.classList.remove("show");
+    async function showMesoscaleImage(sector){
+      showSatellite();
+      const generation=satWarmGeneration;
+      const token=++mesoscaleLoadToken;
+      const platform=satPlatform;
+      const channel=document.getElementById("satMesoChannel").value;
+      const key=`${platform}|${sector.id}|${channel}`;
+      const isCurrent=()=>token===mesoscaleLoadToken&&generation===satWarmGeneration&&
+        activeProduct==="satellite"&&satPlatform===platform&&currentSectorSpec()?.id===sector.id;
+      satelliteStage.classList.add("sat-mesoscale");
+      document.querySelector(".sat-playback").hidden=true;
+      document.getElementById("satMesoLive").hidden=false;
       setSatelliteProductControlsEnabled(false);
-
-      const sectorToken=satWarmGeneration;
-      const map=await ensureMap();
-      if(
-        sectorToken!==satWarmGeneration||
-        activeProduct!=="satellite"||
-        currentSectorSpec()?.id!==sector.id
-      ) return;
-
-      map.resize();
-      setLightningLayerVisibility(false);
-      removeMesoscaleLayer();
-
-      await addMesoscaleSatelliteBackground(
-        map,
-        sectorToken
-      );
-
-      if(
-        sectorToken!==satWarmGeneration||
-        activeProduct!=="satellite"||
-        currentSectorSpec()?.id!==sector.id
-      ) return;
-
-      const channel=mesoscaleDisplayChannel();
-
-      map.addSource(MESO_SOURCE_ID,{
-        type:"raster",
-        tiles:[mesoscaleTileUrl(sector,channel)],
-        tileSize:256,
-        minzoom:0,
-        maxzoom:8,
-        attribution:"NOAA GOES / Iowa Environmental Mesonet"
-      });
-
-      const before=firstSymbolLayerId();
-      const layer={
-        id:MESO_LAYER_ID,
-        type:"raster",
-        source:MESO_SOURCE_ID,
-        paint:{
-          "raster-opacity":.88,
-          "raster-fade-duration":0
+      clearSatelliteBoundaries();
+      clearSectorPreview();
+      satelliteCanvas.hidden=true;
+      const retained=mesoscaleDisplayedKey===key&&!satelliteImage.hidden;
+      if(!retained){
+        satelliteImage.hidden=true;
+        satelliteStage.style.removeProperty("--satellite-backdrop");
+        resetSatellitePan();
+        satelliteLoading.textContent="Loading current mesoscale image...";
+        satelliteLoading.classList.add("show");
+      }
+      const label=channel==="02"?"Visible (C02)":"Clean IR (C13)";
+      satelliteTitle.textContent=`GOES-${platform} Mesoscale ${sector.mesoNumber} — ${label}`;
+      satelliteMeta.textContent="Current native-projection imagery · NOAA / IEM";
+      viewerStatus.textContent=`GOES-${platform} M${sector.mesoNumber} checking`;
+      viewerNote.textContent="Checking current mesoscale scan";
+      document.getElementById("satMesoTime").textContent="Checking scan...";
+      try{
+        const base=mesoscaleImageBase(platform,sector,channel);
+        const response=await fetch(`${base}.json?_=${Date.now()}`,{
+          cache:"no-store",signal:AbortSignal.timeout(20000)
+        });
+        if(!response.ok)throw new Error(`Mesoscale metadata HTTP ${response.status}`);
+        const metadata=await response.json();
+        const time=new Date(metadata.meta?.valid);
+        const age=Date.now()-time.getTime();
+        if(!Number.isFinite(time.getTime())||age>20*60000||age< -2*60000){
+          throw new Error("Current mesoscale scan is stale or invalid");
         }
-      };
-      if(before)map.addLayer(layer,before);
-      else map.addLayer(layer);
-
-      const globalSector=
-        (SAT_SECTORS[satPlatform]||SAT_SECTORS.East)
-          .find(item=>item.id==="global")||
-        (SAT_SECTORS[satPlatform]||SAT_SECTORS.East)[0];
-
-      map.fitBounds(
-        [
-          [globalSector.bbox[0],globalSector.bbox[1]],
-          [globalSector.bbox[2],globalSector.bbox[3]]
-        ],
-        {padding:24,duration:350}
-      );
-
-      const modeLabel=
-        channel==="02"
-          ?"ABI Channel 2 visible"
-          :"ABI Channel 13 infrared";
-
-      viewerStatus.textContent=
-        `GOES-${satPlatform} M${sector.mesoNumber} live`;
-      viewerNote.textContent=
-        `Live movable mesoscale sector • ${modeLabel} • automatic day/night mode`;
-      mapProductTitle.textContent=
-        `GOES-${satPlatform} Mesoscale ${sector.mesoNumber}`;
-      mapProductMeta.textContent=
-        `${modeLabel} • one-minute mesoscale sector • satellite background retained`;
+        const url=`${base}.png?_=${Date.now()}`;
+        const image=await loadMesoscaleImage(url);
+        if(!isCurrent())return;
+        satelliteImage.src=image.src;
+        satelliteImage.hidden=false;
+        mesoscaleDisplayedKey=key;
+        satelliteStage.style.setProperty("--satellite-backdrop",`url("${image.src}")`);
+        satelliteLoading.classList.remove("show");
+        const clock=time.toLocaleTimeString([],{hour:"numeric",minute:"2-digit",second:"2-digit"});
+        document.getElementById("satMesoTime").textContent=clock;
+        viewerStatus.textContent=`GOES-${platform} M${sector.mesoNumber} live`;
+        viewerNote.textContent=`${label} · current scan ${clock} · updates every minute`;
+        satelliteMeta.textContent=`${label} · ${time.toISOString()} · native projection · NOAA / IEM`;
+      }catch(error){
+        if(!isCurrent())return;
+        viewerStatus.textContent=`GOES-${platform} M${sector.mesoNumber} update unavailable`;
+        viewerNote.textContent=String(error.message||error);
+        document.getElementById("satMesoTime").textContent=retained?"Last image · update failed":"Image unavailable";
+        if(!retained){
+          satelliteLoading.textContent="Current mesoscale imagery is temporarily unavailable.";
+          satelliteLoading.classList.add("show");
+        }
+        console.warn("Mesoscale image unavailable",error);
+      }
     }
     function showRadar(){
       radarFrame.hidden=false;
@@ -800,15 +747,7 @@
       weatherMap.on("load",()=>{mapReady=true;mapError.classList.remove("show");});
       weatherMap.on("error",event=>{
         const sourceId=String(event?.sourceId||"");
-        if(
-          sourceId===MESO_SOURCE_ID&&
-          activeProduct==="satellite"&&
-          currentSectorSpec()?.mesoscale
-        ){
-          mapError.textContent="Live mesoscale satellite tiles are temporarily unavailable.";
-          mapError.classList.add("show");
-          return;
-        }
+
         if(sourceId&&sourceId!==DATA_SOURCE_ID)return;
         if(activeProduct==="lightning"){
           mapError.textContent="Lightning data layer temporarily unavailable.";
@@ -1535,9 +1474,8 @@
     function sectorGroupForId(id){
       if(String(id).startsWith("loc-"))return "localized";
       if(String(id).startsWith("meso-"))return "mesoscale";
-      return ["global","CONUS","PACUS","gwas"].includes(id)
-        ?"overview"
-        :"subregional";
+      if(id==="global")return "global";
+      return ["CONUS","PACUS","gwas"].includes(id)?"continental":"subregional";
     }
     function sectorSidebarItems(){
       if(sectorSidebarGroup==="localized"){
@@ -1560,7 +1498,7 @@
     }
     function drawSectorPreview(item){
       clearSectorPreview();
-      if(!item?.bbox||!window.matchMedia("(min-width: 881px)").matches||activeProduct!=="satellite")return;
+      if(currentSectorSpec()?.mesoscale||!item?.bbox||!window.matchMedia("(min-width: 881px)").matches||activeProduct!=="satellite")return;
       hoveredSectorPreview=item;
       const visual=activeSatelliteMedia(),visualRect=visual.getBoundingClientRect(),canvasRect=satSectorPreviewCanvas.getBoundingClientRect();
       const mediaWidth=visual===satelliteCanvas?satelliteCanvas.width:satelliteImage.naturalWidth,mediaHeight=visual===satelliteCanvas?satelliteCanvas.height:satelliteImage.naturalHeight;
@@ -1588,7 +1526,7 @@
       ctx.fillRect(left,top,right-left,bottom-top);
       ctx.strokeRect(left+1,top+1,Math.max(0,right-left-2),Math.max(0,bottom-top-2));
     }
-    function sectorGroupLabel(group){return {overview:"Overview",subregional:"Sub-Regional",localized:"Localized",mesoscale:"Mesoscale"}[group]||"Satellite";}
+    function sectorGroupLabel(group){return {global:"Global",continental:"Continental",subregional:"Sub-Regional",localized:"Localized",mesoscale:"Mesoscale"}[group]||"Satellite";}
     function closeSectorBrowser(restoreMesoscale=true){
       const shouldRestore=
         restoreMesoscale&&
@@ -1601,7 +1539,7 @@
       sectorBrowserToken++;
       sectorBrowserRestoreMeso=false;
       if(shouldRestore){
-        showMesoscaleMap(currentSectorSpec());
+        showMesoscaleImage(currentSectorSpec());
       }
     }
     function renderSectorBrowser(){
@@ -2063,7 +2001,7 @@
       renderSectorSidebar();
       if(activeProduct==="satellite")resetSatelliteViewer();
     }
-    function satellitePointerLonLat(event){const visual=satelliteCanvas.hidden?satelliteImage:satelliteCanvas;const rect=visual.getBoundingClientRect();const mediaWidth=visual===satelliteCanvas?satelliteCanvas.width:satelliteImage.naturalWidth;const mediaHeight=visual===satelliteCanvas?satelliteCanvas.height:satelliteImage.naturalHeight;if(!mediaWidth||!mediaHeight||!rect.width||!rect.height)return null;const scale=Math.min(rect.width/mediaWidth,rect.height/mediaHeight);const drawWidth=mediaWidth*scale,drawHeight=mediaHeight*scale;const left=rect.left+(rect.width-drawWidth)/2,top=rect.top+(rect.height-drawHeight)/2;const x=(event.clientX-left)/drawWidth,y=(event.clientY-top)/drawHeight;if(x<0||x>1||y<0||y>1)return null;const [west,south,east,north]=currentSectorSpec().bbox;const mercator=value=>Math.log(Math.tan(Math.PI/4+value*Math.PI/360));const inverse=value=>(2*Math.atan(Math.exp(value))-Math.PI/2)*180/Math.PI;return [west+x*(east-west),inverse(mercator(north)+y*(mercator(south)-mercator(north)))];}
+    function satellitePointerLonLat(event){if(currentSectorSpec()?.mesoscale)return null;const visual=satelliteCanvas.hidden?satelliteImage:satelliteCanvas;const rect=visual.getBoundingClientRect();const mediaWidth=visual===satelliteCanvas?satelliteCanvas.width:satelliteImage.naturalWidth;const mediaHeight=visual===satelliteCanvas?satelliteCanvas.height:satelliteImage.naturalHeight;if(!mediaWidth||!mediaHeight||!rect.width||!rect.height)return null;const scale=Math.min(rect.width/mediaWidth,rect.height/mediaHeight);const drawWidth=mediaWidth*scale,drawHeight=mediaHeight*scale;const left=rect.left+(rect.width-drawWidth)/2,top=rect.top+(rect.height-drawHeight)/2;const x=(event.clientX-left)/drawWidth,y=(event.clientY-top)/drawHeight;if(x<0||x>1||y<0||y>1)return null;const [west,south,east,north]=currentSectorSpec().bbox;const mercator=value=>Math.log(Math.tan(Math.PI/4+value*Math.PI/360));const inverse=value=>(2*Math.atan(Math.exp(value))-Math.PI/2)*180/Math.PI;return [west+x*(east-west),inverse(mercator(north)+y*(mercator(south)-mercator(north)))];}
     function selectSmallestSectorAtPointer(event){if(!window.matchMedia("(min-width: 881px)").matches)return;const point=satellitePointerLonLat(event);if(!point)return;const [lon,lat]=point;const match=allSatelliteSectors().filter(item=>item.bbox&&lon>=item.bbox[0]&&lon<=item.bbox[2]&&lat>=item.bbox[1]&&lat<=item.bbox[3]).sort((a,b)=>(a.bbox[2]-a.bbox[0])*(a.bbox[3]-a.bbox[1])-(b.bbox[2]-b.bbox[0])*(b.bbox[3]-b.bbox[1]))[0];if(!match)return;event.preventDefault();selectSatelliteSector(match.id);}
     function mercator(lon,lat){const R=6378137,rad=Math.PI/180,clamped=Math.max(-85.05112878,Math.min(85.05112878,lat));return [R*lon*rad,R*Math.log(Math.tan(Math.PI/4+clamped*rad/2))];}
     function clearSatelliteBoundaryPixels(){
@@ -2383,7 +2321,21 @@
         `${TRUECOLOR_BASE}/${prefix}/manifest.json`;
 
       if(sector?.clientCrop){
-        return [broadUrl];
+        const coveringSectors=(SAT_SECTORS[platform]||[])
+          .filter(item=>
+            !["global","CONUS","PACUS","gwas"].includes(item.id)&&
+            bboxContains(item.bbox,sector.bbox)
+          )
+          .sort((a,b)=>
+            (a.bbox[2]-a.bbox[0])*(a.bbox[3]-a.bbox[1])-
+            (b.bbox[2]-b.bbox[0])*(b.bbox[3]-b.bbox[1])
+          );
+        return [
+          ...coveringSectors.map(item=>
+            `${TRUECOLOR_BASE}/${prefix}/sectors/${item.id}/manifest.json`
+          ),
+          broadUrl
+        ];
       }
 
       return broadSector
@@ -2570,8 +2522,27 @@
       return "mixed";
     }
 
+
+    function selectSatelliteLoopFrames(frames,count,stride){
+      const result=[];
+      for(let i=frames.length-1;i>=0&&result.length<count;i-=stride)result.push(frames[i]);
+      return result.reverse();
+    }
+    function applySatelliteLoopOptions(){
+      stopSatellitePlayback();
+      satFrames=selectSatelliteLoopFrames(satAvailableFrames,satLoopFrameCount,satLoopFrameStride);
+      satFrameIndex=Math.max(0,satFrames.length-1);
+      satTimeline.max=String(satFrameIndex);
+      satTimeline.value=String(satFrameIndex);
+      if(satFrames.length)renderSatellite(satFrameIndex,false);
+      const ready=satFrames.filter(satelliteFrameReady).length;
+      satCacheReadout.textContent=`${ready}/${satFrames.length} ready`;
+    }
+
     async function buildSatelliteFrames(generation,context){
       function finishSatelliteFrameSet(){
+        satAvailableFrames=satFrames;
+        satFrames=selectSatelliteLoopFrames(satAvailableFrames,satLoopFrameCount,satLoopFrameStride);
         if(!satFrames.length){
           return false;
         }
@@ -4852,6 +4823,7 @@
 
       const selectedSector=currentSectorSpec();
       if(selectedSector?.mesoscale){
+        satAvailableFrames=[];
         satWarmGeneration++;
         satRenderToken++;
         satFrames=[];
@@ -4860,7 +4832,7 @@
         satTimeline.max="0";
         satTimeline.value="0";
         satCacheReadout.textContent="Live";
-        await showMesoscaleMap(selectedSector);
+        await showMesoscaleImage(selectedSector);
         return;
       }
 
@@ -4896,6 +4868,7 @@
 
       satRenderToken++;
       satContext=createSatelliteContext();
+      satAvailableFrames=[];
       satFrames=[];
       satFrameIndex=0;
 
@@ -4978,7 +4951,9 @@
             radarMode,
             satPlatform,
             satProduct,
-            satSector
+            satSector,
+            satLoopFrameCount,
+            satLoopFrameStride
           })
         );
       }catch{}
@@ -4999,6 +4974,10 @@
         if(Object.hasOwn(SAT_PRODUCTS,saved.satProduct)){
           satProduct=saved.satProduct;
         }
+        if([6,12,24].includes(saved.satLoopFrameCount))satLoopFrameCount=saved.satLoopFrameCount;
+        if([1,2,4,6].includes(saved.satLoopFrameStride))satLoopFrameStride=saved.satLoopFrameStride;
+        document.querySelector(`input[name="sat-frame-count"][value="${satLoopFrameCount}"]`).checked=true;
+        document.querySelector(`input[name="sat-frame-stride"][value="${satLoopFrameStride}"]`).checked=true;
         const sectors=allSatelliteSectors(satPlatform);
         if(sectors.some(item=>item.id===saved.satSector)){
           satSector=saved.satSector;
@@ -5035,6 +5014,15 @@
     satNext.addEventListener("click",()=>{stopSatellitePlayback();renderSatellite((satFrameIndex+1)%satFrames.length,false);});
     satPlay.addEventListener("click",startSatellitePlayback);
     satTimeline.addEventListener("input",()=>{stopSatellitePlayback();renderSatellite(Number(satTimeline.value)||0,false);});
+    document.querySelectorAll("#satLoopOptions input").forEach(input=>input.addEventListener("change",()=>{
+      satLoopFrameCount=Number(document.querySelector('input[name="sat-frame-count"]:checked').value);
+      satLoopFrameStride=Number(document.querySelector('input[name="sat-frame-stride"]:checked').value);
+      saveViewerState();
+      applySatelliteLoopOptions();
+    }));
+    document.getElementById("satMesoChannel").addEventListener("change",()=>{
+      if(activeProduct==="satellite"&&currentSectorSpec()?.mesoscale)resetSatelliteViewer();
+    });
     satSpeed.addEventListener("change",()=>{if(satTimer){stopSatellitePlayback();startSatellitePlayback();}});
     mapViewButtons.forEach(button=>button.addEventListener("click",()=>button.dataset.mapView==="national"?nationalView():regionalView()));
     window.addEventListener("resize",()=>{
