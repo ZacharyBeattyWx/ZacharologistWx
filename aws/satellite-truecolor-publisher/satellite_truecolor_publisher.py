@@ -26,10 +26,10 @@ NATIVE_PREFIX = os.getenv(
 ).strip("/")
 
 NATIVE_RENDER_VERSIONS = {
-    "clean-ir": 3,
-    "air-mass": 1,
-    "simple-water-vapor": 1,
-    "day-cloud-phase": 1,
+    "clean-ir": 4,
+    "air-mass": 2,
+    "simple-water-vapor": 2,
+    "day-cloud-phase": 2,
 }
 
 FRAME_COUNT = int(os.getenv("SATELLITE_TRUECOLOR_FRAME_COUNT", "25"))
@@ -37,6 +37,9 @@ MAX_RENDER_PER_PLATFORM = int(
     os.getenv("SATELLITE_TRUECOLOR_MAX_RENDER_PER_PLATFORM", "2")
 )
 OUTPUT_WIDTH = int(os.getenv("SATELLITE_TRUECOLOR_WIDTH", "2200"))
+NATIVE_REGIONAL_WIDTH = max(
+    960, int(os.getenv("SATELLITE_NATIVE_REGIONAL_WIDTH", "4400"))
+)
 WEBP_QUALITY = int(os.getenv("SATELLITE_TRUECOLOR_WEBP_QUALITY", "88"))
 MIN_DAYLIGHT_FRACTION = float(
     os.getenv("SATELLITE_TRUECOLOR_MIN_DAYLIGHT_FRACTION", "0.06")
@@ -1763,7 +1766,15 @@ def render_native_scan(spec, group):
             )
 
         source_crs = source_crs_from_path(paths["13"])
-        gx, gy, width, height = output_grid(spec, source_crs)
+        # Preserve native IR detail for client-side localized crops without
+        # changing the True Color renderer or allocating a larger Full Disk.
+        native_spec = dict(spec)
+        if spec.get("sector") != "GLOBAL":
+            native_spec["output_width"] = max(
+                int(spec.get("output_width", OUTPUT_WIDTH)),
+                NATIVE_REGIONAL_WIDTH,
+            )
+        gx, gy, width, height = output_grid(native_spec, source_crs)
 
         sampled = {}
         for channel in ("08", "10", "12", "13"):
