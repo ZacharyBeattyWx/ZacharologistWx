@@ -581,7 +581,7 @@
 
     let lightningSeenLatestMs=0,lightningPulseFrame=0,lightningPulseToken=0,lightningPollTimer=0;
     let lightningPulseQueue=[],lightningPulseActive=[],lightningPulseNextReleaseAt=0,lightningPulseWakeTimer=0;
-    const SAT_CROSSFADE_FRACTION=.35,SAT_CROSSFADE_MAX_MS=60,SAT_END_PAUSE_MS=550,SAT_BOUNDARY_URL="assets/us-state-boundaries.geojson",VIEWER_STATE_KEY="zwx-weather-viewer-state-v1";
+    const SAT_CROSSFADE_FRACTION=.35,SAT_CROSSFADE_MAX_MS=60,SAT_END_PAUSE_MS=550,SAT_BOUNDARY_URL="assets/satellite-state-boundaries-2025.geojson",VIEWER_STATE_KEY="zwx-weather-viewer-state-v1";
     const satFrameImages=new Map(),satFramePromises=new Map(),satProbeResults=new Map(),satFrameVisuals=new WeakMap();
     const activate=(list,predicate)=>{for(const button of list)button.classList.toggle("active",predicate(button));};
     function setSatelliteProductControlsEnabled(enabled){
@@ -2048,10 +2048,14 @@
         height:Math.max(1,Math.round(height)),
         bbox:bbox.map(Number)
       };
+      const unchanged=satBoundaryProjection&&
+        satBoundaryProjection.width===nextProjection.width&&
+        satBoundaryProjection.height===nextProjection.height&&
+        satBoundaryProjection.bbox.every((value,index)=>Math.abs(value-nextProjection.bbox[index])<.01);
       satBoundaryProjection=nextProjection;
       if(!satBoundaryData){
         loadSatelliteBoundaries();
-      }else{
+      }else if(!unchanged){
         renderSatelliteBoundaries();
       }
     }
@@ -4837,10 +4841,6 @@
 
       showSatellite();
 
-      if(window.matchMedia("(min-width: 881px)").matches){
-        clearSatelliteBoundaries();
-      }
-
       const cadence=
         satProduct==="TrueColor"
           ?trueColorCadenceForSector(
@@ -4862,6 +4862,10 @@
         windowKey===satLastWindowKey&&
         satFrames.length
       ) return;
+
+      if(window.matchMedia("(min-width: 881px)").matches){
+        clearSatelliteBoundaries();
+      }
 
       const generation=++satWarmGeneration;
 
