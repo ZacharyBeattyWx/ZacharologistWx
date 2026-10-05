@@ -4837,10 +4837,6 @@
 
       showSatellite();
 
-      if(window.matchMedia("(min-width: 881px)").matches){
-        clearSatelliteBoundaries();
-      }
-
       const cadence=
         satProduct==="TrueColor"
           ?trueColorCadenceForSector(
@@ -4862,6 +4858,10 @@
         windowKey===satLastWindowKey&&
         satFrames.length
       ) return;
+
+      if(window.matchMedia("(min-width: 881px)").matches){
+        clearSatelliteBoundaries();
+      }
 
       const generation=++satWarmGeneration;
 
