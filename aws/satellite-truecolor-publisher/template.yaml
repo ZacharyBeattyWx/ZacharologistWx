@@ -62,7 +62,7 @@ Resources:
       Role: !GetAtt SatellitePublisherRole.Arn
       Architectures:
         - x86_64
-      MemorySize: 8192
+      MemorySize: 3008
       Timeout: 900
       EphemeralStorage:
         Size: 2048
