@@ -29,7 +29,7 @@ NATIVE_RENDER_VERSIONS = {
     "clean-ir": 4,
     "air-mass": 2,
     "simple-water-vapor": 2,
-    "day-cloud-phase": 2,
+    "day-cloud-phase": 3,
 }
 
 FRAME_COUNT = int(os.getenv("SATELLITE_TRUECOLOR_FRAME_COUNT", "25"))
@@ -1753,6 +1753,44 @@ def render_scan(spec, group, source_cache=None):
                     pass
 
 
+def native_output_strips(spec, source_crs, rows=256):
+    min_x, min_y, max_x, max_y = mercator_bounds(spec["bbox"])
+    ratio = (max_x - min_x) / (max_y - min_y)
+    width = max(960, int(spec.get("output_width", OUTPUT_WIDTH)))
+    height = max(540, int(round(width / ratio)))
+    xs = np.linspace(min_x, max_x, width, dtype=np.float64)
+    ys = np.linspace(max_y, min_y, height, dtype=np.float64)
+    transformer = Transformer.from_crs("EPSG:3857", source_crs, always_xy=True)
+    for row in range(0, height, rows):
+        stop = min(height, row + rows)
+        mx, my = np.meshgrid(xs, ys[row:stop])
+        gx, gy = transformer.transform(mx, my)
+        south = math.degrees(2 * math.atan(math.exp(ys[stop - 1] / 6378137)) - math.pi / 2)
+        north = math.degrees(2 * math.atan(math.exp(ys[row] / 6378137)) - math.pi / 2)
+        strip_bbox = (spec["bbox"][0], south, spec["bbox"][2], north)
+        yield row, gx, gy, strip_bbox, width, height
+
+
+def native_product_rgb(product, sampled, time, bbox, width, height):
+    if product == "clean-ir":
+        return clean_ir_rgb(sampled["13"])
+    if product == "air-mass":
+        return air_mass_rgb(sampled["08"], sampled["10"], sampled["12"], sampled["13"])
+    if product == "simple-water-vapor":
+        return simple_water_vapor_rgb(sampled["08"], sampled["10"], sampled["13"])
+    rgb, valid = day_cloud_phase_rgb(sampled["13"], sampled["02"], sampled["05"])
+    valid &= solar_daylight_alpha(time, bbox, width, height) >= 0.5
+    rgb[~valid] = 0.0
+    return rgb, valid
+
+
+def encode_native_rgba(rgba):
+    image = Image.fromarray(rgba, mode="RGBA")
+    output = io.BytesIO()
+    image.save(output, format="WEBP", quality=WEBP_QUALITY, method=4)
+    return output.getvalue(), image.width, image.height
+
+
 def render_native_scan(spec, group):
     paths = {}
     channels = ("02", "05", "08", "10", "12", "13")
@@ -1774,67 +1812,49 @@ def render_native_scan(spec, group):
                 int(spec.get("output_width", OUTPUT_WIDTH)),
                 NATIVE_REGIONAL_WIDTH,
             )
-        gx, gy, width, height = output_grid(native_spec, source_crs)
-
-        sampled = {}
-        for channel in ("08", "10", "12", "13"):
-            source = read_brightness_temperature(
-                paths[channel],
-                gx,
-                gy,
-                stride=1,
-            )
-            sampled[channel] = sample_grid(source, gx, gy)
-
-        for channel, stride in (("02", 2), ("05", 1)):
-            source = read_reflectance(
-                paths[channel],
-                gx,
-                gy,
-                stride=stride,
-            )
-            sampled[channel] = sample_grid(source, gx, gy)
-
-        clean_rgb, clean_valid = clean_ir_rgb(sampled["13"])
-        air_rgb, air_valid = air_mass_rgb(
-            sampled["08"],
-            sampled["10"],
-            sampled["12"],
-            sampled["13"],
-        )
-        water_rgb, water_valid = simple_water_vapor_rgb(
-            sampled["08"],
-            sampled["10"],
-            sampled["13"],
-        )
-        day_cloud_rgb, day_cloud_valid = day_cloud_phase_rgb(
-            sampled["13"],
-            sampled["02"],
-            sampled["05"],
-        )
-        daylight = solar_daylight_alpha(
-            group["time"],
-            spec["bbox"],
-            width,
-            height,
-        )
-        day_cloud_valid &= daylight >= 0.5
-        day_cloud_rgb[~day_cloud_valid] = 0.0
-
-        products = {
-            "clean-ir": (clean_rgb, clean_valid),
-            "air-mass": (air_rgb, air_valid),
-            "simple-water-vapor": (water_rgb, water_valid),
-        }
-        if np.any(day_cloud_valid):
-            products["day-cloud-phase"] = (
-                day_cloud_rgb,
-                day_cloud_valid,
-            )
+        products = ("clean-ir", "air-mass", "simple-water-vapor", "day-cloud-phase")
+        images = {}
+        day_cloud_visible = False
+        native_visible = False
+        # Keep full-frame storage in uint8; projection, sampling and RGB
+        # intermediates are bounded to one strip rather than four full images.
+        for row, gx, gy, strip_bbox, width, height in native_output_strips(native_spec, source_crs):
+            if not images:
+                images = {product: np.zeros((height, width, 4), dtype=np.uint8) for product in products}
+            if not np.any(np.isfinite(gx) & np.isfinite(gy)):
+                continue
+            sampled = {}
+            for channel in channels:
+                reader = read_reflectance if channel in ("02", "05") else read_brightness_temperature
+                try:
+                    source = reader(paths[channel], gx, gy, stride=1)
+                except RuntimeError as error:
+                    if str(error) != "Target sector does not intersect ABI fixed grid":
+                        raise
+                    sampled[channel] = np.full(gx.shape, np.nan, dtype=np.float32)
+                else:
+                    sampled[channel] = sample_grid(source, gx, gy)
+                    del source
+            for product in products:
+                rgb, finite = native_product_rgb(product, sampled, group["time"], strip_bbox, width, gx.shape[0])
+                native_visible |= bool(np.any(finite))
+                if product == "day-cloud-phase":
+                    day_cloud_visible |= bool(np.any(finite))
+                strip = images[product][row:row + gx.shape[0]]
+                strip[..., :3] = np.rint(np.clip(rgb, 0.0, 1.0) * 255.0).astype(np.uint8)
+                strip[..., 3] = np.where(finite, 255, 0).astype(np.uint8)
+                del rgb, finite
+            del sampled
+        if not native_visible:
+            raise RuntimeError("No visible projected points in target satellite sector")
+        if not day_cloud_visible:
+            del images["day-cloud-phase"]
         frames = {}
 
-        for product, (rgb, finite) in products.items():
-            payload, image_width, image_height = encode_webp(rgb, finite)
+        for product in tuple(images):
+            rgba = images.pop(product)
+            payload, image_width, image_height = encode_native_rgba(rgba)
+            del rgba
             key = native_frame_key(spec, product, group["time"])
             TARGET_S3.put_object(
                 Bucket=TARGET_BUCKET,
@@ -1853,7 +1873,7 @@ def render_native_scan(spec, group):
 
         print(
             f"{spec['satellite']} native {group['scan']} "
-            f"{width}x{height} products={'+'.join(products)}"
+            f"{width}x{height} products={'+'.join(frames)}"
         )
         return frames
 
