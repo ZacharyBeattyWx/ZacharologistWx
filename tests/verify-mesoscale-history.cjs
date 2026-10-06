@@ -24,7 +24,7 @@ function setup(mode='success') {
     satWarmGeneration:1,satPlatform:'East',activeProduct:'satellite',satRenderToken:0,satPlayGateToken:0,
     satFrames:[],satAvailableFrames:[],satFrameIndex:0,satContext:null,satLoopFrameCount:24,satLoopFrameStride:1,
     satPlay:element('satPlay'),satPrev:element('satPrev'),satNext:element('satNext'),satTimeline:element('satTimeline'),
-    satCacheReadout:element('satCacheReadout'),satFrameReadout:element('satFrameReadout'),satSpeed:{value:'1'},satTimer:0,satPlayPreparing:false,
+    satCacheReadout:element('satCacheReadout'),satFrameReadout:element('satFrameReadout'),satSpeed:{value:'250'},satTimer:0,satPlayPreparing:false,
     currentSectorSpec:()=>({id:'meso-1',mesoscale:true,mesoNumber:1}),
     satelliteStage:{classList:{add(){},remove(){}},style:{removeProperty(){},setProperty(){}}},
     satelliteCanvas:{},satelliteImage:{hidden:true},satelliteLoading:{classList:{add(){},remove(){}}},
@@ -35,7 +35,7 @@ function setup(mode='success') {
     fetch:async url=>({ok:true,text:async()=>{
       if(mode==='fallback')throw Error('History offline');
       if(mode==='switch')context.satWarmGeneration++;
-      return listing(Array.from({length:30},(_,i)=>now-(mode==='stale'?60:30-i)*60000));
+      return listing(Array.from({length:30},(_,i)=>now-(mode==='stale'?60:30-i)*60000)).replaceAll('ABI-MESO-13-',`ABI-MESO-${element('satMesoChannel').value}-`);
     },json:async()=>({meta:{valid:new Date(now-(mode==='stale'?60:1)*60000).toISOString()}})}),
     requestAnimationFrame:callback=>{context.tick=callback;return 1;},
     stopSatellitePlayback:()=>{context.satTimer=0;context.satPlayGateToken++;context.satPlayPreparing=false;}
@@ -52,7 +52,7 @@ function setup(mode='success') {
   assert.throws(()=>c.parse(listing([now-30*60000]),base,now),/stale/);
   const midnight=Date.UTC(2027,0,1,0,1);
   assert.equal(c.parse(listing([midnight-120000,midnight-60000]),base,midnight).length,2);
-  for(const satellite of ['19','18'])for(const sector of [1,2])for(const channel of ['02','13']){
+  for(const satellite of ['19','18'])for(const sector of [1,2])for(const channel of ['02','13','GEOCOLOR']){
     const url=`https://cdn.star.nesdis.noaa.gov/GOES${satellite}/ABI/MESO/M${sector}/${channel}/`;
     const input=`<a href="${filename(now-60000,'22N-93W',satellite,channel)}">frame</a>`;
     assert.equal(c.parse(input,url,now).length,1);
@@ -63,6 +63,12 @@ function setup(mode='success') {
   await c.render(0);assert.equal(c.satFrameIndex,0);
   await c.play();assert.equal(c.satTimer,1);c.tick(1);await new Promise(setImmediate);
   assert.equal(c.satFrameIndex,1);
+  c.tick(100);await new Promise(setImmediate);assert.equal(c.satFrameIndex,1);
+  c.tick(251);await new Promise(setImmediate);assert.equal(c.satFrameIndex,2);
+  c.stopSatellitePlayback();c.satSpeed.value='100';await c.play();
+  c.tick(300);await new Promise(setImmediate);assert.equal(c.satFrameIndex,3);
+  c.tick(350);await new Promise(setImmediate);assert.equal(c.satFrameIndex,3);
+  c.tick(400);await new Promise(setImmediate);assert.equal(c.satFrameIndex,4);
   c.document.hidden=true;c.tick(1000);assert.equal(c.satTimer,0);
   for(let i=0;i<40;i++)await c.cached(`https://test.invalid/${i}.jpg`);
   assert(c.cache.size<=32);
@@ -76,5 +82,12 @@ function setup(mode='success') {
   const fallback=setup('fallback');await fallback.context.show(fallback.context.currentSectorSpec());
   assert.equal(fallback.context.satFrames.length,1);assert.equal(fallback.context.satPlay.disabled,true);
   assert.match(fallback.context.viewerNote.textContent,/history unavailable/);
-  console.log('PASS: NOAA East/West M1/M2 C02/C13 history, UTC rollover, location isolation, stale/malicious/duplicate filtering, playback/scrubbing, hidden-tab pause, bounded cache, switching/errors, live fallback.');
+  const color=setup();color.context.document.getElementById('satMesoChannel').value='GEOCOLOR';
+  await color.context.show(color.context.currentSectorSpec());
+  assert.equal(color.context.satFrames.length,24);assert.match(color.context.satelliteTitle.textContent,/GeoColor/);
+  assert.match(color.context.satelliteImage.src,/GEOCOLOR/);
+  const colorFailure=setup('fallback');colorFailure.context.document.getElementById('satMesoChannel').value='GEOCOLOR';
+  await colorFailure.context.show(colorFailure.context.currentSectorSpec());
+  assert.equal(colorFailure.context.satFrames.length,0);assert.equal(colorFailure.context.satelliteImage.hidden,true);
+  console.log('PASS: NOAA East/West M1/M2 C02/C13/GeoColor history, UTC rollover, location isolation, stale/malicious/duplicate filtering, playback/scrubbing and X1/X2 timing, hidden-tab pause, bounded cache, switching/errors, live fallback, no false GeoColor fallback.');
 })().catch(error=>{console.error(error);process.exitCode=1;});
