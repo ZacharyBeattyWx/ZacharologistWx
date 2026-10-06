@@ -1,0 +1,77 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Independent bounded GOES mesoscale publisher; no radar or Lightning changes
+Parameters:
+  ImageUri:
+    Type: String
+  TargetBucketName:
+    Type: String
+  ScheduleState:
+    Type: String
+    Default: DISABLED
+    AllowedValues: [ENABLED, DISABLED]
+  Platforms:
+    Type: String
+    Default: East
+    AllowedValues: [East, West, 'East,West']
+Resources:
+  Role:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: {Service: lambda.amazonaws.com}
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: MesoscaleOnly
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: [s3:GetObject, s3:PutObject, s3:DeleteObject]
+                Resource: !Sub 'arn:${AWS::Partition}:s3:::${TargetBucketName}/satellite-mesoscale/*'
+              - Effect: Allow
+                Action: [logs:CreateLogGroup, logs:CreateLogStream, logs:PutLogEvents]
+                Resource: '*'
+  Publisher:
+    Type: AWS::Lambda::Function
+    Properties:
+      PackageType: Image
+      Code: {ImageUri: !Ref ImageUri}
+      Role: !GetAtt Role.Arn
+      MemorySize: 1536
+      Timeout: 240
+      ReservedConcurrentExecutions: 1
+      EphemeralStorage: {Size: 1024}
+      Environment:
+        Variables:
+          RADAR_BUCKET: !Ref TargetBucketName
+          SATELLITE_TRUECOLOR_PREFIX: satellite-mesoscale
+          MESOSCALE_PLATFORMS: !Ref Platforms
+          MESOSCALE_MAX_NEW_SCANS: '2'
+  Schedule:
+    Type: AWS::Events::Rule
+    Properties:
+      ScheduleExpression: rate(2 minutes)
+      State: !Ref ScheduleState
+      Targets:
+        - Arn: !GetAtt Publisher.Arn
+          Id: MesoscalePublisher
+  Logs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${Publisher}'
+      RetentionInDays: 14
+  Permission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref Publisher
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt Schedule.Arn
+Outputs:
+  FunctionName:
+    Value: !Ref Publisher
+  ScheduleName:
+    Value: !Ref Schedule

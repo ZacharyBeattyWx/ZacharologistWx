@@ -1,0 +1,7 @@
+FROM public.ecr.aws/lambda/python:3.12
+COPY aws/satellite-truecolor-publisher/requirements.txt ${LAMBDA_TASK_ROOT}/requirements.txt
+RUN pip install --no-cache-dir -r ${LAMBDA_TASK_ROOT}/requirements.txt
+COPY aws/satellite-truecolor-publisher/satellite_truecolor_publisher.py ${LAMBDA_TASK_ROOT}/
+COPY aws/satellite-truecolor-publisher/satellite_mesoscale_publisher.py ${LAMBDA_TASK_ROOT}/
+RUN python -m py_compile ${LAMBDA_TASK_ROOT}/satellite_mesoscale_publisher.py
+CMD ["satellite_mesoscale_publisher.lambda_handler"]

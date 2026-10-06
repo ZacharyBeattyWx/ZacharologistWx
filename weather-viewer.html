@@ -295,22 +295,26 @@
       .sat-option-grid input:focus-visible+span{outline:2px solid #7dd3fc;outline-offset:2px}
       .sat-loop-options fieldset:disabled{opacity:.42}
     }
-    #satelliteStage.sat-mesoscale{--meso-header:54px;--meso-footer:58px;display:block;padding:0;background:#000}
+    #satelliteStage.sat-mesoscale{--meso-header:38px;--meso-footer:36px;display:block;padding:0;background:#000}
     #satelliteStage.sat-mesoscale::before{display:none}
     #satelliteStage.sat-mesoscale #satelliteImage{position:absolute;inset:var(--meso-header) 0 var(--meso-footer);object-fit:contain;object-position:center;width:100%;height:calc(100% - var(--meso-header) - var(--meso-footer));max-width:none;max-height:none;box-shadow:none}
-    #satelliteStage.sat-mesoscale .product-card{display:flex;flex-direction:column;justify-content:center;top:0;left:0;bottom:auto;width:100%;height:var(--meso-header);max-width:none;padding:6px 210px 6px 12px;border:0;border-bottom:1px solid var(--line);border-radius:0;background:#080d14;box-shadow:none;backdrop-filter:none}
+    #satelliteStage.sat-mesoscale .product-card{display:flex;flex-direction:column;justify-content:center;top:0;left:0;bottom:auto;width:100%;height:var(--meso-header);max-width:none;padding:3px 210px 3px 46px;border:0;border-bottom:1px solid var(--line);border-radius:0;background:#080d14;box-shadow:none;backdrop-filter:none}
     #satelliteStage.sat-mesoscale .product-card strong{font-size:.75rem;line-height:1.25}
     #satelliteStage.sat-mesoscale .product-card span{font-size:.6rem;line-height:1.25}
     #satelliteStage.sat-mesoscale .sat-playback{left:0;right:0;bottom:0;transform:none;width:100%;height:var(--meso-footer);padding:6px 12px;gap:6px 8px;border:0;border-top:1px solid var(--line);border-radius:0;background:#080d14;box-shadow:none;backdrop-filter:none;grid-template-columns:auto auto auto minmax(0,1fr) auto auto}
-    #satelliteStage.sat-mesoscale .sat-cache{grid-column:4;grid-row:2}
+    #satelliteStage.sat-mesoscale .sat-cache{display:none}
     #satelliteStage.sat-mesoscale .sat-playback button,#satelliteStage.sat-mesoscale .sat-playback select{height:26px;border-radius:4px}
     .sat-meso-live{position:absolute;top:76px;right:10px;z-index:12;display:flex;align-items:center;gap:10px;max-width:calc(100% - 20px);padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:rgba(5,10,20,.92);font-size:.7rem;white-space:nowrap}
     .sat-meso-indicator{width:6px;height:6px;border-radius:50%;background:#94a3b8}
     .sat-meso-live select{min-width:0;height:28px;background:#0c1523;color:#e5eef8;border:1px solid var(--line2);border-radius:4px;font-size:.7rem}
     #satelliteStage.sat-mesoscale .sat-meso-live{top:0;right:10px;height:var(--meso-header);max-width:195px;padding:0;border:0;border-radius:0;background:transparent}
+    #satelliteStage.sat-mesoscale #satelliteCanvas,#satelliteStage.sat-mesoscale #satelliteBoundaryCanvas{position:absolute;inset:var(--meso-header) 0 var(--meso-footer);width:100%;height:calc(100% - var(--meso-header) - var(--meso-footer));max-width:none;max-height:none;box-shadow:none;object-fit:contain}
+    .sat-expand-view{position:absolute;top:5px;left:8px;z-index:13;width:28px;height:28px;padding:0;border:1px solid var(--line);border-radius:4px;background:#080d14;color:var(--text);font-size:1.1rem}
+    @media(min-width:881px){.shell.sat-sidebar-collapsed{grid-template-columns:0 minmax(0,1fr)}.shell.sat-sidebar-collapsed>.top,.shell.sat-sidebar-collapsed>.sub{display:none}}
     @media(max-width:880px){
       #satelliteStage.sat-mesoscale{--meso-header:88px;--meso-footer:calc(78px + env(safe-area-inset-bottom))}
       #satelliteStage.sat-mesoscale .product-card{justify-content:flex-start;padding:8px 10px}
+      .sat-expand-view{display:none}
       #satelliteStage.sat-mesoscale .sat-meso-live{top:52px;left:10px;right:auto;height:32px;max-width:calc(100% - 20px)}
       #satelliteStage.sat-mesoscale .sat-playback{grid-template-columns:auto minmax(0,1fr) auto auto;grid-template-rows:26px 24px;padding:8px 10px calc(8px + env(safe-area-inset-bottom))}
     }
@@ -378,6 +382,7 @@
     <section class="stage">
       <iframe id="radarFrame" src="mosaic-radar-home.html?viewer=national&v=20260923a" title="Radar viewer"></iframe>
       <div id="satelliteStage" hidden>
+        <button id="satExpandView" class="sat-expand-view" type="button" title="Maximize image" aria-label="Maximize image" aria-pressed="false" hidden>⤢</button>
         <div class="satellite-loading" id="satelliteLoading">Loading north-up satellite image…</div>
         <img id="satelliteImage" alt="Satellite imagery">
         <canvas id="satelliteCanvas" hidden aria-label="True Color satellite imagery"></canvas>
@@ -398,7 +403,7 @@
         <div class="sat-meso-live" id="satMesoLive" hidden>
           <span class="sat-meso-indicator" aria-hidden="true"></span>
           <span id="satMesoTime">Checking scan...</span>
-          <select id="satMesoChannel" aria-label="Mesoscale channel"><option value="13">Clean IR (C13)</option><option value="02">Visible (C02)</option><option value="GEOCOLOR">GeoColor</option></select>
+          <select id="satMesoChannel" aria-label="Mesoscale channel"><option value="13">Clean IR (C13)</option><option value="02">Visible (C02)</option><option value="GEOCOLOR">GeoColor</option><option value="true-color">True Color</option></select>
         </div>
         <div class="sat-playback" aria-label="Satellite playback controls">
           <button id="satPrev" type="button" title="Previous frame">◀</button>
@@ -623,6 +628,8 @@
     let mesoscaleWarmPromise=null,mesoscaleWarmKey="";
     function removeMesoscaleLayer(){
       mesoscaleLoadToken++;
+      document.getElementById("satExpandView").hidden=true;
+      if(activeProduct!=="satellite"||!currentSectorSpec()?.mesoscale)document.querySelector(".shell").classList.remove("sat-sidebar-collapsed");
       satelliteStage.classList.remove("sat-mesoscale");
       document.getElementById("satMesoLive").hidden=true;
       document.querySelector(".sat-playback").hidden=false;
@@ -670,6 +677,15 @@
       return sorted.filter(frame=>frame.location===latest.location).slice(-144);
     }
     async function fetchMesoscaleFrames(platform,sector,channel){
+      if(channel!=="GEOCOLOR"){
+        try{
+          const response=await fetch(`${TRUECOLOR_BASE.replace(/satellite-truecolor$/, "satellite-mesoscale")}/${platform.toLowerCase()}/meso-${sector.mesoNumber}/${channel}/manifest.json`,{signal:AbortSignal.timeout(5000)});
+          if(!response.ok)throw new Error("Prepared mesoscale not deployed");
+          const manifest=await response.json();
+          const frames=parsePreparedMesoscale(manifest,platform,sector,channel);
+          return {frames,history:true,prepared:true};
+        }catch(error){if(channel==="true-color")throw new Error("Flattened True Color requires the mesoscale AWS publisher deployment. GeoColor remains available.");}
+      }
       const satellite=platform==="East"?"19":"18";
       const base=`https://cdn.star.nesdis.noaa.gov/GOES${satellite}/ABI/MESO/M${sector.mesoNumber}/${channel}/`;
       try{
@@ -696,6 +712,28 @@
       }).finally(()=>mesoscalePromises.delete(url));
       mesoscalePromises.set(url,promise);
       return promise;
+    }
+    function parsePreparedMesoscale(manifest,platform,sector,channel,now=Date.now()){
+      if(manifest.projection!=="EPSG:3857"||manifest.platform!==platform||manifest.sector!==`M${sector.mesoNumber}`||manifest.product!==channel)throw new Error("Wrong mesoscale manifest");
+      const root=`${platform.toLowerCase()}/meso-${sector.mesoNumber}/${channel}/frames/`;
+      const base=TRUECOLOR_BASE.replace(/satellite-truecolor$/, "satellite-mesoscale");
+      const frames=(manifest.frames||[]).filter(frame=>Array.isArray(frame.bbox)&&frame.bbox.length===4&&frame.bbox.every(Number.isFinite)&&frame.bbox[0]<frame.bbox[2]&&frame.bbox[1]<frame.bbox[3]&&Math.abs(frame.bbox[0])<=180&&Math.abs(frame.bbox[2])<=180&&Math.abs(frame.bbox[1])<85&&Math.abs(frame.bbox[3])<85&&frame.path?.startsWith(root)&&!frame.path.includes("..")&&/^[a-zA-Z0-9/_.-]+$/.test(frame.path)&&frame.geometry&&Number.isFinite(Date.parse(frame.time))&&Date.parse(frame.time)<=now+120000&&Date.parse(frame.time)>=now-3600000).map(frame=>({...frame,time:new Date(frame.time),url:`${base}/${frame.path}`,source:"mesoscale"})).sort((a,b)=>a.time-b.time);
+      const latest=frames.at(-1);
+      if(!latest||now-latest.time>10*60000)throw new Error("Prepared mesoscale stale");
+      return frames.filter(frame=>frame.geometry===latest.geometry).slice(-48);
+    }
+    function drawPreparedMesoscale(image,frame){
+      const rect=satelliteCanvas.getBoundingClientRect(),dpr=Math.min(2,window.devicePixelRatio||1);
+      const width=Math.max(1,Math.round(rect.width*dpr)),height=Math.max(1,Math.round(rect.height*dpr));
+      const [west,south,east,north]=frame.bbox;
+      const [minX,minY]=mercator(west,south),[maxX,maxY]=mercator(east,north);
+      const cx=(minX+maxX)/2,cy=(minY+maxY)/2;
+      const spanY=Math.max(maxY-minY,(maxX-minX)*height/width)*1.03,spanX=spanY*width/height;
+      const bbox=[cx-spanX/2,cy-spanY/2,cx+spanX/2,cy+spanY/2];
+      satelliteCanvas.width=width;satelliteCanvas.height=height;
+      const ctx=satelliteCanvas.getContext("2d");ctx.clearRect(0,0,width,height);
+      ctx.drawImage(image,(minX-bbox[0])/spanX*width,(bbox[3]-maxY)/spanY*height,(maxX-minX)/spanX*width,(maxY-minY)/spanY*height);
+      setSatelliteBoundaryProjection(width,height,bbox);
     }
     function updateMesoscaleReady(){
       satCacheReadout.textContent=`${satFrames.filter(frame=>mesoscaleImages.has(frame.url)).length}/${satFrames.length} ready`;
@@ -730,13 +768,14 @@
         satFrameIndex=next;
         satTimeline.value=String(next);
         satelliteImage.src=image.src;
-        satelliteImage.hidden=false;
+        if(frame.bbox){satelliteImage.hidden=true;satelliteCanvas.hidden=false;drawPreparedMesoscale(image,frame);}
+        else{satelliteImage.hidden=false;satelliteCanvas.hidden=true;clearSatelliteBoundaries();}
         satelliteLoading.classList.remove("show");
         satelliteStage.style.setProperty("--satellite-backdrop",`url("${image.src}")`);
         const clock=formatSatelliteTime(frame.time);
         satFrameReadout.textContent=clock;
         document.getElementById("satMesoTime").textContent=clock;
-        satelliteMeta.textContent=`${satContext.label} · ${frame.time.toISOString()} · ${satContext.history?"NOAA / NESDIS / STAR":"NOAA / IEM"}`;
+        satelliteMeta.textContent=`${satContext.label} · ${frame.time.toISOString()} · ${frame.bbox?"NOAA ABI · Mercator":satContext.history?"NOAA / NESDIS / STAR":"NOAA / IEM"}`;
         updateMesoscaleReady();
         return true;
       }catch(error){
@@ -780,22 +819,23 @@
       const isCurrent=()=>token===mesoscaleLoadToken&&generation===satWarmGeneration&&
         activeProduct==="satellite"&&satPlatform===platform&&currentSectorSpec()?.id===sector.id;
       satelliteStage.classList.add("sat-mesoscale");
+      document.getElementById("satExpandView").hidden=false;
       document.querySelector(".sat-playback").hidden=false;
       document.getElementById("satMesoLive").hidden=false;
       setSatelliteProductControlsEnabled(false);
       document.querySelectorAll("#satLoopOptions fieldset").forEach(fieldset=>{fieldset.disabled=false;});
       clearSatelliteBoundaries();
       clearSectorPreview();
-      satelliteCanvas.hidden=true;
-      const retained=mesoscaleDisplayedKey===key&&!satelliteImage.hidden;
+      const retained=mesoscaleDisplayedKey===key&&(!satelliteImage.hidden||!satelliteCanvas.hidden);
       if(!retained){
+        satelliteCanvas.hidden=true;
         satelliteImage.hidden=true;
         satelliteStage.style.removeProperty("--satellite-backdrop");
         resetSatellitePan();
         satelliteLoading.textContent="Loading mesoscale history...";
         satelliteLoading.classList.add("show");
       }
-      const label=channel==="GEOCOLOR"?"GeoColor":channel==="02"?"Visible (C02)":"Clean IR (C13)";
+      const label=channel==="true-color"?"True Color / C13 Night IR":channel==="GEOCOLOR"?"GeoColor":channel==="02"?"Visible (C02)":"Clean IR (C13)";
       satelliteTitle.textContent=`GOES-${platform} Mesoscale ${sector.mesoNumber} — ${label}`;
       satelliteMeta.textContent="Current native-projection imagery · NOAA / IEM";
       viewerStatus.textContent=`GOES-${platform} M${sector.mesoNumber} checking`;
@@ -816,7 +856,7 @@
         if(!isCurrent())return;
         if(!displayed)throw new Error("Selected mesoscale image is unavailable");
         viewerStatus.textContent=`GOES-${platform} M${sector.mesoNumber} live`;
-        viewerNote.textContent=result.history?`${label} · one-minute history · NOAA / NESDIS / STAR`:`${label} · latest image only; history unavailable · NOAA / IEM`;
+        viewerNote.textContent=result.prepared?`${label} · flattened Mercator · one-minute scans · NOAA ABI`:result.history?`${label} · one-minute history · NOAA / NESDIS / STAR`:`${label} · latest image only; history unavailable · NOAA / IEM`;
         updateMesoscaleReady();
         warmMesoscaleFrames(generation);
       }catch(error){
@@ -5171,9 +5211,19 @@
       if(activeProduct==="satellite"&&currentSectorSpec()?.mesoscale)resetSatelliteViewer();
     });
     satSpeed.addEventListener("change",()=>{if(satTimer){stopSatellitePlayback();startSatellitePlayback();}});
+    document.getElementById("satExpandView").addEventListener("click",event=>{
+      const collapsed=document.querySelector(".shell").classList.toggle("sat-sidebar-collapsed");
+      event.currentTarget.setAttribute("aria-pressed",String(collapsed));
+      event.currentTarget.title=event.currentTarget.ariaLabel=collapsed?"Show controls":"Maximize image";
+      window.dispatchEvent(new Event("resize"));
+    });
     mapViewButtons.forEach(button=>button.addEventListener("click",()=>button.dataset.mapView==="national"?nationalView():regionalView()));
     window.addEventListener("resize",()=>{
       weatherMap?.resize();
+      if(activeProduct==="satellite"&&satContext?.mode==="mesoscale"){
+        const frame=satFrames[satFrameIndex],image=frame&&mesoscaleImages.get(frame.url);
+        if(image&&frame.bbox)drawPreparedMesoscale(image,frame);
+      }
       if(window.matchMedia("(min-width: 881px)").matches){
         loadSatelliteBoundaries();
         renderSatelliteBoundaries();
