@@ -296,7 +296,7 @@
       .sat-loop-options fieldset:disabled{opacity:.42}
     }
     #satelliteStage.sat-mesoscale #satelliteImage{object-fit:contain;object-position:center;width:100%;height:100%}
-    .sat-meso-live{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);z-index:12;display:flex;align-items:center;gap:10px;max-width:calc(100% - 24px);padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:rgba(5,10,20,.92);font-size:.7rem;white-space:nowrap}
+    .sat-meso-live{position:absolute;top:76px;right:10px;z-index:12;display:flex;align-items:center;gap:10px;max-width:calc(100% - 20px);padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:rgba(5,10,20,.92);font-size:.7rem;white-space:nowrap}
     .sat-meso-indicator{width:6px;height:6px;border-radius:50%;background:#94a3b8}
     .sat-meso-live select{min-width:0;height:28px;background:#0c1523;color:#e5eef8;border:1px solid var(--line2);border-radius:4px;font-size:.7rem}
     @media(max-width:880px){#satelliteStage.sat-mesoscale .product-card{display:block;top:8px;bottom:auto;max-width:calc(100% - 16px)}}
@@ -605,6 +605,8 @@
       }
     }
     let mesoscaleLoadToken=0,mesoscaleDisplayedKey="";
+    const mesoscaleImages=new Map(),mesoscalePromises=new Map();
+    let mesoscaleWarmPromise=null,mesoscaleWarmKey="";
     function removeMesoscaleLayer(){
       mesoscaleLoadToken++;
       satelliteStage.classList.remove("sat-mesoscale");
@@ -631,6 +633,127 @@
         image.src=url;
       });
     }
+    function parseMesoscaleHistory(html,base,now=Date.now()){
+      const document=new DOMParser().parseFromString(html,"text/html");
+      const satellite=base.includes("GOES19/")?"19":"18";
+      const channel=base.split("/").filter(Boolean).at(-1);
+      const pattern=new RegExp(`^(\\d{13})_GOES${satellite}-ABI-MESO-${channel}-(\\d+[NS]-\\d+[EW])-1000x1000\\.jpg$`);
+      const frames=new Map();
+      for(const link of document.querySelectorAll("a[href]")){
+        const name=link.getAttribute("href"),match=pattern.exec(name);
+        if(!match)continue;
+        const stamp=match[1],year=Number(stamp.slice(0,4)),day=Number(stamp.slice(4,7));
+        const hour=Number(stamp.slice(7,9)),minute=Number(stamp.slice(9,11)),second=Number(stamp.slice(11,13));
+        const time=new Date(Date.UTC(year,0,day,hour,minute,second));
+        if(day<1||day>366||hour>23||minute>59||second>59||time.getUTCFullYear()!==year)continue;
+        if(time.getTime()>now+120000||time.getTime()<now-6*60*60000)continue;
+        frames.set(time.getTime(),{time,url:new URL(name,base).href,location:match[2],source:"mesoscale"});
+      }
+      const sorted=[...frames.values()].sort((a,b)=>a.time-b.time);
+      const latest=sorted.at(-1);
+      if(!latest||now-latest.time.getTime()>20*60000)throw new Error("Mesoscale history is stale or unavailable");
+      // A moving floater must not animate frames from its previous location.
+      return sorted.filter(frame=>frame.location===latest.location).slice(-144);
+    }
+    async function fetchMesoscaleFrames(platform,sector,channel){
+      const satellite=platform==="East"?"19":"18";
+      const base=`https://cdn.star.nesdis.noaa.gov/GOES${satellite}/ABI/MESO/M${sector.mesoNumber}/${channel}/`;
+      try{
+        const response=await fetch(base,{signal:AbortSignal.timeout(20000)});
+        if(!response.ok)throw new Error(`Mesoscale history HTTP ${response.status}`);
+        return {frames:parseMesoscaleHistory(await response.text(),base),history:true};
+      }catch(historyError){
+        const liveBase=mesoscaleImageBase(platform,sector,channel);
+        const response=await fetch(`${liveBase}.json?_=${Date.now()}`,{cache:"no-store",signal:AbortSignal.timeout(20000)});
+        if(!response.ok)throw historyError;
+        const metadata=await response.json(),time=new Date(metadata.meta?.valid),age=Date.now()-time.getTime();
+        if(!Number.isFinite(time.getTime())||age>20*60000||age< -120000)throw historyError;
+        return {history:false,frames:[{time,url:`${liveBase}.png?_=${time.getTime()}`,source:"mesoscale"}]};
+      }
+    }
+    function cachedMesoscaleImage(url){
+      if(mesoscaleImages.has(url))return Promise.resolve(mesoscaleImages.get(url));
+      if(mesoscalePromises.has(url))return mesoscalePromises.get(url);
+      const promise=loadMesoscaleImage(url).then(image=>{
+        mesoscaleImages.set(url,image);
+        while(mesoscaleImages.size>32)mesoscaleImages.delete(mesoscaleImages.keys().next().value);
+        return image;
+      }).finally(()=>mesoscalePromises.delete(url));
+      mesoscalePromises.set(url,promise);
+      return promise;
+    }
+    function updateMesoscaleReady(){
+      satCacheReadout.textContent=`${satFrames.filter(frame=>mesoscaleImages.has(frame.url)).length}/${satFrames.length} ready`;
+      satPlay.disabled=satFrames.length<2;
+      satPrev.disabled=satNext.disabled=satTimeline.disabled=!satFrames.length;
+    }
+    async function warmMesoscaleFrames(generation){
+      const key=`${generation}|${satFrames.map(frame=>frame.url).join("|")}`;
+      if(mesoscaleWarmPromise&&mesoscaleWarmKey===key)return mesoscaleWarmPromise;
+      mesoscaleWarmKey=key;
+      const frames=[...satFrames];
+      let cursor=0;
+      const current=()=>generation===satWarmGeneration&&satContext?.mode==="mesoscale"&&key===mesoscaleWarmKey;
+      const task=Promise.all(Array.from({length:3},async()=>{
+        while(cursor<frames.length&&current()&&!document.hidden){
+          const frame=frames[cursor++];
+          try{await cachedMesoscaleImage(frame.url);}catch(error){console.warn("Mesoscale frame unavailable",error);}
+          if(current())updateMesoscaleReady();
+        }
+      }));
+      mesoscaleWarmPromise=task;
+      try{await task;}finally{if(mesoscaleWarmPromise===task)mesoscaleWarmPromise=null;}
+    }
+    async function renderMesoscaleFrame(index){
+      if(!satFrames.length||satContext?.mode!=="mesoscale")return;
+      const token=++satRenderToken,generation=satWarmGeneration;
+      const next=Math.max(0,Math.min(satFrames.length-1,index)),frame=satFrames[next];
+      try{
+        const image=await cachedMesoscaleImage(frame.url);
+        if(token!==satRenderToken||generation!==satWarmGeneration||activeProduct!=="satellite"||satContext?.mode!=="mesoscale")return;
+        satFrameIndex=next;
+        satTimeline.value=String(next);
+        satelliteImage.src=image.src;
+        satelliteImage.hidden=false;
+        satelliteLoading.classList.remove("show");
+        satelliteStage.style.setProperty("--satellite-backdrop",`url("${image.src}")`);
+        const clock=formatSatelliteTime(frame.time);
+        satFrameReadout.textContent=clock;
+        document.getElementById("satMesoTime").textContent=clock;
+        satelliteMeta.textContent=`${satContext.label} · ${frame.time.toISOString()} · ${satContext.history?"NOAA / NESDIS / STAR":"NOAA / IEM"}`;
+        updateMesoscaleReady();
+        return true;
+      }catch(error){
+        if(token!==satRenderToken||generation!==satWarmGeneration)return;
+        viewerNote.textContent="Selected mesoscale frame unavailable; retry or choose another frame.";
+        updateMesoscaleReady();
+        return false;
+      }
+    }
+    async function startMesoscalePlayback(){
+      if(satTimer||satPlayPreparing){stopSatellitePlayback();return;}
+      if(satFrames.length<2||document.hidden)return;
+      const token=++satPlayGateToken,generation=satWarmGeneration;
+      satPlayPreparing=true;
+      satPlay.textContent="Loading...";
+      await warmMesoscaleFrames(generation);
+      if(token!==satPlayGateToken||generation!==satWarmGeneration||satContext?.mode!=="mesoscale")return;
+      satPlayPreparing=false;
+      if(document.hidden){stopSatellitePlayback();return;}
+      if(!satFrames.every(frame=>mesoscaleImages.has(frame.url))){satPlay.textContent="▶ Retry";return;}
+      satPlay.textContent="❚❚ Pause";
+      let due=0;
+      const tick=now=>{
+        if(token!==satPlayGateToken||generation!==satWarmGeneration)return;
+        if(document.hidden){stopSatellitePlayback();return;}
+        if(now>=due){
+          renderMesoscaleFrame((satFrameIndex+1)%satFrames.length);
+          due=now+700/Math.max(0.5,Number(satSpeed.value)||1);
+        }
+        satTimer=requestAnimationFrame(tick);
+      };
+      satTimer=requestAnimationFrame(tick);
+    }
     async function showMesoscaleImage(sector){
       showSatellite();
       const generation=satWarmGeneration;
@@ -641,9 +764,10 @@
       const isCurrent=()=>token===mesoscaleLoadToken&&generation===satWarmGeneration&&
         activeProduct==="satellite"&&satPlatform===platform&&currentSectorSpec()?.id===sector.id;
       satelliteStage.classList.add("sat-mesoscale");
-      document.querySelector(".sat-playback").hidden=true;
+      document.querySelector(".sat-playback").hidden=false;
       document.getElementById("satMesoLive").hidden=false;
       setSatelliteProductControlsEnabled(false);
+      document.querySelectorAll("#satLoopOptions fieldset").forEach(fieldset=>{fieldset.disabled=false;});
       clearSatelliteBoundaries();
       clearSectorPreview();
       satelliteCanvas.hidden=true;
@@ -652,7 +776,7 @@
         satelliteImage.hidden=true;
         satelliteStage.style.removeProperty("--satellite-backdrop");
         resetSatellitePan();
-        satelliteLoading.textContent="Loading current mesoscale image...";
+        satelliteLoading.textContent="Loading mesoscale history...";
         satelliteLoading.classList.add("show");
       }
       const label=channel==="02"?"Visible (C02)":"Clean IR (C13)";
@@ -662,30 +786,23 @@
       viewerNote.textContent="Checking current mesoscale scan";
       document.getElementById("satMesoTime").textContent="Checking scan...";
       try{
-        const base=mesoscaleImageBase(platform,sector,channel);
-        const response=await fetch(`${base}.json?_=${Date.now()}`,{
-          cache:"no-store",signal:AbortSignal.timeout(20000)
-        });
-        if(!response.ok)throw new Error(`Mesoscale metadata HTTP ${response.status}`);
-        const metadata=await response.json();
-        const time=new Date(metadata.meta?.valid);
-        const age=Date.now()-time.getTime();
-        if(!Number.isFinite(time.getTime())||age>20*60000||age< -2*60000){
-          throw new Error("Current mesoscale scan is stale or invalid");
-        }
-        const url=`${base}.png?_=${Date.now()}`;
-        const image=await loadMesoscaleImage(url);
+        const result=await fetchMesoscaleFrames(platform,sector,channel);
         if(!isCurrent())return;
-        satelliteImage.src=image.src;
-        satelliteImage.hidden=false;
+        const selectedTime=retained?satFrames[satFrameIndex]?.time.getTime():null;
+        const wasLatest=!satFrames.length||satFrameIndex===satFrames.length-1;
+        satContext={mode:"mesoscale",label,history:result.history};
+        satAvailableFrames=result.frames;
+        satFrames=selectSatelliteLoopFrames(result.frames,satLoopFrameCount,satLoopFrameStride);
+        const retainedIndex=wasLatest?-1:satFrames.findIndex(frame=>frame.time.getTime()===selectedTime);
+        satTimeline.max=String(Math.max(0,satFrames.length-1));
         mesoscaleDisplayedKey=key;
-        satelliteStage.style.setProperty("--satellite-backdrop",`url("${image.src}")`);
-        satelliteLoading.classList.remove("show");
-        const clock=time.toLocaleTimeString([],{hour:"numeric",minute:"2-digit",second:"2-digit"});
-        document.getElementById("satMesoTime").textContent=clock;
+        const displayed=await renderMesoscaleFrame(retainedIndex>=0?retainedIndex:satFrames.length-1);
+        if(!isCurrent())return;
+        if(!displayed)throw new Error("Selected mesoscale image is unavailable");
         viewerStatus.textContent=`GOES-${platform} M${sector.mesoNumber} live`;
-        viewerNote.textContent=`${label} · current scan ${clock} · updates every minute`;
-        satelliteMeta.textContent=`${label} · ${time.toISOString()} · native projection · NOAA / IEM`;
+        viewerNote.textContent=result.history?`${label} · one-minute history · NOAA / NESDIS / STAR`:`${label} · latest image only; history unavailable · NOAA / IEM`;
+        updateMesoscaleReady();
+        warmMesoscaleFrames(generation);
       }catch(error){
         if(!isCurrent())return;
         viewerStatus.textContent=`GOES-${platform} M${sector.mesoNumber} update unavailable`;
@@ -2537,6 +2654,11 @@
       satTimeline.max=String(satFrameIndex);
       satTimeline.value=String(satFrameIndex);
       if(satFrames.length)renderSatellite(satFrameIndex,false);
+      if(satContext?.mode==="mesoscale"){
+        updateMesoscaleReady();
+        warmMesoscaleFrames(satWarmGeneration);
+        return;
+      }
       const ready=satFrames.filter(satelliteFrameReady).length;
       satCacheReadout.textContent=`${ready}/${satFrames.length} ready`;
     }
@@ -4190,6 +4312,7 @@
     }
 
     function renderSatellite(index=satFrameIndex,showLoading=true){
+      if(satContext?.mode==="mesoscale"){renderMesoscaleFrame(index);return;}
       if(
         !satFrames.length||
         !satContext
@@ -4724,6 +4847,7 @@
     }
 
     async function startSatellitePlayback(){
+      if(satContext?.mode==="mesoscale"){await startMesoscalePlayback();return;}
       if(satTimer){
         stopSatellitePlayback();
         return;
@@ -4821,23 +4945,27 @@
     }
 
     async function resetSatelliteViewer(force=true){
+      if(!force&&currentSectorSpec()?.mesoscale&&(satTimer||satPlayPreparing||document.hidden))return;
       stopSatellitePlayback();
       satelliteStage.classList.toggle("native-pixels",Boolean(SAT_PRODUCTS[satProduct]?.nativeProduct));
 
       const selectedSector=currentSectorSpec();
       if(selectedSector?.mesoscale){
-        satAvailableFrames=[];
+        if(force){
+          satAvailableFrames=[];satFrames=[];satFrameIndex=0;satContext=null;
+          satTimeline.max="0";satTimeline.value="0";satFrameReadout.textContent="Latest";
+          satPrev.disabled=satNext.disabled=satTimeline.disabled=true;
+        }
         satWarmGeneration++;
         satRenderToken++;
-        satFrames=[];
-        satFrameIndex=0;
         satLastWindowKey="";
-        satTimeline.max="0";
-        satTimeline.value="0";
-        satCacheReadout.textContent="Live";
+        satCacheReadout.textContent="Loading history";
+        satPlay.disabled=true;
         await showMesoscaleImage(selectedSector);
         return;
       }
+
+      satPlay.disabled=satPrev.disabled=satNext.disabled=satTimeline.disabled=false;
 
       showSatellite();
 
@@ -5046,6 +5174,11 @@
         resetSatelliteViewer(false);
       }
     },60000);
+    document.addEventListener("visibilitychange",()=>{
+      if(activeProduct!=="satellite"||!currentSectorSpec()?.mesoscale)return;
+      if(document.hidden)stopSatellitePlayback();
+      else if(satSectorBrowser.hidden)resetSatelliteViewer(false);
+    });
 
     lightningPollTimer=window.setInterval(()=>{
       if(activeProduct==="lightning"&&mapReady){
