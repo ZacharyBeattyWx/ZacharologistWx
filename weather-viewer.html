@@ -692,8 +692,9 @@
       if(mesoscaleWarmPromise&&mesoscaleWarmKey===key)return mesoscaleWarmPromise;
       mesoscaleWarmKey=key;
       const frames=[...satFrames];
+      const loadToken=mesoscaleLoadToken;
       let cursor=0;
-      const current=()=>generation===satWarmGeneration&&satContext?.mode==="mesoscale"&&key===mesoscaleWarmKey;
+      const current=()=>generation===satWarmGeneration&&loadToken===mesoscaleLoadToken&&activeProduct==="satellite"&&satContext?.mode==="mesoscale"&&key===mesoscaleWarmKey;
       const task=Promise.all(Array.from({length:3},async()=>{
         while(cursor<frames.length&&current()&&!document.hidden){
           const frame=frames[cursor++];
