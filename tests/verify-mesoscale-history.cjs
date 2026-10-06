@@ -66,6 +66,8 @@ function setup(mode='success') {
   c.document.hidden=true;c.tick(1000);assert.equal(c.satTimer,0);
   for(let i=0;i<40;i++)await c.cached(`https://test.invalid/${i}.jpg`);
   assert(c.cache.size<=32);
+  const before=c.cache.size;c.activeProduct='radar';
+  await c.warm(c.satWarmGeneration);assert.equal(c.cache.size,before);
   for(const mode of ['stale','switch','image-error']){
     const failure=setup(mode);await failure.context.show(failure.context.currentSectorSpec());
     assert.equal(failure.context.satelliteImage.hidden,true);
