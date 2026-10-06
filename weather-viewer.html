@@ -321,7 +321,7 @@
     .sat-mobile-tools{display:none}
     .shell:has(#satelliteStage.sat-update-unavailable:not([hidden])) .dot{background:#fbbf24;box-shadow:none}
     @media(max-width:880px){
-      .shell:has(#satelliteControls:not([hidden])) .status{max-width:45%;overflow:hidden}
+      .shell:has(#satelliteControls:not([hidden])) .status{max-width:calc(100% - 190px);overflow:hidden}
       .shell:has(#satelliteControls:not([hidden])) .status span:last-child{overflow:hidden;text-overflow:ellipsis}
       .shell:has(#satelliteControls:not([hidden])) .dot{flex-shrink:0}
       #satelliteControls>.sat-product-section{display:none}
@@ -929,6 +929,7 @@
         satelliteStage.classList.add("sat-update-unavailable");
         viewerNote.textContent=String(error.message||error);
         document.getElementById("satMesoTime").textContent=retained?"Last image · update failed":"Image unavailable";
+        satCacheReadout.textContent=retained?"Update failed":"Unavailable";
         if(!retained){
           satelliteLoading.textContent=String(error.message||"Current mesoscale imagery is temporarily unavailable.");
           satelliteLoading.classList.add("show");
