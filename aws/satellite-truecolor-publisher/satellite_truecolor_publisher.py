@@ -80,6 +80,9 @@ TRUECOLOR_CONTRAST = float(
 TRUECOLOR_VIBRANCE = float(
     os.getenv("SATELLITE_TRUECOLOR_VIBRANCE", "0.16")
 )
+TRUECOLOR_DEHAZE_FLOOR = float(
+    os.getenv("SATELLITE_TRUECOLOR_DEHAZE_FLOOR", "0.035")
+)
 TRUECOLOR_LOW_SUN_REFLECTANCE_GAIN = float(
     os.getenv("SATELLITE_TRUECOLOR_LOW_SUN_REFLECTANCE_GAIN", "2.8")
 )
@@ -96,7 +99,7 @@ TRUECOLOR_DAYLIGHT_CUTOFF_DEGREES = float(
     os.getenv("SATELLITE_TRUECOLOR_DAYLIGHT_CUTOFF_DEGREES", "4.0")
 )
 LOCALIZED_RENDER_VERSION = int(
-    os.getenv("SATELLITE_LOCALIZED_RENDER_VERSION", "6")
+    os.getenv("SATELLITE_LOCALIZED_RENDER_VERSION", "7")
 )
 LOCALIZED_MAX_RENDER_PER_SECTOR = int(
     os.getenv("SATELLITE_LOCALIZED_MAX_RENDER_PER_SECTOR", "2")
@@ -115,7 +118,8 @@ REGIONAL_PLATFORMS = {
         "sector": "CONUS",
         "cadence_minutes": 5,
         "max_render": MAX_RENDER_PER_PLATFORM,
-        "render_version": 14,
+        "render_version": 15,
+        "dehaze_floor": TRUECOLOR_DEHAZE_FLOOR,
         "night_channel": "13",
         "native_products": True,
         "c02_stride": 1,
@@ -135,7 +139,8 @@ REGIONAL_PLATFORMS = {
         "sector": "PACUS",
         "cadence_minutes": 5,
         "max_render": MAX_RENDER_PER_PLATFORM,
-        "render_version": 14,
+        "render_version": 15,
+        "dehaze_floor": TRUECOLOR_DEHAZE_FLOOR,
         "night_channel": "13",
         "native_products": True,
         "c02_stride": 1,
@@ -1001,8 +1006,10 @@ def truecolor_vibrance(rgb, finite):
 
 
 def truecolor_limb_dehaze(rgb, finite, spec):
-    strength = float(spec.get("dehaze_strength", 0.0))
-    if strength <= 0.0:
+    # Display-only veil reduction, not a physical Rayleigh correction.
+    floor = float(np.clip(spec.get("dehaze_floor", 0.0), 0.0, 0.1))
+    strength = float(np.clip(spec.get("dehaze_strength", 0.0), 0.0, 0.2))
+    if max(floor, strength) <= 0.0:
         return rgb
 
     bbox = spec["bbox"]
@@ -1038,7 +1045,7 @@ def truecolor_limb_dehaze(rgb, finite, spec):
         1.0,
     )
     limb = limb * limb * (3.0 - 2.0 * limb)
-    veil = strength * limb
+    veil = floor + max(0.0, strength - floor) * limb
 
     corrected = np.clip(
         (rgb - veil[..., None])
@@ -1977,6 +1984,7 @@ def publish_manifest(spec, existing, frames, checked_scans, now):
             "saturation": TRUECOLOR_SATURATION,
             "contrast": TRUECOLOR_CONTRAST,
             "vibrance": TRUECOLOR_VIBRANCE,
+            "displayDehazeFloor": float(spec.get("dehaze_floor", 0.0)),
             "lowSunReflectanceGain": TRUECOLOR_LOW_SUN_REFLECTANCE_GAIN,
             "lowSunStartDegrees": TRUECOLOR_LOW_SUN_START_DEGREES,
             "lowSunPlateauDegrees": TRUECOLOR_LOW_SUN_PLATEAU_DEGREES,
