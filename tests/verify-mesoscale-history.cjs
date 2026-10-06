@@ -17,7 +17,7 @@ function setup(mode='success') {
     if(!elements.has(id))elements.set(id,{hidden:false,value:'13',textContent:'',disabled:false});
     return elements.get(id);
   };
-  const context={Date,URL,Promise,Number,AbortSignal,setTimeout,clearTimeout,
+  const context={Date,URL,Promise,Number,AbortSignal,setTimeout,clearTimeout,TRUECOLOR_BASE:'https://test.invalid/satellite-truecolor',
     DOMParser:class {parseFromString(html){return {querySelectorAll(){return [...html.matchAll(/href="([^"]+)"/g)].map(match=>({getAttribute:()=>match[1]}));}};}},
     Image:class {set src(url){this.url=url;queueMicrotask(()=>mode==='image-error'?this.onerror():this.onload());}get src(){return this.url;}},
     document:{hidden:false,getElementById:element,querySelector:element,querySelectorAll:()=>[]},
@@ -41,11 +41,15 @@ function setup(mode='success') {
     stopSatellitePlayback:()=>{context.satTimer=0;context.satPlayGateToken++;context.satPlayPreparing=false;}
   };
   vm.createContext(context);
-  vm.runInContext(section+'\nthis.show=showMesoscaleImage;this.parse=parseMesoscaleHistory;this.render=renderMesoscaleFrame;this.play=startMesoscalePlayback;this.warm=warmMesoscaleFrames;this.cached=cachedMesoscaleImage;this.cache=mesoscaleImages;',context);
+  vm.runInContext(section+'\nthis.prepared=parsePreparedMesoscale;this.show=showMesoscaleImage;this.parse=parseMesoscaleHistory;this.render=renderMesoscaleFrame;this.play=startMesoscalePlayback;this.warm=warmMesoscaleFrames;this.cached=cachedMesoscaleImage;this.cache=mesoscaleImages;',context);
   return {context,elements};
 }
 (async()=>{
   const test=setup(),c=test.context,base='https://cdn.star.nesdis.noaa.gov/GOES19/ABI/MESO/M1/13/';
+  const prepared={projection:'EPSG:3857',platform:'East',sector:'M1',product:'13',frames:[{time:new Date(now-60000).toISOString(),bbox:[-95,25,-80,40],geometry:'current',path:'east/meso-1/13/frames/v1/test.webp'}]};
+  assert.equal(c.prepared(prepared,'East',{mesoNumber:1},'13',now).length,1);
+  assert.throws(()=>c.prepared(prepared,'West',{mesoNumber:1},'13',now),/Wrong/);
+  assert.throws(()=>c.prepared({...prepared,frames:[{...prepared.frames[0],path:'east/meso-1/13/frames/../bad.webp'}]},'East',{mesoNumber:1},'13',now),/stale/);
   const parsed=c.parse(listing([now-120000,now-60000])+listing([now-180000],'33N-107W')+'<a href="https://evil.invalid/image.jpg">bad</a>',base,now);
   assert.equal(parsed.length,2);assert(parsed.every(frame=>frame.url.startsWith(base)));
   assert.equal(c.parse(listing([now-60000,now-60000]),base,now).length,1);
