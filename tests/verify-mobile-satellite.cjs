@@ -1,7 +1,7 @@
 const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
-const html = fs.readFileSync(process.argv[2] || `${__dirname}/weather-viewer.html`, 'utf8');
+const html = fs.readFileSync(process.argv[2] || `${__dirname}/../weather-viewer.html`, 'utf8');
 for (const script of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)) new vm.Script(script[1]);
 const styles = {};
 const media = { hidden: false, width: 1200, height: 800, style: {} };
