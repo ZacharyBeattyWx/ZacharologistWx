@@ -13,6 +13,8 @@ import satellite_truecolor_publisher as abi
 
 SOURCE_RE = re.compile(r"RadM(?P<sector>[12])-M\dC(?P<channel>\d{2})_G\d+_s(?P<scan>\d{11})")
 PRODUCTS = {"true-color": ("01", "02", "03", "13"), "13": ("13",), "02": ("02",)}
+MAX_HISTORY_FRAMES = 60
+HISTORY_WINDOW_MINUTES = 65
 
 
 def scan_geometry(path):
@@ -40,7 +42,7 @@ def scan_geometry(path):
 
 def list_scans(bucket, sector, now):
     grouped = {}
-    for offset in (0, 1):
+    for offset in (0, 1, 2):
         hour = now-timedelta(hours=offset)
         prefix = f"ABI-L1b-RadM/{hour:%Y/%j/%H}/"
         for page in abi.SOURCE_S3.get_paginator("list_objects_v2").paginate(Bucket=bucket, Prefix=prefix):
@@ -54,7 +56,7 @@ def list_scans(bucket, sector, now):
                 group = grouped.setdefault(scan, {"scan": scan, "time": abi.parse_scan(scan), "channels": {}})
                 group["channels"][channel] = max(group["channels"].get(channel, ""), obj["Key"])
     return sorted((g for g in grouped.values() if all(c in g["channels"] for c in PRODUCTS["true-color"])
-                   and now-timedelta(minutes=60) <= g["time"] <= now), key=lambda g: g["time"], reverse=True)
+                   and now-timedelta(minutes=HISTORY_WINDOW_MINUTES) <= g["time"] <= now), key=lambda g: g["time"], reverse=True)
 
 
 def render_band(spec, group, path, channel):
@@ -119,7 +121,7 @@ def process_sector(platform, satellite, bucket, sector, now):
             continue
         geometry = ordered[-1]["geometry"]
         kept = [f for f in ordered if f["geometry"] == geometry
-                and now-timedelta(minutes=60) <= abi.datetime.fromisoformat(f["time"].replace("Z", "+00:00"))][-48:]
+                and now-timedelta(minutes=HISTORY_WINDOW_MINUTES) <= abi.datetime.fromisoformat(f["time"].replace("Z", "+00:00"))][-MAX_HISTORY_FRAMES:]
         output = {"version": 1, "projection": "EPSG:3857", "product": product, "platform": platform,
                   "sector": f"M{sector}", "generated": abi.iso_z(now), "frames": kept, "cadenceMinutes": 1,
                   "checkedScans": sorted(checked[product])[-96:]}
