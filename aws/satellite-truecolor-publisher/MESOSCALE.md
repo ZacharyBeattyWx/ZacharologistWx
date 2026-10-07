@@ -23,12 +23,24 @@ floater and the history builds on subsequent runs.
 Default: GOES-East M1/M2 only. Set `MESOSCALE_PLATFORMS=East,West` before deploying
 to add West. This adds compute, storage and delivery costs; it is not free.
 Work is bounded to two new scans per floater per invocation, one concurrent
-invocation, 48 retained frames per product, and 14-day logs. Source downloads are
+invocation, 60 retained frames per product within a 65-minute freshness window,
+and 14-day logs. The five-minute margin accommodates scan publication delays.
+Source downloads are
 shared between True Color, Visible C02 and Clean IR C13. Completed scans are not
 reprocessed; expired or old-location images are deleted after manifest commit.
 
 ## Viewer Behavior
 
+- Mesoscale loops load up to 45 frames on mobile (viewport at most 880px) and
+  60 on desktop. With All selected, this is roughly 45 minutes and one hour
+  respectively at one-minute cadence. Other satellite sectors retain their
+  existing 6/12/24-frame settings. Frame intervals still allow skipping scans.
+- The decoded mesoscale cache is limited to the device's loop size and active
+  frame URLs; switching products removes images outside the selected loop.
+- History grows gradually after deployment; missing scans or a relocated floater
+  can shorten the loop. Rendering remains limited to two scans per run, without
+  a bulk backfill. Retaining more frames increases storage and viewer downloads,
+  but does not increase the scheduled rendering rate.
 - Prepared C02/C13 are preferred when available and fresh. Until deployment,
   the existing NOAA annotated playback stays available as the fallback.
 - True Color uses the prepared publisher and C13 night imagery; it is not NOAA
@@ -46,6 +58,7 @@ reprocessed; expired or old-location images are deleted after manifest commit.
 ```bash
 node tests/verify-mesoscale-history.cjs
 python3 tests/test_mesoscale_publisher.py
+python3 tests/test_mesoscale_retention.py
 ```
 
 The Python tests require the satellite publisher dependencies. A local read-only

@@ -12,12 +12,13 @@ function filename(time, location='22N-93W', satellite='19', channel='13') {
   return `${year}${pad(day,3)}${pad(date.getUTCHours())}${pad(date.getUTCMinutes())}${pad(date.getUTCSeconds())}_GOES${satellite}-ABI-MESO-${channel}-${location}-1000x1000.jpg`;
 }
 const listing = (times, location) => times.map(time => `<a href="${filename(time,location)}">frame</a>`).join('');
-function setup(mode='success') {
+function setup(mode='success',mobile=false) {
   const elements=new Map(), element=id=>{
-    if(!elements.has(id))elements.set(id,{hidden:false,value:'13',textContent:'',disabled:false});
+    if(!elements.has(id))elements.set(id,{hidden:false,value:'13',textContent:'',disabled:false,appendChild(child){child.parentElement=this;}});
     return elements.get(id);
   };
   const context={Date,URL,Promise,Number,AbortSignal,setTimeout,clearTimeout,TRUECOLOR_BASE:'https://test.invalid/satellite-truecolor',
+    window:{matchMedia:query=>({matches:query.includes('min-width')?!mobile:mobile})},
     DOMParser:class {parseFromString(html){return {querySelectorAll(){return [...html.matchAll(/href="([^"]+)"/g)].map(match=>({getAttribute:()=>match[1]}));}};}},
     Image:class {set src(url){this.url=url;queueMicrotask(()=>mode==='image-error'?this.onerror():this.onload());}get src(){return this.url;}},
     document:{hidden:false,getElementById:element,querySelector:element,querySelectorAll:()=>[]},
@@ -26,7 +27,7 @@ function setup(mode='success') {
     satPlay:element('satPlay'),satPrev:element('satPrev'),satNext:element('satNext'),satTimeline:element('satTimeline'),
     satCacheReadout:element('satCacheReadout'),satFrameReadout:element('satFrameReadout'),satSpeed:{value:'250'},satTimer:0,satPlayPreparing:false,
     currentSectorSpec:()=>({id:'meso-1',mesoscale:true,mesoNumber:1}),
-    satelliteStage:{classList:{add(){},remove(){}},style:{removeProperty(){},setProperty(){}}},
+    satelliteStage:{classList:{add(){},remove(){}},style:{removeProperty(){},setProperty(){}},appendChild(child){child.parentElement=this;}},
     satelliteCanvas:{},satelliteImage:{hidden:true},satelliteLoading:{classList:{add(){},remove(){}}},
     satelliteTitle:{},satelliteMeta:{},viewerStatus:{},viewerNote:{},console:{warn(){}},
     showSatellite(){},setSatelliteProductControlsEnabled(){},clearSatelliteBoundaries(){},clearSectorPreview(){},resetSatellitePan(){},
@@ -35,7 +36,7 @@ function setup(mode='success') {
     fetch:async url=>({ok:true,text:async()=>{
       if(mode==='fallback')throw Error('History offline');
       if(mode==='switch')context.satWarmGeneration++;
-      return listing(Array.from({length:30},(_,i)=>now-(mode==='stale'?60:30-i)*60000)).replaceAll('ABI-MESO-13-',`ABI-MESO-${element('satMesoChannel').value}-`);
+      return listing(Array.from({length:70},(_,i)=>now-(mode==='stale'?90:70-i)*60000)).replaceAll('ABI-MESO-13-',`ABI-MESO-${element('satMesoChannel').value}-`);
     },json:async()=>({meta:{valid:new Date(now-(mode==='stale'?60:1)*60000).toISOString()}})}),
     requestAnimationFrame:callback=>{context.tick=callback;return 1;},
     stopSatellitePlayback:()=>{context.satTimer=0;context.satPlayGateToken++;context.satPlayPreparing=false;}
@@ -62,7 +63,10 @@ function setup(mode='success') {
     assert.equal(c.parse(input,url,now).length,1);
   }
   await c.show(c.currentSectorSpec());await c.warm(c.satWarmGeneration);
-  assert.equal(c.satFrames.length,24);assert.equal(test.elements.get('.sat-playback').hidden,false);
+  assert.equal(c.satFrames.length,60);assert.equal(test.elements.get('.sat-playback').hidden,false);
+  assert.equal(c.cache.size,60);assert.equal(test.elements.get('satMesoFrameCount').textContent,'60');
+  assert.equal(test.elements.get('satMesoLive').parentElement,test.elements.get('satMesoSidebar'));
+  assert.equal(test.elements.get('satStandardFrameOptions').hidden,true);
   assert.equal(c.satPlay.disabled,false);assert.match(c.satelliteImage.src,/1000x1000.jpg/);
   await c.render(0);assert.equal(c.satFrameIndex,0);
   await c.play();assert.equal(c.satTimer,1);c.tick(1);await new Promise(setImmediate);
@@ -75,7 +79,7 @@ function setup(mode='success') {
   c.tick(400);await new Promise(setImmediate);assert.equal(c.satFrameIndex,4);
   c.document.hidden=true;c.tick(1000);assert.equal(c.satTimer,0);
   for(let i=0;i<40;i++)await c.cached(`https://test.invalid/${i}.jpg`);
-  assert(c.cache.size<=32);
+  assert.equal(c.cache.size,60);
   const before=c.cache.size;c.activeProduct='radar';
   await c.warm(c.satWarmGeneration);assert.equal(c.cache.size,before);
   for(const mode of ['stale','switch','image-error']){
@@ -88,10 +92,31 @@ function setup(mode='success') {
   assert.match(fallback.context.viewerNote.textContent,/history unavailable/);
   const color=setup();color.context.document.getElementById('satMesoChannel').value='GEOCOLOR';
   await color.context.show(color.context.currentSectorSpec());
-  assert.equal(color.context.satFrames.length,24);assert.match(color.context.satelliteTitle.textContent,/GeoColor/);
+  assert.equal(color.context.satFrames.length,60);assert.match(color.context.satelliteTitle.textContent,/GeoColor/);
   assert.match(color.context.satelliteImage.src,/GEOCOLOR/);
   const colorFailure=setup('fallback');colorFailure.context.document.getElementById('satMesoChannel').value='GEOCOLOR';
   await colorFailure.context.show(colorFailure.context.currentSectorSpec());
   assert.equal(colorFailure.context.satFrames.length,0);assert.equal(colorFailure.context.satelliteImage.hidden,true);
+  const phone=setup('success',true),p=phone.context;
+  await p.show(p.currentSectorSpec());await p.warm(p.satWarmGeneration);
+  assert.equal(p.satFrames.length,45);assert.equal(p.cache.size,45);
+  assert.equal(phone.elements.get('satMesoFrameCount').textContent,'45');
+  assert.equal(phone.elements.get('satMesoLive').parentElement,p.satelliteStage);
+  await p.play();assert.equal(p.satTimer,1,'All 45 mobile frames remain ready for playback');
+  assert.equal(p.satLoopFrameCount,24,'Other satellite frame preferences remain unchanged');
+  const oldUrls=[...p.cache.keys()];p.stopSatellitePlayback();
+  p.satFrames=p.satFrames.map(frame=>({...frame,url:frame.url+'?product=next'}));
+  await p.warm(p.satWarmGeneration);
+  assert.equal(p.cache.size,45);assert(oldUrls.every(url=>!p.cache.has(url)),'Product switch prunes old decoded frames');
+  const history={...prepared,frames:Array.from({length:70},(_,i)=>({...prepared.frames[0],time:new Date(now-(70-i)*60000).toISOString(),path:`east/meso-1/13/frames/v1/${i}.webp`}))};
+  assert.equal(c.prepared(history,'East',{mesoNumber:1},'13',now).length,60);
+  assert.equal(c.prepared({...history,frames:history.frames.map((f,i)=>({...f,geometry:i<65?'old':'new'}))},'East',{mesoNumber:1},'13',now).length,5);
+  c.window.matchMedia=()=>({matches:true});
+  c.satFrames=c.selectMesoscaleLoopFrames(c.satAvailableFrames);c.pruneMesoscaleImages();c.updateMesoscaleFrameOptions(true);
+  assert.equal(c.satFrames.length,45);assert(c.cache.size<=45);
+  assert.equal(test.elements.get('satMesoFrameCount').textContent,'45');
+  c.updateMesoscaleFrameOptions(false);
+  assert.equal(test.elements.get('satStandardFrameOptions').hidden,false);
+  assert.equal(test.elements.get('satMesoFrameOptions').hidden,true);
   console.log('PASS: NOAA East/West M1/M2 C02/C13/GeoColor history, UTC rollover, location isolation, stale/malicious/duplicate filtering, playback/scrubbing and X1/X2 timing, hidden-tab pause, bounded cache, switching/errors, live fallback, no false GeoColor fallback.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

@@ -16,6 +16,31 @@ import numpy as np
 
 
 class GeometryTests(unittest.TestCase):
+    def test_hour_retention_keeps_sixty_current_location_frames(self):
+        now = meso.abi.utcnow()
+        def frame(minutes, geometry='current'):
+            time = now-meso.timedelta(minutes=minutes)
+            return {'scan': str(minutes), 'time': meso.abi.iso_z(time),
+                    'geometry': geometry, 'path': f'east/meso-1/13/frames/{minutes}.webp'}
+        frames = [frame(i) for i in range(1, 65)] + [frame(66), frame(0, 'old')]
+        # The newest frame determines the active footprint.
+        frames[-1] = frame(64.5, 'old')
+        manifests = []
+        class Target:
+            def put_object(self, **kwargs):
+                manifests.append(json.loads(kwargs['Body']))
+            def delete_object(self, **kwargs):
+                pass
+        with patch.object(meso.abi, 'read_manifest', return_value={'frames': frames}), patch.object(meso, 'list_scans', return_value=[]), patch.object(meso.abi, 'TARGET_S3', Target()):
+            result = meso.process_sector('East', 'GOES-19', 'unused', 1, now)
+        self.assertEqual(result['attempted'], 0)
+        self.assertEqual(result['frames'], {product: 60 for product in meso.PRODUCTS})
+        for manifest in manifests:
+            self.assertEqual(len(manifest['frames']), 60)
+            self.assertTrue(all(f['geometry'] == 'current' for f in manifest['frames']))
+            self.assertEqual(manifest['frames'][0]['scan'], '60')
+            self.assertEqual(manifest['frames'][-1]['scan'], '1')
+
     def test_completed_scans_are_not_rendered_again(self):
         now = meso.abi.utcnow()
         group = {"scan": now.strftime('%Y%j%H%M'), "time": now, "channels": {}}

@@ -319,6 +319,16 @@
       #satelliteStage.sat-mesoscale .sat-playback{grid-template-columns:auto minmax(0,1fr) auto auto;grid-template-rows:26px 24px;padding:8px 10px calc(8px + env(safe-area-inset-bottom))}
     }
     .sat-mobile-tools{display:none}
+    #satMesoSidebar{display:none}
+    @media(min-width:881px){
+      #satelliteStage.sat-mesoscale{--meso-header:0px}
+      #satelliteStage.sat-mesoscale .product-card{top:8px;left:44px;width:auto;height:auto;max-width:min(460px,calc(100% - 60px));padding:5px 8px;border:0;background:rgba(5,10,20,.8);pointer-events:none}
+      .shell:has(#satelliteStage.sat-mesoscale) #satelliteControls>.sat-product-section{display:none}
+      #satMesoSidebar:has(.sat-meso-live:not([hidden])){display:block;width:100%;border-top:1px solid var(--line);padding-top:10px}
+      #satMesoSidebar h3{margin:0 0 6px;font-size:.69rem;color:#afbdd0}
+      #satMesoSidebar .sat-meso-live{position:static;display:grid;grid-template-columns:6px minmax(0,1fr);gap:6px;max-width:none;width:100%;padding:0;border:0;border-radius:0;background:transparent}
+      #satMesoSidebar .sat-meso-live select{grid-column:1/-1;width:100%;height:32px}
+    }
     .shell:has(#satelliteStage.sat-update-unavailable:not([hidden])) .dot{background:#fbbf24;box-shadow:none}
     @media(max-width:880px){
       .shell:has(#satelliteControls:not([hidden])) .status{max-width:calc(100% - 190px);overflow:hidden}
@@ -406,12 +416,14 @@
               <button class="control" type="button" data-sat-product="Day_Cloud_Phase">Day Cloud Phase</button>
             </div>
           </div>
+          <div id="satMesoSidebar"><h3>Mesoscale Product</h3></div>
           <div class="sat-loop-options" id="satLoopOptions">
-            <fieldset><legend>Number of Frames</legend><div class="sat-option-grid">
+            <fieldset id="satStandardFrameOptions"><legend>Number of Frames</legend><div class="sat-option-grid">
               <label><input type="radio" name="sat-frame-count" value="6"><span>6</span></label>
               <label><input type="radio" name="sat-frame-count" value="12"><span>12</span></label>
               <label><input type="radio" name="sat-frame-count" value="24" checked><span>24</span></label>
             </div></fieldset>
+            <fieldset id="satMesoFrameOptions" hidden><legend>Number of Frames</legend><output id="satMesoFrameCount">60</output></fieldset>
             <fieldset><legend>Frame Interval</legend><div class="sat-option-grid sat-interval-grid">
               <label><input type="radio" name="sat-frame-stride" value="1" checked><span>All</span></label>
               <label><input type="radio" name="sat-frame-stride" value="2"><span>2n</span></label>
@@ -689,8 +701,31 @@
     let mesoscaleLoadToken=0,mesoscaleDisplayedKey="";
     const mesoscaleImages=new Map(),mesoscalePromises=new Map();
     let mesoscaleWarmPromise=null,mesoscaleWarmKey="";
+    function mesoscaleFrameLimit(){
+      return window.matchMedia("(max-width: 880px)").matches?45:60;
+    }
+    function selectMesoscaleLoopFrames(frames){
+      return selectSatelliteLoopFrames(frames,mesoscaleFrameLimit(),satLoopFrameStride);
+    }
+    function updateMesoscaleFrameOptions(mesoscale){
+      document.getElementById("satStandardFrameOptions").hidden=mesoscale;
+      document.getElementById("satMesoFrameOptions").hidden=!mesoscale;
+      document.getElementById("satMesoFrameCount").textContent=String(mesoscaleFrameLimit());
+    }
+    function pruneMesoscaleImages(){
+      const active=new Set(satFrames.map(frame=>frame.url));
+      for(const url of mesoscaleImages.keys())if(!active.has(url))mesoscaleImages.delete(url);
+      while(mesoscaleImages.size>mesoscaleFrameLimit())mesoscaleImages.delete(mesoscaleImages.keys().next().value);
+    }
+    function placeMesoscaleControls(){
+      const parent=window.matchMedia("(min-width: 881px)").matches?document.getElementById("satMesoSidebar"):satelliteStage;
+      const controls=document.getElementById("satMesoLive");
+      if(controls.parentElement!==parent)parent.appendChild(controls);
+    }
     function removeMesoscaleLayer(){
       mesoscaleLoadToken++;
+      if(activeProduct!=="satellite"||!currentSectorSpec()?.mesoscale)mesoscaleImages.clear();
+      updateMesoscaleFrameOptions(false);
       document.getElementById("satExpandView").hidden=true;
       if(activeProduct!=="satellite"||!currentSectorSpec()?.mesoscale)document.querySelector(".shell").classList.remove("sat-sidebar-collapsed");
       satelliteStage.classList.remove("sat-mesoscale");
@@ -770,7 +805,7 @@
       if(mesoscalePromises.has(url))return mesoscalePromises.get(url);
       const promise=loadMesoscaleImage(url).then(image=>{
         mesoscaleImages.set(url,image);
-        while(mesoscaleImages.size>32)mesoscaleImages.delete(mesoscaleImages.keys().next().value);
+        pruneMesoscaleImages();
         return image;
       }).finally(()=>mesoscalePromises.delete(url));
       mesoscalePromises.set(url,promise);
@@ -780,10 +815,10 @@
       if(manifest.projection!=="EPSG:3857"||manifest.platform!==platform||manifest.sector!==`M${sector.mesoNumber}`||manifest.product!==channel)throw new Error("Wrong mesoscale manifest");
       const root=`${platform.toLowerCase()}/meso-${sector.mesoNumber}/${channel}/frames/`;
       const base=TRUECOLOR_BASE.replace(/satellite-truecolor$/, "satellite-mesoscale");
-      const frames=(manifest.frames||[]).filter(frame=>Array.isArray(frame.bbox)&&frame.bbox.length===4&&frame.bbox.every(Number.isFinite)&&frame.bbox[0]<frame.bbox[2]&&frame.bbox[1]<frame.bbox[3]&&Math.abs(frame.bbox[0])<=180&&Math.abs(frame.bbox[2])<=180&&Math.abs(frame.bbox[1])<85&&Math.abs(frame.bbox[3])<85&&frame.path?.startsWith(root)&&!frame.path.includes("..")&&/^[a-zA-Z0-9/_.-]+$/.test(frame.path)&&frame.geometry&&Number.isFinite(Date.parse(frame.time))&&Date.parse(frame.time)<=now+120000&&Date.parse(frame.time)>=now-3600000).map(frame=>({...frame,time:new Date(frame.time),url:`${base}/${frame.path}`,source:"mesoscale"})).sort((a,b)=>a.time-b.time);
+      const frames=(manifest.frames||[]).filter(frame=>Array.isArray(frame.bbox)&&frame.bbox.length===4&&frame.bbox.every(Number.isFinite)&&frame.bbox[0]<frame.bbox[2]&&frame.bbox[1]<frame.bbox[3]&&Math.abs(frame.bbox[0])<=180&&Math.abs(frame.bbox[2])<=180&&Math.abs(frame.bbox[1])<85&&Math.abs(frame.bbox[3])<85&&frame.path?.startsWith(root)&&!frame.path.includes("..")&&/^[a-zA-Z0-9/_.-]+$/.test(frame.path)&&frame.geometry&&Number.isFinite(Date.parse(frame.time))&&Date.parse(frame.time)<=now+120000&&Date.parse(frame.time)>=now-65*60000).map(frame=>({...frame,time:new Date(frame.time),url:`${base}/${frame.path}`,source:"mesoscale"})).sort((a,b)=>a.time-b.time);
       const latest=frames.at(-1);
       if(!latest||now-latest.time>10*60000)throw new Error("Prepared mesoscale stale");
-      return frames.filter(frame=>frame.geometry===latest.geometry).slice(-48);
+      return frames.filter(frame=>frame.geometry===latest.geometry).slice(-60);
     }
     function drawPreparedMesoscale(image,frame){
       const rect=satelliteCanvas.getBoundingClientRect(),dpr=Math.min(2,window.devicePixelRatio||1);
@@ -885,8 +920,10 @@
       document.getElementById("satExpandView").hidden=false;
       document.querySelector(".sat-playback").hidden=false;
       document.getElementById("satMesoLive").hidden=false;
+      placeMesoscaleControls();
       setSatelliteProductControlsEnabled(false);
       document.querySelectorAll("#satLoopOptions fieldset").forEach(fieldset=>{fieldset.disabled=false;});
+      updateMesoscaleFrameOptions(true);
       clearSatelliteBoundaries();
       clearSectorPreview();
       const retained=mesoscaleDisplayedKey===key&&(!satelliteImage.hidden||!satelliteCanvas.hidden);
@@ -911,7 +948,8 @@
         const wasLatest=!satFrames.length||satFrameIndex===satFrames.length-1;
         satContext={mode:"mesoscale",label,history:result.history};
         satAvailableFrames=result.frames;
-        satFrames=selectSatelliteLoopFrames(result.frames,satLoopFrameCount,satLoopFrameStride);
+        satFrames=selectMesoscaleLoopFrames(result.frames);
+        pruneMesoscaleImages();
         const retainedIndex=wasLatest?-1:satFrames.findIndex(frame=>frame.time.getTime()===selectedTime);
         satTimeline.max=String(Math.max(0,satFrames.length-1));
         mesoscaleDisplayedKey=key;
@@ -2265,6 +2303,17 @@
         .then(data=>{
           satBoundaryData=data;
           renderSatelliteBoundaries();
+          return fetch("assets/satellite-canada-mexico-boundaries.geojson",{cache:"force-cache"})
+            .then(response=>{
+              if(!response.ok)throw new Error(`Canada/Mexico boundaries ${response.status}`);
+              return response.json();
+            })
+            .then(supplement=>({...data,features:[...(data.features||[]),...(supplement.features||[])]}))
+            .catch(error=>{console.warn("Canada/Mexico boundaries unavailable",error);return data;});
+        })
+        .then(data=>{
+          satBoundaryData=data;
+          renderSatelliteBoundaries();
           return data;
         })
         .catch(error=>{
@@ -2772,12 +2821,14 @@
     }
     function applySatelliteLoopOptions(){
       stopSatellitePlayback();
-      satFrames=selectSatelliteLoopFrames(satAvailableFrames,satLoopFrameCount,satLoopFrameStride);
+      satFrames=satContext?.mode==="mesoscale"?selectMesoscaleLoopFrames(satAvailableFrames):selectSatelliteLoopFrames(satAvailableFrames,satLoopFrameCount,satLoopFrameStride);
       satFrameIndex=Math.max(0,satFrames.length-1);
       satTimeline.max=String(satFrameIndex);
       satTimeline.value=String(satFrameIndex);
       if(satFrames.length)renderSatellite(satFrameIndex,false);
       if(satContext?.mode==="mesoscale"){
+        updateMesoscaleFrameOptions(true);
+        pruneMesoscaleImages();
         updateMesoscaleReady();
         warmMesoscaleFrames(satWarmGeneration);
         return;
@@ -5301,6 +5352,8 @@
       weatherMap?.resize();
       applySatellitePan();
       if(activeProduct==="satellite"&&satContext?.mode==="mesoscale"){
+        placeMesoscaleControls();
+        if(document.getElementById("satMesoFrameCount").textContent!==String(mesoscaleFrameLimit()))applySatelliteLoopOptions();
         const frame=satFrames[satFrameIndex],image=frame&&mesoscaleImages.get(frame.url);
         if(image&&frame.bbox)drawPreparedMesoscale(image,frame);
       }
