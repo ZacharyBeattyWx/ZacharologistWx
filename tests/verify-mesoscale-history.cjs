@@ -14,11 +14,11 @@ function filename(time, location='22N-93W', satellite='19', channel='13') {
 const listing = (times, location) => times.map(time => `<a href="${filename(time,location)}">frame</a>`).join('');
 function setup(mode='success',mobile=false) {
   const elements=new Map(), element=id=>{
-    if(!elements.has(id))elements.set(id,{hidden:false,value:'13',textContent:'',disabled:false});
+    if(!elements.has(id))elements.set(id,{hidden:false,value:'13',textContent:'',disabled:false,appendChild(child){child.parentElement=this;}});
     return elements.get(id);
   };
   const context={Date,URL,Promise,Number,AbortSignal,setTimeout,clearTimeout,TRUECOLOR_BASE:'https://test.invalid/satellite-truecolor',
-    window:{matchMedia:()=>({matches:mobile})},
+    window:{matchMedia:query=>({matches:query.includes('min-width')?!mobile:mobile})},
     DOMParser:class {parseFromString(html){return {querySelectorAll(){return [...html.matchAll(/href="([^"]+)"/g)].map(match=>({getAttribute:()=>match[1]}));}};}},
     Image:class {set src(url){this.url=url;queueMicrotask(()=>mode==='image-error'?this.onerror():this.onload());}get src(){return this.url;}},
     document:{hidden:false,getElementById:element,querySelector:element,querySelectorAll:()=>[]},
@@ -27,7 +27,7 @@ function setup(mode='success',mobile=false) {
     satPlay:element('satPlay'),satPrev:element('satPrev'),satNext:element('satNext'),satTimeline:element('satTimeline'),
     satCacheReadout:element('satCacheReadout'),satFrameReadout:element('satFrameReadout'),satSpeed:{value:'250'},satTimer:0,satPlayPreparing:false,
     currentSectorSpec:()=>({id:'meso-1',mesoscale:true,mesoNumber:1}),
-    satelliteStage:{classList:{add(){},remove(){}},style:{removeProperty(){},setProperty(){}}},
+    satelliteStage:{classList:{add(){},remove(){}},style:{removeProperty(){},setProperty(){}},appendChild(child){child.parentElement=this;}},
     satelliteCanvas:{},satelliteImage:{hidden:true},satelliteLoading:{classList:{add(){},remove(){}}},
     satelliteTitle:{},satelliteMeta:{},viewerStatus:{},viewerNote:{},console:{warn(){}},
     showSatellite(){},setSatelliteProductControlsEnabled(){},clearSatelliteBoundaries(){},clearSectorPreview(){},resetSatellitePan(){},
@@ -65,6 +65,7 @@ function setup(mode='success',mobile=false) {
   await c.show(c.currentSectorSpec());await c.warm(c.satWarmGeneration);
   assert.equal(c.satFrames.length,60);assert.equal(test.elements.get('.sat-playback').hidden,false);
   assert.equal(c.cache.size,60);assert.equal(test.elements.get('satMesoFrameCount').textContent,'60');
+  assert.equal(test.elements.get('satMesoLive').parentElement,test.elements.get('satMesoSidebar'));
   assert.equal(test.elements.get('satStandardFrameOptions').hidden,true);
   assert.equal(c.satPlay.disabled,false);assert.match(c.satelliteImage.src,/1000x1000.jpg/);
   await c.render(0);assert.equal(c.satFrameIndex,0);
@@ -100,6 +101,7 @@ function setup(mode='success',mobile=false) {
   await p.show(p.currentSectorSpec());await p.warm(p.satWarmGeneration);
   assert.equal(p.satFrames.length,45);assert.equal(p.cache.size,45);
   assert.equal(phone.elements.get('satMesoFrameCount').textContent,'45');
+  assert.equal(phone.elements.get('satMesoLive').parentElement,p.satelliteStage);
   await p.play();assert.equal(p.satTimer,1,'All 45 mobile frames remain ready for playback');
   assert.equal(p.satLoopFrameCount,24,'Other satellite frame preferences remain unchanged');
   const oldUrls=[...p.cache.keys()];p.stopSatellitePlayback();
