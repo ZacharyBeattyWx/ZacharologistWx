@@ -555,9 +555,126 @@
         {id:"loc-dsw",label:"Desert Southwest",bbox:[-116.5,30,-107,37.5]}
       ]
     };
-    for(const items of Object.values(LOCALIZED_SECTORS)){
-      for(const item of items)item.clientCrop=true;
+    // Public COD selector IDs; footprints are our own Mercator crops, not COD metadata.
+    const COD_CONUS_LOCAL_CENTERS=[
+      ["Lawrence","Lawrence",-95.24,38.97],["Beatrice","Beatrice",-96.75,40.27],
+      ["Clovis","Clovis",-103.21,34.4],["Souix_Falls","Sioux Falls",-96.73,43.55],
+      ["Fargo","Fargo",-96.79,46.88],["GrandForks","Grand Forks",-97.03,47.93],
+      ["S_California","Southern California",-117.5,33.6],["Cen_California","Central California",-120.2,36.1],
+      ["Tahoe","Lake Tahoe",-120,39.1],["N_California","Northern California",-122,40.1],
+      ["Nevada","Nevada",-116.7,39],["SW_Utah","Southwest Utah",-113.2,37.6],
+      ["Arizona","Arizona",-111.8,33.6],["Four_Corners","Four Corners",-109.05,37],
+      ["N_New_Mexico","Northern New Mexico",-106.1,36],["White_Sands","White Sands",-106.3,32.8],
+      ["SW_Texas","Southwest Texas",-103,30.5],["Cen_Texas","Central Texas",-99,31.2],
+      ["Panhandle","Texas Panhandle",-101.5,35.3],["SE_Colorado","Southeast Colorado",-103.2,37.8],
+      ["Kansas","Kansas",-98.4,38.5],["Oklahoma","Oklahoma",-97.4,35.7],
+      ["NE_Texas","Northeast Texas",-96,33],["Houston","Houston & Gulf Coast",-95.3,29.7],
+      ["Brownsville","Brownsville",-97.5,26.2],["New_Orleans","New Orleans",-90.1,29.95],
+      ["Mississippi","Mississippi",-89.7,32.3],["Arkansas","Arkansas",-92.4,34.9],
+      ["SW_Missouri","Southwest Missouri",-93.3,37.2],["S_Illinois","Southern Illinois",-89,37.9],
+      ["Tennessee","Tennessee",-86,35.8],["Alabama","Alabama",-86.7,32.8],
+      ["FL_Panhandle","Florida Panhandle",-86.2,30.5],["S_Florida","South Florida",-80.9,26.2],
+      ["Gulf_Stream","Gulf Stream",-78.3,30],["Jacksonville","Jacksonville",-81.66,30.33],
+      ["SE_Coast","Southeast Coast",-80.5,32.2],["Carolina","Carolina",-80.8,34],
+      ["Kentucky","Kentucky",-85.5,37.5],["Hatteras","Cape Hatteras",-75.5,35.3],
+      ["Virginia","Virginia",-79,37.5],["NC_VA","North Carolina & Virginia",-78.5,36.5],
+      ["W_Virginia","West Virginia",-80.6,38.6],["Ohio","Ohio",-82.8,40.2],
+      ["Tri_State","Tri-State",-84.5,39.1],["Iowa","Iowa",-93.5,42],
+      ["Nebraska","Nebraska",-99.5,41.5],["NE_Colorado","Northeast Colorado",-103.3,40.2],
+      ["Colorado","Colorado",-106,39],["Wyoming","Wyoming",-107.5,43],
+      ["Salt_Lake","Salt Lake City",-111.9,40.75],["S_Oregon","Southern Oregon",-121.7,42.7],
+      ["Portland","Portland",-122.7,45.5],["NE_Oregon","Northeast Oregon",-118.2,45.4],
+      ["S_Idaho","Southern Idaho",-114.5,43.1],["Yellowstone","Yellowstone",-110.5,44.6],
+      ["SE_Montana","Southeast Montana",-106,46],["Black_Hills","Black Hills",-103.5,44],
+      ["S_Dakota","South Dakota",-100,44.5],["S_Minnesota","Southern Minnesota",-94,44.1],
+      ["Wisconsin","Wisconsin",-89.5,44.3],["N_Illinois","Northern Illinois",-89,41.8],
+      ["Pennsylvania","Pennsylvania",-77.7,40.9],["New_Jersey","New Jersey",-74.5,40],
+      ["Rhode_Island","Rhode Island",-71.5,41.7],["S_Maine","Southern Maine",-69.5,44],
+      ["LakeOntario","Lake Ontario",-77.5,43.5],["LakeErie","Lake Erie",-81.2,41.9],
+      ["LakeHuron","Lake Huron",-82.5,44.5],["Michigan","Michigan",-85,43.5],
+      ["UP","Upper Peninsula",-87,46],["LakeSuperior","Lake Superior",-88,47.3],
+      ["N_Minnesota","Northern Minnesota",-94,47.5],["N_Dakota","North Dakota",-100.5,47.4],
+      ["NE_Montana","Northeast Montana",-105.5,48],["W_Montana","Western Montana",-113.3,46.9],
+      ["E_Washington","Eastern Washington",-118.5,47.3],["Seattle","Seattle",-122.3,47.6],
+      ["Phoenix","Phoenix",-112.1,33.45],["Wichita_Falls","Red River / Wichita Falls",-98.5,33.9],
+      ["Austin","Austin",-97.75,30.3],["N_Louisiana","Northern Louisiana",-92.5,32.5],
+      ["Indiana","Indiana",-86.1,40],["N_Mississippi","Northern Mississippi",-89.5,34.3],
+      ["Georgia","Georgia",-83.2,33.1],["Vermont","Vermont",-72.6,44],
+      ["Orlando","Orlando",-81.4,28.5],["Madison","Madison",-89.4,43.1]
+    ];
+    const COD_CONUS_SUBREGIONAL_CENTERS=[
+      ["Big_Bend","Big Bend",-103,29.5],["W_Gulf_Coast","Western Gulf Coast",-96,28.5],
+      ["E_Gulf_Coast","Eastern Gulf Coast",-86,28.5],["Florida","Florida",-82,27.5],
+      ["Dixie","Dixie",-87,33],["Carolinas","Carolinas",-80,34.5],
+      ["Virginias","Virginias",-79.5,37.5],["Bootheel","Missouri Bootheel",-90,36.5],
+      ["Texas","Texas",-99,31],["S_Plains","Southern Plains",-99,35],
+      ["Desert_SW","Desert Southwest",-112,34],["Sierra","Sierra Nevada",-119,37.5],
+      ["N_Nevada","Northern Nevada",-117,40.5],["Cen_Rockies","Central Rockies",-108,40],
+      ["Cen_Plains","Central Plains",-99,40],["IL","Illinois",-89,40],
+      ["Mid_Atlantic","Mid-Atlantic",-77,39],["New_England","New England",-71,43],
+      ["MI","Michigan",-85,44],["N_Tier","Northern Tier",-88,47],
+      ["N_Iowa","Northern Iowa",-93,43],["N_Plains","Northern Plains",-100,46],
+      ["N_Rockies","Northern Rockies",-111,46],["Pac_NW","Pacific Northwest",-121,47],
+      ["OH_RV","Ohio River Valley",-84,38],["Oregon","Oregon",-120.5,44],
+      ["SanFran","San Francisco",-121.5,37.5],["Vandenburg","Vandenberg",-120,34.7],
+      ["NE_WY","Northeast Wyoming",-105,44],["CO_KS_PanHan","Colorado, Kansas & Panhandles",-102,37],
+      ["S_PanHandle","Southern Texas Panhandle",-101,33],["KeyWest","Key West",-81.8,25]
+    ];
+    const SAT_PUBLISHED_SECTORS={East:SAT_SECTORS.East.slice(),West:SAT_SECTORS.West.slice()};
+    function codSectorCrop([codId,label,lon,lat],group){
+      const [x,y]=mercator(lon,lat);
+      const groundWidth=(group==="localized"?(codId==="Georgia"?600:700):codId==="KeyWest"?1000:1400)*1000;
+      const halfWidth=groundWidth/(2*Math.cos(lat*Math.PI/180));
+      const halfHeight=halfWidth*9/16;
+      const inverseLat=value=>(2*Math.atan(Math.exp(value/6378137))-Math.PI/2)*180/Math.PI;
+      return {id:`${group==="localized"?"loc":"sub"}-cod-${codId}`,label,codId,group,
+        bbox:[(x-halfWidth)/6378137*180/Math.PI,inverseLat(y-halfHeight),
+          (x+halfWidth)/6378137*180/Math.PI,inverseLat(y+halfHeight)],
+        clientCrop:true,fixedFootprint:true};
     }
+    function fitCropToPublishedSector(item,platform){
+      const [west,south,east,north]=item.bbox;
+      const sw=mercator(west,south),ne=mercator(east,north);
+      const x=(sw[0]+ne[0])/2,y=(sw[1]+ne[1])/2,desired=ne[0]-sw[0];
+      const candidates=SAT_PUBLISHED_SECTORS[platform]
+        .filter(parent=>!["global","CONUS","PACUS","gwas"].includes(parent.id))
+        .map(parent=>{
+          const a=mercator(parent.bbox[0],parent.bbox[1]),b=mercator(parent.bbox[2],parent.bbox[3]);
+          if(x<a[0]||x>b[0]||y<a[1]||y>b[1])return null;
+          const width=Math.min(desired,b[0]-a[0],(b[1]-a[1])*16/9);
+          const hx=width/2,hy=hx*9/16;
+          const cx=Math.max(a[0]+hx,Math.min(b[0]-hx,x));
+          const cy=Math.max(a[1]+hy,Math.min(b[1]-hy,y));
+          return {cx,cy,hx,hy,score:(desired-width)+Math.hypot(cx-x,cy-y)};
+        }).filter(Boolean).sort((a,b)=>a.score-b.score);
+      if(!candidates.length)return null;
+      const {cx,cy,hx,hy}=candidates[0];
+      const latitude=value=>(2*Math.atan(Math.exp(value/6378137))-Math.PI/2)*180/Math.PI;
+      return {...item,bbox:[(cx-hx)/6378137*180/Math.PI,latitude(cy-hy),
+        (cx+hx)/6378137*180/Math.PI,latitude(cy+hy)]};
+    }
+    for(const platform of ["East","West"]){
+      const published=SAT_PUBLISHED_SECTORS[platform];
+      const coverage=platform==="East"?[-126,22,-58,53]:[-134,20,-101,53];
+      const supported=item=>bboxContains(coverage,item.bbox);
+      // Keep publishing footprints separate so client crops never request nonexistent manifests.
+      SAT_SECTORS[platform]=published.filter(item=>["global","CONUS","PACUS","gwas"].includes(item.id));
+      const crops=(centers,group)=>centers.map(item=>fitCropToPublishedSector(codSectorCrop(item,group),platform)).filter(item=>item&&supported(item));
+      SAT_SECTORS[platform].push(...crops(COD_CONUS_SUBREGIONAL_CENTERS,"subregional"));
+      const legacy=LOCALIZED_SECTORS[platform];
+      LOCALIZED_SECTORS[platform]=crops(COD_CONUS_LOCAL_CENTERS,"localized");
+      if(platform==="East")SAT_SECTORS.East.push({...legacy.find(item=>item.id==="loc-atl"),group:"subregional",clientCrop:true,fixedFootprint:true});
+    }
+    const SAT_SECTOR_ALIASES={
+      "loc-cpl":"sub-cod-Cen_Plains","loc-ntx":"loc-cod-Wichita_Falls",
+      "loc-hou":"loc-cod-Houston","loc-chi":"loc-cod-N_Illinois","loc-ohv":"sub-cod-OH_RV",
+      "loc-fl":"sub-cod-Florida","loc-ma":"sub-cod-Mid_Atlantic","loc-ne":"sub-cod-New_England",
+      "loc-pdx":"loc-cod-Portland","loc-nca":"loc-cod-N_California","loc-cca":"loc-cod-Cen_California",
+      "loc-sca":"loc-cod-S_California","loc-dsw":"sub-cod-Desert_SW",
+      nr:"sub-cod-N_Rockies",umv:"sub-cod-N_Iowa",cgl:"sub-cod-MI",ne:"sub-cod-New_England",
+      sr:"sub-cod-Cen_Rockies",sp:"sub-cod-S_Plains",smv:"sub-cod-Bootheel",se:"sub-cod-Dixie",
+      eus:"sub-cod-Mid_Atlantic",pnw:"sub-cod-Pac_NW",psw:"sub-cod-Desert_SW"
+    };
 
     const MESOSCALE_SECTORS={
       East:[
@@ -1751,6 +1868,8 @@
       return sectors.find(item=>item.id===satSector)||sectors[0];
     }
     function sectorGroupForId(id){
+      const item=allSatelliteSectors().find(item=>item.id===id);
+      if(item?.group)return item.group;
       if(String(id).startsWith("loc-"))return "localized";
       if(String(id).startsWith("meso-"))return "mesoscale";
       if(id==="global")return "global";
@@ -2260,6 +2379,7 @@
     }
     function populateSatelliteSectors(){
       const sectors=allSatelliteSectors();
+      satSector=SAT_SECTOR_ALIASES[satSector]||satSector;
       if(!sectors.some(item=>item.id===satSector))satSector=sectors[0].id;
       satSectorSelect.innerHTML=
         sectors
@@ -2427,6 +2547,7 @@
     }
     function fitSatelliteBboxToStage(projectedBbox,sector){
       if(
+        sector?.fixedFootprint||
         sector?.id==="global"||
         !window.matchMedia("(min-width: 881px)").matches
       ){
@@ -2612,7 +2733,7 @@
         `${TRUECOLOR_BASE}/${prefix}/manifest.json`;
 
       if(sector?.clientCrop){
-        const coveringSectors=(SAT_SECTORS[platform]||[])
+        const coveringSectors=(SAT_PUBLISHED_SECTORS[platform]||[])
           .filter(item=>
             !["global","CONUS","PACUS","gwas"].includes(item.id)&&
             bboxContains(item.bbox,sector.bbox)
@@ -5285,8 +5406,9 @@
         document.querySelector(`input[name="sat-frame-count"][value="${satLoopFrameCount}"]`).checked=true;
         document.querySelector(`input[name="sat-frame-stride"][value="${satLoopFrameStride}"]`).checked=true;
         const sectors=allSatelliteSectors(satPlatform);
-        if(sectors.some(item=>item.id===saved.satSector)){
-          satSector=saved.satSector;
+        const savedSector=SAT_SECTOR_ALIASES[saved.satSector]||saved.satSector;
+        if(sectors.some(item=>item.id===savedSector)){
+          satSector=savedSector;
         }
       }catch{}
     }
