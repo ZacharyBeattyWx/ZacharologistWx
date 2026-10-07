@@ -503,7 +503,7 @@
     const TRUECOLOR_REGIONAL_FRESH_MINUTES=45;
     const TRUECOLOR_GLOBAL_FRESH_MINUTES=25;
     const SAT_FRAME_COUNT=25,SAT_STEP_MINUTES=10,SAT_LAG_MINUTES=10,SAT_PROBE_EXTRA_FRAMES=10,SAT_PROBE_WORKERS=4;
-    const SAT_PLAYBACK_DPR_CAP=1.25,SAT_LOOP_END_PAUSE_MS=550;
+    const SAT_PLAYBACK_DPR_CAP=1.25;
 
     const SAT_PRODUCTS={
       TrueColor:{label:"True Color",layer:"GeoColor",prepared:true},
@@ -792,7 +792,7 @@
 
     let lightningSeenLatestMs=0,lightningPulseFrame=0,lightningPulseToken=0,lightningPollTimer=0;
     let lightningPulseQueue=[],lightningPulseActive=[],lightningPulseNextReleaseAt=0,lightningPulseWakeTimer=0;
-    const SAT_CROSSFADE_FRACTION=.35,SAT_CROSSFADE_MAX_MS=60,SAT_END_PAUSE_MS=550,SAT_BOUNDARY_URL="assets/satellite-state-boundaries-2025.geojson",VIEWER_STATE_KEY="zwx-weather-viewer-state-v1";
+    const SAT_CROSSFADE_FRACTION=.35,SAT_CROSSFADE_MAX_MS=60,SAT_END_PAUSE_MS=1000,SAT_BOUNDARY_URL="assets/satellite-state-boundaries-2025.geojson",VIEWER_STATE_KEY="zwx-weather-viewer-state-v1";
     const satFrameImages=new Map(),satFramePromises=new Map(),satProbeResults=new Map(),satFrameVisuals=new WeakMap();
     const activate=(list,predicate)=>{for(const button of list)button.classList.toggle("active",predicate(button));};
     function setSatelliteProductControlsEnabled(enabled){
@@ -1012,13 +1012,15 @@
       if(document.hidden){stopSatellitePlayback();return;}
       if(!satFrames.every(frame=>mesoscaleImages.has(frame.url))){satPlay.textContent="▶ Retry";return;}
       satPlay.textContent="❚❚ Pause";
-      let due=0;
+      let due=null;
       const tick=now=>{
         if(token!==satPlayGateToken||generation!==satWarmGeneration)return;
         if(document.hidden){stopSatellitePlayback();return;}
+        if(due===null)due=now+(satFrameIndex===satFrames.length-1?SAT_END_PAUSE_MS:0);
         if(now>=due){
-          renderMesoscaleFrame((satFrameIndex+1)%satFrames.length);
-          due=now+(Number(satSpeed.value)||250);
+          const next=(satFrameIndex+1)%satFrames.length;
+          renderMesoscaleFrame(next);
+          due=now+(next===satFrames.length-1?SAT_END_PAUSE_MS:(Number(satSpeed.value)||250));
         }
         satTimer=requestAnimationFrame(tick);
       };
