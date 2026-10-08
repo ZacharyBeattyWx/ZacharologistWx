@@ -7,7 +7,7 @@ Temperature (`acht`) legend visible in the reference is an independently selecte
 overlay; it must not be assumed to be the definitive ABI C13 enhancement table.
 
 The old palette placed orange at 205 K and yellow at 215 K and stayed red at the
-cold end. The new mapping adds a black anchor at 193 K, a white extreme-cold tail
+cold end. The new mapping adds a white anchor at 193 K, a black extreme-cold tail
 at 180 K, red at 200 K, orange at 210 K, yellow at 213 K, green at 226 K, blue at
 235 K, purple at 240 K and white at 245 K. Warmer pixels continue through grayscale
 to black at 300 K. Intermediate values interpolate in RGB. Temperatures remain
