@@ -31,6 +31,10 @@
     .satellite-loading{position:absolute;inset:0;display:none;align-items:center;justify-content:center;z-index:4;background:#02060c;color:#cbd5e1;font-size:.76rem;font-weight:850}.satellite-loading.show{display:flex}
     .sat-playback{position:absolute;left:50%;bottom:12px;z-index:12;transform:translateX(-50%);width:min(780px,calc(100% - 28px));display:grid;grid-template-columns:auto auto auto minmax(160px,1fr) auto auto;align-items:center;gap:8px;padding:8px 10px;border:1px solid rgba(148,163,184,.28);border-radius:12px;background:rgba(5,10,20,.92);box-shadow:0 14px 34px rgba(0,0,0,.38);backdrop-filter:blur(12px)}
     .sat-playback button,.sat-playback select{height:30px;border:1px solid var(--line2);border-radius:7px;background:#0d1828;color:#e5eef8;font-weight:800}.sat-playback button{min-width:42px;padding:0 10px}.sat-playback .play{min-width:78px}.sat-playback input[type="range"]{width:100%;accent-color:#38bdf8}.sat-readout{min-width:86px;color:#d8e4f1;font-size:.65rem;font-weight:800;text-align:right;white-space:nowrap}.sat-cache{min-width:72px;color:#7dd3fc;font-size:.62rem;font-weight:800;white-space:nowrap}
+    .sat-speed{display:grid;grid-template-columns:30px 44px 30px;align-items:center;width:104px}
+    .sat-playback .sat-speed button{min-width:30px;width:30px;padding:0;font-size:1rem}
+    .sat-speed output{text-align:center;font-size:.7rem;font-weight:800;color:#e5eef8;white-space:nowrap;font-variant-numeric:tabular-nums}
+    .sat-playback .sat-speed button:disabled{opacity:.4;cursor:default}
     .product-card{position:absolute;left:12px;bottom:12px;z-index:10;max-width:min(520px,calc(100% - 80px));padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:rgba(4,9,17,.88);backdrop-filter:blur(12px);box-shadow:0 10px 30px rgba(0,0,0,.28);pointer-events:none}.product-card strong{display:block;font-size:.72rem}.product-card span{display:block;margin-top:2px;color:var(--muted);font-size:.59rem;font-weight:700;line-height:1.35}
     #satelliteStage .product-card{bottom:58px}
     .map-error{position:absolute;top:12px;left:50%;z-index:15;display:none;transform:translateX(-50%);padding:8px 12px;border:1px solid rgba(251,191,36,.45);border-radius:8px;background:rgba(20,14,3,.92);color:#fde68a;font-size:.68rem;font-weight:800}.map-error.show{display:block}
@@ -264,7 +268,7 @@
       #satPrev{grid-column:1;grid-row:1}
       #satPlay{grid-column:2;grid-row:1;min-width:0}
       #satNext{Grid-column:3;grid-row:1}
-      #satSpeed{grid-column:4;grid-row:1;min-width:76px}
+      #satSpeedControl{grid-column:4;grid-row:1}
       #satTimeline{grid-column:1/-1;grid-row:2;width:100%;height:24px}
       .sat-readout,.sat-cache{display:none}
     }
@@ -364,11 +368,13 @@
       #satMesoChannel{height:44px;max-width:60%}
       #satelliteStage .sat-playback,#satelliteStage.sat-mesoscale .sat-playback{
         left:0;right:0;bottom:0;width:100%;height:100px;transform:none;
-        grid-template-columns:44px minmax(0,1fr) 44px 66px;grid-template-rows:44px 24px 16px;
+        grid-template-columns:44px minmax(0,1fr) 44px 132px;grid-template-rows:44px 24px 16px;
         gap:0 6px;padding:8px 8px;border-radius:0;background:#080d14;box-shadow:none;backdrop-filter:none;
       }
       #satelliteStage .sat-playback button,#satelliteStage .sat-playback select,
       #satelliteStage.sat-mesoscale .sat-playback button,#satelliteStage.sat-mesoscale .sat-playback select{height:44px;min-width:0;font-size:.8rem}
+      #satelliteStage .sat-speed{grid-template-columns:44px 44px 44px;width:132px}
+      #satelliteStage .sat-speed button{width:44px;min-width:44px;padding:0;font-size:1rem}
       #satelliteStage #satTimeline{grid-row:2;height:24px}
       #satelliteStage .sat-readout{display:block;grid-column:1/3;grid-row:3;font-size:.65rem;text-align:left}
       #satelliteStage .sat-cache,#satelliteStage.sat-mesoscale .sat-cache{display:block;grid-column:3/5;grid-row:3;font-size:.65rem;text-align:right}
@@ -474,7 +480,12 @@
           <button id="satNext" type="button" title="Next frame">▶</button>
           <input id="satTimeline" type="range" min="0" max="24" step="1" value="24" aria-label="Satellite frame">
           <span class="sat-readout" id="satFrameReadout">Latest</span>
-          <select id="satSpeed" aria-label="Satellite playback speed"><option value="250">X1</option><option value="100">X2</option></select>
+          <div class="sat-speed" id="satSpeedControl" role="group" aria-label="Satellite playback speed">
+            <button id="satSpeedSlower" type="button" title="Slower playback" aria-label="Slower playback">−</button>
+            <output id="satSpeedReadout" aria-live="polite" aria-label="Playback speed">1×</output>
+            <button id="satSpeedFaster" type="button" title="Faster playback" aria-label="Faster playback">+</button>
+            <input id="satSpeed" type="hidden" value="250">
+          </div>
           <span class="sat-cache" id="satCacheReadout">0/25 ready</span>
         </div>
       </div>
@@ -694,6 +705,29 @@
     let activeProduct="radar",radarMode="national",satPlatform="East",satProduct="TrueColor",satSector="global",weatherMap=null,mapReady=false,sectorSidebarGroup="global",hoveredSectorPreview=null,sectorBrowserToken=0,sectorBrowserBbox=null,sectorBrowserRects=[],sectorBrowserHover=-1,sectorBrowserRestoreMeso=false,refreshTimer=0;
     let satAvailableFrames=[],satLoopFrameCount=24,satLoopFrameStride=1;
     let satFrames=[],satFrameIndex=0,satTimer=0,satWarmGeneration=0,satLastWindowKey="",satRenderToken=0,satPixelProbeSupported=true,satContext=null,satPlayGateToken=0,satPlayPreparing=false,satPlaybackState=null;
+    const SAT_SPEED_MIN=.25,SAT_SPEED_MAX=4,SAT_SPEED_STEP=.25;
+    function setSatellitePlaybackSpeed(frameMs,persist=true){
+      const value=Number(frameMs);
+      const rate=Math.max(SAT_SPEED_MIN,Math.min(SAT_SPEED_MAX,
+        Math.round((Number.isFinite(value)&&value>0?250/value:1)/SAT_SPEED_STEP)*SAT_SPEED_STEP));
+      const stepMs=250/rate;
+      satSpeed.value=String(stepMs);
+      document.getElementById("satSpeedReadout").textContent=`${rate}×`;
+      document.getElementById("satSpeedSlower").disabled=rate<=SAT_SPEED_MIN;
+      document.getElementById("satSpeedFaster").disabled=rate>=SAT_SPEED_MAX;
+      if(satPlaybackState){
+        satPlaybackState.stepMs=stepMs;
+        // Adjust the regular frame cadence without shortening an active end hold.
+        if(satPlaybackState.fromIndex<satFrames.length-1){
+          satPlaybackState.nextDeadline=Math.max(performance.now(),satPlaybackState.startedAt+stepMs);
+        }
+      }
+      if(persist)saveViewerState();
+    }
+    function adjustSatellitePlaybackSpeed(direction){
+      const rate=250/(Number(satSpeed.value)||250);
+      setSatellitePlaybackSpeed(250/Math.max(SAT_SPEED_MIN,rate+direction*SAT_SPEED_STEP));
+    }
     let satBoundaryData=null,satBoundaryPromise=null,satBoundaryProjection=null,satBoundaryUnavailable=false;
     let lightningFlashes=[],lightningDisplayedFlashes=[],lightningDisplayedKeys=new Set(),lightningLatestMs=0,lightningFetchPromise=null,lightningInitialFitDone=false;
 
@@ -5382,7 +5416,8 @@
             satProduct,
             satSector,
             satLoopFrameCount,
-            satLoopFrameStride
+            satLoopFrameStride,
+            satPlaybackStepMs:Number(satSpeed.value)
           })
         );
       }catch{}
@@ -5391,6 +5426,7 @@
       try{
         const saved=JSON.parse(sessionStorage.getItem(VIEWER_STATE_KEY)||"null");
         if(!saved)return;
+        setSatellitePlaybackSpeed(saved.satPlaybackStepMs,false);
         if(["radar","satellite","lightning"].includes(saved.activeProduct)){
           activeProduct=saved.activeProduct;
         }
@@ -5464,7 +5500,8 @@
     document.getElementById("satMesoChannel").addEventListener("change",()=>{
       if(activeProduct==="satellite"&&currentSectorSpec()?.mesoscale)resetSatelliteViewer();
     });
-    satSpeed.addEventListener("change",()=>{if(satTimer){stopSatellitePlayback();startSatellitePlayback();}});
+    document.getElementById("satSpeedSlower").addEventListener("click",()=>adjustSatellitePlaybackSpeed(-1));
+    document.getElementById("satSpeedFaster").addEventListener("click",()=>adjustSatellitePlaybackSpeed(1));
     document.getElementById("satExpandView").addEventListener("click",event=>{
       const collapsed=document.querySelector(".shell").classList.toggle("sat-sidebar-collapsed");
       event.currentTarget.setAttribute("aria-pressed",String(collapsed));
