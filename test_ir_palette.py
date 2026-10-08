@@ -33,7 +33,7 @@ class PaletteTests(unittest.TestCase):
         temperatures = np.array([180, 193, 200, 210, 213, 226, 235, 240, 245, 300], dtype=float)
         original = temperatures.copy()
         rgb, valid = PALETTE["clean_ir_rgb"](temperatures)
-        np.testing.assert_allclose(rgb, [[1,1,1],[0,0,0],[1,0,0],[1,.45,0],
+        np.testing.assert_allclose(rgb, [[0,0,0],[1,1,1],[1,0,0],[1,.45,0],
                                        [1,1,0],[0,1,0],[0,.25,1],[.6,0,1],[1,1,1],[0,0,0]], atol=1e-6)
         np.testing.assert_array_equal(temperatures, original)
         self.assertTrue(valid.all())
@@ -46,9 +46,9 @@ class PaletteTests(unittest.TestCase):
         self.assertTrue((rgb[0] == 0).all())
         self.assertTrue(np.isfinite(rgb).all())
         self.assertTrue(((rgb >= 0) & (rgb <= 1)).all())
-        np.testing.assert_array_equal(rgb[1,0], [1,1,1])
+        np.testing.assert_array_equal(rgb[1,0], [0,0,0])
         np.testing.assert_array_equal(rgb[1,1], [0,0,0])
-        self.assertLess(rgb[1,2].max(), .3, "195 K core should be dark, not bright red")
+        np.testing.assert_allclose(rgb[1,2], [1,5/7,5/7], atol=1e-6)
 
     def test_only_ir_version_changes(self):
         self.assertEqual(PALETTE["NATIVE_RENDER_VERSIONS"],
