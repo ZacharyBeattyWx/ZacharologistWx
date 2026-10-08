@@ -7,7 +7,7 @@ Temperature (`acht`) legend visible in the reference is an independently selecte
 overlay; it must not be assumed to be the definitive ABI C13 enhancement table.
 
 The old palette placed orange at 205 K and yellow at 215 K and stayed red at the
-cold end. The new mapping adds a white anchor at 193 K, a black extreme-cold tail
+cold end. The new mapping adds a black anchor at 193 K, a white extreme-cold tail
 at 180 K, red at 200 K, orange at 210 K, yellow at 213 K, green at 226 K, blue at
 235 K, purple at 240 K and white at 245 K. Warmer pixels continue through grayscale
 to black at 300 K. Intermediate values interpolate in RGB. Temperatures remain
@@ -22,8 +22,9 @@ reliably recover the underlying temperature.
 
 ## Versions and Deployment
 
-Native Clean IR frames move from version 4 to 5. Mesoscale C13 frames move from
-version 1 to 2; True Color and C02 remain version 1. Mesoscale manifests record
+Native Clean IR frames use version 6. Mesoscale C13 frames use version 3;
+True Color and C02 remain version 1. These versions supersede the briefly reversed
+cold-end mapping in native v5 / mesoscale v2. Mesoscale manifests record
 renderVersion and palette ID. On migration, only old C13 checked scans and frames
 are excluded from the new loop. A successful new manifest is published before
 old unreferenced C13 frames are removed. If no new IR frame renders, the previous
