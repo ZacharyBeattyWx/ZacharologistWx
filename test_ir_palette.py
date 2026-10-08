@@ -33,7 +33,7 @@ class PaletteTests(unittest.TestCase):
         temperatures = np.array([180, 193, 200, 210, 213, 226, 235, 240, 245, 300], dtype=float)
         original = temperatures.copy()
         rgb, valid = PALETTE["clean_ir_rgb"](temperatures)
-        np.testing.assert_allclose(rgb, [[0,0,0],[1,1,1],[1,0,0],[1,.45,0],
+        np.testing.assert_allclose(rgb, [[1,1,1],[0,0,0],[1,0,0],[1,.45,0],
                                        [1,1,0],[0,1,0],[0,.25,1],[.6,0,1],[1,1,1],[0,0,0]], atol=1e-6)
         np.testing.assert_array_equal(temperatures, original)
         self.assertTrue(valid.all())
@@ -46,13 +46,13 @@ class PaletteTests(unittest.TestCase):
         self.assertTrue((rgb[0] == 0).all())
         self.assertTrue(np.isfinite(rgb).all())
         self.assertTrue(((rgb >= 0) & (rgb <= 1)).all())
-        np.testing.assert_array_equal(rgb[1,0], [0,0,0])
+        np.testing.assert_array_equal(rgb[1,0], [1,1,1])
         np.testing.assert_array_equal(rgb[1,1], [0,0,0])
-        np.testing.assert_allclose(rgb[1,2], [1,5/7,5/7], atol=1e-6)
+        self.assertLess(rgb[1,2].max(), .3, "195 K core should be dark, not bright red")
 
     def test_only_ir_version_changes(self):
         self.assertEqual(PALETTE["NATIVE_RENDER_VERSIONS"],
-                         {"clean-ir":5,"air-mass":2,"simple-water-vapor":2,"day-cloud-phase":3})
+                         {"clean-ir":6,"air-mass":2,"simple-water-vapor":2,"day-cloud-phase":3})
 
 
 class MigrationTests(unittest.TestCase):
@@ -63,7 +63,7 @@ class MigrationTests(unittest.TestCase):
                    {channel:f"{i}-{channel}.nc" for channel in ["01","02","03","13"]}} for i in [1,2,3]]
         manifests = {}
         for product in ["true-color","13","02"]:
-            version = 2 if current and product == "13" else 1
+            version = 3 if current and product == "13" else 1
             manifests[product] = {"renderVersion":version,"checkedScans":[g["scan"] for g in groups],
                 "frames":[{"scan":g["scan"],"time":iso(g["time"]),"geometry":"same",
                            "path":f"east/meso-1/{product}/frames/v{version}/{g['scan']}.webp"} for g in groups]}
@@ -97,11 +97,11 @@ class MigrationTests(unittest.TestCase):
     def test_new_palette_rebuild_is_ir_only_and_bounded(self):
         result,writes,deletes,rendered,events = self.setup_publisher()
         self.assertEqual(result["attempted"],2)
-        self.assertEqual(rendered,[("13",2,"1"),("13",2,"2")])
+        self.assertEqual(rendered,[("13",3,"1"),("13",3,"2")])
         ir = next(m for m in writes if m["product"] == "13")
-        self.assertEqual(ir["renderVersion"],2)
+        self.assertEqual(ir["renderVersion"],3)
         self.assertEqual(ir["recipe"]["palette"],PALETTE["CLEAN_IR_PALETTE_ID"])
-        self.assertTrue(all("/13/frames/v2/" in f["path"] for f in ir["frames"]))
+        self.assertTrue(all("/13/frames/v3/" in f["path"] for f in ir["frames"]))
         self.assertEqual(len(ir["frames"]),2)
         for product in ["true-color","02"]:
             manifest = next(m for m in writes if m["product"] == product)
