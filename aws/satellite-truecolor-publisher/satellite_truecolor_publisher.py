@@ -26,11 +26,12 @@ NATIVE_PREFIX = os.getenv(
 ).strip("/")
 
 NATIVE_RENDER_VERSIONS = {
-    "clean-ir": 4,
+    "clean-ir": 5,
     "air-mass": 2,
     "simple-water-vapor": 2,
     "day-cloud-phase": 3,
 }
+CLEAN_IR_PALETTE_ID = "cod-style-clean-ir-v1"
 
 FRAME_COUNT = int(os.getenv("SATELLITE_TRUECOLOR_FRAME_COUNT", "25"))
 MAX_RENDER_PER_PLATFORM = int(
@@ -1125,28 +1126,25 @@ def clean_ir_rgb(bt):
     valid = np.isfinite(bt)
     bt_safe = np.where(valid, bt, 315.0)
 
-    # Enhanced C13 Clean Longwave IR.
-    #
-    # Warm surfaces remain black/dark gray, ordinary clouds transition
-    # through gray/white, and progressively colder cloud tops enter the
-    # familiar enhanced-IR sequence:
-    #
-    # white -> purple -> blue -> green -> yellow -> orange -> red.
-    #
-    # The data remain native ABI C13 brightness temperatures; this is
-    # strictly a display enhancement.
+    # Independently authored COD-style enhancement: warm gray, colored
+    # cold clouds, then white cores and a black extreme-cold tail.
+    # Only the display mapping changes, not measured C13 temperatures.
     temperatures = np.asarray(
         [
-            185.0,
-            195.0,
-            205.0,
-            215.0,
-            222.0,
-            232.0,
-            242.0,
-            250.0,
-            260.0,
-            270.0,
+            180.0,
+            193.0,
+            200.0,
+            210.0,
+            213.0,
+            218.0,
+            226.0,
+            230.0,
+            235.0,
+            240.0,
+            245.0,
+            253.0,
+            258.0,
+            280.0,
             285.0,
             300.0,
             315.0,
@@ -1156,18 +1154,22 @@ def clean_ir_rgb(bt):
 
     colors = np.asarray(
         [
-            [0.18, 0.00, 0.00],  # extreme cold: deep red
-            [0.95, 0.00, 0.00],  # red
-            [1.00, 0.42, 0.00],  # orange
-            [1.00, 0.95, 0.00],  # yellow
-            [0.10, 0.95, 0.15],  # green
-            [0.00, 0.55, 1.00],  # blue
-            [0.55, 0.00, 0.85],  # purple
-            [1.00, 1.00, 1.00],  # white
-            [0.90, 0.90, 0.90],
-            [0.62, 0.62, 0.62],
+            [0.00, 0.00, 0.00],  # extreme-cold tail
+            [1.00, 1.00, 1.00],  # white cold core
+            [1.00, 0.00, 0.00],  # red
+            [1.00, 0.45, 0.00],  # orange
+            [1.00, 1.00, 0.00],  # yellow
+            [0.75, 1.00, 0.00],
+            [0.00, 1.00, 0.00],  # green
+            [0.00, 0.90, 0.15],
+            [0.00, 0.25, 1.00],  # blue
+            [0.60, 0.00, 1.00],  # purple
+            [1.00, 1.00, 1.00],  # ordinary cold cloud
+            [0.93, 0.93, 0.93],
+            [0.85, 0.85, 0.85],
             [0.30, 0.30, 0.30],
-            [0.08, 0.08, 0.08],
+            [0.20, 0.20, 0.20],
+            [0.00, 0.00, 0.00],
             [0.00, 0.00, 0.00],  # warm surface
         ],
         dtype=np.float32,
@@ -2206,9 +2208,9 @@ def publish_native_manifest(spec, product, frames, checked_scans, now):
             "C13",
             {
                 "channel": "C13 10.3um Clean Longwave IR",
-                "palette": "temperature-enhanced Clean IR",
+                "palette": CLEAN_IR_PALETTE_ID,
                 "coldCloudEnhancement": (
-                    "white-purple-blue-green-yellow-orange-red"
+                    "white-purple-blue-green-yellow-orange-red-white-black"
                 ),
                 "transparentNoData": True,
             },
