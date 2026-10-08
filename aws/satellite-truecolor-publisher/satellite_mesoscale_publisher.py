@@ -82,11 +82,15 @@ def process_sector(platform, satellite, bucket, sector, now):
     root = f"{platform.lower()}/meso-{sector}"
     specs = {product: {"platform": platform, "satellite": satellite, "source_bucket": bucket,
              "source_product": "ABI-L1b-RadM", "prefix": f"{root}/{product}", "sector": f"M{sector}",
-             "output_width": 1400, "c02_stride": 1, "render_version": 1, "night_channel": "13",
+             "output_width": 1400, "c02_stride": 1, "render_version": 2 if product == "13" else 1, "night_channel": "13",
              "dehaze_floor": .035} for product in PRODUCTS}
     existing = {product: abi.read_manifest(spec) for product, spec in specs.items()}
     frames = {product: list(existing[product].get("frames", [])) for product in PRODUCTS}
     checked = {product: set(existing[product].get("checkedScans", [])) for product in PRODUCTS}
+    # Do not blend two IR enhancements in a loop or overwrite immutable v1 frames.
+    if existing["13"].get("renderVersion") != specs["13"]["render_version"]:
+        frames["13"] = [f for f in frames["13"] if f.get("path", "").startswith(f"{root}/13/frames/v2/")]
+        checked["13"] = {f["scan"] for f in frames["13"]}
     budget = min(2, max(1, int(os.getenv("MESOSCALE_MAX_NEW_SCANS", "2"))))
     attempted = 0
     for group in list_scans(bucket, sector, now):
@@ -124,14 +128,16 @@ def process_sector(platform, satellite, bucket, sector, now):
                 and now-timedelta(minutes=HISTORY_WINDOW_MINUTES) <= abi.datetime.fromisoformat(f["time"].replace("Z", "+00:00"))][-MAX_HISTORY_FRAMES:]
         output = {"version": 1, "projection": "EPSG:3857", "product": product, "platform": platform,
                   "sector": f"M{sector}", "generated": abi.iso_z(now), "frames": kept, "cadenceMinutes": 1,
-                  "checkedScans": sorted(checked[product])[-96:]}
+                  "checkedScans": sorted(checked[product])[-96:], "renderVersion": spec["render_version"]}
+        if product == "13":
+            output["recipe"] = {"channel": "C13 10.3um Clean Longwave IR", "palette": abi.CLEAN_IR_PALETTE_ID}
         abi.TARGET_S3.put_object(Bucket=abi.TARGET_BUCKET, Key=abi.manifest_key(spec),
                                  Body=json.dumps(output, separators=(",", ":")).encode(),
                                  ContentType="application/json", CacheControl="public,max-age=20")
         retained = {f["path"] for f in kept}
-        obsolete = [f for f in ordered if f["path"] not in retained]
+        obsolete = {f["path"]: f for f in [*existing[product].get("frames", []), *ordered] if f["path"] not in retained}
         # The manifest is committed before old, unreferenced frames are removed.
-        for frame in obsolete:
+        for frame in obsolete.values():
             key = f"{abi.TARGET_PREFIX}/{frame['path']}"
             if key.startswith(f"{abi.TARGET_PREFIX}/{root}/{product}/frames/"):
                 abi.TARGET_S3.delete_object(Bucket=abi.TARGET_BUCKET, Key=key)
