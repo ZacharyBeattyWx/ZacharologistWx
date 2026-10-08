@@ -82,14 +82,14 @@ def process_sector(platform, satellite, bucket, sector, now):
     root = f"{platform.lower()}/meso-{sector}"
     specs = {product: {"platform": platform, "satellite": satellite, "source_bucket": bucket,
              "source_product": "ABI-L1b-RadM", "prefix": f"{root}/{product}", "sector": f"M{sector}",
-             "output_width": 1400, "c02_stride": 1, "render_version": 2 if product == "13" else 1, "night_channel": "13",
+             "output_width": 1400, "c02_stride": 1, "render_version": 3 if product == "13" else 1, "night_channel": "13",
              "dehaze_floor": .035} for product in PRODUCTS}
     existing = {product: abi.read_manifest(spec) for product, spec in specs.items()}
     frames = {product: list(existing[product].get("frames", [])) for product in PRODUCTS}
     checked = {product: set(existing[product].get("checkedScans", [])) for product in PRODUCTS}
     # Do not blend two IR enhancements in a loop or overwrite immutable v1 frames.
     if existing["13"].get("renderVersion") != specs["13"]["render_version"]:
-        frames["13"] = [f for f in frames["13"] if f.get("path", "").startswith(f"{root}/13/frames/v2/")]
+        frames["13"] = [f for f in frames["13"] if f.get("path", "").startswith(f"{root}/13/frames/v{specs['13']['render_version']}/")]
         checked["13"] = {f["scan"] for f in frames["13"]}
     budget = min(2, max(1, int(os.getenv("MESOSCALE_MAX_NEW_SCANS", "2"))))
     attempted = 0
