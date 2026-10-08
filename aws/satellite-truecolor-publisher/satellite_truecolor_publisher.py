@@ -1127,7 +1127,7 @@ def clean_ir_rgb(bt):
     bt_safe = np.where(valid, bt, 315.0)
 
     # Independently authored COD-style enhancement: warm gray, colored
-    # cold clouds, then dark cores and a white extreme-cold tail.
+    # cold clouds, then white cores and a black extreme-cold tail.
     # Only the display mapping changes, not measured C13 temperatures.
     temperatures = np.asarray(
         [
@@ -1154,8 +1154,8 @@ def clean_ir_rgb(bt):
 
     colors = np.asarray(
         [
-            [1.00, 1.00, 1.00],  # extreme-cold tail
-            [0.00, 0.00, 0.00],  # dark cold core
+            [0.00, 0.00, 0.00],  # extreme-cold tail
+            [1.00, 1.00, 1.00],  # white cold core
             [1.00, 0.00, 0.00],  # red
             [1.00, 0.45, 0.00],  # orange
             [1.00, 1.00, 0.00],  # yellow
@@ -2210,7 +2210,7 @@ def publish_native_manifest(spec, product, frames, checked_scans, now):
                 "channel": "C13 10.3um Clean Longwave IR",
                 "palette": CLEAN_IR_PALETTE_ID,
                 "coldCloudEnhancement": (
-                    "white-purple-blue-green-yellow-orange-red"
+                    "white-purple-blue-green-yellow-orange-red-white-black"
                 ),
                 "transparentNoData": True,
             },
