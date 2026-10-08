@@ -31,6 +31,10 @@
     .satellite-loading{position:absolute;inset:0;display:none;align-items:center;justify-content:center;z-index:4;background:#02060c;color:#cbd5e1;font-size:.76rem;font-weight:850}.satellite-loading.show{display:flex}
     .sat-playback{position:absolute;left:50%;bottom:12px;z-index:12;transform:translateX(-50%);width:min(780px,calc(100% - 28px));display:grid;grid-template-columns:auto auto auto minmax(160px,1fr) auto auto;align-items:center;gap:8px;padding:8px 10px;border:1px solid rgba(148,163,184,.28);border-radius:12px;background:rgba(5,10,20,.92);box-shadow:0 14px 34px rgba(0,0,0,.38);backdrop-filter:blur(12px)}
     .sat-playback button,.sat-playback select{height:30px;border:1px solid var(--line2);border-radius:7px;background:#0d1828;color:#e5eef8;font-weight:800}.sat-playback button{min-width:42px;padding:0 10px}.sat-playback .play{min-width:78px}.sat-playback input[type="range"]{width:100%;accent-color:#38bdf8}.sat-readout{min-width:86px;color:#d8e4f1;font-size:.65rem;font-weight:800;text-align:right;white-space:nowrap}.sat-cache{min-width:72px;color:#7dd3fc;font-size:.62rem;font-weight:800;white-space:nowrap}
+    .sat-speed{display:grid;grid-template-columns:30px 44px 30px;align-items:center;width:104px}
+    .sat-playback .sat-speed button{min-width:30px;width:30px;padding:0;font-size:1rem}
+    .sat-speed output{text-align:center;font-size:.7rem;font-weight:800;color:#e5eef8;white-space:nowrap;font-variant-numeric:tabular-nums}
+    .sat-playback .sat-speed button:disabled{opacity:.4;cursor:default}
     .product-card{position:absolute;left:12px;bottom:12px;z-index:10;max-width:min(520px,calc(100% - 80px));padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:rgba(4,9,17,.88);backdrop-filter:blur(12px);box-shadow:0 10px 30px rgba(0,0,0,.28);pointer-events:none}.product-card strong{display:block;font-size:.72rem}.product-card span{display:block;margin-top:2px;color:var(--muted);font-size:.59rem;font-weight:700;line-height:1.35}
     #satelliteStage .product-card{bottom:58px}
     .map-error{position:absolute;top:12px;left:50%;z-index:15;display:none;transform:translateX(-50%);padding:8px 12px;border:1px solid rgba(251,191,36,.45);border-radius:8px;background:rgba(20,14,3,.92);color:#fde68a;font-size:.68rem;font-weight:800}.map-error.show{display:block}
@@ -264,7 +268,7 @@
       #satPrev{grid-column:1;grid-row:1}
       #satPlay{grid-column:2;grid-row:1;min-width:0}
       #satNext{Grid-column:3;grid-row:1}
-      #satSpeed{grid-column:4;grid-row:1;min-width:76px}
+      #satSpeedControl{grid-column:4;grid-row:1}
       #satTimeline{grid-column:1/-1;grid-row:2;width:100%;height:24px}
       .sat-readout,.sat-cache{display:none}
     }
@@ -364,11 +368,13 @@
       #satMesoChannel{height:44px;max-width:60%}
       #satelliteStage .sat-playback,#satelliteStage.sat-mesoscale .sat-playback{
         left:0;right:0;bottom:0;width:100%;height:100px;transform:none;
-        grid-template-columns:44px minmax(0,1fr) 44px 66px;grid-template-rows:44px 24px 16px;
+        grid-template-columns:44px minmax(0,1fr) 44px 132px;grid-template-rows:44px 24px 16px;
         gap:0 6px;padding:8px 8px;border-radius:0;background:#080d14;box-shadow:none;backdrop-filter:none;
       }
       #satelliteStage .sat-playback button,#satelliteStage .sat-playback select,
       #satelliteStage.sat-mesoscale .sat-playback button,#satelliteStage.sat-mesoscale .sat-playback select{height:44px;min-width:0;font-size:.8rem}
+      #satelliteStage .sat-speed{grid-template-columns:44px 44px 44px;width:132px}
+      #satelliteStage .sat-speed button{width:44px;min-width:44px;padding:0;font-size:1rem}
       #satelliteStage #satTimeline{grid-row:2;height:24px}
       #satelliteStage .sat-readout{display:block;grid-column:1/3;grid-row:3;font-size:.65rem;text-align:left}
       #satelliteStage .sat-cache,#satelliteStage.sat-mesoscale .sat-cache{display:block;grid-column:3/5;grid-row:3;font-size:.65rem;text-align:right}
@@ -474,7 +480,12 @@
           <button id="satNext" type="button" title="Next frame">▶</button>
           <input id="satTimeline" type="range" min="0" max="24" step="1" value="24" aria-label="Satellite frame">
           <span class="sat-readout" id="satFrameReadout">Latest</span>
-          <select id="satSpeed" aria-label="Satellite playback speed"><option value="250">X1</option><option value="100">X2</option></select>
+          <div class="sat-speed" id="satSpeedControl" role="group" aria-label="Satellite playback speed">
+            <button id="satSpeedSlower" type="button" title="Slower playback" aria-label="Slower playback">−</button>
+            <output id="satSpeedReadout" aria-live="polite" aria-label="Playback speed">1×</output>
+            <button id="satSpeedFaster" type="button" title="Faster playback" aria-label="Faster playback">+</button>
+            <input id="satSpeed" type="hidden" value="250">
+          </div>
           <span class="sat-cache" id="satCacheReadout">0/25 ready</span>
         </div>
       </div>
@@ -503,7 +514,7 @@
     const TRUECOLOR_REGIONAL_FRESH_MINUTES=45;
     const TRUECOLOR_GLOBAL_FRESH_MINUTES=25;
     const SAT_FRAME_COUNT=25,SAT_STEP_MINUTES=10,SAT_LAG_MINUTES=10,SAT_PROBE_EXTRA_FRAMES=10,SAT_PROBE_WORKERS=4;
-    const SAT_PLAYBACK_DPR_CAP=1.25,SAT_LOOP_END_PAUSE_MS=550;
+    const SAT_PLAYBACK_DPR_CAP=1.25;
 
     const SAT_PRODUCTS={
       TrueColor:{label:"True Color",layer:"GeoColor",prepared:true},
@@ -555,9 +566,126 @@
         {id:"loc-dsw",label:"Desert Southwest",bbox:[-116.5,30,-107,37.5]}
       ]
     };
-    for(const items of Object.values(LOCALIZED_SECTORS)){
-      for(const item of items)item.clientCrop=true;
+    // Public COD selector IDs; footprints are our own Mercator crops, not COD metadata.
+    const COD_CONUS_LOCAL_CENTERS=[
+      ["Lawrence","Lawrence",-95.24,38.97],["Beatrice","Beatrice",-96.75,40.27],
+      ["Clovis","Clovis",-103.21,34.4],["Souix_Falls","Sioux Falls",-96.73,43.55],
+      ["Fargo","Fargo",-96.79,46.88],["GrandForks","Grand Forks",-97.03,47.93],
+      ["S_California","Southern California",-117.5,33.6],["Cen_California","Central California",-120.2,36.1],
+      ["Tahoe","Lake Tahoe",-120,39.1],["N_California","Northern California",-122,40.1],
+      ["Nevada","Nevada",-116.7,39],["SW_Utah","Southwest Utah",-113.2,37.6],
+      ["Arizona","Arizona",-111.8,33.6],["Four_Corners","Four Corners",-109.05,37],
+      ["N_New_Mexico","Northern New Mexico",-106.1,36],["White_Sands","White Sands",-106.3,32.8],
+      ["SW_Texas","Southwest Texas",-103,30.5],["Cen_Texas","Central Texas",-99,31.2],
+      ["Panhandle","Texas Panhandle",-101.5,35.3],["SE_Colorado","Southeast Colorado",-103.2,37.8],
+      ["Kansas","Kansas",-98.4,38.5],["Oklahoma","Oklahoma",-97.4,35.7],
+      ["NE_Texas","Northeast Texas",-96,33],["Houston","Houston & Gulf Coast",-95.3,29.7],
+      ["Brownsville","Brownsville",-97.5,26.2],["New_Orleans","New Orleans",-90.1,29.95],
+      ["Mississippi","Mississippi",-89.7,32.3],["Arkansas","Arkansas",-92.4,34.9],
+      ["SW_Missouri","Southwest Missouri",-93.3,37.2],["S_Illinois","Southern Illinois",-89,37.9],
+      ["Tennessee","Tennessee",-86,35.8],["Alabama","Alabama",-86.7,32.8],
+      ["FL_Panhandle","Florida Panhandle",-86.2,30.5],["S_Florida","South Florida",-80.9,26.2],
+      ["Gulf_Stream","Gulf Stream",-78.3,30],["Jacksonville","Jacksonville",-81.66,30.33],
+      ["SE_Coast","Southeast Coast",-80.5,32.2],["Carolina","Carolina",-80.8,34],
+      ["Kentucky","Kentucky",-85.5,37.5],["Hatteras","Cape Hatteras",-75.5,35.3],
+      ["Virginia","Virginia",-79,37.5],["NC_VA","North Carolina & Virginia",-78.5,36.5],
+      ["W_Virginia","West Virginia",-80.6,38.6],["Ohio","Ohio",-82.8,40.2],
+      ["Tri_State","Tri-State",-84.5,39.1],["Iowa","Iowa",-93.5,42],
+      ["Nebraska","Nebraska",-99.5,41.5],["NE_Colorado","Northeast Colorado",-103.3,40.2],
+      ["Colorado","Colorado",-106,39],["Wyoming","Wyoming",-107.5,43],
+      ["Salt_Lake","Salt Lake City",-111.9,40.75],["S_Oregon","Southern Oregon",-121.7,42.7],
+      ["Portland","Portland",-122.7,45.5],["NE_Oregon","Northeast Oregon",-118.2,45.4],
+      ["S_Idaho","Southern Idaho",-114.5,43.1],["Yellowstone","Yellowstone",-110.5,44.6],
+      ["SE_Montana","Southeast Montana",-106,46],["Black_Hills","Black Hills",-103.5,44],
+      ["S_Dakota","South Dakota",-100,44.5],["S_Minnesota","Southern Minnesota",-94,44.1],
+      ["Wisconsin","Wisconsin",-89.5,44.3],["N_Illinois","Northern Illinois",-89,41.8],
+      ["Pennsylvania","Pennsylvania",-77.7,40.9],["New_Jersey","New Jersey",-74.5,40],
+      ["Rhode_Island","Rhode Island",-71.5,41.7],["S_Maine","Southern Maine",-69.5,44],
+      ["LakeOntario","Lake Ontario",-77.5,43.5],["LakeErie","Lake Erie",-81.2,41.9],
+      ["LakeHuron","Lake Huron",-82.5,44.5],["Michigan","Michigan",-85,43.5],
+      ["UP","Upper Peninsula",-87,46],["LakeSuperior","Lake Superior",-88,47.3],
+      ["N_Minnesota","Northern Minnesota",-94,47.5],["N_Dakota","North Dakota",-100.5,47.4],
+      ["NE_Montana","Northeast Montana",-105.5,48],["W_Montana","Western Montana",-113.3,46.9],
+      ["E_Washington","Eastern Washington",-118.5,47.3],["Seattle","Seattle",-122.3,47.6],
+      ["Phoenix","Phoenix",-112.1,33.45],["Wichita_Falls","Red River / Wichita Falls",-98.5,33.9],
+      ["Austin","Austin",-97.75,30.3],["N_Louisiana","Northern Louisiana",-92.5,32.5],
+      ["Indiana","Indiana",-86.1,40],["N_Mississippi","Northern Mississippi",-89.5,34.3],
+      ["Georgia","Georgia",-83.2,33.1],["Vermont","Vermont",-72.6,44],
+      ["Orlando","Orlando",-81.4,28.5],["Madison","Madison",-89.4,43.1]
+    ];
+    const COD_CONUS_SUBREGIONAL_CENTERS=[
+      ["Big_Bend","Big Bend",-103,29.5],["W_Gulf_Coast","Western Gulf Coast",-96,28.5],
+      ["E_Gulf_Coast","Eastern Gulf Coast",-86,28.5],["Florida","Florida",-82,27.5],
+      ["Dixie","Dixie",-87,33],["Carolinas","Carolinas",-80,34.5],
+      ["Virginias","Virginias",-79.5,37.5],["Bootheel","Missouri Bootheel",-90,36.5],
+      ["Texas","Texas",-99,31],["S_Plains","Southern Plains",-99,35],
+      ["Desert_SW","Desert Southwest",-112,34],["Sierra","Sierra Nevada",-119,37.5],
+      ["N_Nevada","Northern Nevada",-117,40.5],["Cen_Rockies","Central Rockies",-108,40],
+      ["Cen_Plains","Central Plains",-99,40],["IL","Illinois",-89,40],
+      ["Mid_Atlantic","Mid-Atlantic",-77,39],["New_England","New England",-71,43],
+      ["MI","Michigan",-85,44],["N_Tier","Northern Tier",-88,47],
+      ["N_Iowa","Northern Iowa",-93,43],["N_Plains","Northern Plains",-100,46],
+      ["N_Rockies","Northern Rockies",-111,46],["Pac_NW","Pacific Northwest",-121,47],
+      ["OH_RV","Ohio River Valley",-84,38],["Oregon","Oregon",-120.5,44],
+      ["SanFran","San Francisco",-121.5,37.5],["Vandenburg","Vandenberg",-120,34.7],
+      ["NE_WY","Northeast Wyoming",-105,44],["CO_KS_PanHan","Colorado, Kansas & Panhandles",-102,37],
+      ["S_PanHandle","Southern Texas Panhandle",-101,33],["KeyWest","Key West",-81.8,25]
+    ];
+    const SAT_PUBLISHED_SECTORS={East:SAT_SECTORS.East.slice(),West:SAT_SECTORS.West.slice()};
+    function codSectorCrop([codId,label,lon,lat],group){
+      const [x,y]=mercator(lon,lat);
+      const groundWidth=(group==="localized"?(codId==="Georgia"?600:700):codId==="KeyWest"?1000:1400)*1000;
+      const halfWidth=groundWidth/(2*Math.cos(lat*Math.PI/180));
+      const halfHeight=halfWidth*9/16;
+      const inverseLat=value=>(2*Math.atan(Math.exp(value/6378137))-Math.PI/2)*180/Math.PI;
+      return {id:`${group==="localized"?"loc":"sub"}-cod-${codId}`,label,codId,group,
+        bbox:[(x-halfWidth)/6378137*180/Math.PI,inverseLat(y-halfHeight),
+          (x+halfWidth)/6378137*180/Math.PI,inverseLat(y+halfHeight)],
+        clientCrop:true,fixedFootprint:true};
     }
+    function fitCropToPublishedSector(item,platform){
+      const [west,south,east,north]=item.bbox;
+      const sw=mercator(west,south),ne=mercator(east,north);
+      const x=(sw[0]+ne[0])/2,y=(sw[1]+ne[1])/2,desired=ne[0]-sw[0];
+      const candidates=SAT_PUBLISHED_SECTORS[platform]
+        .filter(parent=>!["global","CONUS","PACUS","gwas"].includes(parent.id))
+        .map(parent=>{
+          const a=mercator(parent.bbox[0],parent.bbox[1]),b=mercator(parent.bbox[2],parent.bbox[3]);
+          if(x<a[0]||x>b[0]||y<a[1]||y>b[1])return null;
+          const width=Math.min(desired,b[0]-a[0],(b[1]-a[1])*16/9);
+          const hx=width/2,hy=hx*9/16;
+          const cx=Math.max(a[0]+hx,Math.min(b[0]-hx,x));
+          const cy=Math.max(a[1]+hy,Math.min(b[1]-hy,y));
+          return {cx,cy,hx,hy,score:(desired-width)+Math.hypot(cx-x,cy-y)};
+        }).filter(Boolean).sort((a,b)=>a.score-b.score);
+      if(!candidates.length)return null;
+      const {cx,cy,hx,hy}=candidates[0];
+      const latitude=value=>(2*Math.atan(Math.exp(value/6378137))-Math.PI/2)*180/Math.PI;
+      return {...item,bbox:[(cx-hx)/6378137*180/Math.PI,latitude(cy-hy),
+        (cx+hx)/6378137*180/Math.PI,latitude(cy+hy)]};
+    }
+    for(const platform of ["East","West"]){
+      const published=SAT_PUBLISHED_SECTORS[platform];
+      const coverage=platform==="East"?[-126,22,-58,53]:[-134,20,-101,53];
+      const supported=item=>bboxContains(coverage,item.bbox);
+      // Keep publishing footprints separate so client crops never request nonexistent manifests.
+      SAT_SECTORS[platform]=published.filter(item=>["global","CONUS","PACUS","gwas"].includes(item.id));
+      const crops=(centers,group)=>centers.map(item=>fitCropToPublishedSector(codSectorCrop(item,group),platform)).filter(item=>item&&supported(item));
+      SAT_SECTORS[platform].push(...crops(COD_CONUS_SUBREGIONAL_CENTERS,"subregional"));
+      const legacy=LOCALIZED_SECTORS[platform];
+      LOCALIZED_SECTORS[platform]=crops(COD_CONUS_LOCAL_CENTERS,"localized");
+      if(platform==="East")SAT_SECTORS.East.push({...legacy.find(item=>item.id==="loc-atl"),group:"subregional",clientCrop:true,fixedFootprint:true});
+    }
+    const SAT_SECTOR_ALIASES={
+      "loc-cpl":"sub-cod-Cen_Plains","loc-ntx":"loc-cod-Wichita_Falls",
+      "loc-hou":"loc-cod-Houston","loc-chi":"loc-cod-N_Illinois","loc-ohv":"sub-cod-OH_RV",
+      "loc-fl":"sub-cod-Florida","loc-ma":"sub-cod-Mid_Atlantic","loc-ne":"sub-cod-New_England",
+      "loc-pdx":"loc-cod-Portland","loc-nca":"loc-cod-N_California","loc-cca":"loc-cod-Cen_California",
+      "loc-sca":"loc-cod-S_California","loc-dsw":"sub-cod-Desert_SW",
+      nr:"sub-cod-N_Rockies",umv:"sub-cod-N_Iowa",cgl:"sub-cod-MI",ne:"sub-cod-New_England",
+      sr:"sub-cod-Cen_Rockies",sp:"sub-cod-S_Plains",smv:"sub-cod-Bootheel",se:"sub-cod-Dixie",
+      eus:"sub-cod-Mid_Atlantic",pnw:"sub-cod-Pac_NW",psw:"sub-cod-Desert_SW"
+    };
 
     const MESOSCALE_SECTORS={
       East:[
@@ -577,6 +705,29 @@
     let activeProduct="radar",radarMode="national",satPlatform="East",satProduct="TrueColor",satSector="global",weatherMap=null,mapReady=false,sectorSidebarGroup="global",hoveredSectorPreview=null,sectorBrowserToken=0,sectorBrowserBbox=null,sectorBrowserRects=[],sectorBrowserHover=-1,sectorBrowserRestoreMeso=false,refreshTimer=0;
     let satAvailableFrames=[],satLoopFrameCount=24,satLoopFrameStride=1;
     let satFrames=[],satFrameIndex=0,satTimer=0,satWarmGeneration=0,satLastWindowKey="",satRenderToken=0,satPixelProbeSupported=true,satContext=null,satPlayGateToken=0,satPlayPreparing=false,satPlaybackState=null;
+    const SAT_SPEED_MIN=.25,SAT_SPEED_MAX=4,SAT_SPEED_STEP=.25;
+    function setSatellitePlaybackSpeed(frameMs,persist=true){
+      const value=Number(frameMs);
+      const rate=Math.max(SAT_SPEED_MIN,Math.min(SAT_SPEED_MAX,
+        Math.round((Number.isFinite(value)&&value>0?250/value:1)/SAT_SPEED_STEP)*SAT_SPEED_STEP));
+      const stepMs=250/rate;
+      satSpeed.value=String(stepMs);
+      document.getElementById("satSpeedReadout").textContent=`${rate}×`;
+      document.getElementById("satSpeedSlower").disabled=rate<=SAT_SPEED_MIN;
+      document.getElementById("satSpeedFaster").disabled=rate>=SAT_SPEED_MAX;
+      if(satPlaybackState){
+        satPlaybackState.stepMs=stepMs;
+        // Adjust the regular frame cadence without shortening an active end hold.
+        if(satPlaybackState.fromIndex<satFrames.length-1){
+          satPlaybackState.nextDeadline=Math.max(performance.now(),satPlaybackState.startedAt+stepMs);
+        }
+      }
+      if(persist)saveViewerState();
+    }
+    function adjustSatellitePlaybackSpeed(direction){
+      const rate=250/(Number(satSpeed.value)||250);
+      setSatellitePlaybackSpeed(250/Math.max(SAT_SPEED_MIN,rate+direction*SAT_SPEED_STEP));
+    }
     let satBoundaryData=null,satBoundaryPromise=null,satBoundaryProjection=null,satBoundaryUnavailable=false;
     let lightningFlashes=[],lightningDisplayedFlashes=[],lightningDisplayedKeys=new Set(),lightningLatestMs=0,lightningFetchPromise=null,lightningInitialFitDone=false;
 
@@ -675,7 +826,7 @@
 
     let lightningSeenLatestMs=0,lightningPulseFrame=0,lightningPulseToken=0,lightningPollTimer=0;
     let lightningPulseQueue=[],lightningPulseActive=[],lightningPulseNextReleaseAt=0,lightningPulseWakeTimer=0;
-    const SAT_CROSSFADE_FRACTION=.35,SAT_CROSSFADE_MAX_MS=60,SAT_END_PAUSE_MS=550,SAT_BOUNDARY_URL="assets/satellite-state-boundaries-2025.geojson",VIEWER_STATE_KEY="zwx-weather-viewer-state-v1";
+    const SAT_CROSSFADE_FRACTION=.35,SAT_CROSSFADE_MAX_MS=60,SAT_END_PAUSE_MS=1000,SAT_BOUNDARY_URL="assets/satellite-state-boundaries-2025.geojson",VIEWER_STATE_KEY="zwx-weather-viewer-state-v1";
     const satFrameImages=new Map(),satFramePromises=new Map(),satProbeResults=new Map(),satFrameVisuals=new WeakMap();
     const activate=(list,predicate)=>{for(const button of list)button.classList.toggle("active",predicate(button));};
     function setSatelliteProductControlsEnabled(enabled){
@@ -895,13 +1046,15 @@
       if(document.hidden){stopSatellitePlayback();return;}
       if(!satFrames.every(frame=>mesoscaleImages.has(frame.url))){satPlay.textContent="▶ Retry";return;}
       satPlay.textContent="❚❚ Pause";
-      let due=0;
+      let due=null;
       const tick=now=>{
         if(token!==satPlayGateToken||generation!==satWarmGeneration)return;
         if(document.hidden){stopSatellitePlayback();return;}
+        if(due===null)due=now+(satFrameIndex===satFrames.length-1?SAT_END_PAUSE_MS:0);
         if(now>=due){
-          renderMesoscaleFrame((satFrameIndex+1)%satFrames.length);
-          due=now+(Number(satSpeed.value)||250);
+          const next=(satFrameIndex+1)%satFrames.length;
+          renderMesoscaleFrame(next);
+          due=now+(next===satFrames.length-1?SAT_END_PAUSE_MS:(Number(satSpeed.value)||250));
         }
         satTimer=requestAnimationFrame(tick);
       };
@@ -1751,6 +1904,8 @@
       return sectors.find(item=>item.id===satSector)||sectors[0];
     }
     function sectorGroupForId(id){
+      const item=allSatelliteSectors().find(item=>item.id===id);
+      if(item?.group)return item.group;
       if(String(id).startsWith("loc-"))return "localized";
       if(String(id).startsWith("meso-"))return "mesoscale";
       if(id==="global")return "global";
@@ -2260,6 +2415,7 @@
     }
     function populateSatelliteSectors(){
       const sectors=allSatelliteSectors();
+      satSector=SAT_SECTOR_ALIASES[satSector]||satSector;
       if(!sectors.some(item=>item.id===satSector))satSector=sectors[0].id;
       satSectorSelect.innerHTML=
         sectors
@@ -2427,6 +2583,7 @@
     }
     function fitSatelliteBboxToStage(projectedBbox,sector){
       if(
+        sector?.fixedFootprint||
         sector?.id==="global"||
         !window.matchMedia("(min-width: 881px)").matches
       ){
@@ -2612,7 +2769,7 @@
         `${TRUECOLOR_BASE}/${prefix}/manifest.json`;
 
       if(sector?.clientCrop){
-        const coveringSectors=(SAT_SECTORS[platform]||[])
+        const coveringSectors=(SAT_PUBLISHED_SECTORS[platform]||[])
           .filter(item=>
             !["global","CONUS","PACUS","gwas"].includes(item.id)&&
             bboxContains(item.bbox,sector.bbox)
@@ -5259,7 +5416,8 @@
             satProduct,
             satSector,
             satLoopFrameCount,
-            satLoopFrameStride
+            satLoopFrameStride,
+            satPlaybackStepMs:Number(satSpeed.value)
           })
         );
       }catch{}
@@ -5268,6 +5426,7 @@
       try{
         const saved=JSON.parse(sessionStorage.getItem(VIEWER_STATE_KEY)||"null");
         if(!saved)return;
+        setSatellitePlaybackSpeed(saved.satPlaybackStepMs,false);
         if(["radar","satellite","lightning"].includes(saved.activeProduct)){
           activeProduct=saved.activeProduct;
         }
@@ -5285,8 +5444,9 @@
         document.querySelector(`input[name="sat-frame-count"][value="${satLoopFrameCount}"]`).checked=true;
         document.querySelector(`input[name="sat-frame-stride"][value="${satLoopFrameStride}"]`).checked=true;
         const sectors=allSatelliteSectors(satPlatform);
-        if(sectors.some(item=>item.id===saved.satSector)){
-          satSector=saved.satSector;
+        const savedSector=SAT_SECTOR_ALIASES[saved.satSector]||saved.satSector;
+        if(sectors.some(item=>item.id===savedSector)){
+          satSector=savedSector;
         }
       }catch{}
     }
@@ -5340,7 +5500,8 @@
     document.getElementById("satMesoChannel").addEventListener("change",()=>{
       if(activeProduct==="satellite"&&currentSectorSpec()?.mesoscale)resetSatelliteViewer();
     });
-    satSpeed.addEventListener("change",()=>{if(satTimer){stopSatellitePlayback();startSatellitePlayback();}});
+    document.getElementById("satSpeedSlower").addEventListener("click",()=>adjustSatellitePlaybackSpeed(-1));
+    document.getElementById("satSpeedFaster").addEventListener("click",()=>adjustSatellitePlaybackSpeed(1));
     document.getElementById("satExpandView").addEventListener("click",event=>{
       const collapsed=document.querySelector(".shell").classList.toggle("sat-sidebar-collapsed");
       event.currentTarget.setAttribute("aria-pressed",String(collapsed));
