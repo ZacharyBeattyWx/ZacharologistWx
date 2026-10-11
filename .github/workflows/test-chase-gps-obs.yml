@@ -32,7 +32,7 @@ jobs:
           const fs = require('node:fs');
           const vm = require('node:vm');
           const html = fs.readFileSync('admin.html', 'utf8');
-          const scripts = [...html.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/g)];
+          const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)];
           if (!scripts.length) throw new Error('No Chase Admin inline scripts found');
           for (const [, source] of scripts) new vm.Script(source);
           console.log('Parsed', scripts.length, 'inline scripts');
