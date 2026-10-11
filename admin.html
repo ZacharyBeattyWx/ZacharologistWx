@@ -519,6 +519,7 @@
         <div class="gps-row"><span>Heading</span><strong id="gpsHeading">--</strong></div>
         <div class="gps-row"><span>Map Display</span><strong id="gpsMapDisplayStatus">Off</strong></div>
         <div class="gps-row"><span>Auto Publish</span><strong id="gpsAutoStatus">Off</strong></div>
+        <div class="gps-row"><span>Auto Publish Error</span><strong id="gpsAutoLastError">--</strong></div>
         <div class="gps-row"><span>Last Published</span><strong id="gpsAutoLastPublished">--</strong></div>
         <div class="gps-row"><span>Updated</span><strong id="gpsUpdated">--</strong></div>
       </div>
@@ -585,6 +586,7 @@
     let gpsAutoPublishInFlight = false;
     let gpsLastPublishTimestamp = null;
     let gpsLastPublishedFixTimestamp = null;
+    let gpsAutoLastError = "";
     let gpsWatchdogTimer = null;
     let gpsWakeLock = null;
     let chaseMapDisplayEnabled = false;
@@ -984,9 +986,8 @@
       const ok = await publishUpdate(payload);
 
       if (ok) {
-        gpsLastPublishTimestamp = Date.now();
-
-        setGpsText("gpsAutoLastPublished", new Date(gpsLastPublishTimestamp).toLocaleTimeString([], {
+        // A manual Admin publish must not make the separate Auto Publish heartbeat appear live.
+        setGpsText("gpsAutoLastPublished", new Date().toLocaleTimeString([], {
           hour: "numeric",
           minute: "2-digit",
           second: "2-digit"
@@ -1011,6 +1012,11 @@
 
     function updateGpsAutoHeartbeat() {
       if (!gpsAutoPublishEnabled) return;
+
+      if (gpsAutoLastError) {
+        setGpsText("gpsAutoStatus", "FAILED — " + gpsAutoLastError);
+        return;
+      }
 
       if (!gpsLastPublishTimestamp) {
         setGpsText("gpsAutoStatus", "Waiting for first publish");
@@ -1066,7 +1072,18 @@
             speed: coords.speed, heading: coords.heading, updatedAt: coords.updatedAt
           })
         });
-        if (!response.ok) throw new Error(`GPS update HTTP ${response.status}`);
+        if (!response.ok) {
+          let reason = "";
+          try {
+            const body = await response.json();
+            if (typeof body?.error === "string") reason = body.error.slice(0, 100);
+          } catch (_error) {
+            // Cloudflare can return HTML on routing or policy failures.
+          }
+          throw new Error(`HTTP ${response.status}${reason ? " — " + reason : ""}`);
+        }
+        gpsAutoLastError = "";
+        setGpsText("gpsAutoLastError", "None");
         gpsLastPublishedFixTimestamp = position.timestamp;
         gpsLastPublishTimestamp = Date.now();
         setGpsText("gpsAutoLastPublished", new Date(gpsLastPublishTimestamp).toLocaleTimeString([], {
@@ -1075,9 +1092,11 @@
         updateGpsAutoHeartbeat();
       } catch (error) {
         console.warn("GPS-only publish failed:", error);
-        const lastGood = gpsLastPublishTimestamp
-          ? ` - last good ${formatGpsAge(Date.now() - gpsLastPublishTimestamp)}` : "";
-        setGpsText("gpsAutoStatus", `FAILED${lastGood}`);
+        const reason = String(error?.message || "Unknown error").slice(0, 115);
+        gpsAutoLastError = /^(HTTP [0-9]{3})/.test(reason)
+          ? reason : `Network / browser error: ${reason}`;
+        setGpsText("gpsAutoLastError", gpsAutoLastError);
+        setGpsText("gpsAutoStatus", "FAILED — " + gpsAutoLastError);
       } finally {
         gpsAutoPublishInFlight = false;
       }
@@ -1100,6 +1119,8 @@
       requestGpsWakeLock();
 
       gpsAutoPublishEnabled = true;
+      gpsAutoLastError = "";
+      setGpsText("gpsAutoLastError", "--");
       setGpsText("gpsAutoStatus", "On · 20 sec");
       el("startGpsAutoButton").textContent = "Auto Publish On";
 
