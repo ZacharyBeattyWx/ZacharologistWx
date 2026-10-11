@@ -1,5 +1,6 @@
 export { LiveAlertHub } from "./live-alert-hub.js";
 import { getCachedCpcOutlook } from "./cpc-outlook.js";
+import { validateGpsSample, createObsSnapshot } from "./chase-obs.js";
 function jsonResponse(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -2598,6 +2599,64 @@ export default {
         );
       }
     }
+
+    // Dedicated field GPS credential: cannot edit status, discussion, stream, or public map visibility.
+    if (url.pathname === "/api/chase/location" && request.method === "POST") {
+      const expected = env.CHASE_GPS_TOKEN;
+      const auth = request.headers.get("authorization") || "";
+      if (!expected || auth !== `Bearer ${expected}`) {
+        return jsonResponse({ error: "Unauthorized" }, 401);
+      }
+      let payload;
+      try {
+        payload = await request.json();
+      } catch (_error) {
+        return jsonResponse({ error: "Invalid JSON" }, 400);
+      }
+      const result = validateGpsSample(payload);
+      if (result.error) return jsonResponse({ error: result.error }, 400);
+      const gps = result.value;
+      const written = await env.DB.prepare(`
+        UPDATE chase_status
+        SET chase_lat = ?, chase_lon = ?, chase_accuracy = ?, chase_heading = ?,
+            chase_speed = ?, chase_location_updated = ?
+        WHERE id = 1 AND (chase_location_updated IS NULL OR chase_location_updated < ?)
+      `).bind(
+        gps.lat, gps.lon, gps.accuracy, gps.heading, gps.speed,
+        gps.updatedAt, gps.updatedAt
+      ).run();
+      if (!written.meta?.changes) {
+        return jsonResponse({ error: "Older or duplicate GPS fix; location not updated" }, 409);
+      }
+      return jsonResponse({ ok: true, updatedAt: gps.updatedAt });
+    }
+
+    // Public broadcast status: coarse location only, no raw GPS, token, or admin fields.
+    // A single edge-cached result limits NWS point-query frequency from OBS clients.
+    if (url.pathname === "/api/chase/obs" && request.method === "GET") {
+      const cache = caches.default;
+      const cacheKey = new Request(url.origin + "/api/chase/obs");
+      const cached = await cache.match(cacheKey);
+      if (cached) return cached;
+      const row = await env.DB.prepare("SELECT * FROM chase_status WHERE id = 1").first();
+      if (!row) return jsonResponse({ error: "No chase status found" }, 404);
+      const snapshot = await createObsSnapshot(row);
+      const response = new Response(JSON.stringify(snapshot), {
+        headers: {
+          "content-type": "application/json; charset=utf-8",
+          "access-control-allow-origin": "*",
+          "access-control-allow-methods": "GET, OPTIONS",
+          "cache-control": "public, max-age=45"
+        }
+      });
+      try {
+        await cache.put(cacheKey, response.clone());
+      } catch (error) {
+        console.warn("Unable to cache OBS chase snapshot:", error);
+      }
+      return response;
+    }
+
     if (url.pathname === "/api/chase/status" && request.method === "GET") {
       const row = await env.DB.prepare(
         "SELECT * FROM chase_status WHERE id = 1"
