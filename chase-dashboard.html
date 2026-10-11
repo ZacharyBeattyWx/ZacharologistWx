@@ -3243,8 +3243,20 @@
           return cleaned;
         };
 
+        const verifiedPublicGpsLocation = (statusData) => {
+          const gps = statusData?.chaseLocation || {};
+          const lat = Number(gps.lat);
+          const lon = Number(gps.lon);
+          const age = Date.now() - Date.parse(gps.updatedAt || "");
+          if (!gps.mapDisplay || gps.isStale || !Number.isFinite(age) ||
+              age < -30000 || age > 90000 ||
+              !Number.isFinite(lat) || !Number.isFinite(lon)) return "";
+          return `Near ${lat.toFixed(2)}, ${lon.toFixed(2)}`;
+        };
         const cleanHeaderLocation = (statusData) =>
-          stripGpsLocationParts(statusData?.currentLocation) || "Not actively chasing";
+          verifiedPublicGpsLocation(statusData) ||
+          stripGpsLocationParts(statusData?.currentLocation) ||
+          "Not actively chasing";
 
         const validCoordinate = (value) => Number.isFinite(Number(value));
 
@@ -3264,6 +3276,7 @@
           const lat = Number(chaseLocation.lat);
           const lon = Number(chaseLocation.lon);
           const canTrack =
+            Boolean(chaseLocation.mapDisplay) && !chaseLocation.isStale &&
             validCoordinate(chaseLocation.lat) &&
             validCoordinate(chaseLocation.lon);
 
@@ -3356,7 +3369,8 @@
         setText("[data-chase-target]", data.targetArea, "NC / VA / SC");
         setText("[data-chase-header-location]", cleanHeaderLocation(data), "Not actively chasing");
         updateTrackZachButton(data);
-        setText("[data-chase-location]", data.currentLocation, "Not actively chasing");
+        setText("[data-chase-location]",
+          verifiedPublicGpsLocation(data) || data.currentLocation, "Not actively chasing");
         setText("[data-chase-vehicle-status]", data.vehicleStatus, "Assessing Target");
         setText("[data-chase-vehicle-detail]", data.vehicleDetail, "Idle");
         setVehicleStateColor("[data-chase-vehicle-status]", data.vehicleStatus || "Assessing Target");

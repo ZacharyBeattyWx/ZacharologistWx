@@ -533,8 +533,18 @@
         <a class="button-link" id="gpsMapLink" href="#" target="_blank" rel="noopener">Open Map</a>
       </div>
 
+      <div class="form-grid">
+        <label>GPS-only Publish Token
+          <input id="gpsPublishToken" type="password" autocomplete="off" placeholder="Separate GPS-only Worker secret">
+        </label>
+      </div>
+      <div class="button-row">
+        <button type="button" id="saveGpsTokenButton">Save GPS Token</button>
+        <button class="secondary" type="button" id="clearGpsTokenButton">Clear GPS Token</button>
+      </div>
       <p class="mini-note">
-        Publishing GPS updates the Current Location field, then posts through the same admin token flow.
+        Auto Publish uses this GPS-only token and updates location coordinates without overwriting the chase briefing.
+        Manual Publish Approx Location still uses your main Admin token. Keep the page open and screen awake on iPhone.
       </p>
     </section>
 
@@ -566,6 +576,7 @@
 
   <script>
     const CHASE_STATUS_API = "https://zacharologist-chase-api.zacharologistwx.workers.dev/api/chase/status";
+    const CHASE_LOCATION_API = "https://zacharologist-chase-api.zacharologistwx.workers.dev/api/chase/location";
     let currentStatusData = {};
     let latestGpsPosition = null;
     let gpsWatchId = null;
@@ -573,6 +584,7 @@
     let gpsAutoPublishEnabled = false;
     let gpsAutoPublishInFlight = false;
     let gpsLastPublishTimestamp = null;
+    let gpsLastPublishedFixTimestamp = null;
     let gpsWatchdogTimer = null;
     let gpsWakeLock = null;
     let chaseMapDisplayEnabled = false;
@@ -685,9 +697,11 @@
 
     function collectFormData() {
       const streamStatus = el("streamStatus").value;
+      // Never replay an older GPS fix when saving a briefing; location is written separately.
+      const { chaseLocation: _oldLocation, ...briefingFields } = currentStatusData;
 
       return {
-        ...currentStatusData,
+        ...briefingFields,
         status: el("status").value,
         targetArea: el("targetArea").value.trim(),
         currentLocation: el("currentLocation").value.trim(),
@@ -715,6 +729,11 @@
 
     function activeToken() {
       return el("adminToken").value.trim() || savedToken();
+    }
+
+    function activeGpsToken() {
+      return el("gpsPublishToken").value.trim() ||
+        window.localStorage.getItem("zwxChaseGpsPublishToken") || "";
     }
 
     async function publishUpdate(customPayload) {
@@ -1009,44 +1028,75 @@
 
     async function publishGpsAutoLocation() {
       if (!gpsAutoPublishEnabled || gpsAutoPublishInFlight) return;
-
-      if (!latestGpsPosition) {
+      const position = latestGpsPosition;
+      if (!position) {
         setGpsText("gpsAutoStatus", "Waiting for GPS...");
+        return;
+      }
+
+      const fixAge = Date.now() - position.timestamp;
+      if (fixAge < -30000 || fixAge > 45000) {
+        setGpsText("gpsAutoStatus", "Waiting for fresh GPS fix");
+        return;
+      }
+      if (gpsLastPublishedFixTimestamp === position.timestamp) {
+        updateGpsAutoHeartbeat();
+        return;
+      }
+
+      const token = activeGpsToken();
+      if (!token) {
+        setGpsText("gpsAutoStatus", "GPS token missing");
+        stopGpsAutoUpdate();
         return;
       }
 
       gpsAutoPublishInFlight = true;
       setGpsText("gpsAutoStatus", "Publishing...");
-
-      const ok = await publishGpsLocation({ quiet: true });
-
-      if (ok) {
+      try {
+        const coords = chaseLocationFromGps(position);
+        const response = await fetch(CHASE_LOCATION_API, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            lat: coords.lat, lon: coords.lon, accuracy: coords.accuracy,
+            speed: coords.speed, heading: coords.heading, updatedAt: coords.updatedAt
+          })
+        });
+        if (!response.ok) throw new Error(`GPS update HTTP ${response.status}`);
+        gpsLastPublishedFixTimestamp = position.timestamp;
+        gpsLastPublishTimestamp = Date.now();
+        setGpsText("gpsAutoLastPublished", new Date(gpsLastPublishTimestamp).toLocaleTimeString([], {
+          hour: "numeric", minute: "2-digit", second: "2-digit"
+        }));
         updateGpsAutoHeartbeat();
-      } else {
+      } catch (error) {
+        console.warn("GPS-only publish failed:", error);
         const lastGood = gpsLastPublishTimestamp
-          ? ` - last good ${formatGpsAge(Date.now() - gpsLastPublishTimestamp)}`
-          : "";
-
+          ? ` - last good ${formatGpsAge(Date.now() - gpsLastPublishTimestamp)}` : "";
         setGpsText("gpsAutoStatus", `FAILED${lastGood}`);
+      } finally {
+        gpsAutoPublishInFlight = false;
       }
-
-      gpsAutoPublishInFlight = false;
     }
 
     function startGpsAutoUpdate() {
-      const token = activeToken();
-
+      const token = activeGpsToken();
       if (!token) {
-        switchTab("token");
-        setPublishStatus("Save the admin token before starting GPS auto update.");
-        alert("Save the admin token before starting GPS auto update.");
+        switchTab("gps");
+        setPublishStatus("Save the GPS-only token before auto publishing.");
+        alert("Save the GPS-only token before auto publishing.");
         return;
       }
+      if (gpsAutoPublishEnabled) return;
+      window.localStorage.setItem("zwxChaseGpsPublishToken", token);
+      el("gpsPublishToken").value = token;
 
-      window.localStorage.setItem("zwxChaseAdminToken", token);
-      el("adminToken").value = token;
-
-      enableGps();
+      // Ensure tracking is on. The Enable GPS button itself is a toggle.
+      if (gpsWatchId === null) enableGps();
       requestGpsWakeLock();
 
       gpsAutoPublishEnabled = true;
@@ -1145,6 +1195,18 @@
     el("publishGpsButton").addEventListener("click", publishApproxLocation);
     el("gpsMapDisplayOnButton").addEventListener("click", enableGpsMapDisplay);
     el("gpsMapDisplayOffButton").addEventListener("click", disableGpsMapDisplay);
+    el("saveGpsTokenButton").addEventListener("click", () => {
+      const token = el("gpsPublishToken").value.trim();
+      if (!token) { alert("Enter your GPS-only token first."); return; }
+      window.localStorage.setItem("zwxChaseGpsPublishToken", token);
+      setPublishStatus("GPS-only token saved on this device.");
+    });
+    el("clearGpsTokenButton").addEventListener("click", () => {
+      stopGpsAutoUpdate();
+      window.localStorage.removeItem("zwxChaseGpsPublishToken");
+      el("gpsPublishToken").value = "";
+      setPublishStatus("GPS token cleared.");
+    });
     el("startGpsAutoButton").addEventListener("click", startGpsAutoUpdate);
     el("stopGpsAutoButton").addEventListener("click", stopGpsAutoUpdate);
 
