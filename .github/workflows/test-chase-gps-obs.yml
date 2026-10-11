@@ -1,0 +1,26 @@
+name: Test Chase GPS and OBS feed
+on:
+  pull_request:
+    paths:
+      - "cloudflare/chase-api/**"
+      - ".github/workflows/test-chase-gps-obs.yml"
+  push:
+    branches: [main]
+    paths:
+      - "cloudflare/chase-api/**"
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Validate Chase Worker JavaScript
+        run: |
+          node --check cloudflare/chase-api/src/index.js
+          node --check cloudflare/chase-api/src/chase-obs.js
+      - name: Test GPS and alert matching
+        run: node --test cloudflare/chase-api/tests/chase-obs.test.mjs
