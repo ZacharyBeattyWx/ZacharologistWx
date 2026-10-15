@@ -103,7 +103,7 @@ export async function fetchPointAlerts(lat, lon, fetcher = fetch, now = Date.now
   return selectPointAlerts(await response.json(), lat, lon, now);
 }
 
-export async function createObsSnapshot(row, { now = Date.now(), fetcher = fetch } = {}) {
+export async function createObsSnapshot(row, { now = Date.now(), fetcher = fetch, resolveTown = null } = {}) {
   const lat = finiteOrNull(row?.chase_lat);
   const lon = finiteOrNull(row?.chase_lon);
   const observed = Date.parse(row?.chase_location_updated || '');
@@ -112,9 +112,17 @@ export async function createObsSnapshot(row, { now = Date.now(), fetcher = fetch
   const fresh = hasCoordinates && age >= -MAX_FUTURE_DRIFT_MS && age <= GPS_OBS_FRESH_MS;
   const mapVisible = row?.chase_map_display === true || row?.chase_map_display === 1 || row?.chase_map_display === '1';
   const accuracy = finiteOrNull(row?.chase_accuracy);
-  const label = !hasCoordinates ? 'LOCATION NOT CONNECTED' :
+  let label = !hasCoordinates ? 'LOCATION NOT CONNECTED' :
     !fresh ? 'GPS LOCATION STALE' : !mapVisible ? 'LOCATION HIDDEN' :
-    `NEAR ${lat.toFixed(2)}, ${lon.toFixed(2)}`;
+    'LOCATION AREA UNAVAILABLE';
+  if (fresh && mapVisible && typeof resolveTown === 'function') {
+    try {
+      const nearest = await resolveTown(lat, lon);
+      if (typeof nearest === 'string' && nearest.trim()) label = nearest.slice(0, 100);
+    } catch (_error) {
+      // A geocoder failure must never expose raw GPS coordinates.
+    }
+  }
   const location = {
     state: !hasCoordinates ? 'offline' : !fresh ? 'stale' : !mapVisible ? 'hidden' : 'live',
     label,
