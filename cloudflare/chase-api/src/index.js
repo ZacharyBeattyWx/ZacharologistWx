@@ -1,6 +1,8 @@
 export { LiveAlertHub } from "./live-alert-hub.js";
 import { getCachedCpcOutlook } from "./cpc-outlook.js";
 import { validateGpsSample, createObsSnapshot } from "./chase-obs.js";
+import { parseOwnTracksLocation, verifyOwnTracksAuth } from "./chase-owntracks.js";
+import { reverseTownLabel } from "./chase-town.js";
 function jsonResponse(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -2600,6 +2602,57 @@ export default {
       }
     }
 
+    // Optional OwnTracks HTTP-mode GPS receiver. Credentials are separate from Admin/GPS tokens.
+    // Receives location only: never changes map visibility, mission status or warning settings.
+    if (url.pathname === "/api/chase/owntracks" && request.method === "POST") {
+      if (!env.CHASE_OWNTRACKS_PASSWORD) {
+        return jsonResponse({ error: "OwnTracks receiver not configured" }, 503);
+      }
+      const authorized = await verifyOwnTracksAuth(
+        request.headers.get("authorization") || "",
+        env.CHASE_OWNTRACKS_USER || "zwxgps",
+        env.CHASE_OWNTRACKS_PASSWORD
+      );
+      if (!authorized) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: {
+            "content-type": "application/json; charset=utf-8",
+            "cache-control": "no-store",
+            "www-authenticate": 'Basic realm="Zacharologist Wx GPS"'
+          }
+        });
+      }
+      const ack = () => new Response("[]", {
+        status: 200,
+        headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }
+      });
+      const contentLength = Number(request.headers.get("content-length") || 0);
+      if (contentLength > 8192) return jsonResponse({ error: "Payload too large" }, 413);
+      let raw, payload;
+      try {
+        raw = await request.text();
+        if (raw.length > 8192) return jsonResponse({ error: "Payload too large" }, 413);
+        if (!raw.trim()) return ack(); // OwnTracks can send empty messages.
+        payload = JSON.parse(raw);
+      } catch (_error) {
+        return jsonResponse({ error: "Invalid JSON" }, 400);
+      }
+      const result = parseOwnTracksLocation(payload);
+      if (result.ignored) return ack(); // Acknowledge stale queued fixes and non-location events.
+      if (result.error) return jsonResponse({ error: result.error }, 400);
+      const gps = result.value;
+      await env.DB.prepare(
+        "UPDATE chase_status SET chase_lat = ?, chase_lon = ?, chase_accuracy = ?, chase_heading = ?, " +
+        "chase_speed = ?, chase_location_updated = ? " +
+        "WHERE id = 1 AND (chase_location_updated IS NULL OR chase_location_updated < ?)"
+      ).bind(
+        gps.lat, gps.lon, gps.accuracy, gps.heading, gps.speed,
+        gps.updatedAt, gps.updatedAt
+      ).run();
+      return ack();
+    }
+
     // Dedicated field GPS credential: cannot edit status, discussion, stream, or public map visibility.
     if (url.pathname === "/api/chase/location" && request.method === "POST") {
       const expected = env.CHASE_GPS_TOKEN;
@@ -2640,7 +2693,11 @@ export default {
       if (cached) return cached;
       const row = await env.DB.prepare("SELECT * FROM chase_status WHERE id = 1").first();
       if (!row) return jsonResponse({ error: "No chase status found" }, 404);
-      const snapshot = await createObsSnapshot(row);
+      const snapshot = await createObsSnapshot(row, {
+        resolveTown: (lat, lon) => reverseTownLabel(lat, lon, {
+          mapboxToken: env.MAPBOX_GEOCODING_TOKEN
+        })
+      });
       const response = new Response(JSON.stringify(snapshot), {
         headers: {
           "content-type": "application/json; charset=utf-8",

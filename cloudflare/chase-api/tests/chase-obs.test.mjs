@@ -45,8 +45,8 @@ test('privacy and alert failure states never claim no warnings on error', async 
 
 test('a verified empty NWS response can indicate no local warnings', async () => {
   const row={chase_lat:35.2,chase_lon:-80.5,chase_location_updated:new Date(now).toISOString(),chase_map_display:1};
-  const result=await createObsSnapshot(row,{now,fetcher:async()=>({ok:true,json:async()=>({features:[]})})});
+  const result=await createObsSnapshot(row,{now,fetcher:async()=>({ok:true,json:async()=>({features:[]})}),resolveTown:async()=> 'NEAR CHARLOTTE, NC'});
   assert.equal(result.alerts.state,'live');
   assert.equal(result.alerts.items.length,0);
-  assert.equal(result.location.label,'NEAR 35.20, -80.50');
+  assert.equal(result.location.label,'NEAR CHARLOTTE, NC');
 });
