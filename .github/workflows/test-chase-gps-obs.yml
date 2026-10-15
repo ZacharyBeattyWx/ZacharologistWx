@@ -24,8 +24,10 @@ jobs:
         run: |
           node --check cloudflare/chase-api/src/index.js
           node --check cloudflare/chase-api/src/chase-obs.js
+          node --check cloudflare/chase-api/src/chase-owntracks.js
+          node --check cloudflare/chase-api/src/chase-town.js
       - name: Test GPS and alert matching
-        run: node --test cloudflare/chase-api/tests/chase-obs.test.mjs
+        run: node --test cloudflare/chase-api/tests/chase-obs.test.mjs cloudflare/chase-api/tests/chase-owntracks-town.test.mjs
       - name: Validate Chase Admin inline JavaScript
         run: |
           node - <<'NODE'
