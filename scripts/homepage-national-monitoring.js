@@ -20,7 +20,7 @@
   function boot(win){
     const doc=win.document,$=s=>doc.querySelector(s);
     const time=t=>new Date(t).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
-    async function json(url){const response=await win.fetch(url,{signal:AbortSignal.timeout(18000)});if(!response.ok)throw new Error(`Weather feed ${response.status}`);const data=await response.json();if(data.error)throw new Error('Weather service response error');return data;}
+    async function json(url){const response=await win.fetch(url,{cache:'no-store',signal:AbortSignal.timeout(18000)});if(!response.ok)throw new Error(`Weather feed ${response.status}`);const data=await response.json();if(data.error)throw new Error('Weather service response error');return data;}
     function init(){
       const grid=$('#weatherNewsroom .news-monitor-grid');if(!grid||$('#newsNationalAlerts'))return;
       function hideLegacyThreat(){grid.querySelectorAll('.ops-reference-card').forEach(card=>{if(card.querySelector('.ops-reference-kicker')?.textContent.trim()==='SPC Threat Snapshot'){card.classList.add('news-legacy-threat');card.setAttribute('aria-hidden','true');}});}
@@ -63,7 +63,7 @@
         try{
           // MapServer is the current populated geometry service. Simplify only the preview geometry.
           const base='https://mapservices.weather.noaa.gov/eventdriven/rest/services/WWA/watch_warn_adv/MapServer/1/query';
-          const query=new URLSearchParams({where:'1=1',outFields:'*',returnGeometry:'true',outSR:'4326',f:'geojson',maxAllowableOffset:'0.03',geometryPrecision:'3',resultRecordCount:'1000',resultOffset:'0',orderByFields:'objectid'});
+          const query=new URLSearchParams({where:'1=1',outFields:'*',returnGeometry:'true',outSR:'4326',f:'geojson',maxAllowableOffset:'0.03',geometryPrecision:'3',resultRecordCount:'1000',resultOffset:'0',orderByFields:'objectid',_:String(Math.floor(Date.now()/60000))});
           const features=[];let offset=0;
           for(let page=0;page<8;page++){
             query.set('resultOffset',String(offset));const data=await json(base+'?'+query);
