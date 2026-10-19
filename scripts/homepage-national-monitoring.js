@@ -56,9 +56,17 @@
       const el=card.querySelector('#newsNationalAlertMap'),status=card.querySelector('#newsNationalMapStatus'),filter=card.querySelector('#newsMapAlertType');
       const classifier=win.ZachNewsroomData?.alertCategory||(()=> 'other');
       let map,all=[],selected=[],inflight=false,ready=false,lastSuccess=null,mapVisible=true;
+      const canvas=doc.createElement('canvas');canvas.className='news-national-alert-overlay';canvas.setAttribute('aria-hidden','true');const ctx=canvas.getContext('2d');let drawPending=false;
+      function draw(){
+        drawPending=false;if(!map)return;const width=el.clientWidth,height=el.clientHeight,dpr=Math.min(2,Math.max(1,win.devicePixelRatio||1));
+        if(canvas.width!==Math.round(width*dpr)||canvas.height!==Math.round(height*dpr)){canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);}canvas.style.width=width+'px';canvas.style.height=height+'px';ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,width,height);ctx.lineJoin='round';ctx.lineCap='round';
+        function ring(coords){let started=false;for(const coord of coords||[]){if(!Array.isArray(coord)||!Number.isFinite(coord[0])||!Number.isFinite(coord[1]))continue;const point=map.project(coord);if(started)ctx.lineTo(point.x,point.y);else{ctx.moveTo(point.x,point.y);started=true;}}if(started)ctx.closePath();}
+        for(const feature of selected){const geometry=feature.geometry,p=feature.properties||{};ctx.beginPath();if(geometry.type==='Polygon')geometry.coordinates.forEach(ring);else if(geometry.type==='MultiPolygon')geometry.coordinates.forEach(polygon=>polygon.forEach(ring));else continue;const color=p._color||'#8bd9ef';ctx.fillStyle=color;ctx.globalAlpha=/Warning/.test(p.prod_type)?0.28:/Watch/.test(p.prod_type)?0.18:0.09;ctx.fill('evenodd');ctx.globalAlpha=0.9;ctx.strokeStyle=color;ctx.lineWidth=1.1;ctx.stroke();ctx.globalAlpha=1;}
+      }
+      function scheduleDraw(){if(!drawPending){drawPending=true;win.requestAnimationFrame(draw);}}
       const bounds=[[-125.1,24.2],[-66.4,49.7]];
       const hrefFor=p=>`live-alerts.html?${new URLSearchParams({alert:p.cap_id||'',event:p.prod_type||''})}`;
-      function mapData(){selected=filter.value==='all'?all:all.filter(f=>f.properties._category===filter.value);map?.getSource('news-national-alerts')?.setData({type:'FeatureCollection',features:selected});const products=productCount(selected);status.textContent=lastSuccess?`NOAA / NWS • ${products} active product${products===1?'':'s'} in this filter • updated ${time(lastSuccess)}`:'Connecting the live alert map…';}
+      function mapData(){selected=filter.value==='all'?all:all.filter(f=>f.properties._category===filter.value);map?.getSource('news-national-alerts')?.setData({type:'FeatureCollection',features:selected});scheduleDraw();const products=productCount(selected);status.textContent=lastSuccess?`NOAA / NWS • ${products} active product${products===1?'':'s'} in this filter • updated ${time(lastSuccess)}`:'Connecting the live alert map…';}
       async function update(){if(!ready||inflight)return;inflight=true;status.textContent=all.length?'Refreshing • current polygons remain visible':'Loading live national alert polygons…';
         try{
           // MapServer is the current populated geometry service. Simplify only the preview geometry.
@@ -92,13 +100,14 @@
         if(!win.mapboxgl||!win.MAPBOX_PUBLIC_TOKEN)throw new Error('Map runtime missing');
         win.mapboxgl.accessToken=win.MAPBOX_PUBLIC_TOKEN;
         map=new win.mapboxgl.Map({container:el,style:'mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy',center:[-96,38],zoom:2.7,bearing:0,pitch:0,projection:'mercator',renderWorldCopies:false,dragRotate:false,pitchWithRotate:false,cooperativeGestures:true});
+        el.appendChild(canvas);['move','zoom','resize'].forEach(event=>map.on(event,scheduleDraw));
         map.addControl(new win.mapboxgl.NavigationControl({showCompass:false}),'top-right');map.touchZoomRotate.disableRotation();
         const reset=()=>{map.resize();map.fitBounds(bounds,{padding:16,duration:0});};
         card.querySelector('#newsAlertMapReset').addEventListener('click',reset);card.querySelector('#newsAlertMapRefresh').addEventListener('click',update);filter.addEventListener('change',mapData);
         new ResizeObserver(()=>map.resize()).observe(el);
         map.on('load',()=>{ready=true;map.addSource('news-national-alerts',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
-          map.addLayer({id:'news-national-alert-fill',type:'fill',source:'news-national-alerts',paint:{'fill-color':['to-color',['get','_color'],'#8bd9ef'],'fill-opacity':0.22}});
-          map.addLayer({id:'news-national-alert-line',type:'line',source:'news-national-alerts',paint:{'line-color':['to-color',['get','_color'],'#8bd9ef'],'line-width':1.1,'line-opacity':0.9}});
+          // Mapbox handles interaction; the same external-canvas approach as the site's other weather maps draws colors.
+          map.addLayer({id:'news-national-alert-fill',type:'fill',source:'news-national-alerts',paint:{'fill-color':'#ffffff','fill-opacity':0.001}});
           map.on('mouseenter','news-national-alert-fill',()=>{map.getCanvas().style.cursor='pointer';});map.on('mouseleave','news-national-alert-fill',()=>{map.getCanvas().style.cursor='';});
           map.on('click','news-national-alert-fill',event=>{
             const seen=new Set(),features=(event.features||[]).filter(f=>{const key=f.properties?.cap_id||f.properties?.objectid;if(seen.has(key))return false;seen.add(key);return true;});
