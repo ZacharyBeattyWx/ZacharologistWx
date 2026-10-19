@@ -97,8 +97,8 @@
         card.querySelector('#newsAlertMapReset').addEventListener('click',reset);card.querySelector('#newsAlertMapRefresh').addEventListener('click',update);filter.addEventListener('change',mapData);
         new ResizeObserver(()=>map.resize()).observe(el);
         map.on('load',()=>{ready=true;map.addSource('news-national-alerts',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
-          map.addLayer({id:'news-national-alert-fill',type:'fill',source:'news-national-alerts',paint:{'fill-color':['get','_color'],'fill-opacity':0.22}});
-          map.addLayer({id:'news-national-alert-line',type:'line',source:'news-national-alerts',paint:{'line-color':['get','_color'],'line-width':1.1,'line-opacity':0.9}});
+          map.addLayer({id:'news-national-alert-fill',type:'fill',source:'news-national-alerts',paint:{'fill-color':['to-color',['get','_color'],'#8bd9ef'],'fill-opacity':0.22}});
+          map.addLayer({id:'news-national-alert-line',type:'line',source:'news-national-alerts',paint:{'line-color':['to-color',['get','_color'],'#8bd9ef'],'line-width':1.1,'line-opacity':0.9}});
           map.on('mouseenter','news-national-alert-fill',()=>{map.getCanvas().style.cursor='pointer';});map.on('mouseleave','news-national-alert-fill',()=>{map.getCanvas().style.cursor='';});
           map.on('click','news-national-alert-fill',event=>{
             const seen=new Set(),features=(event.features||[]).filter(f=>{const key=f.properties?.cap_id||f.properties?.objectid;if(seen.has(key))return false;seen.add(key);return true;});
