@@ -8,6 +8,34 @@
   const DEFAULT_LOCATION = { latitude: 36.0726, longitude: -79.792, locationName: 'Greensboro, NC', timeZone: 'America/New_York' };
   const CACHE_KEY = 'zach:newsroom:weather:v1';
   const HOUR = 3600000;
+  const ALERT_CATEGORIES=[['all','All'],['storm','Storm'],['winter','Winter'],['hydro','Flood'],['tropical','Tropical'],['fire','Fire'],['other','Other']];
+  function alertCategory(event='') {
+    if(/hurricane|tropical|storm surge|typhoon/i.test(event))return 'tropical';
+    if(/flood|hydrologic/i.test(event))return 'hydro';
+    if(/winter|snow|ice storm|blizzard|freez|frost|wind chill|extreme cold|cold weather|avalanche/i.test(event))return 'winter';
+    if(/red flag|fire weather|fire warning/i.test(event))return 'fire';
+    if(/tornado|thunderstorm|special marine|marine weather|special weather statement/i.test(event))return 'storm';
+    return 'other';
+  }
+  function filteredAlerts(alerts,category='all',now=Date.now()) {
+    const seen=new Set();
+    return (alerts || []).filter(a=>{
+      const p=a?.properties || {},expiry=Date.parse(p.ends || p.expires || '');
+      if(Number.isFinite(expiry) && expiry<=now)return false;
+      if(!p.event || (category!=='all' && alertCategory(p.event)!==category))return false;
+      const key=p._canonicalId || a.id || p.id || `${p.event}|${p.areaDesc}|${p.sent}`;
+      if(seen.has(key))return false;seen.add(key);return true;
+    });
+  }
+  function alertPriority(alert) {
+    const event=alert?.properties?.event || '';
+    if(event==='Tornado Warning')return 0;
+    if(event==='Severe Thunderstorm Warning')return 1;
+    if(event==='Flash Flood Warning')return 2;
+    if(/Warning$/.test(event))return 3;
+    if(/Watch$/.test(event))return 4;
+    return 5;
+  }
   const num = value => typeof value === 'number' && Number.isFinite(value) ? value : null;
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const rounded = value => num(value) === null ? null : Math.round(value);
@@ -251,32 +279,39 @@
       win.addEventListener('online',()=>load(activeLocation));
     }
     function setupAlerts(){
-      const categories=[['winter','Winter'],['storm','Storm'],['hydro','Flood'],['fire','Fire'],['tropical','Tropical']];
-      const sync=()=>{
-        if(typeof win.getFilteredAlertsForCategory!=='function' || !win.__ZACH_HOMEPAGE_ALERTS_UPDATED__)return;
-        for(const [category] of categories){
-          const list=win.getFilteredAlertsForCategory(category);
-          setText(`[data-news-alert="${category}"]`,list.length);
-        }
-        const urgent=win.getFilteredAlertsForCategory('storm').some(a=>/^(Tornado Warning|Severe Thunderstorm Warning|Flash Flood Warning)$/.test(a.properties?.event));
-        $('#newsAlertScore').dataset.urgent=String(urgent);
-        $('#newsAlertScore').title=`Monitoring area • updated ${new Date(win.__ZACH_HOMEPAGE_ALERTS_UPDATED__).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}`;
-        setText('.news-alert-scope',`Monitoring area • ${new Date(win.__ZACH_HOMEPAGE_ALERTS_UPDATED__).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}`);
-      };
-      const alerts=$('#alertsList');if(alerts)new MutationObserver(sync).observe(alerts,{childList:true,subtree:true});
-      win.addEventListener('zacharologist-homepage-alerts-updated',sync);
-      win.addEventListener('zacharologist-homepage-alerts-failed',()=>{
-        if(win.__ZACH_HOMEPAGE_ALERTS_UPDATED__){setText('.news-alert-scope','Monitoring area • saved counts');return;}
-        for(const [category] of categories)setText(`[data-news-alert="${category}"]`,'Map ↗');
-        setText('.news-alert-scope','Open live monitoring');
-      });
-      // Counts are supplied by the existing, scoped alert feed; never call them local point alerts.
-      $('#newsAlertScore').innerHTML=`<a class="news-alert-label" href="live-alerts.html">Active alerts ↗</a><span class="news-alert-scope">Monitoring area</span>${categories.map(([key,label])=>`<button type="button" data-news-category="${key}">${label} <strong data-news-alert="${key}">Checking</strong></button>`).join('')}`;
-      $('#newsAlertScore').querySelectorAll('button').forEach(button=>button.addEventListener('click',()=>{
-        if(!win.__ZACH_HOMEPAGE_ALERTS_UPDATED__){win.location.href='live-alerts.html';return;}
-        const target=$(`.alerts-card .alert-tabs button[data-category="${button.dataset.newsCategory}"]`);target?.click();$('.alerts-card')?.scrollIntoView({behavior:'smooth',block:'start'});
-      }));
-      sync();
+      const categories=ALERT_CATEGORIES;let selected='all',failed=false;
+      const list=$('#alertsList'),tabs=$('.alerts-card .alert-tabs');
+      win.getFilteredAlertsForCategory=category=>filteredAlerts(win.__ZACH_HOMEPAGE_ALERTS__ || [],category);
+      tabs.innerHTML=categories.map(([key,label])=>`<button type="button" data-category="${key}" aria-pressed="${key==='all'}">${label}<span data-news-panel-count="${key}">…</span></button>`).join('');
+      $('#newsAlertScore').innerHTML=`<a class="news-alert-label" href="live-alerts.html">Active alerts ↗</a><span class="news-alert-scope">Monitoring area</span>${categories.filter(([key])=>key!=='all').map(([key,label])=>`<button type="button" data-news-category="${key}">${label} <strong data-news-alert="${key}">…</strong></button>`).join('')}`;
+      const status=doc.createElement('p');status.className='news-alert-status news-source';tabs.parentNode.insertAdjacentElement('afterend',status);
+      function draw(){
+        const ready=!!win.__ZACH_HOMEPAGE_ALERTS_UPDATED__;
+        const all=win.getFilteredAlertsForCategory('all');
+        const selectedAlerts=win.getFilteredAlertsForCategory(selected).sort((a,b)=>alertPriority(a)-alertPriority(b));
+        for(const [key] of categories){const count=ready?win.getFilteredAlertsForCategory(key).length:'…';setText(`[data-news-panel-count="${key}"]`,count);setText(`[data-news-alert="${key}"]`,count);}
+        tabs.querySelectorAll('button').forEach(b=>{b.classList.toggle('active',b.dataset.category===selected);b.setAttribute('aria-pressed',String(b.dataset.category===selected));});
+        $('#newsAlertScore').dataset.urgent=String(all.some(a=>alertPriority(a)<3));
+        const time=ready?new Date(win.__ZACH_HOMEPAGE_ALERTS_UPDATED__).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}):'';
+        setText('.news-alert-scope',ready?`Monitoring area • ${time}`:'Monitoring area');
+        status.textContent=ready?`${all.length} active products across the monitoring area • ${failed?'Saved snapshot':'Updated'} ${time} • not limited to your selected city`:'NWS monitoring area • checking current products';
+        if(!ready){list.innerHTML=`<div class="news-alert-empty"><strong>${failed?'Continue with live monitoring':'Checking the monitoring area'}</strong><p>${failed?'The feed is reconnecting. Open the alert explorer or national alert map for the latest products.':'Warnings, watches and advisories will appear here as the feed arrives.'}</p><a href="live-alerts.html">Open alert explorer ↗</a></div>`;return;}
+        if(!selectedAlerts.length){list.innerHTML=`<div class="news-alert-empty"><strong>No active ${selected==='all'?'':categories.find(([k])=>k===selected)[1].toLowerCase()+' '}products</strong><p>No matching products in the latest monitoring-area snapshot.</p><a href="live-alerts.html">Open all monitored alerts ↗</a></div>`;return;}
+        list.innerHTML=selectedAlerts.slice(0,24).map(alert=>{
+          const p=alert.properties;
+          const color=typeof win.getAlertColor==='function'?win.getAlertColor(p.event):'#8bd9ef';
+          const expires=Date.parse(p.ends || p.expires || '');
+          const expireLabel=Number.isFinite(expires)?new Date(expires).toLocaleString([], {weekday:'short',hour:'numeric',minute:'2-digit'}):'See bulletin for timing';
+          const href=typeof win.homepageAlertDetailsUrl==='function'?win.homepageAlertDetailsUrl(alert):'live-alerts.html';
+          return `<article class="news-alert-row" style="--alert-color:${esc(color)}"><div><strong>${esc(p.event)}</strong><p>${esc(p.areaDesc || p.headline || 'See official bulletin for affected areas')}</p><small>${Number.isFinite(expires)?'Until ':''}${esc(expireLabel)}</small></div><a href="${esc(href)}">Details ↗</a></article>`;
+        }).join('')+(selectedAlerts.length>24?`<a class="news-more-alerts" href="live-alerts.html">View all ${selectedAlerts.length} matching products ↗</a>`:'');
+      }
+      win.renderCategory=()=>draw();
+      tabs.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{selected=b.dataset.category;draw();}));
+      $('#newsAlertScore').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{selected=b.dataset.newsCategory;draw();$('.alerts-card').scrollIntoView({behavior:'smooth',block:'start'});}));
+      win.addEventListener('zacharologist-homepage-alerts-updated',()=>{failed=false;draw();});
+      win.addEventListener('zacharologist-homepage-alerts-failed',()=>{failed=true;win.queueMicrotask(draw);});
+      draw();
     }
     function setupCarousel(){
       const slides=[
@@ -307,7 +342,7 @@
         <section class="news-panel" id="newsWeekPanel"><div class="news-panel-heading"><h2 id="newsForecastTitle">Your week ahead</h2><a id="newsHourlyLink" href="https://forecast.weather.gov/">View hourly ↗</a></div><div id="newsWeek" class="news-week"></div><div class="news-forecast-footer"><span id="newsForecastStatus" class="news-source"></span><a id="newsOfficialLink" href="https://forecast.weather.gov/">Official local forecast ↗</a></div></section>
         <div class="news-analysis-grid"><section class="news-outlooks news-panel"><div class="news-panel-heading"><h2>Outlook center</h2><span class="news-source">National / regional</span></div><div class="news-outlook-tabs" aria-label="Official outlook products"><a href="https://www.wpc.ncep.noaa.gov/wwd/winter_wx.shtml" target="_blank" rel="noopener">Winter weather ↗</a><a href="#newsSpcSlot">SPC outlooks ↓</a><a href="https://www.wpc.ncep.noaa.gov/qpf/excessive_rain.shtml" target="_blank" rel="noopener">Rainfall ↗</a><a href="https://www.cpc.ncep.noaa.gov/products/predictions/610day/" target="_blank" rel="noopener">6–10 day ↗</a></div><div id="newsSpcSlot"></div></section><div id="newsAlertsSlot"></div></div>
         <section class="news-panel news-quick-hits" id="newsQuickHits" aria-roledescription="carousel" aria-label="National Quick Hits"><div class="news-panel-heading"><h2>National Quick Hits</h2><div class="news-carousel-controls"><span id="newsSlideCount">01 / 03</span><button id="newsQuickPrev" aria-label="Previous quick hit" type="button">‹</button><button id="newsQuickNext" aria-label="Next quick hit" type="button">›</button></div></div><div id="newsQuickContent"></div><div class="news-carousel-footer"><div class="news-dots">${[0,1,2].map(i=>`<button type="button" data-news-slide="${i}" aria-label="Show quick hit ${i+1}" aria-pressed="false"></button>`).join('')}</div><button type="button" id="newsQuickPause" aria-pressed="false">Pause rotation</button><span class="news-source">Weather facts / coast to coast</span></div></section>
-        <div class="news-panel-heading news-monitor-heading"><h2>More from the weather desk</h2><span class="news-source">SPC threats • storm reports • sun & moon • national monitoring</span></div>
+        <div class="news-panel-heading news-monitor-heading"><h2>National weather desk</h2><span class="news-source">Preliminary SPC reports • current SPC day & month • sun & moon • national monitoring</span></div>
         <footer class="news-footer">Zacharologist Wx / Built for the Storm <span>Weather: <a href="https://www.weather.gov/">NOAA / NWS</a> · Model estimates & place search: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>. Forecast ranges and sources are shown with each metric.</span></footer>`;
       main.insertBefore(root,main.firstChild);
       // Move existing elements, not copies: their data bindings, popups and iframe engine survive.
@@ -332,5 +367,6 @@
     }
     if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',install,{once:true});else install();
   }
-  return { DEFAULT_LOCATION, num, quantity, windPeak, normalizeNwsForecast, normalizeObservation, normalizeModel, forecastUsable, chooseForecast, buildStats, sameLocation, coldSeason, dayKey, boot };
+  return { DEFAULT_LOCATION, num, quantity, windPeak, normalizeNwsForecast, normalizeObservation, normalizeModel, forecastUsable, chooseForecast, buildStats, sameLocation, coldSeason, dayKey, alertCategory, filteredAlerts, alertPriority, boot };
 });
+
