@@ -12185,7 +12185,7 @@ body {
 }
 </style>
 
-  <link rel="stylesheet" href="scripts/homepage-newsroom-test.css?v=20261019a">
+  <link rel="stylesheet" href="scripts/homepage-newsroom-test.css?v=20261019b">
 </head>
 
 <body>
@@ -13826,50 +13826,9 @@ try {
       ).values()
     );
 
-    const uniqueAlerts = uniqueFeatures.filter(alert => {
-      const event = alert.properties?.event;
-      if (!event) return false;
-
-      return [
-        "Tornado Warning",
-        "Severe Thunderstorm Warning",
-        "Flash Flood Warning",
-        "Flash Flood Watch",
-        "Tornado Watch",
-        "Severe Thunderstorm Watch",
-        "Special Weather Statement",
-        "Flash Flood Statement",
-        "Flood Warning",
-        "Flood Watch",
-        "Flood Advisory",
-        "Areal Flood Warning",
-        "Areal Flood Watch",
-        "Coastal Flood Warning",
-        "Marine Weather Statement",
-        "Special Marine Warning",
-        "Red Flag Warning",
-        "Fire Weather Watch",
-        "Winter Storm Warning",
-        "Winter Weather Advisory",
-        "Blizzard Warning",
-        "Ice Storm Warning",
-        "Freeze Warning",
-        "Frost Advisory",
-        "Wind Advisory",
-        "High Wind Warning",
-        "Dense Fog Advisory",
-        "Heat Advisory",
-        "Excessive Heat Warning",
-        "Hurricane Warning",
-        "Hurricane Watch",
-        "Tropical Storm Warning",
-        "Tropical Storm Watch",
-        "Storm Surge Warning",
-        "Storm Surge Watch",
-        "Typhoon Warning",
-        "Typhoon Watch"
-      ].includes(event);
-    });
+    const uniqueAlerts = uniqueFeatures.filter(alert =>
+      typeof alert.properties?.event === "string" && alert.properties.event.trim()
+    );
 
     const currentIds = new Set(
       uniqueAlerts.map(alert => canonicalHomepageAlertId(alert) || alert.id)
@@ -13890,6 +13849,7 @@ try {
     }
 
     allHomepageAlerts = uniqueAlerts;
+    window.__ZACH_HOMEPAGE_ALERTS__ = uniqueAlerts;
     window.__ZACH_HOMEPAGE_ALERTS_UPDATED__ = Date.now();
     window.dispatchEvent(new CustomEvent('zacharologist-homepage-alerts-updated'));
 
@@ -18276,7 +18236,9 @@ setInterval(loadSPCImages, 10 * 60 * 1000);
 })();
 </script>
 
-<script src="scripts/homepage-newsroom-test.js?v=20261019a"></script>
+<script src="scripts/homepage-newsroom-test.js?v=20261019b"></script>
+<script src="scripts/homepage-spc-carousel.js?v=20261019b"></script>
 </body>
 </html>
+
 
