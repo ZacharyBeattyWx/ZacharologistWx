@@ -1,0 +1,137 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Dedicated GOES Localized True Color sectors, isolated from existing publishers
+
+Parameters:
+  ImageUri:
+    Type: String
+  TargetBucketName:
+    Type: String
+  ScheduleState:
+    Type: String
+    Default: ENABLED
+    AllowedValues: [ENABLED, DISABLED]
+
+Resources:
+  LocalizedRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LocalizedSatelliteOnly
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: [s3:GetObject, s3:PutObject]
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:s3:::${TargetBucketName}/satellite-truecolor/east/sectors/loc-*'
+                  - !Sub 'arn:${AWS::Partition}:s3:::${TargetBucketName}/satellite-truecolor/west/sectors/loc-*'
+              - Effect: Allow
+                Action: [logs:CreateLogGroup, logs:CreateLogStream, logs:PutLogEvents]
+                Resource: '*'
+
+  LocalizedFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      PackageType: Image
+      Code:
+        ImageUri: !Ref ImageUri
+      Role: !GetAtt LocalizedRole.Arn
+      Architectures: [x86_64]
+      MemorySize: 3008
+      Timeout: 240
+      ReservedConcurrentExecutions: 8
+      EphemeralStorage:
+        Size: 2048
+      Environment:
+        Variables:
+          RADAR_BUCKET: !Ref TargetBucketName
+          SATELLITE_TRUECOLOR_PREFIX: satellite-truecolor
+          SATELLITE_TRUECOLOR_MODE: localized
+          SATELLITE_LOCALIZED_WIDTH: '2560'
+          SATELLITE_TRUECOLOR_FRAME_COUNT: '25'
+          SATELLITE_TRUECOLOR_SCAN_HOURS: '3'
+          SATELLITE_TRUECOLOR_WEBP_QUALITY: '88'
+          SATELLITE_LOCALIZED_DEHAZE_STRENGTH: '0.06'
+          SATELLITE_EAST_BUCKET: noaa-goes19
+          SATELLITE_WEST_BUCKET: noaa-goes18
+
+  LocalizedInvocationPolicy:
+    Type: AWS::Lambda::EventInvokeConfig
+    Properties:
+      FunctionName: !Ref LocalizedFunction
+      Qualifier: '$LATEST'
+      MaximumEventAgeInSeconds: 60
+      MaximumRetryAttempts: 0
+
+  LocalizedScheduleA:
+    Type: AWS::Events::Rule
+    Properties:
+      ScheduleExpression: rate(5 minutes)
+      State: !Ref ScheduleState
+      Targets:
+        - Arn: !GetAtt LocalizedFunction.Arn
+          Id: East0
+          Input: '{"platform":"East","shardIndex":0,"shardCount":6}'
+          RetryPolicy: {MaximumEventAgeInSeconds: 60, MaximumRetryAttempts: 0}
+        - Arn: !GetAtt LocalizedFunction.Arn
+          Id: East1
+          Input: '{"platform":"East","shardIndex":1,"shardCount":6}'
+          RetryPolicy: {MaximumEventAgeInSeconds: 60, MaximumRetryAttempts: 0}
+        - Arn: !GetAtt LocalizedFunction.Arn
+          Id: East2
+          Input: '{"platform":"East","shardIndex":2,"shardCount":6}'
+          RetryPolicy: {MaximumEventAgeInSeconds: 60, MaximumRetryAttempts: 0}
+        - Arn: !GetAtt LocalizedFunction.Arn
+          Id: East3
+          Input: '{"platform":"East","shardIndex":3,"shardCount":6}'
+          RetryPolicy: {MaximumEventAgeInSeconds: 60, MaximumRetryAttempts: 0}
+
+  LocalizedScheduleB:
+    Type: AWS::Events::Rule
+    Properties:
+      ScheduleExpression: rate(5 minutes)
+      State: !Ref ScheduleState
+      Targets:
+        - Arn: !GetAtt LocalizedFunction.Arn
+          Id: East4
+          Input: '{"platform":"East","shardIndex":4,"shardCount":6}'
+          RetryPolicy: {MaximumEventAgeInSeconds: 60, MaximumRetryAttempts: 0}
+        - Arn: !GetAtt LocalizedFunction.Arn
+          Id: East5
+          Input: '{"platform":"East","shardIndex":5,"shardCount":6}'
+          RetryPolicy: {MaximumEventAgeInSeconds: 60, MaximumRetryAttempts: 0}
+        - Arn: !GetAtt LocalizedFunction.Arn
+          Id: West0
+          Input: '{"platform":"West","shardIndex":0,"shardCount":2}'
+          RetryPolicy: {MaximumEventAgeInSeconds: 60, MaximumRetryAttempts: 0}
+        - Arn: !GetAtt LocalizedFunction.Arn
+          Id: West1
+          Input: '{"platform":"West","shardIndex":1,"shardCount":2}'
+          RetryPolicy: {MaximumEventAgeInSeconds: 60, MaximumRetryAttempts: 0}
+
+  SchedulePermissionA:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref LocalizedFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt LocalizedScheduleA.Arn
+
+  SchedulePermissionB:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref LocalizedFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt LocalizedScheduleB.Arn
+
+Outputs:
+  LocalizedFunctionName:
+    Value: !Ref LocalizedFunction

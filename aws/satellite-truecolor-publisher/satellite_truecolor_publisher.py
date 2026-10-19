@@ -5,6 +5,7 @@ import os
 import re
 import tempfile
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import boto3
 import numpy as np
@@ -108,6 +109,10 @@ LOCALIZED_MAX_RENDER_PER_SECTOR = int(
 LOCALIZED_DEHAZE_STRENGTH = float(
     os.getenv("SATELLITE_LOCALIZED_DEHAZE_STRENGTH", "0.06")
 )
+NATIVE_LOCALIZED_WIDTH = max(
+    2048, min(2560, int(os.getenv("SATELLITE_LOCALIZED_WIDTH", "2560")))
+)
+NATIVE_LOCALIZED_RENDER_VERSION = 1
 
 REGIONAL_PLATFORMS = {
     "East": {
@@ -863,6 +868,63 @@ def localized_platform_specs(platform, base_spec):
         )
         specs.append(spec)
     return specs
+
+
+def native_localized_platform_specs(platform, shard_index=0, shard_count=1):
+    if platform not in REGIONAL_PLATFORMS:
+        raise ValueError("Localized platform must be East or West")
+    if shard_count < 1 or not 0 <= shard_index < shard_count:
+        raise ValueError("Invalid localized shard index/count")
+    catalog = json.loads(
+        Path(__file__).with_name("localized-sectors.json").read_text()
+    )
+    base = REGIONAL_PLATFORMS[platform]
+    return [
+        dict(
+            base,
+            prefix=f"{base['prefix']}/sectors/{sector['id']}",
+            sector=sector["id"],
+            label=sector["label"],
+            bbox=tuple(sector["bbox"]),
+            output_width=NATIVE_LOCALIZED_WIDTH,
+            render_version=NATIVE_LOCALIZED_RENDER_VERSION,
+            max_render=1,
+            native_products=False,
+            native_localized=True,
+            dehaze_strength=LOCALIZED_DEHAZE_STRENGTH,
+        )
+        for index, sector in enumerate(catalog[platform])
+        if index % shard_count == shard_index
+    ]
+
+
+def process_native_localized(event, context):
+    platform = event["platform"]
+    specs = native_localized_platform_specs(
+        platform,
+        int(event.get("shardIndex", 0)),
+        int(event.get("shardCount", 1)),
+    )
+    now = utcnow()
+    candidates = list_complete_scans(REGIONAL_PLATFORMS[platform], now)
+    source_cache = {}
+    results = []
+    try:
+        for spec in specs:
+            if context and context.get_remaining_time_in_millis() < 30000:
+                raise RuntimeError("Localized shard exhausted its time budget")
+            result = process_platform(
+                platform, spec, now, candidates=candidates, source_cache=source_cache
+            )
+            result["sector"] = spec["sector"]
+            results.append(result)
+    finally:
+        for path in set(source_cache.values()):
+            try:
+                os.unlink(path)
+            except OSError:
+                pass
+    return {"statusCode": 200, "generated": iso_z(now), "results": results}
 
 
 def output_grid(spec, source_crs):
@@ -1976,6 +2038,8 @@ def publish_manifest(spec, existing, frames, checked_scans, now):
             else None
         ),
         "bbox": list(spec["bbox"]),
+        "projection": "EPSG:3857",
+        "nativeLocalized": bool(spec.get("native_localized")),
         "recipe": {
             "red": "C02 0.64um",
             "green": "0.45*C02 + 0.10*C03 + 0.45*C01",
@@ -2408,6 +2472,8 @@ def process_native_platform(platform, spec, now):
 
 
 def lambda_handler(event, context):
+    if PUBLISH_MODE == "localized":
+        return process_native_localized(event, context)
     now = utcnow()
     results = []
 

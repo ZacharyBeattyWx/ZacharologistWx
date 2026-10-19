@@ -515,6 +515,8 @@
     const TRUECOLOR_GLOBAL_FRESH_MINUTES=25;
     const SAT_FRAME_COUNT=25,SAT_STEP_MINUTES=10,SAT_LAG_MINUTES=10,SAT_PROBE_EXTRA_FRAMES=10,SAT_PROBE_WORKERS=4;
     const SAT_PLAYBACK_DPR_CAP=1.25;
+    const SAT_LOCALIZED_DPR_CAP=2;
+    const satLocalizedAvailability=new Map();
 
     const SAT_PRODUCTS={
       TrueColor:{label:"True Color",layer:"GeoColor",prepared:true},
@@ -554,7 +556,7 @@
         {id:"loc-chi",label:"Chicago & Southern Wisconsin",bbox:[-92,39.5,-84,45]},
         {id:"loc-ohv",label:"Ohio Valley",bbox:[-88.5,36,-79.5,42]},
         {id:"loc-atl",label:"Georgia & Carolinas",bbox:[-86.5,30,-77,36.5]},
-        {id:"loc-fl",label:"Florida",bbox:[-84.5,23.5,-78.5,31.5]},
+        {id:"loc-fl",label:"Florida",bbox:[-87,23,-79,31.8]},
         {id:"loc-ma",label:"Mid-Atlantic",bbox:[-82,35.5,-73,42]},
         {id:"loc-ne",label:"New England",bbox:[-74.5,40,-66,47.5]}
       ],
@@ -673,8 +675,10 @@
       const crops=(centers,group)=>centers.map(item=>fitCropToPublishedSector(codSectorCrop(item,group),platform)).filter(item=>item&&supported(item));
       SAT_SECTORS[platform].push(...crops(COD_CONUS_SUBREGIONAL_CENTERS,"subregional"));
       const legacy=LOCALIZED_SECTORS[platform];
-      LOCALIZED_SECTORS[platform]=crops(COD_CONUS_LOCAL_CENTERS,"localized");
-      if(platform==="East")SAT_SECTORS.East.push({...legacy.find(item=>item.id==="loc-atl"),group:"subregional",clientCrop:true,fixedFootprint:true});
+      LOCALIZED_SECTORS[platform]=[
+        ...COD_CONUS_LOCAL_CENTERS.map(item=>codSectorCrop(item,"localized")).filter(supported),
+        ...legacy
+      ].map(item=>({...item,group:"localized",clientCrop:false,nativeLocalized:true,fixedFootprint:true}));
     }
     const SAT_SECTOR_ALIASES={
       "loc-cpl":"sub-cod-Cen_Plains","loc-ntx":"loc-cod-Wichita_Falls",
@@ -686,6 +690,9 @@
       sr:"sub-cod-Cen_Rockies",sp:"sub-cod-S_Plains",smv:"sub-cod-Bootheel",se:"sub-cod-Dixie",
       eus:"sub-cod-Mid_Atlantic",pnw:"sub-cod-Pac_NW",psw:"sub-cod-Desert_SW"
     };
+    for(const sectors of Object.values(LOCALIZED_SECTORS)){
+      for(const sector of sectors)delete SAT_SECTOR_ALIASES[sector.id];
+    }
 
     const MESOSCALE_SECTORS={
       East:[
@@ -1914,7 +1921,7 @@
     function sectorSidebarItems(){
       if(sectorSidebarGroup==="localized"){
         return (LOCALIZED_SECTORS[satPlatform]||[])
-          .map(item=>({...item,available:true,status:"Live"}));
+          .map(item=>({...item,available:true,status:satLocalizedAvailability.get(`${satPlatform}|${item.id}`)||"Check availability"}));
       }
       if(sectorSidebarGroup==="mesoscale"){
         return (MESOSCALE_SECTORS[satPlatform]||[])
@@ -2403,7 +2410,7 @@
         button.title=item.available?`Show ${item.label}`:`${item.label} preview · publisher ${String(item.status||"planned").toLowerCase()}`;
         const icon=document.createElement("span");icon.className="sector-target-icon";icon.setAttribute("aria-hidden","true");icon.append(document.createElement("span"));
         const label=document.createElement("span");label.className="sat-sector-name";label.textContent=item.label;
-        const state=document.createElement("span");state.className="sat-sector-state";state.textContent=item.available?(item.id===satSector?"Live":item.status||""):(item.status||"Planned");
+        const state=document.createElement("span");state.className="sat-sector-state";state.textContent=item.nativeLocalized?(item.status||"Check availability"):item.available?(item.id===satSector?"Live":item.status||""):(item.status||"Planned");
         button.append(icon,label,state);
         button.addEventListener("mouseenter",()=>drawSectorPreview(item));
         button.addEventListener("focus",()=>drawSectorPreview(item));
@@ -2753,6 +2760,9 @@
       return valid.sort((a,b)=>a-b).slice(-SAT_FRAME_COUNT);
     }
     function trueColorManifestUrls(platform,sector){
+      if(sector?.nativeLocalized){
+        return [`${TRUECOLOR_BASE}/${platform.toLowerCase()}/sectors/${sector.id}/manifest.json`];
+      }
       const global=sector?.id==="global";
       const prefix=
         `${platform.toLowerCase()}${global?"-global":""}`;
@@ -2801,7 +2811,7 @@
         try{
           const response=await fetch(
             `${url}?_=${Date.now()}`,
-            {cache:"no-store"}
+            {cache:"no-store",...(sector.nativeLocalized?{signal:AbortSignal.timeout(15000)}:{})}
           );
 
           if(!response.ok){
@@ -2815,6 +2825,7 @@
           if(!bboxContains(manifest.bbox,sector.bbox)){
             throw new Error("selected sector exceeds prepared True Color coverage");
           }
+          if(sector.nativeLocalized)validateLocalizedManifest(manifest,platform,sector);
           return manifest;
         }catch(error){
           lastError=error;
@@ -2822,6 +2833,36 @@
       }
 
       throw lastError||new Error("True Color manifest unavailable");
+    }
+
+    function validateLocalizedManifest(manifest,platform,sector){
+      const prefix=`${platform.toLowerCase()}/sectors/${sector.id}/`;
+      if(manifest.platform!==platform||manifest.sector!==sector.id||
+        manifest.nativeLocalized!==true||manifest.projection!=="EPSG:3857"||
+        manifest.cadenceMinutes!==5||!manifest.dayNightComposite||
+        !manifest.bbox.every((value,index)=>Number.isFinite(value)&&Math.abs(value-sector.bbox[index])<1e-6)){
+        throw new Error("Dedicated Localized manifest metadata does not match this sector");
+      }
+      const [minX,minY]=mercator(sector.bbox[0],sector.bbox[1]);
+      const [maxX,maxY]=mercator(sector.bbox[2],sector.bbox[3]);
+      const ratio=(maxX-minX)/(maxY-minY);
+      let previous=-Infinity;
+      for(const frame of manifest.frames){
+        const stamp=Date.parse(frame.time);
+        if(!Number.isFinite(stamp)||stamp<=previous||
+          typeof frame.path!=="string"||!frame.path.startsWith(prefix)||
+          !/^[a-zA-Z0-9_/-]+\.webp$/.test(frame.path)||frame.path.includes("..")||
+          !Number.isInteger(frame.width)||!Number.isInteger(frame.height)||
+          frame.width<2048||frame.width>3200||frame.height<540||frame.height>3200||
+          Math.abs(frame.width/frame.height-ratio)>0.005){
+          throw new Error("Dedicated Localized frame path, dimensions or timeline is invalid");
+        }
+        previous=stamp;
+      }
+      const age=(Date.now()-previous)/60000;
+      if(age< -10||age>TRUECOLOR_REGIONAL_FRESH_MINUTES){
+        throw new Error("Dedicated Localized imagery is stale");
+      }
     }
 
     function nativeSatelliteManifestUrl(platform,sector,product){
@@ -3418,6 +3459,14 @@
             `GOES-${context.platform}_ABI_GeoColor`;
 
         }catch(error){
+          if(context.sector.nativeLocalized){
+            if(generation!==satWarmGeneration)return false;
+            context.unavailableReason="High-resolution Localized imagery is currently unavailable. Choose CONUS/PACUS or another sector, or try again later.";
+            satLocalizedAvailability.set(`${context.platform}|${context.sector.id}`,"Unavailable");
+            renderSectorSidebar();
+            console.warn("Dedicated Localized imagery unavailable",error);
+            return false;
+          }
           console.warn(
             "Prepared True Color unavailable; using GeoColor fallback.",
             error
@@ -3529,7 +3578,7 @@
       return finishSatelliteFrameSet();
     }
 
-    function loadSatelliteImage(url){
+    function loadSatelliteImage(url,context){
       if(
         satFrameImages.has(url)
       ){
@@ -3557,11 +3606,30 @@
 
             img.onload=()=>{
               const finish=()=>{
+                let cached=img;
+                if(context?.sector.nativeLocalized&&context.product.prepared){
+                  if(context!==satContext){resolve(img);return;}
+                  const mobile=window.matchMedia("(max-width: 880px)").matches;
+                  const edge=mobile?1536:2048;
+                  const pixelBudget=(mobile?128:224)*1024*1024/4/SAT_FRAME_COUNT;
+                  const scale=Math.min(1,edge/Math.max(img.naturalWidth,img.naturalHeight),
+                    Math.sqrt(pixelBudget/(img.naturalWidth*img.naturalHeight)));
+                  const canvas=document.createElement("canvas");
+                  canvas.width=Math.round(img.naturalWidth*scale);
+                  canvas.height=Math.round(img.naturalHeight*scale);
+                  const drawing=canvas.getContext("2d");
+                  if(!drawing){reject(new Error("Localized image buffer unavailable"));return;}
+                  drawing.imageSmoothingQuality="high";
+                  drawing.drawImage(img,0,0,canvas.width,canvas.height);
+                  canvas.naturalWidth=canvas.width;canvas.naturalHeight=canvas.height;
+                  cached=canvas;
+                  img.src="";
+                }
                 satFrameImages.set(
                   url,
-                  img
+                  cached
                 );
-                resolve(img);
+                resolve(cached);
               };
 
               if(
@@ -3686,7 +3754,7 @@
         );
 
       return loadSatelliteImage(
-        url
+        url,context
       ).then(
         img=>({
           url,
@@ -3825,7 +3893,7 @@
       const sourceHeight=Math.max(1,Math.round(cropH));
       const stageRect=satelliteStage.getBoundingClientRect();
       const dpr=Math.min(
-        SAT_PLAYBACK_DPR_CAP,
+        context.sector.nativeLocalized&&context.product.prepared?SAT_LOCALIZED_DPR_CAP:SAT_PLAYBACK_DPR_CAP,
         Math.max(1,window.devicePixelRatio||1)
       );
       const targetPixelWidth=Math.max(
@@ -4414,6 +4482,12 @@
       }
 
       if(frame.source==="prepared"){
+        if(context.sector.nativeLocalized&&context.product.prepared){
+          const visual={source:result.img,width:result.img.naturalWidth,height:result.img.naturalHeight,
+            bbox:context.bbox,backdrop};
+          satFrameVisuals.set(frame,visual);
+          return visual;
+        }
         const canvas=document.createElement("canvas");
 
         if(
@@ -4514,10 +4588,14 @@
         ctx.globalAlpha=1;
       }
 
-      satelliteStage.style.setProperty(
-        "--satellite-backdrop",
-        `url("${t>=.5?toVisual.backdrop:fromVisual.backdrop}")`
-      );
+      if(context.sector.nativeLocalized&&context.product.prepared){
+        satelliteStage.style.removeProperty("--satellite-backdrop");
+      }else{
+        satelliteStage.style.setProperty(
+          "--satellite-backdrop",
+          `url("${t>=.5?toVisual.backdrop:fromVisual.backdrop}")`
+        );
+      }
 
       satelliteImage.hidden=true;
       satelliteCanvas.hidden=false;
@@ -4539,7 +4617,9 @@
         frame?.geoUrl||
         result.url;
 
-      if(updateBackdrop){
+      if(context.sector.nativeLocalized&&context.product.prepared){
+        satelliteStage.style.removeProperty("--satellite-backdrop");
+      }else if(updateBackdrop){
         satelliteStage.style.setProperty(
           "--satellite-backdrop",
           `url("${backdrop}")`
@@ -4870,6 +4950,14 @@
 
             satelliteLoading.textContent=
               "Satellite frame temporarily unavailable";
+            if(satContext?.sector.nativeLocalized&&satContext.product.prepared){
+              viewerStatus.textContent="Satellite unavailable";
+              viewerNote.textContent="High-resolution Localized imagery could not be loaded. Retry or choose another sector.";
+              satelliteStage.classList.add("sat-update-unavailable");
+              satPlay.disabled=satPrev.disabled=satNext.disabled=satTimeline.disabled=true;
+              satLocalizedAvailability.set(`${satContext.platform}|${satContext.sector.id}`,"Unavailable");
+              renderSectorSidebar();
+            }
 
             satelliteLoading.classList.add(
               "show"
@@ -5330,10 +5418,19 @@
       const generation=++satWarmGeneration;
 
       satRenderToken++;
+      const dedicatedLocalized=selectedSector.nativeLocalized&&satProductSpec().prepared;
+      const retainLocalizedCache=dedicatedLocalized&&satContext?.sector.id===selectedSector.id&&
+        satContext.platform===satPlatform&&satContext.product===satProductSpec();
       satContext=createSatelliteContext();
       satAvailableFrames=[];
       satFrames=[];
       satFrameIndex=0;
+      if(dedicatedLocalized){
+        if(!retainLocalizedCache)satFrameImages.clear();
+        satelliteImage.hidden=true;satelliteCanvas.hidden=true;
+        satelliteStage.style.removeProperty("--satellite-backdrop");
+        clearSatelliteBoundaries();
+      }
 
       // Keep decoded immutable frames so a five-minute refresh normally
       // downloads only the single newest frame instead of all 25 again.
@@ -5372,12 +5469,21 @@
 
       if(!ready){
         satLastWindowKey="";
+        satelliteStage.classList.add("sat-update-unavailable");
+        satPlay.disabled=satPrev.disabled=satNext.disabled=satTimeline.disabled=true;
         viewerStatus.textContent=
           "Satellite unavailable";
         satelliteLoading.textContent=
-          "No valid satellite imagery found in the current window";
+          satContext.unavailableReason||"No valid satellite imagery found in the current window";
+        viewerNote.textContent=satContext.unavailableReason||"Retry or select another satellite sector.";
         return;
       }
+
+      if(selectedSector.nativeLocalized&&satProduct==="TrueColor"){
+        satLocalizedAvailability.set(`${satPlatform}|${selectedSector.id}`,"Available");
+        renderSectorSidebar();
+      }
+      satelliteStage.classList.remove("sat-update-unavailable");
 
       satLastWindowKey=windowKey;
 

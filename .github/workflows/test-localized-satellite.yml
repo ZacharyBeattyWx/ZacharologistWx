@@ -1,0 +1,45 @@
+name: Test native Localized satellite
+
+on:
+  pull_request:
+    paths:
+      - weather-viewer.html
+      - aws/satellite-truecolor-publisher/**
+      - tests/verify-localized-*.cjs
+      - .github/workflows/test-localized-satellite.yml
+  push:
+    branches: [main]
+    paths:
+      - weather-viewer.html
+      - aws/satellite-truecolor-publisher/**
+      - tests/verify-localized-*.cjs
+      - .github/workflows/test-localized-satellite.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  satellite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: python -m pip install -r aws/satellite-truecolor-publisher/requirements.txt
+      - run: python -m unittest discover -s aws/satellite-truecolor-publisher -p 'test_*.py'
+      - run: python test_ir_palette.py
+      - run: node tests/verify-localized-satellite.cjs
+      - run: node tests/verify-mobile-satellite.cjs
+      - run: node verify-satellite-end-pause.cjs
+      - run: node verify-satellite-speed.cjs
+      - run: bash -n aws/satellite-truecolor-publisher/deploy-localized-cloudshell.sh
+      - run: npm install --no-save --package-lock=false playwright
+      - run: npx playwright install --with-deps chromium
+      - run: node tests/verify-localized-browser.cjs
+        env:
+          TEST_BROWSER_CHANNEL: chromium
