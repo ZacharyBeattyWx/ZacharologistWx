@@ -162,7 +162,12 @@
       setText('#newsTickerDetail',current?.description || `${snapshot.days.length} forecast days`);
       setText('#newsTickerWind',num(current?.wind)===null?snapshot.stats.find(s=>/wind|gust/i.test(s.label))?.value || 'Local forecast':`${rounded(current.wind)} mph`);
       // Do not write estimated weather into the existing observation cache.
-      if(observed){ safeWrite('zach_live_conditions_cache',{...location,tempText:deg(observed.temp),conditionText:observed.description,windText:observed.wind===null?null:`${rounded(observed.wind)} mph`,dewpointText:deg(observed.dew),humidityText:observed.humidity===null?null:`${rounded(observed.humidity)}%`,pressureText:observed.pressure===null?null:`${observed.pressure.toFixed(2)} in`,updatedAt:observed.timestamp}); }
+      if(observed){
+        const cachedObservation=safeRead('zach_live_conditions_cache');
+        const observationCache={...location,tempText:deg(observed.temp),conditionText:observed.description,windText:observed.wind===null?null:`${rounded(observed.wind)} mph`,dewpointText:deg(observed.dew),humidityText:observed.humidity===null?null:`${rounded(observed.humidity)}%`,pressureText:observed.pressure===null?null:`${observed.pressure.toFixed(2)} in`,updatedAt:observed.timestamp};
+        safeWrite('zach_live_conditions_cache',observationCache);
+        if(!sameLocation(cachedObservation,location) || cachedObservation?.updatedAt!==observed.timestamp)win.dispatchEvent(new win.CustomEvent('zacharologist-live-conditions-updated',{detail:observationCache}));
+      }
       setText('#newsStatsCoverage',snapshot.note);
     }
     async function json(url,signal){ const response=await win.fetch(url,{signal,headers:{Accept:'application/geo+json, application/json'}});if(!response.ok)throw new Error(`Weather feed: ${response.status}`);return response.json(); }
