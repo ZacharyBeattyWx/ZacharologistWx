@@ -19,6 +19,7 @@
 
     const isRadarAlertsSection =
       currentPageLower === "live-alerts.html" &&
+      !nav.querySelector('a[href="live-alerts.html"]') &&
       linkPageLower === "level2-mobile-radar.html";
 
     const isActive =
