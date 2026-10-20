@@ -101,11 +101,18 @@
     }
     return "";
   }
+  function channelFor(rawUrl) {
+    const host = new URL(rawUrl).hostname.toLowerCase().replace(/^www\./, "");
+    if (/(^|\.)twitch\.tv$/.test(host)) return {key:"twitch",name:"Twitch"};
+    if (/(^|\.)(youtube\.com|youtube-nocookie\.com)$/.test(host) || host === "youtu.be") return {key:"youtube",name:"YouTube"};
+    if (/(^|\.)facebook\.com$/.test(host) || host === "fb.watch") return {key:"facebook",name:"Facebook"};
+    return {key:"other",name:"stream channel"};
+  }
   /* DOM wiring starts here. Pure formatting above is also checked without a browser. */
   const byId = id => document.getElementById(id);
   const root = byId("chaseDashboard");
   if (!root) return;
-  let busy = false, lastData = null, expiryTimer = null;
+  let busy = false, lastData = null, expiryTimer = null, lastBroadcastMode = null;
   const setText = (id, value) => { if (byId(id).textContent !== value) byId(id).textContent = value; };
   const setAll = (attribute, value) => {
     document.querySelectorAll("[" + attribute + "]").forEach(el => { el.textContent = value; });
@@ -179,12 +186,23 @@
     setText("playerMessage", view.streamLive ? "Coverage is underway. Open the stream link below to watch on the broadcast channel." :
       "The stream is offline. Follow the mission briefing for the next deployment and live coverage.");
     setText("playerStatus", view.streamStatus.toUpperCase());
+    const channel = channelFor(view.streamUrl);
     byId("primaryStreamLink").href = view.streamUrl;
-    setText("primaryStreamLink", view.streamLive ? "Open live stream ↗" : "Open stream channel ↗");
+    byId("primaryStreamLink").dataset.channel = channel.key;
+    setText("primaryStreamLink", (view.streamLive ? "Watch " : "") + channel.name + " ↗");
     setText("briefingUpdated", view.lastUpdated === null ? "Briefing timestamp not posted" : "Updated " + formatIssued(view.lastUpdated));
     setText("missionIssued", view.lastUpdated === null ? "Follows the next published update" : formatIssued(view.lastUpdated));
     root.dataset.mission = view.tone;
-    root.dataset.broadcast = view.streamLive ? "live" : "offline";
+    const broadcastMode = view.streamLive ? "live" : "offline";
+    root.dataset.broadcast = broadcastMode;
+    root.dataset.tracking = view.canTrack ? "shared" : "paused";
+    byId("chasePlayer").hidden = !view.streamLive;
+    setText("liveTitle", view.streamLive ? "Live coverage" : "Broadcast channels");
+    if (broadcastMode !== lastBroadcastMode) {
+      byId("forecastDetails").open = view.streamLive;
+      byId("operations").open = view.streamLive;
+      lastBroadcastMode = broadcastMode;
+    }
   }
   function setConnection(state, label) {
     byId("chaseConnection").dataset.state = state; setText("chaseConnection", label);
