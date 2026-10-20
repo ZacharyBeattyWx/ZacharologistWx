@@ -281,6 +281,7 @@
     function setupAlerts(){
       const categories=ALERT_CATEGORIES;let selected='all',failed=false,expanded=false;
       const list=$('#alertsList'),tabs=$('.alerts-card .alert-tabs');
+      const mobileAlerts=win.matchMedia('(max-width:768px)');
       win.getFilteredAlertsForCategory=category=>filteredAlerts(win.__ZACH_HOMEPAGE_ALERTS__ || [],category);
       tabs.innerHTML=categories.map(([key,label])=>`<button type="button" data-category="${key}" aria-pressed="${key==='all'}">${label}<span data-news-panel-count="${key}">…</span></button>`).join('');
       $('#newsAlertScore').innerHTML=`<a class="news-alert-label" href="live-alerts.html">Active alerts ↗</a><span class="news-alert-scope">Monitoring area</span>${categories.filter(([key])=>key!=='all').map(([key,label])=>`<button type="button" data-news-category="${key}">${label} <strong data-news-alert="${key}">…</strong></button>`).join('')}`;
@@ -297,7 +298,7 @@
         status.textContent=ready?`${all.length} active products across the monitoring area • ${failed?'Saved snapshot':'Updated'} ${time} • not limited to your selected city`:'NWS monitoring area • checking current products';
         if(!ready){list.innerHTML=`<div class="news-alert-empty"><strong>${failed?'Continue with live monitoring':'Checking the monitoring area'}</strong><p>${failed?'The feed is reconnecting. Open the alert explorer or national alert map for the latest products.':'Warnings, watches and advisories will appear here as the feed arrives.'}</p><a href="live-alerts.html">Open alert explorer ↗</a></div>`;return;}
         if(!selectedAlerts.length){list.innerHTML=`<div class="news-alert-empty"><strong>No active ${selected==='all'?'':categories.find(([k])=>k===selected)[1].toLowerCase()+' '}products</strong><p>No matching products in the latest monitoring-area snapshot.</p><a href="live-alerts.html">Open all monitored alerts ↗</a></div>`;return;}
-        const limit=win.matchMedia('(max-width:768px)').matches&&!expanded?6:24;
+        const limit=mobileAlerts.matches&&!expanded?6:24;
         list.innerHTML=selectedAlerts.slice(0,limit).map(alert=>{
           const p=alert.properties;
           const color=typeof win.getAlertColor==='function'?win.getAlertColor(p.event):'#8bd9ef';
@@ -308,6 +309,7 @@
         }).join('')+(selectedAlerts.length>limit&&limit===6?`<button type="button" class="news-expand-alerts" aria-expanded="false">Show more alerts (${selectedAlerts.length-6}) ↓</button>`:'')+(selectedAlerts.length>24&&limit===24?`<a class="news-more-alerts" href="live-alerts.html">View all ${selectedAlerts.length} matching products ↗</a>`:'');
       }
       list.addEventListener('click',event=>{if(event.target.closest('.news-expand-alerts')){expanded=true;draw();}});
+      mobileAlerts.addEventListener('change',()=>{expanded=false;draw();});
       win.renderCategory=()=>draw();
       tabs.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{selected=b.dataset.category;expanded=false;draw();}));
       $('#newsAlertScore').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{selected=b.dataset.newsCategory;expanded=false;draw();$('.alerts-card').scrollIntoView({behavior:'smooth',block:'start'});}));
