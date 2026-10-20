@@ -101,7 +101,7 @@ body.newsroom-alerts :is(.mobile-filter-toggle,.control-button,.mobile-location-
 
 /* Extend the approved newsroom design to Reports and Chase; preserve map, chart and status colors. */
 body.newsroom-reports .reports-shell {width:calc(100% - 48px);max-width:1600px;margin-inline:auto;padding:28px 0 48px;}
-body.newsroom-reports .reports-hero {padding:0 0 24px;margin-bottom:20px;border-bottom:1px solid #364149;}
+body.newsroom-reports .reports-hero {padding:clamp(22px,2.3vw,36px);margin-bottom:20px;border-bottom:1px solid #364149;}
 body.newsroom-reports .reports-hero-copy {max-width:850px;color:#aab7bf;font-size:15px;line-height:1.6;}
 body.newsroom-reports .hero-source {border:1px solid #364149;border-top:3px solid #ff6a2c;border-radius:0;background:#13191c;box-shadow:none;}
 body.newsroom-reports :is(.control-deck,.status-strip,.workspace,.summary-card,.stats-card,.chart-card,.native-trend-card,.official-spc-exact-card) {border-radius:0!important;background:#13191c!important;border-color:#364149;box-shadow:none!important;backdrop-filter:none;}
