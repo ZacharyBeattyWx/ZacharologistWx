@@ -44,11 +44,14 @@
     const shared = gps.mapDisplay === true;
     const canTrack = shared && gps.isStale !== true && lat !== null && lon !== null &&
       Number.isFinite(age) && age >= -30000 && age < GPS_MAX_AGE;
-    const location = locationLabel(data.currentLocation) ||
+    const publishedLocation = locationLabel(data.currentLocation) ||
       (canTrack ? "Near " + lat.toFixed(2) + ", " + lon.toFixed(2) :
         tone === "active" ? "Location not shared" : "Not actively chasing");
     const streamStatus = meaningful(data.streamStatus, data.isLive === true ? "Live" : "Offline");
     const streamLive = /^(?:live|online|streaming|active)$/i.test(streamStatus);
+    // Offline location requires the existing explicit GPS Map Display choice and a fresh fix.
+    const showLocation = streamLive || canTrack;
+    const location = showLocation ? publishedLocation : "";
     const hazardValues = Array.isArray(data.hazards) ? data.hazards :
       typeof data.hazards === "string" ? data.hazards.split(/\s*(?:,|;|\||\band\b)\s*/i) : [];
     const hazards = [...new Set(hazardValues.map(v => meaningful(v)).filter(Boolean))];
@@ -58,7 +61,7 @@
       chaseLat: String(lat), chaseLon: String(lon), chaseZoom: "9", from: "chase-dashboard"
     }).toString() : "";
     return {
-      status, tone, canTrack, shared, gpsTimestamp, mapUrl, location,
+      status, tone, canTrack, shared, gpsTimestamp, mapUrl, location, showLocation,
       target: meaningful(data.targetArea, "No target selected"),
       headline: meaningful(data.headline, tone === "active" ? "Chase operations underway" : "Watching the next opportunity"),
       discussion: meaningful(data.discussion, "Follow this desk for the next published target discussion and deployment update."),
@@ -134,6 +137,8 @@
     setAll("data-chase-status", view.status);
     setAll("data-chase-hero-target", view.target);
     setAll("data-chase-location", view.location);
+    document.querySelectorAll("[data-location-only]").forEach(el => { el.hidden = !view.showLocation; });
+    root.dataset.location = view.showLocation ? "visible" : "hidden";
     setAll("data-chase-next-update", view.nextUpdate);
     setAll("data-chase-vehicle-status", view.vehicle);
     setAll("data-chase-vehicle-detail", view.vehicleDetail);

@@ -8,8 +8,8 @@
   <link rel="icon" type="image/jpeg" href="/hero.jpg">
   <link rel="stylesheet" href="assets/interior-header.css">
   <link rel="stylesheet" href="assets/interior-newsroom.css?v=20261020d">
-  <link rel="stylesheet" href="assets/chase-newsroom.css?v=20261020r2">
-  <script src="scripts/chase-newsroom.js?v=20261020r2" defer></script>
+  <link rel="stylesheet" href="assets/chase-newsroom.css?v=20261020r3">
+  <script src="scripts/chase-newsroom.js?v=20261020r3" defer></script>
 </head>
 <body class="newsroom-interior newsroom-chase-live">
   <header class="site-header" data-interior-site-header>
@@ -28,7 +28,7 @@
     </nav>
   </header>
 
-  <main class="chase-page" id="chaseDashboard" data-broadcast="offline" data-tracking="paused" aria-busy="true">
+  <main class="chase-page" id="chaseDashboard" data-broadcast="offline" data-tracking="paused" data-location="hidden" aria-busy="true">
     <div class="chase-page-title">
       <div><p class="chase-kicker">Zacharologist / On the ground</p><h1>Chase Dashboard</h1></div>
       <div class="chase-feed-tools">
@@ -40,7 +40,7 @@
     <section class="chase-scoreboard" aria-label="Current operation at a glance">
       <div class="chase-score"><span>Mission status</span><strong data-chase-status>Checking status</strong><small data-chase-next-update>Next update follows the briefing</small></div>
       <div class="chase-score"><span>Target area</span><strong data-chase-hero-target>Checking target</strong><small>Published chase target</small></div>
-      <div class="chase-score"><span>Current position</span><strong data-chase-location>Checking location</strong><small id="positionSource">Shared location from the chase desk</small></div>
+      <div class="chase-score" data-location-only hidden><span>Current position</span><strong data-chase-location>Checking location</strong><small id="positionSource">Shared location from the chase desk</small></div>
       <div class="chase-score"><span>Vehicle</span><strong data-chase-vehicle-status>Checking status</strong><small data-chase-vehicle-detail>Vehicle report follows the briefing</small></div>
       <div class="chase-score"><span>Broadcast</span><strong data-chase-stream-status>Checking stream</strong><small>Live coverage and channel access below</small></div>
     </section>
@@ -85,7 +85,7 @@
       </section>
     </div>
 
-    <section class="chase-location-strip" aria-labelledby="locationTitle">
+    <section class="chase-location-strip" data-location-only hidden aria-labelledby="locationTitle">
       <div class="chase-location-mark" aria-hidden="true">&#8982;</div>
       <div class="chase-location-copy"><p class="chase-kicker" id="locationTitle">Track the chase</p><strong id="trackLocation">Location follows the mission briefing</strong><p id="trackingNote">The map link appears when a fresh, shared GPS position is available.</p></div>
       <a class="chase-button chase-button-primary" id="trackChase" target="_blank" rel="noopener noreferrer" hidden>Track Zach on the map &#8599;</a>
@@ -101,7 +101,7 @@
           <div class="chase-panel-head"><h3>Mission details</h3><span class="chase-panel-number">01</span></div>
           <dl class="chase-detail-list">
             <div><dt>Target area</dt><dd data-chase-hero-target>Checking target</dd></div>
-            <div><dt>Current position</dt><dd data-chase-location>Checking location</dd></div>
+            <div data-location-only hidden><dt>Current position</dt><dd data-chase-location>Checking location</dd></div>
             <div><dt>Next update</dt><dd data-chase-next-update>Follows the briefing</dd></div>
             <div><dt>Vehicle report</dt><dd data-chase-vehicle-detail>Checking vehicle</dd></div>
             <div><dt>Briefing issued</dt><dd id="missionIssued">Checking briefing</dd></div>
