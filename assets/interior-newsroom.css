@@ -1,0 +1,100 @@
+/* Editorial design for the three weather desks only. Map pixels and hazard colors stay native. */
+body.newsroom-interior {
+  --news-bg:#101416;--news-panel:#13191c;--news-line:#364149;--news-accent:#ff6a2c;--news-cold:#8bd9ef;
+  --page:#101416;--page-2:#101416;--bg:#101416;--bg-deep:#101416;
+  --surface:#13191c;--surface-2:#202a30;--surface-3:#253139;
+  --panel:#13191c;--panel-soft:#1b2429;--panel-strong:#202a30;
+  --border:#364149;--border-soft:#364149;--line:#364149;--line-strong:#52616a;
+  --text:#f3f1eb;--muted:#aab7bf;--muted-2:#aab7bf;--accent:#ff6a2c;--accent-2:#ff976a;
+  --accent-soft:rgba(255,106,44,.12);--radius:0px;--shadow:none;--max-width:1600px;
+  background:#101416!important;color:#f3f1eb;font-family:Arial,Helvetica,sans-serif;
+}
+body.newsroom-interior :focus-visible {outline:2px solid var(--news-cold);outline-offset:4px;}
+body.newsroom-interior .site-header[data-interior-site-header] {
+  width:calc(100% - 48px)!important;max-width:1600px!important;height:auto!important;min-height:94px!important;
+  margin:0 auto!important;padding:20px 0 16px!important;background:#101416!important;
+  border-bottom:1px solid #364149!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+  position:relative!important;top:auto!important;z-index:50!important;flex-wrap:wrap!important;
+}
+body.newsroom-interior .site-header .site-brand {line-height:1!important;justify-content:flex-start!important;}
+.newsroom-wordmark {display:block;font-family:Impact,'Arial Narrow',sans-serif;font-size:clamp(28px,3.1vw,47px);font-weight:400;white-space:nowrap;letter-spacing:.01em;}
+.newsroom-wordmark b {display:inline-block;margin-left:6px;padding:3px 7px;color:#101416;background:#ff6a2c;font-weight:400;}
+.newsroom-tagline {display:block;margin-top:7px;color:#d8dfe3;font-size:10px;line-height:1.2;letter-spacing:.26em;}
+body.newsroom-interior .site-header .site-nav {gap:2px!important;flex-wrap:wrap!important;}
+body.newsroom-interior .site-header .site-nav a {border-radius:0!important;font-family:Arial,Helvetica,sans-serif!important;font-size:11px!important;padding:10px 8px!important;min-height:44px!important;border:0!important;border-bottom:2px solid transparent!important;}
+body.newsroom-interior .site-header .site-nav a:hover {background:#242c30!important;border-bottom-color:#ff6a2c!important;}
+body.newsroom-interior .site-header .site-nav a[aria-current="page"],body.newsroom-interior .site-header .site-nav a.active {color:#ff6a2c!important;background:transparent!important;border-bottom-color:#ff6a2c!important;}
+body.newsroom-interior .page-shell,body.newsroom-interior main.page,body.newsroom-climate main,body.newsroom-climate > header:not(.site-header) .header-inner {width:calc(100% - 48px);max-width:1600px;margin-inline:auto;}
+body.newsroom-interior h1 {font-family:Impact,'Arial Narrow',sans-serif;font-weight:400;font-size:clamp(38px,4.3vw,66px);line-height:1.04;letter-spacing:0;text-transform:uppercase;}
+body.newsroom-interior h2 {font-family:Impact,'Arial Narrow',sans-serif;font-weight:400;font-size:clamp(25px,2.2vw,33px);line-height:1.15;letter-spacing:.02em;text-transform:uppercase;}
+body.newsroom-interior .eyebrow,body.newsroom-interior .section-kicker,body.newsroom-interior .climate-image-kicker {color:#ff6a2c;font-size:11px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;}
+body.newsroom-interior .hero {padding:28px 0 24px;border-bottom:1px solid #364149;margin-bottom:20px;}
+body.newsroom-interior .hero-copy,body.newsroom-interior .header-copy {color:#aab7bf;max-width:850px;font-size:15px;line-height:1.6;}
+body.newsroom-interior .dashboard-section,body.newsroom-climate .section {border:1px solid #364149;border-top:3px solid #ff6a2c;border-radius:0;background:#13191c;box-shadow:none;padding:20px;margin-bottom:20px;}
+body.newsroom-interior .section-heading,body.newsroom-climate .section-head {display:flex;flex-wrap:wrap;justify-content:center;align-items:center;border-bottom:1px solid #364149;padding-bottom:16px;margin-bottom:18px;text-align:center;}
+body.newsroom-interior .section-heading p,body.newsroom-climate .section-description {color:#aab7bf;max-width:950px;line-height:1.6;font-size:14px;}
+body.newsroom-interior .section-source,body.newsroom-climate .section-head .source-link {position:static;max-width:100%;}
+body.newsroom-interior .section-nav-wrap {top:0!important;margin:0 0 20px;padding:8px 0;background:#101416;border-block:1px solid #364149;backdrop-filter:none;}
+body.newsroom-interior .section-nav a,body.newsroom-interior .newsroom-jump a {display:inline-flex;align-items:center;justify-content:center;min-height:44px;border-radius:0;border:1px solid #364149;background:#202a30;color:#f3f1eb;padding:9px 13px;text-decoration:none;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;}
+body.newsroom-interior .section-nav a:hover,body.newsroom-interior .newsroom-jump a:hover {color:#ff6a2c;border-color:#ff6a2c;}
+body.newsroom-interior .newsroom-jump {display:flex;gap:8px;overflow-x:auto;padding:0 0 18px;margin:0;}
+body.newsroom-interior .dashboard-section {scroll-margin-top:90px;}
+body.newsroom-interior :is(.map-card,.spc-live-card,.wx-gallery-card,.quick-card,.native-model-shell,.model-family-card,.model-workstation,.period-card,.outlook-card,.climate-image-card,.climate-link-card,.signal-card,.meta-tile) {border-radius:0;background:#101719;border-color:#364149;box-shadow:none;}
+body.newsroom-interior :is(.map-card-body,.spc-card-head,.wx-gallery-card-body,.period-head,.outlook-head) {background:#182126;}
+body.newsroom-interior :is(.tile-group-title,.wx-gallery-title,.outlook-comparison-title,.climate-image-title) {text-transform:uppercase;letter-spacing:.04em;}
+body.newsroom-interior :is(.action-btn,.card-btn,.wx-gallery-action,.model-launch-btn,.model-chip,.model-play-buttons button,.source-link,.refresh-button,.region-button,.briefing-issued-timestamp,.source-tag,.status-pill) {border-radius:0;box-shadow:none;}
+body.newsroom-interior :is(.action-btn,.card-btn,.wx-gallery-action,.refresh-button,.source-link,.model-chip,.model-launch-btn) {min-height:44px;}
+body.newsroom-interior .card-btn.primary {color:#ff6a2c;border-color:#ff6a2c;background:transparent;}
+body.newsroom-climate > header:not(.site-header) {background:transparent;border-bottom:1px solid #364149;}
+body.newsroom-climate > header:not(.site-header)::after {display:none;}
+body.newsroom-climate > header:not(.site-header) .header-inner {padding:28px 0 24px;}
+body.newsroom-climate .status-bar {background:#13191c;border-radius:0;}
+body.newsroom-climate .source-link {color:#ff976a;background:transparent;border-color:#52616a;}
+body.newsroom-climate .back-link {font-size:11px;text-transform:uppercase;color:#aab7bf;}
+body.newsroom-climate .period-title {font-size:24px;font-family:Impact,'Arial Narrow',sans-serif;font-weight:400;}
+body.newsroom-climate .discussion-label {color:#8bd9ef;}
+body.newsroom-climate .outlook-comparison-row,body.newsroom-climate .climate-image-section {border-radius:0;background:transparent;}
+body.newsroom-alerts main.page {padding-top:0;}
+body.newsroom-alerts .hero {gap:24px;}
+body.newsroom-alerts .hero-card {padding:0;border:0;background:transparent;box-shadow:none;backdrop-filter:none;}
+body.newsroom-alerts .hero-card::before {display:none;}
+body.newsroom-alerts .hero-card .eyebrow {color:#ff6a2c;margin:0 0 12px;font-size:11px;}
+body.newsroom-alerts :is(.hero-card,.status-card,.controls,.alerts-panel,.filter-stack,.metric,.connection,.alert-detail-panel,.search,.select,.control-button,.mobile-filter-toggle,.mobile-location-input,.mobile-location-submit,.mobile-location-gps,.mobile-state-row,.mobile-state-overview,.mobile-state-selection,.mobile-location-check,.overview-category-button) {border-radius:0;box-shadow:none;}
+body.newsroom-alerts :is(.status-card,.controls,.alerts-panel,.filter-stack,.mobile-state-overview,.mobile-location-check) {background:#13191c;border-color:#364149;backdrop-filter:none;}
+body.newsroom-alerts .status-card {border-top:3px solid #ff6a2c;}
+body.newsroom-alerts .metric {background:transparent;border:0;border-right:1px solid #364149;text-align:center;}
+body.newsroom-alerts .metric:last-child {border-right:0;}
+body.newsroom-alerts .metric strong {color:#8bd9ef;font-size:36px;font-variant-numeric:tabular-nums;}
+body.newsroom-alerts .connection {background:transparent;padding:6px 0;font-size:12px;}
+body.newsroom-alerts .alerts-panel {border-top:3px solid #ff6a2c;}
+body.newsroom-alerts .filter-chip,body.newsroom-alerts .summary-pill {border-radius:0;}
+body.newsroom-alerts .alert-card {border-radius:0;box-shadow:none;}
+/* Event borders, badges, tones and warning emphasis retain their existing NWS colors. */
+body.newsroom-alerts :is(.hero-card,.status-card,.mobile-state-overview,.mobile-state-overview-head,.mobile-location-check,.overview-national-marine,.overview-national-marine-button) {background:#13191c!important;box-shadow:none!important;border-radius:0!important;}
+body.newsroom-alerts .hero-card {border:0!important;}
+body.newsroom-alerts .hero-card .eyebrow {color:#ff6a2c!important;}
+body.newsroom-alerts .status-card,body.newsroom-alerts .mobile-state-overview {border-top:3px solid #ff6a2c!important;}
+body.newsroom-alerts .mobile-state-overview-head {border-bottom:1px solid #364149;}
+body.newsroom-alerts .metric,body.newsroom-alerts .connection {background:transparent!important;}
+body.newsroom-alerts .overview-national-marine-button {border-color:#52616a!important;}
+body.newsroom-alerts .mobile-location-check {border-color:#364149!important;border-left-color:#8bd9ef!important;}
+body.newsroom-alerts :is(.mobile-filter-toggle,.control-button,.mobile-location-submit,.mobile-location-gps,.overview-national-marine-button) {min-height:44px;border-radius:0!important;}
+@media(min-width:761px) and (max-width:1150px) {
+  body.newsroom-interior .site-header .site-nav {width:100%!important;justify-content:flex-start!important;}
+}
+@media(max-width:760px) {
+  body.newsroom-interior .site-header[data-interior-site-header] {width:calc(100% - 28px)!important;min-height:78px!important;padding:16px 0!important;gap:8px!important;}
+  .newsroom-wordmark {font-size:clamp(24px,6.8vw,34px);}.newsroom-tagline {font-size:8px;letter-spacing:.21em;}
+  body.newsroom-interior .site-header .mobile-nav-toggle {width:44px!important;height:44px!important;border-radius:0!important;background:#202a30!important;border-color:#52616a!important;}
+  body.newsroom-interior .site-header .site-nav {top:78px!important;left:14px!important;right:14px!important;background:#13191c!important;border-radius:0!important;border-color:#52616a!important;max-height:calc(100dvh - 94px)!important;}
+  body.newsroom-interior .site-header .site-nav a {min-height:44px!important;}
+  body.newsroom-interior .page-shell,body.newsroom-interior main.page,body.newsroom-climate main,body.newsroom-climate > header:not(.site-header) .header-inner {width:calc(100% - 28px);}
+  body.newsroom-interior .hero {padding:22px 0 18px;gap:16px;}
+  body.newsroom-interior .hero-copy,body.newsroom-interior .header-copy {font-size:13px;}
+  body.newsroom-interior .dashboard-section,body.newsroom-climate .section {padding:14px;}
+  body.newsroom-interior .hero-actions {justify-content:flex-start;}
+  body.newsroom-climate > header:not(.site-header) .header-inner {padding:22px 0 18px;}
+  body.newsroom-alerts .status-card {padding:14px;}
+  body.newsroom-interior .section-heading h2,body.newsroom-climate .section h2 {font-size:26px;}
+}
+@media(prefers-reduced-motion:reduce) {body.newsroom-interior,html:has(body.newsroom-interior) {scroll-behavior:auto;}}
