@@ -1,0 +1,43 @@
+name: Publish Official Outlook Graphics
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - scripts/weather/cache-official-outlooks.mjs
+      - .github/workflows/publish-official-outlooks.yml
+  schedule:
+    - cron: "7,22,37,52 * * * *"
+
+concurrency:
+  group: official-outlook-graphics
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      BUCKET: zacharologistwx-weather-previews
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Fetch and validate official graphics
+        run: node scripts/weather/cache-official-outlooks.mjs --output weather-outlook-build
+      - name: Publish outlook graphics
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in weather-outlook-build/*.gif; do
+            key="$(basename "$file")"
+            npx --yes wrangler@4 r2 object put "$BUCKET/$key" --file="$file" --content-type=image/gif --cache-control="public, max-age=120, stale-while-revalidate=600" --remote
+          done
+          npx --yes wrangler@4 r2 object put "$BUCKET/outlook-manifest.json" --file=weather-outlook-build/outlook-manifest.json --content-type=application/json --cache-control="public, max-age=30, stale-while-revalidate=120" --remote
