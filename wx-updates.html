@@ -1108,18 +1108,15 @@
     }
 </style>
   <link rel="stylesheet" href="assets/interior-header.css" data-interior-header-style>
-  <script src="scripts/interior-header.js" defer data-interior-header-script></script>
+  <script src="scripts/interior-header.js?v=20261020a" defer data-interior-header-script></script>
 <style>#nationalClimateOutlookSection{scroll-margin-top:110px;}</style>
+<link rel="stylesheet" href="assets/interior-newsroom.css?v=20261020a">
 </head>
 
-<body>
+<body class="newsroom-interior newsroom-climate">
 <header class="site-header" data-interior-site-header>
   <a class="site-brand" href="index.html" aria-label="Zacharologist Wx home">
-    <img
-      class="site-brand-logo"
-      src="assets/zacharologist-wx-radar-mark.png"
-      alt="Zacharologist"
-    >
+    <span><span class="newsroom-wordmark">ZACHAROLOGIST<b>WX</b></span><span class="newsroom-tagline">BUILT FOR THE STORM</span></span>
   </a>
 
   <button
@@ -1133,9 +1130,10 @@
 
   <nav class="site-nav" id="siteNav" data-interior-site-nav aria-label="Primary navigation">
     <a href="index.html">Home</a>
-    <a href="wx-updates.html">Wx Updates</a>
+    <a href="wx-updates.html" aria-current="page">Wx Updates</a>
     <a href="maps.html">Maps &amp; Models</a>
-    <a href="level2-mobile-radar.html">Radar + Alerts</a>
+    <a href="live-alerts.html">Live Alerts</a>
+    <a href="level2-mobile-radar.html">Radar</a>
     <a href="storm-reports.html">Storm Reports</a>
     <a href="chase-dashboard.html">Storm Chasing</a>
   </nav>
@@ -1162,7 +1160,8 @@
       <button class="refresh-button" id="refreshCpcButton" type="button">Refresh</button>
     </div>
 
-    <section class="section">
+    <nav class="newsroom-jump" aria-label="Climate sections"><a href="#forecastBriefing">Forecast briefing</a><a href="#nationalClimateOutlookSection">National outlooks</a><a href="#longRangeClimateSection">Climate &amp; drought</a></nav>
+    <section class="section" id="forecastBriefing">
       <div class="section-head">
         <div>
           <p class="section-kicker">Auto-updated from NOAA CPC</p>
@@ -1185,8 +1184,6 @@
       </div>
 
 
-
-</div>
 
       <div class="briefing-grid" id="briefingGrid">
         <div class="skeleton"></div>
