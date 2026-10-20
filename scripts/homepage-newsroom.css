@@ -424,3 +424,26 @@ body.newsroom-home .forecast-dashboard {backdrop-filter:none!important;-webkit-b
  #weatherNewsroom .news-expand-alerts {width:100%;min-height:44px;padding:12px;color:var(--news-accent);background:#1a272e;border:1px solid var(--news-line);font-weight:700;}
  #weatherNewsroom .news-mobile-nav {background:#10191f;}
 }
+
+/* Align weather metrics and report totals within their own cards. */
+#weatherNewsroom .news-stat {text-align:center;}
+#weatherNewsroom .conditions-grid>div,#weatherNewsroom .conditions-grid>div:first-child {text-align:center!important;padding-inline:8px!important;}
+#weatherNewsroom .conditions-main {justify-content:center!important;}
+#weatherNewsroom #currentCondition {text-align:center!important;width:100%!important;margin-inline:0!important;}
+#weatherNewsroom #conditionsLabel {text-align:center!important;padding-inline:44px!important;}
+#weatherNewsroom .news-outlook-tabs {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));}
+#weatherNewsroom .news-outlook-tabs a {display:flex;align-items:center;justify-content:center;text-align:center;min-width:0;}
+#weatherNewsroom .news-monitor-grid .ops-reference-card--report-count {text-align:center!important;}
+#weatherNewsroom .news-monitor-grid .ops-report-count-layout,#weatherNewsroom .news-monitor-grid .ops-tornado-metric {justify-content:center!important;}
+#weatherNewsroom .news-monitor-grid .ops-report-month-total {display:grid!important;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;gap:8px!important;align-items:center!important;}
+#weatherNewsroom .news-monitor-grid .ops-report-month-total>span:first-child {grid-column:1/-1!important;text-align:center!important;white-space:normal!important;}
+#weatherNewsroom .news-monitor-grid .ops-report-month-total>strong {position:static!important;transform:none!important;grid-column:2!important;grid-row:2!important;justify-self:center!important;}
+#weatherNewsroom .news-monitor-grid .ops-report-month-arrow {position:static!important;transform:none!important;grid-column:3!important;grid-row:2!important;justify-self:end!important;}
+#weatherNewsroom .news-carousel-controls button,#weatherNewsroom .news-spc-controls>button,#weatherNewsroom .news-spc-days>button {display:inline-flex;align-items:center;justify-content:center;}
+@media(max-width:768px){
+ #weatherNewsroom .news-outlook-tabs {grid-template-columns:repeat(2,minmax(0,1fr));}
+ #weatherNewsroom .conditions-grid>div:nth-child(4n+1) {padding-inline:8px!important;}
+}
+
+#weatherNewsroom .news-monitor-grid .ops-tornado-metric {flex-direction:column!important;align-items:center!important;gap:4px!important;border:0!important;padding:0!important;width:100%!important;}
+#weatherNewsroom .news-monitor-grid .ops-reference-card--report-count .ops-reference-button {align-self:center!important;}
