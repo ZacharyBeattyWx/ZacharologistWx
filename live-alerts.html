@@ -10590,7 +10590,7 @@
       const badgesHtml = `
         <div class="badges">
           <span class="badge live">
-            Live NWWS
+            ${feature.properties._nwsDeepLinkFallback ? "Official NWS" : "Live NWWS"}
           </span>
 
           <span class="badge expires ${expiryClass}">
@@ -11325,20 +11325,11 @@
     }
 
     function canonicalAlertVtec(value) {
-      const text =
-        String(value || "")
-          .trim()
-          .toUpperCase();
-
-      if (!text) {
-        return "";
-      }
-
-      const match = text.match(
-        /[A-Z]\.[A-Z]{3}\.[A-Z]{4}\.[A-Z]{2}\.[A-Z]\.\d{4}/
-      );
-
-      return match ? match[0] : "";
+      const text = String(value || "").trim().toUpperCase();
+      const fastLane = text.match(/^NWWS:([A-Z]{4}):([A-Z]{2}\.[A-Z]):(\d{4})$/);
+      if (fastLane) return fastLane[1] + "." + fastLane[2] + "." + fastLane[3];
+      const standard = text.match(/[A-Z]\.[A-Z]{3}\.([A-Z]{4}\.[A-Z]{2}\.[A-Z]\.\d{4})/);
+      return standard ? standard[1] : "";
     }
 
     function alertDeepLinkFeature() {
@@ -11794,33 +11785,73 @@
       }, 120);
     }
 
-    async function loadCurrentAlerts() {
-      const response = await fetch(LIVE_ALERTS_CURRENT_URL, {
-        cache: "no-store",
-        headers: {
-          "Accept": "application/geo+json, application/json"
-        }
-      });
+    let requestedAlertFallbackFeatures = [];
+    let requestedAlertFallbackAttempted = false;
 
-      if (!response.ok) {
-        throw new Error(`Live alerts HTTP ${response.status}`);
+    async function loadRequestedAlertFromNws() {
+      if (alertDeepLinkHandled || requestedAlertFallbackAttempted ||
+          (!requestedAlertId && !requestedAlertEvent)) return;
+      requestedAlertFallbackAttempted = true;
+      let lookupFailed = false;
+      try {
+        const capId = requestedAlertId.replace(/^https:\/\/api\.weather\.gov\/alerts\//i, "");
+        const url = /^urn:oid:/i.test(capId)
+          ? new URL("https://api.weather.gov/alerts/" + encodeURIComponent(capId))
+          : new URL("https://api.weather.gov/alerts/active");
+        if (!/^urn:oid:/i.test(capId) && requestedAlertEvent) url.searchParams.set("event", requestedAlertEvent);
+        const response = await fetch(url, {
+          cache: "no-store",
+          signal: AbortSignal.timeout(10000),
+          headers: { Accept: "application/geo+json, application/json" }
+        });
+        if (!response.ok) throw new Error("NWS bulletin HTTP " + response.status);
+        const payload = await response.json();
+        const candidates = (payload.type === "Feature" ? [payload] : payload.features || [])
+          .map(normalizeFeature).filter(Boolean).filter(feature => !isExpired(feature))
+          .map(feature => ({ ...feature, properties: { ...feature.properties, _nwsDeepLinkFallback: true } }));
+        const existing = liveFeatures;
+        liveFeatures = [...existing, ...candidates];
+        const requested = alertDeepLinkFeature();
+        requestedAlertFallbackFeatures = requested ? [requested] : [];
+        liveFeatures = [...existing.filter(feature => feature.id !== requested?.id), ...requestedAlertFallbackFeatures];
+        if (requested && applyAlertDeepLink()) return;
+      } catch (error) {
+        lookupFailed = true;
       }
+      render();
+      if (!alertDeepLinkHandled) {
+        document.body.classList.add('detail-open');
+        alertDetailPanel.innerHTML = '<div class="empty-state"><button type="button" class="detail-close" data-close-detail aria-label="Back to alerts">×</button><h3>' +
+          (lookupFailed ? 'The bulletin lookup is reconnecting' : 'The requested alert may have changed or ended') +
+          '</h3><p>Choose a current alert from the list, or <a href="https://www.weather.gov/">check the official NWS forecast</a>.</p></div>';
+      }
+    }
 
-      const collection = await response.json();
-      const features = Array.isArray(collection?.features) ? collection.features : [];
-
-      lastSequence = Number(collection?.sequence || lastSequence || 0);
-      lastUpdatedEl.textContent = collection?.generatedAt
-        ? new Date(collection.generatedAt).toLocaleString()
-        : new Date().toLocaleString();
-
-      liveFeatures = features
-        .map(normalizeFeature)
-        .filter(Boolean)
-        .filter((feature) => !isExpired(feature));
-
+    async function loadCurrentAlerts() {
+      let features = [];
+      try {
+        const response = await fetch(LIVE_ALERTS_CURRENT_URL, {
+          cache: "no-store",
+          headers: { Accept: "application/geo+json, application/json" }
+        });
+        if (!response.ok) throw new Error(`Live alerts HTTP ${response.status}`);
+        const collection = await response.json();
+        features = Array.isArray(collection?.features) ? collection.features : [];
+        lastSequence = Number(collection?.sequence || lastSequence || 0);
+        lastUpdatedEl.textContent = collection?.generatedAt
+          ? new Date(collection.generatedAt).toLocaleString()
+          : new Date().toLocaleString();
+      } catch (error) {
+        if (!requestedAlertId && !requestedAlertEvent) throw error;
+      }
+      const merged = new Map();
+      [...features, ...requestedAlertFallbackFeatures].map(normalizeFeature)
+        .filter(Boolean).filter(feature => !isExpired(feature))
+        .forEach(feature => merged.set(feature.id, feature));
+      liveFeatures = [...merged.values()];
       if (!applyAlertDeepLink()) {
         render();
+        await loadRequestedAlertFromNws();
       }
     }
 
