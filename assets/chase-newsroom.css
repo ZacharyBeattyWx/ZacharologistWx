@@ -225,3 +225,11 @@ body.newsroom-chase-live .chase-operations-toggle h2 {display:inline;font-size:2
   body.newsroom-chase-live .chase-operations-toggle h2 {font-size:24px;}
   .chase-operations-content {padding:0 14px 14px;}
 }
+
+/* Remove the offline location slot entirely unless fresh GPS sharing is explicitly enabled. */
+.chase-page[data-broadcast="offline"][data-location="hidden"] .chase-scoreboard {grid-template-columns:1fr 1.2fr;}
+.chase-page[data-broadcast="offline"][data-location="hidden"] .chase-score:nth-child(2) {border-right:0;}
+@media(max-width:760px) {
+  .chase-page[data-broadcast="offline"][data-location="hidden"] .chase-scoreboard {grid-template-columns:minmax(0,1fr);}
+  .chase-page[data-broadcast="offline"][data-location="hidden"] .chase-score:nth-child(2) {grid-column:1/-1;}
+}
