@@ -1,4 +1,4 @@
-/* Editorial design for the three weather desks only. Map pixels and hazard colors stay native. */
+/* Editorial design for the weather desks only. Map pixels and hazard colors stay native. */
 body.newsroom-interior {
   --news-bg:#101416;--news-panel:#13191c;--news-line:#364149;--news-accent:#ff6a2c;--news-cold:#8bd9ef;
   --page:#101416;--page-2:#101416;--bg:#101416;--bg-deep:#101416;
@@ -98,3 +98,71 @@ body.newsroom-alerts :is(.mobile-filter-toggle,.control-button,.mobile-location-
   body.newsroom-interior .section-heading h2,body.newsroom-climate .section h2 {font-size:26px;}
 }
 @media(prefers-reduced-motion:reduce) {body.newsroom-interior,html:has(body.newsroom-interior) {scroll-behavior:auto;}}
+
+/* Extend the approved newsroom design to Reports and Chase; preserve map, chart and status colors. */
+body.newsroom-reports .reports-shell {width:calc(100% - 48px);max-width:1600px;margin-inline:auto;padding:28px 0 48px;}
+body.newsroom-reports .reports-hero {padding:0 0 24px;margin-bottom:20px;border-bottom:1px solid #364149;}
+body.newsroom-reports .reports-hero-copy {max-width:850px;color:#aab7bf;font-size:15px;line-height:1.6;}
+body.newsroom-reports .hero-source {border:1px solid #364149;border-top:3px solid #ff6a2c;border-radius:0;background:#13191c;box-shadow:none;}
+body.newsroom-reports :is(.control-deck,.status-strip,.workspace,.summary-card,.stats-card,.chart-card,.native-trend-card,.official-spc-exact-card) {border-radius:0!important;background:#13191c!important;border-color:#364149;box-shadow:none!important;backdrop-filter:none;}
+body.newsroom-reports .control-deck {border-top:3px solid #ff6a2c;}
+body.newsroom-reports .workspace {border-top:3px solid #ff6a2c;}
+body.newsroom-reports .workspace-header {background:#182126;border-bottom:1px solid #364149;}
+body.newsroom-reports :is(.hero-source strong,.select-control>span,.control-label) {font-size:11px;letter-spacing:.08em;text-transform:uppercase;}
+body.newsroom-reports .summary-card {display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-width:0;}
+body.newsroom-reports .summary-card strong {color:#8bd9ef;font-family:'Arial Narrow',Arial,sans-serif;font-size:clamp(28px,3vw,42px);font-variant-numeric:tabular-nums;}
+body.newsroom-reports .summary-card>span {font-size:11px;letter-spacing:.08em;text-transform:uppercase;}
+body.newsroom-reports :is(.segmented,.segmented button,.period-row button,.small-action,.select-control select,.table-tools input[type=search],.table-tools select,.spc-subtabs,.spc-subtabs button,.pagination button,.hazard-chip) {border-radius:0;box-shadow:none;}
+body.newsroom-reports :is(.segmented button,.period-row button,.small-action,.select-control select,.spc-subtabs button,.pagination button) {min-height:44px;}
+body.newsroom-reports :is(.segmented,.spc-subtabs) {background:#101719;border-color:#364149;}
+body.newsroom-reports .segmented button.active,body.newsroom-reports .spc-subtabs button.active {background:#253139;color:#ff976a;border-color:#ff6a2c;}
+body.newsroom-reports .small-action {background:#202a30;border-color:#52616a;}
+body.newsroom-reports .small-action:hover {border-color:#ff6a2c;color:#ff976a;}
+body.newsroom-reports .table-scroll {border-radius:0;border-color:#364149;}
+body.newsroom-reports th {background:#202a30;color:#d8dfe3;}
+body.newsroom-reports :is(.stats-card h3,.chart-card h3,.native-trend-header h3) {font-family:Impact,'Arial Narrow',sans-serif;font-size:24px;font-weight:400;letter-spacing:.02em;text-transform:uppercase;}
+/* The mobile toolbar sticks after the scrolling masthead, rather than leaving a 52px gap. */
+@media(max-width:760px) {
+  body.newsroom-reports.mobile-storm-reports-ready {--mobile-storm-header-height:0px;}
+  body.newsroom-reports.mobile-storm-reports-ready .reports-shell {width:calc(100% - 28px)!important;padding:14px 0 calc(32px + env(safe-area-inset-bottom))!important;}
+  body.newsroom-reports.mobile-storm-reports-ready :is(.mobile-reports-toolbar,.workspace,.summary-card,.control-deck) {border-radius:0!important;box-shadow:none!important;background:#13191c!important;}
+  body.newsroom-reports.mobile-storm-reports-ready .mobile-reports-toolbar {border-top:3px solid #ff6a2c;backdrop-filter:none;}
+  body.newsroom-reports.mobile-storm-reports-ready .mobile-reports-toolbar button {min-height:44px;border-radius:0;background:#202a30;border-color:#52616a;}
+  body.newsroom-reports.mobile-storm-reports-ready .control-deck {border-top:3px solid #ff6a2c!important;}
+  body.newsroom-reports .reports-hero-copy {font-size:13px;}
+}
+body.newsroom-chase {--orange:#ff6a2c;}
+body.newsroom-chase .page-shell {width:calc(100% - 48px);max-width:1600px;margin:0 auto;padding:24px 0 40px;}
+body.newsroom-chase .dashboard-frame {min-height:0;border:0;background:#101416;box-shadow:none;}
+body.newsroom-chase .desktop-chase-shell .hero {padding-top:40px;padding-inline:28px;border:1px solid #364149;border-top:3px solid #ff6a2c;border-radius:0;}
+body.newsroom-chase .desktop-chase-shell .hero-title {font-family:Impact,'Arial Narrow',sans-serif;font-weight:400;font-size:clamp(44px,4.3vw,66px)!important;letter-spacing:.01em!important;line-height:1.04!important;}
+body.newsroom-chase :is(.hero-kicker,.field-ops-kicker,.mobile-field-kicker,.mobile-mission-kicker) {color:#ff6a2c!important;font-size:11px;letter-spacing:.13em;text-transform:uppercase;}
+body.newsroom-chase :is(.status-card,.card,.field-ops-card,.mobile-card) {border-radius:0!important;background:#13191c!important;border-color:#364149;box-shadow:none!important;backdrop-filter:none;}
+body.newsroom-chase .status-card {min-width:0;}
+body.newsroom-chase :is(.status-label,.mission-label,.mobile-mission-label) {color:#aab7bf;font-size:10px;letter-spacing:.1em;text-transform:uppercase;}
+body.newsroom-chase :is(.card-head,.mobile-card h2) {background:#182126;border-bottom:1px solid #364149;}
+body.newsroom-chase :is(.card-title,.field-ops-title,.mobile-card h2) {font-family:Impact,'Arial Narrow',sans-serif;font-weight:400;font-size:25px;letter-spacing:.02em;text-transform:uppercase;}
+body.newsroom-chase .field-ops-board {padding:20px;border:1px solid #364149;border-top:3px solid #ff6a2c;border-radius:0;background:#13191c;box-shadow:none;}
+body.newsroom-chase .field-ops-header {border-bottom:1px solid #364149;margin-bottom:18px;padding-bottom:16px;}
+body.newsroom-chase .field-ops-subtitle {color:#aab7bf;line-height:1.6;}
+body.newsroom-chase .field-admin-row {border-color:#364149;}
+body.newsroom-chase :is(.hero-button,.card-button,.mobile-link,.mobile-mission-map-button,.mobile-track-link,.track-zach-link,.mobile-field-pill,.status-icon,.mobile-mission-metric) {border-radius:0!important;box-shadow:none!important;}
+body.newsroom-chase :is(.hero-button,.card-button,.mobile-link,.mobile-mission-map-button) {min-height:44px!important;}
+body.newsroom-chase .hero-button {background:#ff6a2c;color:#101416;border:1px solid #ff6a2c;}
+body.newsroom-chase .card-button {border-color:#52616a;}
+body.newsroom-chase .mobile-field-shell {background:#101416!important;}
+body.newsroom-chase .mobile-field-main {width:calc(100% - 28px);max-width:1600px;margin:0 auto;padding:22px 0 30px;}
+body.newsroom-chase .mobile-field-hero {padding:0 0 20px;margin-bottom:18px;border-bottom:1px solid #364149;}
+body.newsroom-chase .mobile-field-title {font-family:Impact,'Arial Narrow',sans-serif;font-weight:400;font-size:clamp(36px,9vw,52px);line-height:1.04;letter-spacing:0;text-transform:uppercase;}
+body.newsroom-chase .mobile-field-copy,body.newsroom-chase .mobile-mission-discussion {color:#aab7bf;line-height:1.6;}
+body.newsroom-chase .mobile-card {border-top-width:3px;}
+body.newsroom-chase .mobile-card:not(.red):not([data-chase-status-style]) {border-top-color:#ff6a2c;}
+body.newsroom-chase .mobile-card h2 {padding:0 0 10px;margin-bottom:14px;}
+body.newsroom-chase .mobile-mission-metric {background:#101719;border-color:#364149;min-width:0;}
+body.newsroom-chase .mobile-mission-metric strong {overflow-wrap:anywhere;}
+body.newsroom-chase .mobile-link {background:#202a30;border-color:#52616a;}
+@media(max-width:760px) {
+  /* One shared masthead; the prior secondary mobile header repeats the same home link. */
+  body.newsroom-chase .mobile-field-header {display:none!important;}
+  body.newsroom-chase .mobile-card-inner {padding:16px;}
+}
