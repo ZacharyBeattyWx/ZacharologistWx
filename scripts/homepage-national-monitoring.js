@@ -67,7 +67,7 @@
       const bounds=[[-125.1,24.2],[-66.4,49.7]];
       const hrefFor=p=>`live-alerts.html?${new URLSearchParams({alert:p.cap_id||'',event:p.prod_type||''})}`;
       function mapData(){selected=filter.value==='all'?all:all.filter(f=>f.properties._category===filter.value);map?.getSource('news-national-alerts')?.setData({type:'FeatureCollection',features:selected});scheduleDraw();const products=productCount(selected);status.textContent=lastSuccess?`NOAA / NWS • ${products} active product${products===1?'':'s'} in this filter • updated ${time(lastSuccess)}`:'Connecting the live alert map…';}
-      async function update(){if(!ready||inflight)return;inflight=true;status.textContent=all.length?'Refreshing • current polygons remain visible':'Loading live national alert polygons…';
+      async function update(){if(inflight)return;inflight=true;status.textContent=all.length?'Refreshing • current polygons remain visible':'Loading live national alert polygons…';
         try{
           // MapServer is the current populated geometry service. Simplify only the preview geometry.
           const base='https://mapservices.weather.noaa.gov/eventdriven/rest/services/WWA/watch_warn_adv/MapServer/1/query';
@@ -87,13 +87,15 @@
         finally{inflight=false;}
       }
       try{
+        // Fetch geometry ahead of scrolling; defer WebGL until the map approaches the screen.
+        win.setTimeout(()=>{if(!lastSuccess&&!inflight)update();},1200);
         // The bottom map does not compete with radar during initial mobile loading.
         if('IntersectionObserver' in win)await new Promise(resolve=>{
           let started=false;const observer=new win.IntersectionObserver(entries=>{
             mapVisible=entries[0].isIntersecting;
             if(mapVisible&&!started){started=true;resolve();}
             else if(mapVisible&&ready&&lastSuccess&&Date.now()-lastSuccess>60000)update();
-          },{rootMargin:'350px'});observer.observe(card);
+          },{rootMargin:'1200px'});observer.observe(card);
         });
         // The SPC panel loads the same public Mapbox runtime once for the homepage.
         const until=Date.now()+18000;while((!win.mapboxgl||!win.MAPBOX_PUBLIC_TOKEN)&&Date.now()<until)await new Promise(r=>win.setTimeout(r,100));
@@ -114,7 +116,7 @@
             if(!features.length)return;
             const html=features.slice(0,5).map(f=>{const p=f.properties||{},end=Date.parse(p.ends||p.expiration||'');return `<article class="news-map-popup-alert"><strong>${esc(p.prod_type)}</strong>${Number.isFinite(end)?`<p>Until ${esc(new Date(end).toLocaleString([], {weekday:'short',hour:'numeric',minute:'2-digit'}))}</p>`:''}<a href="${esc(hrefFor(p))}">Alert details ↗</a></article>`;}).join('');
             new win.mapboxgl.Popup({maxWidth:'300px'}).setLngLat(event.lngLat).setHTML(html).addTo(map);
-          });reset();update();
+          });reset();if(lastSuccess&&Date.now()-lastSuccess<60000)mapData();else update();
         });
         map.on('error',()=>{if(!ready)status.textContent='Basemap reconnecting. Open the full map using the link above.';});
         win.setInterval(()=>{if(!doc.hidden&&mapVisible)update();},60000);
