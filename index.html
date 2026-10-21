@@ -12184,7 +12184,6 @@ body {
 }
 </style>
 
-  <link rel="stylesheet" href="scripts/homepage-newsroom.css?v=20261020m5">
 </head>
 
 <body>
@@ -12229,9 +12228,15 @@ body {
       <span>Field Ops</span>
     </a>
 
-    
+    <a href="#">
+      Chase Logs
+      <span>Archive</span>
+    </a>
 
-    
+    <a href="#">
+      Media
+      <span>Photo / Video</span>
+    </a>
   </nav>
 </header>
 
@@ -13818,9 +13823,50 @@ try {
       ).values()
     );
 
-    const uniqueAlerts = uniqueFeatures.filter(alert =>
-      typeof alert.properties?.event === "string" && alert.properties.event.trim()
-    );
+    const uniqueAlerts = uniqueFeatures.filter(alert => {
+      const event = alert.properties?.event;
+      if (!event) return false;
+
+      return [
+        "Tornado Warning",
+        "Severe Thunderstorm Warning",
+        "Flash Flood Warning",
+        "Flash Flood Watch",
+        "Tornado Watch",
+        "Severe Thunderstorm Watch",
+        "Special Weather Statement",
+        "Flash Flood Statement",
+        "Flood Warning",
+        "Flood Watch",
+        "Flood Advisory",
+        "Areal Flood Warning",
+        "Areal Flood Watch",
+        "Coastal Flood Warning",
+        "Marine Weather Statement",
+        "Special Marine Warning",
+        "Red Flag Warning",
+        "Fire Weather Watch",
+        "Winter Storm Warning",
+        "Winter Weather Advisory",
+        "Blizzard Warning",
+        "Ice Storm Warning",
+        "Freeze Warning",
+        "Frost Advisory",
+        "Wind Advisory",
+        "High Wind Warning",
+        "Dense Fog Advisory",
+        "Heat Advisory",
+        "Excessive Heat Warning",
+        "Hurricane Warning",
+        "Hurricane Watch",
+        "Tropical Storm Warning",
+        "Tropical Storm Watch",
+        "Storm Surge Warning",
+        "Storm Surge Watch",
+        "Typhoon Warning",
+        "Typhoon Watch"
+      ].includes(event);
+    });
 
     const currentIds = new Set(
       uniqueAlerts.map(alert => canonicalHomepageAlertId(alert) || alert.id)
@@ -13841,9 +13887,6 @@ try {
     }
 
     allHomepageAlerts = uniqueAlerts;
-    window.__ZACH_HOMEPAGE_ALERTS__ = uniqueAlerts;
-    window.__ZACH_HOMEPAGE_ALERTS_UPDATED__ = Date.now();
-    window.dispatchEvent(new CustomEvent('zacharologist-homepage-alerts-updated'));
 
 updateTabAlertStates();
 
@@ -13852,7 +13895,6 @@ renderCategory(currentCategory);
 
   } catch (error) {
     console.error("NWS alert loading error:", error);
-    window.dispatchEvent(new CustomEvent('zacharologist-homepage-alerts-failed'));
 
    if (!hasLoadedAlertsOnce) {
   alertsList.innerHTML = `
@@ -16614,7 +16656,7 @@ if (useLocationBtn) {
   useLocationBtn.addEventListener("click", requestUserLocation);
 }
 
-// Seasonal homepage initializes the saved/default location without prompting.
+requestUserLocation();
 
 console.log("BOTTOM OF HOMEPAGE SCRIPT REACHED");
 
@@ -18228,9 +18270,5 @@ setInterval(loadSPCImages, 10 * 60 * 1000);
 })();
 </script>
 
-<script src="scripts/homepage-newsroom.js?v=20261020m6"></script>
-<script src="scripts/homepage-spc-carousel.js?v=20261019b"></script>
-<script src="scripts/homepage-national-monitoring.js?v=20261020m4"></script>
 </body>
 </html>
-
