@@ -452,3 +452,82 @@ body.newsroom-home .forecast-dashboard {backdrop-filter:none!important;-webkit-b
   #weatherNewsroom .news-day-temps strong {color:#ffbc78;}
   #weatherNewsroom .news-day-temps>span:not(.news-night-only) {color:#91c8ff;}
 }
+
+/* Retrofit the original report identities into the newsroom cards. */
+#weatherNewsroom .news-monitor-grid .ops-reference-card--tornado {--report-accent:#ff7772;--report-wash:#341d22;}
+#weatherNewsroom .news-monitor-grid .ops-reference-card--hail {--report-accent:#6de7c7;--report-wash:#15352e;}
+#weatherNewsroom .news-monitor-grid .ops-reference-card--wind {--report-accent:#8bd5ff;--report-wash:#173043;}
+#weatherNewsroom .news-monitor-grid .ops-reference-card--report-count {
+  background:linear-gradient(145deg,var(--report-wash),var(--news-panel) 78%)!important;
+  border:1px solid var(--news-line)!important;border-top:3px solid var(--report-accent)!important;
+}
+#weatherNewsroom .news-monitor-grid .ops-reference-card--report-count .ops-reference-kicker,
+#weatherNewsroom .news-monitor-grid .ops-reference-card--report-count .ops-tornado-count,
+#weatherNewsroom .news-monitor-grid .ops-reference-card--report-count .ops-report-month-total strong,
+#weatherNewsroom .news-monitor-grid .ops-reference-card--report-count .ops-reference-button {color:var(--report-accent)!important;}
+#weatherNewsroom .news-monitor-grid .ops-report-count-layout {justify-content:center!important;gap:16px!important;margin:8px 0!important;}
+#weatherNewsroom .news-monitor-grid .ops-report-count-icon {
+  display:grid!important;place-items:center!important;flex:0 0 60px!important;
+  width:60px!important;height:60px!important;margin:0!important;padding:7px!important;
+  color:var(--report-accent)!important;background:var(--report-wash)!important;
+  border:1px solid var(--report-accent)!important;border-radius:4px!important;filter:none!important;box-shadow:none!important;
+}
+#weatherNewsroom .news-monitor-grid .ops-report-count-icon svg {display:block!important;width:44px!important;height:44px!important;}
+#weatherNewsroom .news-monitor-grid .ops-reference-card--report-count .ops-tornado-metric {
+  display:flex!important;flex-direction:column!important;align-items:flex-start!important;
+  justify-content:center!important;gap:5px!important;border:0!important;padding:0!important;text-align:left!important;
+}
+#weatherNewsroom .news-monitor-grid .ops-reference-card--report-count .ops-tornado-count {font-size:46px!important;font-variant-numeric:tabular-nums;}
+#weatherNewsroom .news-monitor-grid .ops-reference-card--report-count .ops-reference-button {min-height:44px!important;}
+
+/* Restore the five-color semicircle, with a properly centered score. */
+#weatherNewsroom .news-monitor-grid .ops-reference-card:has(.ops-risk-dial) {text-align:center!important;align-items:center!important;}
+#weatherNewsroom .news-monitor-grid .ops-reference-card:has(.ops-risk-dial)>.ops-reference-title {display:none!important;}
+#weatherNewsroom .news-monitor-grid .ops-risk-dial {
+  --risk-color:#c0cbd1;position:relative!important;display:block!important;
+  width:196px!important;max-width:100%!important;height:112px!important;min-height:112px!important;
+  align-self:center!important;margin:8px auto 0!important;overflow:hidden!important;transform:none!important;
+  background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;
+}
+#weatherNewsroom .news-monitor-grid .ops-risk-dial.risk-rank-1 {--risk-color:#76c882;}
+#weatherNewsroom .news-monitor-grid .ops-risk-dial.risk-rank-2 {--risk-color:#ffe066;}
+#weatherNewsroom .news-monitor-grid .ops-risk-dial.risk-rank-3 {--risk-color:#ffa64d;}
+#weatherNewsroom .news-monitor-grid .ops-risk-dial.risk-rank-4 {--risk-color:#ff6565;}
+#weatherNewsroom .news-monitor-grid .ops-risk-dial.risk-rank-5 {--risk-color:#ec79e8;}
+#weatherNewsroom .news-monitor-grid .ops-risk-dial .ops-risk-dial-arc {
+  display:block!important;position:absolute!important;top:8px!important;bottom:auto!important;left:50%!important;
+  width:184px!important;height:184px!important;transform:translateX(-50%)!important;border-radius:50%!important;
+  background:conic-gradient(from 270deg,
+    #76c882 0deg 34deg,transparent 34deg 36deg,
+    #ffe066 36deg 70deg,transparent 70deg 72deg,
+    #ffa64d 72deg 106deg,transparent 106deg 108deg,
+    #ff6565 108deg 142deg,transparent 142deg 144deg,
+    #ec79e8 144deg 180deg,transparent 180deg 360deg)!important;
+  box-shadow:none!important;filter:none!important;
+}
+#weatherNewsroom .news-monitor-grid .ops-risk-dial.risk-rank-0 .ops-risk-dial-arc {
+  background:conic-gradient(from 270deg,#53646e 0deg 180deg,transparent 180deg 360deg)!important;
+}
+#weatherNewsroom .news-monitor-grid .ops-risk-dial-arc::after {
+  content:""!important;position:absolute!important;inset:13px!important;border-radius:50%!important;background:var(--news-panel)!important;
+}
+#weatherNewsroom .news-monitor-grid .ops-risk-score {
+  position:absolute!important;display:block!important;left:50%!important;bottom:8px!important;
+  width:auto!important;min-width:0!important;min-height:0!important;padding:0!important;margin:0!important;
+  transform:translateX(-50%)!important;text-align:center!important;background:transparent!important;
+  border:0!important;box-shadow:none!important;z-index:2!important;
+}
+#weatherNewsroom .news-monitor-grid .ops-risk-score>strong {
+  display:inline-flex!important;align-items:baseline!important;justify-content:center!important;gap:3px!important;
+  color:var(--risk-color)!important;font-size:38px!important;line-height:1!important;letter-spacing:-.04em!important;
+  font-variant-numeric:tabular-nums;white-space:nowrap!important;
+}
+#weatherNewsroom .news-monitor-grid .ops-risk-score-denominator {font-size:17px!important;color:var(--news-muted)!important;}
+#weatherNewsroom .news-monitor-grid .ops-risk-label {font-size:19px!important;line-height:1.25!important;margin:0!important;text-align:center!important;}
+#weatherNewsroom .news-monitor-grid .ops-reference-card:has(.ops-risk-dial)>.ops-reference-button {align-self:center!important;}
+@media(max-width:768px){
+  #weatherNewsroom .news-monitor-grid .ops-report-count-layout {gap:10px!important;}
+  #weatherNewsroom .news-monitor-grid .ops-report-count-icon {width:46px!important;height:46px!important;flex-basis:46px!important;padding:5px!important;}
+  #weatherNewsroom .news-monitor-grid .ops-report-count-icon svg {width:34px!important;height:34px!important;}
+  #weatherNewsroom .news-monitor-grid .ops-reference-card--report-count .ops-tornado-count {font-size:36px!important;}
+}
