@@ -9,6 +9,218 @@
   const CACHE_KEY = 'zach:newsroom-preview:weather:v1';
   const HOUR = 3600000;
   const ALERT_CATEGORIES=[['all','All'],['storm','Storm'],['winter','Winter'],['hydro','Flood'],['tropical','Tropical'],['fire','Fire'],['other','Other']];
+  const QUICK_HIT_BANK = [
+  {
+    "id": "fact-01",
+    "tag": "Great Lakes / Weather explained",
+    "title": "A snow band can be surprisingly narrow",
+    "text": "Heavy lake-effect snow can fall while sunshine is just a mile or two away. Small shifts in wind direction can move the band and sharply change who gets buried.",
+    "source": "NOAA / NWS",
+    "href": "https://www.weather.gov/safety/winter-lake-effect-snow"
+  },
+  {
+    "id": "fact-02",
+    "tag": "Desert Southwest / Weather explained",
+    "title": "A dry wash can flood under a clear sky",
+    "text": "Rain upstream can send water rushing into a dry channel far from the storm. Your immediate sky does not tell the whole flooding story.",
+    "source": "NOAA / NWS",
+    "href": "https://www.weather.gov/safety/flood-hazards"
+  },
+  {
+    "id": "fact-03",
+    "tag": "Northern Plains / Weather explained",
+    "title": "Wind chill does not change the thermometer",
+    "text": "Wind speeds up heat loss from exposed skin. It can also cool objects faster, but wind chill alone does not lower a car or water pipe below the actual air temperature.",
+    "source": "NOAA / NWS",
+    "href": "https://www.weather.gov/safety/cold-wind-chill-chart"
+  },
+  {
+    "id": "fact-04",
+    "tag": "Across the nation / Weather explained",
+    "title": "Thunder is rapidly expanding air",
+    "text": "Lightning heats the surrounding air extremely quickly. That sudden expansion creates the sound wave you hear as thunder.",
+    "source": "NOAA / NWS",
+    "href": "https://www.weather.gov/safety/lightning-science-overview"
+  },
+  {
+    "id": "fact-05",
+    "tag": "Northern U.S. / Weather explained",
+    "title": "A blizzard is about wind and visibility",
+    "text": "The NWS definition involves winds of at least 35 mph and snow or blowing snow frequently reducing visibility below a quarter mile for at least three hours.",
+    "source": "NOAA / NWS",
+    "href": "https://www.weather.gov/safety/winter-snow"
+  },
+  {
+    "id": "fact-06",
+    "tag": "Great Plains / Weather explained",
+    "title": "Hail grows inside rising air",
+    "text": "A thunderstorm updraft lifts water into freezing conditions. A hailstone grows as more liquid drops collide with it and freeze onto its surface.",
+    "source": "NOAA / NSSL",
+    "href": "https://www.nssl.noaa.gov/education/svrwx101/hail/"
+  },
+  {
+    "id": "fact-07",
+    "tag": "Appalachian valleys / Weather explained",
+    "title": "Clear nights can help build morning fog",
+    "text": "As the ground and nearby air cool overnight, the air can become saturated. Sheltered valleys with light winds are favored places for this kind of fog.",
+    "source": "NOAA / NWS",
+    "href": "https://www.weather.gov/safety/fog-radiation"
+  },
+  {
+    "id": "fact-08",
+    "tag": "Across the nation / Weather explained",
+    "title": "A double rainbow reverses the colors",
+    "text": "Look closely at the fainter, outer rainbow: its color order is reversed. Red appears along its lower edge, opposite the primary bow.",
+    "source": "NOAA / NESDIS",
+    "href": "https://www.nesdis.noaa.gov/about/k-12-education/optical-phenomena/rainbow-simulator"
+  },
+  {
+    "id": "fact-09",
+    "tag": "Great Lakes / Weather explained",
+    "title": "Open water can fuel a snowstorm",
+    "text": "Cold air crossing relatively warm, unfrozen lake water picks up heat and moisture. Rising air then forms clouds and narrow bands of snow downwind.",
+    "source": "NOAA / NWS",
+    "href": "https://www.weather.gov/safety/winter-lake-effect-snow"
+  },
+  {
+    "id": "fact-10",
+    "tag": "Cities nationwide / Weather explained",
+    "title": "Pavement changes how rain runs off",
+    "text": "Concrete and asphalt keep much of the rain from soaking into the ground. That makes urban areas especially vulnerable to rapid runoff and flash flooding.",
+    "source": "NOAA / NWS",
+    "href": "https://www.weather.gov/safety/flood-hazards"
+  },
+  {
+    "id": "fact-11",
+    "tag": "Across the nation / Weather explained",
+    "title": "Count the seconds after a flash",
+    "text": "Sound takes about five seconds to travel a mile. Dividing the flash-to-thunder delay by five gives a rough distance to the lightning—not a safe-distance guarantee.",
+    "source": "NOAA / NWS",
+    "href": "https://www.weather.gov/safety/lightning-science-overview"
+  },
+  {
+    "id": "fact-12",
+    "tag": "Northern U.S. / Weather explained",
+    "title": "Blowing snow does not need fresh snowfall",
+    "text": "Wind can lift snow that is already on the ground and reduce visibility. A whiteout can develop without new snow falling at your exact location.",
+    "source": "NOAA / NWS",
+    "href": "https://www.weather.gov/safety/winter-snow"
+  },
+  {
+    "id": "fact-13",
+    "tag": "Great Plains / Weather explained",
+    "title": "Hail can have clear and cloudy layers",
+    "text": "Drops that freeze quickly trap air bubbles, creating cloudy ice. Slower freezing lets bubbles escape, producing clearer layers within the same hailstone.",
+    "source": "NOAA / NSSL",
+    "href": "https://www.nssl.noaa.gov/education/svrwx101/hail/"
+  },
+  {
+    "id": "fact-14",
+    "tag": "Pacific Coast / Weather explained",
+    "title": "Fog can travel with the wind",
+    "text": "Advection fog forms when warmer, moist air moves over a colder surface. Unlike calm-night radiation fog, it can develop with clouds and stronger winds.",
+    "source": "NOAA / NWS",
+    "href": "https://www.weather.gov/safety/fog-advection"
+  },
+  {
+    "id": "fact-15",
+    "tag": "Across the nation / Weather explained",
+    "title": "Wind chill has a specific range",
+    "text": "The NWS wind-chill calculation is defined for air temperatures at or below 50°F and winds above 3 mph. It describes cold-weather heat loss, not every cool breeze.",
+    "source": "NOAA / NWS",
+    "href": "https://www.weather.gov/safety/cold-wind-chill-chart"
+  },
+  {
+    "id": "fact-16",
+    "tag": "Great Lakes / Weather explained",
+    "title": "Lake-effect snow can pile up fast",
+    "text": "Strong lake-effect bands can produce two to three inches of snow per hour or more. Wind direction and the shape of the shoreline help determine the hardest-hit areas.",
+    "source": "NOAA / NWS",
+    "href": "https://www.weather.gov/safety/winter-lake-effect-snow"
+  },
+  {
+    "id": "fact-17",
+    "tag": "Western mountains / Weather explained",
+    "title": "Steep terrain can turn rain into fast runoff",
+    "text": "Water moves quickly downhill through steep, narrow valleys. A small mountain creek can respond rapidly when heavy rain falls upstream.",
+    "source": "NOAA / NWS",
+    "href": "https://www.weather.gov/safety/flood-hazards"
+  },
+  {
+    "id": "fact-18",
+    "tag": "Across the nation / Weather explained",
+    "title": "Ice helps thunderstorms become electric",
+    "text": "Collisions among ice crystals, hail, and other precipitation particles help separate electrical charges inside a storm. Lightning releases that built-up electrical difference.",
+    "source": "NOAA / NWS",
+    "href": "https://www.weather.gov/safety/lightning-science-overview"
+  },
+  {
+    "id": "fact-19",
+    "tag": "Northern U.S. / Weather explained",
+    "title": "Flurries and snow showers are different",
+    "text": "Flurries are light, brief snow with little or no accumulation. Snow showers vary in intensity and can leave measurable accumulation.",
+    "source": "NOAA / NWS",
+    "href": "https://www.weather.gov/safety/winter-snow"
+  },
+  {
+    "id": "fact-20",
+    "tag": "California / Weather explained",
+    "title": "Tule fog is a Central Valley specialty",
+    "text": "California's winter tule fog forms with moist air near the surface, clear skies above, and light winds. The thick fog can be visible from satellites.",
+    "source": "NOAA / NWS",
+    "href": "https://www.weather.gov/safety/fog-radiation"
+  },
+  {
+    "id": "fact-21",
+    "tag": "Great Plains / Weather explained",
+    "title": "Hail falls when the updraft loses its grip",
+    "text": "A hailstone reaches the ground when rising air can no longer support its weight. The stone may become too large, or the updraft may weaken.",
+    "source": "NOAA / NSSL",
+    "href": "https://www.nssl.noaa.gov/education/svrwx101/hail/"
+  },
+  {
+    "id": "fact-22",
+    "tag": "Western U.S. / Weather explained",
+    "title": "A burn scar can change a watershed",
+    "text": "Wildfire can remove vegetation and alter the soil. Rain may run off more readily, increasing the chance of flooding and debris flows after the flames are gone.",
+    "source": "NOAA / NWS",
+    "href": "https://www.weather.gov/safety/flood-hazards"
+  },
+  {
+    "id": "fact-23",
+    "tag": "Cold-weather country / Weather explained",
+    "title": "Wind chill is a heat-loss measure",
+    "text": "The wind-chill index describes how wind and cold combine to remove heat from people and animals. Higher wind speeds can make exposed skin lose heat faster.",
+    "source": "NOAA / NWS",
+    "href": "https://www.weather.gov/safety/cold-wind-chill-chart"
+  },
+  {
+    "id": "fact-24",
+    "tag": "Across the nation / Weather explained",
+    "title": "A lightning flash does not have to hit the ground",
+    "text": "Lightning can discharge between different charged regions inside a thunderstorm cloud. Cloud-to-ground strikes are only one part of a storm's electrical activity.",
+    "source": "NOAA / NWS",
+    "href": "https://www.weather.gov/safety/lightning-science-overview"
+  },
+  {
+    "id": "fact-25",
+    "tag": "Pacific Coast / Weather explained",
+    "title": "Some fog can linger for days",
+    "text": "As moist air keeps moving over a colder surface, advection fog can persist and drift across the landscape. It is particularly common along the West Coast.",
+    "source": "NOAA / NWS",
+    "href": "https://www.weather.gov/safety/fog-advection"
+  }
+];
+  function dailyQuickHits(now=Date.now()) {
+    const date=new Date(now);
+    const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(date);
+    const part=type=>parts.find(p=>p.type===type).value;
+    const key=part('year')+'-'+part('month')+'-'+part('day');
+    const day=Math.floor(Date.UTC(Number(part('year')),Number(part('month'))-1,Number(part('day')))/86400000);
+    const start=((day*7)%QUICK_HIT_BANK.length+QUICK_HIT_BANK.length)%QUICK_HIT_BANK.length;
+    return {key,label:new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',month:'short',day:'numeric',year:'numeric'}).format(date),
+      slides:Array.from({length:5},(_,i)=>QUICK_HIT_BANK[(start+i)%QUICK_HIT_BANK.length])};
+  }
   function forecastIcon(text='') {
     const sun='<g stroke="#ffd15c" stroke-width="2" stroke-linecap="round"><path d="M16 2v3m0 22v3M2 16h3m22 0h3M6 6l2 2m16 16 2 2M6 26l2-2M24 8l2-2"/><circle cx="16" cy="16" r="7" fill="#ffd15c" stroke="none"/></g>';
     const cloud='<path d="M8 23a6 6 0 0 1-1-12 8 8 0 0 1 15-1 6.5 6.5 0 1 1 2 13Z" fill="#d9e3eb"/>';
@@ -330,19 +542,29 @@
       draw();
     }
     function setupCarousel(){
-      const slides=[
-        {tag:'Great Lakes / Weather explained',title:'Why lake-effect snow gets so intense',text:'Cold air crossing warmer lake water gains heat and moisture. Wind direction can focus that moisture into narrow snow bands, bringing very different totals just miles apart.',source:'NOAA / NWS',href:'https://www.weather.gov/safety/winter-lake-effect-snow'},
-        {tag:'Desert Southwest / Weather explained',title:'A dry wash can flood under a clear sky',text:'Rain falling upstream can send water into a canyon or normally dry channel even when it is not raining where you are. This is one reason flash-flood awareness extends beyond the storm overhead.',source:'NOAA / NWS',href:'https://www.weather.gov/safety/flood-hazards'},
-        {tag:'Western U.S. / Quick fact',title:'Snow depth and stored water are different numbers',text:'Snow water equivalent measures the liquid water held in a snowpack. It gives water forecasters a different view than snow depth alone, and is widely tracked across the western mountain basins.',source:'NOAA / NWS',href:'https://www.weather.gov/bou/co_snowpack'}
-      ];
+      let selection=dailyQuickHits(),slides=selection.slides;
       let slide=0, paused=false, hover=false, focused=false;
       const region=$('#newsQuickHits');
-      function show(index){slide=(index+slides.length)%slides.length;const item=slides[slide];$('#newsQuickContent').innerHTML=`<p class="news-kicker">${esc(item.tag)}</p><h3>${esc(item.title)}</h3><p>${esc(item.text)}</p><a href="${esc(item.href)}" target="_blank" rel="noopener">Read more at ${esc(item.source)} ↗</a>`;setText('#newsSlideCount',`${String(slide+1).padStart(2,'0')} / 03`);region.querySelectorAll('[data-news-slide]').forEach((b,i)=>b.setAttribute('aria-pressed',String(slide===i)));}
-      $('#newsQuickPrev').addEventListener('click',()=>show(slide-1));$('#newsQuickNext').addEventListener('click',()=>show(slide+1));
-      region.querySelectorAll('[data-news-slide]').forEach((b,i)=>b.addEventListener('click',()=>show(i)));
+      function show(index){
+        slide=(index+slides.length)%slides.length;const item=slides[slide];
+        $('#newsQuickContent').innerHTML=`<p class="news-kicker">${esc(item.tag)}</p><h3>${esc(item.title)}</h3><p>${esc(item.text)}</p><a href="${esc(item.href)}" target="_blank" rel="noopener">Read more at ${esc(item.source)} ↗</a>`;
+        setText('#newsSlideCount',`${String(slide+1).padStart(2,'0')} / ${String(slides.length).padStart(2,'0')}`);
+        region.querySelectorAll('[data-news-slide]').forEach((b,i)=>b.setAttribute('aria-pressed',String(slide===i)));
+      }
+      function syncDaily(){
+        const next=dailyQuickHits();if(next.key===selection.key)return false;
+        selection=next;slides=next.slides;setText('#newsQuickDaily','Daily facts • '+selection.label);show(0);return true;
+      }
+      $('#newsQuickPrev').addEventListener('click',()=>{syncDaily();show(slide-1);});
+      $('#newsQuickNext').addEventListener('click',()=>{syncDaily();show(slide+1);});
+      region.querySelectorAll('[data-news-slide]').forEach((b,i)=>b.addEventListener('click',()=>{syncDaily();show(i);}));
       const pause=$('#newsQuickPause');pause.addEventListener('click',()=>{paused=!paused;pause.textContent=paused?'Resume rotation':'Pause rotation';pause.setAttribute('aria-pressed',String(paused));});
-      region.addEventListener('mouseenter',()=>hover=true);region.addEventListener('mouseleave',()=>hover=false);region.addEventListener('focusin',()=>focused=true);region.addEventListener('focusout',e=>focused=region.contains(e.relatedTarget));
-      win.setInterval(()=>{if(!paused && !hover && !focused && !doc.hidden && !win.matchMedia('(prefers-reduced-motion: reduce)').matches)show(slide+1);},14000);show(0);
+      region.addEventListener('mouseenter',()=>hover=true);region.addEventListener('mouseleave',()=>hover=false);
+      region.addEventListener('focusin',()=>focused=true);region.addEventListener('focusout',e=>focused=region.contains(e.relatedTarget));
+      doc.addEventListener('visibilitychange',()=>{if(!doc.hidden)syncDaily();});
+      win.addEventListener('pageshow',syncDaily);
+      win.setInterval(()=>{if(syncDaily())return;if(!paused && !hover && !focused && !doc.hidden && !win.matchMedia('(prefers-reduced-motion: reduce)').matches)show(slide+1);},14000);
+      setText('#newsQuickDaily','Daily facts • '+selection.label);show(0);
     }
     function install(){
       const main=$('main.forecast-dashboard');if(!main || $('#weatherNewsroom'))return;
@@ -357,7 +579,7 @@
         <section class="news-panel news-season-stats" id="newsSeasonStats"><div class="news-panel-heading"><h2 id="newsStatsTitle">Local / Seasonal stats</h2><span id="newsStatsCoverage" class="news-source">Local forecast point</span></div><div id="newsStats" class="news-stats" aria-live="polite"></div></section>
         <section class="news-panel" id="newsWeekPanel"><div class="news-panel-heading"><h2 id="newsForecastTitle">Your week ahead</h2><a id="newsHourlyLink" href="https://forecast.weather.gov/">View hourly ↗</a></div><p class="news-mobile-forecast-hint">Swipe for all seven days →</p><div id="newsWeek" class="news-week" tabindex="0" aria-label="Daily forecast; scroll to see all days"></div><div class="news-forecast-footer"><span id="newsForecastStatus" class="news-source"></span><a id="newsOfficialLink" href="https://forecast.weather.gov/">Official local forecast ↗</a></div></section>
         <div class="news-analysis-grid"><section class="news-outlooks news-panel"><div class="news-panel-heading"><h2>Outlook center</h2><span class="news-source">National / regional</span></div><div class="news-outlook-tabs" aria-label="Official outlook products"><a href="maps.html#winter">Winter weather ↗</a><a href="maps.html#severe">SPC outlooks ↗</a><a href="maps.html#rainfall">Rainfall ↗</a><a href="wx-updates.html#nationalClimateOutlookSection">6–10 day ↗</a></div><div id="newsSpcSlot"></div></section><div id="newsAlertsSlot"></div></div>
-        <section class="news-panel news-quick-hits" id="newsQuickHits" aria-roledescription="carousel" aria-label="National Quick Hits"><div class="news-panel-heading"><h2>National Quick Hits</h2><div class="news-carousel-controls"><span id="newsSlideCount">01 / 03</span><button id="newsQuickPrev" aria-label="Previous quick hit" type="button">‹</button><button id="newsQuickNext" aria-label="Next quick hit" type="button">›</button></div></div><div id="newsQuickContent"></div><div class="news-carousel-footer"><div class="news-dots">${[0,1,2].map(i=>`<button type="button" data-news-slide="${i}" aria-label="Show quick hit ${i+1}" aria-pressed="false"></button>`).join('')}</div><button type="button" id="newsQuickPause" aria-pressed="false">Pause rotation</button><span class="news-source">Weather facts / coast to coast</span></div></section>
+        <section class="news-panel news-quick-hits" id="newsQuickHits" aria-roledescription="carousel" aria-label="National Quick Hits"><div class="news-panel-heading"><h2>National Quick Hits</h2><div class="news-carousel-controls"><span id="newsSlideCount">01 / 05</span><button id="newsQuickPrev" aria-label="Previous quick hit" type="button">‹</button><button id="newsQuickNext" aria-label="Next quick hit" type="button">›</button></div></div><div id="newsQuickContent"></div><div class="news-carousel-footer"><div class="news-dots">${[0,1,2,3,4].map(i=>`<button type="button" data-news-slide="${i}" aria-label="Show quick hit ${i+1}" aria-pressed="false"></button>`).join('')}</div><button type="button" id="newsQuickPause" aria-pressed="false">Pause rotation</button><span id="newsQuickDaily" class="news-source">Daily facts / coast to coast</span></div></section>
         <div class="news-panel-heading news-monitor-heading"><h2>National weather desk</h2><span class="news-source">Preliminary SPC reports • current SPC day & month • sun & moon • national monitoring</span></div>
         <footer class="news-footer">Zacharologist Wx / Built for the Storm <span>Weather: <a href="https://www.weather.gov/">NOAA / NWS</a> · Model estimates & place search: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>. Forecast ranges and sources are shown with each metric.</span></footer>`;
       main.insertBefore(root,main.firstChild);
@@ -387,6 +609,6 @@
     }
     if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',install,{once:true});else install();
   }
-  return { DEFAULT_LOCATION, num, quantity, windPeak, normalizeNwsForecast, normalizeObservation, normalizeModel, forecastUsable, chooseForecast, buildStats, sameLocation, coldSeason, dayKey, alertCategory, filteredAlerts, alertPriority, boot };
+  return { DEFAULT_LOCATION, dailyQuickHits, num, quantity, windPeak, normalizeNwsForecast, normalizeObservation, normalizeModel, forecastUsable, chooseForecast, buildStats, sameLocation, coldSeason, dayKey, alertCategory, filteredAlerts, alertPriority, boot };
 });
 
