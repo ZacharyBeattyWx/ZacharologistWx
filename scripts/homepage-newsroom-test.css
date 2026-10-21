@@ -531,3 +531,22 @@ body.newsroom-home .forecast-dashboard {backdrop-filter:none!important;-webkit-b
   #weatherNewsroom .news-monitor-grid .ops-report-count-icon svg {width:34px!important;height:34px!important;}
   #weatherNewsroom .news-monitor-grid .ops-reference-card--report-count .ops-tornado-count {font-size:36px!important;}
 }
+
+/* Compact desktop weather strip: size blocks to their text instead of stretching. */
+@media(min-width:769px){
+  #weatherNewsroom .news-scoreboard {
+    min-height:0;align-items:center;justify-content:flex-start;overflow-x:auto;
+  }
+  #weatherNewsroom .news-scoreboard>a {
+    flex:0 0 auto;align-self:center;grid-template-columns:max-content;
+    align-content:center;align-items:center;min-width:0;min-height:44px;
+    margin:3px 0;padding:4px 16px;column-gap:8px;row-gap:2px;
+  }
+  #weatherNewsroom .news-scoreboard>a:first-child {grid-template-columns:max-content auto;padding-left:0;}
+  #weatherNewsroom .news-scoreboard>a span,
+  #weatherNewsroom .news-scoreboard>a small,
+  #weatherNewsroom .news-scoreboard>a strong {margin:0;padding:0;line-height:1.15;}
+  #weatherNewsroom .news-scoreboard>a strong {font-size:16px;}
+  #weatherNewsroom #newsTickerTemp {font-size:24px;line-height:1;}
+  #weatherNewsroom .news-scoreboard .news-season {padding:4px 0 4px 16px;line-height:1.2;}
+}
