@@ -445,3 +445,10 @@ body.newsroom-home .forecast-dashboard {backdrop-filter:none!important;-webkit-b
 
 #weatherNewsroom .news-monitor-grid .ops-tornado-metric {flex-direction:column!important;align-items:center!important;gap:4px!important;border:0!important;padding:0!important;width:100%!important;}
 #weatherNewsroom .news-monitor-grid .ops-reference-card--report-count .ops-reference-button {align-self:center!important;}
+
+/* Keep desktop forecast colors as expressive as the phone edition. */
+#weatherNewsroom .news-weather-symbol svg {display:block;margin-inline:auto;max-width:100%;}
+@media(min-width:769px){
+  #weatherNewsroom .news-day-temps strong {color:#ffbc78;}
+  #weatherNewsroom .news-day-temps>span:not(.news-night-only) {color:#91c8ff;}
+}

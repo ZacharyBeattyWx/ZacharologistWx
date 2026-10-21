@@ -9,6 +9,18 @@
   const CACHE_KEY = 'zach:newsroom-preview:weather:v1';
   const HOUR = 3600000;
   const ALERT_CATEGORIES=[['all','All'],['storm','Storm'],['winter','Winter'],['hydro','Flood'],['tropical','Tropical'],['fire','Fire'],['other','Other']];
+  function forecastIcon(text='') {
+    const sun='<g stroke="#ffd15c" stroke-width="2" stroke-linecap="round"><path d="M16 2v3m0 22v3M2 16h3m22 0h3M6 6l2 2m16 16 2 2M6 26l2-2M24 8l2-2"/><circle cx="16" cy="16" r="7" fill="#ffd15c" stroke="none"/></g>';
+    const cloud='<path d="M8 23a6 6 0 0 1-1-12 8 8 0 0 1 15-1 6.5 6.5 0 1 1 2 13Z" fill="#d9e3eb"/>';
+    let art;
+    if(/thunder|lightning/i.test(text)) art=cloud+'<path d="m17 18-5 8h5l-2 6 10-11h-6l3-3Z" fill="#ffbc45"/>';
+    else if(/snow|sleet|freez|wintr|\\bice\\b/i.test(text)) art=cloud+'<g stroke="#ace5ff" stroke-width="1.8" stroke-linecap="round"><path d="M11 25v6m-3-4.5 6 3m-6 0 6-3M24 25v6m-3-4.5 6 3m-6 0 6-3"/></g>';
+    else if(/rain|shower|drizzle/i.test(text)) art=cloud+'<path d="m10 26-2 4m10-4-2 4m10-4-2 4" stroke="#66baff" stroke-width="2.4" stroke-linecap="round"/>';
+    else if(/partly|mostly sunny|mostly clear|few clouds/i.test(text)) art='<g transform="translate(-2 -3) scale(.85)">'+sun+'</g>'+cloud;
+    else if(/clear|sunny/i.test(text)) art=sun;
+    else art=cloud;
+    return '<svg viewBox="0 0 34 34" width="34" height="34" aria-hidden="true" focusable="false">'+art+'</svg>';
+  }
   function alertCategory(event='') {
     if(/hurricane|tropical|storm surge|typhoon/i.test(event))return 'tropical';
     if(/flood|hydrologic/i.test(event))return 'hydro';
@@ -185,7 +197,7 @@
       setText('#currentCondition',current?.description || 'Forecast desk');
       setText('#newsConditionsStatus',current?`${isSaved?'Saved • ':''}${current.source}${observed?.stationName?` • ${observed.stationName}`:''} • ${stamp(current.timestamp,zone)}`:'Showing labeled forecast and location references');
       $('#newsStats').innerHTML=snapshot.stats.map(s=>`<article class="news-stat"><span>${esc(s.label)}</span><strong>${esc(s.value)}</strong><small>${esc(s.note)}</small></article>`).join('');
-      $('#newsWeek').innerHTML=snapshot.days.length?snapshot.days.map(d=>`<article class="news-day"><h3>${esc(new Date(`${d.date}T12:00:00`).toLocaleDateString('en-US',{weekday:'short'}))}</h3><small>${esc(d.date.slice(5))}</small><span class="news-weather-symbol" aria-hidden="true">${/snow|ice|freez|wintr/i.test(d.text)?'❄':/thunder/i.test(d.text)?'ϟ':/rain|shower|drizzle/i.test(d.text)?'☂':/clear|sunny/i.test(d.text)?'☀':'☁'}</span><div class="news-day-temps">${d.high!==null?`<strong>${esc(deg(d.high))}</strong>`:'<span class="news-night-only">Night forecast</span>'}${d.low!==null?`<span>${esc(deg(d.low))}</span>`:''}</div><p>${esc(d.text)}</p><small>${d.pop!==null?`${rounded(d.pop)}% precip`:'See detailed forecast'}${d.wind!==null?` · ${rounded(d.wind)} mph`:''}</small></article>`).join(''):`<div class="news-reconnect"><strong>Keep an eye on the bigger picture.</strong><p>Your local forecast is reconnecting. The outlooks and national monitoring below remain available.</p><a href="${esc(forecastLink)}">Open the official local forecast ↗</a></div>`;
+      $('#newsWeek').innerHTML=snapshot.days.length?snapshot.days.map(d=>`<article class="news-day"><h3>${esc(new Date(`${d.date}T12:00:00`).toLocaleDateString('en-US',{weekday:'short'}))}</h3><small>${esc(d.date.slice(5))}</small><span class="news-weather-symbol" aria-hidden="true">${forecastIcon(d.text)}</span><div class="news-day-temps">${d.high!==null?`<strong>${esc(deg(d.high))}</strong>`:'<span class="news-night-only">Night forecast</span>'}${d.low!==null?`<span>${esc(deg(d.low))}</span>`:''}</div><p>${esc(d.text)}</p><small>${d.pop!==null?`${rounded(d.pop)}% precip`:'See detailed forecast'}${d.wind!==null?` · ${rounded(d.wind)} mph`:''}</small></article>`).join(''):`<div class="news-reconnect"><strong>Keep an eye on the bigger picture.</strong><p>Your local forecast is reconnecting. The outlooks and national monitoring below remain available.</p><a href="${esc(forecastLink)}">Open the official local forecast ↗</a></div>`;
       setText('#newsTickerTemp',deg(current?.temp) || snapshot.stats[0]?.value || 'Forecast');
       setText('#newsTickerDetail',current?.description || `${snapshot.days.length} forecast days`);
       setText('#newsTickerWind',num(current?.wind)===null?snapshot.stats.find(s=>/wind|gust/i.test(s.label))?.value || 'Local forecast':`${rounded(current.wind)} mph`);
