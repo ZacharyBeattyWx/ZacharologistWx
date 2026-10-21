@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="hero.jpg" type="image/jpeg">
   <title>ZacharologistWx Mapbox Test</title>
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
@@ -79,7 +80,7 @@
   <div id="map"></div>
   <div class="map-title">ZacharologistWx Mapbox Test</div>
 
-  <script src="mapbox-token.local.js"></script>
+  <script src="mapbox-token.js"></script>
   <script>
     const MAPBOX_TOKEN = window.MAPBOX_PUBLIC_TOKEN;
     const MAPBOX_STYLE = "mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
@@ -89,8 +90,7 @@
       message.className = "token-message";
       message.innerHTML = `
         <strong>Missing Mapbox public token</strong>
-        Create a local ignored file named <code>mapbox-token.local.js</code> that defines
-        <code>window.MAPBOX_PUBLIC_TOKEN</code> with a public <code>pk.*</code> token.
+        The public map configuration could not be loaded. Reload this page to retry.
       `;
       document.body.appendChild(message);
     }

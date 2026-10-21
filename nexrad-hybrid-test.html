@@ -3,36 +3,33 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ZacharologistWx Static NEXRAD Test</title>
-  <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
-  <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
-  <script src="mapbox-token.js"></script>
+  <link rel="icon" href="hero.jpg" type="image/jpeg">
+  <meta name="robots" content="noindex">
+  <title>Radar viewer moved | Zacharologist Wx</title>
+  <link rel="canonical" href="https://zacharologistwx.com/level2-mobile-radar.html">
   <style>
-    html,body,#map{height:100%;width:100%;margin:0;background:#08111d;font-family:Inter,system-ui,sans-serif}
-    .panel{position:absolute;z-index:5;top:14px;left:14px;width:min(390px,calc(100vw - 28px));box-sizing:border-box;padding:14px 16px;border:1px solid rgba(125,211,252,.22);border-radius:14px;background:rgba(3,10,20,.93);color:#e5eef8;box-shadow:0 14px 40px rgba(0,0,0,.35)}
-    .eyebrow{font-size:11px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:#38bdf8}.panel h1{font-size:18px;margin:5px 0 7px}.panel p{font-size:12px;line-height:1.45;color:#b7c5d6;margin:0 0 10px}.status{display:flex;gap:8px;align-items:center;font-size:12px;padding-top:10px;border-top:1px solid rgba(148,163,184,.18)}.dot{width:8px;height:8px;border-radius:50%;background:#f59e0b}.dot.live{background:#22c55e}.dot.bad{background:#ef4444}.mode{margin-top:10px;padding:9px 10px;border-radius:10px;background:rgba(15,23,42,.82);font-size:12px}.mode strong{display:block;font-size:13px;color:#fff}.bar{height:5px;border-radius:999px;background:rgba(148,163,184,.22);overflow:hidden;margin-top:7px}.bar span{display:block;height:100%;width:0;background:linear-gradient(90deg,#38bdf8,#22c55e);transition:width .18s ease}.meta{margin-top:10px;font-size:11px;line-height:1.55;color:#9fb0c4;overflow-wrap:anywhere}.legend{position:absolute;z-index:5;top:14px;right:14px;width:240px;padding:10px 12px;border-radius:12px;background:rgba(3,10,20,.9);border:1px solid rgba(148,163,184,.18);color:white;font-size:10px;font-weight:800;letter-spacing:.08em}.legend-bar{height:8px;margin:7px 0 4px;border-radius:6px;background:linear-gradient(90deg,rgba(73,117,152,.65),#4ca58e,#12a118,#cbde01,#e38103,#c02514,#ca99b4,#c44a8a,#8b20d2,#5614a2,#6fd2db,#4a849a,#730a01,#ebbeff,#fff)}.labels{display:flex;justify-content:space-between;color:#aab8c8;font-size:8px}.mapboxgl-ctrl-bottom-left{display:none}@media(max-width:720px){.legend{display:none}.panel{width:calc(100vw - 28px)}}
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; background: #101416; color: #eef6fa; font: 16px/1.6 system-ui, sans-serif; }
+    main { width: min(100%, 560px); padding: 28px; border: 1px solid #35434b; border-top: 3px solid #ff6a2c; background: #13191c; }
+    h1 { margin: 0 0 12px; font-size: clamp(24px, 6vw, 36px); line-height: 1.2; }
+    a { color: #8bd9ef; }
+    a:focus-visible { outline: 2px solid #ff6a2c; outline-offset: 5px; }
   </style>
 </head>
 <body>
-  <div id="map"></div>
-  <section class="panel">
-    <div class="eyebrow">Experimental / Static Python-Colored NEXRAD</div>
-    <h1>National Radar — Pre-Rendered Detail</h1>
-    <p>Python builds one complete high-resolution radar pyramid when a new scan arrives. Pan and zoom only read static WebPs; they never trigger radar rendering.</p>
-    <div class="status"><span id="statusDot" class="dot"></span><span id="statusText">Looking for static radar snapshot…</span></div>
-    <div class="mode">
-      <strong id="modeTitle">Loading static radar snapshot…</strong>
-      <span id="modeDetail">Waiting for the current pre-rendered revision.</span>
-      <div class="bar"><span id="detailBar"></span></div>
-    </div>
-    <div class="meta">
-      Zoom: <span id="zoomValue">--</span><br>
-      Detail source: <span id="detailInfo">checking…</span><br>
-      Revision: <span id="nationalInfo">waiting…</span><br>
-      Tile cache: <span id="tileInfo">--</span>
-    </div>
-  </section>
-  <div class="legend">REFLECTIVITY (DBZ)<div class="legend-bar"></div><div class="labels"><span>0</span><span>10</span><span>20</span><span>30</span><span>40</span><span>50</span><span>60</span><span>70+</span></div></div>
-  <script src="scripts/radar/nexrad-static-pyramid-webgl.js?v=20260830a"></script>
+  <main>
+    <h1>This radar viewer has moved</h1>
+    <p>The static NEXRAD pyramid prototype has been retired. Continue to the current site-based Level II radar viewer.</p>
+    <p><a id="currentRadar" href="level2-mobile-radar.html">Open live level ii radar</a></p>
+  </main>
+  <script>
+    (() => {
+      const target = new URL("level2-mobile-radar.html", location.href);
+      target.search = location.search;
+      target.hash = location.hash;
+      document.getElementById("currentRadar").href = target.href;
+      location.replace(target.href);
+    })();
+  </script>
 </body>
 </html>
