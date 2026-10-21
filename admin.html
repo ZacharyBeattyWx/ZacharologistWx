@@ -531,7 +531,7 @@
         <button class="secondary" type="button" id="gpsMapDisplayOffButton">Map Display OFF</button>
         <button type="button" id="startGpsAutoButton">Start Auto Publish</button>
         <button class="secondary" type="button" id="stopGpsAutoButton">Stop Auto Publish</button>
-        <a class="button-link" id="gpsMapLink" href="#" target="_blank" rel="noopener">Open Map</a>
+        <a class="button-link" id="gpsMapLink" aria-disabled="true" target="_blank" rel="noopener">Open Map</a>
       </div>
 
       <div class="form-grid">
@@ -855,6 +855,7 @@
       }));
 
       el("gpsMapLink").href = chaseMapUrl(lat, lon);
+      el("gpsMapLink").removeAttribute("aria-disabled");
       el("enableGpsButton").textContent = "Stop GPS";
     }
 
@@ -890,7 +891,8 @@
       setGpsText("gpsUpdated", "--");
       setGpsText("gpsAutoStatus", "Off");
 
-      el("gpsMapLink").href = "#";
+      el("gpsMapLink").removeAttribute("href");
+      el("gpsMapLink").setAttribute("aria-disabled", "true");
       el("enableGpsButton").textContent = "Enable GPS";
       el("startGpsAutoButton").textContent = "Start Auto Publish";
     }
