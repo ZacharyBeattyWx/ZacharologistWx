@@ -12488,7 +12488,7 @@ body {
   <article class="dashboard-card mini-card alerts-card">
     <h2 id="alertsTitle">Active Alerts</h2>
     <div class="active-alert-primary-actions">
-      <a class="live-alerts-feed-link" href="live-alerts.html">Open Alerts</a>
+      <a class="live-alerts-feed-link" href="live-alerts-test.html">Open Alerts</a>
       <a
         class="live-alerts-feed-link active-alert-radar-link"
         href="https://zacharologistwx.com/level2-mobile-radar.html?level2Data=remote"
@@ -13906,7 +13906,7 @@ function homepageAlertDetailsUrl(alert) {
   const props = alert?.properties || {};
 
   const url = new URL(
-    "live-alerts.html",
+    "live-alerts-test.html",
     window.location.href
   );
 
@@ -13979,7 +13979,7 @@ function handleDetailsButtonTap(event) {
     );
 
     window.location.href =
-      "live-alerts.html";
+      "live-alerts-test.html";
 
     return;
   }
@@ -17792,7 +17792,7 @@ setInterval(loadSPCImages, 10 * 60 * 1000);
 (() => {
   "use strict";
 
-  const alertsUrl = "live-alerts.html";
+  const alertsUrl = "live-alerts-test.html";
   const params = new URLSearchParams(
     window.location.search
   );
@@ -18230,9 +18230,9 @@ setInterval(loadSPCImages, 10 * 60 * 1000);
 })();
 </script>
 
-<script src="scripts/homepage-newsroom-test.js?v=20261021d"></script>
+<script src="scripts/homepage-newsroom-test.js?v=20261022a"></script>
 <script src="scripts/homepage-spc-carousel.js?v=20261019b"></script>
-<script src="scripts/homepage-national-monitoring.js?v=20261020m4"></script>
+<script src="scripts/homepage-national-monitoring-test.js?v=20261022a"></script>
 </body>
 </html>
 

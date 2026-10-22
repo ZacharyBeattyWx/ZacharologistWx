@@ -508,7 +508,7 @@
       const mobileAlerts=win.matchMedia('(max-width:768px)');
       win.getFilteredAlertsForCategory=category=>filteredAlerts(win.__ZACH_HOMEPAGE_ALERTS__ || [],category);
       tabs.innerHTML=categories.map(([key,label])=>`<button type="button" data-category="${key}" aria-pressed="${key==='all'}">${label}<span data-news-panel-count="${key}">…</span></button>`).join('');
-      $('#newsAlertScore').innerHTML=`<a class="news-alert-label" href="live-alerts.html">Active alerts ↗</a><span class="news-alert-scope">Monitoring area</span>${categories.filter(([key])=>key!=='all').map(([key,label])=>`<button type="button" data-news-category="${key}">${label} <strong data-news-alert="${key}">…</strong></button>`).join('')}`;
+      $('#newsAlertScore').innerHTML=`<a class="news-alert-label" href="live-alerts-test.html">Active alerts ↗</a><span class="news-alert-scope">Monitoring area</span>${categories.filter(([key])=>key!=='all').map(([key,label])=>`<button type="button" data-news-category="${key}">${label} <strong data-news-alert="${key}">…</strong></button>`).join('')}`;
       const status=doc.createElement('p');status.className='news-alert-status news-source';tabs.parentNode.insertAdjacentElement('afterend',status);
       function draw(){
         const ready=!!win.__ZACH_HOMEPAGE_ALERTS_UPDATED__;
@@ -520,17 +520,17 @@
         const time=ready?new Date(win.__ZACH_HOMEPAGE_ALERTS_UPDATED__).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}):'';
         setText('.news-alert-scope',ready?`Monitoring area • ${time}`:'Monitoring area');
         status.textContent=ready?`${all.length} active products across the monitoring area • ${failed?'Saved snapshot':'Updated'} ${time} • not limited to your selected city`:'NWS monitoring area • checking current products';
-        if(!ready){list.innerHTML=`<div class="news-alert-empty"><strong>${failed?'Continue with live monitoring':'Checking the monitoring area'}</strong><p>${failed?'The feed is reconnecting. Open the alert explorer or national alert map for the latest products.':'Warnings, watches and advisories will appear here as the feed arrives.'}</p><a href="live-alerts.html">Open alert explorer ↗</a></div>`;return;}
-        if(!selectedAlerts.length){list.innerHTML=`<div class="news-alert-empty"><strong>No active ${selected==='all'?'':categories.find(([k])=>k===selected)[1].toLowerCase()+' '}products</strong><p>No matching products in the latest monitoring-area snapshot.</p><a href="live-alerts.html">Open all monitored alerts ↗</a></div>`;return;}
+        if(!ready){list.innerHTML=`<div class="news-alert-empty"><strong>${failed?'Continue with live monitoring':'Checking the monitoring area'}</strong><p>${failed?'The feed is reconnecting. Open the alert explorer or national alert map for the latest products.':'Warnings, watches and advisories will appear here as the feed arrives.'}</p><a href="live-alerts-test.html">Open alert explorer ↗</a></div>`;return;}
+        if(!selectedAlerts.length){list.innerHTML=`<div class="news-alert-empty"><strong>No active ${selected==='all'?'':categories.find(([k])=>k===selected)[1].toLowerCase()+' '}products</strong><p>No matching products in the latest monitoring-area snapshot.</p><a href="live-alerts-test.html">Open all monitored alerts ↗</a></div>`;return;}
         const limit=mobileAlerts.matches&&!expanded?6:24;
         list.innerHTML=selectedAlerts.slice(0,limit).map(alert=>{
           const p=alert.properties;
           const color=typeof win.getAlertColor==='function'?win.getAlertColor(p.event):'#8bd9ef';
           const expires=Date.parse(p.ends || p.expires || '');
           const expireLabel=Number.isFinite(expires)?new Date(expires).toLocaleString([], {weekday:'short',hour:'numeric',minute:'2-digit'}):'See bulletin for timing';
-          const href=typeof win.homepageAlertDetailsUrl==='function'?win.homepageAlertDetailsUrl(alert):'live-alerts.html';
+          const href=typeof win.homepageAlertDetailsUrl==='function'?win.homepageAlertDetailsUrl(alert):'live-alerts-test.html';
           return `<article class="news-alert-row" style="--alert-color:${esc(color)}"><div><strong>${esc(p.event)}</strong><p>${esc(p.areaDesc || p.headline || 'See official bulletin for affected areas')}</p><small>${Number.isFinite(expires)?'Until ':''}${esc(expireLabel)}</small></div><a href="${esc(href)}">Details ↗</a></article>`;
-        }).join('')+(selectedAlerts.length>limit&&limit===6?`<button type="button" class="news-expand-alerts" aria-expanded="false">Show more alerts (${selectedAlerts.length-6}) ↓</button>`:'')+(selectedAlerts.length>24&&limit===24?`<a class="news-more-alerts" href="live-alerts.html">View all ${selectedAlerts.length} matching products ↗</a>`:'');
+        }).join('')+(selectedAlerts.length>limit&&limit===6?`<button type="button" class="news-expand-alerts" aria-expanded="false">Show more alerts (${selectedAlerts.length-6}) ↓</button>`:'')+(selectedAlerts.length>24&&limit===24?`<a class="news-more-alerts" href="live-alerts-test.html">View all ${selectedAlerts.length} matching products ↗</a>`:'');
       }
       list.addEventListener('click',event=>{if(event.target.closest('.news-expand-alerts')){expanded=true;draw();}});
       mobileAlerts.addEventListener('change',()=>{expanded=false;draw();});
