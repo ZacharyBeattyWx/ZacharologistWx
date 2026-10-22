@@ -7543,7 +7543,8 @@
   <style>
     .overview-category-button[data-overview-filter="marine"] { --accent: #40b8c5; }
     .overview-category-button[data-overview-filter="other"] { --accent: #a2aeb9; }
-    #mobileFilterSheet[hidden] { display: none !important; }
+    #mobileFilterSheet[hidden], #requestedAlertNotice[hidden] { display: none !important; }
+    #requestedAlertNotice { margin: 0 0 1rem; padding: 1rem; border: 1px solid #b8a052; color: #f4e8b9; background: #1e1d15; line-height: 1.5; }
     .original-bulletin { margin-top: .8rem; }
     .original-bulletin > summary { cursor: pointer; font-size: .85rem; padding: .7rem; }
     .bulletin-readable { gap: .65rem; }
@@ -7591,6 +7592,7 @@
 </header>
 
   <main class="page">
+<div id="requestedAlertNotice" role="status" hidden></div>
 <section class="hero">
       <div class="hero-card">
         <p class="eyebrow">Live NWS Alert Network</p>
@@ -11518,6 +11520,7 @@
         return false;
       }
 
+      document.getElementById("requestedAlertNotice").hidden = true;
       alertDeepLinkHandled = true;
 
       locationAlertFeatures = null;
@@ -11845,10 +11848,12 @@
       }
       render();
       if (!alertDeepLinkHandled) {
-        document.body.classList.add('detail-open');
-        alertDetailPanel.innerHTML = '<div class="empty-state"><button type="button" class="detail-close" data-close-detail aria-label="Back to alerts">×</button><h3>' +
-          (lookupFailed ? 'The bulletin lookup is reconnecting' : 'The requested alert may have changed or ended') +
-          '</h3><p>Choose a current alert from the list, or <a href="https://www.weather.gov/">check the official NWS forecast</a>.</p></div>';
+        const notice = document.getElementById("requestedAlertNotice");
+        notice.hidden = false;
+        notice.textContent = lookupFailed
+          ? "The linked alert could not be verified. The lookup will retry; browse the current alerts below."
+          : "The linked alert has ended or is no longer active. Browse the current alerts below.";
+        if (lookupFailed) requestedAlertFallbackAttempted = false;
       }
     }
 
