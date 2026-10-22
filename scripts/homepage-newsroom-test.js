@@ -245,6 +245,7 @@
     const seen=new Set();
     return (alerts || []).filter(a=>{
       const p=a?.properties || {},expiry=Date.parse(p.ends || p.expires || '');
+      if(typeof AlertFreshness !== 'undefined' && !AlertFreshness.isCurrent(a,now))return false;
       if(Number.isFinite(expiry) && expiry<=now)return false;
       if(!p.event || (category!=='all' && alertCategory(p.event)!==category))return false;
       const key=p._canonicalId || a.id || p.id || `${p.event}|${p.areaDesc}|${p.sent}`;

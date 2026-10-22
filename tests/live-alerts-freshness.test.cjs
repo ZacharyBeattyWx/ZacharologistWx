@@ -24,6 +24,9 @@ check(snapshotIsFresh({features:[],generatedAt:new Date(now).toISOString()},now)
 check(snapshotIsFresh({features:[],generatedAt:'invalid'},now),false);
 check(snapshotIsFresh({features:[],generatedAt:'2026-10-23T12:00:00Z'},now),false);
 check(nws.features.filter(f=>isCurrent(f,now)).length>0,true);
+const homepage = require('../scripts/homepage-newsroom-test.js');
+check(homepage.filteredAlerts(stale.features,'all',now).length,0);
+check(homepage.filteredAlerts(nws.features,'all',now).length>0,true);
 (async()=>{
   let calls=[];
   let result=await loadCollection('/hub',async url=>{calls.push(url);return url==='/hub'?stale:nws;},now);

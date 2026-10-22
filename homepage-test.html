@@ -12650,6 +12650,7 @@ body {
     </div>
   </div>
 </div>
+<script src="scripts/live-alerts-freshness-test.js?v=20261022a"></script>
 <script>
 const alertsList = document.getElementById("alertsList");
 const alertsTitle = document.getElementById("alertsTitle");
@@ -13680,16 +13681,7 @@ function isHomepageAlertInMonitoringArea(alert) {
 }
 
 function isExpiredHomepageAlert(alert) {
-  const properties = alert?.properties || {};
-  const expiresValue = properties.expires || properties.ends || properties.end;
-
-  if (!expiresValue) return false;
-
-  const expiresTime = Date.parse(expiresValue);
-
-  if (!Number.isFinite(expiresTime)) return false;
-
-  return expiresTime <= Date.now();
+  return !AlertFreshness.isCurrent(alert);
 }
 
 function normalizeHomepageLiveAlertFeature(feature, index) {
@@ -18230,7 +18222,7 @@ setInterval(loadSPCImages, 10 * 60 * 1000);
 })();
 </script>
 
-<script src="scripts/homepage-newsroom-test.js?v=20261022a"></script>
+<script src="scripts/homepage-newsroom-test.js?v=20261022b"></script>
 <script src="scripts/homepage-spc-carousel.js?v=20261019b"></script>
 <script src="scripts/homepage-national-monitoring-test.js?v=20261022a"></script>
 </body>
