@@ -7541,6 +7541,8 @@
 <link rel="stylesheet" href="assets/interior-newsroom.css?v=20261020a">
 
   <style>
+    .overview-category-button[data-overview-filter="marine"] { --accent: #40b8c5; }
+    .overview-category-button[data-overview-filter="other"] { --accent: #a2aeb9; }
     #mobileFilterSheet[hidden] { display: none !important; }
     .original-bulletin { margin-top: .8rem; }
     .original-bulletin > summary { cursor: pointer; font-size: .85rem; padding: .7rem; }
@@ -7550,6 +7552,7 @@
     @media (max-width: 820px) {
       #mobileFilterBackdrop { z-index: 10010; }
       #mobileFilterSheet { z-index: 10020; max-height: 82dvh; }
+      #mobileFilterSheet.is-open { display: grid !important; visibility: visible; transform: translateY(0); }
       #mobileFilterSheet:not(.is-open) { visibility: hidden; pointer-events: none; }
       body.filters-open { overflow: hidden; }
       .mobile-nws-bulletin .bulletin-section-copy { font-size: .9rem; }
@@ -7645,6 +7648,8 @@
         <option value="watches">Watches</option>
         <option value="statements">Statements</option>
         <option value="severe">Severe weather</option>
+        <option value="marine">Marine & coastal</option>
+        <option value="other">Other weather</option>
         <option value="hydro">Flood and hydro</option>
         <option value="fire">Fire weather</option>
         <option value="heat">Heat</option>
@@ -7840,6 +7845,8 @@
       { value: "heat", label: "Heat" },
       { value: "winter", label: "Winter" },
       { value: "tropical", label: "Tropical" },
+      { value: "marine", label: "Marine" },
+      { value: "other", label: "Other" },
       { value: "geometry", label: "Geometry" }
     ];
 
@@ -8429,13 +8436,8 @@
         return "fire";
       }
 
-      /*
-       * Wind, fog, marine, small-craft, high-surf,
-       * beach-hazard and any otherwise unmatched
-       * advisory product use the storm/severe bucket.
-       * This guarantees no advisory disappears.
-       */
-      return "severe";
+      // Unmatched advisories remain in All/Other, never in severe-convective totals.
+      return "other";
     }
 
     function matchesType(feature, type) {
@@ -8542,6 +8544,14 @@
           event.includes("tropical") ||
           event.includes("storm surge")
         );
+      }
+
+      if (type === "marine") {
+        return /marine|small craft|gale|hazardous seas|surf|beach|waterspout/.test(event) || /^storm (warning|watch)$/.test(event);
+      }
+      if (type === "other") {
+        return !["severe", "hydro", "fire", "heat", "winter", "tropical", "marine"]
+          .some(category => matchesType(feature, category));
       }
 
       if (type === "geometry") {
@@ -11067,7 +11077,9 @@
         "fire",
         "heat",
         "winter",
-        "tropical"
+        "tropical",
+        "marine",
+        "other"
       ];
 
       const overviewSourceFeatures =

@@ -1,0 +1,40 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const html=fs.readFileSync(require('node:path').resolve(__dirname,'../live-alerts-test.html'),'utf8');
+const original=fs.readFileSync(require('node:path').resolve(__dirname,'../live-alerts.html'),'utf8');
+function extract(name, source=html) {
+  const start=source.indexOf(`    function ${name}(`);
+  assert(start>=0,name);
+  const end=source.indexOf('\n    function ',start+5);
+  return source.slice(start,end);
+}
+const ctx=vm.createContext({});
+for(const name of ['escapeHtml','preserveBulletinText','bulletinSectionTitle','expandedBulletinText','bulletinSections','renderBulletinTextFragments','renderBulletinSectionBody','renderStructuredBulletin','renderReadableFullBulletin','renderRawBulletin'])vm.runInContext(extract(name),ctx);
+const raw='TCVAT5\n\nEDOUARD WATCH/WARNING ADVISORY\n\nNUMBER 3\n\nCAUTION...THIS PRODUCT ONLY\n\nAPPROXIMATELY CONVEYS THE EXTENT OF\n\nTROPICAL CYCLONE WIND AND SURGE';
+const result=ctx.renderReadableFullBulletin(raw);
+assert(result.includes('THIS PRODUCT ONLY APPROXIMATELY CONVEYS THE EXTENT OF TROPICAL'));
+assert(result.includes('Original bulletin text'));
+assert(result.includes(ctx.escapeHtml(ctx.preserveBulletinText(raw))));
+assert(!result.includes('<script>'));
+assert.equal(ctx.renderReadableFullBulletin('<script>alert(1)</script>').includes('<script>'),false);
+vm.runInContext(extract('advisoryHazardCategory'),ctx);
+vm.runInContext('function hasGeometry(f) { return Boolean(f.geometry); }',ctx);
+vm.runInContext(extract('matchesType'),ctx);
+const alert = event => ({properties:{event}});
+for (const event of ['Dense Fog Advisory','Small Craft Advisory','Wind Advisory','Air Quality Alert','High Surf Advisory']) assert.equal(ctx.matchesType(alert(event),'severe'),false,event);
+for (const event of ['Tornado Warning','Severe Thunderstorm Watch','Special Marine Warning']) assert.equal(ctx.matchesType(alert(event),'severe'),true,event);
+for (const event of ['Small Craft Advisory','Gale Warning','Storm Warning','High Surf Advisory']) assert.equal(ctx.matchesType(alert(event),'marine'),true,event);
+for (const event of ['Dense Fog Advisory','High Wind Warning','Air Quality Alert']) assert.equal(ctx.matchesType(alert(event),'other'),true,event);
+assert.equal(ctx.matchesType(alert('Winter Storm Warning'),'marine'),false);
+for (const event of ['Winter Weather Advisory','Flood Warning','Red Flag Warning','Excessive Heat Warning','Tropical Storm Watch']) assert.equal(ctx.matchesType(alert(event),'other'),false,event);
+assert(html.includes('#mobileFilterSheet[hidden] { display: none !important; }'));
+assert(html.includes('mobileFilterSheet.hidden = mobile && !open;'));
+assert(html.includes('mobileFilterSheet.inert = mobile && !open;'));
+assert(html.includes('document.body.append(mobileFilterBackdrop, mobileFilterSheet);'));
+assert(html.includes('setInterval(refreshInBackground, 60000)'));
+assert(html.includes('visibilitychange'));
+const script=html.match(/<script>\s*([\s\S]*?)<\/script>/)[1];
+new vm.Script(script);
+// Production external assets remain exactly the same, except for the new helper.
+const scripts=x=>[...x.matchAll(/<script src="([^"]+)"/g)].map(m=>m[1]);
+assert.deepEqual(scripts(html).filter(s=>!s.includes('live-alerts-freshness-test')),scripts(original));
+console.log('Bulletin readability, escaping, drawer protections, refresh hooks and inline syntax checks passed.');
