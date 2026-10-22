@@ -9079,9 +9079,9 @@
           headline: cleanText(props.headline || ""),
           description: preserveBulletinText(props.description || ""),
           instruction: preserveBulletinText(props.instruction || ""),
-          office: cleanText(props.office || ""),
+          office: cleanText(props.office || props.senderName || ""),
           expires: props.expires || props.ends || props.end || "",
-          _liveNwwsFastLane: true
+          _liveNwwsFastLane: !props._nwsDeepLinkFallback
         }
       };
 
@@ -10536,10 +10536,9 @@
       const office =
         props.office || "Unknown office";
 
-      const source =
-        props._liveSource ||
-        props.source ||
-        "nwws-oi";
+      const source = props._nwsDeepLinkFallback
+        ? "Official NWS API"
+        : props._liveSource || props.source || "nwws-oi";
 
       const expires =
         displayExpiryForFeature(feature);
