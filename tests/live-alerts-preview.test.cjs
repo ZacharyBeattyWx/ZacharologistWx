@@ -26,7 +26,7 @@ for (const event of ['Small Craft Advisory','Gale Warning','Storm Warning','High
 for (const event of ['Dense Fog Advisory','High Wind Warning','Air Quality Alert']) assert.equal(ctx.matchesType(alert(event),'other'),true,event);
 assert.equal(ctx.matchesType(alert('Winter Storm Warning'),'marine'),false);
 for (const event of ['Winter Weather Advisory','Flood Warning','Red Flag Warning','Excessive Heat Warning','Tropical Storm Watch']) assert.equal(ctx.matchesType(alert(event),'other'),false,event);
-assert(html.includes('#mobileFilterSheet[hidden] { display: none !important; }'));
+assert(/#mobileFilterSheet\[hidden\][^{]*\{\s*display: none !important;/.test(html));
 assert(html.includes('mobileFilterSheet.hidden = mobile && !open;'));
 assert(html.includes('mobileFilterSheet.inert = mobile && !open;'));
 assert(html.includes('document.body.append(mobileFilterBackdrop, mobileFilterSheet);'));
