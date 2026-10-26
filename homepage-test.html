@@ -12186,12 +12186,14 @@ body {
 </style>
 
   <link rel="stylesheet" href="scripts/homepage-newsroom-test.css?v=20261021e">
+<meta name="robots" content="noindex,nofollow">
+<link rel="stylesheet" href="assets/category-colors-test.css?v=20261026a">
 </head>
 
-<body>
+<body data-color-preview>
 
 <header class="site-header">
-  <a class="site-brand" href="index.html">
+  <a class="site-brand" href="homepage-test.html">
     <div class="brand-main">ZACHAROLOGIST</div>
     <div class="brand-sub">Built for the Storm</div>
   </a>
@@ -12201,22 +12203,22 @@ body {
   </button>
 
   <nav class="site-nav" id="siteNav">
-    <a href="index.html" class="active">
+    <a href="homepage-test.html" class="active">
       Home
       <span>Live Monitoring</span>
     </a>
 
-    <a href="wx-updates.html">
+    <a href="wx-updates-test.html">
       Wx Updates
       <span>Briefings</span>
     </a>
 
-    <a href="maps.html">
+    <a href="maps-test.html">
       Maps &amp; Models
       <span>Analysis</span>
     </a>
 
-    <a href="storm-reports.html">
+    <a href="storm-reports-test.html">
 
       Storm Reports
 
@@ -12225,7 +12227,7 @@ body {
     </a>
 
 
-    <a href="chase-dashboard.html" class="chase-link">
+    <a href="chase-dashboard-test.html" class="chase-link">
       Storm Chasing
       <span>Field Ops</span>
     </a>
@@ -12262,7 +12264,7 @@ body {
         An unsettled pattern for now, but monitoring long-range signals for
         increased storm potential across the Plains, Midwest, and Southeast.
       </p>
-      <a href="wx-updates.html" class="dashboard-button">Read Full Discussion</a>
+      <a href="wx-updates-test.html" class="dashboard-button">Read Full Discussion</a>
     </div>
   </div>
 </div>
@@ -12311,7 +12313,7 @@ body {
 <div class="dashboard-grid ops-dashboard-grid"><!-- CENTER COLUMN -->
   <div class="ops-column ops-center-column">
 
-    <article class="dashboard-card mini-card radar-card">
+    <article class="dashboard-card mini-card radar-card" data-weather-category="observations">
       <div class="card-header-row">
         <div>
           <span class="mini-label">Live Radar</span>
@@ -12330,7 +12332,7 @@ body {
 
     </article>
 
-    <article class="dashboard-card mini-card spc-card">
+    <article class="dashboard-card mini-card spc-card" data-weather-category="severe">
       <div class="card-header-row">
         <div>
           <span class="mini-label">SPC Outlook</span>
@@ -12438,7 +12440,7 @@ body {
 
 
 
-  <article class="dashboard-card ops-conditions-card">
+  <article class="dashboard-card ops-conditions-card" data-weather-category="observations">
 
   <button
     class="ops-location-icon"
@@ -12485,7 +12487,7 @@ body {
 
 </article>
 
-  <article class="dashboard-card mini-card alerts-card">
+  <article class="dashboard-card mini-card alerts-card" data-weather-category="alerts">
     <h2 id="alertsTitle">Active Alerts</h2>
     <div class="active-alert-primary-actions">
       <a class="live-alerts-feed-link" href="live-alerts-test.html">Open Alerts</a>
@@ -17890,7 +17892,7 @@ setInterval(loadSPCImages, 10 * 60 * 1000);
   }
 
   function ensureNavLink() {
-    if (document.querySelector('a[href*="storm-reports.html"]')) return;
+    if (document.querySelector('a[href*="storm-reports-test.html"]')) return;
 
     const stormChasing = [...document.querySelectorAll("a")]
       .find((link) => /storm chasing/i.test(link.textContent || ""));
@@ -17898,7 +17900,7 @@ setInterval(loadSPCImages, 10 * 60 * 1000);
     if (!stormChasing) return;
 
     const link = document.createElement("a");
-    link.href = "storm-reports.html";
+    link.href = "storm-reports-test.html";
     link.textContent = "Storm Reports";
     link.className = stormChasing.className;
     stormChasing.insertAdjacentElement("beforebegin", link);
@@ -17954,7 +17956,7 @@ setInterval(loadSPCImages, 10 * 60 * 1000);
 
       <a
         class="mobile-storm-reports-open"
-        href="storm-reports.html?${params.toString()}"
+        href="storm-reports-test.html?${params.toString()}"
       >Open Storm Report Explorer</a>
     `;
 
@@ -18185,7 +18187,7 @@ setInterval(loadSPCImages, 10 * 60 * 1000);
       view: "map"
     });
 
-    return `storm-reports.html?${params.toString()}`;
+    return `storm-reports-test.html?${params.toString()}`;
   }
 
   function stormReportsMenuLinks() {
@@ -18222,7 +18224,7 @@ setInterval(loadSPCImages, 10 * 60 * 1000);
 })();
 </script>
 
-<script src="scripts/homepage-newsroom-test.js?v=20261022b"></script>
+<script src="scripts/homepage-newsroom-test.js?v=20261026a"></script>
 <script src="scripts/homepage-spc-carousel.js?v=20261019b"></script>
 <script src="scripts/homepage-national-monitoring-test.js?v=20261022a"></script>
 </body>

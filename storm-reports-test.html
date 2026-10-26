@@ -1,0 +1,6563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Interactive SPC severe weather report summaries with maps, tables, charts, and statistics.">
+  <title>Storm Reports | Zacharologist</title>
+  <link rel="icon" type="image/jpeg" href="/hero.jpg">
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.25.0/mapbox-gl.css" rel="stylesheet">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.25.0/mapbox-gl.js"></script>
+  <script src="mapbox-token.js"></script>
+  <style>
+    :root {
+      --bg: #030914;
+      --panel: rgba(8, 18, 32, 0.94);
+      --panel-2: rgba(13, 29, 49, 0.92);
+      --line: rgba(126, 173, 214, 0.22);
+      --text: #f7fbff;
+      --muted: #91a6bb;
+      --blue: #62c9ff;
+      --tornado: #ff645f;
+      --hail: #57e0ba;
+      --wind: #66caff;
+      --amber: #ffc44d;
+      --green: #35d69a;
+      --shadow: 0 22px 55px rgba(0, 0, 0, 0.34);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      color-scheme: dark;
+      background: var(--bg);
+    }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100vh;
+      overflow-x: hidden;
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 50% -10%, rgba(0, 193, 255, 0.20), transparent 35%),
+        radial-gradient(circle at 100% 22%, rgba(31, 108, 255, 0.10), transparent 28%),
+        linear-gradient(180deg, #061321 0%, #030914 48%, #020710 100%);
+    }
+
+    button,
+    select,
+    input {
+      font: inherit;
+    }
+
+    button,
+    select {
+      color: inherit;
+    }
+
+    a {
+      color: inherit;
+    }
+
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 3000;
+      width: 100%;
+      min-height: 72px;
+      padding: 12px clamp(16px, 2.2vw, 34px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      background: rgba(3, 9, 20, 0.96);
+      border-bottom: 1px solid rgba(100, 199, 255, 0.20);
+      backdrop-filter: blur(16px);
+    }
+
+    .site-brand {
+      flex: 0 0 auto;
+      text-decoration: none;
+    }
+
+    .brand-main {
+      font-size: 1.12rem;
+      line-height: 1;
+      font-weight: 950;
+      letter-spacing: 0.12em;
+    }
+
+    .brand-sub {
+      margin-top: 6px;
+      color: #76cfff;
+      font-size: 0.62rem;
+      font-weight: 900;
+      letter-spacing: 0.20em;
+      text-transform: uppercase;
+    }
+
+    .site-nav {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .site-nav a {
+      padding: 9px 12px;
+      border: 1px solid transparent;
+      border-radius: 11px;
+      color: #dbe8f5;
+      text-decoration: none;
+      font-size: 0.72rem;
+      font-weight: 900;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .site-nav a:hover,
+    .site-nav a.active {
+      color: #fff;
+      border-color: rgba(98, 201, 255, 0.38);
+      background: rgba(98, 201, 255, 0.12);
+    }
+
+    .mobile-nav-toggle {
+      display: none;
+      width: 42px;
+      height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(15, 31, 50, 0.92);
+      color: white;
+      cursor: pointer;
+    }
+
+    .reports-shell {
+      width: min(1820px, calc(100% - clamp(20px, 3vw, 54px)));
+      margin: 0 auto;
+      padding: 28px 0 60px;
+    }
+
+    .reports-hero {
+      margin-bottom: 18px;
+      padding: clamp(22px, 3vw, 36px);
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 24px;
+      align-items: center;
+      border: 1px solid rgba(98, 201, 255, 0.23);
+      border-radius: 24px;
+      background:
+        radial-gradient(circle at 78% 18%, rgba(98, 201, 255, 0.13), transparent 33%),
+        linear-gradient(145deg, rgba(11, 28, 48, 0.97), rgba(4, 13, 25, 0.98));
+      box-shadow: var(--shadow);
+    }
+
+    .eyebrow {
+      margin: 0 0 9px;
+      color: var(--blue);
+      font-size: 0.70rem;
+      font-weight: 950;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    .reports-hero h1 {
+      margin: 0;
+      max-width: 960px;
+      font-size: clamp(2rem, 4.2vw, 4.5rem);
+      line-height: 0.98;
+      letter-spacing: -0.055em;
+    }
+
+    .reports-hero-copy {
+      max-width: 900px;
+      margin: 15px 0 0;
+      color: #b5c6d8;
+      font-size: clamp(0.95rem, 1.2vw, 1.08rem);
+      line-height: 1.55;
+    }
+
+    .hero-source {
+      min-width: 230px;
+      padding: 16px 18px;
+      border: 1px solid rgba(98, 201, 255, 0.24);
+      border-radius: 17px;
+      background: rgba(2, 8, 18, 0.54);
+    }
+
+    .hero-source strong,
+    .hero-source span {
+      display: block;
+    }
+
+    .hero-source strong {
+      font-size: 0.82rem;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+    }
+
+    .hero-source span {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 0.76rem;
+      line-height: 1.35;
+    }
+
+    .control-deck {
+      position: sticky;
+      top: 72px;
+      z-index: 2000;
+      margin-bottom: 18px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: rgba(5, 14, 26, 0.96);
+      box-shadow: 0 16px 38px rgba(0, 0, 0, 0.30);
+      backdrop-filter: blur(18px);
+    }
+
+    .control-row {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto auto;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .select-control {
+      display: grid;
+      grid-template-columns: auto minmax(92px, auto);
+      gap: 8px;
+      align-items: center;
+    }
+
+    .select-control span,
+    .control-label {
+      color: #8096ac;
+      font-size: 0.62rem;
+      font-weight: 950;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .select-control select,
+    .table-tools select,
+    .table-tools input {
+      min-height: 38px;
+      border: 1px solid rgba(125, 175, 219, 0.27);
+      border-radius: 10px;
+      background: rgba(13, 29, 48, 0.92);
+      padding: 7px 10px;
+      color: #f7fbff;
+      outline: none;
+    }
+
+    .segmented {
+      display: inline-flex;
+      min-width: 0;
+      padding: 3px;
+      border: 1px solid rgba(125, 175, 219, 0.20);
+      border-radius: 12px;
+      background: rgba(1, 7, 16, 0.58);
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .segmented::-webkit-scrollbar {
+      display: none;
+    }
+
+    .segmented button {
+      min-height: 34px;
+      padding: 7px 12px;
+      border: 0;
+      border-radius: 9px;
+      background: transparent;
+      color: #849bb1;
+      font-size: 0.68rem;
+      font-weight: 950;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .segmented button:hover {
+      color: #fff;
+      background: rgba(98, 201, 255, 0.09);
+    }
+
+    .segmented button.active {
+      color: #fff;
+      background: rgba(98, 201, 255, 0.18);
+      box-shadow: inset 0 0 0 1px rgba(98, 201, 255, 0.28);
+    }
+
+    .segmented button[data-value="tornado"].active {
+      color: #ffd0ce;
+      background: rgba(255, 100, 95, 0.17);
+      box-shadow: inset 0 0 0 1px rgba(255, 100, 95, 0.34);
+    }
+
+    .segmented button[data-value="hail"].active {
+      color: #caffef;
+      background: rgba(87, 224, 186, 0.15);
+      box-shadow: inset 0 0 0 1px rgba(87, 224, 186, 0.32);
+    }
+
+    .segmented button[data-value="wind"].active {
+      color: #d3f0ff;
+      background: rgba(102, 202, 255, 0.16);
+      box-shadow: inset 0 0 0 1px rgba(102, 202, 255, 0.34);
+    }
+
+    .segmented button:disabled {
+      opacity: 0.34;
+      cursor: not-allowed;
+    }
+
+    .state-control {
+      display: none;
+    }
+
+    .state-control.visible {
+      display: grid;
+    }
+
+    .period-row {
+      margin-top: 10px;
+      display: grid;
+      grid-template-columns: repeat(13, minmax(54px, 1fr));
+      gap: 6px;
+    }
+
+    .period-row button {
+      min-height: 34px;
+      border: 1px solid rgba(125, 175, 219, 0.18);
+      border-radius: 9px;
+      background: rgba(11, 26, 43, 0.74);
+      color: #8ea4b8;
+      font-size: 0.66rem;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .period-row button:hover,
+    .period-row button.active {
+      color: #fff;
+      border-color: rgba(98, 201, 255, 0.46);
+      background: rgba(98, 201, 255, 0.16);
+    }
+
+    .status-strip {
+      margin-bottom: 18px;
+      min-height: 46px;
+      padding: 11px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      border: 1px solid rgba(125, 175, 219, 0.18);
+      border-radius: 14px;
+      background: rgba(8, 20, 35, 0.84);
+    }
+
+    .status-main {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .status-dot {
+      flex: 0 0 auto;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #42d69b;
+      box-shadow: 0 0 14px rgba(66, 214, 155, 0.45);
+    }
+
+    .status-strip.loading .status-dot {
+      background: var(--amber);
+      box-shadow: 0 0 14px rgba(255, 196, 77, 0.45);
+      animation: pulse 1s ease-in-out infinite;
+    }
+
+    .status-strip.error .status-dot {
+      background: #ff6e69;
+      box-shadow: 0 0 14px rgba(255, 110, 105, 0.45);
+    }
+
+    @keyframes pulse {
+      50% {
+        opacity: 0.35;
+        transform: scale(0.75);
+      }
+    }
+
+    #statusText {
+      min-width: 0;
+      overflow: hidden;
+      color: #d7e5f2;
+      font-size: 0.78rem;
+      font-weight: 750;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .status-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .small-action {
+      min-height: 32px;
+      padding: 6px 10px;
+      border: 1px solid rgba(125, 175, 219, 0.26);
+      border-radius: 9px;
+      background: rgba(15, 34, 56, 0.86);
+      color: #dceaf6;
+      font-size: 0.65rem;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      text-decoration: none;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+
+    .summary-grid {
+      margin-bottom: 18px;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .summary-card {
+      min-height: 120px;
+      padding: 17px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background:
+        linear-gradient(145deg, rgba(15, 34, 56, 0.96), rgba(6, 17, 30, 0.98));
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+    }
+
+    .summary-card span,
+    .summary-card strong,
+    .summary-card small {
+      display: block;
+    }
+
+    .summary-card span {
+      color: #7e95aa;
+      font-size: 0.64rem;
+      font-weight: 950;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+    }
+
+    .summary-card strong {
+      margin-top: 8px;
+      color: #fff;
+      font-size: clamp(2rem, 4vw, 3.3rem);
+      line-height: 0.95;
+      letter-spacing: -0.05em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .summary-card small {
+      margin-top: 9px;
+      color: #9eb1c4;
+      font-size: 0.75rem;
+      line-height: 1.3;
+    }
+
+    .workspace {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: rgba(5, 14, 26, 0.95);
+      box-shadow: var(--shadow);
+    }
+
+    .workspace-header {
+      min-height: 78px;
+      padding: 17px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      border-bottom: 1px solid rgba(125, 175, 219, 0.17);
+      background:
+        linear-gradient(90deg, rgba(21, 48, 77, 0.70), rgba(5, 14, 26, 0.25));
+    }
+
+    .workspace-header h2 {
+      margin: 0;
+      font-size: clamp(1.15rem, 2.3vw, 1.8rem);
+      line-height: 1.1;
+    }
+
+    .workspace-header p {
+      margin: 6px 0 0;
+      color: #8ea4b8;
+      font-size: 0.76rem;
+    }
+
+    .hazard-chip {
+      flex: 0 0 auto;
+      padding: 8px 11px;
+      border: 1px solid rgba(98, 201, 255, 0.30);
+      border-radius: 999px;
+      background: rgba(98, 201, 255, 0.10);
+      color: #bfeaff;
+      font-size: 0.65rem;
+      font-weight: 950;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+    }
+
+    .view-panel {
+      display: none;
+    }
+
+    .view-panel.active {
+      display: block;
+    }
+
+    .map-wrap {
+      position: relative;
+      min-height: 640px;
+      background: #07111e;
+    }
+
+    #reportsMap {
+      width: 100%;
+      height: min(72vh, 820px);
+      min-height: 640px;
+    }
+
+    .map-legend {
+      position: absolute;
+      left: 14px;
+      bottom: 14px;
+      z-index: 700;
+      min-width: 180px;
+      padding: 12px;
+      border: 1px solid rgba(150, 190, 224, 0.26);
+      border-radius: 13px;
+      background: rgba(3, 10, 20, 0.88);
+      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.34);
+      backdrop-filter: blur(12px);
+    }
+
+    .map-legend strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 0.69rem;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+    }
+
+    .legend-row {
+      display: grid;
+      grid-template-columns: 14px minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      margin-top: 6px;
+      color: #becddb;
+      font-size: 0.72rem;
+    }
+
+    .legend-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.65);
+    }
+
+    .legend-dot.tornado { background: var(--tornado); }
+    .legend-dot.hail { background: var(--hail); }
+    .legend-dot.wind { background: var(--wind); }
+
+    .legend-hazard-section + .legend-hazard-section {
+      margin-top: 8px;
+      padding-top: 7px;
+      border-top: 1px solid rgba(150, 190, 224, 0.13);
+    }
+
+    .legend-hazard-heading,
+    .legend-detail-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .legend-hazard-heading {
+      margin-top: 5px;
+      font-size: 0.75rem;
+      font-weight: 950;
+    }
+
+    .legend-hazard-heading.tornado,
+    .legend-detail-row.tornado {
+      color: var(--tornado);
+    }
+
+    .legend-hazard-heading.wind,
+    .legend-detail-row.wind {
+      color: var(--wind);
+    }
+
+    .legend-hazard-heading.hail,
+    .legend-detail-row.hail {
+      color: var(--hail);
+    }
+
+    .legend-detail-row {
+      grid-template-columns: 15px minmax(0, 1fr) auto;
+      margin-top: 2px;
+      padding-left: 2px;
+      font-size: 0.68rem;
+      line-height: 1.2;
+    }
+
+    .legend-detail-row span:nth-child(2) {
+      color: currentColor;
+      opacity: 0.92;
+    }
+
+    .legend-detail-row b,
+    .legend-hazard-heading b {
+      color: currentColor;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .legend-symbol {
+      display: block;
+      justify-self: center;
+      flex: 0 0 auto;
+    }
+
+    /* Hazard families match the SPC visual language:
+       triangles = tornado, squares = wind, circles = hail. */
+    .tornado-all-row {
+      color: #ff6b72 !important;
+      font-size: 0.66rem;
+    }
+
+    .tornado-ef2-row {
+      color: #ff263b !important;
+      font-size: 0.69rem;
+      font-weight: 850;
+    }
+
+    .tornado-all-symbol {
+      width: 0;
+      height: 0;
+      border-left: 4px solid transparent;
+      border-right: 4px solid transparent;
+      border-top: 7px solid #ff6b72;
+      filter:
+        drop-shadow(0 0 1px rgba(0, 0, 0, 0.95))
+        drop-shadow(0 0 3px rgba(255, 70, 82, 0.28));
+    }
+
+    .tornado-ef2-symbol {
+      width: 0;
+      height: 0;
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-top: 11px solid #ff263b;
+      filter:
+        drop-shadow(0 0 1px rgba(0, 0, 0, 0.95))
+        drop-shadow(0 0 4px rgba(255, 38, 59, 0.36));
+    }
+
+    /* Wind remains entirely within a cyan/blue family—no violet. */
+    .wind-damage-row {
+      color: #82ddff !important;
+      font-size: 0.65rem;
+    }
+
+    .wind-measured-row {
+      color: #2daeff !important;
+      font-size: 0.67rem;
+    }
+
+    .wind-significant-row {
+      color: #007bd9 !important;
+      font-size: 0.69rem;
+      font-weight: 850;
+    }
+
+    .wind-damage-symbol,
+    .wind-measured-symbol,
+    .wind-significant-symbol {
+      border: 1px solid rgba(220, 246, 255, 0.78);
+      border-radius: 1px;
+      box-shadow:
+        0 0 0 1px rgba(3, 13, 24, 0.95),
+        0 0 4px rgba(58, 182, 255, 0.22);
+    }
+
+    .wind-damage-symbol {
+      width: 7px;
+      height: 7px;
+      background: #82ddff;
+    }
+
+    .wind-measured-symbol {
+      width: 9px;
+      height: 9px;
+      background: #2daeff;
+    }
+
+    .wind-significant-symbol {
+      width: 12px;
+      height: 12px;
+      background: #007bd9;
+    }
+
+    /* Hail tiers use stronger shifts in both size and green shade. */
+    .hail-small-row {
+      color: #a5ff73 !important;
+      font-size: 0.65rem;
+    }
+
+    .hail-medium-row {
+      color: #35d65a !important;
+      font-size: 0.67rem;
+    }
+
+    .hail-large-row {
+      color: #00a33f !important;
+      font-size: 0.69rem;
+      font-weight: 850;
+    }
+
+    .hail-small-symbol,
+    .hail-medium-symbol,
+    .hail-large-symbol {
+      border-radius: 50%;
+      border: 1px solid rgba(222, 255, 226, 0.76);
+      box-shadow:
+        0 0 0 1px rgba(3, 18, 10, 0.96),
+        0 0 4px rgba(63, 229, 99, 0.2);
+    }
+
+    .hail-small-symbol {
+      width: 7px;
+      height: 7px;
+      background: #a5ff73;
+    }
+
+    .hail-medium-symbol {
+      width: 10px;
+      height: 10px;
+      background: #35d65a;
+    }
+
+    .hail-large-symbol {
+      width: 13px;
+      height: 13px;
+      background: #00a33f;
+    }
+
+    /* Storm reports use an independent Mapbox GL canvas. Radar and
+       alert sources, layers, state, and controls are not shared with this map. */
+    #reportsMap .mapboxgl-canvas {
+      outline: none;
+    }
+
+    #reportsMap .mapboxgl-ctrl-top-left {
+      top: 8px;
+      left: 8px;
+    }
+
+    #reportsMap .mapboxgl-ctrl-group {
+      overflow: hidden;
+      border: 1px solid rgba(127, 183, 228, 0.28);
+      border-radius: 8px;
+      background: rgba(5, 14, 24, 0.94);
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.32);
+    }
+
+    #reportsMap .mapboxgl-ctrl-group button {
+      background-color: rgba(5, 14, 24, 0.94);
+    }
+
+    #reportsMap .mapboxgl-ctrl-group button + button {
+      border-top-color: rgba(127, 183, 228, 0.22);
+    }
+
+    #reportsMap .mapboxgl-ctrl-icon {
+      filter: invert(1) brightness(1.35);
+    }
+
+    #reportsMap .mapboxgl-ctrl-attrib {
+      color: #b7c7d6;
+      background: rgba(3, 9, 16, 0.76);
+    }
+
+    #reportsMap .mapboxgl-ctrl-attrib a {
+      color: #d9efff;
+    }
+
+    #reportsMap .mapboxgl-popup {
+      z-index: 760;
+    }
+
+    #reportsMap .mapboxgl-popup-content {
+      padding: 13px 15px;
+      color: #f4f9fd;
+      border: 1px solid rgba(120, 180, 225, 0.25);
+      border-radius: 12px;
+      background: #071522;
+      box-shadow: 0 16px 34px rgba(0, 0, 0, 0.45);
+    }
+
+    #reportsMap .mapboxgl-popup-tip {
+      border-top-color: #071522;
+      border-bottom-color: #071522;
+    }
+
+    #reportsMap .mapboxgl-popup-close-button {
+      width: 30px;
+      height: 30px;
+      color: #dceeff;
+      font-size: 1.2rem;
+      line-height: 28px;
+    }
+
+    #reportsMap .mapboxgl-popup-close-button:hover {
+      background: rgba(98, 201, 255, 0.12);
+    }
+
+
+    .report-popup {
+      min-width: 220px;
+    }
+
+    .report-popup strong,
+    .report-popup span {
+      display: block;
+    }
+
+    .report-popup strong {
+      margin-bottom: 5px;
+      font-size: 0.92rem;
+    }
+
+    .report-popup span {
+      margin-top: 3px;
+      color: #b5c7d7;
+      font-size: 0.76rem;
+      line-height: 1.35;
+    }
+
+    .table-panel {
+      padding: 16px;
+    }
+
+    .table-tools {
+      margin-bottom: 12px;
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) auto auto auto;
+      gap: 9px;
+      align-items: center;
+    }
+
+    .check-control {
+      min-height: 38px;
+      padding: 7px 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 1px solid rgba(125, 175, 219, 0.23);
+      border-radius: 10px;
+      background: rgba(13, 29, 48, 0.80);
+      color: #b5c7d7;
+      font-size: 0.72rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .table-scroll {
+      overflow: auto;
+      max-height: 68vh;
+      border: 1px solid rgba(125, 175, 219, 0.16);
+      border-radius: 13px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 980px;
+    }
+
+    th,
+    td {
+      padding: 10px 11px;
+      border-bottom: 1px solid rgba(125, 175, 219, 0.12);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #0e2237;
+      color: #9fb5ca;
+      font-size: 0.64rem;
+      font-weight: 950;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    td {
+      color: #d8e4ef;
+      font-size: 0.75rem;
+      line-height: 1.38;
+    }
+
+    tbody tr:hover {
+      background: rgba(98, 201, 255, 0.06);
+    }
+
+    .hazard-label {
+      display: inline-flex;
+      min-width: 66px;
+      padding: 4px 7px;
+      justify-content: center;
+      border-radius: 999px;
+      font-size: 0.61rem;
+      font-weight: 950;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    .hazard-label.tornado {
+      color: #ffd1cf;
+      background: rgba(255, 100, 95, 0.17);
+    }
+
+    .hazard-label.hail {
+      color: #caffef;
+      background: rgba(87, 224, 186, 0.15);
+    }
+
+    .hazard-label.wind {
+      color: #d5f1ff;
+      background: rgba(102, 202, 255, 0.16);
+    }
+
+    .significant-flag {
+      color: #ffd26e;
+      font-weight: 950;
+    }
+
+    .pagination {
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .pagination-buttons {
+      display: flex;
+      gap: 7px;
+    }
+
+    .pagination button {
+      min-height: 34px;
+      padding: 6px 11px;
+      border: 1px solid rgba(125, 175, 219, 0.24);
+      border-radius: 9px;
+      background: rgba(13, 29, 48, 0.88);
+      color: white;
+      cursor: pointer;
+    }
+
+    .pagination button:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    #pageReadout {
+      color: #8ea4b8;
+      font-size: 0.72rem;
+    }
+
+    .charts-panel,
+    .stats-panel {
+      padding: 18px;
+    }
+
+    .chart-grid,
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .chart-card,
+    .stats-card {
+      min-height: 250px;
+      padding: 16px;
+      border: 1px solid rgba(125, 175, 219, 0.17);
+      border-radius: 16px;
+      background: rgba(10, 24, 40, 0.78);
+    }
+
+    .chart-card h3,
+    .stats-card h3 {
+      margin: 0 0 13px;
+      font-size: 0.88rem;
+      letter-spacing: 0.04em;
+    }
+
+    .bar-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: minmax(72px, 118px) minmax(0, 1fr) 48px;
+      gap: 9px;
+      align-items: center;
+    }
+
+    .bar-label {
+      overflow: hidden;
+      color: #aebfd0;
+      font-size: 0.69rem;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .bar-track {
+      height: 10px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(125, 175, 219, 0.10);
+    }
+
+    .bar-fill {
+      display: block;
+      width: var(--bar-width);
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #2fb9ff, #74ddff);
+      box-shadow: 0 0 12px rgba(98, 201, 255, 0.24);
+    }
+
+    .bar-value {
+      color: #f6fbff;
+      font-size: 0.72rem;
+      font-weight: 900;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stats-list {
+      display: grid;
+      gap: 9px;
+    }
+
+    .stats-row {
+      padding: 9px 0;
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      border-bottom: 1px solid rgba(125, 175, 219, 0.12);
+    }
+
+    .stats-row span {
+      color: #91a6bb;
+      font-size: 0.73rem;
+    }
+
+    .stats-row strong {
+      color: #f5faff;
+      font-size: 0.78rem;
+      text-align: right;
+    }
+
+    .empty-state {
+      min-height: 420px;
+      padding: 38px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+    }
+
+    .empty-state[hidden] {
+      display: none !important;
+    }
+
+    .empty-state > div {
+      max-width: 520px;
+    }
+
+    .empty-state strong {
+      display: block;
+      font-size: 1.35rem;
+    }
+
+    .empty-state p {
+      color: #91a6bb;
+      line-height: 1.55;
+    }
+
+    .loading-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 1000;
+      display: none;
+      place-items: center;
+      background: rgba(2, 8, 17, 0.68);
+      backdrop-filter: blur(4px);
+    }
+
+    .loading-overlay.visible {
+      display: grid;
+    }
+
+    .loader {
+      width: 54px;
+      height: 54px;
+      border: 5px solid rgba(98, 201, 255, 0.18);
+      border-top-color: #62c9ff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .reports-footer {
+      margin-top: 18px;
+      padding: 16px 18px;
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      border: 1px solid rgba(125, 175, 219, 0.16);
+      border-radius: 15px;
+      background: rgba(6, 17, 30, 0.76);
+      color: #7f95aa;
+      font-size: 0.72rem;
+      line-height: 1.45;
+    }
+
+    @media (max-width: 1180px) {
+      .control-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .select-control {
+        grid-template-columns: auto minmax(0, 1fr);
+      }
+
+      .segmented {
+        width: 100%;
+      }
+
+      .segmented button {
+        flex: 1 0 auto;
+      }
+
+      .summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .period-row {
+        grid-template-columns: repeat(7, minmax(52px, 1fr));
+      }
+    }
+
+    @media (max-width: 760px) {
+      .site-header {
+        min-height: 62px;
+      }
+
+      .mobile-nav-toggle {
+        display: grid;
+        place-items: center;
+      }
+
+      .site-nav {
+        position: fixed;
+        top: 62px;
+        right: 10px;
+        left: 10px;
+        display: none;
+        padding: 10px;
+        flex-direction: column;
+        align-items: stretch;
+        border: 1px solid var(--line);
+        border-radius: 15px;
+        background: rgba(3, 10, 21, 0.98);
+        box-shadow: var(--shadow);
+      }
+
+      .site-nav.open {
+        display: flex;
+      }
+
+      .site-nav a {
+        width: 100%;
+      }
+
+      .reports-shell {
+        width: min(100% - 18px, 1820px);
+        padding-top: 12px;
+      }
+
+      .reports-hero {
+        grid-template-columns: 1fr;
+        padding: 20px;
+        border-radius: 18px;
+      }
+
+      .hero-source {
+        min-width: 0;
+      }
+
+      .control-deck {
+        position: static;
+        padding: 10px;
+        border-radius: 16px;
+      }
+
+      .control-row {
+        grid-template-columns: 1fr;
+      }
+
+      .period-row {
+        display: flex;
+        overflow-x: auto;
+        padding-bottom: 4px;
+      }
+
+      .period-row button {
+        flex: 0 0 64px;
+      }
+
+      .status-strip,
+      .workspace-header,
+      .reports-footer {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .status-actions {
+        justify-content: stretch;
+      }
+
+      .status-actions > * {
+        flex: 1 1 auto;
+        text-align: center;
+      }
+
+      .summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .summary-card {
+        min-height: 108px;
+        padding: 14px;
+      }
+
+      .map-wrap,
+      #reportsMap {
+        min-height: 560px;
+        height: 70dvh;
+      }
+
+      .map-legend {
+        right: 10px;
+        left: 10px;
+        bottom: 10px;
+      }
+
+      .table-tools {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .table-tools input {
+        grid-column: 1 / -1;
+      }
+
+      .chart-grid,
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 460px) {
+      .summary-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .summary-card strong {
+        font-size: 2rem;
+      }
+
+      .table-tools {
+        grid-template-columns: 1fr;
+      }
+
+      .table-tools input {
+        grid-column: auto;
+      }
+
+      .reports-footer {
+        font-size: 0.67rem;
+      }
+    }
+  </style>
+
+<style id="storm-report-mapbox-logo-right-css">
+  /*
+   * Keep the custom report legend in the lower-left. Move Mapbox's required
+   * wordmark into the lower-right control corner, just above attribution.
+   */
+  #mapLegend.map-legend {
+    bottom: 8px !important;
+    left: 8px !important;
+  }
+
+  .mapboxgl-ctrl-bottom-right {
+    position: absolute;
+  }
+
+  .mapboxgl-ctrl-bottom-right > .mapboxgl-ctrl-logo,
+  .mapboxgl-ctrl-bottom-right > .storm-report-mapbox-logo-right {
+    position: absolute !important;
+    right: 0 !important;
+    bottom: 25px !important;
+    left: auto !important;
+    margin: 0 10px 0 0 !important;
+    z-index: 4 !important;
+  }
+
+  @media (max-width: 760px) {
+    #mapLegend.map-legend {
+      bottom: 7px !important;
+      left: 7px !important;
+    }
+
+    .mapboxgl-ctrl-bottom-right > .mapboxgl-ctrl-logo,
+    .mapboxgl-ctrl-bottom-right > .storm-report-mapbox-logo-right {
+      bottom: 27px !important;
+      margin-right: 7px !important;
+    }
+  }
+</style>
+
+
+<style id="spc-statistical-tables-and-charts-v1">
+  .spc-subtabs {
+    margin: 0 auto 16px;
+    padding: 4px;
+    display: flex;
+    width: max-content;
+    max-width: 100%;
+    gap: 4px;
+    overflow-x: auto;
+    border: 1px solid rgba(125, 175, 219, 0.22);
+    border-radius: 12px;
+    background: rgba(3, 10, 19, 0.82);
+    scrollbar-width: none;
+  }
+
+  .spc-subtabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .spc-subtabs button {
+    min-height: 36px;
+    padding: 8px 14px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: #8da3b8;
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.025em;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .spc-subtabs button:hover,
+  .spc-subtabs button.active {
+    color: #fff;
+    background: rgba(98, 201, 255, 0.17);
+    box-shadow: inset 0 0 0 1px rgba(98, 201, 255, 0.3);
+  }
+
+  .table-mode[hidden],
+  .chart-mode[hidden],
+  .chart-card[hidden] {
+    display: none !important;
+  }
+
+  .aggregate-table-heading {
+    margin-bottom: 12px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    border: 1px solid rgba(125, 175, 219, 0.2);
+    border-radius: 13px;
+    background: rgba(10, 25, 42, 0.76);
+  }
+
+  .aggregate-table-heading strong,
+  .aggregate-table-heading span {
+    display: block;
+  }
+
+  .aggregate-table-heading strong {
+    font-size: 1rem;
+  }
+
+  .aggregate-table-heading span {
+    margin-top: 4px;
+    color: #91a8bd;
+    font-size: 0.72rem;
+  }
+
+  .aggregate-sort-note {
+    flex: 0 0 auto;
+    margin: 0 !important;
+    color: #78cfff !important;
+    font-weight: 800;
+  }
+
+  .aggregate-table-scroll {
+    max-height: min(68vh, 760px);
+  }
+
+  .aggregate-table th,
+  .aggregate-table td {
+    padding: 13px 18px;
+    font-size: 0.86rem;
+  }
+
+  .aggregate-table th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    text-align: left;
+  }
+
+  .aggregate-table .numeric-heading,
+  .aggregate-number {
+    width: 15%;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .aggregate-table .numeric-heading.tornado {
+    color: #ff827e;
+  }
+
+  .aggregate-table .numeric-heading.wind {
+    color: #6dccff;
+  }
+
+  .aggregate-table .numeric-heading.hail {
+    color: #5ee3a1;
+  }
+
+  .aggregate-label {
+    min-width: 220px;
+    font-weight: 760;
+  }
+
+  .aggregate-number {
+    position: relative;
+    font-weight: 850;
+  }
+
+  .aggregate-number.all {
+    background: rgba(72, 185, 235, calc(var(--cell-intensity) * 0.32));
+  }
+
+  .aggregate-number.tornado {
+    color: #ffaaa6;
+    background: rgba(255, 100, 95, calc(var(--cell-intensity) * 0.18));
+  }
+
+  .aggregate-number.wind {
+    color: #bdeaff;
+    background: rgba(68, 180, 244, calc(var(--cell-intensity) * 0.2));
+  }
+
+  .aggregate-number.hail {
+    color: #bdfbd9;
+    background: rgba(56, 213, 116, calc(var(--cell-intensity) * 0.18));
+  }
+
+  .aggregate-empty {
+    padding: 42px !important;
+    color: #91a8bd;
+    text-align: center;
+  }
+
+  .spc-trend-content {
+    min-height: 420px;
+  }
+
+  .official-trend-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .official-trend-grid.single {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .official-trend-card,
+  .native-trend-card {
+    overflow: hidden;
+    border: 1px solid rgba(125, 175, 219, 0.22);
+    border-radius: 16px;
+    background: #071321;
+  }
+
+  .official-trend-heading,
+  .native-trend-header {
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    border-bottom: 1px solid rgba(125, 175, 219, 0.18);
+    background: rgba(12, 28, 47, 0.94);
+  }
+
+  .official-trend-heading h3,
+  .native-trend-header h3 {
+    margin: 0;
+    font-size: 0.95rem;
+  }
+
+  .official-trend-heading p,
+  .native-trend-header p {
+    margin: 4px 0 0;
+    color: #8fa6bb;
+    font-size: 0.7rem;
+  }
+
+  .official-trend-heading a {
+    flex: 0 0 auto;
+    color: #7dd4ff;
+    font-size: 0.67rem;
+    font-weight: 900;
+    text-decoration: none;
+    text-transform: uppercase;
+  }
+
+  .official-trend-media {
+    position: relative;
+    min-height: 300px;
+    display: grid;
+    place-items: center;
+    background: #d2d2d2;
+  }
+
+  .official-trend-grid.single .official-trend-media {
+    min-height: 520px;
+  }
+
+  .official-trend-media img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .official-trend-grid.single img {
+    max-height: 74vh;
+    object-fit: contain;
+  }
+
+  .official-trend-loading {
+    position: absolute;
+    color: #1a2732;
+    font-size: 0.78rem;
+    font-weight: 800;
+  }
+
+  .native-trend-legend {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .native-trend-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #b9cada;
+    font-size: 0.7rem;
+    font-weight: 800;
+  }
+
+  .native-trend-legend i {
+    width: 18px;
+    height: 4px;
+    border-radius: 99px;
+  }
+
+  .cumulative-chart-svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .chart-grid-single-mode {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .chart-grid-single-mode .chart-card {
+    min-height: 520px;
+  }
+
+  /* Mask content sliding beneath the sticky control deck. */
+  .control-deck {
+    box-shadow:
+      0 16px 38px rgba(0, 0, 0, 0.46),
+      0 22px 24px rgba(3, 9, 20, 0.96);
+  }
+
+  @media (max-width: 1000px) {
+    .official-trend-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .official-trend-media,
+    .official-trend-grid.single .official-trend-media {
+      min-height: 260px;
+    }
+  }
+
+  @media (max-width: 700px) {
+    .spc-subtabs {
+      width: 100%;
+      justify-content: flex-start;
+    }
+
+    .aggregate-table-heading,
+    .official-trend-heading,
+    .native-trend-header {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    .aggregate-sort-note {
+      align-self: flex-start;
+    }
+
+    .aggregate-table th,
+    .aggregate-table td {
+      padding: 11px 12px;
+      font-size: 0.78rem;
+    }
+
+    .aggregate-label {
+      min-width: 155px;
+    }
+  }
+</style>
+
+
+<style id="compact-storm-report-trend-charts-v1">
+  /*
+   * Keep trend charts readable without allowing them to consume nearly
+   * the full viewport height on wide desktop displays.
+   */
+  #trendChartContent {
+    width: 100%;
+  }
+
+  .native-trend-card {
+    width: min(100%, 1180px) !important;
+    margin-inline: auto !important;
+  }
+
+  .cumulative-chart-svg {
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  .official-trend-grid.single {
+    width: min(100%, 1180px) !important;
+    margin-inline: auto !important;
+  }
+
+  .official-trend-grid.single .official-trend-media {
+    min-height: 390px !important;
+  }
+
+  .official-trend-grid.single img {
+    max-height: min(58vh, 520px) !important;
+  }
+
+  .chart-grid-single-mode .chart-card {
+    min-height: 400px !important;
+  }
+
+  @media (max-width: 900px) {
+    .native-trend-card,
+    .official-trend-grid.single {
+      width: 100% !important;
+    }
+
+    .official-trend-grid.single .official-trend-media {
+      min-height: 300px !important;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .official-trend-grid.single .official-trend-media {
+      min-height: 230px !important;
+    }
+
+    .chart-grid-single-mode .chart-card {
+      min-height: 320px !important;
+    }
+  }
+</style>
+
+
+<style id="unpinned-storm-report-control-deck-v1">
+  /*
+   * Let the report filters scroll naturally with the page so maps, charts,
+   * and statistical tables can use the full viewport once the controls pass.
+   */
+  .control-deck {
+    position: relative !important;
+    top: auto !important;
+    z-index: 20 !important;
+    backdrop-filter: none !important;
+  }
+
+  /* Remove any sticky-deck masking added for content sliding underneath. */
+  .control-deck::before,
+  .control-deck::after {
+    display: none !important;
+    content: none !important;
+  }
+
+  /* Allow the main visual views to use more of the available desktop width. */
+  #trendChartContent .native-trend-card,
+  #trendChartContent .official-trend-grid.single {
+    width: 100% !important;
+    max-width: 1420px !important;
+  }
+
+  .map-card,
+  .chart-card,
+  .view-panel {
+    scroll-margin-top: 18px;
+  }
+
+  @media (max-width: 760px) {
+    .control-deck {
+      position: relative !important;
+      top: auto !important;
+    }
+
+    #trendChartContent .native-trend-card,
+    #trendChartContent .official-trend-grid.single {
+      max-width: 100% !important;
+    }
+  }
+</style>
+
+
+<style id="simplified-taller-storm-report-charts-v3">
+  /*
+   * Keep only the two highest-value chart views:
+   * cumulative evolution and state totals.
+   */
+  #chartModeControls {
+    justify-content: center;
+    width: fit-content;
+    margin-inline: auto;
+  }
+
+  #chartModeControls button {
+    min-width: 138px;
+  }
+
+  #trendChartContent .native-trend-card {
+    width: 100% !important;
+    max-width: 1420px !important;
+    margin-inline: auto !important;
+  }
+
+  .official-trend-grid.single .official-trend-media {
+    min-height: 470px !important;
+  }
+
+  .official-trend-grid.single img {
+    max-height: min(66vh, 610px) !important;
+  }
+
+  @media (max-width: 760px) {
+    #chartModeControls {
+      width: 100%;
+    }
+
+    #chartModeControls button {
+      min-width: 0;
+      flex: 1 1 50%;
+    }
+
+    .official-trend-grid.single .official-trend-media {
+      min-height: 300px !important;
+    }
+  }
+</style>
+
+
+<style id="compact-header-logo-taller-chart-v1">
+  /*
+   * Slim operations header: preserve navigation while returning more
+   * vertical space to the map, charts, and statistical tables.
+   */
+  .site-header {
+    min-height: 54px !important;
+    padding: 5px clamp(14px, 2vw, 26px) !important;
+    gap: 14px !important;
+  }
+
+  .site-brand {
+    min-width: 42px;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    line-height: 0;
+  }
+
+  .site-brand-logo {
+    display: block;
+    width: 42px;
+    height: 42px;
+    object-fit: contain;
+    border-radius: 11px;
+  }
+
+  .site-nav {
+    gap: 5px !important;
+  }
+
+  .site-nav a {
+    padding: 7px 9px !important;
+    border-radius: 9px !important;
+    font-size: 0.66rem !important;
+    letter-spacing: 0.055em !important;
+  }
+
+  .mobile-nav-toggle {
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 10px !important;
+  }
+
+  #trendChartContent .native-trend-card {
+    max-width: 1460px !important;
+  }
+
+  @media (max-width: 980px) {
+    .site-header {
+      min-height: 52px !important;
+      padding: 5px 12px !important;
+    }
+
+    .site-brand-logo {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+    }
+  }
+
+  @media (max-width: 760px) {
+    .site-header {
+      gap: 10px !important;
+    }
+
+    .site-brand {
+      min-width: 38px;
+    }
+
+    .site-brand-logo {
+      width: 38px;
+      height: 38px;
+    }
+  }
+</style>
+
+
+<style id="exact-official-spc-trend-mode-v1">
+  .official-spc-exact-card {
+    width: min(100%, 1240px);
+    margin-inline: auto;
+    overflow: hidden;
+    border: 1px solid rgba(125, 175, 219, 0.25);
+    border-radius: 18px;
+    background: #071321;
+  }
+
+  .official-spc-exact-toolbar {
+    min-height: 52px;
+    padding: 9px 13px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    border-bottom: 1px solid rgba(125, 175, 219, 0.22);
+    background: rgba(11, 28, 48, 0.98);
+  }
+
+  .official-spc-exact-toolbar strong,
+  .official-spc-exact-toolbar span {
+    display: block;
+  }
+
+  .official-spc-exact-toolbar strong {
+    font-size: 0.78rem;
+  }
+
+  .official-spc-exact-toolbar span {
+    margin-top: 3px;
+    color: #8fa8bd;
+    font-size: 0.67rem;
+  }
+
+  .official-spc-exact-toolbar a,
+  .exact-spc-trend-error a {
+    flex: 0 0 auto;
+    padding: 7px 10px;
+    border: 1px solid rgba(98, 201, 255, 0.34);
+    border-radius: 9px;
+    background: rgba(98, 201, 255, 0.12);
+    color: #eef9ff;
+    font-size: 0.66rem;
+    font-weight: 900;
+    letter-spacing: 0.05em;
+    text-decoration: none;
+    text-transform: uppercase;
+  }
+
+  .official-spc-exact-media {
+    position: relative;
+    min-height: 460px;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    background: #fff;
+  }
+
+  .official-spc-exact-media img {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: none !important;
+    object-fit: contain;
+    opacity: 0;
+  }
+
+  .official-spc-exact-media img.loaded {
+    opacity: 1;
+  }
+
+  .official-spc-exact-loading {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: #35526c;
+    background: #f5f6f7;
+    font-size: 0.82rem;
+    font-weight: 800;
+  }
+
+  .exact-spc-trend-gate,
+  .exact-spc-trend-error {
+    width: min(100%, 760px);
+    margin-inline: auto;
+    padding: clamp(24px, 4vw, 42px);
+    border: 1px solid rgba(125, 175, 219, 0.24);
+    border-radius: 20px;
+    background:
+      radial-gradient(
+        circle at 50% 0%,
+        rgba(98, 201, 255, 0.12),
+        transparent 46%
+      ),
+      rgba(7, 19, 33, 0.98);
+    text-align: center;
+  }
+
+  .exact-spc-trend-eyebrow {
+    margin: 0 0 8px !important;
+    color: #62c9ff !important;
+    font-size: 0.68rem !important;
+    font-weight: 950;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .exact-spc-trend-gate h3,
+  .exact-spc-trend-error h3 {
+    margin: 0;
+    font-size: clamp(1.35rem, 2.4vw, 2rem);
+  }
+
+  .exact-spc-trend-gate > p:not(.exact-spc-trend-eyebrow),
+  .exact-spc-trend-error p {
+    max-width: 650px;
+    margin: 12px auto 0;
+    color: #9db2c6;
+    line-height: 1.55;
+  }
+
+  .exact-spc-requirements {
+    margin: 18px auto 0;
+    color: #91a6bb;
+    font-size: 0.78rem;
+  }
+
+  .exact-spc-requirements strong {
+    margin-left: 5px;
+    color: #f7fbff;
+  }
+
+  .exact-spc-hazard-links {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+    gap: 9px;
+    flex-wrap: wrap;
+  }
+
+  .exact-spc-hazard-links a {
+    min-width: 122px;
+    padding: 10px 14px;
+    border: 1px solid rgba(125, 175, 219, 0.28);
+    border-radius: 11px;
+    background: rgba(12, 29, 49, 0.92);
+    color: #dceaf6;
+    font-size: 0.72rem;
+    font-weight: 950;
+    letter-spacing: 0.05em;
+    text-decoration: none;
+    text-transform: uppercase;
+  }
+
+  .exact-spc-hazard-links a:hover,
+  .exact-spc-hazard-links a.preferred {
+    border-color: rgba(98, 201, 255, 0.55);
+    background: rgba(98, 201, 255, 0.16);
+    color: #fff;
+  }
+
+  .exact-spc-trend-note {
+    font-size: 0.73rem !important;
+  }
+
+  .exact-spc-trend-error a {
+    display: inline-block;
+    margin-top: 18px;
+  }
+
+  @media (max-width: 760px) {
+    .official-spc-exact-toolbar {
+      align-items: flex-start;
+    }
+
+    .official-spc-exact-media {
+      min-height: 270px;
+    }
+
+    .exact-spc-hazard-links {
+      display: grid;
+      grid-template-columns: 1fr;
+    }
+
+    .exact-spc-hazard-links a {
+      width: 100%;
+    }
+  }
+</style>
+
+
+<style id="hide-local-totals-during-exact-spc-chart-v1">
+  /*
+   * The official SPC image can update on a different schedule than the
+   * detailed daily CSV archive. Do not display both totals together.
+   */
+  body.exact-spc-authoritative-presentation #statusStrip,
+  body.exact-spc-authoritative-presentation .summary-grid {
+    display: none !important;
+  }
+
+  body.exact-spc-authoritative-presentation .workspace {
+    margin-top: 0 !important;
+  }
+
+  body.exact-spc-authoritative-presentation .workspace-header {
+    min-height: 74px;
+    padding-block: 12px !important;
+  }
+
+  body.exact-spc-authoritative-presentation #workspaceSubtitle {
+    color: #8fa8bd;
+  }
+
+  body.exact-spc-authoritative-presentation #hazardChip {
+    border-color: rgba(98, 201, 255, 0.42) !important;
+    color: #eaf8ff !important;
+    background: rgba(98, 201, 255, 0.12);
+  }
+
+  @media (max-width: 760px) {
+    body.exact-spc-authoritative-presentation .workspace-header {
+      min-height: 0;
+    }
+  }
+</style>
+
+
+<style id="remove-hourly-month-table-tabs-v1">
+  #tableModeControls {
+    width: fit-content;
+    margin-inline: auto;
+  }
+
+  #tableModeControls button {
+    min-width: 108px;
+  }
+
+  @media (max-width: 620px) {
+    #tableModeControls {
+      width: 100%;
+    }
+
+    #tableModeControls button {
+      min-width: 0;
+      flex: 1 1 33.333%;
+    }
+  }
+</style>
+
+
+<style id="mobile-storm-report-explorer-makeover-v2">
+  .mobile-reports-toolbar,
+  .mobile-filter-backdrop,
+  .mobile-control-sheet-header,
+  .mobile-map-legend-toggle,
+  .mobile-chart-lightbox {
+    display: none;
+  }
+
+  @media (max-width: 760px) {
+    body.mobile-storm-reports-ready {
+      --mobile-storm-header-height: 52px;
+    }
+
+    body.mobile-report-filter-open {
+      overflow: hidden !important;
+    }
+
+    body.mobile-storm-reports-ready .reports-shell {
+      width: 100% !important;
+      padding: 10px 10px calc(42px + env(safe-area-inset-bottom)) !important;
+    }
+
+    body.mobile-storm-reports-ready .reports-hero {
+      display: none !important;
+    }
+
+    body.mobile-storm-reports-ready .mobile-reports-toolbar {
+      position: sticky;
+      top: var(--mobile-storm-header-height);
+      z-index: 2800;
+      margin: 0 0 10px;
+      min-height: 58px;
+      padding: 8px 9px 8px 13px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      gap: 7px;
+      align-items: center;
+      border: 1px solid rgba(125, 175, 219, 0.24);
+      border-radius: 15px;
+      background: rgba(5, 15, 28, 0.97);
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.30);
+      backdrop-filter: blur(18px);
+    }
+
+    .mobile-reports-context {
+      min-width: 0;
+    }
+
+    .mobile-reports-context strong,
+    .mobile-reports-context span {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .mobile-reports-context strong {
+      color: #f5faff;
+      font-size: 0.79rem;
+      line-height: 1.2;
+    }
+
+    .mobile-reports-context span {
+      margin-top: 4px;
+      color: #7f96aa;
+      font-size: 0.62rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+    }
+
+    .mobile-reports-toolbar button {
+      min-height: 40px;
+      padding: 7px 10px;
+      border: 1px solid rgba(125, 175, 219, 0.27);
+      border-radius: 10px;
+      background: rgba(14, 34, 55, 0.92);
+      color: #edf8ff;
+      font-size: 0.64rem;
+      font-weight: 950;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    body.mobile-storm-reports-ready .mobile-filter-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 4900;
+      display: block;
+      opacity: 0;
+      pointer-events: none;
+      background: rgba(0, 4, 10, 0.72);
+      backdrop-filter: blur(5px);
+      transition: opacity 180ms ease;
+    }
+
+    body.mobile-storm-reports-ready .mobile-filter-backdrop.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    body.mobile-storm-reports-ready .control-deck {
+      position: fixed !important;
+      inset: auto 0 0 !important;
+      z-index: 5000 !important;
+      width: 100% !important;
+      max-height: min(84dvh, 760px);
+      margin: 0 !important;
+      padding: 10px 14px calc(18px + env(safe-area-inset-bottom)) !important;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      border-width: 1px 0 0 !important;
+      border-radius: 24px 24px 0 0 !important;
+      background: rgba(5, 15, 28, 0.995) !important;
+      box-shadow: 0 -24px 70px rgba(0, 0, 0, 0.55) !important;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(calc(100% + 24px));
+      transition: transform 210ms ease, opacity 180ms ease;
+    }
+
+    body.mobile-storm-reports-ready .control-deck.mobile-open {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+
+    body.mobile-storm-reports-ready .mobile-control-sheet-header {
+      position: sticky;
+      top: -10px;
+      z-index: 4;
+      margin: 0 -4px 12px;
+      padding: 9px 4px 11px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid rgba(125, 175, 219, 0.16);
+      background: rgba(5, 15, 28, 0.995);
+    }
+
+    .mobile-control-sheet-header strong {
+      color: #f7fbff;
+      font-size: 0.88rem;
+    }
+
+    .mobile-control-sheet-header button {
+      width: 38px;
+      height: 38px;
+      padding: 0;
+      border: 1px solid rgba(125, 175, 219, 0.28);
+      border-radius: 11px;
+      background: rgba(16, 37, 60, 0.94);
+      color: #fff;
+      font-size: 1.15rem;
+    }
+
+    body.mobile-storm-reports-ready .control-row {
+      display: grid !important;
+      grid-template-columns: 1fr !important;
+      gap: 10px !important;
+    }
+
+    body.mobile-storm-reports-ready .select-control {
+      grid-template-columns: 76px minmax(0, 1fr) !important;
+    }
+
+    body.mobile-storm-reports-ready .select-control select {
+      width: 100%;
+      min-height: 44px !important;
+    }
+
+    body.mobile-storm-reports-ready .segmented {
+      width: 100%;
+      display: grid !important;
+      gap: 4px;
+      overflow: visible !important;
+    }
+
+    body.mobile-storm-reports-ready #scopeControls,
+    body.mobile-storm-reports-ready #datasetControls {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    body.mobile-storm-reports-ready #hazardControls {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    body.mobile-storm-reports-ready #viewControls {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    body.mobile-storm-reports-ready .segmented button {
+      min-width: 0 !important;
+      min-height: 42px !important;
+      padding: 7px 5px !important;
+      font-size: 0.61rem !important;
+      letter-spacing: 0.035em !important;
+    }
+
+    body.mobile-storm-reports-ready .state-control.visible {
+      display: grid !important;
+    }
+
+    body.mobile-storm-reports-ready .period-row {
+      margin-top: 10px !important;
+      padding-bottom: 2px;
+      display: grid !important;
+      grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+      gap: 6px !important;
+    }
+
+    body.mobile-storm-reports-ready .period-row button {
+      min-height: 42px !important;
+    }
+
+    body.mobile-storm-reports-ready .status-strip {
+      margin-bottom: 10px !important;
+      min-height: 42px !important;
+      padding: 8px 10px !important;
+      border-radius: 12px !important;
+    }
+
+    body.mobile-storm-reports-ready #statusText {
+      font-size: 0.68rem !important;
+    }
+
+    body.mobile-storm-reports-ready .status-actions {
+      display: none !important;
+    }
+
+    body.mobile-storm-reports-ready .summary-grid {
+      margin-bottom: 10px !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      gap: 8px !important;
+    }
+
+    body.mobile-storm-reports-ready .summary-card {
+      min-height: 96px !important;
+      padding: 13px !important;
+      border-radius: 15px !important;
+    }
+
+    body.mobile-storm-reports-ready .summary-card span {
+      font-size: 0.57rem !important;
+    }
+
+    body.mobile-storm-reports-ready .summary-card strong {
+      margin-top: 8px !important;
+      font-size: clamp(1.65rem, 10vw, 2.45rem) !important;
+    }
+
+    body.mobile-storm-reports-ready .summary-card small {
+      margin-top: 6px !important;
+      font-size: 0.60rem !important;
+      line-height: 1.25 !important;
+    }
+
+    body.mobile-storm-reports-ready .workspace {
+      border-radius: 18px !important;
+    }
+
+    body.mobile-storm-reports-ready .workspace-header {
+      min-height: 76px !important;
+      padding: 13px 14px !important;
+      gap: 10px !important;
+    }
+
+    body.mobile-storm-reports-ready .workspace-header h2 {
+      font-size: clamp(1.17rem, 5.9vw, 1.55rem) !important;
+      line-height: 1.1 !important;
+    }
+
+    body.mobile-storm-reports-ready .workspace-header p {
+      margin-top: 5px !important;
+      font-size: 0.64rem !important;
+    }
+
+    body.mobile-storm-reports-ready .hazard-chip {
+      padding: 7px 9px !important;
+      font-size: 0.55rem !important;
+      letter-spacing: 0.08em !important;
+    }
+
+    body.mobile-storm-reports-ready .map-wrap,
+    body.mobile-storm-reports-ready #reportsMap {
+      min-height: 470px !important;
+      height: 62dvh !important;
+      max-height: 720px;
+    }
+
+    body.mobile-storm-reports-ready .mobile-map-legend-toggle {
+      position: absolute;
+      left: 9px;
+      bottom: 9px;
+      z-index: 12;
+      min-height: 38px;
+      padding: 7px 11px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 1px solid rgba(125, 175, 219, 0.36);
+      border-radius: 11px;
+      background: rgba(5, 16, 29, 0.94);
+      color: #eef8ff;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.34);
+      font-size: 0.62rem;
+      font-weight: 950;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    body.mobile-storm-reports-ready #mapLegend.map-legend {
+      left: 9px !important;
+      bottom: 54px !important;
+      width: min(290px, calc(100% - 18px)) !important;
+      max-height: min(52dvh, 430px);
+      overflow-y: auto;
+      transform-origin: left bottom;
+      transition: opacity 160ms ease, transform 160ms ease;
+    }
+
+    body.mobile-storm-reports-ready #mapLegend.map-legend.mobile-collapsed {
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(10px) scale(0.97);
+    }
+
+    body.mobile-storm-reports-ready .table-panel {
+      padding: 10px !important;
+    }
+
+    body.mobile-storm-reports-ready .table-tools {
+      margin-bottom: 10px !important;
+      display: grid !important;
+      grid-template-columns: 1fr 1fr !important;
+      gap: 8px !important;
+    }
+
+    body.mobile-storm-reports-ready .table-tools > :first-child {
+      grid-column: 1 / -1;
+    }
+
+    body.mobile-storm-reports-ready .table-scroll {
+      overflow: visible !important;
+      border: 0 !important;
+      background: transparent !important;
+    }
+
+    body.mobile-storm-reports-ready .table-scroll table,
+    body.mobile-storm-reports-ready .table-scroll tbody {
+      width: 100% !important;
+      display: block !important;
+    }
+
+    body.mobile-storm-reports-ready .table-scroll thead {
+      display: none !important;
+    }
+
+    body.mobile-storm-reports-ready .table-scroll tbody tr {
+      margin-bottom: 9px;
+      padding: 11px 12px;
+      display: grid !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0 12px;
+      overflow: hidden;
+      border: 1px solid rgba(125, 175, 219, 0.18);
+      border-radius: 14px;
+      background: rgba(7, 19, 33, 0.92);
+    }
+
+    body.mobile-storm-reports-ready .table-scroll tbody td {
+      min-width: 0;
+      padding: 8px 0 !important;
+      display: flex !important;
+      flex-direction: column;
+      gap: 4px;
+      border: 0 !important;
+      border-bottom: 1px solid rgba(125, 175, 219, 0.09) !important;
+      color: #eef6fd;
+      font-size: 0.72rem !important;
+      white-space: normal !important;
+      word-break: break-word;
+    }
+
+    body.mobile-storm-reports-ready .table-scroll tbody td::before {
+      color: #71899e;
+      font-size: 0.51rem;
+      font-weight: 950;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+    }
+
+    body.mobile-storm-reports-ready .table-scroll tbody td:nth-child(1)::before {
+      content: "Date";
+    }
+
+    body.mobile-storm-reports-ready .table-scroll tbody td:nth-child(2)::before {
+      content: "Time";
+    }
+
+    body.mobile-storm-reports-ready .table-scroll tbody td:nth-child(3)::before {
+      content: "Hazard";
+    }
+
+    body.mobile-storm-reports-ready .table-scroll tbody td:nth-child(4)::before {
+      content: "Magnitude";
+    }
+
+    body.mobile-storm-reports-ready .table-scroll tbody td:nth-child(5)::before {
+      content: "Location";
+    }
+
+    body.mobile-storm-reports-ready .table-scroll tbody td:nth-child(6)::before {
+      content: "County";
+    }
+
+    body.mobile-storm-reports-ready .table-scroll tbody td:nth-child(7)::before {
+      content: "State";
+    }
+
+    body.mobile-storm-reports-ready .table-scroll tbody td:nth-child(n + 8) {
+      grid-column: 1 / -1;
+    }
+
+    body.mobile-storm-reports-ready .table-scroll tbody td:nth-child(8)::before {
+      content: "Remarks";
+    }
+
+    body.mobile-storm-reports-ready #tableModeControls,
+    body.mobile-storm-reports-ready #chartModeControls {
+      width: 100% !important;
+      margin-inline: 0 !important;
+    }
+
+    body.mobile-storm-reports-ready #tableModeControls button,
+    body.mobile-storm-reports-ready #chartModeControls button {
+      min-width: 0 !important;
+    }
+
+    body.mobile-storm-reports-ready .official-spc-exact-card {
+      width: 100% !important;
+      border-radius: 13px !important;
+    }
+
+    body.mobile-storm-reports-ready .official-spc-exact-toolbar {
+      padding: 9px 10px !important;
+    }
+
+    body.mobile-storm-reports-ready .official-spc-exact-toolbar a {
+      display: none !important;
+    }
+
+    body.mobile-storm-reports-ready .official-spc-exact-media {
+      min-height: 0 !important;
+      background: #fff;
+    }
+
+    body.mobile-storm-reports-ready .official-spc-exact-media img {
+      width: 100% !important;
+      height: auto !important;
+      cursor: zoom-in;
+      touch-action: manipulation;
+    }
+
+    body.mobile-storm-reports-ready .mobile-chart-lightbox {
+      position: fixed;
+      inset: 0;
+      z-index: 8000;
+      display: none;
+      flex-direction: column;
+      background: rgba(0, 4, 10, 0.98);
+    }
+
+    body.mobile-storm-reports-ready .mobile-chart-lightbox.open {
+      display: flex;
+    }
+
+    .mobile-chart-lightbox-toolbar {
+      min-height: 58px;
+      padding: calc(8px + env(safe-area-inset-top)) 10px 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      border-bottom: 1px solid rgba(125, 175, 219, 0.20);
+      background: #06101d;
+    }
+
+    .mobile-chart-lightbox-toolbar strong {
+      color: #f7fbff;
+      font-size: 0.76rem;
+    }
+
+    .mobile-chart-lightbox-toolbar button {
+      min-height: 38px;
+      padding: 7px 11px;
+      border: 1px solid rgba(125, 175, 219, 0.28);
+      border-radius: 10px;
+      background: rgba(15, 35, 57, 0.94);
+      color: #fff;
+      font-size: 0.66rem;
+      font-weight: 900;
+    }
+
+    .mobile-chart-lightbox-viewport {
+      flex: 1 1 auto;
+      overflow: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pinch-zoom pan-x pan-y;
+      background: #fff;
+    }
+
+    .mobile-chart-lightbox-viewport img {
+      display: block;
+      width: max(100%, 1000px);
+      max-width: none;
+      height: auto;
+    }
+
+    @media (max-width: 390px) {
+      body.mobile-storm-reports-ready .mobile-reports-toolbar {
+        grid-template-columns: minmax(0, 1fr) auto;
+      }
+
+      body.mobile-storm-reports-ready
+        .mobile-reports-toolbar button[data-mobile-view-button] {
+        display: none;
+      }
+    }
+  }
+</style>
+
+<style id="mobile-storm-report-table-chart-fix-v1">
+  /*
+   * Mobile-only cleanup for Storm Reports tables and charts.
+   * Desktop presentation is intentionally unchanged.
+   */
+  @media (max-width: 760px) {
+    /*
+     * Report rows contain exactly seven cells:
+     * Date/Time, Hazard, Magnitude, Location, County, State, Remarks.
+     */
+    body.mobile-storm-reports-ready
+      .table-scroll tbody td:nth-child(1)::before {
+      content: "Date / Time" !important;
+    }
+
+    body.mobile-storm-reports-ready
+      .table-scroll tbody td:nth-child(2)::before {
+      content: "Hazard" !important;
+    }
+
+    body.mobile-storm-reports-ready
+      .table-scroll tbody td:nth-child(3)::before {
+      content: "Magnitude" !important;
+    }
+
+    body.mobile-storm-reports-ready
+      .table-scroll tbody td:nth-child(4)::before {
+      content: "Location" !important;
+    }
+
+    body.mobile-storm-reports-ready
+      .table-scroll tbody td:nth-child(5)::before {
+      content: "County" !important;
+    }
+
+    body.mobile-storm-reports-ready
+      .table-scroll tbody td:nth-child(6)::before {
+      content: "State" !important;
+    }
+
+    body.mobile-storm-reports-ready
+      .table-scroll tbody td:nth-child(7)::before {
+      content: "Remarks" !important;
+    }
+
+    /* Remove the obsolete eighth-column mobile rule. */
+    body.mobile-storm-reports-ready
+      .table-scroll tbody td:nth-child(8)::before {
+      content: none !important;
+    }
+
+    /*
+     * Give the long-value fields the full card width.
+     * Hazard/Magnitude and Location/County remain compact two-column rows.
+     */
+    body.mobile-storm-reports-ready
+      .table-scroll tbody td:nth-child(1),
+    body.mobile-storm-reports-ready
+      .table-scroll tbody td:nth-child(6),
+    body.mobile-storm-reports-ready
+      .table-scroll tbody td:nth-child(7) {
+      grid-column: 1 / -1 !important;
+    }
+
+    body.mobile-storm-reports-ready
+      .table-scroll tbody td:nth-child(7) {
+      padding-bottom: 4px !important;
+      border-bottom: 0 !important;
+      line-height: 1.45 !important;
+      overflow-wrap: anywhere;
+    }
+
+    body.mobile-storm-reports-ready
+      .table-scroll tbody td:nth-child(7)::before {
+      margin-bottom: 1px;
+    }
+
+    /*
+     * Pagination should occupy its own row rather than visually colliding
+     * with the final report card.
+     */
+    body.mobile-storm-reports-ready .pagination {
+      position: relative !important;
+      z-index: 2;
+      margin-top: 14px !important;
+      padding: 10px 0 2px !important;
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px !important;
+      align-items: center !important;
+    }
+
+    body.mobile-storm-reports-ready #pageReadout {
+      min-width: 0;
+      font-size: 0.65rem !important;
+      line-height: 1.35;
+      white-space: normal;
+    }
+
+    body.mobile-storm-reports-ready .pagination-buttons {
+      display: grid !important;
+      grid-template-columns: repeat(2, auto);
+      gap: 7px !important;
+    }
+
+    body.mobile-storm-reports-ready .pagination button {
+      min-height: 42px !important;
+      padding: 7px 12px !important;
+    }
+
+    /*
+     * Charts: keep the chart workspace inside the mobile viewport.
+     */
+    body.mobile-storm-reports-ready .charts-panel {
+      padding: 10px !important;
+      overflow: hidden;
+    }
+
+    body.mobile-storm-reports-ready #chartModeControls {
+      display: grid !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 4px !important;
+    }
+
+    body.mobile-storm-reports-ready #chartModeControls button {
+      width: 100%;
+      min-width: 0 !important;
+      padding-inline: 7px !important;
+      font-size: 0.64rem !important;
+    }
+
+    body.mobile-storm-reports-ready .spc-trend-content {
+      width: 100% !important;
+      min-width: 0 !important;
+      min-height: 0 !important;
+    }
+
+    body.mobile-storm-reports-ready .official-spc-exact-card {
+      width: 100% !important;
+      max-width: 100% !important;
+      border-radius: 14px !important;
+    }
+
+    body.mobile-storm-reports-ready .official-spc-exact-toolbar {
+      min-height: 0 !important;
+      padding: 10px 11px !important;
+    }
+
+    body.mobile-storm-reports-ready
+      .official-spc-exact-toolbar strong {
+      font-size: 0.73rem !important;
+      line-height: 1.3;
+    }
+
+    body.mobile-storm-reports-ready
+      .official-spc-exact-toolbar span {
+      margin-top: 4px !important;
+      font-size: 0.61rem !important;
+      line-height: 1.35;
+    }
+
+    /*
+     * Do not shrink the official SPC chart down to phone width.
+     * Keep it readable and allow horizontal panning. Tapping it still opens
+     * the existing full-screen chart viewer.
+     */
+    body.mobile-storm-reports-ready .official-spc-exact-media {
+      width: 100% !important;
+      min-height: 0 !important;
+      display: block !important;
+      overflow-x: auto !important;
+      overflow-y: hidden !important;
+      overscroll-behavior-x: contain;
+      -webkit-overflow-scrolling: touch;
+      background: #fff;
+    }
+
+    body.mobile-storm-reports-ready .official-spc-exact-media img {
+      display: block !important;
+      width: max(760px, 100%) !important;
+      max-width: none !important;
+      height: auto !important;
+      cursor: zoom-in;
+      touch-action: pan-x pinch-zoom;
+    }
+
+    /*
+     * State Totals uses the native bar renderer. Remove desktop-oriented
+     * minimum heights and tighten the rows for a phone display.
+     */
+    body.mobile-storm-reports-ready
+      #summaryChartMode .chart-grid {
+      display: block !important;
+    }
+
+    body.mobile-storm-reports-ready
+      #summaryChartMode .chart-card {
+      width: 100% !important;
+      min-height: 0 !important;
+      padding: 13px 11px !important;
+      overflow: hidden;
+      border-radius: 14px !important;
+    }
+
+    body.mobile-storm-reports-ready #stateChart {
+      gap: 7px !important;
+    }
+
+    body.mobile-storm-reports-ready #stateChart .bar-row {
+      min-height: 28px;
+      grid-template-columns: 42px minmax(0, 1fr) 46px !important;
+      gap: 8px !important;
+    }
+
+    body.mobile-storm-reports-ready #stateChart .bar-label {
+      overflow: visible !important;
+      font-size: 0.67rem !important;
+      text-overflow: clip !important;
+    }
+
+    body.mobile-storm-reports-ready #stateChart .bar-track {
+      height: 11px !important;
+    }
+
+    body.mobile-storm-reports-ready #stateChart .bar-value {
+      font-size: 0.68rem !important;
+    }
+  }
+
+  @media (max-width: 390px) {
+    body.mobile-storm-reports-ready .pagination {
+      grid-template-columns: 1fr !important;
+    }
+
+    body.mobile-storm-reports-ready .pagination-buttons {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    body.mobile-storm-reports-ready .pagination button {
+      width: 100%;
+    }
+  }
+</style>
+
+<style id="mobile-storm-report-width-fix-v2">
+  @media (max-width: 760px) {
+    /*
+     * Kill the desktop table's 980px minimum width.
+     * Mobile report cards must size from the phone viewport instead.
+     */
+    body.mobile-storm-reports-ready .table-panel {
+      width: 100% !important;
+      max-width: 100% !important;
+      overflow: hidden !important;
+    }
+
+    body.mobile-storm-reports-ready .table-scroll {
+      width: 100% !important;
+      max-width: 100% !important;
+      min-width: 0 !important;
+      overflow: visible !important;
+    }
+
+    body.mobile-storm-reports-ready .table-scroll table,
+    body.mobile-storm-reports-ready .table-scroll tbody {
+      display: block !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      min-width: 0 !important;
+    }
+
+    body.mobile-storm-reports-ready .table-scroll table {
+      table-layout: fixed !important;
+    }
+
+    /*
+     * Every report card must be exactly the width available on screen.
+     */
+    body.mobile-storm-reports-ready .table-scroll tbody tr {
+      width: 100% !important;
+      max-width: 100% !important;
+      min-width: 0 !important;
+      grid-template-columns:
+        minmax(0, 1fr)
+        minmax(0, 1fr) !important;
+    }
+
+    body.mobile-storm-reports-ready .table-scroll tbody td {
+      width: auto !important;
+      max-width: 100% !important;
+      min-width: 0 !important;
+      overflow: hidden !important;
+      overflow-wrap: anywhere !important;
+      word-break: normal !important;
+    }
+
+    /*
+     * Full-width information rows.
+     */
+    body.mobile-storm-reports-ready
+      .table-scroll tbody td:nth-child(1),
+    body.mobile-storm-reports-ready
+      .table-scroll tbody td:nth-child(6),
+    body.mobile-storm-reports-ready
+      .table-scroll tbody td:nth-child(7) {
+      grid-column: 1 / -1 !important;
+    }
+
+    /*
+     * Hazard badge should be a badge, not a full-width bar.
+     */
+    body.mobile-storm-reports-ready .hazard-label {
+      width: auto !important;
+      min-width: 72px !important;
+      max-width: 100% !important;
+      align-self: flex-start !important;
+      justify-content: center !important;
+      padding: 5px 10px !important;
+    }
+
+    /*
+     * Long remarks must wrap inside the card.
+     */
+    body.mobile-storm-reports-ready
+      .table-scroll tbody td:nth-child(7) {
+      overflow: visible !important;
+      white-space: normal !important;
+      overflow-wrap: anywhere !important;
+      line-height: 1.42 !important;
+    }
+
+    /*
+     * Give the final report room before pagination.
+     */
+    body.mobile-storm-reports-ready
+      .table-scroll tbody tr:last-child {
+      margin-bottom: 18px !important;
+    }
+
+    /*
+     * Pagination belongs below the cards, never on top of one.
+     */
+    body.mobile-storm-reports-ready .pagination {
+      position: static !important;
+      inset: auto !important;
+      z-index: auto !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      margin: 0 !important;
+      padding: 12px 0 4px !important;
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) auto !important;
+      gap: 10px !important;
+      align-items: center !important;
+      transform: none !important;
+      border-top: 1px solid rgba(125, 175, 219, 0.14);
+      background: transparent !important;
+    }
+
+    body.mobile-storm-reports-ready #pageReadout {
+      min-width: 0 !important;
+      white-space: normal !important;
+      line-height: 1.3 !important;
+    }
+
+    body.mobile-storm-reports-ready .pagination-buttons {
+      display: flex !important;
+      gap: 7px !important;
+      flex-wrap: nowrap !important;
+    }
+
+    body.mobile-storm-reports-ready .pagination button {
+      min-width: 0 !important;
+      min-height: 42px !important;
+      padding: 7px 12px !important;
+    }
+
+    body.mobile-storm-reports-ready .reports-footer {
+      position: relative !important;
+      z-index: 1 !important;
+      width: 100% !important;
+      clear: both !important;
+    }
+  }
+
+  @media (max-width: 390px) {
+    body.mobile-storm-reports-ready .pagination {
+      grid-template-columns: 1fr !important;
+    }
+
+    body.mobile-storm-reports-ready .pagination-buttons {
+      display: grid !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    body.mobile-storm-reports-ready .pagination button {
+      width: 100% !important;
+    }
+  }
+</style>
+
+<style id="mobile-storm-report-height-fix-v3">
+  @media (max-width: 760px) {
+    /*
+     * Desktop tables are capped at 68vh. On mobile the Reports view is
+     * card-based and must grow naturally with the rendered report cards.
+     */
+    body.mobile-storm-reports-ready
+      #reportTableMode .table-scroll {
+      height: auto !important;
+      max-height: none !important;
+      min-height: 0 !important;
+      overflow: visible !important;
+    }
+
+    body.mobile-storm-reports-ready
+      #reportTableMode .table-scroll table,
+    body.mobile-storm-reports-ready
+      #reportTableMode .table-scroll tbody {
+      height: auto !important;
+      max-height: none !important;
+      overflow: visible !important;
+    }
+
+    body.mobile-storm-reports-ready
+      #reportTableMode {
+      height: auto !important;
+      max-height: none !important;
+      overflow: visible !important;
+    }
+
+    body.mobile-storm-reports-ready
+      #tablePanel {
+      height: auto !important;
+      max-height: none !important;
+      overflow: visible !important;
+    }
+
+    /*
+     * Once the table owns its true height, pagination naturally follows
+     * the final report instead of sitting at the old 68vh boundary.
+     */
+    body.mobile-storm-reports-ready
+      #reportTableMode .pagination {
+      position: relative !important;
+      clear: both !important;
+      width: 100% !important;
+      margin-top: 8px !important;
+      padding-top: 12px !important;
+    }
+  }
+</style>
+
+<style id="mobile-spc-chart-fit-v4">
+  @media (max-width: 760px) {
+    /*
+     * Inline SPC chart should be an at-a-glance view.
+     * Full-resolution inspection remains available through the existing
+     * tap-to-open mobile chart viewer.
+     */
+    body.mobile-storm-reports-ready .official-spc-exact-media {
+      width: 100% !important;
+      max-width: 100% !important;
+      overflow: hidden !important;
+      min-height: 0 !important;
+      background: #fff;
+    }
+
+    body.mobile-storm-reports-ready
+      .official-spc-exact-media img {
+      display: block !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      height: auto !important;
+      object-fit: contain !important;
+      cursor: zoom-in;
+      touch-action: manipulation;
+    }
+
+    body.mobile-storm-reports-ready
+      .official-spc-exact-card {
+      overflow: hidden !important;
+    }
+  }
+</style>
+
+<style id="state-climatology-bars-v1">
+  .state-climo-summary {
+    margin-bottom: 3px;
+    padding: 3px 0 9px;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .state-climo-summary strong { color: #f0f7fd; font-size: 0.72rem; }
+  .state-climo-summary span { color: #7890a5; font-size: 0.61rem; text-align: right; }
+
+  .state-climo-legend {
+    margin-bottom: 7px;
+    display: grid;
+    grid-template-columns: auto minmax(80px, 180px) auto;
+    gap: 8px;
+    align-items: center;
+    color: #8197aa;
+    font-size: 0.58rem;
+    font-weight: 800;
+  }
+
+  .state-climo-legend i {
+    height: 7px;
+    border-radius: 999px;
+    background: linear-gradient(
+      90deg,
+      hsl(120 80% 43%),
+      hsl(60 82% 50%),
+      hsl(30 88% 53%),
+      hsl(0 82% 55%)
+    );
+  }
+
+  .state-climo-label { min-width: 0; display: block; }
+  .state-climo-label b,
+  .state-climo-label small { display: block; }
+  .state-climo-label b { color: #aebfd0; font-size: 0.69rem; font-weight: 500; }
+  .state-climo-label small {
+    margin-top: 2px;
+    color: #8197aa;
+    font-size: 0.52rem;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .state-climo-fill {
+    background:
+      linear-gradient(
+        90deg,
+        hsl(120 80% 43%) 0%,
+        hsl(60 82% 50%) 50%,
+        hsl(30 88% 53%) 75%,
+        hsl(0 82% 55%) 100%
+      ) !important;
+
+    background-size:
+      var(--state-climo-gradient-size) 100% !important;
+
+    background-position:
+      left center !important;
+
+    background-repeat:
+      no-repeat !important;
+
+    box-shadow: none !important;
+  }
+
+  .state-climo-loading {
+    padding: 28px 10px;
+    color: #8da4b9;
+    font-size: 0.72rem;
+    text-align: center;
+  }
+
+  @media (max-width: 760px) {
+    body.mobile-storm-reports-ready #stateChart .bar-row.state-climo-row {
+      min-height: 34px !important;
+      grid-template-columns: 52px minmax(0, 1fr) 48px !important;
+      gap: 8px !important;
+    }
+
+    body.mobile-storm-reports-ready .state-climo-summary {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    body.mobile-storm-reports-ready .state-climo-summary span { text-align: left; }
+    body.mobile-storm-reports-ready .state-climo-legend {
+      grid-template-columns: auto minmax(0, 1fr) auto;
+    }
+    body.mobile-storm-reports-ready .state-climo-label b { font-size: 0.67rem; }
+    body.mobile-storm-reports-ready .state-climo-label small { font-size: 0.50rem; }
+  }
+</style>
+
+<style id="state-yellow-anomaly-layout-v2">
+  .state-climo-legend {
+    display: none !important;
+  }
+
+  .state-climo-fill {
+    background: #facc15 !important;
+    background-image: none !important;
+    background-size: auto !important;
+    background-position: initial !important;
+    background-repeat: initial !important;
+    box-shadow: 0 0 10px rgba(250, 204, 21, 0.14) !important;
+  }
+
+  .state-climo-label {
+    display: flex !important;
+    align-items: center !important;
+    min-width: 0 !important;
+  }
+
+  .state-climo-label b {
+    display: block !important;
+    margin: 0 !important;
+  }
+
+  .state-climo-label small {
+    display: none !important;
+  }
+
+  .state-climo-value {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-end !important;
+    justify-content: center !important;
+    min-width: 0 !important;
+    line-height: 1.05 !important;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .state-climo-value .bar-value {
+    display: block !important;
+    margin: 0 !important;
+  }
+
+  .state-climo-value small {
+    display: block !important;
+    margin-top: 4px !important;
+    color: #8ea4b8 !important;
+    font-size: 0.55rem !important;
+    font-weight: 900 !important;
+    white-space: nowrap !important;
+  }
+
+  @media (max-width: 760px) {
+    body.mobile-storm-reports-ready
+      #stateChart .bar-row.state-climo-row {
+      grid-template-columns: 42px minmax(0, 1fr) 58px !important;
+      gap: 8px !important;
+      align-items: center !important;
+    }
+
+    body.mobile-storm-reports-ready
+      .state-climo-value small {
+      margin-top: 3px !important;
+      font-size: 0.50rem !important;
+    }
+  }
+</style>
+
+  <link rel="stylesheet" href="assets/interior-header.css" data-interior-header-style>
+  <script src="scripts/interior-header-test.js?v=20261020a" defer data-interior-header-script></script>
+<link rel="stylesheet" href="assets/interior-newsroom.css?v=20261020d">
+<meta name="robots" content="noindex,nofollow">
+<link rel="stylesheet" href="assets/category-colors-test.css?v=20261026a">
+</head>
+<body class="newsroom-interior newsroom-reports" data-color-preview>
+  <header class="site-header" data-interior-site-header>
+  <a class="site-brand" href="homepage-test.html" aria-label="Zacharologist Wx home">
+    <span><span class="newsroom-wordmark">ZACHAROLOGIST<b>WX</b></span><span class="newsroom-tagline">BUILT FOR THE STORM</span></span>
+  </a>
+
+  <button
+    class="mobile-nav-toggle"
+    id="mobileNavToggle"
+    data-interior-nav-toggle
+    type="button"
+    aria-label="Open navigation"
+    aria-expanded="false"
+  >&#9776;</button>
+
+  <nav class="site-nav" id="siteNav" data-interior-site-nav aria-label="Primary navigation">
+    <a href="homepage-test.html">Home</a>
+    <a href="wx-updates-test.html">Wx Updates</a>
+    <a href="maps-test.html">Maps &amp; Models</a>
+    <a href="live-alerts-test.html">Live Alerts</a>
+    <a href="level2-mobile-radar.html">Radar</a>
+    <a href="storm-reports-test.html" aria-current="page">Storm Reports</a>
+    <a href="chase-dashboard-test.html">Storm Chasing</a>
+  </nav>
+</header>
+
+  <main class="reports-shell">
+    <section class="reports-hero">
+      <div>
+        <p class="eyebrow">SPC Severe Weather Database</p>
+        <h1>Storm Report Explorer</h1>
+        <p class="reports-hero-copy">
+          Explore preliminary and final tornado, hail, and damaging-wind reports
+          with shareable filters, interactive maps, searchable tables, charts,
+          state summaries, and downloadable data.
+        </p>
+      </div>
+
+      <div class="hero-source">
+        <strong>Official source data</strong>
+        <span>NOAA / NWS Storm Prediction Center</span>
+        <span>Preliminary reports are subject to revision.</span>
+      </div>
+    </section>
+
+    <section class="control-deck" aria-label="Storm report controls">
+      <div class="control-row">
+        <label class="select-control">
+          <span>Year</span>
+          <select id="yearSelect" aria-label="Report year"></select>
+        </label>
+
+        <div class="segmented" id="scopeControls" aria-label="Geographic scope">
+          <button type="button" data-value="national">National</button>
+          <button type="button" data-value="state">State</button>
+        </div>
+
+        <label class="select-control state-control" id="stateControl">
+          <span>State</span>
+          <select id="stateSelect" aria-label="State filter"></select>
+        </label>
+
+        <div class="segmented" id="hazardControls" aria-label="Report category">
+          <button type="button" data-value="all">All</button>
+          <button type="button" data-value="tornado">Tornado</button>
+          <button type="button" data-value="hail">Hail</button>
+          <button type="button" data-value="wind">Wind</button>
+        </div>
+
+        <div class="segmented" id="datasetControls" aria-label="Report dataset">
+          <button type="button" data-value="preliminary">Preliminary</button>
+          <button type="button" data-value="final">Final</button>
+        </div>
+
+        <div class="segmented" id="viewControls" aria-label="Report view">
+          <button type="button" data-value="map">Map</button>
+          <button type="button" data-value="table">Tables</button>
+          <button type="button" data-value="charts">Charts</button>
+          <button type="button" data-value="stats">Stats</button>
+        </div>
+      </div>
+
+      <div class="period-row" id="periodControls" aria-label="Report period"></div>
+    </section>
+
+    <section class="status-strip" id="statusStrip">
+      <div class="status-main">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span id="statusText">Preparing report explorer…</span>
+      </div>
+
+      <div class="status-actions">
+        <button class="small-action" id="refreshButton" type="button">Refresh</button>
+        <button class="small-action" id="exportCsvButton" type="button">Export CSV</button>
+        <button class="small-action" id="exportGeoJsonButton" type="button">Export GeoJSON</button>
+        <a class="small-action" id="officialSourceLink" href="https://www.spc.noaa.gov/climo/summary/" target="_blank" rel="noopener noreferrer">Official SPC</a>
+      </div>
+    </section>
+
+    <section class="summary-grid" aria-label="Report summary">
+      <article class="summary-card" data-weather-category="reports">
+        <span>Total reports</span>
+        <strong id="totalReports">0</strong>
+        <small id="totalReportsMeta">Current selection</small>
+      </article>
+
+      <article class="summary-card" data-weather-category="alerts">
+        <span>Significant</span>
+        <strong id="significantReports">0</strong>
+        <small>EF2+, 2-inch hail, or 75+ mph wind</small>
+      </article>
+
+      <article class="summary-card" data-weather-category="severe">
+        <span>Peak period</span>
+        <strong id="peakPeriod">—</strong>
+        <small id="peakPeriodMeta">Most active report day</small>
+      </article>
+
+      <article class="summary-card" data-weather-category="observations">
+        <span>Top state</span>
+        <strong id="topState">—</strong>
+        <small id="topStateMeta">Most reports in selection</small>
+      </article>
+    </section>
+
+    <section class="workspace">
+      <header class="workspace-header" data-weather-category="reports">
+        <div>
+          <h2 id="workspaceTitle">Storm Report Summary</h2>
+          <p id="workspaceSubtitle">Loading NOAA Storm Prediction Center data…</p>
+        </div>
+        <span class="hazard-chip" id="hazardChip">All severe</span>
+      </header>
+
+      <section class="view-panel active" id="mapPanel" data-view="map">
+        <div class="map-wrap">
+          <div id="reportsMap" aria-label="Interactive severe weather report map"></div>
+          <div class="loading-overlay" id="mapLoadingOverlay"><span class="loader" aria-label="Loading"></span></div>
+          <aside class="map-legend" id="mapLegend"></aside>
+        </div>
+      </section>
+
+      <section class="view-panel table-panel" id="tablePanel" data-view="table">
+        <div class="spc-subtabs" id="tableModeControls" aria-label="Table display">
+          <button type="button" class="active" data-table-mode="reports">Reports</button>
+          <button type="button" data-table-mode="days">All Days</button>
+          <button type="button" data-table-mode="states">State Totals</button>
+        </div>
+
+        <div class="table-mode active" id="reportTableMode">
+          <div class="table-tools">
+            <input id="tableSearch" type="search" placeholder="Search location, county, state, or remarks">
+            <label class="check-control">
+              <input id="significantOnly" type="checkbox">
+              Significant only
+            </label>
+            <label class="select-control">
+              <span>Rows</span>
+              <select id="rowsPerPage">
+                <option value="50">50</option>
+                <option value="100" selected>100</option>
+                <option value="250">250</option>
+              </select>
+            </label>
+            <button class="small-action" id="clearTableFilters" type="button">Clear filters</button>
+          </div>
+
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th data-sort="dateTimeUtc">Date / Time</th>
+                  <th data-sort="hazard">Hazard</th>
+                  <th data-sort="magnitudeValue">Magnitude</th>
+                  <th data-sort="location">Location</th>
+                  <th data-sort="county">County</th>
+                  <th data-sort="state">State</th>
+                  <th data-sort="comments">Remarks</th>
+                </tr>
+              </thead>
+              <tbody id="reportsTableBody"></tbody>
+            </table>
+          </div>
+
+          <div class="pagination">
+            <span id="pageReadout">Page 1</span>
+            <div class="pagination-buttons">
+              <button id="previousPageButton" type="button">Previous</button>
+              <button id="nextPageButton" type="button">Next</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-mode" id="summaryTableMode" hidden>
+          <div class="aggregate-table-heading">
+            <div>
+              <strong id="aggregateTableTitle">Daily Statistics</strong>
+              <span id="aggregateTableSubtitle">Totals for the current selection</span>
+            </div>
+            <span class="aggregate-sort-note" id="aggregateSortNote">Sorted by total reports</span>
+          </div>
+
+          <div class="table-scroll aggregate-table-scroll">
+            <table class="aggregate-table">
+              <thead id="aggregateTableHead"></thead>
+              <tbody id="aggregateTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="view-panel charts-panel" id="chartsPanel" data-view="charts">
+        <div class="spc-subtabs" id="chartModeControls" aria-label="Chart display">
+          <button type="button" class="active" data-chart-mode="trend">Cumulative Trend</button>
+          <button type="button" data-chart-mode="states">State Totals</button>
+        </div>
+
+        <div class="chart-mode active" id="trendChartMode">
+          <div id="spcTrendContent" class="spc-trend-content"></div>
+        </div>
+
+        <div class="chart-mode" id="summaryChartMode" hidden>
+          <div class="chart-grid chart-grid-single-mode">
+            <article class="chart-card" id="periodChartCard" data-weather-category="reports">
+              <h3 id="timeChartTitle">Reports by day</h3>
+              <div class="bar-list" id="timeChart"></div>
+            </article>
+            <article class="chart-card" id="hazardChartCard" data-weather-category="severe">
+              <h3>Reports by hazard</h3>
+              <div class="bar-list" id="hazardChart"></div>
+            </article>
+            <article class="chart-card" id="stateChartCard" data-weather-category="observations">
+              <h3>State totals</h3>
+              <div class="bar-list" id="stateChart"></div>
+            </article>
+            <article class="chart-card" id="hourChartCard" data-weather-category="forecast">
+              <h3>Reports by hour</h3>
+              <div class="bar-list" id="hourChart"></div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="view-panel stats-panel" id="statsPanel" data-view="stats">
+        <div class="stats-grid" id="statsGrid"></div>
+      </section>
+
+      <section class="empty-state" id="emptyState" hidden>
+        <div>
+          <strong>No reports match this selection</strong>
+          <p>Try another month, hazard, state, or dataset. Preliminary report days begin at 12 UTC and may be revised by SPC.</p>
+        </div>
+      </section>
+    </section>
+
+    <footer class="reports-footer">
+      <span>
+        Preliminary reports come from SPC Local Storm Report archives. Final records
+        come from SPC Storm Data files and are currently available through 2024.
+      </span>
+      <span>
+        This independent interface is not an official NOAA product. Always consult
+        the official SPC source for authoritative documentation.
+      </span>
+    </footer>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const CURRENT_DATE = new Date();
+      const FINAL_MAX_YEAR = 2024;
+      const PRELIMINARY_MIN_YEAR = 1999;
+      const FINAL_MIN_YEAR = 1950;
+
+      const MONTHS = [
+        "Annual", "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+      ];
+
+      const MONTH_SHORT = [
+        "Annual", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+      ];
+
+      const STATES = [
+        ["AL", "Alabama"], ["AK", "Alaska"], ["AZ", "Arizona"], ["AR", "Arkansas"],
+        ["CA", "California"], ["CO", "Colorado"], ["CT", "Connecticut"], ["DE", "Delaware"],
+        ["FL", "Florida"], ["GA", "Georgia"], ["HI", "Hawaii"], ["ID", "Idaho"],
+        ["IL", "Illinois"], ["IN", "Indiana"], ["IA", "Iowa"], ["KS", "Kansas"],
+        ["KY", "Kentucky"], ["LA", "Louisiana"], ["ME", "Maine"], ["MD", "Maryland"],
+        ["MA", "Massachusetts"], ["MI", "Michigan"], ["MN", "Minnesota"], ["MS", "Mississippi"],
+        ["MO", "Missouri"], ["MT", "Montana"], ["NE", "Nebraska"], ["NV", "Nevada"],
+        ["NH", "New Hampshire"], ["NJ", "New Jersey"], ["NM", "New Mexico"], ["NY", "New York"],
+        ["NC", "North Carolina"], ["ND", "North Dakota"], ["OH", "Ohio"], ["OK", "Oklahoma"],
+        ["OR", "Oregon"], ["PA", "Pennsylvania"], ["RI", "Rhode Island"], ["SC", "South Carolina"],
+        ["SD", "South Dakota"], ["TN", "Tennessee"], ["TX", "Texas"], ["UT", "Utah"],
+        ["VT", "Vermont"], ["VA", "Virginia"], ["WA", "Washington"], ["WV", "West Virginia"],
+        ["WI", "Wisconsin"], ["WY", "Wyoming"], ["DC", "District of Columbia"],
+        ["PR", "Puerto Rico"]
+      ];
+
+      const HAZARDS = {
+        all: {
+          label: "All severe",
+          color: "#f7fbff"
+        },
+        tornado: {
+          label: "Tornado",
+          color: "#ff645f"
+        },
+        hail: {
+          label: "Hail",
+          color: "#57e0ba"
+        },
+        wind: {
+          label: "Wind",
+          color: "#66caff"
+        }
+      };
+
+      const state = {
+        year: CURRENT_DATE.getUTCFullYear(),
+        month: CURRENT_DATE.getUTCMonth() + 1,
+        scope: "national",
+        stateCode: "NC",
+        hazard: "all",
+        dataset: "preliminary",
+        view: "map",
+        reports: [],
+        rawReports: [],
+        loading: false,
+        sortKey: "dateTimeUtc",
+        sortDirection: "desc",
+        page: 1,
+        rowsPerPage: 100,
+        tableMode: "reports",
+        chartMode: "trend"
+      };
+
+      const dataCache = new Map();
+      const stateClimatologyCache = new Map();
+      let stateClimatologyRenderToken = 0;
+      const REPORT_SOURCE_ID = "storm-report-points";
+      const REPORT_LAYER_ID = "storm-report-symbols";
+      const REPORT_ICON_NAMES = [
+        "tornado-all",
+        "tornado-ef2",
+        "wind-damage",
+        "wind-measured",
+        "wind-significant",
+        "hail-small",
+        "hail-medium",
+        "hail-large"
+      ];
+
+      let map = null;
+      let reportPopup = null;
+      let plottedReportLookup = [];
+      let pendingMapRender = false;
+      let mapRenderQueued = false;
+      let tableReports = [];
+      let activeLoadToken = 0;
+
+      const els = {
+        yearSelect: document.getElementById("yearSelect"),
+        stateSelect: document.getElementById("stateSelect"),
+        stateControl: document.getElementById("stateControl"),
+        periodControls: document.getElementById("periodControls"),
+        statusStrip: document.getElementById("statusStrip"),
+        statusText: document.getElementById("statusText"),
+        refreshButton: document.getElementById("refreshButton"),
+        exportCsvButton: document.getElementById("exportCsvButton"),
+        exportGeoJsonButton: document.getElementById("exportGeoJsonButton"),
+        officialSourceLink: document.getElementById("officialSourceLink"),
+        totalReports: document.getElementById("totalReports"),
+        totalReportsMeta: document.getElementById("totalReportsMeta"),
+        significantReports: document.getElementById("significantReports"),
+        peakPeriod: document.getElementById("peakPeriod"),
+        peakPeriodMeta: document.getElementById("peakPeriodMeta"),
+        topState: document.getElementById("topState"),
+        topStateMeta: document.getElementById("topStateMeta"),
+        workspaceTitle: document.getElementById("workspaceTitle"),
+        workspaceSubtitle: document.getElementById("workspaceSubtitle"),
+        hazardChip: document.getElementById("hazardChip"),
+        mapPanel: document.getElementById("mapPanel"),
+        tablePanel: document.getElementById("tablePanel"),
+        chartsPanel: document.getElementById("chartsPanel"),
+        statsPanel: document.getElementById("statsPanel"),
+        emptyState: document.getElementById("emptyState"),
+        mapLegend: document.getElementById("mapLegend"),
+        mapLoadingOverlay: document.getElementById("mapLoadingOverlay"),
+        tableModeControls: document.getElementById("tableModeControls"),
+        reportTableMode: document.getElementById("reportTableMode"),
+        summaryTableMode: document.getElementById("summaryTableMode"),
+        aggregateTableTitle: document.getElementById("aggregateTableTitle"),
+        aggregateTableSubtitle: document.getElementById("aggregateTableSubtitle"),
+        aggregateSortNote: document.getElementById("aggregateSortNote"),
+        aggregateTableHead: document.getElementById("aggregateTableHead"),
+        aggregateTableBody: document.getElementById("aggregateTableBody"),
+        tableSearch: document.getElementById("tableSearch"),
+        significantOnly: document.getElementById("significantOnly"),
+        rowsPerPage: document.getElementById("rowsPerPage"),
+        clearTableFilters: document.getElementById("clearTableFilters"),
+        reportsTableBody: document.getElementById("reportsTableBody"),
+        pageReadout: document.getElementById("pageReadout"),
+        previousPageButton: document.getElementById("previousPageButton"),
+        nextPageButton: document.getElementById("nextPageButton"),
+        chartModeControls: document.getElementById("chartModeControls"),
+        trendChartMode: document.getElementById("trendChartMode"),
+        summaryChartMode: document.getElementById("summaryChartMode"),
+        spcTrendContent: document.getElementById("spcTrendContent"),
+        periodChartCard: document.getElementById("periodChartCard"),
+        hazardChartCard: document.getElementById("hazardChartCard"),
+        stateChartCard: document.getElementById("stateChartCard"),
+        hourChartCard: document.getElementById("hourChartCard"),
+        timeChartTitle: document.getElementById("timeChartTitle"),
+        timeChart: document.getElementById("timeChart"),
+        hazardChart: document.getElementById("hazardChart"),
+        stateChart: document.getElementById("stateChart"),
+        hourChart: document.getElementById("hourChart"),
+        statsGrid: document.getElementById("statsGrid"),
+        mobileNavToggle: document.getElementById("mobileNavToggle"),
+        siteNav: document.getElementById("siteNav")
+      };
+
+      function clean(value) {
+        return String(value ?? "").replace(/\s+/g, " ").trim();
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      function integer(value, fallback) {
+        const number = Number(value);
+        return Number.isInteger(number) ? number : fallback;
+      }
+
+      function localApiBase() {
+        const hostname = window.location.hostname;
+        const isLocalhost = ["localhost", "127.0.0.1"].includes(hostname);
+        const isPrivateLan =
+          /^192\.168\.\d{1,3}\.\d{1,3}$/.test(hostname) ||
+          /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname) ||
+          /^172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}$/.test(hostname);
+
+        if ((isLocalhost || isPrivateLan) && window.location.port !== "8787") {
+          const apiHost = hostname === "localhost" ? "127.0.0.1" : hostname;
+          return `http://${apiHost}:8787`;
+        }
+
+        return "";
+      }
+
+      function apiUrl(year, month, hazard, dataset) {
+        const url = new URL(
+          `${localApiBase()}/api/storm-reports`,
+          window.location.origin
+        );
+
+        url.searchParams.set("year", String(year));
+        url.searchParams.set("month", String(month));
+        url.searchParams.set("hazard", hazard);
+        url.searchParams.set("dataset", dataset);
+
+        return url.toString();
+      }
+
+      function readUrlState() {
+        const params = new URLSearchParams(window.location.search);
+        const currentYear = CURRENT_DATE.getUTCFullYear();
+        const year = integer(params.get("year"), currentYear);
+        const month = integer(params.get("month"), CURRENT_DATE.getUTCMonth() + 1);
+        const scope = params.get("scope");
+        const stateCode = clean(params.get("state")).toUpperCase();
+        const hazard = params.get("type") || params.get("hazard");
+        const dataset = params.get("dataset");
+        const view = params.get("view");
+
+        state.year = Math.max(FINAL_MIN_YEAR, Math.min(currentYear, year));
+        state.month = Math.max(0, Math.min(12, month));
+        state.scope = ["national", "state"].includes(scope) ? scope : "national";
+        state.stateCode = STATES.some(([code]) => code === stateCode)
+          ? stateCode
+          : "NC";
+        state.hazard = Object.hasOwn(HAZARDS, hazard) ? hazard : "all";
+        state.dataset = ["preliminary", "final"].includes(dataset)
+          ? dataset
+          : "preliminary";
+        state.view = ["map", "table", "charts", "stats"].includes(view)
+          ? view
+          : "map";
+
+        if (state.dataset === "final" && state.year > FINAL_MAX_YEAR) {
+          state.dataset = "preliminary";
+        }
+
+        if (state.dataset === "preliminary" && state.year < PRELIMINARY_MIN_YEAR) {
+          state.dataset = "final";
+        }
+      }
+
+      function writeUrlState() {
+        const url = new URL(window.location.href);
+        url.searchParams.set("year", String(state.year));
+        url.searchParams.set("month", String(state.month));
+        url.searchParams.set("scope", state.scope);
+        url.searchParams.set("state", state.stateCode);
+        url.searchParams.set("type", state.hazard);
+        url.searchParams.set("dataset", state.dataset);
+        url.searchParams.set("view", state.view);
+        history.replaceState(null, "", url);
+      }
+
+      function buildYearOptions() {
+        const currentYear = CURRENT_DATE.getUTCFullYear();
+        const fragment = document.createDocumentFragment();
+
+        for (let year = currentYear; year >= FINAL_MIN_YEAR; year -= 1) {
+          const option = document.createElement("option");
+          option.value = String(year);
+          option.textContent = String(year);
+          fragment.appendChild(option);
+        }
+
+        els.yearSelect.replaceChildren(fragment);
+        els.yearSelect.value = String(state.year);
+      }
+
+      function buildStateOptions() {
+        const fragment = document.createDocumentFragment();
+
+        for (const [code, name] of STATES) {
+          const option = document.createElement("option");
+          option.value = code;
+          option.textContent = `${code} — ${name}`;
+          fragment.appendChild(option);
+        }
+
+        els.stateSelect.replaceChildren(fragment);
+        els.stateSelect.value = state.stateCode;
+      }
+
+      function buildPeriodControls() {
+        els.periodControls.innerHTML = MONTH_SHORT.map((label, month) => `
+          <button type="button" data-month="${month}">
+            ${escapeHtml(label)}
+          </button>
+        `).join("");
+      }
+
+      function setSegmentedActive(containerId, value) {
+        document.querySelectorAll(`#${containerId} button`).forEach((button) => {
+          button.classList.toggle("active", button.dataset.value === value);
+        });
+      }
+
+      function syncControls() {
+        els.yearSelect.value = String(state.year);
+        els.stateSelect.value = state.stateCode;
+        els.stateControl.classList.toggle("visible", state.scope === "state");
+
+        setSegmentedActive("scopeControls", state.scope);
+        setSegmentedActive("hazardControls", state.hazard);
+        setSegmentedActive("datasetControls", state.dataset);
+        setSegmentedActive("viewControls", state.view);
+
+        document.querySelectorAll("#periodControls button").forEach((button) => {
+          button.classList.toggle(
+            "active",
+            Number(button.dataset.month) === state.month
+          );
+        });
+
+        const finalButton = document.querySelector(
+          '#datasetControls button[data-value="final"]'
+        );
+        const preliminaryButton = document.querySelector(
+          '#datasetControls button[data-value="preliminary"]'
+        );
+
+        finalButton.disabled = state.year > FINAL_MAX_YEAR;
+        finalButton.title = finalButton.disabled
+          ? `Final SPC Storm Data are currently available through ${FINAL_MAX_YEAR}.`
+          : "";
+
+        preliminaryButton.disabled = state.year < PRELIMINARY_MIN_YEAR;
+        preliminaryButton.title = preliminaryButton.disabled
+          ? "SPC preliminary daily archives begin in 1999."
+          : "";
+
+        document.querySelectorAll(".view-panel").forEach((panel) => {
+          panel.classList.toggle("active", panel.dataset.view === state.view);
+        });
+
+        els.emptyState.hidden = true;
+        writeUrlState();
+
+        if (state.view === "map" && map) {
+          window.setTimeout(() => map.resize(), 80);
+        }
+      }
+
+      function setLoading(loading, message = "") {
+        state.loading = loading;
+        els.statusStrip.classList.toggle("loading", loading);
+        els.statusStrip.classList.remove("error");
+        els.mapLoadingOverlay.classList.toggle("visible", loading);
+
+        if (message) {
+          els.statusText.textContent = message;
+        }
+      }
+
+      function setError(message) {
+        state.loading = false;
+        els.statusStrip.classList.remove("loading");
+        els.statusStrip.classList.add("error");
+        els.mapLoadingOverlay.classList.remove("visible");
+        els.statusText.textContent = message;
+      }
+
+      function selectedPeriodLabel() {
+        return state.month === 0
+          ? `${state.year} Annual`
+          : `${MONTHS[state.month]} ${state.year}`;
+      }
+
+      function selectedScopeLabel() {
+        return state.scope === "state"
+          ? state.stateCode
+          : "National";
+      }
+
+      function selectedHazardLabel() {
+        return HAZARDS[state.hazard]?.label || "All severe";
+      }
+
+      function selectedDatasetLabel() {
+        return state.dataset === "final" ? "Final" : "Preliminary";
+      }
+
+      function updateWorkspaceHeader() {
+        const period = selectedPeriodLabel();
+        const hazard = selectedHazardLabel();
+        const dataset = selectedDatasetLabel();
+        const scope = selectedScopeLabel();
+
+        els.workspaceTitle.textContent =
+          `${period} ${dataset} ${hazard} Summary`;
+
+        els.workspaceSubtitle.textContent =
+          `${scope} • ${state.reports.length.toLocaleString("en-US")} reports`;
+
+        els.hazardChip.textContent = hazard;
+        els.hazardChip.style.color = HAZARDS[state.hazard]?.color || "#f7fbff";
+        els.hazardChip.style.borderColor =
+          `${HAZARDS[state.hazard]?.color || "#62c9ff"}66`;
+
+        els.totalReportsMeta.textContent =
+          `${scope} • ${dataset.toLowerCase()} dataset`;
+      }
+
+      function hazardsToLoad() {
+        return state.hazard === "all"
+          ? ["tornado", "hail", "wind"]
+          : [state.hazard];
+      }
+
+      function monthsToLoad() {
+        return state.month === 0
+          ? Array.from({ length: 12 }, (_, index) => index + 1)
+          : [state.month];
+      }
+
+      async function mapWithConcurrency(items, concurrency, mapper) {
+        const results = new Array(items.length);
+        let nextIndex = 0;
+
+        async function worker() {
+          while (true) {
+            const index = nextIndex;
+            nextIndex += 1;
+
+            if (index >= items.length) return;
+            results[index] = await mapper(items[index], index);
+          }
+        }
+
+        await Promise.all(
+          Array.from(
+            { length: Math.min(concurrency, items.length) },
+            () => worker()
+          )
+        );
+
+        return results;
+      }
+
+      async function fetchDataset(year, month, hazard, dataset) {
+        const key = [dataset, year, month, hazard].join(":");
+
+        if (dataCache.has(key)) {
+          return dataCache.get(key);
+        }
+
+        const response = await fetch(
+          apiUrl(year, month, hazard, dataset),
+          { cache: "no-store" }
+        );
+
+        if (!response.ok) {
+          const detail = await response.text().catch(() => "");
+          throw new Error(
+            `Storm report API returned ${response.status}` +
+            (detail ? `: ${detail.slice(0, 180)}` : "")
+          );
+        }
+
+        const payload = await response.json();
+        dataCache.set(key, payload);
+        return payload;
+      }
+
+      async function loadReports(force = false) {
+        const token = ++activeLoadToken;
+        const hazards = hazardsToLoad();
+        const months = monthsToLoad();
+        const jobs = [];
+
+        for (const month of months) {
+          for (const hazard of hazards) {
+            jobs.push({
+              year: state.year,
+              month,
+              hazard,
+              dataset: state.dataset
+            });
+          }
+        }
+
+        if (force) {
+          for (const job of jobs) {
+            dataCache.delete(
+              [job.dataset, job.year, job.month, job.hazard].join(":")
+            );
+          }
+        }
+
+        setLoading(
+          true,
+          `Loading ${jobs.length} SPC dataset${jobs.length === 1 ? "" : "s"}…`
+        );
+
+        let completed = 0;
+
+        try {
+          const payloads = await mapWithConcurrency(
+            jobs,
+            state.month === 0 ? 3 : 4,
+            async (job) => {
+              const payload = await fetchDataset(
+                job.year,
+                job.month,
+                job.hazard,
+                job.dataset
+              );
+
+              completed += 1;
+
+              if (token === activeLoadToken) {
+                els.statusText.textContent =
+                  `Loaded ${completed} of ${jobs.length} SPC datasets…`;
+              }
+
+              return payload;
+            }
+          );
+
+          if (token !== activeLoadToken) return;
+
+          const reports = payloads.flatMap((payload) =>
+            Array.isArray(payload?.reports) ? payload.reports : []
+          );
+
+          state.rawReports = reports;
+          state.reports = state.scope === "state"
+            ? reports.filter((report) => report.state === state.stateCode)
+            : reports;
+
+          state.reports.sort((a, b) =>
+            String(b.dateTimeUtc || b.eventDate || "")
+              .localeCompare(String(a.dateTimeUtc || a.eventDate || ""))
+          );
+
+          state.page = 1;
+          setLoading(
+            false,
+            `${state.reports.length.toLocaleString("en-US")} reports loaded from SPC.`
+          );
+
+          renderAll();
+        } catch (error) {
+          console.error(error);
+
+          if (token === activeLoadToken) {
+            state.rawReports = [];
+            state.reports = [];
+            setError(
+              `Unable to load storm reports: ${error.message || error}`
+            );
+            renderAll();
+          }
+        }
+      }
+
+      function countBy(reports, getter) {
+        const counts = new Map();
+
+        for (const report of reports) {
+          const key = clean(getter(report)) || "Unknown";
+          counts.set(key, (counts.get(key) || 0) + 1);
+        }
+
+        return [...counts.entries()]
+          .map(([label, count]) => ({ label, count }))
+          .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+      }
+
+      function reportDayLabel(report) {
+        const value = clean(report.eventDate || report.reportDay);
+
+        if (!value) return "Unknown";
+
+        const date = new Date(`${value}T12:00:00Z`);
+
+        if (Number.isNaN(date.getTime())) return value;
+
+        return new Intl.DateTimeFormat("en-US", {
+          month: "short",
+          day: "numeric",
+          timeZone: "UTC"
+        }).format(date);
+      }
+
+      function reportMonthLabel(report) {
+        const value = clean(report.eventDate || report.reportDay);
+        const date = new Date(`${value}T12:00:00Z`);
+
+        if (Number.isNaN(date.getTime())) return value.slice(0, 7) || "Unknown";
+
+        return new Intl.DateTimeFormat("en-US", {
+          month: "short",
+          timeZone: "UTC"
+        }).format(date);
+      }
+
+      function updateSummary() {
+        const reports = state.reports;
+        const significant = reports.filter((report) => report.significant);
+        const timeCounts = countBy(
+          reports,
+          state.month === 0 ? reportMonthLabel : reportDayLabel
+        );
+        const stateCounts = countBy(reports, (report) => report.state);
+
+        els.totalReports.textContent =
+          reports.length.toLocaleString("en-US");
+        els.significantReports.textContent =
+          significant.length.toLocaleString("en-US");
+
+        els.peakPeriod.textContent = timeCounts[0]?.label || "—";
+        els.peakPeriodMeta.textContent = timeCounts[0]
+          ? `${timeCounts[0].count.toLocaleString("en-US")} reports`
+          : "Most active report period";
+
+        els.topState.textContent = stateCounts[0]?.label || "—";
+        els.topStateMeta.textContent = stateCounts[0]
+          ? `${stateCounts[0].count.toLocaleString("en-US")} reports`
+          : "Most reports in selection";
+      }
+
+      function drawReportIcon(markerCategory) {
+        const size = 64;
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+
+        const context = canvas.getContext("2d", {
+          alpha: true,
+          willReadFrequently: true
+        });
+
+        if (!context) {
+          throw new Error("Canvas rendering is unavailable for report icons.");
+        }
+
+        context.clearRect(0, 0, size, size);
+        context.lineJoin = "round";
+        context.lineCap = "round";
+        context.lineWidth = 2;
+        context.shadowBlur = 0;
+        context.shadowOffsetX = 0;
+        context.shadowOffsetY = 0;
+
+        const triangle = (points, fill, stroke, shadow) => {
+          context.beginPath();
+          context.moveTo(points[0][0], points[0][1]);
+          for (const [x, y] of points.slice(1)) {
+            context.lineTo(x, y);
+          }
+          context.closePath();
+          context.fillStyle = fill;
+          context.strokeStyle = stroke;
+          context.shadowColor = shadow;
+          context.fill();
+          context.stroke();
+        };
+
+        const square = (x, y, side, fill, stroke, shadow) => {
+          context.beginPath();
+          context.rect(x, y, side, side);
+          context.fillStyle = fill;
+          context.strokeStyle = stroke;
+          context.shadowColor = shadow;
+          context.fill();
+          context.stroke();
+        };
+
+        const circle = (radius, fill, stroke, shadow) => {
+          context.beginPath();
+          context.arc(32, 32, radius, 0, Math.PI * 2);
+          context.fillStyle = fill;
+          context.strokeStyle = stroke;
+          context.shadowColor = shadow;
+          context.fill();
+          context.stroke();
+        };
+
+        switch (markerCategory) {
+          case "tornado-all":
+            triangle(
+              [[32, 48], [21, 25], [43, 25]],
+              "#ff6b72",
+              "#ffd3d6",
+              "rgba(255, 70, 82, 0.72)"
+            );
+            break;
+          case "tornado-ef2":
+            triangle(
+              [[32, 52], [17, 21], [47, 21]],
+              "#ff263b",
+              "#ffe1e4",
+              "rgba(255, 38, 59, 0.82)"
+            );
+            break;
+          case "wind-measured":
+            square(
+              21, 21, 22,
+              "#2daeff",
+              "#e2f6ff",
+              "rgba(45, 174, 255, 0.72)"
+            );
+            break;
+          case "wind-significant":
+            square(
+              18, 18, 28,
+              "#007bd9",
+              "#dff4ff",
+              "rgba(0, 123, 217, 0.78)"
+            );
+            break;
+          case "hail-small":
+            circle(
+              8,
+              "#a5ff73",
+              "#efffe7",
+              "rgba(165, 255, 115, 0.64)"
+            );
+            break;
+          case "hail-medium":
+            circle(
+              11,
+              "#35d65a",
+              "#eaffeb",
+              "rgba(53, 214, 90, 0.7)"
+            );
+            break;
+          case "hail-large":
+            circle(
+              14,
+              "#00a33f",
+              "#e5ffe9",
+              "rgba(0, 163, 63, 0.76)"
+            );
+            break;
+          case "wind-damage":
+          default:
+            square(
+              24, 24, 16,
+              "#82ddff",
+              "#e4f8ff",
+              "rgba(130, 221, 255, 0.68)"
+            );
+            break;
+        }
+
+        context.shadowColor = "transparent";
+        return context.getImageData(0, 0, size, size);
+      }
+
+      function ensureReportImage(iconName) {
+        if (
+          !map ||
+          !REPORT_ICON_NAMES.includes(iconName) ||
+          map.hasImage(iconName)
+        ) {
+          return;
+        }
+
+        map.addImage(iconName, drawReportIcon(iconName), {
+          pixelRatio: 2
+        });
+      }
+
+      function registerReportImages() {
+        for (const iconName of REPORT_ICON_NAMES) {
+          ensureReportImage(iconName);
+        }
+      }
+
+      function emptyReportFeatureCollection() {
+        return {
+          type: "FeatureCollection",
+          features: []
+        };
+      }
+
+      function ensureReportSourceAndLayer() {
+        if (!map.getSource(REPORT_SOURCE_ID)) {
+          map.addSource(REPORT_SOURCE_ID, {
+            type: "geojson",
+            data: emptyReportFeatureCollection()
+          });
+        }
+
+        if (!map.getLayer(REPORT_LAYER_ID)) {
+          map.addLayer({
+            id: REPORT_LAYER_ID,
+            type: "symbol",
+            source: REPORT_SOURCE_ID,
+            layout: {
+              "icon-image": ["get", "markerCategory"],
+              // storm-report-local-zoom-scaling-v3
+              "icon-size": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                3, [
+                  "match",
+                  ["get", "markerCategory"],
+                  ["tornado-ef2", "wind-significant", "hail-large"],
+                  0.342,
+                  0.28
+                ],
+                4, [
+                  "match",
+                  ["get", "markerCategory"],
+                  ["tornado-ef2", "wind-significant", "hail-large"],
+                  0.415,
+                  0.34
+                ],
+                6, [
+                  "match",
+                  ["get", "markerCategory"],
+                  ["tornado-ef2", "wind-significant", "hail-large"],
+                  0.586,
+                  0.48
+                ],
+                8, [
+                  "match",
+                  ["get", "markerCategory"],
+                  ["tornado-ef2", "wind-significant", "hail-large"],
+                  0.830,
+                  0.68
+                ],
+                10, [
+                  "match",
+                  ["get", "markerCategory"],
+                  ["tornado-ef2", "wind-significant", "hail-large"],
+                  1.159,
+                  0.95
+                ],
+                11.5, [
+                  "match",
+                  ["get", "markerCategory"],
+                  ["tornado-ef2", "wind-significant", "hail-large"],
+                  1.586,
+                  1.30
+                ],
+                13, [
+                  "match",
+                  ["get", "markerCategory"],
+                  ["tornado-ef2", "wind-significant", "hail-large"],
+                  2.098,
+                  1.72
+                ],
+                14, [
+                  "match",
+                  ["get", "markerCategory"],
+                  ["tornado-ef2", "wind-significant", "hail-large"],
+                  2.562,
+                  2.10
+                ]
+              ],
+              "symbol-sort-key": [
+                "match",
+                ["get", "markerCategory"],
+                "wind-damage", 10,
+                "wind-measured", 20,
+                "wind-significant", 30,
+                "hail-small", 40,
+                "hail-medium", 50,
+                "hail-large", 60,
+                "tornado-all", 70,
+                "tornado-ef2", 80,
+                0
+              ],
+              "icon-anchor": "center",
+              "icon-allow-overlap": true,
+              "icon-ignore-placement": true,
+              "icon-rotation-alignment": "viewport",
+              "icon-pitch-alignment": "viewport"
+            },
+            paint: {
+              "icon-opacity": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                3, 0.84,
+                5, 0.91,
+                7, 0.97
+              ]
+            }
+          });
+        }
+      }
+
+      function reportPopupHtml(report) {
+        return `
+          <div class="report-popup">
+            <strong>${escapeHtml(
+              `${report.magnitude || HAZARDS[report.hazard]?.label || "Storm report"}`
+            )}</strong>
+            <span>${escapeHtml(reportTimeDisplay(report))}</span>
+            <span>${escapeHtml(
+              [report.location, report.county, report.state]
+                .filter(Boolean)
+                .join(" • ")
+            )}</span>
+            ${report.comments
+              ? `<span>${escapeHtml(report.comments)}</span>`
+              : ""}
+            ${report.significant
+              ? '<span class="significant-flag">Significant severe report</span>'
+              : ""}
+          </div>
+        `;
+      }
+
+      function reportAtMapEvent(event) {
+        const directFeature = event.features?.[0];
+
+        if (directFeature) {
+          const directIndex = Number(directFeature.properties?.reportIndex);
+          return plottedReportLookup[directIndex] || null;
+        }
+
+        const point = event.point;
+        const hitBox = [
+          [point.x - 8, point.y - 8],
+          [point.x + 8, point.y + 8]
+        ];
+        const features = map.queryRenderedFeatures(hitBox, {
+          layers: [REPORT_LAYER_ID]
+        });
+        const index = Number(features[0]?.properties?.reportIndex);
+        return plottedReportLookup[index] || null;
+      }
+
+      function openReportPopup(event) {
+        const report = reportAtMapEvent(event);
+        if (!report) return;
+
+        reportPopup?.remove();
+        reportPopup = new mapboxgl.Popup({
+          closeButton: true,
+          closeOnClick: true,
+          maxWidth: "360px",
+          offset: 10
+        })
+          .setLngLat([Number(report.lon), Number(report.lat)])
+          .setHTML(reportPopupHtml(report))
+          .addTo(map);
+      }
+
+      function positionMapboxLogoAboveAttribution() {
+        const controlContainer =
+          els.map?.querySelector(".mapboxgl-control-container");
+
+        const logo =
+          controlContainer?.querySelector(".mapboxgl-ctrl-logo");
+
+        const bottomRight =
+          controlContainer?.querySelector(".mapboxgl-ctrl-bottom-right");
+
+        if (!logo || !bottomRight) return;
+
+        if (logo.parentElement !== bottomRight) {
+          bottomRight.appendChild(logo);
+        }
+
+        logo.classList.add("storm-report-mapbox-logo-right");
+      }
+
+      function ensureMap() {
+        if (map) return;
+
+        const token = clean(window.MAPBOX_PUBLIC_TOKEN);
+
+        if (!window.mapboxgl || !token) {
+          els.statusStrip.classList.add("error");
+          els.statusText.textContent =
+            "Mapbox failed to initialize. Check mapbox-token.js.";
+          return;
+        }
+
+        mapboxgl.accessToken = token;
+
+        map = new mapboxgl.Map({
+          container: "reportsMap",
+          style: "mapbox://styles/mapbox/dark-v11",
+          center: [-97.3, 38.3],
+          zoom: 3.4,
+          projection: "globe", // storm-report-globe-projection-only-v1
+          minZoom: 2.5,
+          maxZoom: 14,
+          maxPitch: 0,
+          dragRotate: false,
+          pitchWithRotate: false,
+          touchPitch: false,
+          attributionControl: true,
+          logoPosition: "bottom-right",
+          antialias: true
+        });
+
+        map.addControl(
+          new mapboxgl.NavigationControl({
+            showCompass: false,
+            visualizePitch: false
+          }),
+          "top-left"
+        );
+
+        const restoreReportMapStyle = () => {
+          positionMapboxLogoAboveAttribution();
+          registerReportImages();
+          ensureReportSourceAndLayer();
+
+          if (pendingMapRender || state.reports.length) {
+            pendingMapRender = false;
+            renderMap();
+          }
+        };
+
+        window.requestAnimationFrame(
+          positionMapboxLogoAboveAttribution
+        );
+
+        map.on("style.load", restoreReportMapStyle);
+
+        map.on("styleimagemissing", (event) => {
+          ensureReportImage(event.id);
+        });
+
+        map.on("idle", () => {
+          if (!pendingMapRender || mapRenderQueued) return;
+
+          mapRenderQueued = true;
+
+          window.requestAnimationFrame(() => {
+            mapRenderQueued = false;
+
+            if (!pendingMapRender) return;
+
+            pendingMapRender = false;
+            renderMap();
+          });
+        });
+
+        map.on("click", REPORT_LAYER_ID, openReportPopup);
+        map.on("mouseenter", REPORT_LAYER_ID, () => {
+          map.getCanvas().style.cursor = "pointer";
+        });
+        map.on("mouseleave", REPORT_LAYER_ID, () => {
+          map.getCanvas().style.cursor = "";
+        });
+
+        map.on("error", (event) => {
+          console.error("Storm report Mapbox error:", event?.error || event);
+        });
+      }
+
+      function validCoordinate(report) {
+        return (
+          Number.isFinite(Number(report.lat)) &&
+          Number.isFinite(Number(report.lon)) &&
+          Math.abs(Number(report.lat)) <= 90 &&
+          Math.abs(Number(report.lon)) <= 180
+        );
+      }
+
+      function reportTimeDisplay(report) {
+        const value = clean(report.dateTimeUtc);
+
+        if (value) {
+          const date = new Date(value);
+
+          if (!Number.isNaN(date.getTime())) {
+            return new Intl.DateTimeFormat("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+              timeZone: "UTC",
+              timeZoneName: "short"
+            }).format(date);
+          }
+        }
+
+        return [clean(report.eventDate), clean(report.timeLabel)]
+          .filter(Boolean)
+          .join(" ") || "Time unavailable";
+      }
+
+      function reportMagnitudeNumber(report) {
+        const raw = report?.magnitudeValue;
+
+        if (raw === null || raw === undefined || raw === "") {
+          return null;
+        }
+
+        const value = Number(raw);
+        return Number.isFinite(value) ? value : null;
+      }
+
+      function reportMarkerCategory(report) {
+        const magnitude = reportMagnitudeNumber(report);
+
+        if (report.hazard === "tornado") {
+          return report.significant ||
+            (magnitude !== null && magnitude >= 2)
+            ? "tornado-ef2"
+            : "tornado-all";
+        }
+
+        if (report.hazard === "wind") {
+          if (
+            report.significant ||
+            (magnitude !== null && magnitude >= 75)
+          ) {
+            return "wind-significant";
+          }
+
+          return magnitude !== null
+            ? "wind-measured"
+            : "wind-damage";
+        }
+
+        if (report.hazard === "hail") {
+          if (magnitude !== null && magnitude >= 2) {
+            return "hail-large";
+          }
+
+          if (magnitude !== null && magnitude >= 1.25) {
+            return "hail-medium";
+          }
+
+          return "hail-small";
+        }
+
+        return "wind-damage";
+      }
+
+      function renderMapLegend() {
+        const tornadoReports = state.reports.filter(
+          (report) => report.hazard === "tornado"
+        );
+        const hailReports = state.reports.filter(
+          (report) => report.hazard === "hail"
+        );
+        const windReports = state.reports.filter(
+          (report) => report.hazard === "wind"
+        );
+
+        const numericMagnitude = reportMagnitudeNumber;
+
+        const tornadoSection = `
+          <section class="legend-hazard-section">
+            <div class="legend-hazard-heading tornado">
+              <span>Tornadoes</span>
+              <b>${tornadoReports.length.toLocaleString("en-US")}</b>
+            </div>
+            <div class="legend-detail-row tornado tornado-all-row">
+              <span class="legend-symbol tornado-all-symbol" aria-hidden="true"></span>
+              <span>All reports</span>
+              <b>${tornadoReports.length.toLocaleString("en-US")}</b>
+            </div>
+            <div class="legend-detail-row tornado tornado-ef2-row">
+              <span class="legend-symbol tornado-ef2-symbol" aria-hidden="true"></span>
+              <span>Possible EF2+</span>
+              <b>${tornadoReports.filter(
+                (report) => report.significant
+              ).length.toLocaleString("en-US")}</b>
+            </div>
+          </section>
+        `;
+
+        const windDamage = windReports.filter(
+          (report) => numericMagnitude(report) === null
+        ).length;
+
+        const measuredWind = windReports.filter(
+          (report) => numericMagnitude(report) !== null
+        ).length;
+
+        const significantWind = windReports.filter((report) => {
+          const value = numericMagnitude(report);
+          return report.significant || (value !== null && value >= 75);
+        }).length;
+
+        const windSection = `
+          <section class="legend-hazard-section">
+            <div class="legend-hazard-heading wind">
+              <span>Severe Wind</span>
+              <b>${windReports.length.toLocaleString("en-US")}</b>
+            </div>
+            <div class="legend-detail-row wind wind-damage-row">
+              <span class="legend-symbol wind-damage-symbol" aria-hidden="true"></span>
+              <span>Wind damage</span>
+              <b>${windDamage.toLocaleString("en-US")}</b>
+            </div>
+            <div class="legend-detail-row wind wind-measured-row">
+              <span class="legend-symbol wind-measured-symbol" aria-hidden="true"></span>
+              <span>Measured gusts</span>
+              <b>${measuredWind.toLocaleString("en-US")}</b>
+            </div>
+            <div class="legend-detail-row wind wind-significant-row">
+              <span class="legend-symbol wind-significant-symbol" aria-hidden="true"></span>
+              <span>Meas. gusts ≥75 mph</span>
+              <b>${significantWind.toLocaleString("en-US")}</b>
+            </div>
+          </section>
+        `;
+
+        const hailOneTo124 = hailReports.filter((report) => {
+          const value = numericMagnitude(report);
+          return value !== null && value >= 1 && value < 1.25;
+        }).length;
+
+        const hail125To199 = hailReports.filter((report) => {
+          const value = numericMagnitude(report);
+          return value !== null && value >= 1.25 && value < 2;
+        }).length;
+
+        const hailTwoPlus = hailReports.filter((report) => {
+          const value = numericMagnitude(report);
+          return value !== null && value >= 2;
+        }).length;
+
+        const hailSection = `
+          <section class="legend-hazard-section">
+            <div class="legend-hazard-heading hail">
+              <span>Severe Hail</span>
+              <b>${hailReports.length.toLocaleString("en-US")}</b>
+            </div>
+            <div class="legend-detail-row hail hail-small-row">
+              <span class="legend-symbol hail-small-symbol" aria-hidden="true"></span>
+              <span>Hail 1.00–1.24 in.</span>
+              <b>${hailOneTo124.toLocaleString("en-US")}</b>
+            </div>
+            <div class="legend-detail-row hail hail-medium-row">
+              <span class="legend-symbol hail-medium-symbol" aria-hidden="true"></span>
+              <span>Hail 1.25–1.99 in.</span>
+              <b>${hail125To199.toLocaleString("en-US")}</b>
+            </div>
+            <div class="legend-detail-row hail hail-large-row">
+              <span class="legend-symbol hail-large-symbol" aria-hidden="true"></span>
+              <span>Hail 2.00+ in.</span>
+              <b>${hailTwoPlus.toLocaleString("en-US")}</b>
+            </div>
+          </section>
+        `;
+
+        const sections = state.hazard === "all"
+          ? [tornadoSection, windSection, hailSection]
+          : state.hazard === "tornado"
+            ? [tornadoSection]
+            : state.hazard === "wind"
+              ? [windSection]
+              : [hailSection];
+
+        els.mapLegend.innerHTML = `
+          <strong>Storm Reports Legend</strong>
+          ${sections.join("")}
+        `;
+      }
+
+      function renderMap() {
+        ensureMap();
+        renderMapLegend();
+
+        if (!map || !map.isStyleLoaded()) {
+          pendingMapRender = true;
+          return;
+        }
+
+        pendingMapRender = false;
+        registerReportImages();
+        ensureReportSourceAndLayer();
+        reportPopup?.remove();
+        reportPopup = null;
+
+        const reportsWithCoordinates = state.reports.filter(validCoordinate);
+        const maxMarkers = 50000;
+        const plotted = reportsWithCoordinates.length > maxMarkers
+          ? reportsWithCoordinates.filter(
+              (_, index) =>
+                index % Math.ceil(reportsWithCoordinates.length / maxMarkers) === 0
+            )
+          : reportsWithCoordinates;
+
+        plottedReportLookup = plotted;
+
+        const featureCollection = {
+          type: "FeatureCollection",
+          features: plotted.map((report, reportIndex) => ({
+            type: "Feature",
+            geometry: {
+              type: "Point",
+              coordinates: [Number(report.lon), Number(report.lat)]
+            },
+            properties: {
+              reportIndex,
+              markerCategory: reportMarkerCategory(report),
+              hazard: report.hazard,
+              significant: Boolean(report.significant)
+            }
+          }))
+        };
+
+        map.getSource(REPORT_SOURCE_ID).setData(featureCollection);
+
+        if (state.scope === "national" || !plotted.length) {
+          map.fitBounds(
+            [
+              [-125.0, 24.0],
+              [-66.5, 50.0]
+            ],
+            {
+              padding: {
+                top: 24,
+                right: 24,
+                bottom: 24,
+                left: 24
+              },
+              maxZoom: 4.7,
+              duration: 0
+            }
+          );
+        } else {
+          const bounds = new mapboxgl.LngLatBounds();
+
+          for (const report of plotted) {
+            bounds.extend([Number(report.lon), Number(report.lat)]);
+          }
+
+          if (!bounds.isEmpty()) {
+            map.fitBounds(bounds, {
+              padding: 42,
+              maxZoom: 8,
+              duration: 0
+            });
+          }
+        }
+
+        if (reportsWithCoordinates.length > maxMarkers) {
+          els.statusText.textContent =
+            `${state.reports.length.toLocaleString("en-US")} reports loaded; ` +
+            `${plotted.length.toLocaleString("en-US")} representative markers plotted for performance.`;
+        }
+
+        window.setTimeout(() => map.resize(), 60);
+      }
+
+      function filteredTableReports() {
+        const query = clean(els.tableSearch.value).toLowerCase();
+        const significantOnly = els.significantOnly.checked;
+
+        return state.reports.filter((report) => {
+          if (significantOnly && !report.significant) return false;
+          if (!query) return true;
+
+          return [
+            report.hazard,
+            report.magnitude,
+            report.location,
+            report.county,
+            report.state,
+            report.comments,
+            report.eventDate
+          ].some((value) => clean(value).toLowerCase().includes(query));
+        });
+      }
+
+      function comparableValue(report, key) {
+        if (key === "magnitudeValue") {
+          const number = Number(report[key]);
+          return Number.isFinite(number) ? number : -Infinity;
+        }
+
+        return clean(report[key]).toLowerCase();
+      }
+
+      function aggregateHazardRows(mode) {
+        const rows = new Map();
+        const stateNames = Object.fromEntries(STATES);
+
+        const ensureRow = (key, label, order) => {
+          if (!rows.has(key)) {
+            rows.set(key, {
+              key,
+              label,
+              order,
+              all: 0,
+              tornado: 0,
+              wind: 0,
+              hail: 0
+            });
+          }
+
+          return rows.get(key);
+        };
+
+        for (const report of state.reports) {
+          const dateValue = clean(report.eventDate || report.reportDay);
+          let key = "Unknown";
+          let label = "Unknown";
+          let order = Number.MAX_SAFE_INTEGER;
+
+          if (mode === "days") {
+            const date = new Date(`${dateValue}T12:00:00Z`);
+            key = dateValue || "Unknown";
+            label = Number.isNaN(date.getTime())
+              ? key
+              : new Intl.DateTimeFormat("en-US", {
+                  month: "2-digit",
+                  day: "2-digit",
+                  year: "numeric",
+                  timeZone: "UTC"
+                }).format(date);
+            order = Number.isNaN(date.getTime()) ? 0 : date.getTime();
+          } else if (mode === "hours") {
+            const hour = Number(hourLabel(report).replace(/\D/g, ""));
+            key = Number.isFinite(hour)
+              ? String(hour).padStart(2, "0")
+              : "Unknown";
+            label = key === "Unknown" ? key : `${key}Z`;
+            order = Number.isFinite(hour) ? hour : 99;
+          } else if (mode === "months") {
+            const date = new Date(`${dateValue}T12:00:00Z`);
+            const monthIndex = Number.isNaN(date.getTime())
+              ? -1
+              : date.getUTCMonth();
+            key = monthIndex >= 0 ? String(monthIndex + 1) : "Unknown";
+            label = monthIndex >= 0 ? MONTHS[monthIndex + 1] : "Unknown";
+            order = monthIndex >= 0 ? monthIndex : 99;
+          } else {
+            key = clean(report.state) || "Unknown";
+            label = key === "Unknown"
+              ? key
+              : `${key} — ${stateNames[key] || key}`;
+            order = 0;
+          }
+
+          const row = ensureRow(key, label, order);
+          row.all += 1;
+
+          if (["tornado", "wind", "hail"].includes(report.hazard)) {
+            row[report.hazard] += 1;
+          }
+        }
+
+        const values = [...rows.values()];
+
+        if (mode === "days" || mode === "states") {
+          values.sort(
+            (a, b) =>
+              b.all - a.all ||
+              (mode === "days"
+                ? b.order - a.order
+                : a.label.localeCompare(b.label))
+          );
+        } else {
+          values.sort((a, b) => a.order - b.order);
+        }
+
+        return values;
+      }
+
+      function aggregateTableDescriptor(mode) {
+        const period = state.month === 0
+          ? "Annual"
+          : MONTHS[state.month];
+        const scope = state.scope === "state" ? state.stateCode : "National";
+
+        const descriptors = {
+          days: {
+            title: `${state.year} Daily Statistics`,
+            subtitle: `${scope} • ${period}`,
+            dimension: "Date",
+            sortNote: "Sorted by total reports"
+          },
+          hours: {
+            title: `${state.year} Hourly Totals`,
+            subtitle: `${scope} • ${period}`,
+            dimension: "Hour (UTC)",
+            sortNote: "Chronological by UTC hour"
+          },
+          months: {
+            title: `${state.year} Month Totals`,
+            subtitle: `${scope} • ${period}`,
+            dimension: "Month",
+            sortNote: "Chronological by month"
+          },
+          states: {
+            title: `${state.year} State Totals`,
+            subtitle: `${scope} • ${period}`,
+            dimension: "State",
+            sortNote: "Sorted by total reports"
+          }
+        };
+
+        return descriptors[mode] || descriptors.days;
+      }
+
+      function renderAggregateTable() {
+        const descriptor = aggregateTableDescriptor(state.tableMode);
+        const rows = aggregateHazardRows(state.tableMode);
+        const showAllHazards = state.hazard === "all";
+        const hazardColumns = showAllHazards
+          ? ["all", "tornado", "wind", "hail"]
+          : [state.hazard];
+        const labels = {
+          all: "All",
+          tornado: "Tornado",
+          wind: "Wind",
+          hail: "Hail"
+        };
+        const maxAll = Math.max(1, ...rows.map((row) => row.all));
+
+        els.aggregateTableTitle.textContent = descriptor.title;
+        els.aggregateTableSubtitle.textContent = descriptor.subtitle;
+        els.aggregateSortNote.textContent = descriptor.sortNote;
+
+        els.aggregateTableHead.innerHTML = `
+          <tr>
+            <th>${escapeHtml(descriptor.dimension)}</th>
+            ${hazardColumns.map((hazard) => `
+              <th class="numeric-heading ${escapeHtml(hazard)}">
+                ${escapeHtml(labels[hazard])}
+              </th>
+            `).join("")}
+          </tr>
+        `;
+
+        els.aggregateTableBody.innerHTML = rows.length
+          ? rows.map((row) => `
+              <tr>
+                <td class="aggregate-label">${escapeHtml(row.label)}</td>
+                ${hazardColumns.map((hazard) => {
+                  const count = Number(row[hazard] || 0);
+                  const intensity = Math.max(0.08, count / maxAll);
+
+                  return `
+                    <td
+                      class="aggregate-number ${escapeHtml(hazard)}"
+                      style="--cell-intensity:${intensity.toFixed(3)}"
+                    >${count.toLocaleString("en-US")}</td>
+                  `;
+                }).join("")}
+              </tr>
+            `).join("")
+          : `
+              <tr>
+                <td colspan="5" class="aggregate-empty">No statistics available</td>
+              </tr>
+            `;
+      }
+
+      function renderTable() {
+        if (["hours", "months"].includes(state.tableMode)) {
+          state.tableMode = "reports";
+        }
+        const reportMode = state.tableMode === "reports";
+
+        els.tableModeControls
+          .querySelectorAll("button[data-table-mode]")
+          .forEach((button) => {
+            button.classList.toggle(
+              "active",
+              button.dataset.tableMode === state.tableMode
+            );
+          });
+
+        els.reportTableMode.hidden = !reportMode;
+        els.reportTableMode.classList.toggle("active", reportMode);
+        els.summaryTableMode.hidden = reportMode;
+        els.summaryTableMode.classList.toggle("active", !reportMode);
+
+        if (!reportMode) {
+          renderAggregateTable();
+          return;
+        }
+
+        tableReports = filteredTableReports().slice().sort((a, b) => {
+          const aValue = comparableValue(a, state.sortKey);
+          const bValue = comparableValue(b, state.sortKey);
+
+          if (aValue < bValue) return state.sortDirection === "asc" ? -1 : 1;
+          if (aValue > bValue) return state.sortDirection === "asc" ? 1 : -1;
+          return 0;
+        });
+
+        state.rowsPerPage = Number(els.rowsPerPage.value) || 100;
+        const totalPages = Math.max(
+          1,
+          Math.ceil(tableReports.length / state.rowsPerPage)
+        );
+
+        state.page = Math.min(state.page, totalPages);
+
+        const start = (state.page - 1) * state.rowsPerPage;
+        const rows = tableReports.slice(start, start + state.rowsPerPage);
+
+        els.reportsTableBody.innerHTML = rows.map((report) => `
+          <tr>
+            <td>${escapeHtml(reportTimeDisplay(report))}</td>
+            <td>
+              <span class="hazard-label ${escapeHtml(report.hazard)}">
+                ${escapeHtml(HAZARDS[report.hazard]?.label || report.hazard)}
+              </span>
+              ${report.significant
+                ? '<div class="significant-flag">Significant</div>'
+                : ""}
+            </td>
+            <td>${escapeHtml(report.magnitude || "—")}</td>
+            <td>${escapeHtml(report.location || "—")}</td>
+            <td>${escapeHtml(report.county || "—")}</td>
+            <td>${escapeHtml(report.state || "—")}</td>
+            <td>${escapeHtml(report.comments || "—")}</td>
+          </tr>
+        `).join("");
+
+        els.pageReadout.textContent =
+          `${tableReports.length.toLocaleString("en-US")} reports • ` +
+          `Page ${state.page} of ${totalPages}`;
+
+        els.previousPageButton.disabled = state.page <= 1;
+        els.nextPageButton.disabled = state.page >= totalPages;
+      }
+
+      function stateClimatologyEligible() {
+        return (
+          state.year === CURRENT_DATE.getUTCFullYear() &&
+          state.month === 0 &&
+          state.scope === "national" &&
+          state.dataset === "preliminary" &&
+          ["tornado", "hail", "wind"].includes(state.hazard)
+        );
+      }
+
+      function stateClimatologyUrl() {
+        const url = new URL(
+          `${localApiBase()}/api/storm-reports-climatology`,
+          window.location.origin
+        );
+        url.searchParams.set("hazard", state.hazard);
+        return url.toString();
+      }
+
+      async function fetchStateClimatology() {
+        const key = state.hazard;
+        if (stateClimatologyCache.has(key)) return stateClimatologyCache.get(key);
+
+        const response = await fetch(stateClimatologyUrl(), { cache: "no-store" });
+        if (!response.ok) throw new Error(`Climatology API returned ${response.status}`);
+
+        const payload = await response.json();
+        stateClimatologyCache.set(key, payload);
+        return payload;
+      }
+
+      function stateAnomalyColor(currentCount, averageCount) {
+        if (!(averageCount > 0)) {
+          return currentCount > 0 ? "hsl(0 82% 55%)" : "hsl(60 72% 48%)";
+        }
+
+        const ratio = currentCount / averageCount;
+        const normalized = Math.max(0, Math.min(1, (ratio - 0.5) / 1.0));
+        const hue = Math.round(120 * (1 - normalized));
+        return `hsl(${hue} 80% 50%)`;
+      }
+
+      function stateAnomalyProgress(currentCount, averageCount) {
+        if (!(averageCount > 0)) {
+          return currentCount > 0 ? 1 : 0.5;
+        }
+
+        const ratio = currentCount / averageCount;
+
+        return Math.max(
+          0.08,
+          Math.min(1, (ratio - 0.5) / 1.0)
+        );
+      }      function stateAnomalyProgress(currentCount, averageCount) {
+        if (!(averageCount > 0)) {
+          return currentCount > 0 ? 1 : 0.5;
+        }
+
+        const ratio = currentCount / averageCount;
+
+        return Math.max(
+          0.08,
+          Math.min(1, (ratio - 0.5) / 1.0)
+        );
+      }
+
+      function stateAnomalyLabel(currentCount, averageCount) {
+        if (!(averageCount > 0)) return currentCount > 0 ? "new" : "0%";
+
+        const percent = Math.round(((currentCount - averageCount) / averageCount) * 100);
+        return `${percent > 0 ? "+" : ""}${percent}%`;
+      }
+
+      function stateClimatologyDateLabel(month, day) {
+        const date = new Date(Date.UTC(2000, month - 1, day));
+        return new Intl.DateTimeFormat("en-US", {
+          month: "short",
+          day: "numeric",
+          timeZone: "UTC"
+        }).format(date);
+      }
+
+      function renderStateAnomalyBars(container, items, climatology) {
+        const visible = items.slice(0, 52);
+        const max = Math.max(1, ...visible.map((item) => item.count));
+        const averages = climatology?.stateAverages || {};
+        const dateLabel = stateClimatologyDateLabel(
+          climatology.cutoffMonth,
+          climatology.cutoffDay
+        );
+
+        container.innerHTML = `
+          <div class="state-climo-summary">
+            <strong>${escapeHtml(
+              `${climatology.baselineStartYear}\u2013${climatology.baselineEndYear} average through ${dateLabel}`
+            )}</strong>
+            <span>SPC final historical reports</span>
+          </div>
+
+
+
+          ${visible.map((item) => {
+            const average = Number(averages[item.label] || 0);
+            const anomaly = stateAnomalyLabel(item.count, average);
+
+            return `
+              <div class="bar-row state-climo-row">
+                <span class="state-climo-label">
+                  <b>${escapeHtml(item.label)}</b>
+                </span>
+                <span
+                  class="bar-track"
+                  title="${escapeHtml(
+                    `${item.label}: ${item.count.toLocaleString("en-US")} reports; historical average ${average.toFixed(1)}`
+                  )}"
+                >
+                  <i
+                    class="bar-fill state-climo-fill"
+                    style="--bar-width:${Math.max(2, (item.count / max) * 100)}%;"
+                  ></i>
+                </span>
+                <span class="state-climo-value">
+                  <strong class="bar-value">
+                    ${item.count.toLocaleString("en-US")}
+                  </strong>
+                  <small>${escapeHtml(anomaly)}</small>
+                </span>
+              </div>
+            `;
+          }).join("")}
+        `;
+      }
+
+      function renderStateClimatologyBars(stateCounts) {
+        if (!stateClimatologyEligible()) return;
+
+        const token = ++stateClimatologyRenderToken;
+        els.stateChart.innerHTML = `
+          <div class="state-climo-loading">Calculating 10-year state averagesâ€¦</div>
+        `;
+
+        fetchStateClimatology()
+          .then((climatology) => {
+            if (token !== stateClimatologyRenderToken || state.chartMode !== "states") return;
+            renderStateAnomalyBars(els.stateChart, stateCounts, climatology);
+          })
+          .catch((error) => {
+            console.error("State climatology chart failed:", error);
+            if (token !== stateClimatologyRenderToken) return;
+            renderBars(els.stateChart, stateCounts, 52);
+        renderStateClimatologyBars(stateCounts);
+          });
+      }
+      function renderBars(container, items, limit = 20) {
+        const visible = items.slice(0, limit);
+        const max = Math.max(1, ...visible.map((item) => item.count));
+
+        container.innerHTML = visible.length
+          ? visible.map((item) => `
+              <div class="bar-row">
+                <span class="bar-label" title="${escapeHtml(item.label)}">
+                  ${escapeHtml(item.label)}
+                </span>
+                <span class="bar-track">
+                  <i class="bar-fill"
+                    style="--bar-width:${Math.max(2, (item.count / max) * 100)}%"></i>
+                </span>
+                <strong class="bar-value">${item.count.toLocaleString("en-US")}</strong>
+              </div>
+            `).join("")
+          : '<div class="empty-state"><div><strong>No chart data</strong></div></div>';
+      }
+
+      function hourLabel(report) {
+        const raw = clean(report.timeRaw || report.timeLabel);
+        const digits = raw.replace(/\D/g, "").padStart(4, "0").slice(-4);
+        const hour = Number(digits.slice(0, 2));
+
+        return Number.isFinite(hour)
+          ? `${String(hour).padStart(2, "0")}Z`
+          : "Unknown";
+      }
+
+      function spcAnnualTrendImageUrl(hazard) {
+        const code = {
+          tornado: "torn",
+          hail: "hail",
+          wind: "wind"
+        }[hazard];
+
+        if (!code) return "";
+
+        const currentYear = CURRENT_DATE.getUTCFullYear();
+        const prefix = state.year === currentYear ? "" : `${state.year}-`;
+
+        return `https://www.spc.noaa.gov/wcm/newimgs/${prefix}${code}-counts.png`;
+      }
+
+      function dayOfYear(date) {
+        const start = Date.UTC(date.getUTCFullYear(), 0, 1);
+        return Math.floor((date.getTime() - start) / 86400000) + 1;
+      }
+
+      function cumulativeSeries() {
+        const annual = state.month === 0;
+        const pointCount = annual
+          ? (new Date(Date.UTC(state.year, 1, 29)).getUTCMonth() === 1 ? 366 : 365)
+          : new Date(Date.UTC(state.year, state.month, 0)).getUTCDate();
+        const hazards = state.hazard === "all"
+          ? ["tornado", "wind", "hail"]
+          : [state.hazard];
+
+        return hazards.map((hazard) => {
+          const daily = Array.from({ length: pointCount }, () => 0);
+
+          for (const report of state.reports) {
+            if (report.hazard !== hazard) continue;
+
+            const value = clean(report.eventDate || report.reportDay);
+            const date = new Date(`${value}T12:00:00Z`);
+            if (Number.isNaN(date.getTime())) continue;
+
+            const index = annual
+              ? dayOfYear(date) - 1
+              : date.getUTCDate() - 1;
+
+            if (index >= 0 && index < daily.length) {
+              daily[index] += 1;
+            }
+          }
+
+          let running = 0;
+          return {
+            hazard,
+            label: HAZARDS[hazard]?.label || hazard,
+            color: HAZARDS[hazard]?.color || "#62c9ff",
+            values: daily.map((count) => {
+              running += count;
+              return running;
+            })
+          };
+        });
+      }
+
+      function nativeCumulativeChart() {
+        const series = cumulativeSeries();
+        const width = 1120;
+        const height = 540;
+        const margin = { top: 46, right: 36, bottom: 60, left: 70 };
+        const plotWidth = width - margin.left - margin.right;
+        const plotHeight = height - margin.top - margin.bottom;
+        const points = Math.max(1, series[0]?.values.length || 1);
+        const maxValue = Math.max(
+          1,
+          ...series.flatMap((item) => item.values)
+        );
+        const roundedMax = Math.max(5, Math.ceil(maxValue / 5) * 5);
+        const x = (index) => margin.left + (index / Math.max(1, points - 1)) * plotWidth;
+        const y = (value) => margin.top + plotHeight - (value / roundedMax) * plotHeight;
+        const yTicks = Array.from({ length: 6 }, (_, index) =>
+          Math.round((roundedMax * index) / 5)
+        );
+        const xTicks = [];
+
+        if (state.month === 0) {
+          for (let month = 0; month < 12; month += 1) {
+            const date = new Date(Date.UTC(state.year, month, 1));
+            xTicks.push({
+              index: dayOfYear(date) - 1,
+              label: MONTH_SHORT[month]
+            });
+          }
+        } else {
+          const candidates = [1, 5, 10, 15, 20, 25, points];
+          for (const day of [...new Set(candidates)]) {
+            if (day <= points) xTicks.push({ index: day - 1, label: String(day) });
+          }
+        }
+
+        const paths = series.map((item) => {
+          const pointsText = item.values
+            .map((value, index) => `${x(index).toFixed(2)},${y(value).toFixed(2)}`)
+            .join(" ");
+
+          return `
+            <polyline
+              points="${pointsText}"
+              fill="none"
+              stroke="${escapeHtml(item.color)}"
+              stroke-width="5"
+              stroke-linejoin="round"
+              stroke-linecap="round"
+            />
+          `;
+        }).join("");
+
+        const title = state.month === 0
+          ? `${state.year} Annual Running Report Total`
+          : `${MONTHS[state.month]} ${state.year} Cumulative Reports`;
+
+        return `
+          <article class="native-trend-card">
+            <div class="native-trend-header">
+              <div>
+                <h3>${escapeHtml(title)}</h3>
+                <p>Built from the reports currently loaded in the Explorer.</p>
+              </div>
+              <div class="native-trend-legend">
+                ${series.map((item) => `
+                  <span>
+                    <i style="background:${escapeHtml(item.color)}"></i>
+                    ${escapeHtml(item.label)}
+                  </span>
+                `).join("")}
+              </div>
+            </div>
+
+            <svg
+              class="cumulative-chart-svg"
+              viewBox="0 0 ${width} ${height}"
+              role="img"
+              aria-label="${escapeHtml(title)}"
+            >
+              <rect x="0" y="0" width="${width}" height="${height}" rx="18" fill="#071321"></rect>
+              ${yTicks.map((tick) => `
+                <line
+                  x1="${margin.left}"
+                  x2="${width - margin.right}"
+                  y1="${y(tick)}"
+                  y2="${y(tick)}"
+                  stroke="rgba(144, 177, 205, 0.17)"
+                  stroke-width="1"
+                ></line>
+                <text
+                  x="${margin.left - 14}"
+                  y="${y(tick) + 5}"
+                  text-anchor="end"
+                  fill="#8fa8bd"
+                  font-size="15"
+                >${tick.toLocaleString("en-US")}</text>
+              `).join("")}
+              ${xTicks.map((tick) => `
+                <line
+                  x1="${x(tick.index)}"
+                  x2="${x(tick.index)}"
+                  y1="${margin.top}"
+                  y2="${margin.top + plotHeight}"
+                  stroke="rgba(144, 177, 205, 0.09)"
+                  stroke-width="1"
+                ></line>
+                <text
+                  x="${x(tick.index)}"
+                  y="${height - 30}"
+                  text-anchor="middle"
+                  fill="#8fa8bd"
+                  font-size="15"
+                >${escapeHtml(tick.label)}</text>
+              `).join("")}
+              ${paths}
+            </svg>
+          </article>
+        `;
+      }
+
+      function officialTrendSelectionHref(hazard) {
+        const params = new URLSearchParams(window.location.search);
+
+        params.set("year", String(state.year));
+        params.set("month", "0");
+        params.set("scope", "national");
+        params.set("type", hazard);
+        params.set("dataset", "preliminary");
+        params.set("view", "charts");
+
+        return `${window.location.pathname}?${params.toString()}`;
+      }
+
+      function spcAnnualTrendRequestUrl(hazard) {
+        const baseUrl = spcAnnualTrendImageUrl(hazard);
+
+        if (!baseUrl) return "";
+
+        // Five-minute cache bucket prevents a browser from holding an older
+        // SPC chart after SPC refreshes the source image.
+        const cacheBucket = Math.floor(Date.now() / 300000);
+
+        return `${baseUrl}?v=${cacheBucket}`;
+      }
+
+      function exactOfficialTrendModeActive() {
+        return (
+          state.month === 0 &&
+          state.dataset === "preliminary" &&
+          state.scope === "national" &&
+          ["tornado", "hail", "wind"].includes(state.hazard)
+        );
+      }
+
+      function renderOfficialTrendRequirement() {
+        const currentHazard = ["tornado", "hail", "wind"].includes(state.hazard)
+          ? state.hazard
+          : "tornado";
+
+        const requirements = [];
+
+        if (state.month !== 0) requirements.push("Annual");
+        if (state.scope !== "national") requirements.push("National");
+        if (state.dataset !== "preliminary") requirements.push("Preliminary");
+        if (!["tornado", "hail", "wind"].includes(state.hazard)) {
+          requirements.push("Tornado, Hail, or Wind");
+        }
+
+        els.spcTrendContent.innerHTML = `
+          <article class="exact-spc-trend-gate">
+            <p class="exact-spc-trend-eyebrow">Exact SPC chart mode</p>
+            <h3>Select one official annual hazard chart</h3>
+            <p>
+              To keep both the appearance and values identical to SPC,
+              Cumulative Trend displays SPC's original chart instead of
+              rebuilding it from local report rows.
+            </p>
+
+            ${
+              requirements.length
+                ? `
+                  <div class="exact-spc-requirements">
+                    Required selection:
+                    <strong>${requirements.map(escapeHtml).join(" · ")}</strong>
+                  </div>
+                `
+                : ""
+            }
+
+            <div class="exact-spc-hazard-links">
+              ${["tornado", "hail", "wind"].map((hazard) => `
+                <a
+                  href="${escapeHtml(officialTrendSelectionHref(hazard))}"
+                  class="${hazard === currentHazard ? "preferred" : ""}"
+                >
+                  ${escapeHtml(HAZARDS[hazard]?.label || hazard)}
+                </a>
+              `).join("")}
+            </div>
+
+            <p class="exact-spc-trend-note">
+              Monthly and state analysis remains available in Tables and
+              State Totals without presenting a custom chart as an SPC match.
+            </p>
+          </article>
+        `;
+      }
+
+      function renderOfficialTrendCharts() {
+        const hazard = state.hazard;
+        const sourceUrl = spcAnnualTrendImageUrl(hazard);
+        const requestUrl = spcAnnualTrendRequestUrl(hazard);
+        const hazardLabel = HAZARDS[hazard]?.label || hazard;
+
+        els.spcTrendContent.innerHTML = `
+          <article class="official-spc-exact-card">
+            <div class="official-spc-exact-toolbar">
+              <div>
+                <strong>Official SPC annual running count</strong>
+                <span>
+                  ${escapeHtml(state.year)} · National ·
+                  ${escapeHtml(hazardLabel)} · Preliminary
+                </span>
+              </div>
+
+              <a
+                href="${escapeHtml(sourceUrl)}"
+                target="_blank"
+                rel="noopener noreferrer"
+              >Open original</a>
+            </div>
+
+            <div class="official-spc-exact-media">
+              <span class="official-spc-exact-loading">
+                Loading the official SPC chart…
+              </span>
+
+              <img
+                src="${escapeHtml(requestUrl)}"
+                alt="${escapeHtml(
+                  `${state.year} official SPC national preliminary ${hazardLabel} annual running-count chart`
+                )}"
+                data-exact-spc-trend-image
+                loading="eager"
+                decoding="async"
+              >
+            </div>
+          </article>
+        `;
+
+        const image = els.spcTrendContent.querySelector(
+          "img[data-exact-spc-trend-image]"
+        );
+
+        const loading = els.spcTrendContent.querySelector(
+          ".official-spc-exact-loading"
+        );
+
+        image?.addEventListener("load", () => {
+          loading?.remove();
+          image.classList.add("loaded");
+        }, { once: true });
+
+        image?.addEventListener("error", () => {
+          els.spcTrendContent.innerHTML = `
+            <article class="exact-spc-trend-error">
+              <h3>The official SPC chart could not be loaded</h3>
+              <p>
+                No substitute chart was shown because it would not guarantee
+                the same visual presentation and data.
+              </p>
+              <a
+                href="${escapeHtml(sourceUrl)}"
+                target="_blank"
+                rel="noopener noreferrer"
+              >Open the official SPC chart</a>
+            </article>
+          `;
+        }, { once: true });
+      }
+
+      function renderTrendChart() {
+        if (!exactOfficialTrendModeActive()) {
+          renderOfficialTrendRequirement();
+          return;
+        }
+
+        renderOfficialTrendCharts();
+      }
+
+      function renderCharts() {
+        syncExactSpcAuthoritativePresentation();
+        const trendMode = state.chartMode === "trend";
+
+        els.chartModeControls
+          .querySelectorAll("button[data-chart-mode]")
+          .forEach((button) => {
+            button.classList.toggle(
+              "active",
+              button.dataset.chartMode === state.chartMode
+            );
+          });
+
+        els.trendChartMode.hidden = !trendMode;
+        els.trendChartMode.classList.toggle("active", trendMode);
+        els.summaryChartMode.hidden = trendMode;
+        els.summaryChartMode.classList.toggle("active", !trendMode);
+
+        if (trendMode) {
+          renderTrendChart();
+          return;
+        }
+
+        const periodCounts = countBy(
+          state.reports,
+          state.month === 0 ? reportMonthLabel : reportDayLabel
+        ).sort((a, b) => {
+          if (state.month === 0) {
+            return MONTH_SHORT.indexOf(a.label) - MONTH_SHORT.indexOf(b.label);
+          }
+
+          const aDay = Number(a.label.match(/\d+/)?.[0] || 0);
+          const bDay = Number(b.label.match(/\d+/)?.[0] || 0);
+          return aDay - bDay;
+        });
+
+        const hazardCounts = countBy(
+          state.reports,
+          (report) => HAZARDS[report.hazard]?.label || report.hazard
+        );
+        const stateCounts = countBy(state.reports, (report) => report.state);
+        const hourCounts = countBy(state.reports, hourLabel).sort(
+          (a, b) => a.label.localeCompare(b.label)
+        );
+
+        els.timeChartTitle.textContent =
+          state.month === 0 ? "Reports by month" : "Reports by day";
+
+        renderBars(els.timeChart, periodCounts, state.month === 0 ? 12 : 31);
+        renderBars(els.hazardChart, hazardCounts, 4);
+        renderBars(els.stateChart, stateCounts, 52);
+        renderStateClimatologyBars(stateCounts);
+        renderBars(els.hourChart, hourCounts, 24);
+
+        const activeCard = {
+          daily: els.periodChartCard,
+          hourly: els.hourChartCard,
+          states: els.stateChartCard,
+          hazard: els.hazardChartCard
+        }[state.chartMode] || els.periodChartCard;
+
+        for (const card of [
+          els.periodChartCard,
+          els.hazardChartCard,
+          els.stateChartCard,
+          els.hourChartCard
+        ]) {
+          card.hidden = card !== activeCard;
+        }
+      }
+
+      function largestReport(hazard) {
+        return state.reports
+          .filter((report) => report.hazard === hazard)
+          .slice()
+          .sort(
+            (a, b) =>
+              Number(b.magnitudeValue || -Infinity) -
+              Number(a.magnitudeValue || -Infinity)
+          )[0];
+      }
+
+      function tornadoRatingCounts() {
+        const ratings = new Map();
+
+        for (const report of state.reports.filter(
+          (item) => item.hazard === "tornado"
+        )) {
+          const match = clean(report.magnitude)
+            .toUpperCase()
+            .match(/(?:EF|F)?([0-5])/);
+
+          const label = match ? `EF/F${match[1]}` : "Unknown";
+          ratings.set(label, (ratings.get(label) || 0) + 1);
+        }
+
+        return [...ratings.entries()]
+          .map(([label, count]) => ({ label, count }))
+          .sort((a, b) => b.count - a.count);
+      }
+
+      function statsCard(title, rows) {
+        return `
+          <article class="stats-card">
+            <h3>${escapeHtml(title)}</h3>
+            <div class="stats-list">
+              ${rows.map(([label, value]) => `
+                <div class="stats-row">
+                  <span>${escapeHtml(label)}</span>
+                  <strong>${escapeHtml(value)}</strong>
+                </div>
+              `).join("")}
+            </div>
+          </article>
+        `;
+      }
+
+      function renderStats() {
+        const reports = state.reports;
+        const hazardCounts = Object.fromEntries(
+          countBy(reports, (report) => report.hazard)
+            .map((item) => [item.label, item.count])
+        );
+        const stateCounts = countBy(reports, (report) => report.state);
+        const dayCounts = countBy(reports, reportDayLabel);
+        const hourCounts = countBy(reports, hourLabel);
+        const largestHail = largestReport("hail");
+        const strongestWind = largestReport("wind");
+        const ratings = tornadoRatingCounts();
+
+        els.statsGrid.innerHTML = [
+          statsCard("Dataset totals", [
+            ["Total reports", reports.length.toLocaleString("en-US")],
+            ["Tornado", Number(hazardCounts.tornado || 0).toLocaleString("en-US")],
+            ["Hail", Number(hazardCounts.hail || 0).toLocaleString("en-US")],
+            ["Wind", Number(hazardCounts.wind || 0).toLocaleString("en-US")],
+            [
+              "Significant",
+              reports.filter((report) => report.significant)
+                .length.toLocaleString("en-US")
+            ]
+          ]),
+          statsCard("Peak activity", [
+            ["Most active day", dayCounts[0]?.label || "—"],
+            [
+              "Reports that day",
+              dayCounts[0]?.count?.toLocaleString("en-US") || "0"
+            ],
+            ["Most active hour", hourCounts[0]?.label || "—"],
+            [
+              "Reports that hour",
+              hourCounts[0]?.count?.toLocaleString("en-US") || "0"
+            ],
+            ["Top state", stateCounts[0]?.label || "—"]
+          ]),
+          statsCard("Hazard extremes", [
+            ["Largest hail", largestHail?.magnitude || "—"],
+            [
+              "Hail location",
+              largestHail
+                ? [largestHail.location, largestHail.state]
+                    .filter(Boolean).join(", ")
+                : "—"
+            ],
+            ["Highest wind", strongestWind?.magnitude || "—"],
+            [
+              "Wind location",
+              strongestWind
+                ? [strongestWind.location, strongestWind.state]
+                    .filter(Boolean).join(", ")
+                : "—"
+            ]
+          ]),
+          statsCard(
+            "Tornado ratings",
+            ratings.length
+              ? ratings.map((item) => [
+                  item.label,
+                  item.count.toLocaleString("en-US")
+                ])
+              : [["Tornado ratings", "No tornado reports"]]
+          )
+        ].join("");
+      }
+
+      function renderEmptyState() {
+        const empty = state.reports.length === 0;
+        els.emptyState.hidden = !empty;
+
+        for (const panel of [
+          els.mapPanel,
+          els.tablePanel,
+          els.chartsPanel,
+          els.statsPanel
+        ]) {
+          panel.style.display = empty
+            ? "none"
+            : panel.dataset.view === state.view
+              ? "block"
+              : "none";
+        }
+      }
+
+      function exactSpcAuthoritativePresentationActive() {
+        return (
+          exactOfficialTrendModeActive() &&
+          state.view === "charts" &&
+          state.chartMode === "trend"
+        );
+      }
+
+      function syncExactSpcAuthoritativePresentation() {
+        const active = exactSpcAuthoritativePresentationActive();
+
+        document.body.classList.toggle(
+          "exact-spc-authoritative-presentation",
+          active
+        );
+
+        if (!active) return;
+
+        const hazard = selectedHazardLabel();
+
+        els.workspaceTitle.textContent =
+          `Official SPC ${state.year} Annual ${hazard} Running Count`;
+
+        els.workspaceSubtitle.textContent =
+          "Original SPC chart • values, comparison years, mean, and cutoff published by SPC";
+
+        els.hazardChip.textContent = `${hazard} · Official SPC`;
+      }
+
+      function renderAll() {
+        syncControls();
+        updateWorkspaceHeader();
+        syncExactSpcAuthoritativePresentation();
+        updateSummary();
+        renderEmptyState();
+
+        if (!state.reports.length) {
+          return;
+        }
+
+        renderMap();
+        renderTable();
+        renderCharts();
+        renderStats();
+      }
+
+      function downloadBlob(filename, type, content) {
+        const blob = new Blob([content], { type });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      }
+
+      function exportFilename(extension) {
+        const period = state.month === 0
+          ? "annual"
+          : String(state.month).padStart(2, "0");
+
+        return [
+          "zacharologist-storm-reports",
+          state.dataset,
+          state.year,
+          period,
+          state.hazard,
+          state.scope === "state" ? state.stateCode : "national"
+        ].join("-") + `.${extension}`;
+      }
+
+      function exportCsv() {
+        const headers = [
+          "dataset", "hazard", "eventDate", "time", "magnitude",
+          "location", "county", "state", "latitude", "longitude",
+          "significant", "comments"
+        ];
+
+        const csvCell = (value) =>
+          `"${String(value ?? "").replace(/"/g, '""')}"`;
+
+        const rows = state.reports.map((report) => [
+          report.dataset,
+          report.hazard,
+          report.eventDate,
+          report.timeLabel || report.timeRaw,
+          report.magnitude,
+          report.location,
+          report.county,
+          report.state,
+          report.lat,
+          report.lon,
+          report.significant,
+          report.comments
+        ].map(csvCell).join(","));
+
+        downloadBlob(
+          exportFilename("csv"),
+          "text/csv;charset=utf-8",
+          [headers.join(","), ...rows].join("\n")
+        );
+      }
+
+      function exportGeoJson() {
+        const features = state.reports
+          .filter(validCoordinate)
+          .map((report) => ({
+            type: "Feature",
+            geometry: {
+              type: "Point",
+              coordinates: [Number(report.lon), Number(report.lat)]
+            },
+            properties: {
+              dataset: report.dataset,
+              hazard: report.hazard,
+              eventDate: report.eventDate,
+              time: report.timeLabel || report.timeRaw,
+              magnitude: report.magnitude,
+              location: report.location,
+              county: report.county,
+              state: report.state,
+              significant: Boolean(report.significant),
+              comments: report.comments
+            }
+          }));
+
+        downloadBlob(
+          exportFilename("geojson"),
+          "application/geo+json;charset=utf-8",
+          JSON.stringify(
+            {
+              type: "FeatureCollection",
+              features
+            },
+            null,
+            2
+          )
+        );
+      }
+
+      function bindSegmented(containerId, key, reload) {
+        document
+          .getElementById(containerId)
+          .addEventListener("click", (event) => {
+            const button = event.target.closest("button[data-value]");
+
+            if (!button || button.disabled) return;
+
+            state[key] = button.dataset.value;
+
+            if (key === "scope") {
+              state.reports = state.scope === "state"
+                ? state.rawReports.filter(
+                    (report) => report.state === state.stateCode
+                  )
+                : state.rawReports;
+            }
+
+            if (key === "view") {
+              syncControls();
+              renderAll();
+              return;
+            }
+
+            state.page = 1;
+            syncControls();
+
+            if (reload) {
+              loadReports();
+            } else {
+              renderAll();
+            }
+          });
+      }
+
+      function bindEvents() {
+        bindSegmented("scopeControls", "scope", false);
+        bindSegmented("hazardControls", "hazard", true);
+        bindSegmented("datasetControls", "dataset", true);
+        bindSegmented("viewControls", "view", false);
+
+        els.yearSelect.addEventListener("change", () => {
+          state.year = Number(els.yearSelect.value);
+
+          if (state.dataset === "final" && state.year > FINAL_MAX_YEAR) {
+            state.dataset = "preliminary";
+          }
+
+          if (
+            state.dataset === "preliminary" &&
+            state.year < PRELIMINARY_MIN_YEAR
+          ) {
+            state.dataset = "final";
+          }
+
+          syncControls();
+          loadReports();
+        });
+
+        els.stateSelect.addEventListener("change", () => {
+          state.stateCode = els.stateSelect.value;
+          state.reports = state.rawReports.filter(
+            (report) => report.state === state.stateCode
+          );
+          state.page = 1;
+          renderAll();
+        });
+
+        els.periodControls.addEventListener("click", (event) => {
+          const button = event.target.closest("button[data-month]");
+          if (!button) return;
+
+          state.month = Number(button.dataset.month);
+          syncControls();
+          loadReports();
+        });
+
+        els.refreshButton.addEventListener("click", () => loadReports(true));
+        els.exportCsvButton.addEventListener("click", exportCsv);
+        els.exportGeoJsonButton.addEventListener("click", exportGeoJson);
+
+        els.tableModeControls.addEventListener("click", (event) => {
+          const button = event.target.closest("button[data-table-mode]");
+          if (!button) return;
+
+          state.tableMode = button.dataset.tableMode;
+          state.page = 1;
+          renderTable();
+        });
+
+        els.chartModeControls.addEventListener("click", (event) => {
+          const button = event.target.closest("button[data-chart-mode]");
+          if (!button) return;
+
+          state.chartMode = button.dataset.chartMode;
+          renderCharts();
+        });
+
+        els.tableSearch.addEventListener("input", () => {
+          state.page = 1;
+          renderTable();
+        });
+
+        els.significantOnly.addEventListener("change", () => {
+          state.page = 1;
+          renderTable();
+        });
+
+        els.rowsPerPage.addEventListener("change", () => {
+          state.page = 1;
+          renderTable();
+        });
+
+        els.clearTableFilters.addEventListener("click", () => {
+          els.tableSearch.value = "";
+          els.significantOnly.checked = false;
+          state.page = 1;
+          renderTable();
+        });
+
+        document.querySelectorAll("th[data-sort]").forEach((header) => {
+          header.addEventListener("click", () => {
+            const key = header.dataset.sort;
+
+            if (state.sortKey === key) {
+              state.sortDirection =
+                state.sortDirection === "asc" ? "desc" : "asc";
+            } else {
+              state.sortKey = key;
+              state.sortDirection = "asc";
+            }
+
+            renderTable();
+          });
+        });
+
+        els.previousPageButton.addEventListener("click", () => {
+          state.page = Math.max(1, state.page - 1);
+          renderTable();
+        });
+
+        els.nextPageButton.addEventListener("click", () => {
+          state.page += 1;
+          renderTable();
+        });
+
+        els.mobileNavToggle.addEventListener("click", () => {
+          els.siteNav.classList.toggle("open");
+        });
+
+        window.addEventListener("popstate", () => {
+          readUrlState();
+          syncControls();
+          loadReports();
+        });
+      }
+
+      function boot() {
+        readUrlState();
+        buildYearOptions();
+        buildStateOptions();
+        buildPeriodControls();
+        bindEvents();
+        syncControls();
+        ensureMap();
+        loadReports();
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", boot, { once: true });
+      } else {
+        boot();
+      }
+    })();
+  </script>
+
+<script id="mobile-storm-report-explorer-makeover-v2-script">
+(() => {
+  const READY_CLASS = "mobile-storm-reports-ready";
+
+  function isMobile() {
+    return window.matchMedia("(max-width: 760px)").matches;
+  }
+
+  function activeLabel(selector, fallback) {
+    return document.querySelector(`${selector} button.active`)
+      ?.textContent?.trim() || fallback;
+  }
+
+  function selectLabel(id, fallback) {
+    const select = document.getElementById(id);
+    return select?.selectedOptions?.[0]?.textContent?.trim() || fallback;
+  }
+
+  function updateContext() {
+    const title = document.querySelector("[data-mobile-report-context]");
+    const subtitle = document.querySelector(
+      "[data-mobile-report-subcontext]"
+    );
+
+    if (!title || !subtitle) return;
+
+    const year = selectLabel("yearSelect", "");
+    const period = activeLabel("#periodControls", "Annual");
+    const hazard = activeLabel("#hazardControls", "All");
+    const scope = activeLabel("#scopeControls", "National");
+    const view = activeLabel("#viewControls", "Map");
+
+    title.textContent = `${period} ${year} · ${hazard}`;
+    subtitle.textContent = `${scope} · ${view}`;
+  }
+
+  function installToolbar(deck) {
+    if (document.querySelector(".mobile-reports-toolbar")) return;
+
+    const toolbar = document.createElement("section");
+    toolbar.className = "mobile-reports-toolbar";
+    toolbar.innerHTML = `
+      <div class="mobile-reports-context">
+        <strong data-mobile-report-context>Storm Reports</strong>
+        <span data-mobile-report-subcontext>Preparing controls…</span>
+      </div>
+      <button type="button" data-mobile-filter-button>Filters</button>
+      <button type="button" data-mobile-view-button>View</button>
+    `;
+
+    deck.insertAdjacentElement("beforebegin", toolbar);
+
+    const sheetHeader = document.createElement("div");
+    sheetHeader.className = "mobile-control-sheet-header";
+    sheetHeader.innerHTML = `
+      <strong>Storm Report Controls</strong>
+      <button
+        type="button"
+        data-mobile-filter-close
+        aria-label="Close storm report controls"
+      >×</button>
+    `;
+    deck.insertAdjacentElement("afterbegin", sheetHeader);
+
+    const backdrop = document.createElement("div");
+    backdrop.className = "mobile-filter-backdrop";
+    backdrop.setAttribute("aria-hidden", "true");
+    document.body.appendChild(backdrop);
+
+    const open = (focusView = false) => {
+      if (!isMobile()) return;
+      deck.classList.add("mobile-open");
+      backdrop.classList.add("visible");
+      document.body.classList.add("mobile-report-filter-open");
+
+      if (focusView) {
+        setTimeout(() => {
+          document.getElementById("viewControls")?.scrollIntoView({
+            block: "center",
+            behavior: "smooth"
+          });
+        }, 220);
+      }
+    };
+
+    const close = () => {
+      deck.classList.remove("mobile-open");
+      backdrop.classList.remove("visible");
+      document.body.classList.remove("mobile-report-filter-open");
+    };
+
+    toolbar.querySelector("[data-mobile-filter-button]")
+      ?.addEventListener("click", () => open(false));
+
+    toolbar.querySelector("[data-mobile-view-button]")
+      ?.addEventListener("click", () => open(true));
+
+    sheetHeader.querySelector("[data-mobile-filter-close]")
+      ?.addEventListener("click", close);
+
+    backdrop.addEventListener("click", close);
+
+    document.getElementById("viewControls")
+      ?.addEventListener("click", (event) => {
+        if (event.target.closest("button[data-value]")) {
+          setTimeout(close, 90);
+        }
+      });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") close();
+    });
+
+    window.addEventListener("resize", () => {
+      if (!isMobile()) close();
+    });
+  }
+
+  function installLegendToggle() {
+    const wrap = document.querySelector(".map-wrap");
+    const legend = document.getElementById("mapLegend");
+
+    if (!wrap || !legend) return;
+    if (wrap.querySelector(".mobile-map-legend-toggle")) return;
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "mobile-map-legend-toggle";
+    button.textContent = "Legend";
+    button.setAttribute("aria-expanded", "false");
+
+    legend.classList.add("mobile-collapsed");
+    wrap.appendChild(button);
+
+    button.addEventListener("click", () => {
+      const collapsed = legend.classList.toggle("mobile-collapsed");
+      button.textContent = collapsed ? "Legend" : "Hide Legend";
+      button.setAttribute("aria-expanded", String(!collapsed));
+    });
+  }
+
+  function installChartViewer() {
+    if (document.querySelector(".mobile-chart-lightbox")) return;
+
+    const overlay = document.createElement("div");
+    overlay.className = "mobile-chart-lightbox";
+    overlay.setAttribute("aria-hidden", "true");
+    overlay.innerHTML = `
+      <div class="mobile-chart-lightbox-toolbar">
+        <strong>Official SPC Chart</strong>
+        <button type="button" data-chart-reset>Reset</button>
+        <button type="button" data-chart-close>Close</button>
+      </div>
+      <div class="mobile-chart-lightbox-viewport">
+        <img alt="Enlarged official SPC chart">
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    const viewport = overlay.querySelector(
+      ".mobile-chart-lightbox-viewport"
+    );
+    const image = overlay.querySelector("img");
+
+    const close = () => {
+      overlay.classList.remove("open");
+      overlay.setAttribute("aria-hidden", "true");
+      image.removeAttribute("src");
+      document.body.classList.remove("mobile-report-filter-open");
+    };
+
+    overlay.querySelector("[data-chart-close]")
+      ?.addEventListener("click", close);
+
+    overlay.querySelector("[data-chart-reset]")
+      ?.addEventListener("click", () => {
+        viewport.scrollTo({ left: 0, top: 0, behavior: "smooth" });
+      });
+
+    document.addEventListener("click", (event) => {
+      if (!isMobile()) return;
+
+      const source = event.target.closest(
+        "img[data-exact-spc-trend-image], .official-spc-exact-media img"
+      );
+
+      if (!source?.src) return;
+
+      image.src = source.src;
+      image.alt = source.alt || "Official SPC chart";
+      overlay.classList.add("open");
+      overlay.setAttribute("aria-hidden", "false");
+      document.body.classList.add("mobile-report-filter-open");
+      viewport.scrollTo(0, 0);
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && overlay.classList.contains("open")) {
+        close();
+      }
+    });
+  }
+
+  function install() {
+    if (!isMobile()) return;
+    if (document.body.classList.contains(READY_CLASS)) return;
+
+    const deck = document.querySelector(".control-deck");
+    if (!deck) {
+      console.warn("Mobile Storm Reports makeover: control deck not found.");
+      return;
+    }
+
+    document.body.classList.add(READY_CLASS);
+    installToolbar(deck);
+    installLegendToggle();
+    installChartViewer();
+    updateContext();
+
+    const updateContextSoon = () => {
+      window.setTimeout(updateContext, 0);
+    };
+
+    deck.addEventListener("click", (event) => {
+      if (event.target.closest("button[data-value], button[data-month]")) {
+        updateContextSoon();
+      }
+    });
+
+    deck.addEventListener("change", updateContextSoon);
+    window.addEventListener("popstate", updateContextSoon);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", install, { once: true });
+  } else {
+    install();
+  }
+})();
+</script>
+
+</body>
+</html>
