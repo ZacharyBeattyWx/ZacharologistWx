@@ -1,6 +1,11 @@
 (() => {
   "use strict";
 
+  // Cost-control shutdown: preserve the native overlay, but do not poll AWS.
+  // Restoration requires a separately validated non-AWS publisher.
+  const NATIVE_DETAIL_ENABLED = false;
+  if (!NATIVE_DETAIL_ENABLED) return;
+
   const DETAIL_MANIFEST_URL =
     "https://dt0cd6bl1yqh2.cloudfront.net/mrms-detail/manifest.json";
   const LAYER_ID = "mrms-native-detail-overlay";

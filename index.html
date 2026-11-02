@@ -12184,6 +12184,7 @@ body {
 }
 </style>
 
+<script src="scripts/live-weather-feeds.js?v=20261101a"></script>
 </head>
 
 <body>
@@ -12321,12 +12322,12 @@ body {
           <h3>Regional Radar</h3>
         </div>
 
-        <span class="card-time">Live View</span>
+        <span class="card-time">NOAA MRMS · temporary view</span>
       </div>
 
       <iframe
         title="Live national radar"
-        src="./mosaic-radar-home.html?v=20260906h"
+        src="./mosaic-radar-home.html?v=20261101a"
         class="radar-frame">
       </iframe>
 
@@ -12656,6 +12657,11 @@ body {
 <script>
 const alertsList = document.getElementById("alertsList");
 const alertsTitle = document.getElementById("alertsTitle");
+const homepageAlertSource = document.createElement("p");
+homepageAlertSource.setAttribute("role", "status");
+homepageAlertSource.style.cssText = "font-size:12px;color:#cbd5e1;margin:8px";
+homepageAlertSource.textContent = "Checking official NWS alerts…";
+alertsList.before(homepageAlertSource);
 
 const alertUrls = [
   "https://api.weather.gov/alerts/active?area=TX",
@@ -12698,7 +12704,7 @@ const alertUrls = [
   "https://api.weather.gov/alerts/active?area=MA"
 ];
 
-const LIVE_HOMEPAGE_ALERTS_CURRENT_URL = "https://zacharologistwx.com/api/live-alerts/current";
+// AWS NWWS ingest remains disabled; use the official NWS collection.
 const HOMEPAGE_ALERT_STATES = new Set(
   alertUrls
     .map((url) => {
@@ -13683,16 +13689,7 @@ function isHomepageAlertInMonitoringArea(alert) {
 }
 
 function isExpiredHomepageAlert(alert) {
-  const properties = alert?.properties || {};
-  const expiresValue = properties.expires || properties.ends || properties.end;
-
-  if (!expiresValue) return false;
-
-  const expiresTime = Date.parse(expiresValue);
-
-  if (!Number.isFinite(expiresTime)) return false;
-
-  return expiresTime <= Date.now();
+  return !LiveWeatherFeeds.isCurrent(alert);
 }
 
 function normalizeHomepageLiveAlertFeature(feature, index) {
@@ -13721,35 +13718,11 @@ function normalizeHomepageLiveAlertFeature(feature, index) {
       ...properties,
       id: properties.id || alertId,
       _alertId: alertId,
-      _liveNwwsFastLane: true,
-      _liveSource: properties.source || "nwws-oi"
+      _liveNwwsFastLane: false,
+      _nwsDeepLinkFallback: true,
+      _liveSource: "Official NWS API"
     }
   };
-}
-
-async function fetchHomepageLiveAlertFeatures() {
-  try {
-    const response = await fetchWithTimeout(
-      LIVE_HOMEPAGE_ALERTS_CURRENT_URL,
-      3500
-    );
-
-    if (!response.ok) {
-      throw new Error(`Live NWWS alerts HTTP ${response.status}`);
-    }
-
-    const collection = await response.json();
-    const features = Array.isArray(collection?.features)
-      ? collection.features
-      : [];
-
-    return features
-      .map(normalizeHomepageLiveAlertFeature)
-      .filter(Boolean);
-  } catch (error) {
-    console.warn("Homepage live NWWS alerts unavailable", error);
-    return [];
-  }
 }
 
 function mergeHomepageAlertFeatures(snapshotFeatures, liveFeatures) {
@@ -13774,7 +13747,7 @@ function mergeHomepageAlertFeatures(snapshotFeatures, liveFeatures) {
 
 async function fetchHomepageAlerts() {
 
-  if (isFetchingAlerts) return;
+  if (isFetchingAlerts || document.hidden) return;
 isFetchingAlerts = true;
 
 
@@ -13793,26 +13766,9 @@ if (!hasLoadedAlertsOnce) {
 }
 
 try {
-  const results = await Promise.allSettled(
-    alertUrls.map(url => fetchWithTimeout(url, 3500))
-  );
-
-    const goodResponses = results
-      .filter(result => result.status === "fulfilled" && result.value.ok)
-      .map(result => result.value);
-
-    const liveFeatures = await fetchHomepageLiveAlertFeatures();
-
-    if (!goodResponses.length && !liveFeatures.length) {
-      throw new Error("All NWS alert requests failed");
-    }
-
-    const dataSets = goodResponses.length
-      ? await Promise.all(goodResponses.map(response => response.json()))
-      : [];
-
-    const snapshotFeatures = dataSets.flatMap(data => data.features || []);
-    const allFeatures = mergeHomepageAlertFeatures(snapshotFeatures, liveFeatures);
+  const collection = await LiveWeatherFeeds.loadAlerts();
+  const allFeatures = collection.features.map(normalizeHomepageLiveAlertFeature).filter(Boolean);
+  homepageAlertSource.textContent = `Official NWS · verified ${new Date(collection.verifiedAt).toLocaleTimeString()} · 1 min refresh`;
 
     const uniqueFeatures = Array.from(
       new Map(
@@ -13895,6 +13851,9 @@ renderCategory(currentCategory);
 
   } catch (error) {
     console.error("NWS alert loading error:", error);
+    homepageAlertSource.textContent = "NWS refresh failed — saved products may be incomplete. Check weather.gov for current alerts.";
+    allHomepageAlerts = allHomepageAlerts.filter(alert => !isExpiredHomepageAlert(alert));
+    if (hasLoadedAlertsOnce) { updateTabAlertStates(); renderCategory(currentCategory); }
 
    if (!hasLoadedAlertsOnce) {
   alertsList.innerHTML = `
@@ -14225,6 +14184,9 @@ if (defaultAlertsCard) {
 
 fetchHomepageAlerts();
 setInterval(fetchHomepageAlerts, 60000);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) fetchHomepageAlerts();
+});
 
 function loadSPCImages() {
   const images = document.querySelectorAll(".spc-outlook-img[data-spc-options]");
@@ -14387,7 +14349,7 @@ let singleSiteBaseLayer = null;
 let singleSiteRadarLayer = null;
 
 const radarUrls = {
-  clean: "./mosaic-radar-home.html?v=20260906h"
+  clean: "./mosaic-radar-home.html?v=20261101a"
 };
 
 let radarSites = {};
