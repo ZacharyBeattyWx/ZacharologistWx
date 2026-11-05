@@ -4,6 +4,7 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
   "use strict";
 
   const path = String(window.location.pathname || "");
+  if (window.ZWX_PUBLIC_MRMS) return;
   if (!/\/mosaic-radar-home\.html$/i.test(path)) return;
 
   const DBZ_MIN = -32;
@@ -398,6 +399,7 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
 
 (() => {
   const path = String(window.location.pathname || "");
+  if (window.ZWX_PUBLIC_MRMS) return;
   if (!/\/mosaic-radar-home\.html$/i.test(path)) return;
 
   const src = "scripts/radar/mrms-native-loop-prewarm.js?v=20260918d";
@@ -418,6 +420,7 @@ window.MAPBOX_PUBLIC_TOKEN = "pk.eyJ1IjoiemFjaGFyeWJlYXR0eXd4IiwiYSI6ImNtcGRpOHF
 
   const path = String(window.location.pathname || "");
   if (!/\/mosaic-radar-home\.html$/i.test(path)) return;
+  if (window.ZWX_PUBLIC_MRMS) return;
   if (window.__ZWX_MRALA_SPEED_AWARE_LOOP_HOLD__) return;
   window.__ZWX_MRALA_SPEED_AWARE_LOOP_HOLD__ = true;
 

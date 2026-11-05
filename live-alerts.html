@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="description" content="Live NWWS-OI weather alerts from Zacharologist Wx.">
+  <meta name="description" content="Live official NWS weather alerts from Zacharologist Wx.">
   <title>Active Alerts | Zacharologist Wx</title>
   <style>
     :root {
@@ -7539,6 +7539,7 @@
   <script src="scripts/interior-header.js?v=20261020a" defer data-interior-header-script></script>
   <script src="mapbox-token.js"></script>
 <link rel="stylesheet" href="assets/interior-newsroom.css?v=20261020a">
+  <script src="scripts/live-weather-feeds.js?v=20261101a"></script>
 </head>
 <body class="newsroom-interior newsroom-alerts">
 <header class="site-header" data-interior-site-header>
@@ -7721,27 +7722,6 @@
     aria-live="polite"
   ></div>
   <script>
-    const IS_LOCAL_DEV_HOST =
-      location.hostname === "localhost" ||
-      location.hostname === "127.0.0.1" ||
-      location.hostname === "::1" ||
-      /^192\.168\.\d{1,3}\.\d{1,3}$/.test(location.hostname) ||
-      /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(location.hostname) ||
-      /^172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}$/.test(location.hostname);
-
-    const LIVE_ALERTS_CURRENT_URL = IS_LOCAL_DEV_HOST
-      ? "https://zacharologistwx.com/api/live-alerts/current"
-      : "/api/live-alerts/current";
-
-    function streamUrlFromCurrentUrl(value) {
-      const url = new URL(value, window.location.origin);
-      url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-      url.pathname = url.pathname.replace(/\/current$/, "/stream");
-      return url.toString();
-    }
-
-    const LIVE_ALERTS_STREAM_URL = streamUrlFromCurrentUrl(LIVE_ALERTS_CURRENT_URL);
-
     const totalCountEl = document.getElementById("totalCount");
     const geometryCountEl = document.getElementById("geometryCount");
     const connectionDot = document.getElementById("connectionDot");
@@ -7769,14 +7749,11 @@
 
     let liveFeatures = [];
     let selectedAlertId = "";
-    let lastSequence = 0;
-    let socket = null;
-    let reconnectTimer = null;
-    let reconnectDelayMs = 3000;
     let renderTimer = null;
     let activeState = "all";
 
     let locationAlertFeatures = null;
+    let locationAlertPoint = null;
     let locationSearchLabel = "";
 
     /* Homepage alert deep-link support */
@@ -8278,11 +8255,7 @@
     }
 
     function isExpired(feature) {
-      const expires = feature?.properties?.expires || feature?.properties?.ends || feature?.properties?.end;
-      if (!expires) return false;
-
-      const end = Date.parse(expires);
-      return Number.isFinite(end) && end <= Date.now();
+      return !LiveWeatherFeeds.isCurrent(feature);
     }
 
     function hasGeometry(feature) {
@@ -8685,6 +8658,7 @@
       };
     }
 
+    const pointAlertCache = new Map();
     async function fetchAlertsForPoint(
       latitude,
       longitude
@@ -8698,21 +8672,11 @@
         `${latitude.toFixed(4)},${longitude.toFixed(4)}`
       );
 
-      const response = await fetch(url, {
-        cache: "no-store",
-        headers: {
-          Accept:
-            "application/geo+json, application/json"
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(
-          `NWS alert lookup failed with status ${response.status}.`
-        );
-      }
-
-      const data = await response.json();
+      const key = url.toString();
+      const cached = pointAlertCache.get(key);
+      if (cached && Date.now() - cached.at < 60000) return cached.features.filter(feature => !isExpired(feature));
+      const data = await LiveWeatherFeeds.json(key);
+      if (data.type !== "FeatureCollection" || !Array.isArray(data.features) || data.pagination?.next) throw new Error("Incomplete NWS location alerts");
 
       const normalized = (
         Array.isArray(data?.features)
@@ -8752,7 +8716,10 @@
         }
       });
 
-      return [...matches.values()];
+      const features = [...matches.values()];
+      pointAlertCache.set(key, { at: Date.now(), features });
+      while (pointAlertCache.size > 4) pointAlertCache.delete(pointAlertCache.keys().next().value);
+      return features;
     }
 
     function locationSearchFormElement() {
@@ -8872,6 +8839,7 @@
       longitude,
       label
     ) {
+      locationAlertPoint = { latitude, longitude };
       locationAlertFeatures =
         await fetchAlertsForPoint(
           latitude,
@@ -9056,7 +9024,9 @@
           instruction: preserveBulletinText(props.instruction || ""),
           office: cleanText(props.office || ""),
           expires: props.expires || props.ends || props.end || "",
-          _liveNwwsFastLane: true
+          _liveNwwsFastLane: false,
+          _nwsDeepLinkFallback: true,
+          _liveSource: "Official NWS API"
         }
       };
 
@@ -9069,7 +9039,7 @@
 
       if (state === "online") {
         connectionDot.classList.add("online");
-        connectionText.textContent = "Connected";
+        connectionText.textContent = "Official NWS · 1 min refresh";
         return;
       }
 
@@ -9082,9 +9052,9 @@
       if (/unsupported/i.test(sourceText)) {
         connectionText.textContent = "Manual refresh only";
       } else if (/failed/i.test(sourceText)) {
-        connectionText.textContent = "Refresh failed";
+        connectionText.textContent = "Refresh failed · check last verified time";
       } else if (state === "offline") {
-        connectionText.textContent = "Reconnecting...";
+        connectionText.textContent = "NWS unavailable";
       } else {
         connectionText.textContent = "Connecting...";
       }
@@ -10509,7 +10479,7 @@
       const source =
         props._liveSource ||
         props.source ||
-        "nwws-oi";
+        "Official NWS API";
 
       const expires =
         displayExpiryForFeature(feature);
@@ -11825,105 +11795,42 @@
       }
     }
 
-    async function loadCurrentAlerts() {
-      let features = [];
-      try {
-        const response = await fetch(LIVE_ALERTS_CURRENT_URL, {
-          cache: "no-store",
-          headers: { Accept: "application/geo+json, application/json" }
-        });
-        if (!response.ok) throw new Error(`Live alerts HTTP ${response.status}`);
-        const collection = await response.json();
-        features = Array.isArray(collection?.features) ? collection.features : [];
-        lastSequence = Number(collection?.sequence || lastSequence || 0);
-        lastUpdatedEl.textContent = collection?.generatedAt
-          ? new Date(collection.generatedAt).toLocaleString()
-          : new Date().toLocaleString();
-      } catch (error) {
-        if (!requestedAlertId && !requestedAlertEvent) throw error;
+    let currentAlertLoad = null;
+    let lastVerifiedAlerts = 0;
+    function loadCurrentAlerts() {
+      if (currentAlertLoad) return currentAlertLoad;
+      currentAlertLoad = refreshCurrentAlerts().finally(() => { currentAlertLoad = null; });
+      return currentAlertLoad;
+    }
+    async function refreshCurrentAlerts() {
+      const collection = await LiveWeatherFeeds.loadAlerts();
+      lastVerifiedAlerts = collection.verifiedAt;
+      lastUpdatedEl.textContent = new Date(lastVerifiedAlerts).toLocaleString();
+      liveFeatures = collection.features.map(normalizeFeature).filter(Boolean).filter(feature => !isExpired(feature));
+      if (Array.isArray(locationAlertFeatures) && locationAlertPoint) {
+        locationAlertFeatures = await fetchAlertsForPoint(locationAlertPoint.latitude, locationAlertPoint.longitude);
       }
-      const merged = new Map();
-      [...features, ...requestedAlertFallbackFeatures].map(normalizeFeature)
-        .filter(Boolean).filter(feature => !isExpired(feature))
-        .forEach(feature => merged.set(feature.id, feature));
-      liveFeatures = [...merged.values()];
+      setConnection("online", "Official NWS API");
       if (!applyAlertDeepLink()) {
         render();
         await loadRequestedAlertFromNws();
       }
     }
-
-    function connectStream() {
-      if (!("WebSocket" in window)) {
-        setConnection("offline", "Live stream unsupported, using manual refresh.");
-        return;
-      }
-
-      if (socket && [WebSocket.OPEN, WebSocket.CONNECTING].includes(socket.readyState)) {
-        return;
-      }
-
-      try {
-        socket = new WebSocket(LIVE_ALERTS_STREAM_URL);
-      } catch (error) {
-        setConnection("offline", "Live stream unavailable, retrying...");
-        scheduleReconnect();
-        return;
-      }
-
-      socket.addEventListener("open", () => {
-        reconnectDelayMs = 3000;
-        setConnection("online", "Connected to live alert stream.");
-      });
-
-      socket.addEventListener("message", async (event) => {
-        let payload;
-
-        try {
-          payload = JSON.parse(event.data);
-        } catch {
-          return;
-        }
-
-        const sequence = Number(payload?.sequence || 0);
-
-        if (sequence && sequence <= lastSequence) return;
-        if (sequence) lastSequence = sequence;
-
-        if (payload?.generatedAt) {
-          lastUpdatedEl.textContent = new Date(payload.generatedAt).toLocaleString();
-        }
-
-        await loadCurrentAlerts().catch((error) => {
-          console.warn("Live alert reload failed", error);
-        });
-      });
-
-      socket.addEventListener("close", () => {
-        setConnection("offline", "Live stream disconnected, retrying...");
-        socket = null;
-        scheduleReconnect();
-      });
-
-      socket.addEventListener("error", () => {
-        try {
-          socket.close();
-        } catch {
-          scheduleReconnect();
-        }
+    function refreshInBackground() {
+      if (document.hidden) return;
+      liveFeatures = liveFeatures.filter(feature => !isExpired(feature));
+      if (Array.isArray(locationAlertFeatures)) locationAlertFeatures = locationAlertFeatures.filter(feature => !isExpired(feature));
+      if (Date.now() - lastVerifiedAlerts > 5 * 60000) liveFeatures = [];
+      render();
+      loadCurrentAlerts().catch(error => {
+        console.warn("NWS refresh failed", error);
+        setConnection("offline", "Refresh failed; last verification shown above.");
       });
     }
-
-    function scheduleReconnect() {
-      if (reconnectTimer !== null) return;
-
-      reconnectTimer = window.setTimeout(() => {
-        reconnectTimer = null;
-        connectStream();
-      }, reconnectDelayMs);
-
-      reconnectDelayMs = Math.min(30000, Math.round(reconnectDelayMs * 1.6));
-    }
+    setInterval(refreshInBackground, 60000);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) refreshInBackground();
+    });
     const detailShareFeedback =
       document.getElementById("detailShareFeedback");
 
@@ -12397,19 +12304,10 @@
       setMobileFiltersOpen(false);
       document.body.classList.remove("detail-open");
     });
-    window.addEventListener("beforeunload", () => {
-      if (socket) {
-        try {
-          socket.close(1000, "Page closing");
-        } catch {
-          // Ignore close errors.
-        }
-      }
-    });
 
     loadCurrentAlerts()
       .then(() => {
-        connectStream();
+        setConnection("online", "Official NWS API");
       })
       .catch((error) => {
         console.error("Initial live alert load failed", error);
@@ -12418,11 +12316,11 @@
           <div class="empty">
             <div>
               <strong>Live alerts unavailable</strong>
-              <span>The live alert hub did not respond.</span>
+              <span>The NWS API did not respond. Automatic retry every minute; consult weather.gov for current alerts.</span>
             </div>
           </div>
         `;
-        connectStream();
+
       });
   </script>
 </body>

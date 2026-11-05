@@ -3,10 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ZacharologistWx Native Numeric MRALA Test</title>
+  <title>ZacharologistWx | NOAA MRMS Radar</title>
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
-  <script src="mapbox-token.js?v=20260917b"></script>
+  <script>window.ZWX_PUBLIC_MRMS = true;</script>
+  <script src="mapbox-token.js?v=20261101a"></script>
   <style>
     :root{color-scheme:dark;--panel:rgba(4,10,22,.93);--border:rgba(148,163,184,.28);--accent:#38bdf8;--muted:#94a3b8}
     *{box-sizing:border-box}html,body,#map{width:100%;height:100%;margin:0}body{overflow:hidden;background:#07111f;color:#f8fafc;font-family:Arial,Helvetica,sans-serif}#map{position:fixed;inset:0;background:#07111f}
@@ -24,6 +25,7 @@
       display:none !important;
     }
   </style>
+  <script defer src="scripts/radar/public-mrms.js?v=20261101a"></script>
 </head>
 <body>
   <div id="map"></div>
@@ -66,6 +68,8 @@
 <script>
 (() => {
   "use strict";
+  // Keep the native numeric renderer intact; its AWS pipeline remains shut down.
+  if (window.ZWX_PUBLIC_MRMS) return;
 
   const MAPBOX_STYLE="mapbox://styles/zacharybeattywx/cmpdipwzh00fq01sccdj806xy";
   const MANIFEST_URL="https://dt0cd6bl1yqh2.cloudfront.net/mrms-native-numeric/manifest.json";
