@@ -1,6 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<style id="newsroom-startup-style">
+html.newsroom-starting { background: #101416; }
+html.newsroom-starting body { visibility: hidden; }
+html.newsroom-starting::after { content: "Loading weather dashboard…"; position: fixed; inset: 0; display: grid; place-items: center; color: #aab7bf; font: 14px Arial, sans-serif; }
+</style>
+<script id="newsroom-startup">
+(() => {
+  const root = document.documentElement;
+  root.classList.add("newsroom-starting");
+  let timer;
+  window.finishNewsroomLoad = () => {
+    clearTimeout(timer);
+    root.classList.remove("newsroom-starting");
+  };
+  timer = setTimeout(window.finishNewsroomLoad, 8000);
+})();
+</script>
+<link rel="preload" href="scripts/homepage-newsroom-test.js?v=20261105-startup" as="script">
+
   <meta charset="UTF-8" />
   <meta name="description" content="Live radar, active NWS alerts, SPC outlooks, forecast monitoring, and storm operations from Zacharologist Wx.">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -18221,7 +18240,7 @@ setInterval(loadSPCImages, 10 * 60 * 1000);
 })();
 </script>
 
-<script src="scripts/homepage-newsroom-test.js?v=20261022b"></script>
+<script src="scripts/homepage-newsroom-test.js?v=20261105-startup"></script>
 <script src="scripts/homepage-spc-carousel.js?v=20261019b"></script>
 <script src="scripts/homepage-national-monitoring-test.js?v=20261022a"></script>
 </body>

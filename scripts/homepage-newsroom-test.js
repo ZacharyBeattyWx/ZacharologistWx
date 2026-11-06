@@ -608,7 +608,11 @@
       const placeReports=()=>{const card=$('#mobile-home-storm-reports-card-panel-v2');if(card && oldLayout && card.parentNode!==oldLayout)oldLayout.appendChild(card);};
       placeReports();win.setTimeout(placeReports,1500);
     }
-    if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',install,{once:true});else install();
+    function installAndReveal() {
+      try { install(); }
+      finally { win.finishNewsroomLoad?.(); }
+    }
+    if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',installAndReveal,{once:true});else installAndReveal();
   }
   return { DEFAULT_LOCATION, dailyQuickHits, num, quantity, windPeak, normalizeNwsForecast, normalizeObservation, normalizeModel, forecastUsable, chooseForecast, buildStats, sameLocation, coldSeason, dayKey, alertCategory, filteredAlerts, alertPriority, boot };
 });
