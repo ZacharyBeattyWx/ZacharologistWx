@@ -550,3 +550,34 @@ body.newsroom-home .forecast-dashboard {backdrop-filter:none!important;-webkit-b
   #weatherNewsroom #newsTickerTemp {font-size:24px;line-height:1;}
   #weatherNewsroom .news-scoreboard .news-season {padding:4px 0 4px 16px;line-height:1.2;}
 }
+
+/* Give the homepage's local weather strip the full available width. */
+@media(min-width:769px){
+  #weatherNewsroom .news-scoreboard {
+    display:grid;grid-template-columns:minmax(0,2.2fr) repeat(3,minmax(0,1fr)) auto;
+    width:100%;overflow:visible;align-items:stretch;min-height:80px;
+  }
+  #weatherNewsroom .news-scoreboard>a {
+    min-width:0;min-height:72px;align-self:stretch;margin:4px 0;
+    padding:8px clamp(12px,1.5vw,24px);grid-template-columns:minmax(0,1fr);
+    row-gap:5px;white-space:normal;
+  }
+  #weatherNewsroom .news-scoreboard>a:first-child {
+    grid-template-columns:minmax(0,1fr) auto;padding-left:0;column-gap:18px;
+  }
+  #weatherNewsroom .news-scoreboard>a span {font-size:12px;line-height:1.35;overflow-wrap:anywhere;}
+  #weatherNewsroom .news-scoreboard>a strong {font-size:clamp(18px,1.3vw,22px);line-height:1.2;}
+  #weatherNewsroom .news-scoreboard>a small {font-size:13px;line-height:1.3;}
+  #weatherNewsroom #newsTickerTemp {font-size:clamp(32px,2.5vw,42px);line-height:1;}
+  #weatherNewsroom .news-scoreboard .news-season {font-size:11px;padding:10px 0 10px 20px;}
+}
+@media(min-width:769px) and (max-width:1100px){
+  #weatherNewsroom .news-scoreboard {grid-template-columns:minmax(0,1.8fr) repeat(3,minmax(0,1fr));}
+  #weatherNewsroom .news-scoreboard .news-season {display:none;}
+}
+@media(max-width:768px){
+  #weatherNewsroom .news-scoreboard>a:first-child {grid-column:1/-1;min-height:72px;padding:12px 14px!important;column-gap:16px;border-right:0;}
+  #weatherNewsroom .news-scoreboard>a:first-child span {font-size:12px;line-height:1.35;}
+  #weatherNewsroom #newsTickerTemp {font-size:34px;line-height:1;}
+  #weatherNewsroom .news-scoreboard>a:first-child small {font-size:12px;}
+}
