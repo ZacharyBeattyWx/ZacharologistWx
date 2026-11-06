@@ -1,11 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="newsroom-starting">
 <head>
 <style id="newsroom-startup-style">
-html.newsroom-starting { background: #101416; }
-html.newsroom-starting body { visibility: hidden; }
+html.newsroom-starting { background: #101416 !important; }
+html.newsroom-starting body { opacity: 0 !important; visibility: hidden !important; pointer-events: none !important; }
 html.newsroom-starting::after { content: "Loading weather dashboard…"; position: fixed; inset: 0; display: grid; place-items: center; color: #aab7bf; font: 14px Arial, sans-serif; }
 </style>
+<noscript><style>html.newsroom-starting body { opacity: 1 !important; visibility: visible !important; pointer-events: auto !important; } html.newsroom-starting::after { display: none; }</style></noscript>
 <script id="newsroom-startup">
 (() => {
   const root = document.documentElement;

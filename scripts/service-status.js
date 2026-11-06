@@ -5,6 +5,7 @@ window.ZWX_SERVICE_STATUS = Object.freeze({ customFeedsPaused: true });
   if (window.ZWX_SERVICE_STATUS.customFeedsPaused && service) {
     const target = new URL("service-unavailable.html", location.href);
     target.searchParams.set("service", service);
+    document.documentElement.style.opacity = "0";
     location.replace(target.href);
   }
 })();
