@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
+<script src="scripts/service-status.js?v=20261105-pause"></script>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>Weather Viewer | ZacharologistWx</title>
@@ -1158,6 +1159,7 @@
       loadSatelliteBoundaries();
     }
     function showMap(){
+      if(showPausedFeed('lightning'))return;
       radarFrame.hidden=true;
       satelliteStage.hidden=true;
       weatherMapEl.style.display="block";
@@ -1774,6 +1776,7 @@
     };
 
     async function applyLightningLayer(){
+      if(window.ZWX_SERVICE_STATUS?.customFeedsPaused)return;
       if(!mapReady||activeProduct!=="lightning")return;
       if(lightningFetchPromise)return lightningFetchPromise;
 
@@ -2258,6 +2261,12 @@
     }
 
     async function loadSectorBrowserOverview(){
+      if(window.ZWX_SERVICE_STATUS?.customFeedsPaused) {
+        satSectorBrowserImage.style.display="none";
+        satSectorBrowserMessage.textContent="Satellite overview temporarily out of service. Choose a sector using the sector menu.";
+        satSectorBrowserMessage.hidden=false;
+        return;
+      }
       const token=++sectorBrowserToken;
       const globalSector=
         (SAT_SECTORS[satPlatform]||SAT_SECTORS.East)
@@ -5364,6 +5373,11 @@
     }
 
     async function resetSatelliteViewer(force=true){
+      const pausedSector=currentSectorSpec();
+      if(window.ZWX_SERVICE_STATUS?.customFeedsPaused && (satProduct!=="GeoColor" || pausedSector?.mesoscale || pausedSector?.nativeLocalized)) {
+        showPausedFeed("satellite");
+        return;
+      }
       document.getElementById("satMobileProduct").value=satProduct;
       if(!force&&currentSectorSpec()?.mesoscale&&(satTimer||satPlayPreparing||document.hidden))return;
       stopSatellitePlayback();
@@ -5560,7 +5574,18 @@
       if(radarMode!=="hires")return;
       try{const doc=radarFrame.contentDocument;if(!doc)return;doc.querySelector("[data-interior-site-header]")?.remove();const rail=doc.querySelector(".right-ui-rail");if(rail){rail.style.setProperty("top","16px","important");rail.style.setProperty("max-height","calc(100vh - 32px)","important");}radarFrame.contentWindow?.dispatchEvent(new Event("resize"));}catch(error){console.warn("Hi-Res embed trim skipped",error);}
     }
-    function loadRadar(mode){radarMode=mode;saveViewerState();activate(radarButtons,button=>button.dataset.radar===mode);showRadar();viewerStatus.textContent=mode==="hires"?"Hi-Res Level II radar":"MRMS live";if(mode==="hires"){viewerNote.textContent="Mapbox Level II radar • choose a radar site in the panel";radarFrame.src="level2-mobile-radar.html?level2Data=remote&site=KFCX&embed=1&v=20260923b";return;}radarFrame.src=`mosaic-radar-home.html?viewer=${mode}&v=20260923a`;viewerNote.textContent=mode==="regional"?"Regional MRMS • f2 ~4K quality band • zoom capped before full-native mode":"MRMS national mosaic • broad CONUS situational awareness";}
+
+    function showPausedFeed(service) {
+      if (!window.ZWX_SERVICE_STATUS?.customFeedsPaused) return false;
+      satWarmGeneration++;
+      satRenderToken++;
+      showRadar();
+      radarFrame.src="service-unavailable.html?service="+encodeURIComponent(service);
+      viewerStatus.textContent="Temporarily out of service";
+      viewerNote.textContent="This custom feed is paused. Official alternatives are available below.";
+      return true;
+    }
+    function loadRadar(mode){if(showPausedFeed('radar'))return;radarMode=mode;saveViewerState();activate(radarButtons,button=>button.dataset.radar===mode);showRadar();viewerStatus.textContent=mode==="hires"?"Hi-Res Level II radar":"MRMS live";if(mode==="hires"){viewerNote.textContent="Mapbox Level II radar • choose a radar site in the panel";radarFrame.src="level2-mobile-radar.html?level2Data=remote&site=KFCX&embed=1&v=20260923b";return;}radarFrame.src=`mosaic-radar-home.html?viewer=${mode}&v=20260923a`;viewerNote.textContent=mode==="regional"?"Regional MRMS • f2 ~4K quality band • zoom capped before full-native mode":"MRMS national mosaic • broad CONUS situational awareness";}
     function selectProduct(next){activeProduct=next;saveViewerState();activate(tabs,button=>button.dataset.product===next);radarControls.hidden=next!=="radar";satelliteControls.hidden=next!=="satellite";lightningControls.hidden=next!=="lightning";if(next!=="satellite"){clearSectorPreview();closeSectorBrowser();}if(next==="radar"){controlLabel.textContent="Radar view";loadRadar(radarMode);return;}if(next==="satellite"){controlLabel.textContent="Satellite";activate(platformButtons,button=>button.dataset.satPlatform===satPlatform);activate(satProductButtons,button=>button.dataset.satProduct===satProduct);populateSatelliteSectors();showSatellite();resetSatelliteViewer();return;}controlLabel.textContent="Lightning";showMap();}
 
     radarFrame.addEventListener("load",tuneEmbeddedLevel2);
