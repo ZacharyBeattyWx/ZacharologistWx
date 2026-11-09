@@ -564,7 +564,7 @@
       region.addEventListener('focusin',()=>focused=true);region.addEventListener('focusout',e=>focused=region.contains(e.relatedTarget));
       doc.addEventListener('visibilitychange',()=>{if(!doc.hidden)syncDaily();});
       win.addEventListener('pageshow',syncDaily);
-      win.setInterval(()=>{if(syncDaily())return;if(!paused && !hover && !focused && !doc.hidden && !win.matchMedia('(prefers-reduced-motion: reduce)').matches)show(slide+1);},14000);
+      win.setInterval(()=>{if(syncDaily())return;if(!paused && !hover && !focused && !doc.hidden && !win.matchMedia('(prefers-reduced-motion: reduce)').matches)show(slide+1);},7000);
       setText('#newsQuickDaily','Daily facts • '+selection.label);show(0);
     }
     function install(){

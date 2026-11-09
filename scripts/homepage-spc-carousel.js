@@ -259,7 +259,7 @@
     slot.addEventListener('mouseenter',()=>hovered=true);slot.addEventListener('mouseleave',()=>hovered=false);
     slot.addEventListener('focusin',()=>focused=true);slot.addEventListener('focusout',event=>focused=slot.contains(event.relatedTarget));
     new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;},{rootMargin:'120px'}).observe(slot);
-    setInterval(()=>{if(ready&&visible&&!document.hidden&&!paused&&!hovered&&!focused&&!matchMedia('(prefers-reduced-motion: reduce)').matches)show(index+1);},14000);
+    setInterval(()=>{if(ready&&visible&&!document.hidden&&!paused&&!hovered&&!focused&&!matchMedia('(prefers-reduced-motion: reduce)').matches)show(index+1);},5000);
     try{
       if(!document.querySelector('link[data-news-mapbox]')){const css=document.createElement('link');css.rel='stylesheet';css.href='https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css';css.dataset.newsMapbox='';document.head.appendChild(css);}
       if(!window.MAPBOX_PUBLIC_TOKEN)await script('mapbox-token.js');
