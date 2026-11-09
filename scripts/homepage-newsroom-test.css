@@ -582,16 +582,12 @@ body.newsroom-home .forecast-dashboard {backdrop-filter:none!important;-webkit-b
   #weatherNewsroom .news-scoreboard>a:first-child small {font-size:12px;}
 }
 
-/* Quick Hits leads the radar column at the top of the homepage. */
-#weatherNewsroom .news-live-column {display:flex;flex-direction:column;gap:14px;min-width:0;}
-#weatherNewsroom .news-live-column>#newsQuickHits {margin:0;}
+/* Full-width Quick Hits above the briefing and radar. */
+#weatherNewsroom>#newsQuickHits {width:100%;margin:18px 0 0;}
 @media(max-width:768px){
-  #weatherNewsroom .news-live-column {display:contents;}
-  #weatherNewsroom #newsQuickHits {order:3;margin:0 0 12px;}
+  #weatherNewsroom #newsQuickHits {order:2;margin:12px 0;}
+  #weatherNewsroom .news-briefing {order:3;}
   #weatherNewsroom #newsRadarSlot {order:4;margin:0 0 12px;}
-}
-
-@media(max-width:768px){
   #weatherNewsroom #newsLocal {order:5;}
   #weatherNewsroom .news-season-stats {order:6;}
   #weatherNewsroom #newsWeekPanel {order:7;}
